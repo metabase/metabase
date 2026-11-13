@@ -1274,7 +1274,9 @@
                         (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
-                  (mapv #(api/read-check :model/Card %) question_ids))
+                  (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
+                                                             :can_read))]
+                    (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (t2/with-transaction [_conn]
                   (let [dash (agent-api.db/insert-dashboard!
                               {:name          dashboard-name
@@ -1419,6 +1421,12 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
+                                                    (into [] (comp (filter (comp #{"add"} :action))
+                                                                   (keep :card_id)
+                                                                   (distinct))
+                                                          mutations))
+                                                   :can_read))
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
@@ -1428,7 +1436,7 @@
       (try
         (case action
           "add"
-          (let [card    (api/read-check :model/Card card_id)
+          (let [card    (api/read-check (add-cards card_id))
                 ;; A card placed on a shared dashboard exposes its selected timeline events, so the
                 ;; same read check the REST writer applies runs here too.
                 _       (queries/check-newly-exposed-dashcards-timeline-permissions!

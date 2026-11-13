@@ -464,16 +464,26 @@
        (throw (ex-info (tru "Invalid permissions format") required-perms)))
      true)))
 
+(mu/defn check-cards-read-perms
+  "Check that the current user has permissions to read each Card of `card-ids`, or throw an Exception for the first
+  they cannot read. The Cards are hydrated together."
+  [database-id :- [:maybe ::lib.schema.id/database]
+   card-ids    :- [:seqable ::lib.schema.id/card]]
+  (when (seq card-ids)
+    (qp.store/with-metadata-provider database-id
+      (let [card-ids (vec card-ids)
+            cards    (t2/hydrate (mapv #(card database-id %) card-ids) :can_read)]
+        (doseq [[card-id card] (map vector card-ids cards)]
+          (when-not (mi/can-read? card)
+            (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
+                                    {:card-ids #{card-id}}
+                                    {:card-id card-id}))))))))
+
 (mu/defn check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
-  (qp.store/with-metadata-provider database-id
-    (let [card (card database-id card-id)]
-      (when-not (mi/can-read? (t2/hydrate card :can_read))
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
-                                {:card-ids #{card-id}}
-                                {:card-id card-id}))))))
+  (check-cards-read-perms database-id [card-id]))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
@@ -506,8 +516,8 @@
     (let [required-perms (required-perms-for-query query perms-opts)]
       (check-data-perms query required-perms)
       ;; Check card read permissions for any cards referenced in subqueries!
-      (doseq [card-id (:card-ids required-perms)]
-        (check-card-read-perms database-id card-id))
+      (when-let [card-ids (seq (:card-ids required-perms))]
+        (check-cards-read-perms database-id card-ids))
       true)
     (catch clojure.lang.ExceptionInfo e
       (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))

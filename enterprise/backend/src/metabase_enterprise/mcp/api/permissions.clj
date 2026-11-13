@@ -80,7 +80,7 @@
   "Throw a 403 unless the current user may write the row of each group in `permissions`, or create one for a group
   that has none."
   [permissions]
-  (let [by-group (u/index-by :group_id (mcp.db/all-group-permissions))]
+  (let [by-group (u/index-by :group_id (t2/hydrate (mcp.db/all-group-permissions) :can_write))]
     (doseq [{:keys [group_id] :as permission} permissions]
       (if-let [row (by-group group_id)]
         (api/write-check row)
@@ -116,7 +116,7 @@
   groups it enables on entry that have no row yet."
   [advanced?]
   (cluster-lock/with-cluster-lock policy-lock
-    (run! api/write-check (mcp.db/hidden-group-permissions advanced?))
+    (run! api/write-check (t2/hydrate (mcp.db/hidden-group-permissions advanced?) :can_write))
     (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
       (mcp.db/delete-hidden-group-permissions! advanced?)

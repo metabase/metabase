@@ -109,9 +109,11 @@
 
 (defn- check-new-revision-card-references
   [model id revision]
-  (doseq [card-id (set/difference (revision-card-references revision)
-                                  (stored-card-references model id))]
-    (api/read-check :model/Card card-id))
+  (let [card-ids (vec (set/difference (revision-card-references revision)
+                                      (stored-card-references model id)))
+        id->card (into {} (map (juxt :id identity)) (t2/hydrate (revisions.db/cards-by-ids card-ids) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id))))
   (query-perms/check-parameter-field-permissions (revision-parameter-field-ids model revision)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -153,9 +155,13 @@
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
-        (doseq [dashboard-id (keep identity [(:dashboard_id instance)
-                                             (:dashboard_id (:object revision))])]
-          (api/write-check :model/Dashboard dashboard-id)))
+        (let [dashboard-ids (vec (keep identity [(:dashboard_id instance)
+                                                 (:dashboard_id (:object revision))]))
+              id->dashboard (into {}
+                                  (map (juxt :id identity))
+                                  (t2/hydrate (revisions.db/dashboards-by-ids dashboard-ids) :can_write))]
+          (doseq [dashboard-id dashboard-ids]
+            (api/write-check (get id->dashboard dashboard-id)))))
       (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
     (revision/revert!

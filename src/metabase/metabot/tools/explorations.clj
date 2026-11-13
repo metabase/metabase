@@ -88,8 +88,7 @@
   id is left to the catalog, which reports it as missing."
   [metric-ids]
   (when (shared/curated-only?)
-    (doseq [id metric-ids]
-      (curation/check-curated-readable-subject! (str "metric " id) ["metric" id]))))
+    (curation/check-curated-readable-metrics! metric-ids)))
 
 (defn- curated-only-candidates
   "Under [[shared/curated-only?]], keep only the metrics of the research `candidates` this Metabot may use, and the

@@ -142,9 +142,9 @@
   [_model _id transform-test]
   (select-keys transform-test revision-columns))
 
-(defmethod revision/revision-readable? :model/TransformTest
-  [_model object]
-  (mi/can-read? (t2/hydrate (t2/instance :model/TransformTest object) :can_read)))
+(defmethod revision/revisions-readable? :model/TransformTest
+  [_model objects]
+  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
 
 (defmethod revision/check-revert-available ::saved-test
   [_model]

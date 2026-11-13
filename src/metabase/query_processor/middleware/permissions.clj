@@ -90,10 +90,10 @@
                 (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
                 (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
                   (throw (query-perms/perms-exception required-perms)))
-                (doseq [card-id source-card-ids
-                        :when  (not= card-id *card-id*)]
-                  (query-perms/check-card-read-perms database-id card-id)
-                  (query-perms/check-card-result-metadata-data-perms database-id card-id)))
+                (let [other-card-ids (remove #{*card-id*} source-card-ids)]
+                  (query-perms/check-cards-read-perms database-id other-card-ids)
+                  (doseq [card-id other-card-ids]
+                    (query-perms/check-card-result-metadata-data-perms database-id card-id))))
 
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
@@ -105,8 +105,8 @@
               ;; nested Cards: filter values from field-ref-only dashcard mappings have no caller-side read check on
               ;; the mapped Card, so this is the only check. The result_metadata check covers tables a Card's saved
               ;; columns name but its query footprint does not.
+              (query-perms/check-cards-read-perms database-id source-card-ids)
               (doseq [card-id source-card-ids]
-                (query-perms/check-card-read-perms database-id card-id)
                 (query-perms/check-card-result-metadata-data-perms database-id card-id))
               (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
                 (throw (query-perms/perms-exception required-perms))))
@@ -116,8 +116,7 @@
             (do
               ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
               ;; Recursively check permissions for any source Cards
-              (doseq [card-id source-card-ids]
-                (query-perms/check-card-read-perms database-id card-id))
+              (query-perms/check-cards-read-perms database-id source-card-ids)
               ;; Check that we have the data permissions to run this card
               (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
               ;; Check that all columns from source cards result_metadata are accessible

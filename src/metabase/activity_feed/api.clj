@@ -31,7 +31,10 @@
         items (->> (t2/hydrate items :moderation_reviews)
                    (map (fn [{:keys [moderation_reviews] :as item}]
                           (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
-                            (assoc item :moderated_status status)))))]
+                            (assoc item :moderated_status status))))
+                   (group-by t2/model)
+                   vals
+                   (mapcat #(t2/hydrate % :can_read :can_write)))]
     ;; Now group the flat list of items into a map.
     (update-vals (group-by :model items) #(m/index-by :id %))))
 
@@ -205,7 +208,7 @@
                                :let [model-object (-> (get-in model->id->items [model model_id])
                                                       (dissoc :dataset_query))]
                                :when (and model-object
-                                          (mi/can-read? (t2/hydrate model-object :can_read))
+                                          (mi/can-read? model-object)
                                           ;; hidden tables, archived cards/dashboards
                                           (not (or (:archived model-object)
                                                    (= (:visibility_type model-object) :hidden))))

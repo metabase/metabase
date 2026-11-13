@@ -462,44 +462,46 @@
 
   Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
   query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
-  [dashcard parameters parts-by-dashcard-id]
-  (let [inline (resolve-inline-params dashcard parameters)
-        geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
-                 (seq inline) (assoc :inline-params inline))]
-    (cond
-      (:card_id dashcard)
-      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
-      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
-      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
-      ;; walks its parts one at a time to keep its memory watermark low.
-      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
-        (assoc geom
-               :kind :card
-               :part (cond-> part
-                       (seq inline) (assoc :inline-params inline))))
+  ([dashcard parameters parts-by-dashcard-id]
+   (dashcard->cell dashcard parameters parts-by-dashcard-id (notification.payload/link-card-entities [dashcard])))
+  ([dashcard parameters parts-by-dashcard-id link-card-entities]
+   (let [inline (resolve-inline-params dashcard parameters)
+         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
+                  (seq inline) (assoc :inline-params inline))]
+     (cond
+       (:card_id dashcard)
+       ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+       ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+       ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+       ;; walks its parts one at a time to keep its memory watermark low.
+       (when-let [part (get parts-by-dashcard-id (:id dashcard))]
+         (assoc geom
+                :kind :card
+                :part (cond-> part
+                        (seq inline) (assoc :inline-params inline))))
 
-      (notification.payload/virtual-card-of-type? dashcard "heading")
-      (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
+       (notification.payload/virtual-card-of-type? dashcard "heading")
+       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
-      (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text
-             :text    (virtual-dashcard->text dashcard parameters)
-             :align-h (text-card-align-h dashcard)
-             :align-v (text-card-align-v dashcard))
+       (notification.payload/virtual-card-of-type? dashcard "text")
+       (assoc geom :kind :text
+              :text    (virtual-dashcard->text dashcard parameters)
+              :align-h (text-card-align-h dashcard)
+              :align-v (text-card-align-v dashcard))
 
-      ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
-      ;; reuse the email conversion so they match, and so entity links are permission-checked.
-      (notification.payload/virtual-card-of-type? dashcard "link")
-      (when-let [part (notification.payload/dashcard-link-card->part dashcard)]
-        (assoc geom :kind :text, :text (:text part)))
+       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
+       ;; reuse the email conversion so they match, and so entity links are permission-checked.
+       (notification.payload/virtual-card-of-type? dashcard "link")
+       (when-let [part (notification.payload/dashcard-link-card->part dashcard link-card-entities)]
+         (assoc geom :kind :text, :text (:text part)))
 
-      ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
-      ;; clickable link instead (autolinked bare URL).
-      (notification.payload/virtual-card-of-type? dashcard "iframe")
-      (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
-        (assoc geom :kind :text, :text url))
+       ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
+       ;; clickable link instead (autolinked bare URL).
+       (notification.payload/virtual-card-of-type? dashcard "iframe")
+       (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
+         (assoc geom :kind :text, :text url))
 
-      :else nil)))
+       :else nil))))
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
@@ -508,8 +510,9 @@
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
-                  0)]
-    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
+                  0)
+        link-card-entities (notification.payload/link-card-entities sorted)]
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id link-card-entities))
                    (map  #(update % :row - min-row)))
           sorted)))
 

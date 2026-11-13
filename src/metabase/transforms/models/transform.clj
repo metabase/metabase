@@ -94,10 +94,12 @@
    (and (not (remote-sync/read-only?))
         (transform-writable? instance models-cache))))
 
-;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
-(methodical/defmethod t2/simple-hydrate [:model/Transform :can_query]
-  [_model k instance]
-  (assoc instance k (boolean (mi/can-read? (t2/hydrate instance :can_read)))))
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_query]
+  "Whether the current user can query each of `transforms`, which is whether they can read it."
+  [_model k transforms]
+  (for [transform (t2/hydrate transforms :can_read)]
+    (when transform
+      (assoc transform k (boolean (mi/can-read? transform))))))
 
 (defmethod mi/can-update? :model/Transform
   [instance changes]

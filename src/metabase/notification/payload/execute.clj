@@ -88,32 +88,52 @@
                   (format "\n%s" description)))
      :type :text}))
 
+(defn link-card-entities
+  "A map of `[model id]` to the entity, with its `:can_read` hydrated, of each entity link card among `dashcards`."
+  [dashcards]
+  (->> dashcards
+       (filter #(virtual-card-of-type? % "link"))
+       (keep #(get-in % [:visualization_settings :link :entity]))
+       (filter #(and (integer? (:id %)) (string? (:model %))))
+       (group-by :model)
+       (mapcat (fn [[model entities]]
+                 (try
+                   (let [ids (into [] (comp (map :id) (distinct)) entities)]
+                     (vec (for [entity (t2/hydrate (dashboard-card/link-card-entities model ids) :can_read)]
+                            [[model (:id entity)] entity])))
+                   (catch Throwable e
+                     (log/warnf "Error loading %s link card entities; skipping them: %s" model (ex-message e))
+                     nil))))
+       (into {})))
+
 (defn dashcard-link-card->part
   "Convert a dashcard that is a link card into a `:text` part (markdown `### [name](url)`), or nil
   if it links to an entity the current user can't read. Used by both the email/notification
-  pipeline and the backend PDF renderer.
+  pipeline and the backend PDF renderer, which pass the [[link-card-entities]] of all their dashcards.
 
   This function should be executed under pulse's creator permissions (`with-current-user`)."
-  [dashcard]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
-  ;; Degrade a single unrenderable link card to a missing part instead of aborting the whole dashboard's
-  ;; parts. `dashcards->part` realizes the sequence eagerly, so an uncaught throw here takes out every part.
-  (try
-    (let [link-card (get-in dashcard [:visualization_settings :link])]
-      (cond
-        (some? (:url link-card))
-        (link-card->text-part link-card)
+  ([dashcard]
+   (dashcard-link-card->part dashcard (link-card-entities [dashcard])))
+  ([dashcard link-card-entities]
+   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+   ;; Degrade a single unrenderable link card to a missing part instead of aborting the whole dashboard's
+   ;; parts. `dashcards->part` realizes the sequence eagerly, so an uncaught throw here takes out every part.
+   (try
+     (let [link-card (get-in dashcard [:visualization_settings :link])]
+       (cond
+         (some? (:url link-card))
+         (link-card->text-part link-card)
 
-        ;; if link card link to an entity, update the setting because
-        ;; the info in viz-settings might be out-of-date
-        (some? (:entity link-card))
-        (let [{:keys [model id]} (:entity link-card)
-              instance           (dashboard-card/link-card-entity model id)]
-          (when (mi/can-read? (t2/hydrate instance :can_read))
-            (link-card->text-part (assoc link-card :entity instance))))))
-    (catch Throwable e
-      (log/warn e "Error rendering link card; skipping it")
-      nil)))
+         ;; if link card link to an entity, update the setting because
+         ;; the info in viz-settings might be out-of-date
+         (some? (:entity link-card))
+         (let [{:keys [model id]} (:entity link-card)
+               instance           (get link-card-entities [model id])]
+           (when (and instance (mi/can-read? instance))
+             (link-card->text-part (assoc link-card :entity instance))))))
+     (catch Throwable e
+       (log/warn e "Error rendering link card; skipping it")
+       nil))))
 
 (defn- resolve-inline-parameters
   "Resolves the full parameter definitions for inline parameters on a dashcard, and adds them to the dashcard's
@@ -258,7 +278,7 @@
   `opts` are the [[execute-dashboard]] options, shared across all dashcards.
 
   The result will follow the pulse's creator permissions."
-  [dashcard parameters {:keys [spill-budget attached-card-ids]}]
+  [dashcard parameters {:keys [spill-budget attached-card-ids link-card-entities]}]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
@@ -277,7 +297,7 @@
     nil
 
     (virtual-card-of-type? dashcard "link")
-    (dashcard-link-card->part dashcard)
+    (dashcard-link-card->part dashcard link-card-entities)
 
     (virtual-card-of-type? dashcard "placeholder")
     nil
@@ -304,7 +324,8 @@
   push later (large) cards to spill to disk instead of collectively exhausting heap. The budget is created once per
   dashboard (spanning all tabs) by the caller, not here, so a multi-tab dashboard shares a single budget."
   [dashcards parameters opts]
-  (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
+  (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)
+        opts              (assoc opts :link-card-entities (link-card-entities ordered-dashcards))]
     (doall (keep #(dashcard->part % parameters opts) ordered-dashcards))))
 
 (mr/def ::Part

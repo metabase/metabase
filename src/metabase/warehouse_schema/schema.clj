@@ -192,6 +192,7 @@
     [:fields                  {:optional true} [:maybe [:sequential ::field]]]
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
     [:collection              {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:can_query               {:optional true} [:maybe :boolean]]
     [:owner                   {:optional true} [:maybe [:map {:closed true}
                                                         [:id          {:optional true} ::lib.schema.id/user]
                                                         [:email       {:optional true} :string]

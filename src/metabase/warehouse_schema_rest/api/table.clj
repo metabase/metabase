@@ -258,7 +258,7 @@
   [ids {:keys [collection_id visibility_type] :as body}]
   (let [existing-tables (warehouse-schema-rest.db/tables-by-ids ids)]
     (api/check-404 (= (count existing-tables) (count ids)))
-    (run! api/write-check existing-tables)
+    (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))

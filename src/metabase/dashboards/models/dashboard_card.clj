@@ -332,6 +332,11 @@
   [model id]
   (dashboards.db/link-card-entity model id))
 
+(defn link-card-entities
+  "The instances of the link-card `model` (a string like \"card\" or \"table\") with integer `ids`."
+  [model ids]
+  (dashboards.db/link-card-entities model ids))
+
 (mi/define-batched-hydration-method dashcard-linkcard-info
   :dashcard/linkcard-info
   "Update entity info for link cards.

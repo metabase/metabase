@@ -2638,15 +2638,18 @@
            transforms.feature-gating
            util
            util.config}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
                     :model/Database
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/Segment
                     :model/Table
+                    :model/Transform
                     :model/User}}
 
   search.embeddings

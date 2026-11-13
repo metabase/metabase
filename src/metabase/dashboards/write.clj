@@ -57,16 +57,23 @@
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
+(defn- read-check-all
+  "Throws unless the current user can read every row of `rows`, in the order of `ids`, with a 404 for an id without a row."
+  [rows ids]
+  (let [id->row (into {} (map (juxt :id identity)) (t2/hydrate rows :can_read))]
+    (doseq [id ids]
+      (api/read-check (get id->row id)))))
+
 (defn- check-new-references
   "Read-check every card and action the incoming `dashboard` newly references, relative to `stored`.
   Lives here rather than at the REST boundary so every writer — MCP's dashboard_write included —
   gets the check."
   [stored dashboard]
-  (let [new-references (references dashboard)]
-    (doseq [card-id (set/difference (:cards new-references) (:cards stored))]
-      (api/read-check :model/Card card-id))
-    (doseq [action-id (set/difference (:actions new-references) (:actions stored))]
-      (api/read-check :model/Action action-id))))
+  (let [new-references (references dashboard)
+        card-ids       (vec (set/difference (:cards new-references) (:cards stored)))
+        action-ids     (vec (set/difference (:actions new-references) (:actions stored)))]
+    (read-check-all (dashboards.db/cards-by-ids card-ids) card-ids)
+    (read-check-all (dashboards.db/actions-by-ids action-ids) action-ids)))
 
 (def NewDashboard
   "Schema for the argument to [[create-dashboard!]]: the attributes of a new dashboard."
@@ -427,7 +434,10 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable? (fn [card] (and (mi/model card) (mi/can-read? (t2/hydrate card :can_read))))
+        readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards) :can_read))
+        readable? (fn [card] (and (mi/model card) (contains? readable-ids (:id card))))
         card->decision (fn [parent-card card]
                          (cond
                            (or

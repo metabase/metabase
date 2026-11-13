@@ -331,6 +331,13 @@
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
 
+(mu/defn pages-by-ids
+  "The ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (if (seq page-ids)
+    (t2/select :model/ExplorationPage :id [:in page-ids])
+    []))
+
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
@@ -769,6 +776,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."

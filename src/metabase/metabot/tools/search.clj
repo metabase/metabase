@@ -258,13 +258,14 @@
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
                        (->> (filterv mi/can-read? (t2/hydrate (metabot.db/documents-in-archived-state document-ids archived?) :can_read))
+                            (#(t2/hydrate % :can_write))
                             (u/index-by :id)))]
     (if (seq document-ids)
       (into []
             (keep (fn [result]
                     (if (= "document" (:type result))
                       (when-let [document (get id->document (:id result))]
-                        (assoc result :can_write (boolean (mi/can-write? (t2/hydrate document :can_write)))))
+                        (assoc result :can_write (boolean (mi/can-write? document))))
                       result)))
             results)
       results)))

@@ -697,10 +697,12 @@
   [_model k instance]
   (no-check-hydration k instance))
 
-(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_query]
-  "Sets `:can_query` on `instance` to its `:can_read`, for a model that answers both alike."
-  [_model k instance]
-  (assoc instance k (can-read? (t2/hydrate instance :can_read))))
+(methodical/defmethod t2.hydrate/batched-hydrate [:default :can_query]
+  "Sets `:can_query` on each of `instances` to its `:can_read`, for a model that answers both alike."
+  [_model k instances]
+  (for [instance (t2/hydrate instances :can_read)]
+    (when instance
+      (assoc instance k (can-read? instance)))))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map

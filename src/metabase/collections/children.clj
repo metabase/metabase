@@ -735,7 +735,6 @@
       (assoc :is_tenant_dashboard (collection/shared-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
       (dissoc :display :authority_level :icon :personal_owner_id
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -743,7 +742,8 @@
   [_ _options parent-collection rows]
   (->> rows
        collections.util/annotate-dashboards
-       (map (partial post-process-dashboard parent-collection))))
+       (map (partial post-process-dashboard parent-collection))
+       (#(t2/hydrate % :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the

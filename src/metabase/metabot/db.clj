@@ -860,6 +860,13 @@
     (t2/select :model/Card :id [:in card-ids])
     []))
 
+(mu/defn cards-with-entity-ids
+  "The Cards with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (if (seq entity-ids)
+    (t2/select :model/Card :entity_id [:in entity-ids])
+    []))
+
 (mu/defn tables-with-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]

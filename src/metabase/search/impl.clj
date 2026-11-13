@@ -411,13 +411,21 @@
 
 (def ^:private hydrated-checks
   "The checks to hydrate on the search results of each model, which the permission checks and `:can_write` read."
-  {:model/Card      [:can_read :can_write]
-   :model/Dashboard [:can_write]
-   :model/Document  [:can_write]
-   :model/Table     [:can_query :can_write]
-   :model/Segment   [:can_read :can_write]
-   :model/Measure   [:can_read :can_write]
-   :model/Database  [:can_read]})
+  {:model/Card        [:can_read :can_write]
+   :model/Dashboard   [:can_write]
+   :model/Document    [:can_write]
+   :model/Table       [:can_query :can_write]
+   :model/Segment     [:can_read :can_write]
+   :model/Measure     [:can_read :can_write]
+   :model/Database    [:can_read]})
+
+(def ^:private archived-checks
+  "The checks to hydrate on archived search results of the models [[hydrated-checks]] leaves out, which only the
+  archived permission check reads."
+  {:model/Action      [:can_write]
+   :model/Transform   [:can_write]
+   :model/Exploration [:can_write]
+   :model/DataApp     [:can_write]})
 
 (defn- collection-check-answers
   "The `:can_write` answer of each Collection with `collection-ids`, keyed by model and id, from the columns the check
@@ -430,12 +438,16 @@
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
 (defn- model-check-answers
-  "The [[hydrated-checks]] answers of `results`, keyed by model and id, leaving `:can_write` out without `write?`."
-  [write? results]
+  "The check answers of `results`, keyed by model and id, for `phase`: `:read` leaves `:can_write` out, `:page` takes
+  the [[hydrated-checks]], and `:archived` the [[archived-checks]] too."
+  [phase results]
   (into {}
         (mapcat (fn [[model rows]]
-                  (when-let [checks (not-empty (cond->> (get hydrated-checks model)
-                                                 (not write?) (remove #{:can_write})))]
+                  (when-let [checks (not-empty (case phase
+                                                 :read     (remove #{:can_write} (get hydrated-checks model))
+                                                 :page     (get hydrated-checks model)
+                                                 :archived (or (get hydrated-checks model)
+                                                               (get archived-checks model))))]
                     (for [row (apply t2/hydrate
                                      (cond->> rows
                                        (= model :model/Table) (map #(assoc % :db_id (:database_id %))))
@@ -445,13 +457,13 @@
 
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
-  per model its [[hydrated-checks]], and `:can_write` on Collections. Without `write?`, `:can_write` is left out."
-  [search-ctx write? results]
+  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`."
+  [search-ctx phase results]
   (let [results        (vec results)
-        collection-ids (when write?
+        collection-ids (when (not= phase :read)
                          (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
         answers        (with-search-user search-ctx
-                         (merge (collection-check-answers collection-ids) (model-check-answers write? results)))]
+                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
@@ -461,7 +473,7 @@
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
   [search-ctx result]
-  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (boolean (:archived? search-ctx)) [(normalize-result result)]))))
+  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read) [(normalize-result result)]))))
 
 (defn- add-can-write
   "Leaves `:can_write` on the results that carry it in the response, and takes the hydrated checks off the others."
@@ -524,7 +536,7 @@
                             (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
-                            true (hydrate-checks search-ctx true)
+                            true (hydrate-checks search-ctx :page)
                             true (map (partial add-can-write search-ctx))
                             true (map serialize)
                             ;; Realize within the enclosing tracing span so hydration and
@@ -558,7 +570,7 @@
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (partition-all 500)
-                           (mapcat (partial hydrate-checks search-ctx (boolean (:archived? search-ctx))))
+                           (mapcat (partial hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read)))
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

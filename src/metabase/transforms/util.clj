@@ -138,9 +138,9 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (transforms.db/databases db-ids)))
+                       (u/index-by :id (t2/hydrate (transforms.db/databases db-ids) :can_query)))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (transforms.db/tables table-ids)))}))
+                       (u/index-by :id (t2/hydrate (transforms.db/tables table-ids) :can_query)))}))
 
 (mu/defn add-source-readable :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
   "Add :source_readable field to a transform or collection of transforms.
@@ -148,8 +148,9 @@
   referenced by the transform."
   [transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
   (if (sequential? transform-or-transforms)
-    (mapv #(assoc % :source_readable (source-tables-readable? (->definition %)))
-          transform-or-transforms)
+    (let [models-cache (prefetch-source-models transform-or-transforms)]
+      (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
+            transform-or-transforms))
     (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms)))))
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------

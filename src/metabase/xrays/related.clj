@@ -101,14 +101,17 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([instances])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type active] :as instance}]
-                    (and (some? instance)
-                         (or (nil? visibility_type)
-                             (= (qp.util/normalize-token visibility_type) :normal))
-                         (not archived)
-                         (not= active false)
-                         (mi/can-read? (t2/hydrate instance :can_read))))))
+(defn- filter-visible
+  "The `instances`, all of one model, that are present, visible, unarchived, active, and readable by the current user."
+  [instances]
+  (let [visible (filter (fn [{:keys [archived visibility_type active] :as instance}]
+                          (and (some? instance)
+                               (or (nil? visibility_type)
+                                   (= (qp.util/normalize-token visibility_type) :normal))
+                               (not archived)
+                               (not= active false)))
+                        instances)]
+    (filter mi/can-read? (t2/hydrate visible :can_read))))
 
 (defn- metrics-for-table
   [table]

@@ -940,8 +940,9 @@
                                  (tru "Selected timeline IDs must be a sequence of positive integers."))
           ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
           ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (queries.db/timelines
-                            (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+          (doseq [timeline (t2/hydrate (queries.db/timelines
+                                        (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
+                                       :can_read)]
             (api/read-check timeline)))))))
 
 (defn card-exposed-timeline-ids
@@ -968,7 +969,7 @@
   (when (and api/*current-user-id*
              (or (:public_uuid dashboard) (:enable_embedding dashboard)))
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
-      (doseq [timeline (queries.db/timelines timeline-ids)]
+      (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
 
 (defn check-shared-dashboard-timeline-permissions-for-card-ids!

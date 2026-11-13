@@ -203,6 +203,13 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
+(defn- write-check-all
+  "Throws unless the current user can write every row of `rows`, in the order of `ids`, with a 404 for an id without a row."
+  [rows ids]
+  (let [id->row (into {} (map (juxt :id identity)) (t2/hydrate rows :can_write))]
+    (doseq [id ids]
+      (api/write-check (get id->row id)))))
+
 (api.macros/defendpoint :post "/invalidate" :- ::cache-invalidate-response
   "Invalidate cache entries.
 
@@ -230,9 +237,9 @@
   (when (every? empty? [database dashboard question])
     (throw (ex-info (tru "At least one of `database`, `dashboard`, or `question` is required.")
                     {:status-code 400})))
-  (doseq [db-id database] (api/write-check :model/Database db-id))
-  (doseq [dashboard-id dashboard] (api/write-check :model/Dashboard dashboard-id))
-  (doseq [question-id question] (api/write-check :model/Card question-id))
+  (write-check-all (cache.db/databases (vec database)) database)
+  (write-check-all (cache.db/dashboards (vec dashboard)) dashboard)
+  (write-check-all (cache.db/cards (vec question)) question)
   (let [cnt (cache-config/invalidate! {:databases       database
                                        :dashboards      dashboard
                                        :questions       question

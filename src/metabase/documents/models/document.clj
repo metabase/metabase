@@ -301,7 +301,7 @@
                        (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
                                          @api/*current-user*))))
               {}
-              to-clone))))
+              (t2/hydrate to-clone :can_read)))))
 
 (defn- hydrate-document
   "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or

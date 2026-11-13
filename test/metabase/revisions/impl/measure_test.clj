@@ -10,6 +10,11 @@
 
 (comment metabase.revisions.init/keep-me)
 
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+
 (defn- measure-definition [agg-fn field-key]
   (let [mp    (mt/metadata-provider)
         table (lib.metadata/table mp (mt/id :venues))
@@ -20,17 +25,17 @@
   (testing "renaming a measure produces a human-readable diff sentence"
     (is (= "renamed this Measure from \"Original\" to \"Updated\"."
            (u/build-sentence
-            (revision/diff-strings :model/Measure
-                                   {:name "Original"}
-                                   {:name "Updated"}))))))
+            (diff-strings :model/Measure
+                          {:name "Original"}
+                          {:name "Updated"}))))))
 
 (deftest ^:parallel diff-measures-str-description-test
   (testing "adding a description produces a human-readable diff sentence"
     (is (= "added a description."
            (u/build-sentence
-            (revision/diff-strings :model/Measure
-                                   {:name "Original" :description nil}
-                                   {:name "Original" :description "What it measures"}))))))
+            (diff-strings :model/Measure
+                          {:name "Original" :description nil}
+                          {:name "Original" :description "What it measures"}))))))
 
 (deftest diff-measures-str-definition-only-test
   (testing "a definition-only change (e.g. changing the aggregation) currently produces no human-readable
@@ -39,5 +44,5 @@
           after  (assoc before :definition (measure-definition lib/sum :price))]
       (is (some? (:definition (revision/diff-map :model/Measure before after)))
           "diff-map does track the definition change...")
-      (is (nil? (u/build-sentence (revision/diff-strings :model/Measure before after)))
+      (is (nil? (u/build-sentence (diff-strings :model/Measure before after)))
           "...but diff-strings has no wording for it, so no sentence is produced"))))

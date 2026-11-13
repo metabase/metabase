@@ -56,20 +56,25 @@
       (some #(contains? settings %) ks)
       (assoc :visualization_settings (not-empty (apply dissoc settings ks))))))
 
-(defn- readable-card?
-  "Whether `card`, a dashcard's `:card` or an entry in its `:series`, is a card row the current user can read."
-  [card]
+(defn- dashcard-card-rows
+  "The `:card` and `:series` entries of `dashcards` that are card rows."
+  [dashcards]
   ;; A compiled dry run leaves a card as nil or a bare `{:id}` when it has no row for it, as for a card the user
   ;; cannot read that the dashboard references only as a parameter's values source. A bare map is not a model
   ;; instance, so `mi/can-read?` would throw on it.
-  (and (t2/instance-of? :model/Card card) (mi/can-read? (t2/hydrate card :can_read))))
+  (into [] (comp (mapcat #(cons (:card %) (:series %))) (filter #(t2/instance-of? :model/Card %))) dashcards))
+
+(defn- readable-card?
+  "Whether `card`, a dashcard's `:card` or an entry in its `:series`, is a card row among the `readable` ids."
+  [readable card]
+  (and (t2/instance-of? :model/Card card) (contains? readable (:id card))))
 
 (defn- redact-hidden-series
   "The dashcard with the series cards the current user cannot read reduced to their ids.
    When there are any, the `:parameter_mappings` to them go, since they carry those cards' field ids, and so do the
    [[series-describing-viz-keys]]."
-  [dashcard]
-  (let [hidden-ids (into #{} (comp (remove readable-card?) (keep :id)) (:series dashcard))]
+  [dashcard readable]
+  (let [hidden-ids (into #{} (comp (remove #(readable-card? readable %)) (keep :id)) (:series dashcard))]
     (if (empty? hidden-ids)
       dashcard
       ;; The settings go whole rather than entry by entry: what names a hidden card follows the frontend's key and
@@ -81,9 +86,9 @@
           (strip-viz-keys series-describing-viz-keys)))))
 
 (defn- redact-dashcard
-  [dashcard]
+  [readable dashcard]
   ;; A text, heading or link card has no card, so its mappings and settings are dashboard data and stay.
-  (let [hidden-card? (and (:card_id dashcard) (not (readable-card? (:card dashcard))))]
+  (let [hidden-card? (and (:card_id dashcard) (not (readable-card? readable (:card dashcard))))]
     (cond-> dashcard
       ;; The projection reads an absent `:card` the same way it reads an unhydrated one — as an id
       ;; with no name — so removing it is the whole redaction *for the projection*. The `layout`
@@ -101,7 +106,7 @@
           (strip-viz-keys card-describing-viz-keys))
 
       (seq (:series dashcard))
-      redact-hidden-series)))
+      (redact-hidden-series readable))))
 
 (defn redact-dashboard
   "The dashboard `dash`, with the cards the current user cannot read reduced to their ids.
@@ -109,7 +114,10 @@
    compiled one.
    The stored settings and filter mappings that describe a hidden card are removed with it."
   [dash]
-  (update dash :dashcards (partial mapv redact-dashcard)))
+  (let [readable (into #{}
+                       (comp (filter mi/can-read?) (map :id))
+                       (t2/hydrate (dashcard-card-rows (:dashcards dash)) :can_read))]
+    (update dash :dashcards (partial mapv #(redact-dashcard readable %)))))
 
 ;;; ------------------------------------------------ notification --------------------------------------------------
 
