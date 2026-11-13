@@ -161,6 +161,20 @@ export type FieldAggregation<
   name?: TName;
 };
 
+// Every percentile result column has the same default name, so `name` is required
+export type PercentileAggregation<
+  TDimension = unknown,
+  TName extends string = string,
+> = {
+  type: "operator";
+  operator: "percentile";
+  args: readonly [TDimension, PercentileValue];
+  name: TName;
+};
+
+/** A value between 0 and 1: 0.95 is the 95th percentile */
+export type PercentileValue = { type: "literal"; value: number };
+
 export type AggregationResultColumnDefaultName<TOperator> =
   TOperator extends "distinct" ? "count" : TOperator;
 
@@ -202,6 +216,13 @@ export type FieldAggregationSchema<
   ];
 };
 
+export type PercentileAggregationSchema<
+  TDimension = unknown,
+  TName extends string = string,
+> = PercentileAggregation<TDimension, TName> & {
+  columns: readonly [AggregationColumn<TName, "number">];
+};
+
 type AggregationForDimension<TDimension> =
   | CountAggregation
   | FieldAggregation<
@@ -209,7 +230,8 @@ type AggregationForDimension<TDimension> =
       NumericAggregationDimension<TDimension>
     >
   | FieldAggregation<"min" | "max", OrderableAggregationDimension<TDimension>>
-  | FieldAggregation<"distinct", TDimension>;
+  | FieldAggregation<"distinct", TDimension>
+  | PercentileAggregation<NumericAggregationDimension<TDimension>>;
 
 type FirstSchemaColumn<TAggregation> = TAggregation extends {
   columns?: readonly [infer TColumn, ...unknown[]];
