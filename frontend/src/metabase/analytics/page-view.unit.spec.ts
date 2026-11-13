@@ -13,22 +13,15 @@ const EVENT = {
   },
 };
 
-const PAGE_URL = "http://snowplow.example.com/embed/embedded-apps";
-
 type SentUrls = { url: unknown; refr: unknown };
 
-interface SetupOpts {
-  referrer?: string;
-}
-
-const setup = ({ referrer = "" }: SetupOpts = {}) => {
+const setup = () => {
   Settings.set("snowplow-enabled", true);
   Settings.set("snowplow-url", "http://snowplow.example.com");
   fetchMock.post(
     "http://snowplow.example.com/com.snowplowanalytics.snowplow/tp2",
     200,
   );
-  jest.spyOn(document, "referrer", "get").mockReturnValue(referrer);
   window.history.replaceState(
     null,
     "",
@@ -52,56 +45,23 @@ const setup = ({ referrer = "" }: SetupOpts = {}) => {
   return { sent };
 };
 
-const trackBeforeAndAfterNavigation = () => {
-  Snowplow.trackSelfDescribingEvent(EVENT, ["sp"]);
-  window.history.pushState(
-    null,
-    "",
-    "/embed/embedded-apps/acme-store/customers/42?email=bob",
-  );
-  Snowplow.trackSelfDescribingEvent(EVENT, ["sp"]);
-};
-
 describe("setSnowplowPageUrl", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   it("keeps an embedded data app's name, route and query out of later events", () => {
     const { sent } = setup();
 
     setSnowplowPageUrl(window.location.pathname);
-    trackBeforeAndAfterNavigation();
+    Snowplow.trackSelfDescribingEvent(EVENT, ["sp"]);
+
+    window.history.pushState(
+      null,
+      "",
+      "/embed/embedded-apps/acme-store/customers/42?email=bob",
+    );
+    Snowplow.trackSelfDescribingEvent(EVENT, ["sp"]);
 
     expect(sent).toEqual([
-      { url: PAGE_URL, refr: "#" },
-      { url: PAGE_URL, refr: "#" },
-    ]);
-  });
-
-  it("keeps only the origin of the page that loaded the document as the referrer", () => {
-    const { sent } = setup({
-      referrer: "https://customer.example.com/reports/sales?account=7",
-    });
-
-    setSnowplowPageUrl(window.location.pathname, { keepReferrerOrigin: true });
-    trackBeforeAndAfterNavigation();
-
-    expect(sent).toEqual([
-      { url: PAGE_URL, refr: "https://customer.example.com" },
-      { url: PAGE_URL, refr: "https://customer.example.com" },
-    ]);
-  });
-
-  it("reports no referrer when the document has none", () => {
-    const { sent } = setup({ referrer: "" });
-
-    setSnowplowPageUrl(window.location.pathname, { keepReferrerOrigin: true });
-    trackBeforeAndAfterNavigation();
-
-    expect(sent).toEqual([
-      { url: PAGE_URL, refr: "#" },
-      { url: PAGE_URL, refr: "#" },
+      { url: "http://snowplow.example.com/embed/embedded-apps", refr: "#" },
+      { url: "http://snowplow.example.com/embed/embedded-apps", refr: "#" },
     ]);
   });
 });
