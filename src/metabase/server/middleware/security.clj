@@ -407,6 +407,10 @@
     :main-app (if-let [{:keys [protocol domain port]} (site-origin)]
                 (str protocol "://" domain (some->> port (str ":")))
                 "'self'")
+    ;; the main app's own pages, which the permission troubleshooting page (EE) frames on the same origin
+    :self-or-embedding (if-let [origins (interactive-embedding-origins)]
+                         (str "'self' " origins)
+                         "'self'")
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -428,7 +432,7 @@
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                         "DENY")}))
+                         (if (= :self-or-embedding mode) "SAMEORIGIN" "DENY"))}))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -677,8 +681,11 @@
     ((some-fn request/public? request/embed?) request)
     :any
 
+    (mw.isolated-origin/isolated-origin-request? request)
+    :none
+
     :else
-    :none))
+    :self-or-embedding))
 
 (defn- add-security-headers* [cors request response]
   ;; merge is other way around so that handler can override headers
