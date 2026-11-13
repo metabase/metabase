@@ -17,8 +17,6 @@ export type ResolvedValueOrder = {
   inference: ValueOrderInference;
   /** An admin set the order */
   isSaved: boolean;
-  /** Shown as a guess to confirm: not saved, and lifecycle words matched */
-  isInferred: boolean;
   isLoading: boolean;
 };
 
@@ -46,7 +44,6 @@ export function useValueOrder(field: Field | undefined): ResolvedValueOrder {
     values: saved ? resolveValueOrder(values, saved) : inference.values,
     inference,
     isSaved: saved != null,
-    isInferred: saved == null && inference.isGuess,
     isLoading: fieldId != null && isLoading,
   };
 }

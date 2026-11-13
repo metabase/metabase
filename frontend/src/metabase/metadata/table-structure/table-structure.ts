@@ -2,8 +2,6 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
-import { isNotNull } from "metabase/utils/types";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -46,8 +44,6 @@ type TableStructureOverrides = {
 
 type TableStructureState = {
   tables: Record<string, TableStructureOverrides>;
-  /** Fields without an entry are grain fields when they're primary keys */
-  grainByField: Record<string, boolean>;
 };
 
 /** A table's structure as people see it: admin overrides over sync's inference */
@@ -56,8 +52,6 @@ export type TableStructure = {
   inference: RoleInference;
   isRoleOverridden: boolean;
   needsReview: boolean;
-  grainFields: Field[];
-  defaultGrainFieldIds: FieldId[];
   grainDescription: string;
   rowIdentity: RowIdentity;
   periodGranularity: PeriodGranularity;
@@ -75,7 +69,7 @@ export type TableStructure = {
   mainDateNeedsReview: boolean;
 };
 
-// PROTOTYPE: mocked. There's no table_role, grain, or binding column yet, so
+// PROTOTYPE: mocked. There's no table_role or binding column yet, so
 // admin overrides live in localStorage and the rest is inferred in the browser.
 const STORAGE_KEY = "metabase-prototype-table-structure";
 
@@ -154,27 +148,16 @@ function parseOverrides(value: unknown): TableStructureOverrides {
 
 function parseState(value: unknown): TableStructureState {
   if (!isObject(value)) {
-    return { tables: {}, grainByField: {} };
+    return { tables: {} };
   }
   const tables = isObject(value.tables)
     ? _.mapObject(value.tables, parseOverrides)
     : {};
-  const grainByField = isObject(value.grainByField)
-    ? Object.fromEntries(
-        Object.entries(value.grainByField).filter(
-          (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
-        ),
-      )
-    : {};
-  return { tables, grainByField };
+  return { tables };
 }
 
 function getTableKey(table: Pick<Table, "db_id" | "id">) {
   return `${table.db_id}:${table.id}`;
-}
-
-function getFieldKey(field: Field) {
-  return String(field.id);
 }
 
 /** Override value wins when it's set, including an explicit `null` */
@@ -189,7 +172,7 @@ function withOverrides<T extends object>(
 }
 
 /**
- * Every table's role, grain, and history or custom-property binding. Values an
+ * Every table's role and history or custom-property binding. Values an
  * admin set win; the rest is inferred from the table's keys, columns, and name.
  */
 export function useTableStructures() {
@@ -208,9 +191,6 @@ export function useTableStructures() {
         overrides.history,
       );
       const isHistory = role != null && isRoleA(role, "role/HistoryDimension");
-      const defaultGrainFieldIds = isHistory
-        ? getHistoryGrainFieldIds(history)
-        : fields.filter(isPK).map((field) => field.id);
       const structure: TableStructure = {
         role,
         inference,
@@ -220,15 +200,6 @@ export function useTableStructures() {
           overrides.role == null &&
           inference.role != null &&
           inference.confidence === "low",
-        grainFields: _.sortBy(
-          fields.filter(
-            (field) =>
-              state.grainByField[getFieldKey(field)] ??
-              defaultGrainFieldIds.includes(field.id),
-          ),
-          (field) => field.position,
-        ),
-        defaultGrainFieldIds,
         grainDescription: overrides.grainDescription ?? "",
         rowIdentity: inferRowIdentity(fields),
         periodGranularity:
@@ -345,34 +316,6 @@ export function useTableStructures() {
     [updateOverrides],
   );
 
-  const setTableGrain = useCallback(
-    (
-      table: Pick<Table, "db_id" | "id" | "name"> & { fields?: Field[] },
-      grainFieldIds: FieldId[],
-    ) => {
-      const fields = table.fields ?? [];
-      const { defaultGrainFieldIds } = getTableStructure(table);
-      updateState((current) => {
-        const otherFields = _.omit(
-          current.grainByField,
-          fields.map(getFieldKey),
-        );
-        const overrides = Object.fromEntries(
-          fields
-            .map((field) => ({
-              key: getFieldKey(field),
-              isGrain: grainFieldIds.includes(field.id),
-              isDefault: defaultGrainFieldIds.includes(field.id),
-            }))
-            .filter(({ isGrain, isDefault }) => isGrain !== isDefault)
-            .map(({ key, isGrain }) => [key, isGrain]),
-        );
-        return { ...current, grainByField: { ...otherFields, ...overrides } };
-      });
-    },
-    [getTableStructure, updateState],
-  );
-
   return {
     getTableStructure,
     setTableRole,
@@ -383,15 +326,7 @@ export function useTableStructures() {
     setScdDetails,
     setEavBinding,
     setMainDate,
-    setTableGrain,
   };
-}
-
-function getHistoryGrainFieldIds({
-  durableKeyFieldId,
-  validFromFieldId,
-}: HistoryBinding): FieldId[] {
-  return [durableKeyFieldId, validFromFieldId].filter(isNotNull);
 }
 
 function resolveMainDate(

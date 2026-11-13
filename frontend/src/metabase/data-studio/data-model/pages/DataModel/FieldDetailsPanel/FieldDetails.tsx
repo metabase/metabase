@@ -1,6 +1,5 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   DetailsRow,
@@ -17,12 +16,11 @@ import {
   useFieldCasting,
   useFieldUpdateHandlers,
 } from "metabase/metadata/hooks";
-import { useTableStructures } from "metabase/metadata/table-structure";
 import {
   canCoerceFieldType,
   getFieldRawName,
 } from "metabase/metadata/utils/field";
-import { Box, Code, Stack, Switch, Tabs, Text } from "metabase/ui";
+import { Box, Code, Stack, Switch, Tabs } from "metabase/ui";
 import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -31,7 +29,6 @@ import { DetailsEditableText } from "../DetailPanel";
 
 import { ChangesOverTimeSection } from "./ChangesOverTime";
 import { CustomFieldSection } from "./CustomFieldSection";
-import S from "./FieldDetails.module.css";
 import { FieldHierarchyRow } from "./FieldHierarchyRow";
 import {
   FieldCorrectionInput,
@@ -60,11 +57,6 @@ interface FieldDetailsProps {
   field: Field;
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
-  /**
-   * Shown above the tabs; with it, the header and tabs stick to the top of
-   * a scrolling panel
-   */
-  header?: ReactNode;
   /** Where the field's hierarchies are listed; without it they don't link */
   hierarchiesHref?: string;
 }
@@ -76,7 +68,6 @@ interface FieldDetailsProps {
 export function FieldDetails({
   field,
   table,
-  header,
   hierarchiesHref,
 }: FieldDetailsProps) {
   const readOnly = !table.can_write;
@@ -137,14 +128,7 @@ export function FieldDetails({
       }}
       data-testid="field-section"
     >
-      {header != null ? (
-        <Stack className={S.stickyHeader} gap="xl" pt="xl" mb="xl">
-          {header}
-          {tabList}
-        </Stack>
-      ) : (
-        <Box mb="xl">{tabList}</Box>
-      )}
+      <Box mb="xl">{tabList}</Box>
 
       <Tabs.Panel value="details">
         <Stack gap="xxl">
@@ -199,16 +183,6 @@ export function FieldDetails({
                   }
                 />
               )}
-              <DetailsRow
-                label={t`Grain`}
-                value={
-                  <FieldGrainInput
-                    field={field}
-                    table={table}
-                    disabled={readOnly}
-                  />
-                }
-              />
               {isHistoryTable && (
                 <DetailsRow
                   label={t`History`}
@@ -287,66 +261,6 @@ export function FieldDetails({
       </Tabs.Panel>
     </Tabs>
   );
-}
-
-/** PROTOTYPE: mocked. Whether the field is one of the columns that make a row unique. */
-function FieldGrainInput({
-  field,
-  table,
-  disabled,
-}: {
-  field: Field;
-  table: Table;
-  disabled: boolean;
-}) {
-  const { getTableStructure, setTableGrain } = useTableStructures();
-  const { grainFields, defaultGrainFieldIds } = getTableStructure(table);
-  const isHistoryTable = useIsHistoryTable(table);
-  const isGrain = grainFields.some((grainField) => grainField.id === field.id);
-  const isDefault = defaultGrainFieldIds.includes(field.id);
-  const grainFieldIds = grainFields.map((grainField) => grainField.id);
-
-  return (
-    <Stack gap="xs" py="xs">
-      <Switch
-        label={t`This field is part of what makes a row unique`}
-        checked={isGrain}
-        disabled={disabled}
-        onChange={(event) =>
-          setTableGrain(
-            table,
-            event.target.checked
-              ? [...grainFieldIds, field.id]
-              : _.without(grainFieldIds, field.id),
-          )
-        }
-        data-testid="field-grain-switch"
-      />
-      <Text size="sm" c="text-secondary">
-        <GrainDefaultHint
-          isDefault={isDefault}
-          isHistoryTable={isHistoryTable}
-        />
-      </Text>
-    </Stack>
-  );
-}
-
-function GrainDefaultHint({
-  isDefault,
-  isHistoryTable,
-}: {
-  isDefault: boolean;
-  isHistoryTable: boolean;
-}) {
-  if (isHistoryTable) {
-    return isDefault
-      ? t`On by default: it's the column this history table is matched on, or its start date.`
-      : t`Off by default: a history table's grain starts as its matched-on column and start date.`;
-  }
-  return isDefault
-    ? t`On by default: this is a primary key column.`
-    : t`Off by default: only primary key columns start as grain.`;
 }
 
 function FieldCastingInput({

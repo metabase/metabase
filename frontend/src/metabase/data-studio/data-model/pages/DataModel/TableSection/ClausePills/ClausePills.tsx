@@ -35,16 +35,23 @@ export function getQueryClauses(query: Lib.Query): QueryClause[] {
   ];
 }
 
+/** A clause's kind icon and display name, inside a pill */
+export function ClausePillLabel({ kind, name }: QueryClause) {
+  return (
+    <Flex component="span" align="center" gap="xs">
+      <Icon name={CLAUSE_ICONS[kind]} size={12} c="text-secondary" />
+      {name}
+    </Flex>
+  );
+}
+
 /** Each clause as a pill, with an icon for what kind of clause it is */
 export function ClausePills({ clauses }: { clauses: QueryClause[] }) {
   return (
     <Group gap="xs" wrap="wrap">
       {clauses.map(({ kind, name }, index) => (
         <Pill key={`${kind}-${name}-${index}`} bdrs="xl">
-          <Flex component="span" align="center" gap="xs">
-            <Icon name={CLAUSE_ICONS[kind]} size={12} c="text-secondary" />
-            {name}
-          </Flex>
+          <ClausePillLabel kind={kind} name={name} />
         </Pill>
       ))}
     </Group>

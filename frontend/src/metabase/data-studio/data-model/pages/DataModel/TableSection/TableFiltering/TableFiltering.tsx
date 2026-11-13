@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { SettingsRow } from "metabase/data-studio/common/components/SettingsSection";
 import type { DefaultSegment } from "metabase/metadata/table-segments";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
-import { Box, Icon, Input, Menu, Popover, Select, Stack } from "metabase/ui";
+import { Icon, Input, Menu, Popover, Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
-import { InferredValue } from "../InferenceReview";
 import {
-  type ResolvedDefaultSegment,
   type ResolvedSystemSegment,
   type TableSegmentsModel,
   useTableSegmentsModel,
@@ -31,34 +30,29 @@ export function TableDefaultSegment({ table, readOnly }: TableSettingProps) {
   const model = useTableSegmentsModel(table);
 
   return (
-    <Input.Wrapper
+    <SettingsRow
       label={t`Default segment`}
       description={t`Questions on this table start from this segment. People can remove it from a question.`}
     >
-      <DefaultSegmentValue
-        model={model}
+      <DefaultSegmentPicker
+        value={model.defaultSegment.segment}
+        label={model.defaultSegment.label}
+        systemSegments={model.systemSegments}
         customSegments={table.segments ?? []}
         disabled={readOnly}
+        onChange={model.setDefaultSegment}
       />
-    </Input.Wrapper>
+    </SettingsRow>
   );
 }
 
 /**
  * PROTOTYPE: mocked. The column every question on a table must filter on
- * before it runs, and the value that filter starts with
+ * before it runs, and the value that filter starts with, as settings rows
  */
 export function TableRequiredFilter({ table, readOnly }: TableSettingProps) {
   const model = useTableSegmentsModel(table);
   return <RequiredFilterFields model={model} disabled={readOnly} />;
-}
-
-/** Why sync picked the default segment; nothing once an admin has set it */
-function getDefaultInference({
-  inference,
-  isOverridden,
-}: ResolvedDefaultSegment): string | null {
-  return isOverridden ? null : inference.signal;
 }
 
 function isSameSegment(a: DefaultSegment, b: DefaultSegment): boolean {
@@ -66,62 +60,6 @@ function isSameSegment(a: DefaultSegment, b: DefaultSegment): boolean {
     a.type === b.type &&
     (a.type !== "system" || b.type !== "system" || a.role === b.role) &&
     (a.type !== "custom" || b.type !== "custom" || a.segmentId === b.segmentId)
-  );
-}
-
-/** Sync's default segment, until an admin sets one; "All records" isn't a guess */
-function isDefaultSegmentInferred({
-  inference,
-  isOverridden,
-}: ResolvedDefaultSegment): boolean {
-  return !isOverridden && inference.segment.type !== "all";
-}
-
-/** The default segment, or sync's guess to confirm or change */
-function DefaultSegmentValue({
-  model,
-  customSegments,
-  disabled,
-}: {
-  model: TableSegmentsModel;
-  customSegments: Segment[];
-  disabled: boolean;
-}) {
-  const [isMenuOpenOnMount, setIsMenuOpenOnMount] = useState(false);
-  const { defaultSegment, setDefaultSegment } = model;
-
-  if (isDefaultSegmentInferred(defaultSegment)) {
-    const inferredSegment = defaultSegment.inference.segment;
-    return (
-      // Sized like the picker it stands in for
-      <Box w="fit-content" miw="12rem">
-        <InferredValue
-          value={defaultSegment.inferredLabel}
-          inference={getDefaultInference(defaultSegment)}
-          readOnly={disabled}
-          variant="input"
-          leftSection={<Icon name="segment" />}
-          onConfirm={() => setDefaultSegment(inferredSegment)}
-          onChange={() => {
-            setIsMenuOpenOnMount(true);
-            setDefaultSegment(inferredSegment);
-          }}
-          data-testid="table-default-segment-review"
-        />
-      </Box>
-    );
-  }
-
-  return (
-    <DefaultSegmentPicker
-      value={defaultSegment.segment}
-      label={defaultSegment.label}
-      systemSegments={model.systemSegments}
-      customSegments={customSegments}
-      disabled={disabled}
-      isOpenOnMount={isMenuOpenOnMount}
-      onChange={setDefaultSegment}
-    />
   );
 }
 
@@ -135,7 +73,6 @@ function DefaultSegmentPicker({
   systemSegments,
   customSegments,
   disabled,
-  isOpenOnMount,
   onChange,
 }: {
   value: DefaultSegment;
@@ -144,7 +81,6 @@ function DefaultSegmentPicker({
   systemSegments: ResolvedSystemSegment[];
   customSegments: Segment[];
   disabled: boolean;
-  isOpenOnMount: boolean;
   onChange: (segment: DefaultSegment) => void;
 }) {
   const [isShowingCustom, setIsShowingCustom] = useState(false);
@@ -162,15 +98,13 @@ function DefaultSegmentPicker({
     <Menu
       position="bottom-start"
       width="target"
-      defaultOpened={isOpenOnMount}
       disabled={disabled}
       onClose={() => setIsShowingCustom(false)}
     >
       <Menu.Target>
         <Input
           component="button"
-          w="fit-content"
-          miw="12rem"
+          w="100%"
           type="button"
           aria-label={t`Default segment`}
           classNames={BUTTON_INPUT_CLASS_NAMES}
@@ -336,23 +270,25 @@ function RequiredFilterFields({
   };
 
   return (
-    <Stack gap="xl">
-      <Select
+    <>
+      <SettingsRow
         label={t`Column that must be filtered on`}
         description={t`Every question on this table must filter on this column before it runs.`}
-        placeholder={t`No required filter`}
-        data={columnOptions}
-        value={fieldId}
-        disabled={disabled}
-        clearable
-        searchable
-        w="fit-content"
-        miw="16rem"
-        onChange={handleColumnChange}
-        data-testid="table-required-filter-column"
-      />
+      >
+        <Select
+          aria-label={t`Column that must be filtered on`}
+          placeholder={t`No required filter`}
+          data={columnOptions}
+          value={fieldId}
+          disabled={disabled}
+          clearable
+          searchable
+          onChange={handleColumnChange}
+          data-testid="table-required-filter-column"
+        />
+      </SettingsRow>
       {fieldId != null && (
-        <Input.Wrapper
+        <SettingsRow
           label={t`Default value for this filter`}
           description={t`What the filter starts as. People can change it, but not remove it.`}
         >
@@ -365,9 +301,7 @@ function RequiredFilterFields({
             <Popover.Target>
               <Input
                 component="button"
-                w="fit-content"
-                miw="16rem"
-                mt="xs"
+                w="100%"
                 type="button"
                 aria-label={t`Default value for this filter`}
                 classNames={BUTTON_INPUT_CLASS_NAMES}
@@ -399,8 +333,8 @@ function RequiredFilterFields({
               )}
             </Popover.Dropdown>
           </Popover>
-        </Input.Wrapper>
+        </SettingsRow>
       )}
-    </Stack>
+    </>
   );
 }

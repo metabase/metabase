@@ -14,7 +14,6 @@ import {
   type ResolvedEavBinding,
   useEavBinding,
   usePropertyRegistry,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
 import {
   Button,
@@ -36,7 +35,6 @@ import {
   getMissingBindingMessage,
 } from "../../PropertyDetailsPanel/property-labels";
 import { DataQualityChecks } from "../DataQualityChecks";
-import { InferredIcon, InferredValue } from "../InferenceReview";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -53,8 +51,6 @@ export function CustomPropertiesSection({
   const state = usePropertyRegistry(table);
   const registry = state.status === "loaded" ? state.registry : undefined;
   const noun = getEntityNoun(resolved.entityTable);
-  const columns = useColumnsReview(table, resolved, onChange);
-  const definitions = useDefinitionsReview(resolved, onChange);
 
   return (
     <SidebarSection
@@ -64,58 +60,19 @@ export function CustomPropertiesSection({
       <DetailsTable>
         <DetailsRow
           label={t`Belongs to`}
-          value={
-            <Group gap="xs" wrap="nowrap">
-              <EntityTableValue table={table} resolved={resolved} />
-              <InferredIcon description={getEntityInference(resolved)} />
-            </Group>
-          }
+          value={<EntityTableValue table={table} resolved={resolved} />}
         />
-        {columns.isEditing ? (
-          <ColumnsRows
-            table={table}
-            resolved={resolved}
-            disabled={disabled}
-            onChange={onChange}
-          />
-        ) : (
-          <DetailsRow
-            label={t`Columns`}
-            value={
-              <InferredValue
-                value={columns.names.join(" · ")}
-                inference={columns.inference}
-                readOnly={disabled}
-                variant="bare"
-                onConfirm={columns.confirm}
-                onChange={columns.confirm}
-                data-testid="eav-columns-review"
-              />
-            }
-          />
-        )}
-        {definitions.isEditing ? (
-          <DefinitionsRows
-            resolved={resolved}
-            disabled={disabled}
-            onChange={onChange}
-          />
-        ) : (
-          <DetailsRow
-            label={t`Definitions`}
-            value={
-              <InferredValue
-                value={definitions.names.filter(Boolean).join(" · ")}
-                inference={definitions.inference}
-                readOnly={disabled}
-                variant="bare"
-                onConfirm={definitions.confirm}
-                onChange={definitions.confirm}
-                data-testid="eav-definitions-review"
-              />
-            }
-          />
-        )}
+        <ColumnsRows
+          table={table}
+          resolved={resolved}
+          disabled={disabled}
+          onChange={onChange}
+        />
+        <DefinitionsRows
+          resolved={resolved}
+          disabled={disabled}
+          onChange={onChange}
+        />
         <DetailsRow
           label={
             <>
@@ -187,15 +144,6 @@ function ChecksRow({ registry }: { registry: PropertyRegistry | undefined }) {
   );
 }
 
-function getEntityInference({
-  entityTable,
-  entityKeyField,
-}: ResolvedEavBinding) {
-  return entityTable && entityKeyField
-    ? t`${entityKeyField.name} points to ${entityTable.name}`
-    : null;
-}
-
 function EntityTableValue({
   table,
   resolved,
@@ -218,84 +166,6 @@ function EntityTableValue({
       <Text c="text-brand">{entityTable.display_name}</Text>
     </Link>
   );
-}
-
-const fieldName = (fields: Field[], fieldId: FieldId | null) =>
-  fields.find((field) => field.id === fieldId)?.name;
-
-/**
- * The entity key, property, and value columns: sync's guess to confirm or
- * change, then pickers once an admin has. Confirming records the guess, so
- * Change and Confirm both open the pickers.
- */
-function useColumnsReview(
-  table: Table,
-  resolved: ResolvedEavBinding,
-  onChange: (binding: Partial<EavBinding>) => void,
-) {
-  const { getTableStructure } = useTableStructures();
-  const { inference, eavOverrides } = getTableStructure(table);
-  const { binding } = resolved;
-  const fields = table.fields ?? [];
-  const names = [
-    fieldName(fields, binding.entityKeyFieldId),
-    fieldName(fields, binding.propertyFieldId),
-    fieldName(fields, binding.valueFieldId),
-  ];
-  // A guess missing any column isn't one to confirm
-  const isInferred =
-    names.every((name) => name != null) &&
-    eavOverrides.entityKeyFieldId === undefined &&
-    eavOverrides.propertyFieldId === undefined &&
-    eavOverrides.valueFieldId === undefined;
-  return {
-    names,
-    inference: inference.signal,
-    isEditing: !isInferred,
-    confirm: () =>
-      onChange({
-        entityKeyFieldId: binding.entityKeyFieldId,
-        propertyFieldId: binding.propertyFieldId,
-        valueFieldId: binding.valueFieldId,
-      }),
-  };
-}
-
-/** The definitions table and its label and type columns, like the columns */
-function useDefinitionsReview(
-  {
-    binding,
-    definitionTable,
-    definitionInference,
-    isDefinitionOverridden,
-    isLabelOverridden,
-    isTypeOverridden,
-  }: ResolvedEavBinding,
-  onChange: (binding: Partial<EavBinding>) => void,
-) {
-  const definitionFields = definitionTable?.fields ?? [];
-  const names = [
-    definitionTable?.name,
-    fieldName(definitionFields, binding.labelFieldId),
-    fieldName(definitionFields, binding.typeFieldId),
-  ];
-  // No definitions table isn't a guess to confirm
-  const isInferred =
-    definitionTable != null &&
-    !isDefinitionOverridden &&
-    !isLabelOverridden &&
-    !isTypeOverridden;
-  return {
-    names,
-    inference: t`${definitionInference.signal}, with labels in ${names[1] ?? ""} and types in ${names[2] ?? ""}`,
-    isEditing: !isInferred,
-    confirm: () =>
-      onChange({
-        definitionTableId: definitionTable?.id ?? null,
-        labelFieldId: binding.labelFieldId,
-        typeFieldId: binding.typeFieldId,
-      }),
-  };
 }
 
 function ColumnsRows({

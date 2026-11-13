@@ -1,6 +1,5 @@
 export {
   type FieldGroupingOverrides,
-  type ResolvedGrouping,
   type ResolvedGroupings,
   type SavedGrouping,
   useGroupings,

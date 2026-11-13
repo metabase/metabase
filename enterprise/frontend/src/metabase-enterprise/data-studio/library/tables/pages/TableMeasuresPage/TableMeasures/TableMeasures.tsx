@@ -10,8 +10,9 @@ type TableMeasuresProps = {
 };
 
 /**
- * The published table's measures and measure groups, and what sync proposes,
- * opening the Library's measure pages
+ * The published table's measures and measure groups, and what sync proposes.
+ * Measures and proposals edit in place; their ⋯ menus open the Library's
+ * measure pages.
  */
 export function TableMeasures({ table }: TableMeasuresProps) {
   return <MeasureTree table={table} urls={getPublishedMeasureUrls(table)} />;

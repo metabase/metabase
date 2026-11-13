@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -32,7 +32,6 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
-import { InferredValue } from "../InferenceReview";
 
 import { HistoryShapeExample } from "./HistoryShapeExample";
 import {
@@ -40,7 +39,7 @@ import {
   getChangeShapeExample,
   getHistoryShapeExample,
 } from "./history-shape-example";
-import { type ScdDetails, useScdDetails } from "./use-scd-details";
+import { useScdDetails } from "./use-scd-details";
 
 const OPTION_TOOLTIP_OFFSET = 16;
 
@@ -89,7 +88,6 @@ function ShapeSelect<T extends string>({
   value,
   disabledValues = [],
   disabled,
-  isOpenOnMount = false,
   renderExample,
   onChange,
 }: {
@@ -98,7 +96,6 @@ function ShapeSelect<T extends string>({
   value: T;
   disabledValues?: T[];
   disabled: boolean;
-  isOpenOnMount?: boolean;
   renderExample: (option: ShapeOption<T>) => ReactNode;
   onChange: (value: T) => void;
 }) {
@@ -114,8 +111,6 @@ function ShapeSelect<T extends string>({
       value={value}
       allowDeselect={false}
       disabled={disabled}
-      autoFocus={isOpenOnMount}
-      defaultDropdownOpened={isOpenOnMount}
       renderOption={({ option, checked }) => {
         const shapeOption = options.find(({ value }) => value === option.value);
         return shapeOption ? (
@@ -139,95 +134,24 @@ function ShapeSelect<T extends string>({
   );
 }
 
-function InferredShapeSelect<T extends string>({
-  label,
-  options,
-  value,
-  inference,
-  isInferred,
-  disabledValues,
-  disabled,
-  renderExample,
-  onConfirm,
-  onChange,
-}: {
-  label: string;
-  options: ShapeOption<T>[];
-  value: T;
-  inference: string | null;
-  isInferred: boolean;
-  disabledValues?: T[];
-  disabled: boolean;
-  renderExample: (option: ShapeOption<T>) => ReactNode;
-  onConfirm: () => void;
-  onChange: (value: T) => void;
-}) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (isInferred) {
-    return (
-      <InferredValue
-        value={options.find((option) => option.value === value)?.label ?? ""}
-        inference={inference}
-        readOnly={disabled}
-        onConfirm={onConfirm}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onConfirm();
-        }}
-      />
-    );
-  }
-
-  return (
-    <ShapeSelect
-      label={label}
-      options={options}
-      value={value}
-      disabledValues={disabledValues}
-      disabled={disabled}
-      isOpenOnMount={isSelectOpenOnMount}
-      renderExample={renderExample}
-      onChange={onChange}
-    />
-  );
-}
-
-export function getHistoryShapeInference({
-  resolution,
-}: Pick<ScdDetails, "resolution">): string | null {
-  if (resolution.isOverridden) {
-    return null;
-  }
-  return resolution.signal;
-}
-
 export function HistoryShapeValue({
   shape,
-  inference,
-  isInferred,
   hasDateRange,
   exampleSource,
   disabled,
-  onConfirm,
   onChange,
 }: {
   shape: HistoryShape;
   exampleSource: ExampleSource;
-  inference: string | null;
-  isInferred: boolean;
   hasDateRange: boolean;
   disabled: boolean;
-  onConfirm: () => void;
   onChange: (shape: HistoryShape) => void;
 }) {
   return (
-    <InferredShapeSelect
+    <ShapeSelect
       label={t`History`}
       options={getHistoryShapeOptions()}
       value={shape}
-      inference={inference}
-      isInferred={isInferred}
       disabledValues={hasDateRange ? [] : ["versions-with-dates"]}
       disabled={disabled}
       renderExample={(option) => (
@@ -236,7 +160,6 @@ export function HistoryShapeValue({
           example={getHistoryShapeExample(option.value, exampleSource)}
         />
       )}
-      onConfirm={onConfirm}
       onChange={onChange}
     />
   );
@@ -356,12 +279,10 @@ export function PreviousValuesSection({
           label={t`Changes`}
           fillValue
           value={
-            <InferredShapeSelect
+            <ShapeSelect
               label={t`Changes`}
               options={getChangeShapeOptions()}
               value={shape}
-              inference={resolution.signal}
-              isInferred={!resolution.isOverridden}
               disabled={disabled}
               renderExample={(option) => (
                 <HistoryShapeExample
@@ -374,7 +295,6 @@ export function PreviousValuesSection({
                   })}
                 />
               )}
-              onConfirm={() => setScdType(table, resolution.scdType)}
               onChange={(shape) =>
                 setScdType(table, getScdTypeForChangeShape(shape))
               }

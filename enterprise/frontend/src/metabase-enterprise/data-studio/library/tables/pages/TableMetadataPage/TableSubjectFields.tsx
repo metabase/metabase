@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { SettingsRow } from "metabase/data-studio/common/components/SettingsSection";
 import { SubjectSelect } from "metabase/data-studio/data-model/pages/DataModel/SemanticInputs";
 import { useTableSemantics } from "metabase/metadata/semantic-types";
-import { Input, Stack, TextInput } from "metabase/ui";
+import { TextInput } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 type TableSubjectFieldsProps = {
@@ -21,39 +22,39 @@ export function TableSubjectFields({
   readOnly,
 }: TableSubjectFieldsProps) {
   const { subject, setTableSubject, setRowNouns } = useTableSemantics(table);
-  const inferredSubject = subject.inference.subject;
 
   return (
-    <Stack gap="xxl">
-      <Input.Wrapper label={t`Subject`}>
+    <>
+      <SettingsRow label={t`Subject`}>
         <SubjectSelect
-          w="fit-content"
+          w="100%"
           value={subject.subject}
-          markedValue={
-            subject.subject !== inferredSubject ? inferredSubject : null
-          }
           disabled={readOnly}
           onChange={(value) => setTableSubject(table, value)}
         />
-      </Input.Wrapper>
-      <RowNounInput
-        // Fresh input whenever the saved name changes elsewhere
-        key={`singular:${subject.rowNouns.singular}`}
-        label={t`One row is called`}
-        value={subject.rowNouns.singular}
-        placeholder={subject.defaultRowNouns.singular}
-        disabled={readOnly}
-        onCommit={(singular) => setRowNouns(table, { singular })}
-      />
-      <RowNounInput
-        key={`plural:${subject.rowNouns.plural}`}
-        label={t`Many rows are called`}
-        value={subject.rowNouns.plural}
-        placeholder={subject.defaultRowNouns.plural}
-        disabled={readOnly}
-        onCommit={(plural) => setRowNouns(table, { plural })}
-      />
-    </Stack>
+      </SettingsRow>
+      <SettingsRow label={t`One row is called`}>
+        <RowNounInput
+          // Fresh input whenever the saved name changes elsewhere
+          key={`singular:${subject.rowNouns.singular}`}
+          label={t`One row is called`}
+          value={subject.rowNouns.singular}
+          placeholder={subject.defaultRowNouns.singular}
+          disabled={readOnly}
+          onCommit={(singular) => setRowNouns(table, { singular })}
+        />
+      </SettingsRow>
+      <SettingsRow label={t`Many rows are called`}>
+        <RowNounInput
+          key={`plural:${subject.rowNouns.plural}`}
+          label={t`Many rows are called`}
+          value={subject.rowNouns.plural}
+          placeholder={subject.defaultRowNouns.plural}
+          disabled={readOnly}
+          onCommit={(plural) => setRowNouns(table, { plural })}
+        />
+      </SettingsRow>
+    </>
   );
 }
 
@@ -83,7 +84,7 @@ function RowNounInput({
 
   return (
     <TextInput
-      label={label}
+      aria-label={label}
       value={draft}
       placeholder={placeholder}
       disabled={disabled}

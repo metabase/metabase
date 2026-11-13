@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import {
@@ -10,13 +9,19 @@ import {
   getSegmentGroupKindLabel,
   useSegmentGroups,
 } from "metabase/metadata/segment-groups";
-import { getSystemSegmentRoleLabel } from "metabase/metadata/table-segments";
+import {
+  type CohortProposal,
+  getSystemSegmentRoleLabel,
+  useTableSegments,
+} from "metabase/metadata/table-segments";
 import { useSelector } from "metabase/redux";
 import { Badge, Button, Icon, Stack, Text, Title, rem } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
 import {
   ClausePills,
+  FilterClausePickers,
   type QueryClause,
   useDefinitionClauses,
 } from "../ClausePills";
@@ -31,11 +36,13 @@ import {
   type TreeNode,
   nestGroups,
 } from "../GroupedItemTree";
-import { ProposalActions, getProposalHref } from "../ListSection";
+import { ItemRowMenu, useInlineItemEditor } from "../InlineItemEditor";
+import { ProposalActions } from "../ListSection";
 import {
   applyConditions,
   getFilterNames,
   isDefaultSegment,
+  useTableQuery,
   useTableSegmentsModel,
 } from "../table-segments";
 
@@ -49,6 +56,17 @@ import {
 } from "./SegmentGroups";
 import { DefaultSegmentBadge } from "./SegmentItem";
 import type { SegmentListUrls } from "./SegmentList";
+import { useInlineSegmentSaves } from "./use-inline-segment-saves";
+
+const STAGE_INDEX = -1;
+
+const hasFilters = (query: Lib.Query) =>
+  Lib.filters(query, STAGE_INDEX).length > 0;
+
+const renderFilterPickers = (
+  query: Lib.Query,
+  onChange: (query: Lib.Query) => void,
+) => <FilterClausePickers query={query} onChange={onChange} />;
 
 // `null` makes a new group; `undefined` means the modal is closed
 type EditingGroup = SegmentGroup | null | undefined;
@@ -56,7 +74,8 @@ type EditingGroup = SegmentGroup | null | undefined;
 /**
  * PROTOTYPE: the table's business segments as one searchable list, with
  * segment groups as folders that segments and other groups drag into and out
- * of; default and proposed segments get lists of their own
+ * of; default and proposed segments get lists of their own. Segments and
+ * proposals edit in place, and New adds an editable row at the top.
  */
 export function SegmentTree({
   table,
@@ -66,14 +85,16 @@ export function SegmentTree({
   urls: SegmentListUrls;
 }) {
   const model = useTableSegmentsModel(table);
+  const { baseQuery } = model;
+  const { fromDefinition } = useTableQuery(table);
   const getClauses = useDefinitionClauses(table);
   const proposals = useCohortProposals(table);
-  const { accept, dismiss } = useCohortProposalActions(table, model.baseQuery);
+  const { accept, dismiss } = useCohortProposalActions(table, baseQuery);
+  const { resolveCohort } = useTableSegments();
+  const saves = useInlineSegmentSaves();
+  const { getEditableItem, newItemKey, startNewItem } = useInlineItemEditor();
   const groupProposals = useSegmentGroupProposals(table);
-  const groupProposalActions = useSegmentGroupProposalActions(
-    table,
-    model.baseQuery,
-  );
+  const groupProposalActions = useSegmentGroupProposalActions(table, baseQuery);
   const { getSegmentGroups, saveSegmentGroup, deleteSegmentGroup } =
     useSegmentGroups();
   const canCreateSegment = useSelector((state) =>
@@ -87,19 +108,130 @@ export function SegmentTree({
     groups.flatMap(({ members }) => members.map(({ segmentId }) => segmentId)),
   );
 
-  const toSegmentNode = (segment: Segment, parentId: string): TreeItemNode => ({
-    kind: "item",
-    id: `${parentId}:segment:${segment.id}`,
-    memberId: segment.id,
-    name: segment.name,
-    icon: "segment",
-    href: urls.segment(segment.id),
-    definition: <SegmentDefinition clauses={getClauses(segment.definition)} />,
-    badges: isDefaultSegment(model.defaultSegment, {
-      type: "custom",
-      segmentId: segment.id,
-    }) && <DefaultSegmentBadge />,
-  });
+  // A definition the query library can't read shows as it is, uneditable
+  const readDefinition = (segment: Segment) => {
+    try {
+      return fromDefinition(segment.definition);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const toSegmentNode = (segment: Segment, parentId: string): TreeItemNode => {
+    const query = canCreateSegment ? readDefinition(segment) : undefined;
+    const node = {
+      kind: "item",
+      id: `${parentId}:segment:${segment.id}`,
+      memberId: segment.id,
+      icon: "segment",
+      badges: isDefaultSegment(model.defaultSegment, {
+        type: "custom",
+        segmentId: segment.id,
+      }) && <DefaultSegmentBadge />,
+    } satisfies Partial<TreeItemNode>;
+    if (!query) {
+      return {
+        ...node,
+        name: segment.name,
+        href: urls.segment(segment.id),
+        definition: (
+          <SegmentDefinition clauses={getClauses(segment.definition)} />
+        ),
+      };
+    }
+    // A segment in two groups shares its edits between its rows
+    return {
+      ...node,
+      ...getEditableItem({
+        key: `segment:${segment.id}`,
+        kind: "saved",
+        saved: { name: segment.name, query },
+        namePlaceholder: segment.name,
+        isValid: hasFilters,
+        renderPicker: renderFilterPickers,
+        onSave: (draft) => saves.update(segment, draft),
+        actions: <ItemRowMenu detailsUrl={urls.segment(segment.id)} />,
+      }),
+    };
+  };
+
+  const toProposedNode = (proposal: CohortProposal): TreeItemNode => {
+    const query = baseQuery && applyConditions(baseQuery, [proposal.condition]);
+    const node = {
+      kind: "item",
+      id: `proposed:${proposal.key}`,
+      memberId: null,
+      icon: "segment",
+      isMuted: true,
+    } satisfies Partial<TreeItemNode>;
+    const actions = (
+      <ProposalActions
+        canAccept={canCreateSegment}
+        onAccept={() => accept(proposal)}
+        onDismiss={() => dismiss(proposal)}
+      />
+    );
+    if (!canCreateSegment || !query) {
+      return {
+        ...node,
+        name: proposal.name,
+        definition: query && (
+          <SegmentDefinition
+            clauses={getFilterNames(query).map((name) => ({
+              kind: "filter",
+              name,
+            }))}
+          />
+        ),
+        actions,
+      };
+    }
+    // Saving makes the segment and retires the proposal; Cancel leaves it
+    // proposed
+    return {
+      ...node,
+      ...getEditableItem({
+        key: `proposed:${proposal.key}`,
+        kind: "proposal",
+        saved: { name: proposal.name, query },
+        namePlaceholder: proposal.name,
+        isMuted: true,
+        isValid: hasFilters,
+        renderPicker: renderFilterPickers,
+        onSave: async (draft) => {
+          const saved = await saves.create(draft, {
+            fallbackName: proposal.name,
+            description: proposal.signal,
+          });
+          if (saved) {
+            resolveCohort(table, proposal.key);
+          }
+          return saved;
+        },
+        actions,
+      }),
+    };
+  };
+
+  const newNode: TreeItemNode | null =
+    newItemKey != null && baseQuery
+      ? {
+          kind: "item",
+          id: newItemKey,
+          memberId: null,
+          icon: "segment",
+          ...getEditableItem({
+            key: newItemKey,
+            kind: "new",
+            saved: { name: "", query: baseQuery },
+            namePlaceholder: t`New segment`,
+            isValid: hasFilters,
+            renderPicker: renderFilterPickers,
+            onSave: (draft) =>
+              saves.create(draft, { fallbackName: t`New segment` }),
+          }),
+        }
+      : null;
 
   const groupNodes = nestGroups(
     groups,
@@ -187,38 +319,17 @@ export function SegmentTree({
   const ungroupedNodes = segments
     .filter(({ id }) => !groupedIds.has(id))
     .map((segment) => toSegmentNode(segment, "top"));
-  const proposedNodes = proposals.map(
-    (proposal): TreeItemNode => ({
-      kind: "item",
-      id: `proposed:${proposal.key}`,
-      memberId: null,
-      name: proposal.name,
-      icon: "segment",
-      isMuted: true,
-      // Opens the new-segment page filled in, to review before saving
-      href: canCreateSegment
-        ? getProposalHref(urls.newSegment, proposal.key)
-        : undefined,
-      definition: model.baseQuery && (
-        <SegmentDefinition
-          clauses={getFilterNames(
-            applyConditions(model.baseQuery, [proposal.condition]),
-          ).map((name) => ({ kind: "filter", name }))}
-        />
-      ),
-      actions: (
-        <ProposalActions
-          canAccept={canCreateSegment}
-          onAccept={() => accept(proposal)}
-          onDismiss={() => dismiss(proposal)}
-        />
-      ),
-    }),
-  );
-  // Business segments and their groups; default and proposed segments get
-  // their own lists below
-  const nodes: TreeNode[] = [...groupNodes, ...ungroupedNodes];
-  const proposalNodes: TreeNode[] = [...proposedGroupNodes, ...proposedNodes];
+  // Business segments and their groups, under a new segment being added;
+  // default and proposed segments get their own lists below
+  const nodes: TreeNode[] = [
+    ...(newNode ? [newNode] : []),
+    ...groupNodes,
+    ...ungroupedNodes,
+  ];
+  const proposalNodes: TreeNode[] = [
+    ...proposedGroupNodes,
+    ...proposals.map(toProposedNode),
+  ];
 
   // Moving takes a segment out of one group and puts it into another
   const handleMove = (
@@ -299,17 +410,20 @@ export function SegmentTree({
         newItemButton={
           canCreateSegment && (
             <Button
-              component={ForwardRefLink}
-              to={urls.newSegment}
               variant="filled"
               size="lg"
               leftSection={<Icon name="add" />}
-              onClick={() =>
-                trackSegmentCreateStarted(
-                  "data_studio_segments",
-                  Number(table.id),
-                )
-              }
+              // One new row at a time
+              disabled={!baseQuery || newItemKey != null}
+              onClick={() => {
+                if (baseQuery) {
+                  trackSegmentCreateStarted(
+                    "data_studio_segments",
+                    Number(table.id),
+                  );
+                  startNewItem(baseQuery);
+                }
+              }}
             >
               {t`New segment`}
             </Button>

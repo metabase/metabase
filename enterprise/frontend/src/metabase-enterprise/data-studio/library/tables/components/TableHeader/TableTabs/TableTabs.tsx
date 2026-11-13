@@ -9,26 +9,19 @@ import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
-import {
-  type HierarchyPlacement,
-  useHierarchyPlacement,
-} from "../../HierarchyPlacement";
-
 type TableTabsProps = {
   table: Table;
 };
 
 export function TableTabs({ table }: TableTabsProps) {
   const location = useLocation();
-  const [hierarchyPlacement] = useHierarchyPlacement();
-  const tabs = getTabs(table, location, hierarchyPlacement);
+  const tabs = getTabs(table, location);
   return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   table: Table,
   location: Omit<Location, "query" | "action">,
-  hierarchyPlacement: HierarchyPlacement,
 ): PillTab[] {
   const tabs: PillTab[] = [];
 
@@ -51,6 +44,14 @@ function getTabs(
   });
 
   tabs.push({
+    label: t`Hierarchies`,
+    to: Urls.dataStudioTableHierarchies(table.id),
+    isSelected: location.pathname.startsWith(
+      Urls.dataStudioTableHierarchies(table.id),
+    ),
+  });
+
+  tabs.push({
     label: t`Segments`,
     to: Urls.dataStudioTableSegments(table.id),
     isSelected: location.pathname.startsWith(
@@ -65,16 +66,6 @@ function getTabs(
       Urls.dataStudioTableMeasures(table.id),
     ),
   });
-
-  if (hierarchyPlacement !== "fields") {
-    tabs.push({
-      label: t`Hierarchies`,
-      to: Urls.dataStudioTableHierarchies(table.id),
-      isSelected: location.pathname.startsWith(
-        Urls.dataStudioTableHierarchies(table.id),
-      ),
-    });
-  }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({

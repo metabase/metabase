@@ -1,7 +1,11 @@
 import { t } from "ttag";
 
-import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsSection,
+} from "metabase/data-studio/common/components/SettingsSection";
 import { TablePropertyList } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TablePropertyList";
 import { TableStructure } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableStructure";
 import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
@@ -28,37 +32,36 @@ export function TableStructureSections({ table }: { table: Table }) {
 
   return (
     <>
-      <DatabaseInfoSection
-        name={t`Structure`}
+      <SettingsSection
+        title={t`Structure`}
         description={
           isHistoryTable
             ? t`Its role, what one row is, and the dates each version is true for. These change how queries on this table work.`
             : t`Its role, what one row is, and its main date. These change how queries on this table work.`
         }
-        contentPx="xxxl"
-        cardRadius="lg"
       >
-        <Stack gap="xxl">
-          <TableStructure
-            table={table}
-            readOnly={!table.can_write}
-            hasTitle={false}
-            layout="form"
-          />
-        </Stack>
-      </DatabaseInfoSection>
+        <TableStructure
+          table={table}
+          readOnly={!table.can_write}
+          layout="form"
+        />
+      </SettingsSection>
       {isCustomPropertyTable && (
-        <DatabaseInfoSection
-          name={t`Custom properties`}
+        <SettingsSection
+          title={t`Custom properties`}
           description={t`The properties this table stores for each record, one row per value.`}
-          contentPx="xxxl"
-          cardRadius="lg"
         >
-          <Stack gap="xxl">
-            <TablePropertyList table={table} />
-            <EditInConnectedDataButton to={getConnectedDataUrl("properties")} />
-          </Stack>
-        </DatabaseInfoSection>
+          <SettingsCard>
+            <SettingsRow>
+              <Stack gap="lg" w="100%">
+                <TablePropertyList table={table} />
+                <EditInConnectedDataButton
+                  to={getConnectedDataUrl("properties")}
+                />
+              </Stack>
+            </SettingsRow>
+          </SettingsCard>
+        </SettingsSection>
       )}
     </>
   );

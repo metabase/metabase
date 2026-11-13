@@ -8,14 +8,12 @@ import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { PROPOSAL_SEARCH_PARAM } from "metabase/data-studio/data-model/pages/DataModel/TableSection/ListSection";
-import { useMeasureProposal } from "metabase/data-studio/data-model/pages/DataModel/TableSection/MeasureList/MeasureProposals";
 import {
   type MetadataSelectorOpts,
   useMetadataProvider,
   useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
-import { useNavigate, useSearchParams } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
@@ -29,9 +27,6 @@ import { NewMeasureHeader } from "./NewMeasureHeader";
 // Hoisted: the metadata selector memoises on the options object, so a fresh
 // literal each render would defeat it.
 const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
-
-/** What the page started from, to tell whether anything changed since */
-type Draft = { name: string; description: string; definition: DatasetQuery };
 
 type NewMeasurePageProps = {
   table: Table;
@@ -54,18 +49,10 @@ export function NewMeasurePage({
     WITH_HIDDEN_TABLES,
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  // PROTOTYPE: opened from a proposed measure, the page starts as that
-  // measure; saving it retires the proposal, cancelling leaves it proposed
-  const [searchParams] = useSearchParams();
-  const proposal = useMeasureProposal(
-    table,
-    searchParams.get(PROPOSAL_SEARCH_PARAM),
-  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
-  const [proposalDraft, setProposalDraft] = useState<Draft | null>(null);
   const [savedMeasure, setSavedMeasure] = useState<Measure | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
@@ -78,33 +65,10 @@ export function NewMeasurePage({
     }
   }, [table, metadataProvider]);
 
-  // The proposal can resolve after the first render (its values load), so it
-  // fills the page in once it's there
-  const { proposal: proposedMeasure, definition: proposedDefinition } =
-    proposal;
-  useEffect(() => {
-    if (proposedMeasure && proposedDefinition && proposalDraft == null) {
-      const draft = {
-        name: proposedMeasure.name,
-        description: proposedMeasure.signal,
-        definition: proposedDefinition,
-      };
-      setProposalDraft(draft);
-      setName(draft.name);
-      setDescription(draft.description);
-      setDefinition(draft.definition);
-    }
-  }, [proposedMeasure, proposedDefinition, proposalDraft]);
-
   const { query, aggregations } = useMeasureQuery(definition);
 
-  const isChanged = proposalDraft
-    ? name.trim() !== proposalDraft.name ||
-      description !== proposalDraft.description ||
-      JSON.stringify(definition) !== JSON.stringify(proposalDraft.definition)
-    : name.trim().length > 0 ||
-      description.length > 0 ||
-      aggregations.length > 0;
+  const isChanged =
+    name.trim().length > 0 || description.length > 0 || aggregations.length > 0;
   const isDirty = !savedMeasure && isChanged;
   const isValid = aggregations.length === 1;
   const previewUrl =
@@ -134,9 +98,6 @@ export function NewMeasurePage({
       sendErrorToast(t`Failed to create measure`);
     } else if (measure) {
       trackMeasureCreated("success", measure.id);
-      if (proposalDraft) {
-        proposal.resolve();
-      }
       setSavedMeasure(measure);
       sendSuccessToast(t`Measure created`);
     }
@@ -146,8 +107,6 @@ export function NewMeasurePage({
     name,
     description,
     isValid,
-    proposal,
-    proposalDraft,
     createMeasure,
     sendSuccessToast,
     sendErrorToast,
@@ -166,27 +125,21 @@ export function NewMeasurePage({
     }
   }, [isCancelling, cancelUrl, navigate]);
 
-  // A proposal can be saved as it is; a blank measure needs a change first
-  const canSave = isDirty || (proposalDraft != null && !savedMeasure);
-
   return (
     <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
-        // Fresh input once the proposal's name fills it in
-        key={proposalDraft ? "proposal" : "blank"}
-        initialName={proposalDraft?.name ?? ""}
         previewUrl={previewUrl}
         onNameChange={setName}
         breadcrumbs={breadcrumbs}
         actions={
-          (cancelUrl || canSave) && (
+          (cancelUrl || isDirty) && (
             <Group gap="sm" wrap="nowrap">
               {cancelUrl && (
                 <Button onClick={() => setIsCancelling(true)}>
                   {t`Cancel`}
                 </Button>
               )}
-              {canSave && (
+              {isDirty && (
                 <Button
                   variant="filled"
                   disabled={!isValid}

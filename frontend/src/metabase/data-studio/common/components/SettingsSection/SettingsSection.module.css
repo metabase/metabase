@@ -1,0 +1,37 @@
+.card {
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md) var(--mantine-spacing-xl);
+  padding-block: var(--mantine-spacing-lg);
+}
+
+/* Content-only rows fill the card's width */
+.block {
+  display: block;
+}
+
+/* A row whose content renders nothing, because it doesn't apply, takes no space */
+.row:empty {
+  display: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+/* Wraps below the label when the row is too narrow for both */
+.label {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.control {
+  flex: 0 0 20rem;
+  max-width: 100%;
+}

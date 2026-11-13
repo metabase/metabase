@@ -14,26 +14,7 @@ import type { Field, IconName } from "metabase-types/api";
 
 const NO_TYPE = "none";
 
-type InputProps = Pick<
-  SelectProps,
-  "classNames" | "disabled" | "size" | "w"
-> & {
-  isOpenOnMount?: boolean;
-};
-
-function markInferred<T extends { value: string; label: string }>(
-  groups: { group: string; items: T[] }[],
-  inferredValue: string | null,
-): { group: string; items: T[] }[] {
-  return groups.map((group) => ({
-    ...group,
-    items: group.items.map((item) =>
-      item.value === inferredValue
-        ? { ...item, label: t`${item.label} (Inferred)` }
-        : item,
-    ),
-  }));
-}
+type InputProps = Pick<SelectProps, "classNames" | "disabled" | "size" | "w">;
 
 function renderIconOption(getIcon: (value: string) => IconName) {
   return function IconOption({
@@ -63,16 +44,13 @@ const getSubjectOptionIcon = (value: string) =>
 type SemanticTypeSelectProps = InputProps & {
   field: Pick<Field, "base_type" | "effective_type">;
   value: string | null;
-  markedValue?: string | null;
   onChange: (value: string | null) => void;
 };
 
 export function SemanticTypeSelect({
   field,
   value,
-  markedValue = null,
   onChange,
-  isOpenOnMount = false,
   ...props
 }: SemanticTypeSelectProps) {
   const options = [
@@ -80,7 +58,7 @@ export function SemanticTypeSelect({
       group: t`None`,
       items: [{ value: NO_TYPE, label: t`No semantic type` }],
     },
-    ...markInferred(getFieldTypeOptions(field, value), markedValue),
+    ...getFieldTypeOptions(field, value),
   ];
 
   return (
@@ -90,8 +68,6 @@ export function SemanticTypeSelect({
       value={value ?? NO_TYPE}
       searchable
       allowDeselect={false}
-      autoFocus={isOpenOnMount}
-      defaultDropdownOpened={isOpenOnMount}
       leftSection={<Icon name={getFieldTypeIcon(value)} />}
       renderOption={renderIconOption(getTypeOptionIcon)}
       onOptionSubmit={(nextValue) =>
@@ -104,26 +80,21 @@ export function SemanticTypeSelect({
 
 type SubjectSelectProps = InputProps & {
   value: TableSubject | null;
-  markedValue?: TableSubject | null;
   onChange: (value: TableSubject) => void;
 };
 
 export function SubjectSelect({
   value,
-  markedValue = null,
   onChange,
-  isOpenOnMount = false,
   ...props
 }: SubjectSelectProps) {
   return (
     <Select
       aria-label={t`Subject`}
-      data={markInferred(getTableSubjectOptions(), markedValue)}
+      data={getTableSubjectOptions()}
       value={value ?? NO_SUBJECT}
       searchable
       allowDeselect={false}
-      autoFocus={isOpenOnMount}
-      defaultDropdownOpened={isOpenOnMount}
       leftSection={<Icon name={getTableSubjectIcon(value)} />}
       renderOption={renderIconOption(getSubjectOptionIcon)}
       onOptionSubmit={(nextValue) => {

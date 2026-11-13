@@ -13,7 +13,6 @@ import {
   type TransitionKind,
   getProcessEncodingLabel,
   getValueBucketLabel,
-  inferLifecycleField,
   inferStatusHistoryColumns,
   isTerminalBucket,
   useLifecycle,
@@ -35,7 +34,6 @@ import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
-import { InferredValue } from "../InferenceReview";
 
 import { BUCKET_BADGE_COLORS, TransitionsDiagram } from "./TransitionsDiagram";
 import { TransitionsSankey } from "./TransitionsSankey";
@@ -62,12 +60,9 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
   const {
     fields,
     schemaTables,
-    overrides,
-    inferredStatusField,
     statusField,
     milestones,
     order,
-    historyInference,
     history,
     historyTable,
     encoding,
@@ -96,10 +91,6 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
               <StatusColumnValue
                 fields={fields}
                 statusField={statusField}
-                isInferred={
-                  overrides.statusFieldId === undefined &&
-                  inferredStatusField != null
-                }
                 disabled={readOnly}
                 onChange={(fieldId) => setStatusFieldId(table, fieldId)}
               />
@@ -113,12 +104,6 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
                 table={table}
                 schemaTables={schemaTables}
                 history={history}
-                historyTable={historyTable}
-                inference={
-                  overrides.history === undefined && historyInference
-                    ? historyInference.signal
-                    : null
-                }
                 disabled={readOnly}
                 onChange={(binding) => setStatusHistory(table, binding)}
               />
@@ -261,36 +246,14 @@ const idOf = (field: Field) => field.id;
 function StatusColumnValue({
   fields,
   statusField,
-  isInferred,
   disabled,
   onChange,
 }: {
   fields: Field[];
   statusField: Field | undefined;
-  isInferred: boolean;
   disabled: boolean;
   onChange: (fieldId: FieldId | null) => void;
 }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (isInferred && statusField) {
-    const fieldId = idOf(statusField);
-    const signal = inferLifecycleField(statusField)?.signal;
-    return (
-      <InferredValue
-        value={statusField.display_name}
-        inference={signal ?? null}
-        readOnly={disabled}
-        onConfirm={() => onChange(fieldId)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(fieldId);
-        }}
-        data-testid="process-status-column-review"
-      />
-    );
-  }
-
   return (
     <Select
       aria-label={t`Status column`}
@@ -304,8 +267,6 @@ function StatusColumnValue({
       searchable
       clearable
       disabled={disabled}
-      autoFocus={isSelectOpenOnMount}
-      defaultDropdownOpened={isSelectOpenOnMount}
       onChange={(value) => onChange(value != null ? Number(value) : null)}
       data-testid="process-status-column-select"
     />
@@ -316,38 +277,15 @@ function StatusHistoryValue({
   table,
   schemaTables,
   history,
-  historyTable,
-  inference,
   disabled,
   onChange,
 }: {
   table: Table;
   schemaTables: Table[];
   history: StatusHistoryBinding | null;
-  historyTable: Table | undefined;
-  /** Set while the history table is sync's guess */
-  inference: string | null;
   disabled: boolean;
   onChange: (binding: StatusHistoryBinding | null) => void;
 }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (inference && history && historyTable) {
-    return (
-      <InferredValue
-        value={historyTable.display_name}
-        inference={inference}
-        readOnly={disabled}
-        onConfirm={() => onChange(history)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(history);
-        }}
-        data-testid="process-status-history-review"
-      />
-    );
-  }
-
   return (
     <Select
       aria-label={t`Status history table`}
@@ -363,8 +301,6 @@ function StatusHistoryValue({
       searchable
       clearable
       disabled={disabled}
-      autoFocus={isSelectOpenOnMount}
-      defaultDropdownOpened={isSelectOpenOnMount}
       onChange={(value) => {
         const picked = schemaTables.find(({ id }) => String(id) === value);
         // Its entity key, state, and changed-at columns are inferred

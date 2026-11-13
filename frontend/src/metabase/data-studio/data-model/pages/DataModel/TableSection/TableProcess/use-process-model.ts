@@ -7,14 +7,11 @@ import {
   type ProcessEncoding,
   type ResolvedValueOrder,
   type StatusHistoryBinding,
-  type StatusHistoryInference,
-  type TableProcessOverrides,
   type TransitionKind,
   classifyObservedTransition,
   countObservedTransitions,
   getMilestoneFields,
   getProcessEncoding,
-  getStatusFields,
   getTransitionKey,
   inferStatusHistory,
   inferTypicalTransitions,
@@ -46,13 +43,10 @@ export type TransitionRow = InferredTransition & {
 export type ProcessModel = {
   fields: Field[];
   schemaTables: Table[];
-  overrides: TableProcessOverrides;
-  inferredStatusField: Field | undefined;
   statusField: Field | undefined;
   milestones: Field[];
   /** The status column's values in order: the process's states */
   order: ResolvedValueOrder;
-  historyInference: StatusHistoryInference | null;
   history: StatusHistoryBinding | null;
   historyTable: Table | undefined;
   encoding: ProcessEncoding;
@@ -107,12 +101,9 @@ export function useProcessModel(table: Table): ProcessModel {
   return {
     fields,
     schemaTables,
-    overrides,
-    inferredStatusField: getStatusFields(fields)[0],
     statusField,
     milestones,
     order,
-    historyInference,
     history,
     historyTable,
     encoding: getProcessEncoding(history != null, milestones.length),

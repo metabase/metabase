@@ -8,6 +8,11 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsValue,
+} from "metabase/data-studio/common/components/SettingsSection";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
   type HistoryBinding,
@@ -18,7 +23,6 @@ import {
   getRowIdentityLabel,
   getScdTypeForHistoryShape,
   getTableHiddenReason,
-  getTableRoleLabel,
   getTableRoleOptions,
   getTableRoleRowDescription,
   isRoleA,
@@ -29,8 +33,6 @@ import {
   Box,
   Button,
   Icon,
-  Input,
-  MultiSelect,
   Select,
   Stack,
   Text,
@@ -48,11 +50,9 @@ import {
 import {
   ColumnSelect,
   InfoIcon,
-  LabelWithInfo,
 } from "../../FieldDetailsPanel/ChangesOverTime";
 import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
-import { InferredValue } from "../InferenceReview";
 import {
   CurrentTableSelect,
   CurrentValueFieldsInput,
@@ -62,7 +62,6 @@ import {
   HistoryVersionsSummary,
   PreviousValuesSection,
   SharedPointerNote,
-  getHistoryShapeInference,
   getValidToForDates,
   useHistoryExampleSource,
   useScdDetails,
@@ -76,18 +75,15 @@ interface TableStructureProps {
 }
 
 /**
- * PROTOTYPE: mocked. A table's role and grain, plus the history or custom
- * property binding its role needs. Inferred in the browser and overridable.
+ * PROTOTYPE: mocked. A table's role, plus the history or custom property
+ * binding its role needs. Inferred in the browser and overridable.
  */
 export function TableStructure({
   table,
   readOnly,
-  hasTitle = true,
   layout = "table",
 }: TableStructureProps & {
-  /** Off drops the "Structure" heading, for a page that names the section */
-  hasTitle?: boolean;
-  /** A details table for the drawer, or labelled form fields for a page */
+  /** A details table for the drawer, or a settings card for a page */
   layout?: "table" | "form";
 }) {
   const {
@@ -123,13 +119,48 @@ export function TableStructure({
     });
   };
 
+  const customPropertiesReveal = (
+    <RevealTransition
+      key={table.id}
+      mounted={role != null && isRoleA(role, "role/CustomPropertyTable")}
+      onReveal={scrollStructureToTop}
+    >
+      <CustomPropertiesSection
+        table={table}
+        disabled={readOnly}
+        onChange={(eav) => setEavBinding(table, eav)}
+      />
+    </RevealTransition>
+  );
+
+  if (layout === "form") {
+    return (
+      <Box ref={structureSectionRef} className={S.structureSection}>
+        <SettingsCard>
+          <StructureFormRows
+            table={table}
+            structure={structure}
+            readOnly={readOnly}
+          />
+          <SettingsRow>
+            <PreviousValuesSection table={table} disabled={readOnly} />
+          </SettingsRow>
+          <SettingsRow>{customPropertiesReveal}</SettingsRow>
+          <SettingsRow>
+            <EntityCustomPropertiesSection table={table} />
+          </SettingsRow>
+        </SettingsCard>
+      </Box>
+    );
+  }
+
   const structureTable = (
     <DetailsTable>
       <DetailsRow
         label={t`Role`}
         fillValue
         value={
-          <RoleValue
+          <RoleSelect
             structure={structure}
             disabled={readOnly}
             onChange={(role) => setTableRole(table, role)}
@@ -210,18 +241,6 @@ export function TableStructure({
         }
       />
       <DetailsRow
-        label={t`Grain`}
-        fillValue
-        value={
-          <GrainSelect
-            table={table}
-            grainFields={structure.grainFields}
-            disabled={readOnly}
-            layout="table"
-          />
-        }
-      />
-      <DetailsRow
         label={t`Row identity`}
         value={getRowIdentityLabel(structure.rowIdentity)}
       />
@@ -230,9 +249,12 @@ export function TableStructure({
           label={t`Main date`}
           fillValue
           value={
-            <MainDateValue
-              fields={fields}
-              structure={structure}
+            <FieldSelect
+              label={t`Main date`}
+              fields={fields.filter((field) => isDate(field))}
+              value={getMainDateFieldId(structure)}
+              placeholder={t`No main date`}
+              clearable
               disabled={readOnly}
               onChange={(fieldId) => setMainDate(table, fieldId)}
             />
@@ -279,33 +301,10 @@ export function TableStructure({
   return (
     <>
       <Box ref={structureSectionRef} className={S.structureSection}>
-        {layout === "form" && (
-          <StructureForm
-            table={table}
-            structure={structure}
-            readOnly={readOnly}
-          />
-        )}
-        {layout === "table" && hasTitle && (
-          <SidebarSection title={t`Structure`}>{structureTable}</SidebarSection>
-        )}
-        {layout === "table" && !hasTitle && structureTable}
+        <SidebarSection title={t`Structure`}>{structureTable}</SidebarSection>
       </Box>
-
       <PreviousValuesSection table={table} disabled={readOnly} />
-
-      <RevealTransition
-        key={table.id}
-        mounted={role != null && isRoleA(role, "role/CustomPropertyTable")}
-        onReveal={scrollStructureToTop}
-      >
-        <CustomPropertiesSection
-          table={table}
-          disabled={readOnly}
-          onChange={(eav) => setEavBinding(table, eav)}
-        />
-      </RevealTransition>
-
+      {customPropertiesReveal}
       <EntityCustomPropertiesSection table={table} />
     </>
   );
@@ -392,73 +391,17 @@ type RoleInputProps = {
   onChange: (role: TableStructureValue["role"]) => void;
 };
 
-/** Sync's role, until an admin confirms or changes it; no role isn't a guess */
-function isRoleInferred({ isRoleOverridden, inference }: TableStructureValue) {
-  return !isRoleOverridden && inference.role != null;
-}
-
-/** The role, or sync's guess to confirm or change */
-function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-  const { inference } = structure;
-
-  if (isRoleInferred(structure) && inference.role) {
-    const inferredRole = inference.role;
-    return (
-      <InferredValue
-        value={getTableRoleLabel(inferredRole)}
-        inference={getRoleInference(structure)}
-        readOnly={disabled}
-        onConfirm={() => onChange(inferredRole)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(inferredRole);
-        }}
-        data-testid="table-role-review"
-      />
-    );
-  }
-
-  return (
-    <RoleSelect
-      structure={structure}
-      disabled={disabled}
-      isOpenOnMount={isSelectOpenOnMount}
-      onChange={onChange}
-    />
-  );
-}
-
-function RoleSelect({
-  structure,
-  disabled,
-  isOpenOnMount,
-  onChange,
-}: RoleInputProps & { isOpenOnMount: boolean }) {
-  const { role, inference } = structure;
-  // Once an admin picks something else, point out what sync guessed
-  const markedRole = role !== inference.role ? inference.role : null;
-  const options = getTableRoleOptions().map((group) => ({
-    ...group,
-    items: group.items.map((item) =>
-      item.value === markedRole
-        ? { ...item, label: t`${item.label} (Inferred)` }
-        : item,
-    ),
-  }));
-
+function RoleSelect({ structure, disabled, onChange }: RoleInputProps) {
   return (
     <Select
       aria-label={t`Role`}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={options}
-      value={role}
+      data={getTableRoleOptions()}
+      value={structure.role}
       placeholder={t`Choose a role`}
       searchable
       allowDeselect={false}
       disabled={disabled}
-      autoFocus={isOpenOnMount}
-      defaultDropdownOpened={isOpenOnMount}
       onChange={(value) => {
         if (isTableRole(value)) {
           onChange(value);
@@ -469,15 +412,7 @@ function RoleSelect({
   );
 }
 
-/** Why sync picked the role; nothing once an admin has set it */
-function getRoleInference({
-  inference,
-  isRoleOverridden,
-}: TableStructureValue): string | null {
-  return isRoleOverridden ? null : inference.signal;
-}
-
-/** What a history table's key and dates mean, for their info icons */
+/** What a history table's key and dates mean, for info icons or help text */
 function getHistoryFieldInfo() {
   return {
     matchedOn: t`The column that says which record each row is a version of.`,
@@ -498,10 +433,10 @@ const toFieldId = (value: string | null) =>
   value != null ? Number(value) : null;
 
 /**
- * The structure settings as labelled form fields, for a page: no read-only
+ * The structure settings as rows of a page's settings card: no read-only
  * rows that the page already shows elsewhere
  */
-function StructureForm({
+function StructureFormRows({
   table,
   structure,
   readOnly,
@@ -524,118 +459,118 @@ function StructureForm({
   const historyInfo = getHistoryFieldInfo();
 
   return (
-    <Stack gap="xxl">
-      <Select
-        label={t`Role`}
-        description={getRoleInference(structure)}
-        data={getTableRoleOptions()}
-        value={role}
-        placeholder={t`Choose a role`}
-        searchable
-        allowDeselect={false}
-        disabled={readOnly}
-        onChange={(value) => {
-          if (isTableRole(value)) {
-            setTableRole(table, value);
-          }
-        }}
-      />
-      {isHistoryRole && (
-        <>
-          <Select
-            label={
-              <LabelWithInfo
-                label={t`Matched on`}
-                info={historyInfo.matchedOn}
-              />
-            }
-            data={fields.map(toFieldOption)}
-            value={toFieldValue(fields, history.durableKeyFieldId)}
-            placeholder={t`Choose a column`}
-            disabled={readOnly}
-            onChange={(value) =>
-              setHistoryBinding(table, { durableKeyFieldId: toFieldId(value) })
-            }
-          />
-          <Select
-            label={
-              <LabelWithInfo
-                label={t`Start date`}
-                info={historyInfo.trueFrom}
-              />
-            }
-            data={fields.map(toFieldOption)}
-            value={toFieldValue(fields, history.validFromFieldId)}
-            placeholder={t`Choose a column`}
-            disabled={readOnly}
-            onChange={(value) =>
-              setHistoryBinding(table, { validFromFieldId: toFieldId(value) })
-            }
-          />
-          <Select
-            label={
-              <LabelWithInfo label={t`End date`} info={historyInfo.trueUntil} />
-            }
-            data={fields.map(toFieldOption)}
-            value={toFieldValue(fields, history.validToFieldId)}
-            description={t`Optional. Leave it empty if each version ends when the next one starts.`}
-            placeholder={t`None: ends when the next version starts`}
-            clearable
-            disabled={readOnly}
-            onChange={(value) =>
-              setHistoryBinding(table, { validToFieldId: toFieldId(value) })
-            }
-          />
-        </>
-      )}
-      <GrainDescriptionInput
-        key={structure.grainDescription}
-        value={structure.grainDescription}
-        placeholder={
-          role ? getTableRoleRowDescription(role) : t`Describe one row`
-        }
-        disabled={readOnly}
-        onCommit={(value) => setGrainDescription(table, value)}
-      />
-      <GrainSelect
-        table={table}
-        grainFields={structure.grainFields}
-        disabled={readOnly}
-        layout="form"
-      />
-      <Input.Wrapper label={t`Row identity`}>
-        <Text mt="xs">{getRowIdentityLabel(structure.rowIdentity)}</Text>
-      </Input.Wrapper>
-      {!isHistoryRole && (
+    <>
+      <SettingsRow label={t`Role`}>
         <Select
-          label={t`Main date`}
-          description={getMainDateInference(structure)}
-          data={dateFields.map(toFieldOption)}
-          value={toFieldValue(dateFields, getMainDateFieldId(structure))}
-          placeholder={t`No main date`}
-          clearable
-          disabled={readOnly}
-          onChange={(value) => setMainDate(table, toFieldId(value))}
-        />
-      )}
-      {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
-        <Select
-          label={t`Period`}
-          data={getPeriodGranularityOptions()}
-          value={structure.periodGranularity}
+          aria-label={t`Role`}
+          data={getTableRoleOptions()}
+          value={role}
+          placeholder={t`Choose a role`}
+          searchable
           allowDeselect={false}
           disabled={readOnly}
           onChange={(value) => {
-            const option = getPeriodGranularityOptions().find(
-              (option) => option.value === value,
-            );
-            if (option) {
-              setPeriodGranularity(table, option.value);
+            if (isTableRole(value)) {
+              setTableRole(table, value);
             }
           }}
         />
+      </SettingsRow>
+      {isHistoryRole && (
+        <>
+          <SettingsRow
+            label={t`Matched on`}
+            description={historyInfo.matchedOn}
+          >
+            <Select
+              aria-label={t`Matched on`}
+              data={fields.map(toFieldOption)}
+              value={toFieldValue(fields, history.durableKeyFieldId)}
+              placeholder={t`Choose a column`}
+              disabled={readOnly}
+              onChange={(value) =>
+                setHistoryBinding(table, {
+                  durableKeyFieldId: toFieldId(value),
+                })
+              }
+            />
+          </SettingsRow>
+          <SettingsRow label={t`Start date`} description={historyInfo.trueFrom}>
+            <Select
+              aria-label={t`Start date`}
+              data={fields.map(toFieldOption)}
+              value={toFieldValue(fields, history.validFromFieldId)}
+              placeholder={t`Choose a column`}
+              disabled={readOnly}
+              onChange={(value) =>
+                setHistoryBinding(table, { validFromFieldId: toFieldId(value) })
+              }
+            />
+          </SettingsRow>
+          <SettingsRow label={t`End date`} description={historyInfo.trueUntil}>
+            <Select
+              aria-label={t`End date`}
+              data={fields.map(toFieldOption)}
+              value={toFieldValue(fields, history.validToFieldId)}
+              placeholder={t`None: ends when the next version starts`}
+              clearable
+              disabled={readOnly}
+              onChange={(value) =>
+                setHistoryBinding(table, { validToFieldId: toFieldId(value) })
+              }
+            />
+          </SettingsRow>
+        </>
       )}
-    </Stack>
+      <SettingsRow label={t`Each row is`}>
+        <GrainDescriptionInput
+          key={structure.grainDescription}
+          value={structure.grainDescription}
+          placeholder={
+            role ? getTableRoleRowDescription(role) : t`Describe one row`
+          }
+          disabled={readOnly}
+          onCommit={(value) => setGrainDescription(table, value)}
+        />
+      </SettingsRow>
+      <SettingsRow label={t`Row identity`}>
+        <SettingsValue>
+          {getRowIdentityLabel(structure.rowIdentity)}
+        </SettingsValue>
+      </SettingsRow>
+      {!isHistoryRole && (
+        <SettingsRow label={t`Main date`}>
+          <Select
+            aria-label={t`Main date`}
+            data={dateFields.map(toFieldOption)}
+            value={toFieldValue(dateFields, getMainDateFieldId(structure))}
+            placeholder={t`No main date`}
+            clearable
+            disabled={readOnly}
+            onChange={(value) => setMainDate(table, toFieldId(value))}
+          />
+        </SettingsRow>
+      )}
+      {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
+        <SettingsRow label={t`Period`}>
+          <Select
+            aria-label={t`Period`}
+            data={getPeriodGranularityOptions()}
+            value={structure.periodGranularity}
+            allowDeselect={false}
+            disabled={readOnly}
+            onChange={(value) => {
+              const option = getPeriodGranularityOptions().find(
+                (option) => option.value === value,
+              );
+              if (option) {
+                setPeriodGranularity(table, option.value);
+              }
+            }}
+          />
+        </SettingsRow>
+      )}
+    </>
   );
 }
 
@@ -654,7 +589,7 @@ function GrainDescriptionInput({
   const [draft, setDraft] = useState(value);
   return (
     <TextInput
-      label={t`Each row is`}
+      aria-label={t`Each row is`}
       value={draft}
       placeholder={placeholder}
       disabled={disabled}
@@ -673,158 +608,38 @@ function GrainDescriptionInput({
   );
 }
 
-/** Why sync picked the main date; nothing once an admin has set it */
-function getMainDateInference({
-  mainDateInference,
-  isMainDateOverridden,
-}: TableStructureValue): string | null {
-  return isMainDateOverridden ? null : mainDateInference.signal;
-}
-
-function GrainSelect({
-  table,
-  grainFields,
-  disabled,
-  layout,
-}: {
-  table: Table;
-  grainFields: Field[];
-  disabled: boolean;
-  layout: "table" | "form";
-}) {
-  const { setTableGrain } = useTableStructures();
-  const fields = table.fields ?? [];
-
-  return (
-    <MultiSelect
-      label={layout === "form" ? t`Grain` : undefined}
-      description={
-        layout === "form"
-          ? t`The columns that together make each row unique.`
-          : undefined
-      }
-      aria-label={t`Grain`}
-      classNames={
-        layout === "table" ? DETAILS_CELL_INPUT_CLASS_NAMES : undefined
-      }
-      data={fields.map(toFieldOption)}
-      value={grainFields.map((field) => String(field.id))}
-      placeholder={grainFields.length === 0 ? t`Choose columns` : undefined}
-      searchable
-      disabled={disabled}
-      onChange={(values) => setTableGrain(table, values.map(Number))}
-    />
-  );
-}
-
-type MainDateInputProps = {
-  structure: TableStructureValue;
-  disabled: boolean;
-  onChange: (fieldId: FieldId | null | undefined) => void;
-};
-
 function getMainDateFieldId({ mainDateField }: TableStructureValue) {
   return mainDateField ? mainDateField.id : null;
-}
-
-/** Sync's main date, until an admin confirms or changes it; none isn't a guess */
-function isMainDateInferred({
-  isMainDateOverridden,
-  mainDateField,
-}: TableStructureValue) {
-  return !isMainDateOverridden && mainDateField != null;
-}
-
-/** The main date, or sync's guess to confirm or change */
-function MainDateValue({
-  fields,
-  structure,
-  disabled,
-  onChange,
-}: MainDateInputProps & { fields: Field[] }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-  const inferredFieldId = structure.mainDateInference.fieldId;
-
-  if (isMainDateInferred(structure) && structure.mainDateField) {
-    return (
-      <InferredValue
-        // Not overridden, so the current main date is the inferred one
-        value={structure.mainDateField.display_name}
-        inference={getMainDateInference(structure)}
-        readOnly={disabled}
-        onConfirm={() => onChange(inferredFieldId)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(inferredFieldId);
-        }}
-        data-testid="table-main-date-review"
-      />
-    );
-  }
-
-  const mainDateFieldId = getMainDateFieldId(structure);
-  return (
-    <FieldSelect
-      label={t`Main date`}
-      fields={fields.filter((field) => isDate(field))}
-      value={mainDateFieldId}
-      // Once an admin picks something else, point out what sync guessed
-      inferredFieldId={
-        mainDateFieldId !== inferredFieldId ? inferredFieldId : null
-      }
-      placeholder={t`No main date`}
-      clearable
-      disabled={disabled}
-      isOpenOnMount={isSelectOpenOnMount}
-      onChange={onChange}
-    />
-  );
 }
 
 function FieldSelect({
   label,
   fields,
   value,
-  inferredFieldId = null,
   placeholder = t`Choose a column`,
   clearable,
   disabled,
-  isOpenOnMount = false,
   onChange,
 }: {
   label: string;
   fields: Field[];
   value: FieldId | null;
-  /** Marked "(Inferred)" in the list */
-  inferredFieldId?: FieldId | null;
   placeholder?: string;
   clearable?: boolean;
   disabled: boolean;
-  isOpenOnMount?: boolean;
   onChange: (fieldId: FieldId | null) => void;
 }) {
   return (
     <Select
       aria-label={label}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={fields.map((field) => {
-        const fieldId = field.id;
-        return {
-          value: String(fieldId),
-          label:
-            fieldId === inferredFieldId
-              ? t`${field.display_name} (Inferred)`
-              : field.display_name,
-        };
-      })}
+      data={fields.map(toFieldOption)}
       value={value != null ? String(value) : null}
       placeholder={placeholder}
       searchable
       clearable={clearable}
       allowDeselect={clearable}
       disabled={disabled}
-      autoFocus={isOpenOnMount}
-      defaultDropdownOpened={isOpenOnMount}
       onChange={(value) => onChange(value != null ? Number(value) : null)}
     />
   );
@@ -877,7 +692,6 @@ function HistoryBindingSection({
     scd.resolution.scdType,
     binding.validToFieldId != null,
   );
-  const shapeInference = getHistoryShapeInference(scd);
   const exampleSource = useHistoryExampleSource(table, scd);
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const hasCurrentFlag = binding.currentFlagFieldId != null;
@@ -891,12 +705,9 @@ function HistoryBindingSection({
           value={
             <HistoryShapeValue
               shape={shape}
-              inference={shapeInference}
-              isInferred={!scd.resolution.isOverridden}
               hasDateRange={getValidToForDates(fields, binding) != null}
               exampleSource={exampleSource}
               disabled={disabled}
-              onConfirm={() => onScdTypeChange(scd.resolution.scdType)}
               onChange={(shape) => {
                 onScdTypeChange(getScdTypeForHistoryShape(shape));
                 if (shape === "latest-row-per-key") {

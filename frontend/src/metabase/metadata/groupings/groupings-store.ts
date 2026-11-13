@@ -17,7 +17,6 @@ import {
 } from "./inference";
 import {
   type BinsDefinition,
-  type DefaultGroupingInference,
   ELAPSED_UNITS,
   type Grouping,
   type PartitionDefinition,
@@ -37,8 +36,6 @@ export type FieldGroupingOverrides = {
   groupings: SavedGrouping[];
   /** Sync groupings an admin removed */
   removedSyncNames: string[];
-  /** Sync groupings an admin confirmed as they are */
-  confirmedSyncNames: string[];
   defaultName?: string;
 };
 
@@ -51,7 +48,6 @@ const STORAGE_KEY = "metabase-prototype-groupings";
 const EMPTY_FIELD: FieldGroupingOverrides = {
   groupings: [],
   removedSyncNames: [],
-  confirmedSyncNames: [],
 };
 
 const parseStrings = (value: unknown): string[] =>
@@ -200,7 +196,6 @@ function parseFieldOverrides(value: unknown): FieldGroupingOverrides {
       ? value.groupings.flatMap(parseGrouping)
       : [],
     removedSyncNames: parseStrings(value.removedSyncNames),
-    confirmedSyncNames: parseStrings(value.confirmedSyncNames),
     defaultName:
       typeof value.defaultName === "string" ? value.defaultName : undefined,
   };
@@ -290,15 +285,6 @@ export function useGroupings() {
     [updateField],
   );
 
-  const confirmGrouping = useCallback(
-    (fieldId: FieldId, name: string) =>
-      updateField(fieldId, (current) => ({
-        ...current,
-        confirmedSyncNames: _.uniq([...current.confirmedSyncNames, name]),
-      })),
-    [updateField],
-  );
-
   const setDefaultGrouping = useCallback(
     (fieldId: FieldId, defaultName: string) =>
       updateField(fieldId, (current) => ({ ...current, defaultName })),
@@ -309,27 +295,17 @@ export function useGroupings() {
     getFieldGroupings,
     saveGrouping,
     removeGrouping,
-    confirmGrouping,
     setDefaultGrouping,
   };
 }
-
-/** A grouping as the drawer lists it */
-export type ResolvedGrouping = Grouping & {
-  /** Sync made it and no admin confirmed or edited it */
-  isInferred: boolean;
-};
 
 /** A column's groupings: built-ins, sync's and an admin's, and its default */
 export type ResolvedGroupings = {
   builtIns: Grouping[];
   /** Sync's (minus removed ones, with an admin's edits in their place), then an admin's */
-  groupings: ResolvedGrouping[];
+  groupings: Grouping[];
   /** `undefined` when the column has no default */
   defaultName: string | undefined;
-  defaultInference: DefaultGroupingInference | null;
-  /** The default is sync's guess, not an admin's choice */
-  isDefaultInferred: boolean;
   context: GroupingInferenceContext;
 };
 
@@ -353,8 +329,7 @@ export function useResolvedGroupings(
     structure.role != null &&
     isRoleA(structure.role, "role/PeriodicSnapshotFact") &&
     isDate(field) &&
-    (isPK(field) ||
-      structure.grainFields.some((grainField) => grainField.id === fieldId));
+    isPK(field);
   const periodGranularity = isPeriodKey
     ? structure.periodGranularity
     : undefined;
@@ -376,28 +351,20 @@ export function useResolvedGroupings(
     );
     const placed = new Set<SavedGrouping>();
     const syncGroupings = inferGroupings(field, context).flatMap(
-      (grouping): ResolvedGrouping[] => {
+      (grouping): Grouping[] => {
         const replacement = replacements.get(grouping.name);
         if (replacement) {
           placed.add(replacement);
-          return [{ ...replacement, isInferred: false }];
+          return [replacement];
         }
-        if (overrides.removedSyncNames.includes(grouping.name)) {
-          return [];
-        }
-        return [
-          {
-            ...grouping,
-            isInferred: !overrides.confirmedSyncNames.includes(grouping.name),
-          },
-        ];
+        return overrides.removedSyncNames.includes(grouping.name)
+          ? []
+          : [grouping];
       },
     );
-    const groupings: ResolvedGrouping[] = [
+    const groupings: Grouping[] = [
       ...syncGroupings,
-      ...overrides.groupings
-        .filter((saved) => !placed.has(saved))
-        .map((saved): ResolvedGrouping => ({ ...saved, isInferred: false })),
+      ...overrides.groupings.filter((saved) => !placed.has(saved)),
     ];
     const allNames = new Set(
       [...groupings, ...builtIns].map(({ name }) => name),
@@ -419,8 +386,6 @@ export function useResolvedGroupings(
       builtIns,
       groupings,
       defaultName: savedDefault ?? inferredDefault,
-      defaultInference,
-      isDefaultInferred: savedDefault == null && inferredDefault != null,
       context,
     };
   }, [

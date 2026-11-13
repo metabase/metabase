@@ -1,7 +1,0 @@
-/* The header and tabs stay put while the tab's content scrolls under them */
-.stickyHeader {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--mb-color-background_page-primary);
-}

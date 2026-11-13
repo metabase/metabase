@@ -28,8 +28,6 @@ import {
 } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
-import { InferredIcon } from "../TableSection/InferenceReview";
-
 // The outcome group column, lined up with its label above the rows
 const BUCKET_SELECT_WIDTH = 130;
 const RANK_SIZE = 20;
@@ -77,39 +75,23 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
     <Stack gap="xl">
       <EnumKindRadioGroup
         kind={enumKind}
-        isInferred={
-          overrides.enumKind == null && kindInference.kind !== "nominal"
-        }
-        inference={kindInference.signal}
         disabled={readOnly}
         onChange={(kind) => setEnumKind(fieldId, kind)}
       />
       {isOrdinal && (
-        <ValueOrder
-          order={order}
-          readOnly={readOnly}
-          onChange={saveOrder}
-          onConfirm={() => saveOrder(order.values)}
-        />
+        <ValueOrder order={order} readOnly={readOnly} onChange={saveOrder} />
       )}
     </Stack>
   );
 }
 
-/**
- * How the values relate, each option explained. Sync's guess carries the AI
- * icon, which confirms it; picking any other option saves that one.
- */
+/** How the values relate, each option explained */
 function EnumKindRadioGroup({
   kind,
-  isInferred,
-  inference,
   disabled,
   onChange,
 }: {
   kind: EnumKind;
-  isInferred: boolean;
-  inference: string;
   disabled: boolean;
   onChange: (kind: EnumKind) => void;
 }) {
@@ -131,17 +113,7 @@ function EnumKindRadioGroup({
             key={option}
             value={option}
             disabled={disabled}
-            label={
-              <Group gap="xs" wrap="nowrap">
-                {getEnumKindLabel(option)}
-                {isInferred && option === kind && (
-                  <InferredIcon
-                    description={inference}
-                    onConfirm={disabled ? undefined : () => onChange(kind)}
-                  />
-                )}
-              </Group>
-            }
+            label={getEnumKindLabel(option)}
             description={getEnumKindDescription(option)}
           />
         ))}
@@ -151,20 +123,17 @@ function EnumKindRadioGroup({
 }
 
 /**
- * The values in lifecycle order, right under the kinds. While it's sync's
- * guess, a line below says so, with the AI icon to confirm it; dragging a
- * value or changing a bucket also saves it.
+ * The values in lifecycle order, right under the kinds. Dragging a value or
+ * changing a bucket saves the order.
  */
 function ValueOrder({
   order,
   readOnly,
   onChange,
-  onConfirm,
 }: {
   order: ResolvedValueOrder;
   readOnly: boolean;
   onChange: (values: OrderedValue[]) => void;
-  onConfirm: () => void;
 }) {
   const hasValues = order.values.length > 0;
   return (
@@ -190,17 +159,6 @@ function ValueOrder({
           isEditable={!readOnly}
           onChange={onChange}
         />
-      )}
-      {hasValues && order.isInferred && (
-        <Group gap="xs" wrap="nowrap">
-          <Text size="sm" c="text-secondary">
-            {t`Guessed order`}
-          </Text>
-          <InferredIcon
-            description={order.inference.signal}
-            onConfirm={readOnly ? undefined : onConfirm}
-          />
-        </Group>
       )}
     </Stack>
   );

@@ -1,3 +1,4 @@
+export { AggregationClausePicker, FilterClausePickers } from "./ClausePickers";
 export {
   ClausePills,
   type QueryClause,

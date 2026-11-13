@@ -1,3 +1,3 @@
 export { ChangesOverTimeSection } from "./ChangesOverTimeSection";
 export { ColumnSelect } from "./ColumnSelect";
-export { InfoIcon, LabelWithInfo } from "./LabelWithInfo";
+export { InfoIcon } from "./LabelWithInfo";

@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import {
@@ -20,7 +19,6 @@ import {
   getAdditivityLabel,
   getFacetKey,
   getFacetOptions,
-  getFieldTypeLabel,
   isFieldTypeA,
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
@@ -31,7 +29,6 @@ import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
 import { SemanticTypeSelect } from "../SemanticInputs";
-import { InferredValue } from "../TableSection/InferenceReview";
 
 interface FieldSemanticsSectionProps {
   field: Field;
@@ -64,9 +61,10 @@ export function FieldSemanticsSection({
           label={t`Semantic type`}
           fillValue
           value={
-            <SemanticTypeInput
+            <SemanticTypeSelect
               field={field}
-              resolved={resolved}
+              value={semanticType}
+              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
               disabled={readOnly}
               onChange={(value) =>
                 setFieldType(field, {
@@ -114,71 +112,6 @@ export function FieldSemanticsSection({
       </DetailsTable>
     </SidebarSection>
   );
-}
-
-function SemanticTypeInput({
-  field,
-  resolved,
-  disabled,
-  onChange,
-}: {
-  field: Field;
-  resolved: ResolvedFieldType;
-  disabled: boolean;
-  onChange: (value: string | null) => void;
-}) {
-  const [isSelectOpenOnMount, { open: openSelectOnMount }] =
-    useDisclosure(false);
-  const unconfirmedType = resolved.hasSuggestion ? resolved.semanticType : null;
-
-  if (unconfirmedType != null) {
-    return (
-      <InferredValue
-        value={getFieldTypeLabel(unconfirmedType)}
-        inference={getInferenceDescription(resolved)}
-        readOnly={disabled}
-        onConfirm={() => onChange(unconfirmedType)}
-        onChange={() => {
-          openSelectOnMount();
-          onChange(unconfirmedType);
-        }}
-        data-testid="field-semantic-type-review"
-      />
-    );
-  }
-
-  return (
-    <SemanticTypeSelect
-      field={field}
-      value={resolved.semanticType}
-      markedValue={getMarkedType(field, resolved)}
-      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      disabled={disabled}
-      isOpenOnMount={isSelectOpenOnMount}
-      onChange={onChange}
-    />
-  );
-}
-
-function getInferenceDescription({
-  inference,
-  isOverridden,
-  replacedType,
-}: ResolvedFieldType): string | null {
-  if (isOverridden || inference == null) {
-    return null;
-  }
-  return replacedType != null
-    ? t`${inference.signal}. Sync had ${getFieldTypeLabel(replacedType)}.`
-    : inference.signal;
-}
-
-function getMarkedType(
-  field: Field,
-  { semanticType, inference }: ResolvedFieldType,
-): string | null {
-  const inferredType = inference?.semanticType ?? field.semantic_type ?? null;
-  return semanticType !== inferredType ? inferredType : null;
 }
 
 function withoutFacet(facets: Facets, type: string | null): Facets {

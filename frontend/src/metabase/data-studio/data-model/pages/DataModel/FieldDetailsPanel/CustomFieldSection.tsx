@@ -17,11 +17,9 @@ import {
   useDefinitionRows,
   useSchemaTables,
 } from "metabase/metadata/table-structure";
-import { Code, Group, Loader, Stack, Text } from "metabase/ui";
+import { Code, Loader, Stack, Text } from "metabase/ui";
 import { isDate, isSummable } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
-
-import { InferredIcon } from "../TableSection/InferenceReview";
 
 type DefinitionSource = {
   tableName: string;
@@ -83,14 +81,7 @@ export function CustomFieldSection({
       <DetailsTable>
         <DetailsRow
           label={t`Structure`}
-          value={
-            <Group gap="xs" wrap="nowrap">
-              <Text c="text-primary">{t`Custom property`}</Text>
-              <InferredIcon
-                description={t`it's named with the ${facet.prefix} prefix, which marks a column the customer added`}
-              />
-            </Group>
-          }
+          value={<Text c="text-primary">{t`Custom property`}</Text>}
         />
         <DetailsRow
           label={t`Label source`}
@@ -110,12 +101,7 @@ export function CustomFieldSection({
         <DetailsRow
           label={t`Meaning`}
           value={
-            <Meaning
-              field={field}
-              facet={facet}
-              source={source}
-              definition={definition}
-            />
+            <Meaning field={field} source={source} definition={definition} />
           }
         />
       </DetailsTable>
@@ -164,12 +150,10 @@ function LabelSource({
 
 function Meaning({
   field,
-  facet,
   source,
   definition,
 }: {
   field: Field;
-  facet: CustomPropertyFacet;
   source: DefinitionSource | null;
   definition: PropertyDefinition | undefined;
 }) {
@@ -179,17 +163,9 @@ function Meaning({
   const consequence = getMeaningConsequence(field);
   return (
     <Stack gap="xs" py="xs">
-      <Group gap="xs" wrap="nowrap">
-        <Text c="text-primary" fw="bold">
-          {semanticTypeName ?? t`No semantic type`}
-        </Text>
-        {/* No semantic type isn't a guess */}
-        {semanticTypeName != null && (
-          <InferredIcon
-            description={t`the rest of its name is ${facet.suffix}`}
-          />
-        )}
-      </Group>
+      <Text c="text-primary" fw="bold">
+        {semanticTypeName ?? t`No semantic type`}
+      </Text>
       {(declaredType != null && source?.typeColumn != null) || consequence ? (
         <Text size="sm" c="text-secondary">
           {declaredType != null &&

@@ -6,7 +6,6 @@ import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import {
   type Grouping,
   type GroupingInferenceContext,
-  type ResolvedGrouping,
   type ResolvedGroupings,
   getGroupingBucketCount,
   getGroupingStrategy,
@@ -36,7 +35,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { Field, IconName, Table } from "metabase-types/api";
 
-import { InferredIcon } from "../../TableSection/InferenceReview";
 import { ListEmptyItem } from "../../TableSection/ListSection";
 
 import { GroupingModal } from "./GroupingModal";
@@ -77,8 +75,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
   const readOnly = !table.can_write;
   const fieldId = field.id;
   const resolved = useResolvedGroupings(field, table);
-  const { saveGrouping, removeGrouping, confirmGrouping, setDefaultGrouping } =
-    useGroupings();
+  const { saveGrouping, removeGrouping, setDefaultGrouping } = useGroupings();
   const [editor, setEditor] = useState<EditorState | null>(null);
 
   if (!canHaveGroupings(field, resolved)) {
@@ -89,16 +86,9 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     ({ name }) => name,
   );
   const defaultName = resolved.defaultName;
-  const defaultInference =
-    resolved.isDefaultInferred && resolved.defaultInference
-      ? resolved.defaultInference.signal
-      : null;
   // The default leads; then built-ins, then sync's and an admin's
   const all = [
-    ...resolved.builtIns.map((grouping) => ({
-      grouping: { ...grouping, isInferred: false },
-      isBuiltIn: true,
-    })),
+    ...resolved.builtIns.map((grouping) => ({ grouping, isBuiltIn: true })),
     ...resolved.groupings.map((grouping) => ({ grouping, isBuiltIn: false })),
   ];
   const listed = [
@@ -132,13 +122,11 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
             grouping={grouping}
             context={resolved.context}
             isDefault={grouping.name === defaultName}
-            defaultInference={defaultInference}
             readOnly={readOnly}
             isBuiltIn={isBuiltIn}
             onOpen={() => setEditor({ grouping })}
             onMakeDefault={() => setDefaultGrouping(fieldId, grouping.name)}
             onRemove={() => removeGrouping(fieldId, grouping.name)}
-            onConfirm={() => confirmGrouping(fieldId, grouping.name)}
           />
         ))}
         {listed.length === 0 && (
@@ -189,27 +177,22 @@ function GroupingCard({
   grouping,
   context,
   isDefault,
-  defaultInference,
   readOnly,
   isBuiltIn,
   onOpen,
   onMakeDefault,
   onRemove,
-  onConfirm,
 }: {
   field: Field;
-  grouping: ResolvedGrouping;
+  grouping: Grouping;
   context: GroupingInferenceContext;
   isDefault: boolean;
-  /** Why sync picked the default, while it's still a guess */
-  defaultInference: string | null;
   readOnly: boolean;
   /** Every column of its type has it; it can be the default, not edited */
   isBuiltIn: boolean;
   onOpen: () => void;
   onMakeDefault: () => void;
   onRemove: () => void;
-  onConfirm: () => void;
 }) {
   const isProcess =
     grouping.kind === "partition" && grouping.definition.type === "process";
@@ -233,11 +216,9 @@ function GroupingCard({
       ? t`Column not found`
       : t`Segment group not found`);
   const bucketCount = getGroupingBucketCount(grouping, descriptionContext);
-  const isDefaultGuess = isDefault && defaultInference != null;
   // Built-ins can't be edited, so only the others open
   const isEditable = !readOnly && !isBuiltIn;
-  // Confirming is the AI icons' job; the menu makes it the default, and
-  // removes it unless it's built in
+  // The menu makes it the default, and removes it unless it's built in
   const hasActions = !readOnly && (!isDefault || !isBuiltIn);
 
   return (
@@ -265,24 +246,15 @@ function GroupingCard({
             <Text fw="bold" truncate>
               {grouping.name}
             </Text>
-            {isBuiltIn ? (
+            {isBuiltIn && (
               <Badge variant="light" color="neutral" flex="0 0 auto">
                 {t`Built-in`}
               </Badge>
-            ) : (
-              grouping.isInferred &&
-              grouping.signal != null && (
-                <InferredIcon
-                  description={grouping.signal}
-                  onConfirm={readOnly ? undefined : onConfirm}
-                />
-              )
             )}
             {isDefault && (
-              <DefaultBadge
-                inference={isDefaultGuess ? defaultInference : null}
-                onConfirm={readOnly ? undefined : onMakeDefault}
-              />
+              <Badge variant="light" flex="0 0 auto">
+                {t`Default`}
+              </Badge>
             )}
           </Flex>
           <Text size="sm" c="text-secondary">
@@ -326,26 +298,6 @@ function GroupingCard({
         )}
       </Group>
     </Card>
-  );
-}
-
-/** Marks the grouping Group by uses unless someone picks another */
-function DefaultBadge({
-  inference,
-  onConfirm,
-}: {
-  /** Why sync picked it, while it's still a guess */
-  inference: string | null;
-  /** Confirms sync's pick, from its AI icon */
-  onConfirm?: () => void;
-}) {
-  return (
-    <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-      <Badge variant="light">{t`Default`}</Badge>
-      {inference != null && (
-        <InferredIcon description={inference} onConfirm={onConfirm} />
-      )}
-    </Group>
   );
 }
 

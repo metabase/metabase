@@ -1,6 +1,7 @@
 import type { Row } from "@tanstack/react-table";
 import {
   type DragEvent,
+  type KeyboardEvent,
   type ReactNode,
   useMemo,
   useRef,
@@ -10,6 +11,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import CS from "metabase/css/core/index.css";
 import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
@@ -37,10 +39,14 @@ export type TreeItemNode = {
   name: string;
   icon: IconName;
   href?: string;
+  /** Edits the name in place, shown instead of the name */
+  nameInput?: ReactNode;
   definition?: ReactNode;
   /** Badges after the name, like Default */
   badges?: ReactNode;
   isMuted?: boolean;
+  /** A row with unsaved edits; it stays put and in search results */
+  isEditing?: boolean;
   actions?: ReactNode;
 };
 
@@ -68,14 +74,18 @@ type DraggedNode =
 
 const DRAG_TYPE = "application/x-metabase-group-member";
 
-// Fits accept and dismiss buttons, or a ⋯ menu. One width for every list, so
-// the Name and Definition columns line up between lists on the same page.
-const ACTIONS_WIDTH = 96;
+// Fits Save and Cancel buttons, accept and dismiss buttons, or a ⋯ menu. One
+// width for every list, so the Name and Definition columns line up between
+// lists on the same page.
+const ACTIONS_WIDTH = 152;
 
 const matchesQuery = (query: string, name: string) =>
   name.toLowerCase().includes(query.trim().toLowerCase());
 
-/** Groups whose name matches keep everything in them; others keep matches */
+/**
+ * Groups whose name matches keep everything in them; others keep matches.
+ * Rows being edited stay, so a new row's blank name doesn't hide it.
+ */
 function filterNodes(nodes: TreeNode[], query: string): TreeNode[] {
   if (query.trim() === "") {
     return nodes;
@@ -85,7 +95,7 @@ function filterNodes(nodes: TreeNode[], query: string): TreeNode[] {
       return [node];
     }
     if (node.kind === "item") {
-      return [];
+      return node.isEditing ? [node] : [];
     }
     const children = filterNodes(node.children, query);
     return children.length > 0 ? [{ ...node, children }] : [];
@@ -187,11 +197,21 @@ export function GroupedItemTree({
         cell: ({ row }) => {
           const node = row.original;
           const icon = node.kind === "group" ? groupIcon : node.icon;
+          const iconColor = node.isMuted ? "icon-secondary" : "core-brand";
+          if (node.kind === "item" && node.nameInput) {
+            return (
+              <Group gap="sm" wrap="nowrap" miw={0} flex={1}>
+                <Icon name={icon} c={iconColor} className={CS.flexNoShrink} />
+                {node.nameInput}
+                {node.badges}
+              </Group>
+            );
+          }
           const nameCell = (
             <Group gap="sm" wrap="nowrap" miw={0}>
               <EntityNameCell
                 icon={icon}
-                iconColor={node.isMuted ? "icon-secondary" : "core-brand"}
+                iconColor={iconColor}
                 nameColor={node.isMuted ? "text-secondary" : undefined}
                 name={node.name}
               />
@@ -254,13 +274,14 @@ export function GroupedItemTree({
     return parent?.kind === "group" ? parent.groupId : null;
   };
 
-  // Lists without the move callbacks neither start nor accept drags
+  // Lists without the move callbacks neither start nor accept drags, and a
+  // row being edited stays put
   const getDraggedNode = (
     node: TreeNode,
     fromGroupId: string | null,
   ): DraggedNode | null => {
     if (node.kind === "item") {
-      return onMove && node.memberId != null
+      return onMove && node.memberId != null && !node.isEditing
         ? { kind: "item", memberId: node.memberId, fromGroupId }
         : null;
     }
@@ -308,6 +329,13 @@ export function GroupedItemTree({
     return {
       draggable: dragged != null,
       "data-drop-over": toGroupId != null && dropTargetId === toGroupId,
+      // Typing in a row's inputs and pickers, which can be portalled popovers,
+      // isn't the list's arrow-key and space navigation
+      onKeyDown: (event: KeyboardEvent) => {
+        if (event.target !== event.currentTarget) {
+          event.stopPropagation();
+        }
+      },
       onDragStart: (event: DragEvent) => {
         if (!dragged) {
           return;

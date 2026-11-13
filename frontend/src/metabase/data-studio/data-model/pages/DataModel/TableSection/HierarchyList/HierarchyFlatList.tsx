@@ -14,7 +14,6 @@ import {
   Card,
   EntityNameCell,
   Flex,
-  Group,
   Icon,
   Stack,
   TextInput,
@@ -23,8 +22,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { Table } from "metabase-types/api";
-
-import { InferredIcon } from "../InferenceReview";
 
 import { HierarchyLevelPills } from "./HierarchyLevelPills";
 import { HierarchyMenu } from "./HierarchyMenu";
@@ -44,15 +41,14 @@ type HierarchyFlatListProps = {
 
 /**
  * PROTOTYPE: mocked. A table's hierarchies (doc 06), one row each with its
- * levels as pills in order; a row opens the hierarchy's page. The ones sync
- * made carry the AI icon until someone confirms or edits them.
+ * levels as pills in order; a row opens the hierarchy's page.
  */
 export function HierarchyFlatList({
   table,
   getHierarchyHref,
   newHierarchyHref,
 }: HierarchyFlatListProps) {
-  const { items, save, remove } = useTableHierarchies(table);
+  const { items, remove } = useTableHierarchies(table);
   const navigate = useNavigate();
   const { sendSuccessToast } = useMetadataToasts();
   const { findColumn } = useLevelColumns(table);
@@ -70,26 +66,15 @@ export function HierarchyFlatList({
     )
     .map((item): HierarchyRow => ({ id: item.hierarchy.id, ...item }));
 
-  // Rebuilt each render: the store's save/remove are new every render anyway
+  // Rebuilt each render: the store's remove is new every render anyway
   const columns: TreeTableColumnDef<HierarchyRow>[] = [
     {
       id: "name",
       header: t`Name`,
       minWidth: 240,
-      cell: ({ row }) => {
-        const { hierarchy, inference } = row.original;
-        return (
-          <Group gap="sm" wrap="nowrap" miw={0}>
-            <EntityNameCell icon="network" name={hierarchy.name} />
-            {inference != null && (
-              <InferredIcon
-                description={inference}
-                onConfirm={canEdit ? () => save(hierarchy) : undefined}
-              />
-            )}
-          </Group>
-        );
-      },
+      cell: ({ row }) => (
+        <EntityNameCell icon="network" name={row.original.hierarchy.name} />
+      ),
     },
     {
       id: "levels",

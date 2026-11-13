@@ -146,17 +146,12 @@ export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
 }
 
-/** PROTOTYPE: a table's hierarchies, as their own tab */
+/** PROTOTYPE: a table's hierarchies tab */
 export function dataStudioTableHierarchies(tableId: TableId) {
   return `${dataStudioLibrary()}/tables/${tableId}/hierarchies`;
 }
 
-/** PROTOTYPE: a table's hierarchies, as a sub-tab of Fields */
-export function dataStudioTableFieldsHierarchies(tableId: TableId) {
-  return `${dataStudioTableFields(tableId)}?view=hierarchies`;
-}
-
-/** PROTOTYPE: one hierarchy's page, in the list-and-page placement */
+/** PROTOTYPE: one hierarchy's page */
 export function dataStudioTableHierarchy(
   tableId: TableId,
   hierarchyId: string,

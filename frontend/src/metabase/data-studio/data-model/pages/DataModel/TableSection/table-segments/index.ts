@@ -1,5 +1,4 @@
 export {
-  type ResolvedDefaultSegment,
   type ResolvedRequiredFilter,
   type ResolvedSystemSegment,
   type TableSegmentsModel,

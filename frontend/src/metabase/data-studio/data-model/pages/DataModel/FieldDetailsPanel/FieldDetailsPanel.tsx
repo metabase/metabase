@@ -24,7 +24,7 @@ interface FieldDetailsPanelProps {
   defaultWidth: number;
   onWidthChange: (width: number) => void;
   getFieldHref: (fieldId: FieldId) => string;
-  /** Where the field's hierarchies are listed; Connected data's by default */
+  /** Where the field's hierarchies are listed; without it they don't link */
   hierarchiesHref?: string;
   onClose: () => void;
   onPreviewClick: () => void;

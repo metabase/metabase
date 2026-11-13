@@ -11,8 +11,8 @@ type TableSegmentsProps = {
 
 /**
  * The published table's segments: its custom segments and segment groups,
- * the default segments sync makes, and what sync proposes, opening the
- * Library's segment pages
+ * the default segments sync makes, and what sync proposes. Segments and
+ * proposals edit in place; their ⋯ menus open the Library's segment pages.
  */
 export function TableSegments({ table }: TableSegmentsProps) {
   return <SegmentTree table={table} urls={getPublishedSegmentUrls(table)} />;

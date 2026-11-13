@@ -1,4 +1,4 @@
-import { type Ref, useState } from "react";
+import type { Ref } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -39,7 +39,6 @@ import {
   DetailsEditableText,
   FieldDetailsSkeleton,
 } from "../DetailPanel";
-import { InferredValue } from "../TableSection/InferenceReview";
 
 import {
   type OpenPropertySignal,
@@ -48,7 +47,6 @@ import {
   getOpenSignals,
   getPropertyIcon,
   getPropertySemanticTypeOptions,
-  getPropertyTypeLabel,
   getPropertyTypeOptions,
 } from "./property-labels";
 
@@ -393,18 +391,6 @@ function RawName({
   );
 }
 
-function getTypeInference(property: RegistryProperty) {
-  if (property.typeSource !== "values") {
-    return null;
-  }
-  const inferredTypeLabel = getPropertyTypeLabel(property.inferredType);
-  const hasUntypedDefinition =
-    property.definition != null && property.definition.declaredType == null;
-  return hasUntypedDefinition
-    ? t`its definition has no type, and most values read as ${inferredTypeLabel}`
-    : t`most values read as ${inferredTypeLabel}. Values are stored as text.`;
-}
-
 function PropertyTypeRow({
   property,
   definitionColumns,
@@ -414,9 +400,7 @@ function PropertyTypeRow({
   definitionColumns: DefinitionColumnNames | null;
   onSave: (overrides: { type?: RegistryProperty["type"] }) => void;
 }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
   const declaredType = property.definition?.declaredType;
-  const confirm = () => onSave({ type: property.type });
 
   return (
     <DetailsRow
@@ -433,37 +417,21 @@ function PropertyTypeRow({
         </>
       }
       value={
-        // Read from the values: sync's guess, until an admin confirms it
-        property.typeSource === "values" ? (
-          <InferredValue
-            value={getPropertyTypeLabel(property.type)}
-            inference={getTypeInference(property)}
-            onConfirm={confirm}
-            onChange={() => {
-              setIsSelectOpenOnMount(true);
-              confirm();
-            }}
-            data-testid="property-type-review"
-          />
-        ) : (
-          <Select
-            aria-label={t`Type`}
-            classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-            data={getPropertyTypeOptions()}
-            value={property.type}
-            allowDeselect={false}
-            autoFocus={isSelectOpenOnMount}
-            defaultDropdownOpened={isSelectOpenOnMount}
-            onChange={(value) => {
-              const option = getPropertyTypeOptions().find(
-                (option) => option.value === value,
-              );
-              if (option) {
-                onSave({ type: option.value });
-              }
-            }}
-          />
-        )
+        <Select
+          aria-label={t`Type`}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          data={getPropertyTypeOptions()}
+          value={property.type}
+          allowDeselect={false}
+          onChange={(value) => {
+            const option = getPropertyTypeOptions().find(
+              (option) => option.value === value,
+            );
+            if (option) {
+              onSave({ type: option.value });
+            }
+          }}
+        />
       }
     />
   );

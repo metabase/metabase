@@ -17,8 +17,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 
-import { InferredIcon } from "../InferenceReview";
-
 import type { TransitionRow } from "./use-process-model";
 
 // The tree table's header and row heights, to size the frame to its rows
@@ -33,7 +31,7 @@ type TransitionNode = { id: string; row: TransitionRow };
 /**
  * PROTOTYPE: mocked. The moves between statuses as a table, like the table
  * list: where each starts and ends, how often it was seen, and whether it's
- * expected. Picking an expectedness, even sync's own guess, confirms it.
+ * expected.
  */
 export function TransitionsTable({
   rows,
@@ -140,7 +138,6 @@ function ExpectednessSelect({
   disabled: boolean;
   onChange: (kind: TransitionKind) => void;
 }) {
-  const isGuess = !row.isOverridden;
   return (
     <Select
       aria-label={t`Expectedness of ${row.from} to ${row.to}`}
@@ -153,19 +150,7 @@ function ExpectednessSelect({
       value={row.resolvedKind}
       allowDeselect={false}
       disabled={disabled}
-      // Inside the field, so the guess reads as part of the value; "all" lets
-      // its icon be clicked to confirm
-      leftSection={
-        isGuess ? (
-          <InferredIcon
-            description={row.signal}
-            onConfirm={disabled ? undefined : () => onChange(row.resolvedKind)}
-          />
-        ) : undefined
-      }
-      leftSectionPointerEvents="all"
-      // Fires for the current value too, so picking sync's guess confirms it
-      onOptionSubmit={(value) => {
+      onChange={(value) => {
         const kind = TRANSITION_KINDS.find((known) => known === value);
         if (kind) {
           onChange(kind);

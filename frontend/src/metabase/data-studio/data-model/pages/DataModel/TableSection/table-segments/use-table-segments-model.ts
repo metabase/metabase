@@ -52,7 +52,6 @@ export type ResolvedDefaultSegment = {
   segment: DefaultSegment;
   label: string;
   inference: DefaultSegmentInference;
-  inferredLabel: string;
   isOverridden: boolean;
 };
 
@@ -327,10 +326,6 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     segment: defaultSegmentValue,
     label: getDefaultSegmentLabel(defaultSegmentValue, customSegments),
     inference: defaultInference,
-    inferredLabel: getDefaultSegmentLabel(
-      defaultInference.segment,
-      customSegments,
-    ),
     isOverridden: defaultOverride != null,
   };
 
