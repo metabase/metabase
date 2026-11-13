@@ -126,8 +126,9 @@
 
 (deftest db-workspace-namespace-returns-nil-when-no-load-test
   (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
-    ;; The setting is cleared in the use-fixtures :each tear-down, so this confirms
-    ;; the read truly comes from the setting and not from any leftover rows.
+    ;; This database has no `database-workspace-schema`, so `db-workspace-namespace` has
+    ;; nothing to derive a value from. The use-fixtures :each tear-down turns
+    ;; `workspaces-enabled` off and deletes the remap rows after each test.
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (is (nil? (ws/db-workspace-namespace db-id)))))))
@@ -198,7 +199,7 @@
 ;;; without modification.
 
 (deftest mysql-cardinality-upgrade-section-test
-  (testing "MySQL workspace: only `:db` slot is populated in the setting (no schema layer)"
+  (testing "MySQL workspace: `db-workspace-namespace` has only the `:db` slot (no schema layer)"
     (testing "loader stores MySQL output namespace in the :db slot"
       (mt/with-empty-h2-app-db!
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
@@ -230,8 +231,8 @@
 ;;;
 ;;;   - the YAML parses
 ;;;   - the `:workspace` section validates against the spec
-;;;   - the loader round-trips it into the setting with the per-driver expected
-;;;     output namespace
+;;;   - after the loader applies it, `db-workspace-namespace` returns the per-driver
+;;;     expected output namespace
 ;;;
 ;;; If a driver's wire format drifts, the corresponding fixture and this test
 ;;; both have to be updated together - keeps doc and code aligned.

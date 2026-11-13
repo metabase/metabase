@@ -134,8 +134,8 @@
    later than the flag. On this node, other threads see the flag before the commit.
    When the transaction rolls back, reloads this process's settings cache, so that
    [[workspace-mode?]] matches the stored flag.
-   Throws a 400 for an unknown database id, on a parent, or when
-   `MB_WORKSPACES_ENABLED=false`.
+   Throws a 400 for an unknown database id, when this instance manages workspaces, or
+   while `MB_WORKSPACES_ENABLED=false`.
    Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
    and keeps the remap rows."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
