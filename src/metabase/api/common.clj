@@ -338,8 +338,10 @@
 
 (defn check-500
   "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-500))
+  ([arg]
+   (check arg generic-500))
+  ([arg msg]
+   (check arg [500 msg])))
 
 ;;; TODO -- why does this live here but other 'generic' responses live in [[metabase.request.util]]. We should move this
 ;;; so it lives with its friends

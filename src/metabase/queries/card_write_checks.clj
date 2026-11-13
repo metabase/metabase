@@ -90,7 +90,8 @@
     (when-let [dashboard-id (:dashboard_id card-updates)]
       (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
                                                          [(merge card-before-update card-updates)])))
-  (collection/check-allowed-to-change-collection card-before-update card-updates))
+  (collection/check-move-target-unarchived card-before-update card-updates)
+  (api/update-check card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
   [card-before-updates :- ::queries.schema/card

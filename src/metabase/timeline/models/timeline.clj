@@ -1,8 +1,11 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.cache :as models.cache]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -18,6 +21,40 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defn- check-read-keys
+  "Throws unless `timeline` has the columns its read check reads."
+  [timeline]
+  (api/check-500 (contains? timeline :collection_id) "No :collection_id is set for a Timeline."))
+
+(defn- check-write-keys
+  "Throws unless `timeline` is saved and has the columns its write check reads."
+  [timeline]
+  (check-read-keys timeline)
+  (api/check-500 (some? (:id timeline)) "No :id is set for a Timeline."))
+
+(defmethod mi/can-read? :model/Timeline
+  ([{collection-id :collection_id :as timeline}]
+   (check-read-keys timeline)
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id {:root-namespace nil}))
+  ([_model pk]
+   (mi/can-read? (timeline.db/timeline pk))))
+
+(defmethod mi/can-write? :model/Timeline
+  ([{id :id, collection-id :collection_id :as timeline}]
+   (check-write-keys timeline)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
+        (remote-sync/can-write? :model/Timeline id)))
+  ([_model pk]
+   (mi/can-write? (timeline.db/timeline pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (and (mi/can-write? timeline)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id timeline) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 ;;;; transforms
 

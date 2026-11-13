@@ -13,11 +13,10 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]))
@@ -92,10 +91,10 @@
    :suggestions {}})
 
 (defn- user-can-read?
-  "Reset the bound permissions to run a can read check for a specific user"
+  "Whether the User with `user-id` can read the row of `model` with `pk`, checked as that user with their own request
+  caches."
   [model pk user-id]
-  (binding [api/*current-user-id* user-id
-            api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
+  (request/with-current-user user-id
     (mi/can-read? model pk)))
 
 (mu/defn- merge-permission-check :- DebuggerSchema

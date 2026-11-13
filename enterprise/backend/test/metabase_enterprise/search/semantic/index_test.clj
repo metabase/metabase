@@ -15,7 +15,6 @@
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -770,63 +769,69 @@
 (deftest filter-read-permitted-fast-path-test
   (mt/with-premium-features #{:semantic-search}
     (testing "filter-read-permitted routes collection-id-only models through the fast path"
-      (mt/with-temp [:model/Collection {readable-coll-id :id} {}
-                     :model/Collection {unreadable-coll-id :id} {}]
-        (testing "indexed-entity docs are filtered by denormalized :collection_id"
-          (let [docs [{:id "1:123" :model "indexed-entity" :collection_id readable-coll-id}
-                      {:id "2:456" :model "indexed-entity" :collection_id unreadable-coll-id}
-                      {:id "3:789" :model "indexed-entity" :collection_id nil}]]
-            (testing "keeps all entities when user has root permissions"
-              (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                (is (= 3 (count (#'semantic.index/filter-read-permitted docs))))))
-            (testing "drops all entities when user has no permissions"
-              (binding [api/*current-user-permissions-set* (atom #{})]
-                (is (= 0 (count (#'semantic.index/filter-read-permitted docs))))))
-            (testing "keeps only entities in readable collections"
-              (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection               {readable-coll-id :id}   {}
+                       :model/Collection               {unreadable-coll-id :id} {}
+                       :model/PermissionsGroup         {group-id :id}           {}
+                       :model/User                     {reader-id :id}          {}
+                       :model/User                     {no-perms-id :id}        {}
+                       :model/PermissionsGroupMembership _                      {:user_id reader-id :group_id group-id}]
+          (perms/grant-collection-read-permissions! group-id readable-coll-id)
+          (testing "indexed-entity docs are filtered by denormalized :collection_id"
+            (let [docs [{:id "1:123" :model "indexed-entity" :collection_id readable-coll-id}
+                        {:id "2:456" :model "indexed-entity" :collection_id unreadable-coll-id}
+                        {:id "3:789" :model "indexed-entity" :collection_id nil}]]
+              (testing "keeps all entities when user has root permissions"
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (is (= 3 (count (#'semantic.index/filter-read-permitted docs))))))
+              (testing "drops all entities when user has no permissions"
+                (mt/with-current-user no-perms-id
+                  (is (= 0 (count (#'semantic.index/filter-read-permitted docs))))))
+              (testing "keeps only entities in readable collections"
+                (mt/with-current-user reader-id
+                  (let [result (#'semantic.index/filter-read-permitted docs)]
+                    (is (= 1 (count result)))
+                    (is (= "1:123" (:id (first result)))))))))
+          (testing "dashboard docs use the same fast path"
+            ;; Fast-path docs are adjudicated from the index row's denormalized `:collection_id` alone, so
+            ;; these fabricated ids never have to correspond to real rows. That is the whole point of the
+            ;; path — and the reason card/metric/dataset, which now take the slow path, need real rows below.
+            (let [docs [{:id 1 :model "dashboard" :collection_id readable-coll-id}
+                        {:id 2 :model "dashboard" :collection_id unreadable-coll-id}
+                        {:id 3 :model "dashboard" :collection_id nil}]]
+              (mt/with-current-user reader-id
                 (let [result (#'semantic.index/filter-read-permitted docs)]
-                  (is (= 1 (count result)))
-                  (is (= "1:123" (:id (first result)))))))))
-        (testing "dashboard docs use the same fast path"
-          ;; Fast-path docs are adjudicated from the index row's denormalized `:collection_id` alone, so
-          ;; these fabricated ids never have to correspond to real rows. That is the whole point of the
-          ;; path — and the reason card/metric/dataset, which now take the slow path, need real rows below.
-          (let [docs [{:id 1 :model "dashboard" :collection_id readable-coll-id}
-                      {:id 2 :model "dashboard" :collection_id unreadable-coll-id}
-                      {:id 3 :model "dashboard" :collection_id nil}]]
-            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-              (let [result (#'semantic.index/filter-read-permitted docs)]
-                (is (= [1] (map :id result))
-                    "only the doc whose denormalized collection_id is readable survives")))))
-        (testing "card/metric/dataset docs take the slow path"
-          ;; `:model/Card` left the collection-id-only registry once a Card could be scoped to a Document
-          ;; and gated by it rather than by its collection. The slow path loads the real row and runs
-          ;; `mi/can-read?` on it, so the verdict must still track the *collection* for an ordinary Card —
-          ;; and it must ignore a `:collection_id` on the index row that disagrees with the database.
-          (doseq [[model card-type] [["card" :question] ["metric" :metric] ["dataset" :model]]]
-            (testing (str "model=" model)
-              (mt/with-temp [:model/Card {readable-id :id}   {:type card-type :collection_id readable-coll-id}
-                             :model/Card {unreadable-id :id} {:type card-type :collection_id unreadable-coll-id}]
-                (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-                  (let [result (#'semantic.index/filter-read-permitted
-                                [{:id readable-id   :model model :collection_id readable-coll-id}
-                                 {:id unreadable-id :model model :collection_id unreadable-coll-id}
-                                 ;; a stale index row claiming a readable collection must not win:
-                                 ;; the slow path reads the live row, not the denormalized copy
-                                 {:id unreadable-id :model model :collection_id readable-coll-id}])]
-                    (is (= [readable-id] (map :id result)))))))))
-        (testing "memoizes permission check per collection_id across docs"
-          (let [calls       (atom 0)
-                real-helper (mt/original-fn #'perms/can-read-via-parent-collection?)]
-            (mt/with-dynamic-fn-redefs [perms/can-read-via-parent-collection? (fn [& args]
-                                                                                (swap! calls inc)
-                                                                                (apply real-helper args))]
-              (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                (#'semantic.index/filter-read-permitted
-                 (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
-                (is (= 1 @calls) "expected one can-read-via-parent-collection? call for the single distinct collection_id")))))
-        (testing "handles empty input"
-          (is (= [] (#'semantic.index/filter-read-permitted []))))))))
+                  (is (= [1] (map :id result))
+                      "only the doc whose denormalized collection_id is readable survives")))))
+          (testing "card/metric/dataset docs take the slow path"
+            ;; `:model/Card` left the collection-id-only registry once a Card could be scoped to a Document
+            ;; and gated by it rather than by its collection. The slow path loads the real row and runs
+            ;; `mi/can-read?` on it, so the verdict must still track the *collection* for an ordinary Card —
+            ;; and it must ignore a `:collection_id` on the index row that disagrees with the database.
+            (doseq [[model card-type] [["card" :question] ["metric" :metric] ["dataset" :model]]]
+              (testing (str "model=" model)
+                (mt/with-temp [:model/Card {readable-id :id}   {:type card-type :collection_id readable-coll-id}
+                               :model/Card {unreadable-id :id} {:type card-type :collection_id unreadable-coll-id}]
+                  (mt/with-current-user reader-id
+                    (let [result (#'semantic.index/filter-read-permitted
+                                  [{:id readable-id   :model model :collection_id readable-coll-id}
+                                   {:id unreadable-id :model model :collection_id unreadable-coll-id}
+                                   ;; a stale index row claiming a readable collection must not win:
+                                   ;; the slow path reads the live row, not the denormalized copy
+                                   {:id unreadable-id :model model :collection_id readable-coll-id}])]
+                      (is (= [readable-id] (map :id result)))))))))
+          (testing "memoizes permission check per collection_id across docs"
+            (let [calls       (atom 0)
+                  real-helper (mt/original-fn #'perms/can-read-via-parent-collection?)]
+              (mt/with-dynamic-fn-redefs [perms/can-read-via-parent-collection? (fn [& args]
+                                                                                  (swap! calls inc)
+                                                                                  (apply real-helper args))]
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (#'semantic.index/filter-read-permitted
+                   (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
+                  (is (= 1 @calls) "expected one can-read-via-parent-collection? call for the single distinct collection_id")))))
+          (testing "handles empty input"
+            (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
 
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"

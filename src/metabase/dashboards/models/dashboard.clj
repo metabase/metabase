@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -53,20 +52,35 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(defn- check-read-keys
+  "Throws unless `dashboard` has the columns its read check reads."
+  [dashboard]
+  (api/check-500 (contains? dashboard :collection_id) "No :collection_id is set for a Dashboard."))
+
+(defn- check-write-keys
+  "Throws unless `dashboard` is saved and has the columns its write check reads."
+  [dashboard]
+  (check-read-keys dashboard)
+  (api/check-500 (some? (:id dashboard)) "No :id is set for a Dashboard."))
+
 (defmethod mi/can-write? :model/Dashboard
-  ([instance]
-   ;; Dashboards in audit collection should be read only
-   (and (not (and
-              ;; We want to make sure there's an existing audit collection before doing the equality check below.
-              ;; If there is no audit collection, this will be nil:
-              (some? (:id (audit/default-audit-collection)))
-              ;; Is a direct descendant of audit collection
-              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([{id :id, collection-id :collection_id :as dashboard}]
+   (check-write-keys dashboard)
+   (and (not (perms/audit-content? collection-id))
+        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
+        (remote-sync/can-write? :model/Dashboard id)))
   ([_ pk]
    (mi/can-write? (dashboards.db/dashboard pk))))
 
-(perms/define-collection-based-visibility! :model/Dashboard)
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Dashboard
+  [dashboard changes]
+  (and (mi/can-write? dashboard)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id dashboard) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
+
+(perms/define-collection-based-visibility! :model/Dashboard :root-namespace nil)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

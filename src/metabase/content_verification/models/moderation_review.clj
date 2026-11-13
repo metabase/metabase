@@ -1,8 +1,10 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [metabase.api.common :as api]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -35,6 +37,20 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/search-index))
+
+;; A review has no Collection of its own, so these check the root Collection, as the parent-collection policy it used
+;; to derive did for a nil `:collection_id`.
+(defmethod mi/can-read? :model/ModerationReview
+  ([_review]
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read nil {:root-namespace nil}))
+  ([_model pk]
+   (mi/can-read? (content-verification.db/moderation-review pk))))
+
+(defmethod mi/can-write? :model/ModerationReview
+  ([_review]
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write nil {:root-namespace nil}))
+  ([_model pk]
+   (mi/can-write? (content-verification.db/moderation-review pk))))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

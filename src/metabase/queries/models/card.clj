@@ -186,7 +186,8 @@
       (let [document (queries.db/document-collection-and-exploration document-id)]
         (case read-or-write
           :read  (if-let [snapshots (summary-card-snapshots card document)]
-                   (and (mi/current-user-has-full-permissions? :read document)
+                   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read
+                                                                   (:collection_id document) {:root-namespace nil})
                         (every? cached-result/viewer-can-view-cached-result? snapshots))
                    (mi/can-read? document))
           :write (and (nil? (:exploration_id document))
@@ -202,27 +203,42 @@
 ;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
 ;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
 ;; so the document check below adds no further queries.
+(defn- check-read-keys
+  "Throws unless `card` has the columns its read check reads."
+  [card]
+  (api/check-500 (contains? card :collection_id) "No :collection_id is set for a Card."))
+
+(defn- check-write-keys
+  "Throws unless `card` is saved and has the columns its write check reads."
+  [card]
+  (check-read-keys card)
+  (api/check-500 (some? (:id card)) "No :id is set for a Card."))
+
 (defmethod mi/can-read? :model/Card
   ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+   (check-read-keys instance)
+   (and (perms/can-read-via-parent-collection? (:collection_id instance) {:root-namespace nil})
         (parent-document-permits? instance :read)))
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
 
 (defmethod mi/can-write? :model/Card
-  ([instance]
-   ;; Cards in audit collection should not be writable.
-   (and
-    (not (and
-          ;; We want to make sure there's an existing audit collection before doing the equality check below.
-          ;; If there is no audit collection, this will be nil:
-          (some? (:id (audit/default-audit-collection)))
-          ;; Is a direct descendant of audit collection
-          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-    (parent-document-permits? instance :write)))
+  ([{id :id, collection-id :collection_id :as instance}]
+   (check-write-keys instance)
+   (and (not (perms/audit-content? collection-id))
+        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
+        (remote-sync/can-write? :model/Card id)
+        (parent-document-permits? instance :write)))
   ([_ pk]
    (mi/can-write? (queries.db/card pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Card
+  [card changes]
+  (and (mi/can-write? card)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id card) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 (defn model?
   "Returns true if `card` is a model."

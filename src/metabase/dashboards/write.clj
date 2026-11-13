@@ -320,7 +320,8 @@
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
-      (collection/check-allowed-to-change-collection current-dash dash-updates)
+      (collection/check-move-target-unarchived current-dash dash-updates)
+      (api/update-check current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
       (api/check-500
        (do

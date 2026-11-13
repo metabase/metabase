@@ -91,7 +91,10 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  audit-content-hidden?
+  audit-content?
   can-read-via-parent-collection?
+  collection-based-visibility-root-namespaces
   collection-based-visibility-search-models
   collection-id-only-read-method
   collection-id-only-read-models

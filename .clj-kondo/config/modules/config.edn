@@ -736,9 +736,11 @@
   content-verification
   {:team "UX West"
    :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
-   :uses #{app-db
+   :uses #{api
+           app-db
            lib.schema
            models
+           permissions
            users.schema
            util}
    :model-exports #{:model/ModerationReview}
@@ -802,7 +804,6 @@
            analytics
            api
            app-db
-           audit-app
            collections
            content-verification
            embedding
@@ -950,6 +951,7 @@
            models
            parameters
            parameters.schema
+           permissions
            public-sharing
            queries
            query-permissions
@@ -3094,6 +3096,7 @@
            events
            lib.schema
            models
+           permissions
            remote-sync
            serialization
            util}
@@ -4368,6 +4371,7 @@
            models
            permissions
            query-processor
+           request
            util}
    :model-imports #{:model/Card :model/Table :model/User}}
 

@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -13,9 +14,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -51,6 +50,40 @@
   (let [timeline (or (:timeline event)
                      (timeline.db/timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
+
+(defn- check-read-keys
+  "Throws unless `event` has the columns its permission checks read."
+  [event]
+  (api/check-500 (or (contains? event :timeline) (contains? event :timeline_id))
+                 "No :timeline_id is set for a TimelineEvent."))
+
+(defn- event-timeline
+  "The Timeline of `event`, hydrated or by its `:timeline_id`."
+  [event]
+  (or (:timeline event)
+      (timeline.db/timeline (:timeline_id event))))
+
+(defmethod mi/can-read? :model/TimelineEvent
+  ([event]
+   (check-read-keys event)
+   (mi/can-read? (event-timeline event)))
+  ([_model pk]
+   (mi/can-read? (timeline.db/timeline-event pk))))
+
+(defmethod mi/can-write? :model/TimelineEvent
+  ([event]
+   (check-read-keys event)
+   (mi/can-write? (event-timeline event)))
+  ([_model pk]
+   (mi/can-write? (timeline.db/timeline-event pk))))
+
+;; Moving to another Timeline also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/TimelineEvent
+  [event changes]
+  (and (mi/can-write? event)
+       (or (not (contains? changes :timeline_id))
+           (and (mi/can-write? :model/Timeline (:timeline_id event))
+                (mi/can-write? :model/Timeline (:timeline_id changes))))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]

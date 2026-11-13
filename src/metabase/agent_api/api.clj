@@ -895,9 +895,9 @@
         ;; cards behave the same as UI-archived ones.
         card-updates (api/updates-with-archived-directly card-before-update raw-updates)]
     ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
-    ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
-    ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
-    (collection/check-allowed-to-change-collection card-before-update card-updates)
+    ;; target collection, which the Card's `can-update?` checks. Mirror the REST endpoint's gate.
+    (collection/check-move-target-unarchived card-before-update card-updates)
+    (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
@@ -1572,9 +1572,10 @@
         ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
         ;; may serve LLM callers better.
         updates      (api/updates-with-archived-directly current-dash updates)
-        ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
-        ;; above only covered the source entity. Mirror the REST endpoint's gate.
-        _            (collection/check-allowed-to-change-collection current-dash updates)
+        ;; A move requires write on BOTH source and target collection, which the Dashboard's
+        ;; `can-update?` checks. Mirror the REST endpoint's gate.
+        _            (collection/check-move-target-unarchived current-dash updates)
+        _            (api/update-check current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes
         ;; a dashboard being archived by THIS request — otherwise the post-mutation

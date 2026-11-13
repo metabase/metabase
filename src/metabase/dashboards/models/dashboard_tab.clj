@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -18,8 +19,6 @@
 
 (doto :model/DashboardTab
   (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
@@ -44,6 +43,25 @@
         tabs              (sort-by :position tabs)]
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
+
+(defn- check-read-keys
+  "Throws unless `tab` has the columns its permission checks read."
+  [tab]
+  (api/check-500 (contains? tab :dashboard_id) "No :dashboard_id is set for a DashboardTab."))
+
+(defmethod mi/can-read? :model/DashboardTab
+  ([tab]
+   (check-read-keys tab)
+   (mi/can-read? :model/Dashboard (:dashboard_id tab)))
+  ([_model pk]
+   (mi/can-read? (dashboards.db/dashboard-tab pk))))
+
+(defmethod mi/can-write? :model/DashboardTab
+  ([tab]
+   (check-read-keys tab)
+   (mi/can-write? :model/Dashboard (:dashboard_id tab)))
+  ([_model pk]
+   (mi/can-write? (dashboards.db/dashboard-tab pk))))
 
 (defmethod mi/perms-objects-set :model/DashboardTab
   [dashtab read-or-write]

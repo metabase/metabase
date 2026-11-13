@@ -3,9 +3,12 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :refer [hydrate]]))
@@ -66,6 +69,26 @@
                 ;; Root collection itself is not remote-synced; individual top-level collections
                 ;; within the shared-tenant-collection namespace can be toggled individually.
                 :is_remote_synced false))
+
+(mu/defn can-read-collection-or-root? :- :boolean
+  "Whether the current user can read the Collection with `collection-id`, or, for nil, the root Collection of the
+  `:root-namespace` option."
+  [collection-id                    :- [:maybe ms/PositiveInt]
+   {root-namespace :root-namespace} :- ::permissions.schema/collection-options]
+  (boolean
+   (if collection-id
+     (mi/can-read? :model/Collection collection-id)
+     (mi/can-read? (root-collection-with-ui-details root-namespace)))))
+
+(mu/defn can-write-collection-or-root? :- :boolean
+  "Whether the current user can write the Collection with `collection-id`, or, for nil, the root Collection of the
+  `:root-namespace` option."
+  [collection-id                    :- [:maybe ms/PositiveInt]
+   {root-namespace :root-namespace} :- ::permissions.schema/collection-options]
+  (boolean
+   (if collection-id
+     (mi/can-write? :model/Collection collection-id)
+     (mi/can-write? (root-collection-with-ui-details root-namespace)))))
 
 (defn hydrated-root-collection
   "Return the root collection entity for the given namespace.
