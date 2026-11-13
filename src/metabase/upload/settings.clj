@@ -28,6 +28,7 @@
   :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json
   :audit      :getter
+  :can-read-from-env? false
   :getter     (fn []
                 (let [db (upload.db/current-database)]
                   {:db_id        (:id db)
@@ -47,6 +48,12 @@
 ;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
 ;; to migrate to the new way to set uploads settings.
 
+(def ^:private deprecated-uploads-setting-doc
+  (str "Metabase no longer uses this variable, because the upload settings now live on the database that receives "
+       "uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. "
+       "On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the "
+       "[configuration file](./config-file.md)."))
+
 (defsetting uploads-enabled
   "Whether or not uploads are enabled"
   :deprecated "0.50.0"
@@ -54,6 +61,7 @@
   :export?    false
   :type       :boolean
   :default    false
+  :doc        deprecated-uploads-setting-doc
   :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
 
@@ -63,6 +71,7 @@
   :visibility :internal
   :export?    false
   :type       :integer
+  :doc        deprecated-uploads-setting-doc
   :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
 
@@ -73,6 +82,7 @@
   :visibility :internal
   :export?    false
   :type       :string
+  :doc        deprecated-uploads-setting-doc
   :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
 
@@ -83,6 +93,7 @@
   :visibility :internal
   :export?    false
   :type       :string
+  :doc        deprecated-uploads-setting-doc
   :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
 
