@@ -113,7 +113,7 @@
   (when (str/starts-with? ref definitions-path)
     (str/replace (subs ref (count definitions-path)) "~1" "/")))
 
-(defn- postwalk-schemas
+(defn postwalk-schemas
   "Apply `f` to every subschema of the JSON Schema `node`, children first, leaving property names and values alone."
   [f node]
   (if-not (map? node)
