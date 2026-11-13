@@ -464,7 +464,7 @@
                  (create-with-key 500 "kept-empty" "Kept empty" db-id))))))))
 
 (deftest create-idempotency-retry-after-failed-cleanup-test
-  (testing "a retry of a create whose provisioning and cleanup both failed replays the 500 and provisions nothing"
+  (testing "a retry of a create whose provisioning and cleanup both failed answers 500 with the same workspace_id, and provisions nothing"
     (do-with-eligible-database!
      (fn [db-id]
        (let [inits  (atom 0)
@@ -474,16 +474,12 @@
                       (grant!   [_ _ _ _ _] nil)
                       (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
          (with-redefs [provisioning/dispatching-provisioner wedged]
-           ;; master keeps the workspace and answers 200; with #86601 this first create is the 500 too
-           (let [{ws-id :id} (create-with-key 200 "retry-after-failed-cleanup" "Wedged" db-id)]
-             (is (=? {:databases [{:status "unprovisioned"}]}
+           (let [{ws-id :workspace_id :as failed} (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)]
+             (is (=? {:workspace_id pos-int? :cleanup_required true} failed)
+                 "the first create kept the workspace and says so")
+             (is (=? {:databases [{:status "teardown_failed"}]}
                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
-             ;; master's failed cleanup leaves the row `unprovisioned`, like a create that has not yet
-             ;; reached it, so a retry within 15 minutes is a 409; with #86788 the row is `teardown_failed`
-             (is (=? {:error-code "workspace_busy"}
-                     (create-with-key 409 "retry-after-failed-cleanup" "Wedged" db-id)))
-             (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
-                         {:updated_at (t/minus (t/offset-date-time) (t/hours 1))})
+             ;; no busy check counts a `teardown_failed` row, so the retry is not a 409, at any age of the row
              (is (=? {:workspace_id ws-id :cleanup_required true}
                      (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
              (is (= 1 @inits) "the retry provisioned nothing")
@@ -550,25 +546,21 @@
            (create-with-key 200 (apply str (repeat 255 "k")) "Long key" db-id)))))))
 
 (defn- pausing-before-nth-provision!
-  "A replacement for `provisioning/provision-single!` whose `n`th call delivers its row id
-  to `paused`, then waits for `resume`, before the row turns `:provisioning`."
+  "A replacement for `provisioning/provision-workspace-database!` whose `n`th call delivers
+  its row id to `paused`, then waits for `resume`, before the row's provisioning starts."
   [n paused resume]
-  (let [provision-single! provisioning/provision-single!
-        calls             (atom 0)]
-    (fn
-      ([wsd-id]
-       (when (= n (swap! calls inc))
-         (deliver paused wsd-id)
-         (deref resume 30000 nil))
-       (provision-single! wsd-id))
-      ;; the 1-arity original calls the var again with 2 args; that call is not counted
-      ([wsd-id provisioner]
-       (provision-single! wsd-id provisioner)))))
+  (let [provision! provisioning/provision-workspace-database!
+        calls      (atom 0)]
+    (fn [wsd-id provisioner]
+      (when (= n (swap! calls inc))
+        (deliver paused wsd-id)
+        (deref resume 30000 nil))
+      (provision! wsd-id provisioner))))
 
 (deftest create-idempotency-retry-before-database-provisioning-test
-  (testing "a same-key retry while a database of the first create is not yet provisioning gets 409 workspace_busy, never the failed-create 500"
-    (doseq [[n window] [[1 "before the first database turns provisioning"]
-                        [2 "after the first database is provisioned, before the second turns provisioning"]]]
+  (testing "a same-key retry before a database's provisioning starts in the first create gets 409 workspace_busy, never the 500 that says to delete the workspace"
+    (doseq [[n window] [[1 "before the first database's provisioning starts"]
+                        [2 "after the first database is provisioned, before the second's starts"]]]
       (testing window
         (do-with-eligible-database!
          (fn [db1-id]
@@ -581,11 +573,11 @@
                                       :crowberto :post "ee/workspace-manager/"
                                       {:request-options {:headers {"idempotency-key" idempotency-key}}}
                                       {:name "Gated" :database_ids [db1-id db2-id]})]
-                (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)
-                              provisioning/provision-single!       (pausing-before-nth-provision! n paused resume)]
+                (with-redefs [provisioning/dispatching-provisioner       (stub-provisioner)
+                              provisioning/provision-workspace-database! (pausing-before-nth-provision! n paused resume)]
                   (let [create (future (create!))]
                     (try
-                      (is (some? (deref paused 10000 nil)) "the first create paused before a database turned provisioning")
+                      (is (some? (deref paused 10000 nil)) "the first create paused before a database's provisioning started")
                       (let [{:keys [status body]} (create!)]
                         (is (= 409 status) (str "body " (pr-str body)))
                         (is (=? {:error-code "workspace_busy"} body)))
