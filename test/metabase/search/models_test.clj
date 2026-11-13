@@ -52,6 +52,23 @@
 
 ;;; Capture wiring
 
+(deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
+  (testing "the revisions and moderation reviews a card delete removes don't enqueue re-derivations of their own"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {id :id} {}
+                     :model/Revision         _        {:model       "Card"
+                                                       :model_id    id
+                                                       :user_id     (mt/user->id :crowberto)
+                                                       :object      {}
+                                                       :is_creation true
+                                                       :most_recent true}
+                     :model/ModerationReview _        {:moderated_item_type "card"
+                                                       :moderated_item_id   id
+                                                       :moderator_id        (mt/user->id :crowberto)
+                                                       :status              "verified"
+                                                       :most_recent         true}]
+        (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
+
 (deftest capture-fields-disabled-without-engine-test
   (testing "delete capture is skipped entirely, with no pre-select, when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
@@ -101,9 +118,10 @@
               with-capture    (statements #(t2/delete! :model/Card :id captured))
               without-capture (binding [search.ingestion/*disable-updates* true]
                                 (statements #(t2/delete! :model/Card :id uncaptured)))]
-          ;; The card's snapshot, empty snapshots for the Revision and ModerationReview deletes in its
-          ;; `before-delete`, and the action and indexed-entity cascade scans.
-          (is (= 5 (- with-capture without-capture))))))))
+          ;; The action and indexed-entity cascade scans.
+          ;; A delete by literal primary key builds the card's snapshot without a select, and the Revision and
+          ;; ModerationReview deletes in its `before-delete` bypass capture.
+          (is (= 2 (- with-capture without-capture))))))))
 
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
