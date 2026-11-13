@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
@@ -356,29 +355,22 @@
     :json :embedded-json-download
     :embedded-question))
 
-;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
-;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
-;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
-;;; endpoints cannot forget them. (For preview_embed this also means the preview shows what the published embed will
-;;; show, rather than routing via the previewing admin's own user attribute.)
-
 (defn process-query-for-card-with-params
   "Run the query associated with pre-loaded Card `card` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Callers are responsible for selecting `card`
-  exactly once per request and threading it here. Runs with database routing off (see above). Returns
-  `StreamingResponse` that should be returned as the API endpoint result."
+  exactly once per request and threading it here. Returns `StreamingResponse` that should be returned as the API
+  endpoint result."
   [& {:keys [export-format card embedding-params token-params query-params qp constraints options]
       :or   {qp qp.card/process-query-for-card-default-qp}}]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
-    (database-routing/with-anonymous-router-access
-      (m/mapply api.public/process-query-for-card-with-id
-                card export-format parameters
-                :context     (get-embed-card-context export-format)
-                :constraints constraints
-                :qp          qp
-                options))))
+    (m/mapply api.public/process-query-for-card-with-id
+              card export-format parameters
+              :context     (get-embed-card-context export-format)
+              :constraints constraints
+              :qp          qp
+              options)))
 
 (defn- tile-slug->value
   [object-parameters parameter-values]
@@ -410,11 +402,9 @@
                                                            (tile-slug->value (:parameters dashboard) parameter-values))))
 
 (defn process-tiles-query-for-card
-  "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database
-  routing off (see above). Used by the embed tiles endpoints. Returns a Ring response."
+  "Runs [[metabase.tiles.api/process-tiles-query-for-card]] for the embed tiles endpoints. Returns a Ring response."
   [card parameters zoom x y lat-field lon-field]
-  (database-routing/with-anonymous-router-access
-    (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
+  (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
@@ -472,8 +462,8 @@
 
 (defn process-query-for-dashcard
   "Return results for running the query belonging to a DashboardCard. Callers are responsible for selecting the
-  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Runs with database
-  routing off (see the comment above [[process-query-for-card-with-params]]). Returns a `StreamingResponse`."
+  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Returns a
+  `StreamingResponse`."
   [& {:keys [dashboard dashcard card export-format embedding-params token-params middleware
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -482,26 +472,23 @@
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (database-routing/with-anonymous-router-access
-      (api.public/process-query-for-dashcard
-       :dashboard     dashboard
-       :card          card
-       :dashcard      dashcard
-       :export-format export-format
-       :parameters    parameters
-       :qp            qp
-       :context       (get-embed-dashboard-context export-format)
-       :constraints   constraints
-       :middleware    middleware))))
+    (api.public/process-query-for-dashcard
+     :dashboard     dashboard
+     :card          card
+     :dashcard      dashcard
+     :export-format export-format
+     :parameters    parameters
+     :qp            qp
+     :context       (get-embed-dashboard-context export-format)
+     :constraints   constraints
+     :middleware    middleware)))
 
 (defn process-tiles-query-for-dashcard
-  "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card
-  entities and runs with database routing off (see the comment above [[process-query-for-card-with-params]]). Used by
-  the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
+  "Runs [[metabase.public-sharing-rest.api/process-tiles-query-for-dashcard]] for the embed tiles endpoints. Callers
+  select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
-  (database-routing/with-anonymous-router-access
-    (api.public/process-tiles-query-for-dashcard dashboard dashcard card
-                                                 parameters zoom x y lat-field lon-field)))
+  (api.public/process-tiles-query-for-dashcard dashboard dashcard card
+                                               parameters zoom x y lat-field lon-field))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
@@ -523,13 +510,11 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        ;; guest embeds always use the router (primary) database, never a routed destination
-        (database-routing/with-anonymous-router-access
-          (request/as-admin
-            (queries/card-param-values card param-key search-prefix
-                                       (queries/card-param-constraints
-                                        card
-                                        (locked-slug->value embedding-params slug-token-params)))))
+        (request/as-admin
+          (queries/card-param-values card param-key search-prefix
+                                     (queries/card-param-constraints
+                                      card
+                                      (locked-slug->value embedding-params slug-token-params))))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id       (u/the-id card)
@@ -571,12 +556,11 @@
                              (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (database-routing/with-anonymous-router-access
-          (request/as-admin
-            (queries/card-param-remapped-value card param-key value
-                                               (queries/card-param-constraints
-                                                card
-                                                (locked-slug->value embedding-params slug-token-params)))))
+        (request/as-admin
+          (queries/card-param-remapped-value card param-key value
+                                             (queries/card-param-constraints
+                                              card
+                                              (locked-slug->value embedding-params slug-token-params))))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id   (u/the-id card)
@@ -633,9 +617,8 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (database-routing/with-anonymous-router-access
-            (request/as-admin
-              (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix)))
+          (request/as-admin
+            (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
@@ -690,6 +673,5 @@
                        {:status-code 400})))
      (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
                            (select-keys locked-param-ids))]
-       (database-routing/with-anonymous-router-access
-         (request/as-admin
-           (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints)))))))
+       (request/as-admin
+         (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))
