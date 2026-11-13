@@ -1241,11 +1241,10 @@
                                       (u/prog1 (pools-state)
                                         ;; the write is under way here, so a stop on another thread has to wait for it
                                         (.start stopper)
-                                        (reset! waited? (loop [tries 0]
-                                                          (cond
-                                                            (= Thread$State/BLOCKED (.getState stopper)) true
-                                                            (< tries 500) (do (Thread/sleep 10) (recur (inc tries)))
-                                                            :else false)))))]
+                                        (reset! waited? (some? (u/poll {:thunk       #(.getState stopper)
+                                                                        :done?       #{Thread$State/BLOCKED}
+                                                                        :timeout-ms  5000
+                                                                        :interval-ms 10})))))]
           (#'sql-jdbc.conn/swap-pools-state! assoc ::written true))
         (is (= {:stop-waited-for-the-write? true, :stopped? true, :pools nil}
                {:stop-waited-for-the-write? @waited?
