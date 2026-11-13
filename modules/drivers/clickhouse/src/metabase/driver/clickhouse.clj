@@ -781,7 +781,8 @@
                            "of all users. A ClickHouse server administrator must set "
                            "access_control_improvements.select_from_system_db_requires_grant to true in the server "
                            "configuration (config.xml), restart the server, and retry. It is off by default on "
-                           "ClickHouse 23.3 to 24.3, so this is a one-time setup step.")
+                           "ClickHouse 23.3 to 24.3. The setting persists in the configuration, so this is a one-time "
+                           "setup step.")
                       {:status-code 412})))))
 
 (defmethod driver/init-workspace-isolation! :clickhouse
@@ -854,7 +855,9 @@
 
 (defn- destroy-workspace!
   "Runs [[destroy-workspace-sqls]] one at a time. A failed KILL QUERY (the admin may lack the KILL QUERY grant, which
-  ClickHouse checks only when another user's query matches) does not stop DROP DATABASE; its error is rethrown after."
+  ClickHouse checks only when another user's query matches) does not stop DROP DATABASE. When DROP DATABASE succeeds,
+  the KILL QUERY error is thrown after it; an access denied error becomes one that names the missing grant. When DROP
+  DATABASE fails too, its error is thrown, with the KILL QUERY error attached as suppressed."
   [^Statement stmt db-name user]
   (let [[^String drop-user ^String kill ^String drop-db] (destroy-workspace-sqls db-name user)]
     (.execute stmt drop-user)
