@@ -31,18 +31,12 @@
                  (driver.u/lib-database db-id)))))
 
 (defn- with-provisioned-workspace-db!
-  "Set the `instance-workspace` setting so `db-workspace-namespace` returns
-   `{:schema output-schema}` for `db-id`, run `f`, clear it on the way out.
+  "Make `db-id` write to `output-schema`, so `db-workspace-namespace` returns
+   `{:schema output-schema}` for it, run `f`, undo it on the way out.
    Enables `:workspaces` for the duration."
   [db-id output-schema f]
   (mt/with-premium-features #{:workspaces}
-    (try
-      (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                   :databases {db-id {:input_schemas ["_"]
-                                                      :output        {:schema output-schema}}}})
-      (f)
-      (finally
-        (ws/clear-instance-workspace!)))))
+    (workspaces.tu/with-workspace-db! db-id output-schema f)))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
   (clean-db-fixture!
@@ -137,24 +131,8 @@
              (is (= {{:db "" :schema "PUBLIC" :table "ORDERS"} {:db "" :schema "ws_idem" :table "PUBLIC__ORDERS"}}
                     (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
-(defn- with-provisioned-workspace-db-namespace!
-  "Variant of `with-provisioned-workspace-db!` that takes a full
-   `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
-   string. Used to exercise cross-DB workspaces (SQL Server / BigQuery) where
-   the to-side `:db` slot must flow through to the `TableRemapping` row.
-   Enables `:workspaces` for the duration."
-  [db-id output-namespace f]
-  (mt/with-premium-features #{:workspaces}
-    (try
-      (ws/set-instance-workspace! {:name "ws-3-slot"
-                                   :databases {db-id {:input_schemas ["_"]
-                                                      :output        output-namespace}}})
-      (f)
-      (finally
-        (ws/clear-instance-workspace!)))))
-
 (deftest add-transform-target-mapping!-flows-both-slots-from-namespace-test
-  (testing "When the workspace output namespace populates :db, both slots flow into the TableRemapping row"
+  (testing "On a 3-slot engine, the to-side :db is the database's own catalog and :schema the workspace schema"
     ;; Requires the :sqlserver driver class on the test classpath - same skip pattern as the
     ;; per-driver spec-for-table tests above. Run with:
     ;;   ./bin/test-agent --drivers=sqlserver,h2 :only '[...this test...]'
@@ -172,21 +150,21 @@
                                                                    :engine :sqlserver
                                                                    :details {:db "AnalyticsDB"})
                                                             row))))]
-           (with-provisioned-workspace-db-namespace!
-             (mt/id) {:db "WS_DB" :schema "ws_alice"}
+           (with-provisioned-workspace-db!
+             (mt/id) "ws_alice"
              (fn []
                (let [to-spec (ws.table-remapping/add-transform-target-mapping!
                               (mt/id) {:schema "dbo" :name "orders" :type :table})]
-                 (testing "to-side spec carries both :db and :schema from the workspace namespace"
-                   (is (= "WS_DB" (:db to-spec)))
+                 (testing "to-side spec carries the catalog from Database.details and the workspace schema"
+                   (is (= "AnalyticsDB" (:db to-spec)))
                    (is (= "ws_alice" (:schema to-spec)))
                    (is (= "dbo__orders" (:name to-spec))
                        "table is renamed via remapped-table-name to avoid cross-schema collisions"))
                  (testing "TableRemapping row stores both slots, source-side too"
                    (is (= {{:db "AnalyticsDB" :schema "dbo"      :table "orders"}
-                           {:db "WS_DB"       :schema "ws_alice" :table "dbo__orders"}}
+                           {:db "AnalyticsDB" :schema "ws_alice" :table "dbo__orders"}}
                           (ws.table-remapping/all-mappings-for-db (mt/id)))
-                       "from_db = AnalyticsDB (from spec-for-table on :sqlserver), to_db = WS_DB (from workspace namespace)")))))))))))
+                       "from_db and to_db are both AnalyticsDB (Database.details on :sqlserver)")))))))))))
 
 (deftest workspace-remap-schema+name-redirects-sync-fetch-test
   (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"

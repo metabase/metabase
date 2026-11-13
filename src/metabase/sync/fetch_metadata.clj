@@ -138,39 +138,44 @@
         (mu.fn/instrument-ns? *ns*)
         (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
 
+(defn- workspace-fk-metadata
+  "[[driver/describe-fks]] on a database with table remappings. Expands `:schema-names` to include
+  workspace-isolation schemas so the driver finds FKs on the physical tables that back canonical Tables, then
+  back-translates workspace-side identifiers in the result so the rows match canonical Table rows in app-db."
+  [driver database args]
+  (let [db-id          (:id database)
+        expanded-args  (cond-> args
+                         (:schema-names args)
+                         (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))
+        ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
+        ;; *different* bound database than the canonical) need describe-fks to
+        ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
+        ;; via the workspace hook and concatenate row results.
+        row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
+                        db-id
+                        (fn []
+                          (into [] (driver/describe-fks driver
+                                                        database
+                                                        expanded-args))))
+        raw-rows       (vec (mapcat identity row-batches))]
+    (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)))
+
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
 
-  In workspace mode, expands `:schema-names` to include workspace-isolation schemas so
-  the warehouse driver finds FKs on the physical tables that back canonical Tables, then
-  back-translates workspace-side identifiers in the result so the rows match canonical
-  Table rows in app-db."
+  On a database with table remappings, see [[workspace-fk-metadata]]. Otherwise the driver's reducible is returned
+  as is, so it streams."
   [database     :- i/DatabaseInstance
    & {:as args} :- [:maybe ::driver/describe-fks.options]]
   (log-if-error "fk-metadata"
-    (let [driver        (driver.u/database->driver database)
-          db-id         (:id database)
-          expanded-args (cond-> args
-                          (:schema-names args)
-                          (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))]
+    (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (let [ ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
-              ;; *different* bound database than the canonical) need describe-fks to
-              ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
-              ;; via the workspace hook and concatenate row results. OSS fallback
-              ;; calls the thunk once with no swap, preserving today's behavior.
-              row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
-                              db-id
-                              (fn []
-                                (into [] (driver/describe-fks driver
-                                                              database
-                                                              expanded-args))))
-              raw-rows       (vec (mapcat identity row-batches))
-              rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
-          (cond->> rewritten-rows
-            ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-            (mu.fn/instrument-ns? *ns*)
-            (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
+        (cond->> (if (ws.table-remapping/table-remappings-exist? (:id database))
+                   (workspace-fk-metadata driver database args)
+                   (driver/describe-fks driver database args))
+          ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+          (mu.fn/instrument-ns? *ns*)
+          (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
   "Get information about the indexes belonging to `table`. In workspace mode,

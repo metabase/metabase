@@ -5,7 +5,6 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
-   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -193,6 +192,35 @@
                         :status        :provisioned}]
                       (:databases ws))))))))))
 
+(deftest create-workspace-empty-input-schemas-test
+  (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+    (testing "a database with schemas but no synced tables is rejected before anything is created"
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (is (=? {:message #".*no synced schemas.*"
+                   :data    {:status-code 400 :database_id db-id}}
+                  (try
+                    (ws/create-workspace! {:name         "No Inputs"
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db-id]})
+                    nil
+                    (catch ExceptionInfo e {:message (ex-message e) :data (ex-data e)}))))
+          (is (not (t2/exists? :model/Workspace :name "No Inputs"))))))
+    (testing "a schemaless database (MySQL) is accepted with empty input_schemas"
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :mysql
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema nil :active true}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (is (=? [{:database_id   db-id
+                    :input_schemas []
+                    :status        :provisioned}]
+                  (:databases (ws/create-workspace! {:name         "MySQL"
+                                                     :creator_id   (mt/user->id :crowberto)
+                                                     :database_ids [db-id]})))))))))
+
 (deftest refused-init-row-is-never-torn-down-by-a-concurrent-delete-test
   (testing "a DELETE that runs once a refused init has released the per-row lock destroys nothing"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
@@ -364,64 +392,3 @@
                                        :to_table_name   "orders"})
     (let [remappings (ws/list-remappings)]
       (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
-;;; ----------------------------------------- workspace-instance lock ------------------------------------------
-
-(defn- lock-atom
-  "Reach through the private var to the lock atom."
-  []
-  @#'ws/locked-by-config?*)
-
-(deftest workspace-locked-by-config?-baseline-test
-  (testing "default state (no atom flip, no env-var) is unlocked"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest workspace-locked-by-config?-atom-flipped-test
-  (testing "after mark-locked-by-config!, the predicate returns true"
-    (workspaces.tu/with-workspace-locked-by-config
-      (fn [] (is (true? (ws/workspace-locked-by-config?)))))))
-
-(deftest mark-locked-by-config!-flips-the-atom-test
-  (testing "mark-locked-by-config! flips the atom to true"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (ws/mark-locked-by-config!)
-        (is (true? @a))
-        (is (true? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest env-var-presence-locks-test
-  (testing "MB_INSTANCE_WORKSPACE set => predicate true regardless of atom"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-          (is (true? (ws/workspace-locked-by-config?))))
-        (testing "outside the binding, atom alone determines the lock"
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-empty-string-does-not-lock-test
-  (testing "MB_INSTANCE_WORKSPACE set to empty string does NOT lock (env-var-value treats blank as unset)"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace ""]
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-and-atom-both-lock-test
-  (testing "both sources set => still true; OR semantics"
-    (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (workspaces.tu/with-workspace-locked-by-config
-        (fn [] (is (true? (ws/workspace-locked-by-config?))))))))

@@ -303,6 +303,14 @@
           (is (= [{:db (:dbname details)}]
                  (jdbc/query spec ["SELECT current_database() AS db"]))))))))
 
+(deftest connection-attaches-only-its-own-database-test
+  (mt/test-driver :motherduck
+    (testing "a new connection attaches only its own database, not every database in the account"
+      (let [details (:details (mt/db))]
+        (is (= [{:database_name (:dbname details)}]
+               (jdbc/query (sql-jdbc.conn/connection-details->spec :motherduck details)
+                           ["SELECT database_name FROM duckdb_databases() WHERE type = 'motherduck'"])))))))
+
 (defn- with-pooled-connection [f]
   (sql-jdbc.execute/do-with-connection-with-options :motherduck (mt/id) nil f))
 
@@ -329,6 +337,9 @@
             (with-pooled-connection
               (fn [^Connection conn]
                 (with-open [stmt (.createStatement conn)]
+                  ;; A connection attaches only its own database, so attach the other one first, as a native query
+                  ;; would. The attachment lasts for this pooled session.
+                  (.execute stmt (format "ATTACH IF NOT EXISTS 'md:%s'" other-db))
                   (.execute stmt ^String sql))))
             (testing "later checkouts are back on the connection's own database"
               (is (= (repeat 5 test-db)

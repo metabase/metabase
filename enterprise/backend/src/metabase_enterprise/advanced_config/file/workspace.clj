@@ -1,14 +1,14 @@
 (ns metabase-enterprise.advanced-config.file.workspace
-  "Loader for the `:workspace` section of `config.yml`.
+  "Loader for the `:workspace` section of `config.yml`, the form that the parent's
+  `GET /api/ee/workspace-manager/:id/config` emits.
 
-  On boot, parses the section and stores it in the `instance-workspace` setting
-  (see [[metabase-enterprise.workspaces.settings]]). That setting is the
-  instance-side source of truth for `db-workspace-namespace`.
+  On boot, translates the section into the `workspaces-enabled` setting and each
+  database's `database-workspace-schema` setting (see
+  [[metabase-enterprise.workspaces.settings]]). The same settings can be set directly,
+  in the `settings` section and per-database `settings`. `:input_schemas` is accepted
+  and ignored. `:name` is logged and stored nowhere.
 
-  Every boot re-reads `config.yml` and overwrites the prior value. The setting
-  persists across restarts in the instance's app DB, so a running workspace
-  survives a process bounce even without `config.yml` — but if `config.yml` is
-  present at boot, it wins."
+  Every boot re-reads `config.yml` and overwrites the prior values."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -81,6 +81,32 @@
       (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
                       {:database-name db-name}))))
 
+(defn- workspace-schema
+  "The schema the `workspace` section names for a database: `:output`'s `:schema`, else its `:db` (the parent puts
+  the namespace there on engines without schemas, such as MySQL)."
+  [{:keys [output]}]
+  (or (:schema output) (:db output)))
+
+(defn check-schemas-agree!
+  "Throw when, for one database, the `databases` section's `database-workspace-schema` and the `workspace` section name
+  different schemas. Each boot would write both in turn, and each write of a different schema deletes the database's
+  remap rows. `config` is the parsed `:config` map."
+  [config]
+  (let [section-schemas (into {}
+                              (map (fn [[db-name database]]
+                                     [(clojure.core/name db-name) (workspace-schema database)]))
+                              (:databases (ordered->plain (:workspace config))))]
+    (doseq [{db-name :name settings :settings} (:databases config)
+            :let [settings-schema (:database-workspace-schema settings)
+                  section-schema  (get section-schemas db-name)]
+            :when (and (string? settings-schema)
+                       (string? section-schema)
+                       (not= (str/trim settings-schema) (str/trim section-schema)))]
+      (throw (ex-info (format (str "Database %s has two workspace schemas in config.yml: %s in its settings, %s in"
+                                   " the workspace section.")
+                              (pr-str db-name) (pr-str settings-schema) (pr-str section-schema))
+                      {:database-name db-name})))))
+
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
@@ -93,26 +119,23 @@
 
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
-   [[metabase-enterprise.advanced-config.file/initialize!]]) and stores the
-   result in the `instance-workspace` setting keyed by db-id.
-
-   The per-database `:output` map is taken verbatim — `workspaces.config/build-workspace-config`
-   on the manager side emits it already-expanded, so we don't re-derive it here."
+   [[metabase-enterprise.advanced-config.file/initialize!]]) and makes the instance a
+   workspace. Each database's schema is `:output`'s `:schema`, else its `:db` (the
+   parent puts the namespace there on engines without schemas, such as MySQL). On
+   engines with a catalog slot, an `:output` `:db` given with a `:schema` is ignored;
+   the catalog comes from `Database.details`."
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
-        resolved-databases (into {}
-                                 (map (fn [[db-name-kw wsd-config]]
-                                        (let [db-name (clojure.core/name db-name-kw)
-                                              db      (resolve-db db-name)]
-                                          [(:id db) {:input_schemas (vec (:input_schemas wsd-config))
-                                                     :output        (:output wsd-config)}])))
-                                 databases)]
-    (ws/set-instance-workspace! {:name      name
-                                 :databases resolved-databases})
+        schemas (into {}
+                      (map (fn [[db-name-kw database]]
+                             [(:id (resolve-db (clojure.core/name db-name-kw)))
+                              (workspace-schema database)]))
+                      databases)]
+    (ws/set-instance-workspace! schemas)
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
-               (pr-str name) (count resolved-databases))
+               (pr-str name) (count schemas))
     {:workspace-name name
-     :database-count (count resolved-databases)}))
+     :database-count (count schemas)}))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

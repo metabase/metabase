@@ -31,7 +31,8 @@
   (testing "create, get, list, delete round-trip"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -55,7 +56,8 @@
   (testing "DELETE tears down a pending database like any other state"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -69,7 +71,8 @@
   (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                             (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -119,7 +122,10 @@
                                                       :settings {:database-enable-workspaces true}}
                    :model/Table _ {:db_id eligible-id :schema "public" :active true}
                    :model/Table _ {:db_id eligible-id :schema "analytics" :active true}
-                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
+                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}
+                   :model/Database {tableless-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (is (=? {:databases [{:database_id   eligible-id
@@ -130,6 +136,10 @@
           (testing "an ineligible database is rejected"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids [ineligible-id]}))
+          (testing "a database with no synced schemas is rejected"
+            (is (=? #".*no synced schemas.*"
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name "Nope" :database_ids [tableless-id]}))))
           (testing "at least one database is required"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
@@ -159,11 +169,32 @@
                            "Content-Disposition" "attachment; filename=\"config.yml\""}}
                 (mt/user-http-request-full-response
                  :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
+      (testing "422, not a retryable 409, when only an admin can fix the database's connection settings"
+        (t2/update! :model/Database :id db-id {:details {:additional-options "user=parent_admin"}})
+        (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
+        (t2/update! :model/Database :id db-id {:details {}}))
       (testing "409 when a database is not :provisioned"
         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
         (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
+
+(deftest download-config-local-file-ssl-root-cert-test
+  (testing "GET /:id/config answers 422 naming the database when its SSL root certificate is a file on the server"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
+                                                :details {:ssl                   true
+                                                          :ssl-root-cert-options "local"
+                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
+                   :model/Workspace {ws-id :id} {:name "Cert WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (is (= (str "The SSL root certificate of database \"Cert DW\" is a file on this instance's server, which "
+                  "workspaces don't copy. Upload the file in the database's connection settings instead.")
+             (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config")))))))
 
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))

@@ -321,22 +321,23 @@
           (let [by-name (into {}
                               (comp (filter (comp #{"cardtest"} :model)) (map (juxt :name identity)))
                               (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))]
-            (testing "a changed card test is listed with its card as parent, under its card's collection"
+            (testing "a changed card test is listed with its card and the card's collection"
               (is (=? {:id          (:id t)
                        :model       "cardtest"
                        :sync_status "update"
-                       :parent      {:model "card" :id (:id card) :name "Synced card"}
-                       :collection  {:id (:id synced) :name "Synced"}}
+                       :data        {:card {:id         (:id card)
+                                            :name       "Synced card"
+                                            :collection {:id (:id synced) :name "Synced"}}}}
                       (by-name "Edited test"))))
-            (testing "a test deleted with its card has no parent and no collection"
-              (is (=? {:id 0 :model "cardtest" :sync_status "delete"} (by-name "Test of deleted card")))
-              (is (not-any? #(contains? (by-name "Test of deleted card") %) [:parent :collection])))
-            (testing "a test whose card moved to an unsynced collection is listed as removed, with its card as parent, under the card's new collection"
+            (testing "a test deleted with its card has no data"
+              (is (=? {:id 0 :model "cardtest" :sync_status "delete" :data nil} (by-name "Test of deleted card"))))
+            (testing "a test whose card moved to an unsynced collection is listed as removed, with its card and the card's new collection"
               (is (=? {:id          (:id t-moved)
                        :model       "cardtest"
                        :sync_status "removed"
-                       :parent      {:model "card" :id (:id moved) :name "Moved card"}
-                       :collection  {:id (:id unsynced) :name "Unsynced"}}
+                       :data        {:card {:id         (:id moved)
+                                            :name       "Moved card"
+                                            :collection {:id (:id unsynced) :name "Unsynced"}}}}
                       (by-name "Test of moved card"))))))))))
 
 (defn- push-through-api!
@@ -354,7 +355,7 @@
     (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
     (call-count)))
 
-(deftest dirty-list-reads-no-collection-per-card-test-test
+(deftest dirty-list-reads-no-row-per-card-test-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
@@ -369,10 +370,10 @@
           (t2/update! :model/CardTest :id (:id t-1) {:description "changed"})
           (let [one-changed (dirty-list-call-count)]
             (t2/update! :model/CardTest :id [:in [(:id t-2) (:id t-3)]] {:description "changed"})
-            (testing "each further changed card test costs one call, the read of its own row"
-              (is (= (+ one-changed 2) (dirty-list-call-count))))))))))
+            (testing "further changed card tests cost no further calls"
+              (is (= one-changed (dirty-list-call-count))))))))))
 
-(deftest dirty-list-keeps-transform-tests-out-of-collections-test
+(deftest dirty-list-shows-transform-tests-under-transform-collections-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
@@ -383,6 +384,7 @@
           (t2/update! :model/TransformTest :id (:id t) {:description "changed"})
           (let [item (some #(when (= [(:model %) (:id %)] ["transformtest" (:id t)]) %)
                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))]
-            (testing "a changed transform test is listed with its transform as parent, under no collection, though its transform has one"
-              (is (=? {:sync_status "update" :parent {:model "transform" :id (:id transform)}} item))
-              (is (not (contains? item :collection))))))))))
+            (testing "a changed transform test is listed with its transform and the transform's collection"
+              (is (=? {:sync_status "update"
+                       :data        {:transform {:id (:id transform) :collection {:id (:id folder)}}}}
+                      item)))))))))

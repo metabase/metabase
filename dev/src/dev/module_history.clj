@@ -411,7 +411,7 @@
         mod->nses     (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
         ns-count      #(count (get mod->nses % #{}))
         with-nses     (set (keys mod->nses))
-        root-of       (memoize (fn [m] (last (take-while some? (iterate #(modules/parent-module modules %) m)))))
+        root-of       (memoize (fn [m] (last (modules/lineage modules m))))
         api-nses      (fn [m]
                         (let [nses (get mod->nses m #{})]
                           (if (= :any (get-in modules [m :api]))

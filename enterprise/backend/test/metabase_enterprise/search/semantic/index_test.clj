@@ -358,7 +358,7 @@
         (let [doc      (assoc (first (semantic.tu/mock-documents))
                               :embeddable_text (semantic.tu/incompressible-text 8000))
               embedded (atom [])
-              embed    semantic.embedding/process-embeddings-streaming]
+              embed    (mt/original-fn #'semantic.embedding/process-embeddings-streaming)]
           ;; :serial? keeps the upsert on this thread, where the dynamic redef applies
           (mt/with-dynamic-fn-redefs [semantic.embedding/process-embeddings-streaming
                                       (fn [model texts & args]
