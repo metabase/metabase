@@ -377,8 +377,7 @@
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
 ;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
 (defn- apply-reconcile!
-  "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest.
-  Documents whose survival cannot be enumerated are left alone."
+  "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest."
   [{:keys [search-model ids]}]
   ;; Each chunk's tombstone applies as soon as the chunk is checked, and the re-index waits until every check is done.
   ;; A failing check or re-index then costs no tombstone already known, so it leaves survivors stale rather than
@@ -386,8 +385,8 @@
   ;; The gone and alive ids never overlap, so the order matters for nothing else.
   (let [survivors (into []
                         (keep (fn [chunk]
-                                ;; Nil means the survivors could not be enumerated, and reading it as "none
-                                ;; survived" would purge live documents.
+                                ;; Nil is unreachable while a chunk stays under [[max-enumerated-documents]], but
+                                ;; reading it as "none survived" would purge live documents.
                                 (when-some [alive (existing-doc-ids search-model chunk)]
                                   (when-let [gone (not-empty (set/difference (set chunk) alive))]
                                     (apply-tombstones! [(tombstone search-model gone)]))
