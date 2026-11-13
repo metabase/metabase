@@ -79,7 +79,7 @@ For databases that aren't on this page, check out [Community drivers](../develop
 1. MongoDB 5.0 and later.
 2. MongoDB 4.2 and later.
 
-## SQL editor
+## SQL and native queries
 
 | Feature                                                                                           | Athena | BigQuery | ClickHouse | Databricks | Druid | MongoDB | MariaDB | MySQL | Oracle | PostgreSQL | Presto | Redshift | Snowflake | SparkSQL | SQL Server | SQLite | Starburst | Vertica |
 | ------------------------------------------------------------------------------------------------- | ------ | -------- | ---------- | ---------- | ----- | ------- | ------- | ----- | ------ | ---------- | ------ | -------- | --------- | -------- | ---------- | ------ | --------- | ------- |
@@ -105,7 +105,7 @@ For databases that aren't on this page, check out [Community drivers](../develop
 | [Actions](../data-modeling/models/actions/introduction.md) | ❌      | ❌        | ❌          | ❌          | ❌     | ❌       | ✅       | ✅     | ❌      | ✅          | ❌      | ❌        | ❌         | ❌        | ❌          | ❌      | ❌         | ❌       |
 | [Editable tables](../data-modeling/editable-tables.md)     | ❌      | ❌        | ❌          | ❌          | ❌     | ❌       | ✅       | ✅     | ❌      | ✅          | ❌      | ❌        | ❌         | ❌        | ❌          | ❌      | ❌         | ❌       |
 
-1. ClickHouse Cloud only.
+1. ClickHouse Cloud and self-hosted single-node deployments.
 
 ## Permissions
 

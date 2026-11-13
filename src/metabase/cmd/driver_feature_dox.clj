@@ -61,8 +61,7 @@
     (boolean (some #(supports? column % age) feature))
     (let [database (fake-database column age)]
       (try
-        ;; not `driver.u/supports?`: it turns a throwing method into `false`, which would print a wrong ❌, and it
-        ;; memoizes by database ID, which both fake databases share
+        ;; not `driver.u/supports?`: it turns a throwing method into `false`, which would print a wrong ❌
         #_{:clj-kondo/ignore [:discouraged-var]}
         (boolean (driver/database-supports? driver feature database))
         (catch Throwable e

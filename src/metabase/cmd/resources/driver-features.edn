@@ -21,7 +21,7 @@
   {:driver :clickhouse         :label "ClickHouse"
    :newest {:semantic-version {:major 999 :minor 0}}
    :oldest {:semantic-version {:major 1 :minor 0}}
-   :notes  {:uploads                  "ClickHouse Cloud only."
+   :notes  {:uploads                  "ClickHouse Cloud and self-hosted single-node deployments."
             :connection-impersonation "ClickHouse 24.4 and later."}}
   {:driver :databricks         :label "Databricks"}
   {:driver :druid-jdbc         :label "Druid"}
@@ -137,7 +137,7 @@
                :label   "today"
                :doc     "../questions/query-builder/expressions-list.md#today"}]}
 
-  {:title    "SQL editor"
+  {:title    "SQL and native queries"
    :features [{:feature :native-parameters
                :label   "SQL variables"
                :doc     "../questions/native-editor/sql-parameters.md"}
@@ -228,6 +228,8 @@
    :persist-models-enabled
    :rename
    :schemas
+   :stage-ctes
+   :stage-ctes/nested
    :table-privileges
    :temporal/requires-default-unit
    :test/cannot-destroy-db
@@ -239,4 +241,5 @@
    :test/uuids-in-create-table-statements
    :transforms/testing
    :upload-with-auto-pk
-   :uuid-type}}
+   :uuid-type
+   :workspace}}

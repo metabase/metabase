@@ -59,7 +59,7 @@
     (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") :left-join))))
   (testing "a feature that no version supports"
     (is (= :no (#'driver-feature-dox/support (column "MySQL") :full-join))))
-  (testing "MariaDB is the MySQL driver with another flavor, and answers like MariaDB"
+  (testing "MariaDB uses the MySQL driver, but can answer differently"
     (is (= :yes (#'driver-feature-dox/support (column "MySQL") :regex/lookaheads-and-lookbehinds)))
     (is (= :no (#'driver-feature-dox/support (column "MariaDB") :regex/lookaheads-and-lookbehinds))))
   (testing "a vector row is supported when any of its features is"
