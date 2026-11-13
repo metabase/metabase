@@ -98,7 +98,8 @@
     (next-method rf query-type model parsed-args resolved-query)))
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/change-log :default]
-  "Logs the keys of the rows the UPDATE matches, changed or not."
+  "Logs the keys of the rows the UPDATE matches, if Toucan sends one. It sends none when no row would change, because
+  each logged model has a before-update."
   [rf query-type model parsed-args resolved-query]
   ;; With nothing to set, Toucan sends no UPDATE, so there is nothing to log.
   (if (and (seq (:changes parsed-args))
@@ -106,12 +107,23 @@
            (premium-features/enable-change-log?))
     (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
       ;; An UPDATE returns no keys. So first we select the rows it will match, with the update's own conditions.
-      (let [rows (change-log.db/rows-to-change model :toucan.query-type/select.instances.from-update parsed-args
-                                               resolved-query (t2/primary-keys model))]
-        (log! [[(table model) (map (pk-of model) rows) "update"]])
+      (let [rows  (change-log.db/rows-to-change model :toucan.query-type/select.instances.from-update parsed-args
+                                                resolved-query (t2/primary-keys model))
+            sent? (volatile! false)
+            ;; The result of each UPDATE that Toucan sends passes through here.
+            rf    ((map (fn [result] (vreset! sent? true) result)) rf)]
         ;; Toucan can run this pipeline again from inside the update. The mark keeps those runs from logging twice.
-        (next-method rf query-type model (assoc parsed-args ::logged true) resolved-query)))
+        (u/prog1 (next-method rf query-type model (assoc parsed-args ::logged true) resolved-query)
+          (when @sent?
+            (log! [[(table model) (map (pk-of model) rows) "update"]])))))
     (next-method rf query-type model parsed-args resolved-query)))
+
+;; A logged model needs a before-update. With one, Toucan sends no UPDATE when no row would change, and the hook above
+;; logs nothing. A model that has none derives this one, which does nothing. Remove that derive when the model gets a
+;; real before-update.
+(t2/define-before-update :hook/change-log-before-update-noop
+  [row]
+  row)
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* :metabase/model :default]
   "Logs the rows the DELETE removes, and the rows of logged tables that the database deletes or updates with them. It

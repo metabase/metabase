@@ -8,6 +8,7 @@
 
 (derive :model/PulseChannelRecipient :metabase/model)
 (derive :model/PulseChannelRecipient :hook/change-log)
+(derive :model/PulseChannelRecipient :hook/change-log-before-update-noop)
 
 ;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
 ;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not

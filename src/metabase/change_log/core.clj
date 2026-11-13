@@ -6,7 +6,7 @@
       {:id 830, :table_name \"report_card\", :row_id 5, :action \"update\", :created_at ...}
 
   The log is on while the license has the `:change-log` feature. While it is on, an insert runs one more query, an
-  update two, and a delete two plus the reads of what it cascades to. While it is off, a write runs no extra query.
+  update two, and a delete two plus the reads of what it cascades to. While it is off, the hooks run no query.
 
   To log a model, derive the hook next to its other hooks:
 
@@ -17,10 +17,12 @@
 
   This logs each insert, update and delete through the model. A delete of any model also logs the rows of logged
   tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`) with it, at any depth. The
-  model needs a primary key of one integer column and a namespace that loads at startup: `metabase.change-log.hooks-test`
-  check both. The insert hook reads the key from the rows the insert returns, so an insert that picks its returned columns
-  must include the key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert throws in
-  dev and test. In production it goes ahead, and Metabase logs a warning instead of an entry.
+  model needs a primary key of one integer column, a before-update, and a namespace that loads at startup:
+  `metabase.change-log.hooks-test` checks all three. With a before-update, Toucan sends no UPDATE when no row would
+  change, and the update logs nothing. A model that has none derives `:hook/change-log-before-update-noop`. The insert
+  hook reads the key from the rows the insert returns, so an insert that picks its returned columns must include the
+  key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert throws in dev and test. In
+  production it goes ahead, and Metabase logs a warning instead of an entry.
 
   A write that skips the model (raw SQL, `t2/query`, `t2/update!` on the table name) logs its rows with [[log-rows!]].
   The `:metabase/change-log-raw-write` lint reports such a write when the call names the table.
@@ -28,6 +30,7 @@
   Not logged:
 
   - usage stats that reads update: view counts, last viewed and last used times
+  - an update that changes no row: the model's before-update makes Toucan send no UPDATE
   - migrations, and SQL run outside Metabase
   - a row that starts to match an update or a delete after the hook read which rows match
   - any change made while the log is off

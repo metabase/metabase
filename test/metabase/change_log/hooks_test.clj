@@ -57,15 +57,20 @@
                    #_{:clj-kondo/ignore [:metabase/t2-implicit-pk]}
                    (logged-by #(do (t2/update! :model/Field (:id f) {:name "h"})
                                    (t2/delete! :model/Field (:id f))))))))
-        (testing "an update that changes nothing is still logged"
-          (is (= [["metabase_table" (:id t) "update"]]
-                 (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)})))))
-        (testing "an update that changes nothing is still logged, on a model without a before-update"
+        (testing "an update that changes nothing logs nothing"
+          (is (= [] (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)}))))
+          (is (= [] (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))
+        (testing "an update that changes one row of two logs both"
+          (mt/with-temp [:model/Table other {:db_id (:id db), :active false}]
+            (is (= #{["metabase_table" (:id t) "update"] ["metabase_table" (:id other) "update"]}
+                   (set (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))))
+        (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse     pulse {}
                          :model/Card      card  {:database_id (:id db)}
                          :model/PulseCard pc    {:pulse_id (:id pulse), :card_id (:id card), :include_csv false}]
+            (is (= [] (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))
             (is (= [["pulse_card" (:id pc) "update"]]
-                   (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))))
+                   (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv true}))))))
         (testing "an update that matches no row logs nothing"
           (is (= [] (logged-by #(t2/update! :model/Table :id Integer/MAX_VALUE {:name "none"})))))
         (testing "`t2/insert!` logs the rows it inserts, and still returns their count"
@@ -240,6 +245,14 @@
         (is (contains? #{Types/INTEGER Types/BIGINT Types/SMALLINT}
                        (column-types [(name (t2/table-name model)) (u/lower-case-en (name (first pks)))]))
             (str model "'s key is not an integer column"))))))
+
+(deftest logged-models-before-update-test
+  (testing "each logged model has a before-update"
+    (load-models!)
+    (doseq [model (vals (change-log.cascade/logged-models))]
+      (is (isa? model :toucan2.tools.before-update/before-update)
+          (str model " has no before-update. Without one, an update that changes no row is logged. Derive"
+               " :hook/change-log-before-update-noop.")))))
 
 (defn- startup-namespaces
   "The Metabase namespaces that the startup namespaces require in their `ns` forms, at any depth. EE's startup
