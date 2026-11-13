@@ -53,3 +53,9 @@
   metabase-enterprise.database-routing.models
   [_db :- ::lib.schema.metadata/database]
   false)
+
+(defenterprise refuses-anonymous-access?
+  "OSS version, always false: OSS has no router databases, so nothing restricts anonymous access."
+  metabase-enterprise.database-routing.models
+  [_database-id]
+  false)

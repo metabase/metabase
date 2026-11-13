@@ -114,14 +114,18 @@
                     [:= :c.archived false]]}
      paged? (merge {:limit limit :offset offset}))))
 
+(defn- dashcard-ids-subquery
+  "Subquery for the ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/DashboardCard)]
+                    :where  [:= :dashboard_id [:auto/param dashboard-id]]})
+
 (mu/defn dashboard-series-card-ids
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                    {:where [:in :dashboardcard_id
-                             ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
+                    {:where [:in :dashboardcard_id (dashcard-ids-subquery dashboard-id)]}))
 
 (mu/defn dashboard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
