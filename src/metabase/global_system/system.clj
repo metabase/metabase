@@ -5,11 +5,11 @@
    This namespace keeps the same two slots for every component.
    All roots live in one atom, so [[snapshot]] reads every root at a single instant.
    Each thread's bindings are an overlay holding only the components bound on that thread, never a copy of the system.
-   An unbound component reads straight through to its root, so binding or changing one component never affects
-   another.
+   An unbound component reads through to its root, so binding or changing one component never affects another.
 
-   A component can also be started on first use with [[ensure-started!]], which records how to stop it, and [[halt!]]
-   stops every started component, each before the components it uses, and otherwise last started first."
+   A component can also be started on first use with [[ensure-started!]], which records how to stop it.
+   A halt with [[halt!]] stops every started component, each before the components it uses, and otherwise last
+   started first."
   (:require
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
@@ -162,9 +162,9 @@
 
 ;; One atom, so a start's check that no halt has begun and its mark as in flight are a single step, and a halt that
 ;; sets `:halted?` sees every start that passed the check.
-(defonce ^{:doc "Whether [[halt!]] has run, so components may no longer start, under `:halted?`, and the starts in
-             flight under `:starting`, as component key -> `{:thread t, :handle h}`, from their check until they
-             register or fail."
+(defonce ^{:doc "A map of `:halted?`, true from the start of a [[halt!]] until [[reopen!]], and `:starting`.
+             Under `:starting` is each start in flight, as component key -> `{:thread t, :handle h}`, from its check
+             until it registers or fails."
            :private true}
   admissions
   (atom {:halted? false, :starting {}}))
@@ -183,7 +183,7 @@
 
 (defn- admit!
   "Mark the start of `handle` under `k` as in flight on this thread.
-  Throws if a halt has begun, or if this thread is already starting `k`."
+   Throws if a halt has begun, or if this thread is already starting `k`."
   [k handle]
   (swap! admissions
          (fn [{:keys [halted? starting] :as state}]
@@ -199,9 +199,8 @@
              (assoc-in state [:starting k] {:thread (Thread/currentThread), :handle handle})))))
 
 (defn- run-start
-  "Call `start` for the component under `k` and return its value, which must not be nil.
-  It runs with no component bindings, so a root is made from roots even when the calling thread binds another
-  component."
+  "Call `start` for the component under `k` and return its value, throwing if that is nil.
+   It runs with no component bindings, so a root is built from roots even where the caller binds another component."
   [k start]
   (let [value (clojure.core/binding [*bound-boxes* {}]
                 (start))]
@@ -243,29 +242,30 @@
                     ;; only once registered, so a halt that finds nothing in flight finds this registered
                     (swap! admissions update :starting dissoc k)))))))))))
 
+;; A long start holds up the threads that need the component, and [[halt!]] waits for it with no timeout.
+;; A start that exits the JVM deadlocks: the shutdown hook's halt waits for the start, and the exit waits for the hook.
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
-   Starting calls `start` with no arguments and no component bindings in place, which must return a non-nil value,
-   installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
-   The calling thread's other dynamic bindings stay in place, such as the current user or an open transaction,
-   so `start` must not depend on them.
-   If `start` throws, nothing is installed, and the next call runs `start` again.
-   Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
-   So `start` must not wait for another thread that writes this component.
-   It must not block for long: the threads that need the component wait for it, and [[halt!]] waits with no timeout.
-   It must not exit the JVM: the shutdown hook's halt waits for this start, and the exit waits for the hook.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
-   Throws if the component is being stopped, if `start` tries to start the component it is starting, or once
-   [[halt!]] has begun, until [[reopen!]].
+   Starting calls `start` with no arguments and installs the value it returns as the root.
+   It also records `stop`, a function of that value, for [[stop!]] and [[halt!]].
+   Threads racing to start the component start it once.
+   If `start` throws, nothing is installed, and the next call runs `start` again.
+
+   The `start` function runs holding the component's slot lock, with no component bindings in place.
+   It keeps the caller's other dynamic bindings, such as the current user or a transaction, but must not rely on them.
+   It must not wait for another thread that writes or starts this component, block for long, or exit the JVM.
+
+   Throws if `start` returns nil, if the component is being stopped, if `start` starts the component it is starting,
+   or once [[halt!]] has begun, until [[reopen!]].
    The component's root must already be installed, usually as nil by [[mutable-component-handle]]."
   [handle start stop]
   (first (start! handle start stop)))
 
 (defn stop!
-  "Stop the component behind `handle` if [[start!]] started it.
-   It is unregistered and its root set back to nil, and then the stop function recorded at start is called on the
-   value the root held, which is the latest one, since a component may replace its own value as it runs.
-   Returns true if there was a running component to stop.
+  "Stop the component behind `handle` if [[start!]] started it, and return true if there was one to stop.
+   It is unregistered and its root set back to nil.
+   Then the stop function recorded at start is called on the root's last value, which may not be the started one.
    The stop function runs without the component's lock, so it can wait for threads that use the system.
    Any of them that tries to start this component meanwhile gets an exception.
    Leaves alone a component [[start!]] did not start, and any binding of the component on this thread.
@@ -353,16 +353,15 @@
   nil)
 
 (defn- await-starts!
-  "Wait for every start in flight to register or fail, by taking its component's slot lock, which the start holds
-  throughout.
-  Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
+  "Wait for every start in flight to register or fail, by taking its slot lock, which the start holds throughout.
+   Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
   []
   (doseq [{:keys [handle]} (vals (:starting @admissions))]
     (mc/without-binding handle #(mc/with-slot-lock handle nil))))
 
 (defn- begin-halt!
   "Refuse every later start, then wait for the starts already in flight to register or fail.
-  Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
+   Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
   []
   (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
     (throw (ex-info "A component's start cannot halt the system" {})))
@@ -374,14 +373,13 @@
    The `dependencies` map takes a component key to the keys of the components it uses, and defaults to empty.
    A component stops before everything it uses, directly or through other components, even one that started later.
    Otherwise components stop in the reverse of the order they first started in, as far as the dependencies allow.
+
+   From the moment it begins, every start throws until [[reopen!]], so a stop cannot restart what the halt stopped.
+   It first waits for the starts already running, holding no lock and with no timeout, so it stops those too.
+   It does not wait for a stop already running elsewhere, so it can stop what that component uses while that stop runs.
+
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
-   From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
-   left running.
-   It waits for the starts already running, with no timeout, so it stops those too.
-   It holds no lock while it waits.
-   It does not wait for a stop already running on another thread, from [[stop!]] or another halt, so it can stop
-   what that component uses before the component's stop function returns.
-   Throws after trying them all if any stop threw; see [[stop-all!]]."
+   Throws after trying every stop if any threw, with each failure under `:failures` of the ex-data."
   ([]
    (halt! {}))
   ([dependencies]
