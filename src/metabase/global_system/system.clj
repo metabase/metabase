@@ -12,7 +12,9 @@
    [metabase.global-system.mutable-component :as mc])
   (:import
    (clojure.lang IDeref)
-   (java.io Writer)))
+   (java.io Writer)
+   (java.util.concurrent ConcurrentHashMap)
+   (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,6 +51,23 @@
                     {:component  k
                      :components (sort (keys rs))}))))
 
+(defonce ^{:doc "Component key -> the lock for that component's root slot."
+           :private true}
+  root-locks
+  (ConcurrentHashMap.))
+
+(defn- root-lock
+  "The lock for the root slot of `k`, the same object every time for a given `k`."
+  [k]
+  (.computeIfAbsent ^ConcurrentHashMap root-locks k (reify Function (apply [_ _] (Object.)))))
+
+(defmacro ^:private with-root-lock
+  "Run `body` holding the lock for the root slot of `k`."
+  [k & body]
+  `(let [lock# (root-lock ~k)]
+     (locking lock#
+       ~@body)))
+
 (defn- current-value
   "The value of `k` visible to this thread: the bound one if `k` is bound here, otherwise the root."
   [k]
@@ -65,18 +84,34 @@
   (binding [_ new-value thunk]
     (clojure.core/binding [*bound-boxes* (assoc *bound-boxes* k (atom new-value))]
       (thunk)))
-  (reset! [this new-value]
-    (mc/swap!* this (constantly new-value) nil))
-  (swap!* [_ f args]
+  ;; Every write holds its slot's lock, so a [[mc/with-slot-lock]] read-check-write is never interleaved with one.
+  ;; The lock keeps out writers of this slot only.
+  ;; A write to another component's root makes the swap on `roots` retry, so `f` can run again even under the lock.
+  ;; TODO (Chris 2026-11-13) -- Call `f` once, before the swap on `roots`, and retry only the `assoc`.
+  ;; No other thread can write this slot while its lock is held, so the value `f` saw stays the current one.
+  (swap-vals!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
-      (apply clojure.core/swap! box f args)
-      (get (clojure.core/swap! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args)))) k)))
+      (locking box
+        (apply swap-vals! box f args))
+      (with-root-lock k
+        (let [[before after] (swap-vals! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args))))]
+          [(get before k) (get after k)]))))
   (alter-root [_ new-value]
-    (let [[before _] (clojure.core/swap-vals! roots assoc k new-value)]
-      (get before k)))
+    (with-root-lock k
+      (let [[before _] (swap-vals! roots assoc k new-value)]
+        (get before k))))
+  (root-entry [_]
+    (find @roots k))
+  (remove-root [_]
+    (with-root-lock k
+      (swap! roots dissoc k))
+    nil)
   (without-binding [_ thunk]
     (clojure.core/binding [*bound-boxes* (dissoc *bound-boxes* k)]
-      (thunk))))
+      (thunk)))
+  (slot-lock [_]
+    (or (get *bound-boxes* k)
+        (root-lock k))))
 
 ;; Prints the key alone. The IDeref defaults would deref the handle, which throws when the component has no value.
 (defmethod print-method ComponentHandle
@@ -88,6 +123,14 @@
   (print-method handle *out*))
 
 (defn mutable-component-handle
-  "Make a handle for the component stored under `k` in the global system."
-  [k]
-  (ComponentHandle. k))
+  "Make a handle for the component stored under `k` in the global system.
+   With `init-root`, a function of no arguments, also install its result as the root if the component has none.
+   So reloading the namespace that makes the handle leaves an installed root alone."
+  ([k]
+   (ComponentHandle. k))
+  ([k init-root]
+   (let [handle (ComponentHandle. k)]
+     (with-root-lock k
+       (when-not (mc/root-entry handle)
+         (mc/alter-root handle (init-root))))
+     handle)))
