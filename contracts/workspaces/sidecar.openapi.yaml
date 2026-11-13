@@ -13,9 +13,11 @@ info:
 
     Workspace mode is not a security boundary. Isolation comes only from the warehouse login. Workspace mode
     redirects transform output. It refuses four features with 400 ("<feature> is not supported on a workspace
-    instance."): running a saved action, CSV upload, enabling model persistence (`POST /api/persist/enable`) and
-    setting up database routing. Native SQL writes still reach production when the login can write there. So does
-    per-database model persistence when model persistence is already enabled.
+    instance.", where <feature> is "Actions", "CSV upload", "Model persistence" or "Database routing"): running a
+    saved action, CSV upload, enabling model persistence (`POST /api/persist/enable`) and setting up database
+    routing. Native SQL writes still reach production when the login can write there. So does per-database model
+    persistence whenever `persisted-models-enabled` is on. Only `POST /api/persist/enable` is refused: the settings
+    API and `MB_PERSISTED_MODELS_ENABLED` still turn it on.
     master: data-grid edits also reach production. #86603: the sidecar refuses a data-grid edit with 400 ("Editing
     table data is not supported on a workspace instance.").
     master: `POST /current` checks only the shape of the body, not the namespaces or the database ids it names
@@ -276,7 +278,7 @@ paths:
                       description: The schema (on MySQL, a database name). `null` unsets it.
       responses:
         "200":
-          description: The updated database.
+          description: The updated database. The 200 returns the value as sent.
           content:
             application/json:
               schema:
@@ -470,7 +472,7 @@ components:
         master: a row means a transform run targeted the table. The row is written when a run starts and kept
         after a failed run (`src/metabase/transforms/execute.clj:37`).
 
-        #86604: the row is written after the run's write to the scratch table returns. A run that fails before
+        #86604: the row is written after the run's write to the scratch copy returns. A run that fails before
         its write records nothing. A run can still fail after the row is written.
       type: object
       required: [id, database_id, from_db, from_schema, from_table_name, to_db, to_schema, to_table_name, created_at]
@@ -486,4 +488,4 @@ components:
         to_table_name:
           type: string
           description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:138`)."
-        created_at: { type: string, description: "The first run that targeted the table, not the latest." }
+        created_at: { type: string, description: "The first run that targeted the table, not the latest. #86604: when the first run whose write returned recorded the row." }

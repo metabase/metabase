@@ -15,8 +15,9 @@ info:
     - A shape that an open PR replaces is a `oneOf`: the master branch carries `x-removed-in: hardening`, the new
       branch `x-status: hardening`.
     - `config.schema.json` lists the PRs that change `details` as a whole under `x-hardening`.
-    - Hardening PRs that change behavior but no request or response shape (for example #86604) are not in the
-      specs; the Linear doc "Workspaces API contract" lists them
+    - A hardening PR that changes behavior but no request or response shape is in the specs only where a caller
+      can observe the behavior (for example #86604, in the sidecar's `TableRemapping`); the Linear doc
+      "Workspaces API contract" lists them all
       (https://linear.app/metabase/document/workspaces-api-contract-018c0d7bc9ca).
 
     `x-source` points at the implementation, relative to the repo root.
