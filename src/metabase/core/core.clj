@@ -113,8 +113,7 @@
   {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}})
 
-;; TODO (Chris 2026-11-13) -- Move the stops in this list into the halt, one component at a time, until the halt is
-;; the only step that stops a component.
+;; TODO (Chris 2026-11-13) -- Move these stops into the halt one component at a time, until the halt stops them all.
 ;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
 ;; since the halt takes its order from those edges and not from this list.
 ;; Two limits of the halt matter more as steps move in.
@@ -139,14 +138,13 @@
    ["stop performance monitoring" #(perf/stop-monitoring!)]
    ["shut down agents"            shutdown-agents]])
 
+;; Every step runs even when one throws, so a failed stop cannot keep the web server up or the migration locks held.
+;; Each failure is logged as it happens, so a later step that outlasts the shutdown time cannot lose it.
+;;
 ;; No test runs these steps or a real halt, since a halt stops what the test JVM shares, like its web server.
 ;; Check a change to them by sending SIGTERM to a running server that has a warehouse pool open.
 ;; TODO (Chris 2026-11-13) -- Make that check a CI step that fails unless the log shows a complete shutdown with no
 ;; failed step.
-;;
-;; Every step runs even when an earlier one throws, so one failing stop cannot leave the migration locks held or the
-;; web server running. Each failure is logged as it happens, so it is not lost when a later step outlasts the time the
-;; process has to shut down.
 (defn- destroy!
   "General application shutdown function which should be called once at application shutdown."
   []
