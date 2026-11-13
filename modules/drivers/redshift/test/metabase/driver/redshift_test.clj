@@ -1110,7 +1110,8 @@
 (defn- run-with-fake-jdbc
   "Calls `(f)` with JDBC replaced, so that no Redshift is needed. A query returns `(answer sql)`. Returns
   `{:log [...], :error throwable-or-nil}`: `:log` holds every query, as `[:query sql params]`, every statement run,
-  as `[:execute sql]`, and every rollback, as `[:rollback]`, in order.
+  as `[:execute sql]`, every rollback, as `[:rollback]`, and every pooled connection discarded, as `[:discard]`, in
+  order.
 
   Options: `:batch-error`, thrown by `executeBatch`; `:real-transaction?`, to run the real `jdbc/db-transaction*` on
   the fake connection; `:rollback-error`, thrown by that connection's `rollback`."
@@ -1123,11 +1124,19 @@
                       (addBatch [_ sql] (swap! log conj [:execute sql]))
                       (executeBatch [_] (if batch-error (throw batch-error) (int-array 0)))
                       (close [_]))
-         conn       (reify java.sql.Connection
+         ;; a c3p0 proxy, so that `discard-pooled-connection!` acts on it
+         conn       (reify com.mchange.v2.c3p0.C3P0ProxyConnection
+                      (rawConnectionOperation [_ _method _target _args]
+                        (swap! log conj [:discard])
+                        nil)
                       (createStatement [_] stmt)
                       (getAutoCommit [_] @autocommit)
                       (setAutoCommit [_ v] (reset! autocommit v))
+                      (getMetaData [_] (reify java.sql.DatabaseMetaData
+                                         (supportsTransactionIsolationLevel [_ _] true)))
                       (getTransactionIsolation [_] java.sql.Connection/TRANSACTION_READ_COMMITTED)
+                      (setTransactionIsolation [_ _])
+                      (setHoldability [_ _])
                       (isReadOnly [_] false)
                       (setReadOnly [_ _])
                       (commit [_])
@@ -1142,7 +1151,7 @@
                                                   jdbc/execute!                            (fn [_conn [sql]]
                                                                                              (swap! log conj [:execute sql])
                                                                                              [0])
-                                                  sql-jdbc.conn/db->pooled-connection-spec (constantly (if real-transaction? {:connection conn} {}))
+                                                  sql-jdbc.conn/db->pooled-connection-spec (constantly {:connection conn})
                                                   driver.u/lib-database                    identity]
                         (try (f) nil (catch Throwable e e))))
          error      (if real-transaction?
@@ -1267,18 +1276,27 @@
                            #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
       (is (= {:status-code 409, :workspace/cleanup? false}
              (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
-  (doseq [[what sqlstate message] [["schema" "42P06" "ERROR: schema \"mb__isolation_ws_1\" already exists"]
-                                   ["user" "42710" "ERROR: user \"mb__isolation_user_1\" already exists"]]]
+  (doseq [[what sqlstate message check-table] [["schema" "42P06" "ERROR: schema \"mb__isolation_ws_1\" already exists"
+                                                "FROM pg_namespace WHERE"]
+                                               ["user" "42710" "ERROR: user \"mb__isolation_user_1\" already exists"
+                                                "FROM pg_user WHERE"]]]
     (testing (str "a " what " created after the check fails CREATE with " sqlstate ", and init refuses: provisioning must not tear down")
       (let [batch-error         (doto (java.sql.BatchUpdateException. "Batch entry 0 was aborted" ^String sqlstate 0 (int-array 0))
                                   (.setNextException (java.sql.SQLException. ^String message ^String sqlstate)))
             {:keys [log error]} (run-with-fake-jdbc
                                  (answer-with {})
                                  #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
-                                 {:batch-error batch-error})]
+                                 {:batch-error batch-error})
+            check-error         (:error (run-with-fake-jdbc
+                                         (answer-with {check-table [{:?column? 1}]})
+                                         #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)))]
         (is (some #{"CREATE SCHEMA \"mb__isolation_ws_1\""} (executed log)))
-        (is (str/includes? (str (ex-message error)) "already exists"))
-        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))))))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))
+        (testing "with the message and data of the check's 409, which give the recovery steps"
+          (is (= (ex-message check-error) (ex-message error)))
+          (is (= (ex-data check-error) (ex-data error))))
+        (testing "and the server's error as its cause"
+          (is (= message (ex-message (ex-cause error)))))))))
 
 (deftest workspace-init-refusal-survives-failed-rollback-test
   (let [answer (answer-with {"FROM pg_namespace WHERE" [{:?column? 1}]})]
@@ -1288,6 +1306,7 @@
                                  #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
                                  {:real-transaction? true})]
         (is (some #{[:rollback]} log))
+        (is (not-any? #{[:discard]} log))
         (is (= {:status-code 409, :workspace/cleanup? false}
                (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
     (testing "after a failed rollback, init's error still says that provisioning must not tear down"
@@ -1297,4 +1316,9 @@
                                  {:real-transaction? true
                                   :rollback-error    (java.sql.SQLException. "An I/O error occurred while sending to the backend." "08006")})]
         (is (some #{[:rollback]} log))
-        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))))))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))
+        (testing "with the rollback's error attached as suppressed"
+          (is (= ["An I/O error occurred while sending to the backend."]
+                 (map ex-message (.getSuppressed ^Throwable error)))))
+        (testing "and the connection discarded, not returned to the pool"
+          (is (some #{[:discard]} log)))))))

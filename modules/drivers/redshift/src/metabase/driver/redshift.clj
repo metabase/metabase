@@ -1013,8 +1013,8 @@
   `:what` (a description), `:drop-sql` (the statement an admin runs to remove it when no workspace uses it) and
   `:data`, in the order the drops must run: the schema first, because the user holds a privilege on it, and
   `DROP USER` fails while it does. The objects may belong to another workspace, so init leaves them unchanged, and the
-  caller must not tear down after this error."
-  [existing]
+  caller must not tear down after this error. `cause`, the server's error, may be nil."
+  [existing cause]
   (let [[they them] (if (= 1 (count existing)) ["It" "it"] ["They" "them"])
         user?       (perf/some (comp :user :data) existing)]
     (ex-info (str (format (str "The warehouse already has a %s. %s may belong to another workspace, so init left %s "
@@ -1024,7 +1024,22 @@
                           (str/join ", then " (map #(str "`" (:drop-sql %) "`") existing)))
                   (when user?
                     " `DROP USER` fails while the user holds a privilege on any object, so revoke those first."))
-             (apply merge {:status-code 409, :workspace/cleanup? false} (map :data existing)))))
+             (apply merge {:status-code 409, :workspace/cleanup? false} (map :data existing))
+             cause)))
+
+(defn- existing-schema
+  "The entry of [[exists-error]] for an output schema named `schema`."
+  [schema]
+  {:what     (str "schema named " (quote-schema schema))
+   :drop-sql (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
+   :data     {:schema schema}})
+
+(defn- existing-user
+  "The entry of [[exists-error]] for a workspace user named `user`."
+  [user]
+  {:what     (str "user named " (quote-field user))
+   :drop-sql (format "DROP USER %s;" (quote-field user))
+   :data     {:user user}})
 
 (defn- public-create-schemas
   "The schemas of the connected database that grant CREATE to PUBLIC."
@@ -1054,14 +1069,10 @@
   PUBLIC can create in any schema of the connected database."
   [conn user schema]
   (let [existing (cond-> []
-                   (schema-exists? conn schema) (conj {:what     (str "schema named " (quote-schema schema))
-                                                       :drop-sql (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
-                                                       :data     {:schema schema}})
-                   (user-exists? conn user)     (conj {:what     (str "user named " (quote-field user))
-                                                       :drop-sql (format "DROP USER %s;" (quote-field user))
-                                                       :data     {:user user}}))]
+                   (schema-exists? conn schema) (conj (existing-schema schema))
+                   (user-exists? conn user)     (conj (existing-user user)))]
     (when (seq existing)
-      (throw (exists-error existing))))
+      (throw (exists-error existing nil))))
   (check-no-public-create-in-database! conn))
 
 (defn- init-workspace-sqls
@@ -1188,19 +1199,27 @@
 
 (defn- init-error
   "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
-  it leaves nothing behind, and a user or schema of the workspace's name may be one that another session has just
-  committed (SQLState 42P06 or 42710, a 409). A connection failure once the transaction is `committing?` stays
-  unmarked: the transaction may have committed, and its objects then need the teardown. When the rollback fails too,
-  clojure.java.jdbc throws its own error with the original under `:handling`; that original is the one to judge."
-  [t committing?]
-  (let [t (or (when (contains? (ex-data t) :rollback) (:handling (ex-data t))) t)]
-    (if (or (contains? (ex-data t) :workspace/cleanup?)
-            (and committing? (perf/some #(str/starts-with? % "08") (sql-states t))))
+  it leaves nothing behind. A schema or user of the workspace's name may be one that another session has just
+  committed (SQLState 42P06 or 42710): that gives the 409 of [[exists-error]], with `t` as its cause. A connection
+  failure once the transaction is `committing?` stays unmarked: the transaction may have committed, and its objects
+  then need the teardown. When the rollback fails too, clojure.java.jdbc throws its own error with the original under
+  `:handling`; that original is the one to judge."
+  [t committing? user schema]
+  (let [t      (or (when (contains? (ex-data t) :rollback) (:handling (ex-data t))) t)
+        states (sql-states t)]
+    (cond
+      (or (contains? (ex-data t) :workspace/cleanup?)
+          (and committing? (perf/some #(str/starts-with? % "08") states)))
       t
-      (ex-info (ex-message t)
-               (cond-> (assoc (ex-data t) :workspace/cleanup? false)
-                 (perf/some #{"42P06" "42710"} (sql-states t)) (assoc :status-code 409))
-               t))))
+
+      (perf/some #{"42P06"} states)
+      (exists-error [(existing-schema schema)] t)
+
+      (perf/some #{"42710"} states)
+      (exists-error [(existing-user user)] t)
+
+      :else
+      (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t))))
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
@@ -1210,21 +1229,39 @@
         ;; set once the transaction's last statement has run, so that the only step left is COMMIT
         committing?      (volatile! false)]
     (try
-      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-        (start-workspace-transaction! t-conn)
-        ;; a user or schema of this name may be another workspace's: taking it over would hand that workspace's grants
-        ;; to this one, and cleaning up after this init would drop it
-        (check-init-preconditions! t-conn (:user read-user) schema-name)
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql (init-workspace-sqls (:user read-user) escaped-password schema-name)]
-            (.addBatch ^Statement stmt ^String sql))
-          (try
-            (.executeBatch ^Statement stmt)
-            (catch Throwable t
-              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))
-        (vreset! committing? true))
+      (sql-jdbc.execute/do-with-connection-with-options
+       :redshift
+       (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))
+       nil
+       (fn [^Connection conn]
+         (try
+           (jdbc/with-db-transaction [t-conn {:connection conn}]
+             (start-workspace-transaction! t-conn)
+             ;; a user or schema of this name may be another workspace's: taking it over would hand that workspace's
+             ;; grants to this one, and cleaning up after this init would drop it
+             (check-init-preconditions! t-conn (:user read-user) schema-name)
+             (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+               (doseq [sql (init-workspace-sqls (:user read-user) escaped-password schema-name)]
+                 (.addBatch ^Statement stmt ^String sql))
+               (try
+                 (.executeBatch ^Statement stmt)
+                 (catch Throwable t
+                   (throw (driver.u/scrub-exceptions (driver.u/batch-exception t)
+                                                     [(:password read-user) escaped-password])))))
+             (vreset! committing? true))
+           (catch Throwable t
+             ;; a failed rollback leaves the connection with autocommit off, in a state the pool cannot be trusted to
+             ;; reset, so it is discarded
+             (when (contains? (ex-data t) :rollback)
+               (sql-jdbc.conn/discard-pooled-connection! conn))
+             (throw t)))))
       (catch Throwable t
-        (throw (init-error t @committing?))))
+        (let [error (init-error t @committing? (:user read-user) schema-name)]
+          ;; init-error judges the error that caused a failed rollback: attach the rollback's own error, so that it
+          ;; is not lost
+          (when-let [rollback-error (:rollback (ex-data t))]
+            (.addSuppressed ^Throwable error ^Throwable rollback-error))
+          (throw error))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
