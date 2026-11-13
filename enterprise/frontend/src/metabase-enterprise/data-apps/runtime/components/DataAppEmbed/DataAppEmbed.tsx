@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import { getSdkStore } from "embedding-sdk-bundle/store";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
@@ -19,10 +19,12 @@ import { readSlugFromUrl } from "../../lib/read-slug-from-url";
 
 import { DataAppEmbedContent } from "./DataAppEmbedContent";
 
-/** The SDK store for embedded data apps. */
-export const store = getSdkStore();
+interface DataAppEmbedProps {
+  /** The SDK store for this embedded data app. Create it once per iframe. */
+  store: SdkStore;
+}
 
-export function DataAppEmbed() {
+export function DataAppEmbed({ store }: DataAppEmbedProps) {
   const slug = useMemo(() => readSlugFromUrl(), []);
 
   const { embedSettings, dataAppPathNavigationRequest } =

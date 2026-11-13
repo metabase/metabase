@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import { isEmbeddedDataAppPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { createSnowplowTracker, setSnowplowPageUrl } from "metabase/analytics";
 import { getUserId } from "metabase/current-user";
@@ -69,10 +70,12 @@ const init = async () => {
     setDataApp(readSlugFromUrl() ?? "");
     await import("sdk-iframe-embedding-ee-plugins");
 
-    const { DataAppEmbed, store } =
+    const { DataAppEmbed } =
       await import("./components/DataAppEmbed/DataAppEmbed");
 
+    const store = getSdkStore();
     const getEmbedUserId = () => getUserId(store.getState());
+
     createSnowplowTracker(getEmbedUserId);
 
     // The document URL carries the app slug, subpath
@@ -80,7 +83,7 @@ const init = async () => {
     setSnowplowPageUrl(window.location.pathname);
     initMetaplow({ hostUrl: getCollectorHostUrl(), getUserId: getEmbedUserId });
 
-    createRoot(rootElement).render(<DataAppEmbed />);
+    createRoot(rootElement).render(<DataAppEmbed store={store} />);
   } else {
     const { DataAppIframeApp } =
       await import("./components/DataAppIframeApp/DataAppIframeApp");
