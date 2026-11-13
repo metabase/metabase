@@ -86,10 +86,10 @@
   (into [] (comp (keep :description) (remove str/blank?) (distinct)) (documented-schemas property)))
 
 (defn- enum-values
-  "The enum members among a property's [[documented-schemas]], deduped. For an action hub like `browse_data`, the
-  enum is the argument's real documentation."
+  "The enum members among a property's [[documented-schemas]], deduped, without the `nil` of a nullable enum.
+  For an action hub like `browse_data`, the enum is the argument's real documentation."
   [property]
-  (into [] (comp (mapcat :enum) (distinct)) (documented-schemas property)))
+  (into [] (comp (mapcat :enum) (remove nil?) (distinct)) (documented-schemas property)))
 
 ;;;; From the registry to page data
 

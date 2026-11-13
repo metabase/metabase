@@ -160,6 +160,8 @@
   (are [expected property] (= expected (#'mcp-tools-dox/enum-values property))
     ["create" "update"] {:type "string" :enum ["create" "update"]}
     ["create" "update"] {:oneOf [{:type "string" :enum ["create" "update"]} {:type "null"}]}
+    ;; a nullable enum lists `nil` among its members, which is no value to document
+    ["create" "update"] {:type ["string" "null"] :enum ["create" "update" nil]}
     ["a" "b"]           {:type "array" :items {:type "string" :enum ["a" "b"]}}
     ;; object elements are opaque to the cell, enums included
     []                  {:type "array" :items {:type "object" :enum ["a"]}}
