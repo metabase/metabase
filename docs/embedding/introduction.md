@@ -32,7 +32,7 @@ The hub opens to **Get started**, a checklist for your first embed. The sidebar 
 - **Authentication**: set up [JWT SSO](./authentication.md). SAML settings stay in Admin.
 - **Permissions**: control what data people can see in your embeds. If you use tenants, see [data permissions for tenants](./tenants.md#data-permissions-for-tenants).
 - **Tenancy**: [turn on multi-tenant strategy](./tenants.md#enable-multi-tenant-strategy) and manage tenants, tenant groups, and tenant users.
-- **Appearance**: create and manage [embedding themes](./appearance.md#embedding-themes).
+- **Appearance**: create and manage [embedding themes](./appearance.md#save-a-theme-in-metabase).
 - **Localization**: [add a translation dictionary](./translations.md#add-a-translation-dictionary).
 - **New embed**: open the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
@@ -59,7 +59,7 @@ All SSO options require a Pro or Enterprise plan.
 | Dashboards                                                                                | ✅  | ✅    |
 | [Filter widgets](https://www.metabase.com/glossary/filter-widget)                         | ✅  | ✅    |
 | Export results\*                                                                          | ✅  | ✅    |
-| [Light and dark themes](./appearance.md#dark-mode-and-light-mode)                         | ✅  | ✅    |
+| [Light and dark themes](./appearance.md#pick-a-light-or-dark-theme)                       | ✅  | ✅    |
 | Row-level data segregation                                                                | ✅  | ✅    |
 | [Drill-through menus](../questions/visualizations/drill-through.md)                       | ✅  | ❌    |
 | [Query builder](../questions/query-builder/editor.md)                                     | ✅  | ❌    |
