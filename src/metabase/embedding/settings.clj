@@ -118,6 +118,14 @@
   :export?    true
   :audit      :getter
   :deprecated "0.51.0"
+  :doc        (str "Use these variables instead: `MB_ENABLE_EMBEDDING_MODULAR` for modular embedding and guest "
+                   "embeds, `MB_ENABLE_EMBEDDING_SDK` for the modular embedding React SDK, and "
+                   "`MB_ENABLE_EMBEDDING_INTERACTIVE` for full-app embedding. If only `MB_ENABLE_EMBEDDING` is "
+                   "set, Metabase copies its value at startup to the `enable-embedding-sdk`, "
+                   "`enable-embedding-interactive`, and `enable-embedding-static` settings. This also controls "
+                   "modular embedding and guest embeds, unless you set `MB_ENABLE_EMBEDDING_MODULAR` or change it "
+                   "in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of these variables, "
+                   "Metabase stops at startup with an error.")
   :setter     (make-embedding-toggle-setter :enable-embedding "embedding"))
 
 (defsetting ^:deprecated embedding-app-origin
