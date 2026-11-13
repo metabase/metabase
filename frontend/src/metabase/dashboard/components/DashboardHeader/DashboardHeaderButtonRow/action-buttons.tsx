@@ -1,4 +1,7 @@
-import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
+import {
+  PLUGIN_NOTIFICATIONS_SDK,
+  PLUGIN_PERMISSION_PREVIEW,
+} from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -88,7 +91,14 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard.archived,
   },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
-    component: () => <DashboardInfoButton />,
+    component: ({ dashboard }) => (
+      <>
+        {PLUGIN_PERMISSION_PREVIEW.ViewAsButton && (
+          <PLUGIN_PERMISSION_PREVIEW.ViewAsButton entityName={dashboard.name} />
+        )}
+        <DashboardInfoButton />
+      </>
+    ),
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR]: {

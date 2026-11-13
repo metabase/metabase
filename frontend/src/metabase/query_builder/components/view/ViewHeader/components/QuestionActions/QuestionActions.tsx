@@ -8,6 +8,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import type {
   DatasetEditorTab,
@@ -131,6 +132,13 @@ export const QuestionActions = ({
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
+          />
+        </Box>
+      )}
+      {PLUGIN_PERMISSION_PREVIEW.ViewAsButton && question.isSaved() && (
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
+          <PLUGIN_PERMISSION_PREVIEW.ViewAsButton
+            entityName={question.displayName() ?? ""}
           />
         </Box>
       )}

@@ -25,6 +25,7 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -117,6 +118,9 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
+            {PLUGIN_PERMISSION_PREVIEW.PreviewBanner && (
+              <PLUGIN_PERMISSION_PREVIEW.PreviewBanner />
+            )}
             {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}

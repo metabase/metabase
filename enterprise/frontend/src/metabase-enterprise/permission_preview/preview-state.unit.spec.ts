@@ -1,0 +1,75 @@
+import {
+  type PreviewState,
+  clearPreviewState,
+  getPreviewAsHeaderHandler,
+  getPreviewUrl,
+  readPreviewState,
+} from "./preview-state";
+
+const STATE: PreviewState = {
+  userId: 7,
+  userName: "Sales",
+  principalType: "group",
+  principalId: 5,
+  principalName: "Sales",
+  attributes: { category: "Gizmo" },
+  returnPath: "/admin/permissions/data/group/5",
+};
+
+describe("permission preview state", () => {
+  afterEach(() => {
+    clearPreviewState();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("reads the preview from the URL a view-as switch loads with, then drops the parameters from the URL", () => {
+    const url = new URL(getPreviewUrl("/dashboard/1?tab=2", STATE));
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+
+    expect(readPreviewState()).toEqual(STATE);
+    expect(window.location.pathname).toBe("/dashboard/1");
+    expect(window.location.search).toBe("?tab=2");
+  });
+
+  it("keeps the preview for the tab after the URL parameters are gone, so a reload still previews", () => {
+    const url = new URL(getPreviewUrl("/", STATE));
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    readPreviewState();
+
+    expect(readPreviewState()).toEqual(STATE);
+  });
+
+  it("reads no preview in a normal tab, or after exiting", () => {
+    expect(readPreviewState()).toBeNull();
+
+    const url = new URL(getPreviewUrl("/", STATE));
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    readPreviewState();
+    clearPreviewState();
+
+    expect(readPreviewState()).toBeNull();
+  });
+
+  it("exits to the site's home page when the return path points at another site", () => {
+    const url = new URL(
+      getPreviewUrl("/", { ...STATE, returnPath: "//evil.example/" }),
+    );
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+
+    expect(readPreviewState()?.returnPath).toBe("/");
+  });
+
+  it("ignores a user id that isn't a number", () => {
+    window.history.replaceState(null, "", "/?preview_as_user=rasta");
+
+    expect(readPreviewState()).toBeNull();
+  });
+
+  it("sends the previewed user's id in the X-Metabase-Preview-As header", async () => {
+    const handler = getPreviewAsHeaderHandler(STATE);
+
+    expect(
+      await handler({ method: "GET", url: "/api/user/current", data: {} }),
+    ).toEqual({ headers: { "X-Metabase-Preview-As": "7" } });
+  });
+});
