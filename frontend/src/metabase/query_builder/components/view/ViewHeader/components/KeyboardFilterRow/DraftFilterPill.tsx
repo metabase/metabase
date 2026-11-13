@@ -79,10 +79,12 @@ import {
   stringifyDatePickerValue,
 } from "./utils";
 import {
+  BAR_CHART_DROPDOWN_WIDTH,
   SELECT_ALL_VALUE,
   type ValueAndLabel,
+  formatCount,
   formatShare,
-  hasValueRowCounts,
+  getValueCountsMode,
   hasValueShares,
   useValueWidget,
 } from "./value-widgets";
@@ -1156,14 +1158,23 @@ function ValueInput({
   const isAiPromptText = isAiPrompt(text);
   const hasNoDropdown = isAiPromptText || operator.hasNoValueSuggestions;
   const fieldValues = useFieldValues(query, column, hasNoDropdown ? "" : text);
-  const hasRowCounts = hasValueRowCounts(column, operator, fieldValues);
+  const isListed = useMemo(
+    () => canListFieldValues(Lib.fieldValuesSearchInfo(query, column)),
+    [query, column],
+  );
+  const countsMode = getValueCountsMode(
+    column,
+    operator,
+    fieldValues,
+    isListed,
+  );
   const [targetValue, setTargetValue] = useState<string | null>(null);
   const valueCounts = useValueCounts({
     query,
     stageIndex,
     column,
     filter,
-    isEnabled: hasValueShares(column, operator) || hasRowCounts,
+    isEnabled: hasValueShares(column, operator) || countsMode !== "none",
   });
   const widget = useValueWidget({
     column,
@@ -1189,35 +1200,46 @@ function ValueInput({
     const otherValues = values.filter((value) => !allValues.includes(value));
     onValuesChange(isAllChecked ? otherValues : [...otherValues, ...allValues]);
   };
-  const groups = useMemo(
-    () =>
-      valueCounts.type === "counts"
-        ? widget.groups.map((group) => ({
-            ...group,
-            options: group.options.map((option) => {
-              if (hasRowCounts) {
-                return option.isSelectAll
-                  ? option
-                  : {
-                      ...option,
-                      count: valueCounts
-                        .getCount(option.value)
-                        .toLocaleString(),
-                    };
-              }
-              const share = valueCounts.getShare(option.value);
-              return {
+  const hasBars = countsMode === "bars" && valueCounts.type === "counts";
+  const groups = useMemo(() => {
+    if (valueCounts.type !== "counts") {
+      return widget.groups;
+    }
+    const maxCount = Math.max(
+      ...fieldValues.map(([value]) => valueCounts.getCount(value)),
+      0,
+    );
+    // Counts of unique values, like emails, are all 1 and tell nothing.
+    if (countsMode === "counts" && maxCount <= 1) {
+      return widget.groups;
+    }
+    return widget.groups.map((group) => ({
+      ...group,
+      options: group.options.map((option) => {
+        if (countsMode !== "none") {
+          if (option.isSelectAll) {
+            return option;
+          }
+          const count = valueCounts.getCount(option.value);
+          const label = formatCount(count);
+          return countsMode === "bars"
+            ? {
                 ...option,
-                share: {
-                  value: share,
-                  label: formatShare(share),
-                },
-              };
-            }),
-          }))
-        : widget.groups,
-    [widget.groups, valueCounts, hasRowCounts],
-  );
+                bar: { value: maxCount > 0 ? count / maxCount : 0, label },
+              }
+            : { ...option, count: label };
+        }
+        const share = valueCounts.getShare(option.value);
+        return {
+          ...option,
+          share: {
+            value: share,
+            label: formatShare(share),
+          },
+        };
+      }),
+    }));
+  }, [widget.groups, valueCounts, countsMode, fieldValues]);
   const labels = useMemo(
     () =>
       new Map(
@@ -1253,8 +1275,11 @@ function ValueInput({
         aside={hasNoDropdown ? undefined : widget.aside}
         isTiles={widget.isTiles}
         columns={widget.columns}
-        dropdownWidth={widget.dropdownWidth}
+        dropdownWidth={
+          hasBars ? BAR_CHART_DROPDOWN_WIDTH : widget.dropdownWidth
+        }
         dropdownHeight={widget.dropdownHeight}
+        hasBars={hasBars}
         text={text}
         placeholder={getValuePlaceholder(operator, values)}
         isMultiSelect={isMultiSelect}

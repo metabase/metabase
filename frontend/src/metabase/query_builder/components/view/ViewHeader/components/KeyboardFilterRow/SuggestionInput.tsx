@@ -156,6 +156,8 @@ interface SuggestionInputProps {
   hasTabHint?: boolean;
   /** Options are a grid of tiles instead of a list. */
   isTiles?: boolean;
+  /** A bar chart on the right of the list, with a bar for each option. */
+  hasBars?: boolean;
   /** Number of option columns in the list. */
   columns?: number;
   dropdownWidth?: number;
@@ -203,6 +205,7 @@ export function SuggestionInput({
   isFirstOptionHighlighted = false,
   hasTabHint = false,
   isTiles = false,
+  hasBars = false,
   columns = 1,
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
   dropdownHeight,
@@ -373,9 +376,13 @@ export function SuggestionInput({
     const hasMoved =
       lastPosition?.x !== event.clientX || lastPosition?.y !== event.clientY;
     lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    // A bar highlights the option of its row.
     const option =
       event.target instanceof Element
-        ? event.target.closest("[data-combobox-option]")
+        ? (event.target.closest("[data-combobox-option]") ??
+          event.target
+            .closest("[data-bar-row]")
+            ?.querySelector("[data-combobox-option]"))
         : null;
     const canHighlight =
       hasMoved &&
@@ -390,7 +397,42 @@ export function SuggestionInput({
     }
   };
 
+  const handleOptionSubmit = (value: string) => {
+    onOptionSubmit(value);
+    if (isMultiSelect) {
+      combobox.openDropdown();
+    }
+  };
+
   const renderOption = (option: SuggestionOption) => {
+    if (hasBars) {
+      return (
+        <div
+          key={option.value}
+          className={S.barRow}
+          data-bar-row
+          data-checked={option.isChecked || undefined}
+        >
+          {renderListOption(option)}
+          <div
+            className={S.barCell}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => handleOptionSubmit(option.value)}
+          >
+            {option.bar != null && (
+              <>
+                <span className={S.bar} style={getBarStyle(option.bar.value)} />
+                <span className={S.barLabel}>{option.bar.label}</span>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return renderListOption(option);
+  };
+
+  const renderListOption = (option: SuggestionOption) => {
     if (isTiles) {
       return (
         <Combobox.Option
@@ -461,12 +503,7 @@ export function SuggestionInput({
         groupLabel: S.groupLabel,
         option: S.option,
       }}
-      onOptionSubmit={(value) => {
-        onOptionSubmit(value);
-        if (isMultiSelect) {
-          combobox.openDropdown();
-        }
-      }}
+      onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.Target>
         <input
@@ -489,7 +526,10 @@ export function SuggestionInput({
       {hasSuggestions && (
         <Combobox.Dropdown
           ref={dropdownRef}
-          className={cx({ [S.dropdownWithAside]: aside })}
+          className={cx({
+            [S.dropdownWithAside]: aside,
+            [S.dropdownWithBars]: hasBars,
+          })}
           style={{ marginLeft: dropdownShift }}
         >
           <div
@@ -656,4 +696,9 @@ function OptionLabel({ option }: { option: SuggestionOption }) {
       {option.count && <span className={S.optionCount}>{option.count}</span>}
     </Flex>
   );
+}
+
+/** The CSS variable with the length of a bar, as a style. */
+function getBarStyle(value: number): Record<string, string> {
+  return { "--bar-value": String(value) };
 }

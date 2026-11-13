@@ -66,24 +66,39 @@ export function hasValueShares(
   );
 }
 
-/** Checkbox lists with this many values or fewer show the row counts. */
-const MAX_COUNTED_VALUES = 8;
+/** Checkbox lists with this many values or fewer show a bar chart. */
+const MAX_BAR_CHART_VALUES = 8;
+
+/** The width of a dropdown with a bar chart on the right of the list. */
+export const BAR_CHART_DROPDOWN_WIDTH = 590;
 
 /**
- * True when the checkbox list of the column shows the number of rows with
- * each value: a short list that has no shares.
+ * How the checkbox list of the column shows the number of rows with each
+ * value:
+ * - `bars`: a short list gets a bar chart on the right;
+ * - `counts`: a longer list gets the counts at the right end of the options;
+ * - `none`: no counts, like for keys, values that the user searches for, or
+ *   lists with shares.
  */
-export function hasValueRowCounts(
+export type ValueCountsMode = "bars" | "counts" | "none";
+
+export function getValueCountsMode(
   column: Lib.ColumnMetadata,
   operator: DraftOperator,
   fieldValues: ValueAndLabel[],
-) {
-  return (
-    !hasValueShares(column, operator) &&
-    operator.valueKind === "multi" &&
-    fieldValues.length > 0 &&
-    fieldValues.length <= MAX_COUNTED_VALUES
-  );
+  isListed: boolean,
+): ValueCountsMode {
+  if (
+    hasValueShares(column, operator) ||
+    operator.valueKind !== "multi" ||
+    !isListed ||
+    fieldValues.length === 0 ||
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column)
+  ) {
+    return "none";
+  }
+  return fieldValues.length <= MAX_BAR_CHART_VALUES ? "bars" : "counts";
 }
 
 /**
@@ -261,6 +276,16 @@ function getNamedValues(
   return namedValues.length > 0
     ? namedValues.sort(([, a], [, b]) => a.localeCompare(b))
     : null;
+}
+
+const COUNT_FORMAT = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/** A number of rows, short: "910", "15.4k" or "2M". */
+export function formatCount(count: number) {
+  return COUNT_FORMAT.format(count).replace("K", "k");
 }
 
 /** A share as a percent, like "34%". */

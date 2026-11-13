@@ -25,6 +25,11 @@ export type SuggestionOption = {
   share?: { value: number; label: string };
   /** The number of rows with this value, shown at the right end. */
   count?: string;
+  /**
+   * A bar on the right of the option, with the number of rows with this
+   * value. The value is the length of the bar, from 0 to 1.
+   */
+  bar?: { value: number; label: string };
   /** Shown but not pickable, like a column that can't go where the caret is. */
   disabled?: boolean;
 };
