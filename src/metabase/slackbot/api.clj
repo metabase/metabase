@@ -587,7 +587,9 @@
                         external-id user_id (ex-message e)))))))))
 
 (api.macros/defendpoint :post "/interactive"
-  :- [:map {:closed true, :openapi/response-schema :nil} [:status [:= 200]] [:body [:= ""]]]
+  :- [:map {:closed true, :openapi/response {:status "200", :description "Acknowledged, with no body"}}
+      [:status [:= 200]]
+      [:body   [:= ""]]]
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params
    _query-params

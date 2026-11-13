@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
+  setupExecuteActionEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -18,15 +19,23 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Field } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import type { Field, WritebackAction } from "metabase-types/api";
+import {
+  createMockActionParameter,
+  createMockCard,
+  createMockDatabase,
+  createMockDataset,
+  createMockImplicitQueryAction,
+} from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createReviewsTable,
@@ -34,7 +43,42 @@ import {
 
 import { ObjectDetailSidesheet } from "./ObjectDetailSidesheet";
 
+const MODEL_ID = 42;
+let mockIsModel = false;
+
+const mockRunQuestionQuery = jest.fn(() => ({
+  type: "test/RUN_QUESTION_QUERY",
+}));
+jest.mock("../actions", () => ({
+  ...jest.requireActual("../actions"),
+  runQuestionQuery: () => mockRunQuestionQuery(),
+}));
+// A model in the query builder has the model card as its source card.
+jest.mock("../store/selectors", () => {
+  const actual = jest.requireActual("../store/selectors");
+  return {
+    ...actual,
+    getSourceCardId: (state: unknown) =>
+      mockIsModel ? MODEL_ID : actual.getSourceCardId(state),
+  };
+});
+
 registerVisualizations();
+
+const DELETE_ACTION = createMockImplicitQueryAction({
+  id: 1,
+  database_id: SAMPLE_DB_ID,
+  model_id: MODEL_ID,
+  kind: "row/delete",
+  name: "Delete",
+  parameters: [
+    createMockActionParameter({
+      id: "id",
+      "display-name": "ID",
+      type: "type/Integer",
+    }),
+  ],
+});
 
 const PRODUCTS_TABLE = createProductsTable();
 const ORDERS_TABLE = createOrdersTable();
@@ -47,11 +91,27 @@ const FK_RECORDS_COUNT = 93;
 
 interface SetupOpts {
   hideOrdersTable?: boolean;
+  isModel?: boolean;
+  actions?: WritebackAction[];
 }
 
-function setup({ hideOrdersTable = false }: SetupOpts = {}) {
-  setupDatabasesEndpoints([]);
-  setupActionsEndpoints([]);
+function setup({
+  hideOrdersTable = false,
+  isModel = false,
+  actions = [],
+}: SetupOpts = {}) {
+  mockIsModel = isModel;
+  setupDatabasesEndpoints(
+    isModel
+      ? [
+          createMockDatabase({
+            id: SAMPLE_DB_ID,
+            settings: { "database-enable-actions": true },
+          }),
+        ]
+      : [],
+  );
+  setupActionsEndpoints(actions);
   const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
   const ordersProductId = {
     ...checkNotNull(findField(ORDERS_TABLE.fields, "PRODUCT_ID")),
@@ -94,6 +154,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
     }),
     qb: createMockQueryBuilderState({
       card: createMockCard({
+        ...(isModel && { id: MODEL_ID, type: "model", can_write: true }),
         dataset_query: Lib.toJsQuery(
           Lib.createTestQuery(SAMPLE_PROVIDER, {
             stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
@@ -177,5 +238,24 @@ describe("ObjectDetailSidesheet", () => {
 
     await userEvent.tab();
     expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
+  });
+
+  it("re-runs the model query after an object detail action succeeds", async () => {
+    setupExecuteActionEndpoint(DELETE_ACTION.id, {
+      body: { "rows-deleted": [1] },
+    });
+    setup({ isModel: true, actions: [DELETE_ACTION] });
+
+    await userEvent.click(await screen.findByTestId("actions-menu"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
+    const modal = await screen.findByTestId("delete-object-modal");
+    expect(mockRunQuestionQuery).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Delete forever" }),
+    );
+
+    await waitFor(() => expect(mockRunQuestionQuery).toHaveBeenCalledTimes(1));
   });
 });

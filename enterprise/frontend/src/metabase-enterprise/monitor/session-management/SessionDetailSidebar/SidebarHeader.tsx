@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
+import { SidebarNavButton } from "metabase/common/components/DetailSidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Flex, Group, Icon } from "metabase/ui";

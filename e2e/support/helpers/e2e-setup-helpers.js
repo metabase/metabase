@@ -15,8 +15,9 @@ export function snapshot(name) {
  * "postgres-12" |
  * "postgres-writable" |
  * "mysql-8" |
- * "mysql-writable"
- * } name
+ * "mysql-writable" |
+ * (string & {})
+ * } name - A built-in snapshot, or one saved with `snapshot()`
  */
 export function restore(name = "default") {
   cy.log("Restore Data Set");

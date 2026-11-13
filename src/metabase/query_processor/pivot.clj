@@ -833,15 +833,16 @@
         cause-chain     (fn [^Throwable t]
                           (loop [t t, acc []]
                             (if t (recur (.getCause t) (conj acc (.getMessage t))) acc)))]
-    (log/warnf "pivot-parity %s"
-               (pr-str {:driver  (:engine (query-database query))
-                        :primary primary-flow
-                        :flows   (update-vals outcomes
-                                              (fn [{:keys [throwable elapsed-ms]}]
-                                                (cond-> {:elapsed-ms elapsed-ms
-                                                         :ok?        (nil? throwable)}
-                                                  throwable (assoc :cause (cause-chain throwable)))))
-                        :divergent-pairs divergent-pairs}))
+    (when (seq divergent-pairs)
+      (log/warnf "pivot-parity %s"
+                 (pr-str {:driver  (:engine (query-database query))
+                          :primary primary-flow
+                          :flows   (update-vals outcomes
+                                                (fn [{:keys [throwable elapsed-ms]}]
+                                                  (cond-> {:elapsed-ms elapsed-ms
+                                                           :ok?        (nil? throwable)}
+                                                    throwable (assoc :cause (cause-chain throwable)))))
+                          :divergent-pairs divergent-pairs})))
     (when (seq divergent-pairs)
       (on-parity-mismatch {:outcomes outcomes, :divergent-pairs divergent-pairs}))
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]

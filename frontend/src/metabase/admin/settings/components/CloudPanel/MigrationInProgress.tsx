@@ -119,7 +119,7 @@ export const MigrationInProgress = ({
         data-testid="cancel-cloud-migration-confirmation"
         title={t`Cancel migration?`}
       >
-        <Text>{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
+        <Text c="text-secondary">{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
         <Modal.Footer>
           <Button
             variant="filled"

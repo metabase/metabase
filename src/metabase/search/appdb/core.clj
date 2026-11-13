@@ -88,7 +88,7 @@
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
+    (let [index-state  @(search.index/indexes-handle)
           ;; Sync, in case we're just out of sync with the database.
           found-active (:active (#'search.index/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
@@ -108,7 +108,7 @@
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
+                       :index-state-after  @(search.index/indexes-handle)
                        :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}

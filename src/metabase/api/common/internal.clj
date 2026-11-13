@@ -2,9 +2,9 @@
   "Internal functions used by [[metabase.api.common]]."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
@@ -19,14 +19,12 @@
        (map keyword)))
 
 (defn- requiring-resolve-form [form]
-  (walk/postwalk
-   (fn [x]
-     (if (symbol? x)
-       ;; macro schemas can contain symbols from any module
-       #_{:clj-kondo/ignore [:metabase/modules]}
-       (try @(requiring-resolve x)
-            (catch Exception _ x)) x))
-   form))
+  (match/replace-all form
+    #'symbol?
+    ;; macro schemas can contain symbols from any module
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (try @(requiring-resolve &match)
+         (catch Exception _ &match))))
 
 (defn- all-non-nil
   [sequence]

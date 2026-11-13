@@ -148,7 +148,8 @@
    [:map {:closed true}
     [:description :string]
     [:content     {:optional true} [:map-of
-                                    [:enum "application/json" "multipart/form-data"]
+                                    ;; a media type such as `text/csv`
+                                    [:re #"^[\w.+-]+/[\w.+-]+$"]
                                     [:map {:closed true} [:schema ::parameter.schema]]]]
     ;; TODO -- headers, links, etc.
     ]])

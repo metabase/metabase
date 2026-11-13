@@ -208,6 +208,28 @@
             (is (= (into #{} (keys (first (:dashcards real))))
                    (into #{} (keys (first (:dashcards dry))))))))))))
 
+(deftest placed-card-pushes-cards-down-test
+  (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+                 :model/Card          card {:name "Revenue"}
+                 :model/DashboardCard left {:dashboard_id (:id dash) :card_id (:id card)
+                                            :row 0 :col 0 :size_x 12 :size_y 6}
+                 :model/DashboardCard right {:dashboard_id (:id dash) :card_id (:id card)
+                                             :row 0 :col 12 :size_x 12 :size_y 6}]
+    (let [args {:method "update" :id (:id dash)
+                :ops    [{:op "resize" :dashcard_id (:id left) :size {:size_x 24 :size_y 6}}]}]
+      (testing "a dry run reports the card the resize would push down, and writes nothing"
+        (let [dry (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                           (wire (assoc args :validate_only true))))]
+          (is (= [(:id right)] (:pushed_dashcard_ids dry)))
+          (is (= 0 (t2/select-one-fn :row :model/DashboardCard :id (:id right))))))
+      (testing "the save pushes the covered card down and lists it"
+        (let [saved (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire args)))]
+          (is (= [(:id right)] (:pushed_dashcard_ids saved)))
+          (is (= 6 (t2/select-one-fn :row :model/DashboardCard :id (:id right))))))
+      (testing "a save that moves nothing has no pushed_dashcard_ids"
+        (is (not (contains? (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire args)))
+                            :pushed_dashcard_ids)))))))
+
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
             `:card_id`, so a stale one would report the replace as a no-op and an agent validating before

@@ -725,7 +725,7 @@ describe("scenarios > monitor > tools > task runs", () => {
       .findAllByTestId("task")
       .should("have.length.at.least", 1);
 
-    cy.findByRole("link", { name: "Runs" }).click();
+    cy.findByRole("tab", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.wait("@getTaskRuns");
 
@@ -783,7 +783,7 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
 
     cy.log("Tasks tab opens the tasks list");
-    cy.findByRole("link", { name: "Tasks" }).click();
+    cy.findByRole("tab", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.findByTestId("tasks-table")
       .findAllByTestId("task")

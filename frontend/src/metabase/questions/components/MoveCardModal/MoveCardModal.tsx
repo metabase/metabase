@@ -18,7 +18,7 @@ import { useDispatch } from "metabase/redux";
 import { questionUpdated } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
-import { Box, Icon, Radio, Title } from "metabase/ui";
+import { Icon, Radio, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
@@ -173,9 +173,9 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         message={
           <>
-            <Box mt="-1.5rem">
+            <Text mt="-1.5rem">
               {t`It can still appear there even though you’re moving it into a collection.`}
-            </Box>
+            </Text>
             <Radio.Group
               value={`${!deleteOldDashcardsState}`}
               onChange={(val) => setDeleteOldDashcardsState(val !== "true")}
