@@ -1015,7 +1015,7 @@
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
         (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
               ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
-              _              (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-anywhere! (constantly nil)]
+              _              (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
                                (driver/init-workspace-isolation! :redshift (mt/db) workspace+det))
               iso-user       (-> workspace+det :database_details :user)]
           (try
@@ -1090,7 +1090,7 @@
         (execute! (format "CREATE SCHEMA \"%s\"" schema))
         (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
               ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
-              _         (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-anywhere! (constantly nil)]
+              _         (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
                           (driver/init-workspace-isolation! :redshift (mt/db) workspace))
               iso-user  (-> workspace :database_details :user)]
           (try

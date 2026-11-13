@@ -961,8 +961,8 @@
 ;; - `destroy` replaces the postgres impl's `DROP OWNED BY` (which behaves
 ;;   differently in Redshift) with explicit per-schema REVOKEs.
 ;;
-;; Isolation limit, checked at init time via [[check-no-public-create-anywhere!]]
-;; for every schema, and again at grant time via [[assert-no-public-create-grant!]]
+;; Isolation limit, checked at init time via [[check-no-public-create-in-database!]]
+;; for every schema of the connected database, and again at grant time via [[assert-no-public-create-grant!]]
 ;; for each input schema: Redshift's permission model (inherited from PostgreSQL)
 ;; lets a user receive privileges either directly or through PUBLIC. REVOKE-ing
 ;; CREATE from a specific user only removes their direct grant: it can't
@@ -1002,9 +1002,9 @@
   (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
 
 (defn- start-workspace-transaction!
-  "Runs first in every transaction of the workspace methods. Pins search_path to pg_catalog for the transaction: a
-  function that a workspace user planted in a schema on the default search_path (`public`) would otherwise run with
-  this login's privileges (CVE-2018-1058)."
+  "Pins search_path to pg_catalog for the current transaction. Call it first in every transaction of the workspace
+  methods: a function that a workspace user planted in a schema on the default search_path (`public`) would otherwise
+  run with the privileges of the admin connection's login (CVE-2018-1058)."
   [conn]
   (jdbc/execute! conn ["SET LOCAL search_path TO pg_catalog"]))
 
@@ -1033,15 +1033,16 @@
                                               "WHERE identity_type = 'public' AND privilege_type = 'CREATE' "
                                               "ORDER BY namespace_name")])))
 
-(defn- check-no-public-create-anywhere!
-  "Every user, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC: writes
-  outside its output schema, and objects that keep `DROP USER` from succeeding. Throws a 412 naming the REVOKEs to run.
-  `public` grants it by default."
+(defn- check-no-public-create-in-database!
+  "Throws a 412 naming the REVOKEs to run when a schema of the connected database grants CREATE to PUBLIC (`public`
+  does by default). Every user, the workspace user included, can create objects in such a schema: writes outside its
+  output schema, and objects that keep `DROP USER` from succeeding."
   [conn]
   (when-let [schemas (seq (public-create-schemas conn))]
     (throw (ex-info (format (str "The workspace user could create objects outside its output schema. These schemas grant "
                                  "CREATE to PUBLIC: %s. As the owner of each schema named, or a superuser, run %s, and retry. Redshift "
-                                 "grants CREATE on `public` to PUBLIC by default, so this is a one-time setup step.")
+                                 "grants CREATE on `public` to PUBLIC by default. The REVOKE persists, so this is a one-time "
+                                 "setup step.")
                             (str/join ", " schemas)
                             (str/join ", " (map #(format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;`"
                                                          (quote-schema %))
@@ -1050,7 +1051,7 @@
 
 (defn- check-init-preconditions!
   "Throws before init makes any change: a 409 when the workspace user or its output schema already exists, a 412 when
-  PUBLIC can create in any schema."
+  PUBLIC can create in any schema of the connected database."
   [conn user schema]
   (let [existing (cond-> []
                    (schema-exists? conn schema) (conj {:what     (str "schema named " (quote-schema schema))
@@ -1061,7 +1062,7 @@
                                                        :data     {:user user}}))]
     (when (seq existing)
       (throw (exists-error existing))))
-  (check-no-public-create-anywhere! conn))
+  (check-no-public-create-in-database! conn))
 
 (defn- init-workspace-sqls
   "The statements init runs, in order, once [[check-init-preconditions!]] has passed."
@@ -1081,9 +1082,11 @@
 (defn- end-sessions!
   "Ends every open session of `user`, so that none holds a lock that the drops in teardown wait on. STV_SESSIONS shows
   a regular user only its own sessions, and only a superuser may end another user's session, so this ends nothing
-  unless the admin connection's login is a superuser. `pg_terminate_backend` runs only on the leader node, so Redshift
-  refuses it in a statement that reads a table: read the pids first, then end each one in a statement of its own."
+  unless the admin connection's login is a superuser. It does not stop `user` from opening a new session after the
+  sessions end."
   [conn user]
+  ;; `pg_terminate_backend` runs only on the leader node, so Redshift refuses it in a statement that reads a table:
+  ;; the pids come from one query, and each session ends in a statement of its own
   (doseq [{:keys [process]} (jdbc/query conn ["SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?" user])]
     (jdbc/query conn ["SELECT pg_terminate_backend(?) AS ended" process])))
 
