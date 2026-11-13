@@ -131,6 +131,12 @@ export type StartPreviewResponse = {
   attributes: Record<string, string>;
 };
 
+export type PreviewGrantResponse = StartPreviewResponse & {
+  grant: string;
+  /** Epoch seconds. */
+  expires_at: number;
+};
+
 /** An attribute a group's access depends on, with the values to pick from. */
 export type PreviewAttribute = {
   attribute: string;
@@ -198,6 +204,16 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
         body: { principal_type: type, principal_id: id, attributes },
       }),
     }),
+    issuePreviewGrant: builder.mutation<
+      PreviewGrantResponse,
+      StartPreviewRequest
+    >({
+      query: ({ type, id, attributes }) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/grant",
+        body: { principal_type: type, principal_id: id, attributes },
+      }),
+    }),
   }),
 });
 
@@ -209,4 +225,5 @@ export const {
   useGetApplicationPreviewQuery,
   useGetPreviewAttributesQuery,
   useStartPreviewMutation,
+  useIssuePreviewGrantMutation,
 } = permissionPreviewApi;
