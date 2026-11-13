@@ -70,7 +70,7 @@
       (throw (ex-info "Week-based time operations require :start-of-week"
                       {:time-config time-config}))))
 
-;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
+;; Numbers weeks the way the query processor buckets `:week-of-year`: `ceil(day-of-year(week start) / 7)`.
 ;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
 ;; Keep in step with the copy in impl.cljs and with `sql.qp/date [:sql :week-of-year]`.
 ;; The rules test, `week-of-year-rules-test`, holds both copies to the same rules, and
