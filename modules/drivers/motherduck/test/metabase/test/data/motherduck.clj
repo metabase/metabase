@@ -307,11 +307,14 @@
   (with-open [stmt (.createStatement conn)]
     (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
 
-(defn- database-exists? [db-name]
+(defn- database-exists?
+  "Does the account have a database named `db-name`? Read the account catalog, since the server connection attaches
+  only its own database; see [[test-database-names]]."
+  [db-name]
   (do-with-server-connection
    (fn [^Connection conn]
-     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_databases() "
-                                                   "WHERE type = 'motherduck' AND database_name = ?"))]
+     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM MD_ALL_DATABASES() "
+                                                   "WHERE type = 'motherduck' AND \"alias\" = ?"))]
        (.setString stmt 1 db-name)
        (with-open [rset (.executeQuery stmt)]
          (.next rset))))))
@@ -451,13 +454,17 @@
           (server-dbname)))
 
 (defn- test-database-names
-  "Names of every test database in the account: private temp_ ones and shared sha_ ones."
+  "Names of every test database in the account: private temp_ ones and shared sha_ ones.
+
+  Read MotherDuck's account catalog with `MD_ALL_DATABASES()`, not `duckdb_databases()`. Connections attach only their
+  own database, so `duckdb_databases()` would list just the server database. `MD_ALL_DATABASES()` lists attached and
+  unattached databases alike, and `DROP DATABASE` works on a database that isn't attached."
   [^Connection conn]
   (with-open [stmt (.createStatement conn)
-              rset (.executeQuery stmt (str "SELECT database_name FROM duckdb_databases() "
+              rset (.executeQuery stmt (str "SELECT \"alias\" AS database_name FROM MD_ALL_DATABASES() "
                                             "WHERE type = 'motherduck' "
-                                            "AND (starts_with(database_name, 'temp_') "
-                                            "OR starts_with(database_name, 'sha_'))"))]
+                                            "AND (starts_with(\"alias\", 'temp_') "
+                                            "OR starts_with(\"alias\", 'sha_'))"))]
     (into [] (map :database_name) (resultset-seq rset))))
 
 (defn- old-shared-database?

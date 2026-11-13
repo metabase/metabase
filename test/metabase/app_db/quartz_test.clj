@@ -26,7 +26,7 @@
   (testing "the provider fetches a fresh connection even when toucan2's *current-connectable* is bound to a Connection"
     (let [data-source (h2-data-source "quartz-provider-test")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (binding [mdb.connection/*application-db* app-db]
+      (mdb.connection/with-application-db app-db
         (with-open [^Connection outer (.getConnection data-source)]
           (binding [t2.conn/*current-connectable* outer]
             (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)]
@@ -57,7 +57,7 @@
           (let [data-source (h2-data-source "quartz-deadlock-test")
                 app-db      (mdb.connection/application-db :h2 data-source :create-pool? true)]
             (try
-              (binding [mdb.connection/*application-db* app-db]
+              (mdb.connection/with-application-db app-db
                 ;; saturate the main pool by checking out its only connection...
                 (with-open [^Connection main-conn (.getConnection ^javax.sql.DataSource app-db)]
                   ;; ...and simulate being inside a `with-transaction` block on it

@@ -59,6 +59,13 @@ const DEFAULT_MAPPING_OPTIONS: ParameterMappingOption[] = [
   },
 ];
 
+const TEXT_TAG_MAPPING_OPTION: ParameterMappingOption = {
+  name: "foo",
+  icon: "string",
+  isForeign: false,
+  target: ["text-tag", "foo"],
+};
+
 const getQuestion = (card: Card | VirtualCard) => {
   return card.name !== null ? new Question(card, metadata) : undefined;
 };
@@ -148,6 +155,45 @@ describe("DashCardCardParameterMapper", () => {
         ),
       ).toBeInTheDocument();
     });
+
+    it.each(["text", "heading"] as const)(
+      "should offer the variables of %s cards as mapping targets",
+      async (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+        });
+
+        await userEvent.click(screen.getByText("Select…"));
+        expect(await screen.findByText("foo")).toBeInTheDocument();
+      },
+    );
+
+    it.each(["text", "heading"] as const)(
+      "should show the variable a %s card is mapped to",
+      (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+          target: TEXT_TAG_MAPPING_OPTION.target,
+        });
+
+        expect(screen.getByText("foo")).toBeInTheDocument();
+        expect(screen.queryByText("Select…")).not.toBeInTheDocument();
+      },
+    );
 
     it("should render an informative parameter mapping state for iframe cards without variables", () => {
       const textCard = createMockIFrameDashboardCard({ size_x: 4, size_y: 4 });

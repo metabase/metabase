@@ -4,14 +4,14 @@
    and a keyset predicate past the last returned row — so paging is just another query on the
    existing handle store: no page-state column, no content-addressing, no schema change."
   (:require
-   [clojure.walk :as walk]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.queries :as v2.queries]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -215,11 +215,8 @@
 
    Run every caller-supplied query through this so only server-minted clauses can carry the mark."
   [serialized-query]
-  (walk/postwalk (fn [x]
-                   (if (and (map? x) (contains? x keyset-marker))
-                     (dissoc x keyset-marker)
-                     x))
-                 serialized-query))
+  (match/replace-all serialized-query
+    (m :guard (and (map? m) (contains? m keyset-marker))) (dissoc m keyset-marker)))
 
 (defn- supersede-previous-keyset
   "`query`'s last stage with the keyset predicates this namespace minted removed, so the caller can

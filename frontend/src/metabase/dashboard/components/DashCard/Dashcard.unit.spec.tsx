@@ -855,6 +855,52 @@ describe("DashCard", () => {
     expect(Lib.filters(linkedQuestion.query(), -1)).toHaveLength(1);
   });
 
+  it.each(["line", "table"] as const)(
+    "should show the dashcard menu when a %s card has an empty title (metabase#46897, metabase#36788)",
+    async (display) => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const card = createMockCard({
+        name: "The lineest of all lines",
+        display,
+        dataset_query: ORDERS_QUERY,
+      });
+      const dashcard = createMockDashboardCard({
+        card_id: card.id,
+        card,
+        visualization_settings: { "card.title": "" },
+      });
+      setup({
+        dashboard: { ...testDashboard, dashcards: [dashcard] },
+        dashcard,
+        dashcardData: {
+          [dashcard.id]: {
+            [card.id]: createMockDataset({
+              data: createMockDatasetData({
+                cols: [
+                  createMockDatetimeColumn({ name: "CREATED_AT" }),
+                  createMockNumericColumn({ name: "count" }),
+                ],
+                rows: [
+                  ["2024-01-01T00:00:00Z", 1],
+                  ["2024-02-01T00:00:00Z", 2],
+                ],
+              }),
+            }),
+          },
+        },
+        withMetadata: true,
+      });
+
+      await user.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Edit question")).toBeInTheDocument();
+      expect(screen.getByText("Download results")).toBeInTheDocument();
+      expect(screen.queryByText(card.name)).not.toBeInTheDocument();
+    },
+  );
+
   describe("visualizer dashcard download permissions", () => {
     const sourceCard = createMockCard({
       id: 42,
@@ -1034,6 +1080,72 @@ describe("DashCard", () => {
       });
 
       expect(queryIcon("chevrondown")).not.toBeInTheDocument();
+    });
+
+    it("should hide the actions that need query results while the card is loading (metabase#21830)", () => {
+      setup({ isEditing: true, dashcardData: {} });
+
+      expect(getIcon("close")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Click behavior")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show the actions that need query results once the card has loaded (metabase#21830)", () => {
+      setup({ isEditing: true });
+
+      expect(getIcon("close")).toBeInTheDocument();
+      expect(screen.getByLabelText("Click behavior")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+    });
+
+    it("should show visualization options, but no visualizer or edit actions, for text cards", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const textCard = createMockTextDashboardCard({ text: "Text" });
+      setup({
+        dashboard: { ...testDashboard, dashcards: [textCard] },
+        dashcard: textCard,
+        dashcardData: {},
+        isEditing: true,
+      });
+
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Edit card")).not.toBeInTheDocument();
+
+      await user.click(screen.getByLabelText("Show visualization options"));
+
+      const sidebar = await screen.findByTestId("chartsettings-sidebar");
+      expect(
+        within(sidebar).getByText("Vertical Alignment"),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).getByText("Horizontal Alignment"),
+      ).toBeInTheDocument();
+      expect(within(sidebar).getByText("Show background")).toBeInTheDocument();
+    });
+
+    it("should show filter and duplicate actions, but no visualization options or edit actions, for heading cards", () => {
+      const headingCard = createMockHeadingDashboardCard({ text: "Heading" });
+      setup({
+        dashboard: { ...testDashboard, dashcards: [headingCard] },
+        dashcard: headingCard,
+        dashcardData: {},
+        isEditing: true,
+      });
+
+      expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
+      expect(screen.getByLabelText("Duplicate")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Edit card")).not.toBeInTheDocument();
     });
 
     it("should show a 'replace card' action for erroring queries", async () => {

@@ -191,6 +191,11 @@
           :write (and (nil? (:exploration_id document))
                       (mi/can-write? document)))))))
 
+(def card-read-check-columns
+  "The columns `mi/can-read?` reads from a Card.
+  A Card selected with only these gets the same verdict as a full row, without the cost of its after-select."
+  [:id :collection_id :document_id])
+
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
 ;; being true for Cards once a Card could be scoped to a Document (see [[parent-document-permits?]]).
@@ -198,9 +203,9 @@
 ;; The collection half still delegates to the same helper the macro installed, so the audit-collection
 ;; rule it carries is preserved verbatim.
 ;;
-;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
-;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
-;; so the document check below adds no further queries.
+;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead,
+;; which loads every candidate before pagination with only [[card-read-check-columns]]. Add a column there if
+;; this method starts reading another one.
 (defmethod mi/can-read? :model/Card
   ([instance]
    (and (perms/can-read-via-parent-collection? (:collection_id instance))

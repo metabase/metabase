@@ -4,7 +4,6 @@
    [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
@@ -22,7 +21,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.match :as match]
+   [metabase.util.o11y :refer [with-span]]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
    (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
@@ -482,10 +483,7 @@
   "If `v` is a string that looks like a JSON object or array, decode it.
   Returns the decoded value on success, or the original value on failure."
   [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
+  (if (tools.runtime/json-text? v)
     (try
       (json/decode+kw v)
       (catch Exception _ v))
@@ -643,7 +641,7 @@
                                     (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (walk/keywordize-keys (coerce-stringified-json (:arguments part))))
+                           (title-fn (perf/keywordize-keys (coerce-stringified-json (:arguments part))))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -1114,7 +1112,7 @@
                            ;; garble the message.
                            (or
                             (unparsed-arguments-outcome arguments)
-                            (let [arguments (walk/keywordize-keys
+                            (let [arguments (perf/keywordize-keys
                                              (or (coerce-stringified-json arguments) {}))]
                               (log/debug "Executing tool" {:tool-name safe-name})
                               (when (ait/capture-active?)
@@ -1286,10 +1284,10 @@
   only for the caller to truncate it back down. Collections also render under
   `*print-length*`/`*print-level*` to bound element count and nesting depth."
   [body limit]
-  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
-    (binding [*print-length* 100
-              *print-level*  10]
-      (pr-str (walk/postwalk slice body)))))
+  (binding [*print-length* 100
+            *print-level*  10]
+    (pr-str (match/replace-all body
+              #'string? (truncate-to &match limit)))))
 
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."

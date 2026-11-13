@@ -7,16 +7,7 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
-import {
-  Box,
-  Button,
-  Divider,
-  Flex,
-  Loader,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 
 import { DiagnosticCheckboxes } from "./DiagnosticCheckboxes";
 import type { ErrorPayload } from "./types";
@@ -48,7 +39,13 @@ export const BugReportModal = ({
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   return (
-    <Modal opened onClose={onClose} title={t`Report a bug`} size={550}>
+    <Modal
+      opened
+      onClose={onClose}
+      title={t`Report a bug`}
+      size={600}
+      density="relaxed"
+    >
       <FormProvider
         initialValues={{
           ...hiddenValues,
@@ -65,7 +62,7 @@ export const BugReportModal = ({
       >
         {(formik) => (
           <Form>
-            <Text py="lg">{t`Could you provide us with a little context?`}</Text>
+            <Text pb="lg">{t`Could you provide us with a little context?`}</Text>
             <FormTextarea
               name="description"
               data-autofocus
@@ -75,7 +72,7 @@ export const BugReportModal = ({
             />
             <Box
               bg={"accent-gray-light"}
-              p="xl"
+              p="lg"
               my="lg"
               style={{ borderRadius: "0.5rem" }}
             >
@@ -107,25 +104,22 @@ export const BugReportModal = ({
                 />
               )}
             </Box>
-            <Button
-              variant="filled"
-              leftSection={isSlackSending ? <Loader size="xs" /> : null}
-              onClick={() => onSlackSubmit(formik.values)}
-              disabled={isSlackSending}
-            >
-              {isSlackSending ? t`Sending...` : t`Submit report`}
-            </Button>
-            <Divider my="lg" />
-            <Flex align="flex-start" justify="space-between" gap="lg">
-              <Box>
-                <Text size="lg" fw="bold">{t`Download report`}</Text>
-                <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
-              </Box>
+            <Modal.Footer>
+              <Text c="text-secondary" flex={1}>
+                {t`Diagnostic info may contain sensitive data.`}
+              </Text>
               <FormSubmitButton
-                label={c("This is a verb, not a noun").t`Download`}
-                my="sm"
+                label={c("This is a verb, not a noun").t`Download report`}
               />
-            </Flex>
+              <Button
+                variant="filled"
+                leftSection={isSlackSending ? <Loader size="xs" /> : null}
+                onClick={() => onSlackSubmit(formik.values)}
+                disabled={isSlackSending}
+              >
+                {isSlackSending ? t`Sending...` : t`Submit report`}
+              </Button>
+            </Modal.Footer>
           </Form>
         )}
       </FormProvider>

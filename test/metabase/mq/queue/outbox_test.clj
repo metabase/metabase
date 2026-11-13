@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.mq.core :as mq]
    [metabase.mq.payload :as payload]
    [metabase.mq.queue.backend :as q.backend]
@@ -210,11 +211,12 @@
                                         {:queue_name "outbox-require" :payload pl})]
         ;; Point the active backend at quartz with no scheduler so publish! throws; the per-row
         ;; try/catch in publish-outbox-rows! must then leave the row in place for recovery.
-        (binding [q.backend/*backend*          q.quartz/backend
-                  task.impl/*quartz-scheduler* (atom nil)]
-          (outbox/publish-outbox-rows!
-           (atom {:metabase.mq.queue.outbox/rows
-                  [{:id id :channel :queue/outbox-require :payload pl}]})))
+        (binding [q.backend/*backend* q.quartz/backend]
+          (mc/binding (task.impl/scheduler-handle) nil
+                      (fn []
+                        (outbox/publish-outbox-rows!
+                         (atom {:metabase.mq.queue.outbox/rows
+                                [{:id id :channel :queue/outbox-require :payload pl}]})))))
         (is (t2/exists? :queue_message_outbox :id id)
             "publish failed, so the row is retained (not silently deleted)")))))
 

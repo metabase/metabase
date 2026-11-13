@@ -64,10 +64,11 @@
   (t2/select [:collection :id :location] :id [:in collection-ids]))
 
 (mu/defn instances
-  "The instances of `model` with `ids`."
-  [model :- :keyword
-   ids   :- [:sequential ms/PositiveInt]]
-  (t2/select model :id [:in ids]))
+  "The instances of `modelable` with `ids`.
+  A modelable is a model, or a vector of a model and the columns to select."
+  [modelable :- [:or :keyword [:cat :keyword [:+ :keyword]]]
+   ids       :- [:sequential ms/PositiveInt]]
+  (t2/select modelable :id [:in ids]))
 
 (defn- search-doc-select
   [{:keys [id model]}]
