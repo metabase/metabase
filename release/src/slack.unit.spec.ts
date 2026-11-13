@@ -1,4 +1,4 @@
-import { buildAutoReleaseSkipMessage } from "./slack";
+import { buildAutoReleaseSkipMessage, formatJobResults } from "./slack";
 
 describe("buildAutoReleaseSkipMessage", () => {
   const baseArgs = {
@@ -106,5 +106,44 @@ describe("buildAutoReleaseSkipMessage", () => {
 
     expect(message).toContain("v53");
     expect(message).not.toContain("v54");
+  });
+});
+
+describe("formatJobResults", () => {
+  it("lists failed and cancelled jobs", () => {
+    const needs = JSON.stringify({
+      "check-version": { result: "success", outputs: {} },
+      "push-tags": { result: "failure", outputs: {} },
+      "containerize-ee": { result: "cancelled", outputs: {} },
+      "add-extra-tags": { result: "failure", outputs: {} },
+      "publish-version-info": { result: "skipped", outputs: {} },
+    });
+
+    expect(formatJobResults(needs)).toBe(
+      "Failed: `push-tags`, `add-extra-tags`. Cancelled: `containerize-ee`",
+    );
+  });
+
+  it("lists only failed jobs when none are cancelled", () => {
+    const needs = JSON.stringify({
+      "copy-to-s3": { result: "failure" },
+      "push-git-tags": { result: "success" },
+    });
+
+    expect(formatJobResults(needs)).toBe("Failed: `copy-to-s3`");
+  });
+
+  it("returns an empty string when no job failed or was cancelled", () => {
+    expect(formatJobResults(JSON.stringify({ a: { result: "success" } }))).toBe(
+      "",
+    );
+    expect(formatJobResults("{}")).toBe("");
+  });
+
+  it("returns an empty string for missing or invalid input", () => {
+    expect(formatJobResults()).toBe("");
+    expect(formatJobResults("")).toBe("");
+    expect(formatJobResults("not json")).toBe("");
+    expect(formatJobResults("null")).toBe("");
   });
 });
