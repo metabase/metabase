@@ -85,6 +85,7 @@ interface SetupOpts {
   dashboard?: Dashboard;
   canCreateQueries?: boolean;
   canCreateNativeQueries?: boolean;
+  collectionsDelayMs?: number;
 }
 
 async function setup({
@@ -95,10 +96,14 @@ async function setup({
   }),
   canCreateQueries,
   canCreateNativeQueries,
+  collectionsDelayMs,
 }: SetupOpts) {
   setupCollectionsEndpoints({
     collections,
   });
+  if (collectionsDelayMs != null) {
+    fetchMock.modifyRoute("collection-list", { delay: collectionsDelayMs });
+  }
   setupCollectionItemsEndpoint({
     collection: createMockCollection(checkNotNull(dashboard.collection)),
     collectionItems,
@@ -447,16 +452,13 @@ describe("AddCardSideBar", () => {
     });
   });
 
-  it("lets a user who cannot create queries browse collections and add a saved question (metabase#44937)", async () => {
+  it("lets a user who cannot create queries browse to another collection and add a saved question (metabase#44937)", async () => {
     const card = createMockCard({ id: getNextId(), name: "Orders" });
     setupCardEndpoints(card);
     setupCardQueryEndpoints(card, createMockDataset());
     setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
-    const dashboard = createMockDashboard({ collection: ROOT_COLLECTION });
-
-    const { store } = await setup({
-      collections: COLLECTIONS,
-      dashboard,
+    setupCollectionItemsEndpoint({
+      collection: ROOT_COLLECTION,
       collectionItems: [
         createMockCollectionItem({
           id: card.id,
@@ -464,15 +466,33 @@ describe("AddCardSideBar", () => {
           name: card.name,
         }),
       ],
-      canCreateQueries: false,
-      canCreateNativeQueries: false,
+    });
+    const dashboard = createMockDashboard({
+      collection: PERSONAL_SUBCOLLECTION,
     });
 
-    expect(
-      screen.getByRole("menuitem", { name: COLLECTION.name }),
-    ).toBeInTheDocument();
+    const { store } = await setup({
+      collections: COLLECTIONS,
+      dashboard,
+      collectionItems: [],
+      canCreateQueries: false,
+      canCreateNativeQueries: false,
+      collectionsDelayMs: 300,
+    });
 
-    await userEvent.click(screen.getByRole("menuitem", { name: card.name }));
+    expect(await screen.findByText("Nothing here")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: card.name }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByText(ROOT_COLLECTION.name));
+
+    expect(
+      await screen.findByRole("menuitem", { name: COLLECTION.name }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: card.name }),
+    );
 
     await waitFor(() => {
       const { dashboards, dashcards } = store.getState().dashboard;
