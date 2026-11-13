@@ -60,15 +60,14 @@
   (* 60 1000 1000 1000))
 
 (defn invalidate-database-ids!
-  "Drop this process's [[database-ids-with-remappings]] cache. The model hooks call it after a commit; the
-  `instance-workspace` setting calls it when its value changes on this node."
+  "Drop this process's [[database-ids-with-remappings]] cache, so that the next call queries the app DB."
   []
   (swap! database-ids-cache (fn [{:keys [generation]}] {:generation (inc generation), :database-ids nil, :read-at 0})))
 
 (defn database-ids-with-remappings
   "The set of Database ids that have a TableRemapping, as this process last read it. Queries the app DB on first use,
   inside an app-DB transaction, at most once a minute, and after this process commits an insert or a delete or sees
-  the `instance-workspace` setting change. Other calls cost no query.
+  the `workspaces-enabled` setting change. Other calls cost no query.
 
   Inside a transaction it queries and leaves the cache alone: that transaction may have written rows it later rolls
   back, and a rollback runs no hook to drop what it cached.

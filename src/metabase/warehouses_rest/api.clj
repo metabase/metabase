@@ -920,6 +920,9 @@
        :body   conn-error}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
+            ;; Setting names are kebab-case, and readers look them up that way. Normalize once, so a snake_case key
+            ;; can't skip the checks below and land beside the real one.
+            settings          (some-> settings (update-keys #(keyword (u/->kebab-case-en (clojure.core/name %)))))
             pending-settings  (into {}
                                     ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                     (remove (fn [[_k v]] (nil? v)))
@@ -959,6 +962,14 @@
             pending-db        (merge existing-database updates)]
         ;; pass in this predicate to break circular dependency
         (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+          ;; A database-local setting with `:visibility :admin` is hidden from non-superusers when the database is
+          ;; read, so only a superuser may send one, whatever its value. A check on the value would tell a
+          ;; non-superuser whether a guess matches the stored value.
+          (when (some (fn [setting-kw]
+                        (and (setting/registered? setting-kw)
+                             (= :admin (:visibility (setting/resolve-setting setting-kw)))))
+                      (keys settings))
+            (api/check-superuser))
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).

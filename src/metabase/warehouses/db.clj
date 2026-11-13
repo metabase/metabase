@@ -18,6 +18,11 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
+(mu/defn database-settings-by-name
+  "The `:settings` of a Database named `database-name`, or nil."
+  [database-name :- :string]
+  (t2/select-one-fn :settings :model/Database :name database-name))
+
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]

@@ -2305,7 +2305,7 @@
 
 (defmulti grant-workspace-read-access!
   "Grant read access on the workspace's input namespaces to the workspace's isolated
-   user/role. `input` is a sequence of `::table-namespace` maps `[{:db ?, :schema ?}]`
+   user/role. `input` is a sequence of `{:db ?, :schema ?}` maps
    identifying the namespaces to grant access to. Granularity is per-namespace
    (schema-wide / database-wide); per-table grants are not supported.
 

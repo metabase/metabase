@@ -11,6 +11,10 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as serdes.storage]
+   [metabase-enterprise.serialization.v2.storage.files :as serdes.storage.files]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
@@ -29,6 +33,7 @@
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
@@ -3356,3 +3361,110 @@
             (is (=? {:active true}
                     (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
             (t2/delete! :model/TransformJob :entity_id (:entity_id extracted))))))))
+
+(deftest import-of-non-string-workspace-schema-keeps-workspace-instance-api-working-test
+  (testing "after an import that carries a non-string database-workspace-schema, GET /api/ee/workspace-instance/current
+            still answers in workspace mode"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings {:database-workspace-schema "ws_src"}}]
+        (try
+          (let [extracted      (assoc-in (ts/extract-one "Database" db-id) [:settings :database-workspace-schema] 42)
+                current-status #(:status (mt/user-http-request-full-response
+                                          :crowberto :get "ee/workspace-instance/current"))]
+            (ws.settings/workspaces-enabled! true)
+            (testing "control: before the import"
+              (is (= 200 (current-status))))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+            (is (= 200 (current-status)))
+            (is (= "ws_src" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))
+          (finally
+            (ws/clear-instance-workspace!)))))))
+
+(deftest import-sets-a-setting-that-is-not-exported-test
+  (testing "an import sets a setting that is not exported, other than workspaces-enabled"
+    (mt/with-temporary-setting-values [admin-email "before@example.com"]
+      (is (false? (setting/export? :admin-email)))
+      (serdes.load/load-metabase!
+       (ts/ingestion-in-memory [{:serdes/meta [{:model "Setting"}] :key "admin-email" :value "after@example.com"}]))
+      (is (= "after@example.com" (setting/get :admin-email))))))
+
+(deftest import-does-not-set-workspaces-enabled-test
+  (testing "an import does not set workspaces-enabled"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+        ;; The settings code also resolves a key by its kebab-case form, so the underscore key names the same setting.
+        (doseq [setting-key ["workspaces-enabled" "workspaces_enabled"]]
+          (testing (str "under the key " setting-key)
+            (let [import! (fn [value]
+                            (serdes.load/load-metabase!
+                             (ts/ingestion-in-memory [{:serdes/meta [{:model "Setting"}] :key setting-key :value value}])))]
+              (try
+                (testing "false over a stored true leaves workspace mode on and keeps the remap rows"
+                  (ws.settings/workspaces-enabled! true)
+                  (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                                                     :to_db "" :to_schema "ws" :to_table_name "public__t"})
+                  (import! "false")
+                  (is (true? (ws/workspace-mode?)))
+                  (is (t2/exists? :model/TableRemapping :database_id db-id)))
+                (testing "true over a stored false leaves workspace mode off"
+                  (ws/clear-instance-workspace!)
+                  (import! "true")
+                  (is (false? (ws/workspace-mode?))))
+                (finally
+                  (ws/clear-instance-workspace!))))))))))
+
+(deftest import-changing-workspace-schema-leaves-no-remap-row-to-another-schema-test
+  (testing "an import does not change a database's database-workspace-schema, so no remap row points at another schema"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :settings {:database-workspace-schema "ws_src"
+                                                             :database-enable-actions   true}}]
+        (try
+          (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                                             :to_db "" :to_schema "ws_src" :to_table_name "public__t"})
+          (testing "an export leaves the workspace schema out, and keeps the other settings"
+            (is (= {:database-enable-actions true} (:settings (ts/extract-one "Database" db-id)))))
+          (serdes.load/load-metabase!
+           (ts/ingestion-in-memory [(assoc-in (ts/extract-one "Database" db-id)
+                                              [:settings :database-workspace-schema] "ws_changed")]))
+          (let [settings (t2/select-one-fn :settings :model/Database :id db-id)]
+            (is (= {:database-workspace-schema "ws_src" :database-enable-actions true} settings))
+            (is (every? #{(:database-workspace-schema settings)}
+                        (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
+          (finally
+            (t2/delete! :model/TableRemapping :database_id db-id)))))))
+
+(deftest database-with-undecryptable-settings-round-trips-test
+  (testing "settings the model cannot decrypt are their ciphertext string, which an export and an import pass through"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+      ;; what the column holds when it was encrypted with a key this instance does not have
+      (t2/update! :metabase_database :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
+      (let [ciphertext (t2/select-one-fn :settings :model/Database :id db-id)
+            extracted  (ts/extract-one "Database" db-id)]
+        (is (string? ciphertext))
+        (is (= ciphertext (:settings extracted)))
+        (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+        (is (= ciphertext (t2/select-one-fn :settings :model/Database :id db-id)))
+        (testing "an import of map settings over a Database whose settings cannot be decrypted"
+          (t2/update! :metabase_database :id db-id {:settings ciphertext})
+          (serdes.load/load-metabase!
+           (ts/ingestion-in-memory [(assoc extracted :settings {:database-enable-actions false})]))
+          (is (= {:database-enable-actions false} (t2/select-one-fn :settings :model/Database :id db-id))))))))
+
+(deftest database-settings-import-matches-schema-normalization-test
+  (testing "exported settings read back from YAML import as the `:settings` schema of an external Database normalizes them"
+    (let [settings {:auto-cruft-columns      ["^tmp_" "_bak$"]
+                    :auto-cruft-tables       ["^scratch"]
+                    :database-enable-actions true
+                    :json-unfolding          false}]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings settings}]
+        (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+          (serdes.storage/store! [(ts/extract-one "Database" db-id)] (serdes.storage.files/file-writer dump-dir))
+          (t2/update! :model/Database :id db-id {:settings {:database-enable-actions false}})
+          (let [ingestion (serdes.ingest/ingest-yaml dump-dir)
+                ingested  (first (serdes.ingest/ingest-many ingestion (vec (serdes.ingest/ingest-list ingestion))))
+                expected  (:settings (lib/normalize ::warehouses.schema/external-database
+                                                    (dissoc ingested :serdes/meta)))]
+            (is (= settings expected))
+            (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))
+            (is (= expected (t2/select-one-fn :settings :model/Database :id db-id)))))))))

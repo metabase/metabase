@@ -11,6 +11,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -683,12 +684,34 @@
   (fn [_store _entities values _opts]
     (mapv (constantly v) values)))
 
+(def ^:private instance-local-settings
+  "Database-local settings that hold names in this instance's warehouse, not content: an export leaves them out, and an
+  import keeps the values of the database it updates. A copied workspace schema would point the target's transforms
+  at another schema while its remap rows still point at the old one."
+  [:database-workspace-schema])
+
+(def ^:private settings-transform
+  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]. An import normalizes the
+  value by the `:settings` schema of [[warehouses.schema/external-database]], as it would if `:settings` were copied.
+  Settings the model could not decrypt are the raw ciphertext string, which passes through unchanged."
+  {:export (fn [_store _rows values _opts]
+             (mapv #(if (map? %) (not-empty (apply dissoc % instance-local-settings)) %) values))
+   :import (fn [_store entities values _opts]
+             (mapv (fn [{db-name :name} settings]
+                     (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
+                           target   (warehouses.db/database-settings-by-name db-name)
+                           kept     (when (map? target) (select-keys target instance-local-settings))]
+                       (if (map? settings)
+                         (not-empty (merge (apply dissoc settings instance-local-settings) kept))
+                         settings)))
+                   entities values))})
+
 (defmethod serialization/spec :model/Database [_]
   {:schema    ::warehouses.schema/external-database
    :identity  [:name]
    :copy      [:auto_run_queries :caveats
                :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-               :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+               :default_schema :name :points_of_interest :provider_name :refingerprint :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [:cache_ttl :initial_sync_error :dbms_version]
    :transform {:details                     serialization/import-only-transform
@@ -700,7 +723,8 @@
                :is_sample                   {:import (import-constantly false)}
                :is_stub                     {:import (import-constantly false)}
                :creator_id                  serialization/user-transform
-               :router_database_id          serialization/database-transform}
+               :router_database_id          serialization/database-transform
+               :settings                    settings-transform}
    :defaults  {:auto_run_queries true
                :is_attached_dwh  false
                :is_audit         false
