@@ -78,7 +78,7 @@ function PieChartComponent(props: VisualizationProps) {
         hoveredIndex,
         hoveredSliceKeyPath,
       ),
-      tooltip: getTooltipOption(chartModel, formatters, containerRef),
+      tooltip: getTooltipOption(chartModel, formatters, containerRef, settings),
     }),
     [
       chartModel,
