@@ -11,6 +11,7 @@
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
    [malli.util :as mut]
@@ -144,14 +145,47 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
+(def ^:private json-null {:type "null"})
+
+(defn- nullable
+  "The nullable form of JSON Schema `schema`, for one `[:maybe ...]`.
+
+  Malli publishes `[:maybe X]` as `{:oneOf [X {:type \"null\"}]}`. A client validator that coerces types turns
+  `false`, `0` and `\"\"` into `null`, so the value matches both branches and `oneOf` rejects it. OpenAI's strict
+  tool mode does not accept `oneOf` at all. Where `X` has one plain `:type`, `null` joins that type instead, and
+  joins any `:enum`, which would otherwise reject it. Otherwise the branches become `anyOf`, which a value matching
+  both still passes, and the description moves up to the property, where clients look for it."
+  [schema]
+  (let [{:keys [type description]} schema]
+    (if (and (string? type)
+             (not-any? #(contains? schema %) [:oneOf :anyOf :allOf :const]))
+      (cond-> (assoc schema :type [type "null"])
+        (:enum schema) (update :enum #(conj (vec %) nil)))
+      (cond-> {:anyOf [(dissoc schema :description) json-null]}
+        description (assoc :description description)))))
+
+(defn- maybe->nullable
+  "Rewrite every `{:oneOf [X {:type \"null\"}]}` in a JSON Schema, Malli's rendering of `[:maybe X]`, with
+  [[nullable]]."
+  [json-schema]
+  (walk/postwalk
+   (fn [node]
+     (let [[a b :as branches] (when (map? node) (:oneOf node))]
+       (if (and (= 2 (count branches)) (= json-null b) (map? a))
+         ;; whatever sits beside the `oneOf` (a property-level description, say) stays
+         (merge (nullable a) (dissoc node :oneOf))
+         node)))
+   json-schema))
+
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
    Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
-   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
-   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
+   `:multi`) into a single `:map`, applies tool-description preferences, transforms
+   to JSON Schema, then publishes `[:maybe ...]` as a nullable type rather than `oneOf`
+   (see [[nullable]]). Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
-    (mjs/transform prepared)))
+    (maybe->nullable (mjs/transform prepared))))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
@@ -229,7 +263,8 @@
                            (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
                            (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
                            (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
-              (if (and (= "object" (:type schema)) (seq (:properties schema)))
+              ;; a nullable object is typed `["object" "null"]`
+              (if (and (some #{"object"} (u/one-or-many (:type schema))) (seq (:properties schema)))
                 (assoc schema
                        :required (vec (keys (:properties schema)))
                        :additionalProperties false)
