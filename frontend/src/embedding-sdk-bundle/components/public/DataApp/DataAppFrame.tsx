@@ -118,6 +118,9 @@ export function DataAppFrame({
         }
 
         if (isCurrentAuthRequest()) {
+          // an error from an earlier route must not come back after a retry works
+          setFailure(null);
+
           send({
             type: "metabase.embed.submitSessionToken",
             data: { authMethod: "provider-managed", sessionToken },

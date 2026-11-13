@@ -448,6 +448,28 @@ describe("DataApp", () => {
     );
   });
 
+  it("does not show an old auth error after a retry succeeds and the host goes back to its route", async () => {
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    const { iframe, rerender } = setup({ path: "boba-hq/orders" });
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    rerender(<DataApp path="boba-hq/products" />);
+    const nextIframe =
+      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
+    message(nextIframe, "metabase.embed.requestSessionToken");
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
+    );
+
+    rerender(<DataApp path="boba-hq/orders" />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("data-app-frame")).toBe(nextIframe);
+  });
+
   it("shows an error when the provider cannot refresh the session", async () => {
     requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
 
