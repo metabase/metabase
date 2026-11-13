@@ -1038,7 +1038,21 @@
           stmt             (failing-statement {kill kill-error drop-db (SQLException. "drop failed")})
           e                (is (thrown? SQLException (#'clickhouse/destroy-workspace! stmt "d" "u")))]
       (is (= "drop failed" (ex-message e)))
-      (is (= [kill-error] (vec (.getSuppressed ^Throwable e)))))))
+      (is (= [kill-error] (vec (.getSuppressed ^Throwable e))))))
+  (testing "when only KILL QUERY fails, for lack of the grant, the error names the grant"
+    (let [[_ kill]   (#'clickhouse/destroy-workspace-sqls "d" "u")
+          kill-error (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
+          e          (is (thrown? clojure.lang.ExceptionInfo
+                                  (#'clickhouse/destroy-workspace! (failing-statement {kill kill-error}) "d" "u")))]
+      (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
+      (is (identical? kill-error (ex-cause e)))))
+  (testing "when only KILL QUERY fails for another reason, its error is rethrown as is"
+    (let [[_ kill]   (#'clickhouse/destroy-workspace-sqls "d" "u")
+          kill-error (SQLException. "kill failed")]
+      (is (identical? kill-error
+                      (try (#'clickhouse/destroy-workspace! (failing-statement {kill kill-error}) "d" "u")
+                           nil
+                           (catch Throwable t t)))))))
 
 (defn- workspace-for-test [label]
   (let [workspace {:id (rand-int 100000000) :name label}]
@@ -1215,10 +1229,17 @@
            (is (u/poll {:thunk running? :done? some? :timeout-ms 10000 :interval-ms 100})
                "the workspace user's query is running")
            (testing "KILL QUERY fails without the grant, but teardown still drops the database, then reports the error"
-             (let [e (is (thrown? SQLException
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
                                   (driver.conn/with-swapped-connection-details (mt/id) no-kill
                                     (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))]
-               (is (= 497 (some-> ^SQLException e .getErrorCode)))) ; ACCESS_DENIED
+               (testing "with a message that names the missing grant and says what teardown dropped"
+                 (is (= (format (str "Dropped the workspace user `%s` and its database `%s`, but could not end the "
+                                     "user's running queries: the admin connection's login lacks the KILL QUERY grant. "
+                                     "The queries run until they finish, and teardown fails until then. Grant KILL "
+                                     "QUERY to the login, or wait for the queries to finish, and retry.")
+                                user (:schema workspace))
+                        (ex-message e))))
+               (is (= 497 (some-> ^SQLException (ex-cause e) .getErrorCode)))) ; ACCESS_DENIED
              (is (not (db-exists?))))
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)

@@ -870,7 +870,16 @@
             (.addSuppressed drop-db-error kill-error))
           (throw drop-db-error)))
       (when kill-error
-        (throw kill-error)))))
+        ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
+        (throw (if (= 497 (.getErrorCode ^SQLException kill-error))
+                 (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not end the user's "
+                                       "running queries: the admin connection's login lacks the KILL QUERY grant. The "
+                                       "queries run until they finish, and teardown fails until then. Grant KILL QUERY "
+                                       "to the login, or wait for the queries to finish, and retry.")
+                                  (quote-field user) (quote-schema db-name))
+                          {:user user, :database db-name}
+                          kill-error)
+                 kill-error))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [driver database workspace]
