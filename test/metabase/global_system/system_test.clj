@@ -6,6 +6,7 @@
    [metabase.global-system.system :as system]
    [metabase.global-system.test-util :as global-system.tu])
   (:import
+   (clojure.lang IDeref)
    (java.util.concurrent LinkedBlockingQueue)))
 
 (set! *warn-on-reflection* true)
@@ -474,6 +475,35 @@
         (is (= 2 @starts)))
       (finally
         (cleanup! [handle])))))
+
+;; A handle of a class the system namespace did not define, as every handle kept across a reload of that namespace is.
+(deftype ForeignHandle [handle]
+  IDeref
+  (deref [_] @handle)
+
+  mc/MutableComponentHandle
+  (binding [_ new-value thunk] (mc/binding handle new-value thunk))
+  (swap-vals!* [_ f args] (mc/swap-vals!* handle f args))
+  (alter-root [_ new-value] (mc/alter-root handle new-value))
+  (root-entry [_] (mc/root-entry handle))
+  (remove-root [_] (mc/remove-root handle))
+  (without-binding [_ thunk] (mc/without-binding handle thunk))
+  (slot-lock [_] (mc/slot-lock handle))
+  (component-key [_] (mc/component-key handle)))
+
+(deftest ^:synchronized lifecycle-takes-a-handle-of-another-class-test
+  (testing "a handle whose class the system does not know starts a component, and a halt stops it"
+    (let [stopped (atom [])
+          handle  (system/mutable-component-handle ::foreign (constantly nil))
+          foreign (ForeignHandle. handle)]
+      (try
+        (let [started (system/start! foreign (constantly :running) #(swap! stopped conj %))
+              again   (system/ensure-started! foreign (constantly :other) (constantly nil))]
+          (#'system/stop-all! (filter #{foreign} (halt-order)))
+          (is (= {:started [:running true], :again :running, :stopped [:running], :value nil}
+                 {:started started, :again again, :stopped @stopped, :value @handle})))
+        (finally
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized start-reports-whether-it-started-test
   (testing "start! says whether this call did the start, and later calls get the running value"

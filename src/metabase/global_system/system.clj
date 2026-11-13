@@ -115,7 +115,9 @@
       (thunk)))
   (slot-lock [_]
     (or (get *bound-boxes* k)
-        (root-lock k))))
+        (root-lock k)))
+  (component-key [_]
+    k))
 
 ;; Prints the key alone. The IDeref defaults would deref the handle, which throws when the component has no value.
 (defmethod print-method ComponentHandle
@@ -167,9 +169,12 @@
   admissions
   (atom {:halted? false, :starting {}}))
 
+;; Asked of the protocol, not read from a `ComponentHandle` field: reloading this namespace makes a new class of that
+;; name, while the registries above and the namespaces that use components keep handles of the old one.
+;; Reloading the protocol's namespace still breaks those handles, as it does for any protocol.
 (defn- handle-key
-  [^ComponentHandle handle]
-  (.-k handle))
+  [handle]
+  (mc/component-key handle))
 
 (defn- bound-here?
   "Whether this thread has a binding of the component behind `handle`."
