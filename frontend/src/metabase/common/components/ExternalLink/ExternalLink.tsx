@@ -2,6 +2,7 @@ import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { Button, Icon } from "metabase/ui";
 import { getUrlTarget } from "metabase/urls";
 
 import S from "./ExternalLink.module.css";
@@ -35,9 +36,25 @@ export const ExternalLink = forwardRef(function ExternalLink(
   );
 });
 
-export const ButtonLink = forwardRef(function ButtonLink(
-  props: Props,
-  ref: Ref<HTMLAnchorElement>,
-) {
-  return <ExternalLink {...props} className={S.ButtonLink} ref={ref} />;
-});
+interface ButtonLinkProps {
+  href: string;
+  children: ReactNode;
+}
+
+/**
+ * An external link that looks like a filled brand `Button`, with an external
+ * link icon after the label. Opens in a new tab for links outside Metabase.
+ */
+export function ButtonLink({ href, children }: ButtonLinkProps) {
+  return (
+    <Button
+      component={ExternalLink}
+      href={href}
+      variant="filled"
+      size="lg"
+      rightSection={<Icon name="external" aria-hidden />}
+    >
+      {children}
+    </Button>
+  );
+}
