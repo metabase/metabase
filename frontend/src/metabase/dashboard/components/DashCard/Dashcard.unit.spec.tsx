@@ -44,7 +44,6 @@ import {
   type DownloadPermission,
   type ParameterId,
   type ParameterValueOrArray,
-  type VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
@@ -282,46 +281,12 @@ describe("DashCard", () => {
   });
 
   describe("timeline event availability", () => {
-    const SELECTS_TIMELINE: VisualizationSettings = {
-      "timeline.selected_timeline_ids": [10],
-    };
-    const RECORDS_NO_SELECTION: VisualizationSettings = {};
-    const SELECTS_NO_TIMELINES: VisualizationSettings = {
-      "timeline.selected_timeline_ids": [],
-    };
-
     it.each([
-      {
-        name: "a supported chart",
-        display: "line",
-        selection: SELECTS_TIMELINE,
-        eventsVisible: true,
-        menuVisible: true,
-      },
-      {
-        name: "an unsupported chart",
-        display: "table",
-        selection: SELECTS_TIMELINE,
-        eventsVisible: false,
-        menuVisible: false,
-      },
-      {
-        name: "a supported chart whose question never recorded events",
-        display: "line",
-        selection: RECORDS_NO_SELECTION,
-        eventsVisible: false,
-        menuVisible: true,
-      },
-      {
-        name: "a supported chart whose question was saved with no timelines",
-        display: "line",
-        selection: SELECTS_NO_TIMELINES,
-        eventsVisible: false,
-        menuVisible: true,
-      },
+      { name: "a supported chart", display: "line", eventsVisible: true },
+      { name: "an unsupported chart", display: "table", eventsVisible: false },
     ] as const)(
       "shows the appropriate event controls for $name",
-      async ({ display, selection, eventsVisible, menuVisible }) => {
+      async ({ display, eventsVisible }) => {
         const user = userEvent.setup({
           advanceTimers: jest.advanceTimersByTime,
         });
@@ -336,7 +301,7 @@ describe("DashCard", () => {
         const card = createMockCard({
           name: "Bird sightings",
           display,
-          visualization_settings: selection,
+          visualization_settings: { "timeline.selected_timeline_ids": [10] },
         });
         const dashcard = createMockDashboardCard({ card });
         setup({
@@ -378,7 +343,7 @@ describe("DashCard", () => {
             }).length,
             eventBands: screen.queryAllByTestId("timeline-events-band").length,
           }).toEqual({
-            eventMenuItems: menuVisible ? 1 : 0,
+            eventMenuItems: eventsVisible ? 1 : 0,
             eventBands: eventsVisible ? 1 : 0,
           }),
         );

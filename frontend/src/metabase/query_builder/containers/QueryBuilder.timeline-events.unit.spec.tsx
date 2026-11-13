@@ -871,7 +871,13 @@ const queryEventChip = (name: string) =>
     .find((chip) => chip.getAttribute("aria-label") === name) ?? null;
 
 const findEventChip = (name: string) =>
-  waitFor(() => checkNotNull(queryEventChip(name)));
+  waitFor(() => {
+    const chip = queryEventChip(name);
+    if (chip == null) {
+      throw new Error(`There is no event chip named "${name}"`);
+    }
+    return chip;
+  });
 
 // brand (#509EE3) as ECharts writes the fill of an emphasized data point
 const HIGHLIGHTED_POINT_FILL = "rgb(80,158,227)";
@@ -1794,9 +1800,11 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
         "Line-button",
       ),
     );
-    expect(
-      await within(getChart()).findByText("Created At: Month"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        within(getChart()).getByText("Created At: Month"),
+      ).toBeInTheDocument();
+    });
     await saveQuestion();
 
     expect(getRequestBodies("PUT", `/api/card/7`)).toEqual([
