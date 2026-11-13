@@ -338,7 +338,9 @@
   :deprecated-name :http-channel-host-strategy
   :setter     :none
   :doc        (str "Set this when a notification webhook must reach a host on your private network "
-                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase "
+                   "64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name "
+                   "and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.")
   :getter     (fn []
                 (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
                   (or (u.http/env-network-policy env-var-name raw-value)
