@@ -14,8 +14,8 @@
     "Atomically sets the value in the slot this thread reads to `(apply f old args)`, and returns `[old new]`.
      Inside a [[binding]] that slot is the bound value; otherwise it is the root, which every unbound thread sees.
      Outside a [[binding]], throws if the component has no root; use [[alter-root]] to install one.
-     Unlike an atom's `swap!`, it waits for the [[slot-lock]], so it blocks while another thread holds it.
-     No write skips the lock, so where threads race to claim work with a swap, the losers wait for it too.
+     Unlike an atom's `swap!`, it takes the [[slot-lock]], so it waits while any other thread holds it.
+     So a swap cannot claim work without blocking: a thread that would lose the claim still waits for the lock.
      The function `f` can run more than once, even under [[with-slot-lock]], so it must have no side effects.
      Prefer [[swap!]] or [[reset!]].")
   (alter-root [handle new-value]
@@ -32,23 +32,22 @@
      Bindings of other components are kept.
      Returns what `thunk` returns.")
   (slot-lock [handle]
-    "An object to lock around a read-check-write of the slot this thread reads, when the check does work that
-     cannot go in a [[swap!]] function, such as I/O.
+    "The lock for a read-check-write of this thread's slot whose check cannot go in a [[swap!]] function, such as I/O.
      Every write to the slot holds it too, so no write lands inside such a section.
      A [[binding]] has its own lock, shared with the threads that inherit it; the root has one lock per component.
      Use [[with-slot-lock]] rather than calling this directly."))
 
-;; Protocol methods can't take varargs, so these give callers the usual atom signatures over [[swap-vals!*]]. Unlike an
-;; atom, a component with no root and no binding has no value, so each of them throws for one.
+;; Protocol methods can't take varargs, so these give callers the usual atom signatures over [[swap-vals!*]].
+;; Unlike an atom, a component with no root and no binding has no value, so each of them throws for one.
 (defn swap-vals!
   "Like [[clojure.core/swap-vals!]]: applies `f` to the current value and any extra `args`, and returns `[old new]`.
-   Visibility and the missing-component error are as for [[swap-vals!*]]."
+   The slot it writes, the lock it takes and the error for a missing component are as for [[swap-vals!*]]."
   [handle f & args]
   (swap-vals!* handle f args))
 
 (defn swap!
   "Like [[clojure.core/swap!]]: applies `f` to the current value and any extra `args`, and returns the new value.
-   Visibility and the missing-component error are as for [[swap-vals!*]]."
+   The slot it writes, the lock it takes and the error for a missing component are as for [[swap-vals!*]]."
   [handle f & args]
   (second (swap-vals!* handle f args)))
 
@@ -64,8 +63,8 @@
 
 (defmacro with-slot-lock
   "Runs `body` holding the [[slot-lock]] of `handle`.
-   Every write to the slot waits until `body` returns, and the lock is reentrant only on the holding thread.
-   So `body` must not wait for another thread that writes this component or starts it."
+   Writes to the slot from other threads wait until `body` returns; writes from `body` itself go ahead.
+   So `body` must not wait for another thread that writes or starts this component."
   [handle & body]
   `(locking (slot-lock ~handle)
      ~@body))
