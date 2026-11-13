@@ -1,0 +1,27 @@
+/* An axis title that reads as plain text until you point at it. */
+.target {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mb-color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.target:hover,
+.target[data-active] {
+  border-color: var(--mb-color-border-neutral-strong);
+}
+
+.target:focus-visible {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
+.vertical {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding: 0.5rem 0.125rem;
+}
