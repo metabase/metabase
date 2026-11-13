@@ -623,7 +623,9 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;; SQL Server refuses an existing schema with a 409 instead
+  ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
+  (mt/test-drivers (remove #{:sqlserver} (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace)))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1020,9 +1022,11 @@
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
-          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
-          ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); MySQL and ClickHouse check privileges regardless,
+          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. SQL Server
+          ;; runs no such statement: init first looks for an existing login, user
+          ;; and schema (a 409 if the low-privilege login can see ws-b's schema),
+          ;; then its batch starts with the password-bearing CREATE LOGIN, which
+          ;; that login cannot run. MySQL and ClickHouse check privileges regardless,
           ;; so on those the batch dies on the namespace statement and never
           ;; reaches CREATE USER — the leak assertion still covers whatever
           ;; exception surfaces, it just can't prove the echo path there.
