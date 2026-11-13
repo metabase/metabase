@@ -222,6 +222,34 @@ describe("metabase-data-app", () => {
     },
   );
 
+  it("replaces the frame without the key when the API key is deleted from the config", () => {
+    window.metabaseConfig = {
+      instanceUrl: INSTANCE_URL,
+      apiKey: "development-key",
+    };
+    const element = setup();
+    const original = element.querySelector("iframe")!;
+
+    delete window.metabaseConfig.apiKey;
+
+    const next = element.querySelector("iframe")!;
+    expect(next).not.toBe(original);
+
+    const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
+    ready(original);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    ready(next);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.not.objectContaining({ apiKey: expect.anything() }),
+      },
+      new URL(INSTANCE_URL).origin,
+    );
+  });
+
   it("keeps the frame and local key when the route or locale changes", () => {
     window.metabaseConfig = {
       instanceUrl: INSTANCE_URL,
