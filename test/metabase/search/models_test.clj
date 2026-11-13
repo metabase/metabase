@@ -118,9 +118,10 @@
               with-capture    (statements #(t2/delete! :model/Card :id captured))
               without-capture (binding [search.ingestion/*disable-updates* true]
                                 (statements #(t2/delete! :model/Card :id uncaptured)))]
-          ;; The card's snapshot, empty snapshots for the Revision and ModerationReview deletes in its
-          ;; `before-delete`, and the action and indexed-entity cascade scans.
-          (is (= 5 (- with-capture without-capture))))))))
+          ;; The action and indexed-entity cascade scans.
+          ;; A delete by literal primary key builds the card's snapshot without a select, and the Revision and
+          ;; ModerationReview deletes in its `before-delete` bypass capture.
+          (is (= 2 (- with-capture without-capture))))))))
 
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
