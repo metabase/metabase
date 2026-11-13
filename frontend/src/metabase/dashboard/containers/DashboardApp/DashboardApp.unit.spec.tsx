@@ -5,6 +5,9 @@ import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
   setupBookmarksEndpoints,
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -31,6 +34,7 @@ import {
   waitForDashboardToLoad,
   within,
 } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -39,15 +43,18 @@ import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
   createMockDatabase,
+  createMockDataset,
   createMockHeadingDashboardCard,
   createMockParameter,
   createMockTable,
@@ -55,6 +62,8 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+
+registerVisualizations();
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -327,6 +336,71 @@ describe("DashboardApp", () => {
 
         expect(screen.getByText(NO_CREATE_PROMPT)).toBeInTheDocument();
         expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+
+      it("lets a user who cannot create queries browse a collection and render a saved question (metabase#44937)", async () => {
+        const card = createMockCard({
+          id: 42,
+          name: "Orders",
+          display: "scalar",
+        });
+        setupCardEndpoints(card);
+        setupCardQueryEndpoints(
+          card,
+          createMockDataset({ data: { rows: [[42]] }, row_count: 1 }),
+        );
+        setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
+        setupSubscriptionsEndpoint([]);
+        await setup({
+          currentUser: userWithPermissions(false),
+          dashboard: { collection: createMockCollection(ROOT_COLLECTION) },
+        });
+        fetchMock.modifyRoute("collection-list", {
+          response: [createMockCollection(ROOT_COLLECTION), TEST_COLLECTION],
+          delay: 250,
+        });
+        setupCollectionItemsEndpoint({
+          collection: ROOT_COLLECTION,
+          collectionItems: [],
+        });
+        setupCollectionItemsEndpoint({
+          collection: TEST_COLLECTION,
+          collectionItems: [
+            createMockCollectionItem({
+              id: 41,
+              model: "card",
+              name: "Products",
+            }),
+            createMockCollectionItem({
+              id: card.id,
+              model: "card",
+              name: card.name,
+            }),
+          ],
+        });
+        fetchMock.modifyRoute(`collection-${TEST_COLLECTION.id}-items`, {
+          delay: 250,
+        });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+        expect(screen.getByText(NO_CREATE_PROMPT)).toBeVisible();
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add a chart" }),
+        );
+        const sidebar = await screen.findByTestId("add-card-sidebar");
+        await userEvent.click(
+          await within(sidebar).findByRole("menuitem", {
+            name: TEST_COLLECTION.name,
+          }),
+        );
+        await userEvent.click(
+          await within(sidebar).findByRole("menuitem", { name: card.name }),
+        );
+
+        const dashcard = await screen.findByTestId("dashcard");
+        expect(await within(dashcard).findByText("42")).toBeVisible();
+        expect(within(dashcard).getByText(card.name)).toBeVisible();
+        expect(screen.queryByText(NO_CREATE_PROMPT)).not.toBeInTheDocument();
       });
 
       it("should not suggest creating a question to a user who cannot create queries on an empty tab (metabase#44937)", async () => {

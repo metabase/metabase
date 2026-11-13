@@ -2,9 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -17,12 +14,9 @@ import { checkNotNull } from "metabase/utils/types";
 // TODO: Move this to a more suitable location for sharing.
 import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import {
-  createMockCard,
-  createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
-  createMockDataset,
   createMockSearchResult,
   createMockUser,
   createMockUserPermissions,
@@ -104,7 +98,7 @@ async function setup({
     collectionItems,
   });
 
-  const { store } = renderWithProviders(
+  renderWithProviders(
     <MockDashboardContext
       dashboardId={dashboard.id}
       navigateToNewCardFromDashboard={null}
@@ -134,8 +128,6 @@ async function setup({
   await waitFor(() => {
     expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
   });
-
-  return { store };
 }
 
 describe("AddCardSideBar", () => {
@@ -444,44 +436,6 @@ describe("AddCardSideBar", () => {
       expect(await screen.findByPlaceholderText(/Search/)).toBeInTheDocument();
       expect(screen.queryByText("New Question")).not.toBeInTheDocument();
       expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
-    });
-  });
-
-  it("lets a user who cannot create queries browse collections and add a saved question (metabase#44937)", async () => {
-    const card = createMockCard({ id: getNextId(), name: "Orders" });
-    setupCardEndpoints(card);
-    setupCardQueryEndpoints(card, createMockDataset());
-    setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
-    const dashboard = createMockDashboard({ collection: ROOT_COLLECTION });
-
-    const { store } = await setup({
-      collections: COLLECTIONS,
-      dashboard,
-      collectionItems: [
-        createMockCollectionItem({
-          id: card.id,
-          model: "card",
-          name: card.name,
-        }),
-      ],
-      canCreateQueries: false,
-      canCreateNativeQueries: false,
-    });
-
-    expect(
-      screen.getByRole("menuitem", { name: COLLECTION.name }),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("menuitem", { name: card.name }));
-
-    await waitFor(() => {
-      const { dashboards, dashcards } = store.getState().dashboard;
-      const addedDashcards = dashboards[dashboard.id].dashcards.map(
-        (dashcardId) => dashcards[dashcardId],
-      );
-      expect(addedDashcards).toEqual([
-        expect.objectContaining({ card_id: card.id }),
-      ]);
     });
   });
 });
