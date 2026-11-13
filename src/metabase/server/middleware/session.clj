@@ -22,6 +22,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
@@ -336,7 +337,7 @@
 
 (defn wrap-preview-grant
   "Middleware that runs a request carrying `X-Metabase-Preview-Grant` as the user the grant previews, with
-  [[metabase.request.core/previewing-admin-id]] bound to the admin, or refuses it. Must run after
+  [[metabase.api.common/*previewing-admin-id*]] bound to the admin, or refuses it. Must run after
   `wrap-data-app-scope` and before [[bind-current-user]]."
   [handler]
   (fn [request respond raise]
@@ -345,8 +346,8 @@
       (let [{request :request, response :response, admin-id :admin-id} (preview-grant-request request)]
         (if response
           (respond response)
-          (request/do-with-previewing-admin-id admin-id
-                                               (fn [] (handler request respond raise))))))))
+          (binding [api/*previewing-admin-id* admin-id]
+            (handler request respond raise)))))))
 
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
@@ -370,7 +371,7 @@
                          (handler request respond raise)))]
           ;; only when this preview rebinds: a grant preview has bound its admin already
           (if admin-id
-            (request/do-with-previewing-admin-id admin-id handle)
+            (binding [api/*previewing-admin-id* admin-id] (handle))
             (handle)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

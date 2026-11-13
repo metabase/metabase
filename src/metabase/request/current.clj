@@ -30,22 +30,6 @@
   `(do-with-current-request ~request (^:once fn* [] ~@body)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *previewing-admin-id*
-  nil)
-
-(defn previewing-admin-id
-  "While an admin previews the app as another user (EE `permission-debug`), the admin's ID; the current user is the
-  previewed one. Otherwise nil."
-  []
-  *previewing-admin-id*)
-
-(defn do-with-previewing-admin-id
-  "Run `thunk` with [[previewing-admin-id]] bound to `admin-id`."
-  [admin-id thunk]
-  (binding [*previewing-admin-id* admin-id]
-    (thunk)))
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *limit*
   nil)
 

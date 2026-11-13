@@ -103,7 +103,7 @@
   "EE implementation: when a superuser's browser session sends `X-Metabase-Preview-As: <user-id>` (or, for a map tile,
   `?preview_as=<user-id>`), rebind the request to that user, refuse writes, and record each query run in the audit log
   under the admin. Returns `:admin-id` too, so the request runs with
-  [[metabase.request.core/previewing-admin-id]] bound and every audit row names the admin."
+  [[metabase.api.common/*previewing-admin-id*]] bound and every audit row names the admin."
   :feature :advanced-permissions
   [request]
   (let [param-value  (preview-param-value request)

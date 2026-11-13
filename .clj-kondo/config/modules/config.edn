@@ -412,7 +412,6 @@
            lib.schema
            models
            premium-features
-           request
            settings
            task
            task.history
