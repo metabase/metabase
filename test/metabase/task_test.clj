@@ -181,30 +181,45 @@
                              {:attaches-before-publishing @attaches
                               :published?                 (identical? quartz (task/scheduler))}))))))))
 
+(defn- init-with-failing-setup!
+  "Run [[task/init-scheduler!]] with a job factory that throws and a scheduler whose shutdown throws
+  `shutdown-error`, if given, and report what happened."
+  [shutdown-error]
+  (let [shutdowns (atom 0)
+        quartz    (reify Scheduler
+                    (standby [_])
+                    (shutdown [_]
+                      (swap! shutdowns inc)
+                      (some-> shutdown-error throw)))
+        failure   (ex-info "attach failed" {})]
+    (mc/binding (task.impl/scheduler-handle) nil
+                (fn []
+                  (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                              task.impl/set-jdbc-backend-properties! (constantly nil)
+                                              job-factory/add-to-scheduler           (fn [_] (throw failure))]
+                    (let [thrown (try
+                                   (task/init-scheduler!)
+                                   nil
+                                   (catch Throwable e
+                                     e))]
+                      {:setup-error-thrown? (identical? failure thrown)
+                       :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
+                       :shutdowns           @shutdowns
+                       :published?          (some? (task/scheduler))}))))))
+
 (deftest init-scheduler-shuts-down-a-scheduler-it-cannot-ready-test
   (testing "a scheduler whose setup fails is shut down and not published, and the setup's own exception is thrown"
-    (let [shutdowns (atom 0)
-          quartz    (reify Scheduler
-                      (standby [_])
-                      (shutdown [_]
-                        (swap! shutdowns inc)
-                        (throw (ex-info "shutdown failed" {}))))
-          failure   (ex-info "attach failed" {})]
-      (mc/binding (task.impl/scheduler-handle) nil
-                  (fn []
-                    (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
-                                                task.impl/set-jdbc-backend-properties! (constantly nil)
-                                                job-factory/add-to-scheduler           (fn [_] (throw failure))]
-                      (let [thrown (try
-                                     (task/init-scheduler!)
-                                     nil
-                                     (catch Throwable e
-                                       e))]
-                        (is (= {:thrown failure, :suppressed ["shutdown failed"], :shutdowns 1, :published? false}
-                               {:thrown     thrown
-                                :suppressed (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
-                                :shutdowns  @shutdowns
-                                :published? (some? (task/scheduler))})))))))))
+    (is (= {:setup-error-thrown? true
+            :suppressed          []
+            :shutdowns           1
+            :published?          false}
+           (init-with-failing-setup! nil))))
+  (testing "a shutdown that fails too is attached to the setup's exception, not thrown in its place"
+    (is (= {:setup-error-thrown? true
+            :suppressed          ["shutdown failed"]
+            :shutdowns           1
+            :published?          false}
+           (init-with-failing-setup! (ex-info "shutdown failed" {}))))))
 
 (defn- capitalize-if-mysql [s]
   (cond-> (name s)

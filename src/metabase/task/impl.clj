@@ -152,7 +152,8 @@
         (mc/reset! scheduler-component new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
-        ;; them all, so jobs with no class and errored triggers are left as they are until a restart.
+        ;; them all, so jobs with no class and errored triggers are left as they are.
+        ;; At startup the throw ends the process, so only a caller that survives it, such as a test, makes that call.
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
