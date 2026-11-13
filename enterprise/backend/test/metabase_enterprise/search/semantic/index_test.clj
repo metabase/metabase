@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.search.semantic.core :as semantic.core]
+   [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase-enterprise.search.semantic.embedding :as semantic.embedding]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    ;; loaded for its :event/semantic-search-hnsw-enabled handler, which the setter test exercises
@@ -19,6 +20,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -846,21 +848,32 @@
                      :model/Card       {in-readable-doc :id} {:collection_id readable-coll, :document_id readable-doc}
                      :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll, :document_id hidden-doc}]
         (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll)})]
-          (let [filter-cards (fn [ids]
-                               (#'semantic.index/filter-read-permitted
-                                (for [id ids] {:id id :model "card" :collection_id readable-coll})))
+          (let [ids          [plain in-readable-doc in-hidden-doc]
+                filter-cards (fn [ids]
+                               (mapv :id (#'semantic.index/filter-read-permitted
+                                          (for [id ids] {:id id :model "card" :collection_id readable-coll}))))
                 query-count  (fn [ids]
                                (t2/with-call-count [call-count]
                                  (filter-cards ids)
                                  (call-count)))
-                ids          [plain in-readable-doc in-hidden-doc]]
+                loaded       (atom [])
+                instances    (mt/original-fn #'semantic-search.db/instances)
+                recording    (fn [modelable pks]
+                               (let [rows (instances modelable pks)]
+                                 (swap! loaded into rows)
+                                 rows))
+                filtered-ids (mt/with-dynamic-fn-redefs [semantic-search.db/instances recording]
+                               (filter-cards ids))]
             (is (= [plain in-readable-doc]
-                   (map :id (filter-cards ids))
+                   filtered-ids
                    (filter #(mi/can-read? (t2/select-one :model/Card :id %)) ids))
                 "the verdicts match mi/can-read? on full rows")
+            (is (= (set queries/card-read-check-columns)
+                   (set (mapcat keys @loaded)))
+                "the filter loads only the read-check columns")
             (is (= (query-count [plain])
                    (query-count [plain other-plain]))
-                "cards outside a document add no query each, so the load must include document_id")))))))
+                "cards outside a document add no query each")))))))
 
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"

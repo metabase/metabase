@@ -7,7 +7,6 @@
    [metabase-enterprise.search.semantic.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util.honey-sql-2 :as h2x]
@@ -64,17 +63,12 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:collection :id :location] :id [:in collection-ids]))
 
-;; A Card's after-select transforms normalize its query, metadata and settings, which costs far more than the read
-;; check itself, and the permission filter loads every candidate a semantic search returns.
-(def ^:private read-check-selects
-  "Per model, a select of only the columns its `mi/can-read?` reads, for models too costly to load in full."
-  {:model/Card (into [:model/Card] queries/card-read-check-columns)})
-
-(mu/defn read-check-instances
-  "The instances of `model` with `ids`, with enough columns for `mi/can-read?`."
-  [model :- :keyword
-   ids   :- [:sequential ms/PositiveInt]]
-  (t2/select (get read-check-selects model model) :id [:in ids]))
+(mu/defn instances
+  "The instances of `modelable` with `ids`.
+  A modelable is a model, or a vector of a model and the columns to select."
+  [modelable :- [:or :keyword [:cat :keyword [:+ :keyword]]]
+   ids       :- [:sequential ms/PositiveInt]]
+  (t2/select modelable :id [:in ids]))
 
 (defn- search-doc-select
   [{:keys [id model]}]
