@@ -1508,7 +1508,7 @@
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
 
 (deftest destroy-workspace-isolation-quotes-table-names-test
-  (testing "Teardown builds each DROP TABLE with QUOTENAME, so a warehouse table name containing `]` cannot break out of the identifier"
+  (testing "Teardown builds each DROP TABLE with QUOTENAME on the schema name and the table name. This checks the SQL text only; it does not run it on SQL Server."
     (let [batch (atom [])
           stmt  (reify java.sql.Statement
                   (addBatch [_ sql] (swap! batch conj sql))

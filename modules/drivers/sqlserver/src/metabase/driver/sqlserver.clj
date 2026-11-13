@@ -1479,8 +1479,6 @@
        (with-open [^Statement stmt (.createStatement conn)]
          ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
          ;; variable names must be unique across the batch entries.
-         ;; Table names come from the warehouse, so QUOTENAME them (it escapes `]`) rather than
-         ;; splicing them into the dynamic SQL between brackets.
          (doseq [sql [;; Disable the login and kill its sessions before any drop: a session of the workspace
                       ;; user could hold a lock on one of its tables, and the drops would wait on it.
                       (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
@@ -1490,6 +1488,8 @@
                                    "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
                                    "EXEC sp_executesql @kill_sessions_sql")
                               escaped-username)
+                      ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                      ;; brackets and escapes any `]` in it.
                       (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
                                    "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
                                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
