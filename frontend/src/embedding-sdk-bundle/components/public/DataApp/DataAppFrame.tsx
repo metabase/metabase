@@ -60,12 +60,6 @@ export function DataAppFrame({
   // A ref so an inline callback does not re-send the settings on every render.
   const onPathChangeRef = useLatest(onPathChange);
 
-  // The latest path the iframe reported, the path of the last effect run,
-  // and the path of the last settings sent to the iframe.
-  const reportedPathRef = useRef<string | null>(null);
-  const settingsPathRef = useRef(path);
-  const sentPathRef = useRef<string | null>(null);
-
   // An error belongs to the path it happened on, so a route change loads the iframe again.
   const [failure, setFailure] = useState<{
     path: string;
@@ -107,9 +101,7 @@ export function DataAppFrame({
       }
     };
 
-    const sendSettings = () => {
-      sentPathRef.current = path;
-
+    const sendSettings = () =>
       send({
         type: "metabase.embed.setSettings",
         data: {
@@ -120,7 +112,6 @@ export function DataAppFrame({
           _embedReferrer: window.location.href,
         },
       });
-    };
 
     const authenticate = async () => {
       try {
@@ -179,7 +170,6 @@ export function DataAppFrame({
                 return;
               }
 
-              reportedPathRef.current = data.path;
               onPathChangeRef.current?.(data.path);
             },
           )
@@ -192,26 +182,9 @@ export function DataAppFrame({
           .otherwise(() => undefined),
     });
 
-    // The host echoes reported paths back through `path`. The iframe is already
-    // on that page, and an older echo would move it back to a page it left.
-    const isPathChange = path !== settingsPathRef.current;
-    const isEcho = isPathChange && path === reportedPathRef.current;
-
-    // Echoes are not sent, so the iframe can still have this path from earlier
-    // settings. Then it only navigates on an explicit request.
-    const isRepeatedPath = isPathChange && path === sentPathRef.current;
-
-    settingsPathRef.current = path;
-
-    if (readyRef.current && !isEcho) {
+    // Send every path, echoes of reported paths included, so the iframe's copy of `path` matches the host's.
+    if (readyRef.current) {
       sendSettings();
-
-      if (isRepeatedPath) {
-        send({
-          type: "metabase.embed.navigateToDataAppPath",
-          data: { path },
-        });
-      }
     }
 
     return removeMessageListener;

@@ -312,18 +312,11 @@ describe("DataApp", () => {
     postMessage.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Home" }));
 
-    // the iframe still has `boba-hq` from its first settings, so it also needs a navigation request
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-    expect(postMessage.mock.calls).toEqual([
-      [settingsMessage("boba-hq"), ORIGIN],
-      [
-        {
-          type: "metabase.embed.navigateToDataAppPath",
-          data: { path: "boba-hq" },
-        },
-        ORIGIN,
-      ],
-    ]);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      settingsMessage("boba-hq"),
+      ORIGIN,
+    );
   });
 
   it("ignores path changes from another origin", () => {
@@ -353,7 +346,7 @@ describe("DataApp", () => {
     },
   );
 
-  it("does not send an older reported path back to the app after a newer report", () => {
+  it("sends a reported path back to the iframe, so its settings match the host", () => {
     render(<HostWithPathState />);
 
     const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
@@ -363,13 +356,37 @@ describe("DataApp", () => {
     postMessage.mockClear();
 
     pathChangeMessage(iframe, "boba-hq/orders");
-    pathChangeMessage(iframe, "boba-hq/orders/list");
 
-    expect(screen.getByTestId("host-path")).toHaveTextContent(
-      "boba-hq/orders/list",
+    expect(postMessage).toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders"),
+      ORIGIN,
     );
-    expect(postMessage).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { name: "with onPathChange", onPathChange: jest.fn<void, [string]>() },
+    { name: "without onPathChange", onPathChange: undefined },
+  ])(
+    "sends a page the app reported when the host goes back to it after navigating elsewhere ($name)",
+    ({ onPathChange }) => {
+      const { iframe, postMessage, rerender } = setup({
+        path: "boba-hq",
+        onPathChange,
+      });
+
+      message(iframe, "metabase.embed.iframeReady");
+      pathChangeMessage(iframe, "boba-hq/orders");
+      rerender(<DataApp path="boba-hq/products" onPathChange={onPathChange} />);
+      postMessage.mockClear();
+
+      rerender(<DataApp path="boba-hq/orders" onPathChange={onPathChange} />);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        settingsMessage("boba-hq/orders"),
+        ORIGIN,
+      );
+    },
+  );
 
   it("sends new settings at a reported path when the locale changes", () => {
     render(<HostWithPathState />);
