@@ -29,7 +29,7 @@ When you group by Week of year in the query builder, Metabase finds the first we
 
 Weeks start on the first day of the week set in [localization settings](../../../configuring-metabase/localization.md), which is Sunday by default. For example, if weeks start on Sunday, week 1 begins on the first Sunday of the year. If weeks start on Monday, week 1 begins on the first Monday of the year. Druid is an exception: it ignores the first day of the week setting and numbers weeks with its own rules.
 
-Filters on Week of year use the same numbering, so a filter's name matches the week that the grouping returns. Druid is an exception: it numbers weeks of the year with its own rules.
+Filters on Week of year use the same numbering, so a filter's name matches the week that the grouping returns, except on Druid.
 
 ### Using a different first week of the year
 
