@@ -205,7 +205,10 @@
   "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
   running on any of the workspace's databases. Without this, a delete waits on
   the row lock that the running provisioning holds, then fails, or wins the lock
-  and makes the create fail."
+  and makes the create fail. It counts a `:provisioning` or `:deprovisioning` row
+  last updated within [[in-flight-stale-after]]. It does not count an
+  `:unprovisioned` row: a failed create can leave one, and its 500 asks for a
+  delete."
   [workspace-id]
   (when (ws.db/workspace-has-in-flight-databases? workspace-id
                                                   (t/minus (t/offset-date-time) in-flight-stale-after))
@@ -338,11 +341,13 @@
 
 (defn- assert-create-not-running
   "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
-  `:unprovisioned`, `:provisioning` or `:deprovisioning` and changed within
-  [[in-flight-stale-after]]. A create commits all its rows `:unprovisioned`, then
-  provisions them one at a time. One query checks all three statuses: with one query
-  per status, a row that moves from `:unprovisioned` to `:provisioning` between the
-  queries is seen by neither."
+  `:unprovisioned`, `:provisioning` or `:deprovisioning` and was last updated within
+  [[in-flight-stale-after]]. A create inserts all its rows `:provisioning`, then
+  provisions them one at a time. A row whose provisioning fails turns
+  `:unprovisioned` before the create's cleanup tears it down, so a recent
+  `:unprovisioned` row counts too. One query checks all three statuses: with one
+  query per status, a row that changes status between the queries could be seen by
+  neither."
   [ws-id]
   (when (ws.db/workspace-has-unfinished-databases-since? ws-id
                                                          (t/minus (t/offset-date-time) in-flight-stale-after))
@@ -354,18 +359,17 @@
 (defn- retried-workspace
   "Returns the hydrated workspace `ws-id`, which an earlier create with the same
   idempotency key made. Refuses (409, `workspace_busy`) while that create is still
-  running: a database is `:provisioning`, or `:unprovisioned` and not yet reached,
-  and changed within [[in-flight-stale-after]]. When the workspace has no databases,
+  running, see [[assert-create-not-running]]. When the workspace has no databases,
   or a database that is not `:provisioned`, the retry answers 500 with `workspace_id`
-  and `cleanup_required`: the earlier create failed and kept the workspace, or
-  stopped (a crash) more than [[in-flight-stale-after]] ago. The key stays taken
-  until the workspace is deleted."
+  and `cleanup_required`: the create failed and kept the workspace, the create
+  stopped (a crash) more than [[in-flight-stale-after]] ago, or a later delete
+  failed. The key stays taken until the workspace is deleted."
   [ws-id]
   (assert-create-not-running ws-id)
   (let [ws (workspace/get-workspace ws-id)]
     (when (or (empty? (:databases ws))
               (not-every? #(= :provisioned (:status %)) (:databases ws)))
-      (let [message "An earlier create with this idempotency key failed, and its cleanup did not finish. Delete the workspace, then create it again with a new key."]
+      (let [message "The workspace created with this idempotency key is not fully provisioned: its create failed or stopped, or a later delete failed. Delete the workspace (`workspace_id`), then create again with a new key."]
         (throw (ex-info message
                         {:status-code      500
                          :message          message
