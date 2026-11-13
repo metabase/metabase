@@ -9,9 +9,10 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *anonymous-router-access*
-  "How work may reach a router itself: `:always` with no current user, in [[do-with-anonymous-router-access]];
-  `:if-granted` only where an admin has granted the router anonymous access, in
-  [[with-database-routing-off-if-granted-fn]]; nil otherwise."
+  "Determines how anonymous traffic (no `api/*current-user-id*` bound) is treated when it tries to access the router database:
+  - `:if-granted` => reject it unless anonymous access has been granted to the database
+  - `:always` => accept it (enables things like sync)
+  - `nil` (or anything else) => reject it with an error"
   nil)
 
 (defenterprise do-with-anonymous-router-access
