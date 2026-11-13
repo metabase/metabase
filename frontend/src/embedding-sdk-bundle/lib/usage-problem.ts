@@ -5,13 +5,12 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-
-import { getIsLocalhost } from "./get-is-localhost";
 
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;

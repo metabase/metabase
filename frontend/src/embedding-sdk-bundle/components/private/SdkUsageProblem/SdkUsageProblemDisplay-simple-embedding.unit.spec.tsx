@@ -7,13 +7,13 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { screen, within } from "__support__/ui";
-import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   createMockSdkState,
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import * as IsLocalhostModule from "embedding-sdk-shared/lib/get-is-localhost";
 import {
   createMockSettings,
   createMockTokenFeatures,
