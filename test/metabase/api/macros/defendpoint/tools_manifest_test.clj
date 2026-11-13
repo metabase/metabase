@@ -120,6 +120,13 @@
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
               [:value {:optional true} [:maybe :any]]]))))))
 
+(deftest ^:parallel property-named-one-of-test
+  (testing "a property named `oneOf` is a property, not branches to rewrite"
+    (is (= {:type       "object"
+            :properties {:oneOf {:type "integer"}}
+            :required   [:oneOf]}
+           (tools-manifest/malli->json-schema [:map [:oneOf :int]])))))
+
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
     (is (= {:anyOf [{:type "string"} {:type "integer"}]}

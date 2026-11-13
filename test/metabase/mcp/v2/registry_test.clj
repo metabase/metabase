@@ -12,7 +12,8 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -516,7 +517,7 @@
   (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` anywhere"
     (is (= []
            (for [tool  (@#'registry/manifest)
-                 :when (some #(and (map? %) (contains? % :oneOf)) (tree-seq coll? seq tool))]
+                 :when (match/match-one tool {:oneOf _} true)]
              (:name tool))))))
 
 ;; not ^:parallel: flushes the shared manifest cache

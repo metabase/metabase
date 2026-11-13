@@ -150,10 +150,6 @@
   Where `schema` has one plain `:type`, returns it with `null` added to that type and to any `:enum`.
   Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
   [schema]
-  ;; Malli publishes `[:maybe X]` as `oneOf`, which this replaces.
-  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
-  ;; `oneOf` and fail it, where an `anyOf` or a type array passes them.
-  ;; OpenAI's strict tool mode does not accept `oneOf` at all.
   (let [{:keys [type description]} schema]
     ;; a type array cannot express a `const`, and `null` must join an `enum` or the enum rejects it
     (if (and (string? type)
@@ -168,12 +164,15 @@
   A `{:oneOf [X {:type \"null\"}]}`, Malli's rendering of `[:maybe X]`, becomes [[nullable]] X.
   Any other `oneOf`, such as a `:multi`'s, becomes an `anyOf` of the same branches."
   [json-schema]
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
+  ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
   ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
   ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
   (match/replace-all json-schema
+    ;; [:maybe X]; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
     {:oneOf [x {:type "null"}]}
-    ;; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
     (merge (nullable x) (dissoc &match :oneOf))
+    ;; any other branching, such as a :multi; a property named `oneOf` puts a schema map, not branches, under the key
     {:oneOf (branches :guard sequential?)}
     (-> &match (dissoc :oneOf) (update :anyOf #(into (vec %) branches)))))
 
@@ -260,7 +259,6 @@
             (let [schema (cond-> schema
                            (:properties schema) (update :properties update-vals strict-schema)
                            (:items schema)      (update :items strict-schema)
-                           (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
                            (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
                            (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
               ;; a nullable object is typed `["object" "null"]`
