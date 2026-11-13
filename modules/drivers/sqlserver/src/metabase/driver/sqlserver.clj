@@ -1383,9 +1383,9 @@
         (pos? (.getInt rs "schema_count")) (conj (str "schema " (quote-schema schema-name)))))))
 
 (defn- workspace-exists-error
-  "The 409 for a login, user or schema that init found already there, described by `found`. It may belong to another
-  workspace, so the caller must not tear this one down: see `:workspace/cleanup?` in
-  [[driver/init-workspace-isolation!]]."
+  "The 409 for a login, user or schema that init found already there, described by `found`. That object may belong to
+  another workspace, so the caller must not tear down the workspace that init was provisioning: see
+  `:workspace/cleanup?` in [[driver/init-workspace-isolation!]]."
   [found cause]
   (ex-info (str found " It may belong to another workspace, so it was left unchanged. Drop it by hand, or deprovision the"
                 " workspace that owns it, then provision again.")
@@ -1394,13 +1394,14 @@
 
 (def ^:private duplicate-object-error-codes
   "SQL Server error numbers for creating a login (15025), a database user (15023) or a schema (2714) whose name is
-  taken: a concurrent init made it after the existence check."
+  taken. SQL Server raises them whoever created the object. Init checks for these objects first, so during init one of
+  these errors means that the object was created after the check."
   #{15025 15023 2714})
 
 (defn- workspace-init-sqls
-  "The batch that creates the workspace's login, database user and schema and grants it access to that schema.
-  Nothing here is created IF NOT EXISTS: an object made by someone else between the existence check and this batch
-  fails it."
+  "The batch that creates the workspace's login, database user and schema, grants the user access to that schema,
+  and grants the user CREATE TABLE in the database. No statement uses IF NOT EXISTS: if another session creates one of
+  these objects between the existence check and this batch, the batch fails."
   [username password schema-name]
   (let [quoted-user   (quote-field username)
         quoted-schema (quote-schema schema-name)]
