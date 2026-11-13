@@ -143,6 +143,18 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (when (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])))
+
+(mu/defn update-card!
+  "Apply `changes` to the Card with `card-id`, returning the number updated."
+  [card-id :- ::lib.schema.id/card
+   changes :- (mut/select-keys ::queries.schema/card.update [:visualization_settings])]
+  (t2/update! :model/Card :id card-id changes))
+
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

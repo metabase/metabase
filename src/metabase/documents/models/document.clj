@@ -208,11 +208,15 @@
   parameters come from an existing card row the caller passed a read check on rather than from the request, so the
   user is not authoring anything -- they may be able to view (and run) the source card without having permission to
   write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
-  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
-  [source-card creator]
-  (api/create-check :model/Card {:collection_id (:collection_id source-card)})
-  (card/with-copy-source-card source-card
-    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
+  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card.
+
+  With `delay-event?`, the caller publishes the clone's `:event/card-create` itself."
+  ([source-card creator]
+   (clone-card! source-card creator false))
+  ([source-card creator delay-event?]
+   (api/create-check :model/Card {:collection_id (:collection_id source-card)})
+   (card/with-copy-source-card source-card
+     (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator delay-event?))))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]

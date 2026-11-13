@@ -18,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2]))
 
 (defn- cards-to-create-schema
@@ -184,7 +185,9 @@
                                                                  :public_uuid :made_public_by_id :cache_invalidated_at)
                                                          (assoc :document_id new-document-id
                                                                 :collection_id new-collection-id))
-                                                     @api/*current-user*)]
+                                                     @api/*current-user*
+                                                     ;; published by [[rewire-goals-and-publish-copied-cards!]]
+                                                     true)]
                 (when (or (:archived card) (:archived_directly card))
                   (documents.db/update-card! (:id new-card)
                                              {:archived          (boolean (:archived card))
@@ -192,6 +195,18 @@
                 (assoc accum (:id card) (:id new-card))))
             {}
             cards-to-copy)))
+
+(defn- rewire-goals-and-publish-copied-cards!
+  "Points the goals of the Document's cards that read a copied card (`card-id-map`: old id -> copy's id) at the copy,
+  then publishes each card's `:event/card-create`, held back by [[copy-cards-for-document!]] so the first revision has
+  the rewired goals."
+  [document-id card-id-map]
+  (doseq [{:keys [id visualization_settings] :as card} (documents.db/cards-for-document document-id)
+          :let [viz (dynamic-goals/remap-goal-card-ids visualization_settings card-id-map)]]
+    (when (not= viz visualization_settings)
+      (documents.db/update-card! id {:visualization_settings viz}))
+    (events/publish-event! :event/card-create {:object  (assoc card :visualization_settings viz)
+                                               :user-id api/*current-user-id*})))
 
 (defn copy-document!
   "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
@@ -216,6 +231,7 @@
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
+                         (rewire-goals-and-publish-copied-cards! new-document-id card-id-map)
                          (when (seq card-id-map)
                            (documents.db/update-document! new-document-id
                                                           (m.document/update-cards-in-ast
