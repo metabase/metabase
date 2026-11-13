@@ -40,8 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [ring.util.codec :as codec]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,54 +75,17 @@
     (when (seq session)
       (assoc request :metabase-session-key session))))
 
-(def ^:private preview-session-cookie-prefix "metabase.PREVIEW_SESSION.")
-
-(def ^:private preview-token-header "x-metabase-preview-token")
-
-(def ^:private preview-token-param "preview_token")
-
-(defn- preview-token-param-value
-  "The `preview_token` of a map tile request, or nil: the browser loads tiles as images, without the API client that
-  sends the header."
-  [{:keys [request-method uri query-string]}]
-  (when (and (= :get request-method) query-string (str/starts-with? uri "/api/tiles/"))
-    (some (fn [pair]
-            (let [[k v] (str/split pair #"=" 2)]
-              (when (= preview-token-param k) (codec/url-decode (or v "")))))
-          (str/split query-string #"&"))))
-
-(defn- without-preview-token-param
-  "`request` without `preview_token` in its query string, since the tile endpoints accept no other parameters."
-  [{:keys [query-string] :as request}]
-  (assoc request :query-string (not-empty (str/join "&" (remove #(or (= preview-token-param %)
-                                                                     (str/starts-with? % (str preview-token-param "=")))
-                                                                (str/split query-string #"&"))))))
-
-(defmethod wrap-session-key-with-strategy :preview-cookie
-  [_ {:keys [cookies headers] :as request}]
-  ;; a token without its cookie still picks the preview session, which then refuses: never the admin's own session
-  (let [param-token (preview-token-param-value request)]
-    (when-let [token (not-empty (or (get headers preview-token-header) param-token))]
-      (let [session-id (first (str/split token #"\." 2))]
-        (cond-> (assoc request :metabase/preview-session
-                       {:session-key (not-empty (get-in cookies [(str preview-session-cookie-prefix session-id) :value]))
-                        :token       token
-                        :host?       false})
-          param-token without-preview-token-param)))))
-
 (defmethod wrap-session-key-with-strategy :best
   [_ request]
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:header :embedded-cookie :preview-cookie :normal-cookie]))
+   [:header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
-  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
-
-  A preview session (EE) goes under `:metabase/preview-session` instead, when the request carries a preview token."
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-key-with-strategy :best request)

@@ -28,8 +28,6 @@ type PermissionPreviewPlugin = {
   PreviewBanner: ComponentType | null;
   /** The user this page previews as, for requests made without the API client (map tiles); null when not previewing. */
   getActivePreviewUserId: () => number | null;
-  /** The token of the frame's preview session, for the same requests; null when not previewing by cookie. */
-  getActivePreviewToken: () => string | null;
 };
 
 const getDefaultPermissionPreview = (): PermissionPreviewPlugin => ({
@@ -41,7 +39,6 @@ const getDefaultPermissionPreview = (): PermissionPreviewPlugin => ({
   ViewAsButton: null,
   PreviewBanner: null,
   getActivePreviewUserId: () => null,
-  getActivePreviewToken: () => null,
 });
 
 export const PLUGIN_PERMISSION_PREVIEW = definePluginSlot(

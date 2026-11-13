@@ -211,11 +211,6 @@ function dashboardTileUrl(
 
 // Leaflet loads tiles as images, without the API client that sends the preview header.
 function setPreviewParam(params: URLSearchParams) {
-  const previewToken = PLUGIN_PERMISSION_PREVIEW.getActivePreviewToken();
-  if (previewToken != null) {
-    params.set("preview_token", previewToken);
-    return;
-  }
   const previewUserId = PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId();
   if (previewUserId != null) {
     params.set("preview_as", String(previewUserId));
