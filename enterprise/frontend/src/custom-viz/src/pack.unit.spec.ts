@@ -176,6 +176,23 @@ describe("pack", () => {
     );
   });
 
+  it("ignores an assets list in the manifest, only the icon is served", async () => {
+    buildProject();
+    writeFileSync(join(projectDir, "dist", "assets", "extra.svg"), "<svg />");
+    editJson("metabase-plugin.json", (manifest) => {
+      manifest.assets = ["extra.svg"];
+    });
+    await packPlugin(projectDir);
+
+    const entries = await readTgz(join(projectDir, TGZ_NAME));
+
+    expect(entries.map((entry) => entry.name)).toEqual([
+      "metabase-plugin.json",
+      "dist/index.js",
+      "dist/assets/icon.svg",
+    ]);
+  });
+
   it("rejects a project without a manifest", async () => {
     buildProject();
     rmSync(join(projectDir, "metabase-plugin.json"));
@@ -209,12 +226,27 @@ describe("pack", () => {
     );
   });
 
+  it("rejects an icon that is not an SVG file", async () => {
+    buildProject();
+    writeFileSync(
+      join(projectDir, "dist", "assets", "icon.png"),
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    );
+    editJson("metabase-plugin.json", (manifest) => {
+      manifest.icon = "icon.png";
+    });
+
+    await expect(packPlugin(projectDir)).rejects.toThrow(
+      'Icon "icon.png" declared in metabase-plugin.json must be an SVG file.',
+    );
+  });
+
   it("rejects an icon missing from dist/assets/", async () => {
     buildProject();
     rmSync(join(projectDir, "dist", "assets", "icon.svg"));
 
     await expect(packPlugin(projectDir)).rejects.toThrow(
-      'Asset "icon.svg" declared in metabase-plugin.json but missing from dist/assets/.',
+      'Icon "icon.svg" declared in metabase-plugin.json but missing from dist/assets/.',
     );
   });
 
