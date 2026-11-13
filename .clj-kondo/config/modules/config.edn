@@ -1105,10 +1105,26 @@
   {:team "Metabot"
    :api  #{metabase.help-assistant.api}
    :uses #{api
+           logger
            metabot
            server
+           settings
            util
-           util.config}}
+           util.config}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Database
+                    :model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
+                    :model/TaskHistory
+                    :model/User}}
 
   indexed-entities
   {:team "UX West"

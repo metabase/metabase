@@ -1,10 +1,9 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { jt, t } from "ttag";
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from "react";
+import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { getUserIsAdmin } from "metabase/current-user";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
@@ -24,13 +23,13 @@ import {
   Group,
   Icon,
   Loader,
-  Menu,
   Paper,
   Popover,
   Stack,
   Text,
   Textarea,
   Title,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -79,7 +78,6 @@ function HelpAssistantChatPage() {
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const hasMessages = chat.entries.length > 0;
   const navigate = useNavigate();
-  const [sendToast] = useToast();
   const { conversationId: routeConversationId } = useParams();
   useConversationUrl(chat);
 
@@ -88,25 +86,6 @@ function HelpAssistantChatPage() {
     if (routeConversationId != null) {
       navigate(Urls.adminHelp());
     }
-  };
-
-  const deleteConversation = () => {
-    const id = chat.conversationId;
-    const conversation = id ? chat.deleteConversation(id) : undefined;
-    if (!id || !conversation) {
-      return;
-    }
-    navigate(Urls.adminHelp());
-    sendToast({
-      message: t`Chat deleted`,
-      actionLabel: t`Undo`,
-      actions: [
-        () => {
-          chat.restoreConversation(id, conversation);
-          navigate(Urls.adminHelpChat(id));
-        },
-      ],
-    });
   };
 
   const input = (
@@ -118,23 +97,25 @@ function HelpAssistantChatPage() {
       onChange={chat.setDraft}
       onSubmit={() => chat.send(chat.draft)}
       onStop={chat.stop}
+      options={
+        <HelpAssistantOptions
+          includeDiagnosticInfo={chat.includeDiagnosticInfo}
+          onIncludeDiagnosticInfoChange={chat.setIncludeDiagnosticInfo}
+          allowInstanceChecks={chat.allowInstanceChecks}
+          onAllowInstanceChecksChange={chat.setAllowInstanceChecks}
+        />
+      }
     />
   );
   const footer = isConfigured && (
-    <HelpAssistantFooter
-      includeDiagnosticInfo={chat.includeDiagnosticInfo}
-      onIncludeDiagnosticInfoChange={chat.setIncludeDiagnosticInfo}
-    />
+    <Text size="xs" c="text-secondary" ta="center">
+      {t`Answers can be wrong. Check the sources.`}
+    </Text>
   );
 
   return (
     <Flex className={S.page} direction="column">
-      <HelpAssistantHeader
-        entries={chat.entries}
-        canDelete={chat.isConversationSaved}
-        onNewChat={startNewChat}
-        onDelete={deleteConversation}
-      />
+      <HelpAssistantHeader entries={chat.entries} onNewChat={startNewChat} />
       {hasMessages ? (
         <>
           <ConversationHistory
@@ -254,17 +235,10 @@ function useConversationUrl(chat: HelpAssistantChat) {
 
 interface HelpAssistantHeaderProps {
   entries: HelpAssistantChatEntry[];
-  canDelete: boolean;
   onNewChat: () => void;
-  onDelete: () => void;
 }
 
-function HelpAssistantHeader({
-  entries,
-  canDelete,
-  onNewChat,
-  onDelete,
-}: HelpAssistantHeaderProps) {
+function HelpAssistantHeader({ entries, onNewChat }: HelpAssistantHeaderProps) {
   const hasMessages = entries.length > 0;
 
   return (
@@ -282,11 +256,7 @@ function HelpAssistantHeader({
       {hasMessages && (
         <Group gap="xs" wrap="nowrap">
           <ContactSupportButton entries={entries} />
-          <ConversationMenu
-            entries={entries}
-            canDelete={canDelete}
-            onDelete={onDelete}
-          />
+          <CopyConversationButton entries={entries} />
           <Button
             variant="subtle"
             leftSection={<Icon name="add" />}
@@ -300,17 +270,11 @@ function HelpAssistantHeader({
   );
 }
 
-interface ConversationMenuProps {
-  entries: HelpAssistantChatEntry[];
-  canDelete: boolean;
-  onDelete: () => void;
-}
-
-function ConversationMenu({
+function CopyConversationButton({
   entries,
-  canDelete,
-  onDelete,
-}: ConversationMenuProps) {
+}: {
+  entries: HelpAssistantChatEntry[];
+}) {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
   const { tag } = useSetting("version");
@@ -321,26 +285,15 @@ function ConversationMenu({
   };
 
   return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <ActionIcon aria-label={t`More actions`}>
-          <Icon name="ellipsis" />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<Icon name="copy" />}
-          onClick={copyConversation}
-        >
-          {t`Copy conversation`}
-        </Menu.Item>
-        {canDelete && (
-          <Menu.Item leftSection={<Icon name="trash" />} onClick={onDelete}>
-            {t`Delete chat`}
-          </Menu.Item>
-        )}
-      </Menu.Dropdown>
-    </Menu>
+    <Tooltip label={t`Copy the whole conversation as Markdown`}>
+      <Button
+        variant="subtle"
+        leftSection={<Icon name="copy" />}
+        onClick={copyConversation}
+      >
+        {t`Copy chat`}
+      </Button>
+    </Tooltip>
   );
 }
 
@@ -409,6 +362,8 @@ interface HelpAssistantInputProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop: () => void;
+  /** Shown at the bottom left of the box, once the AI connection is set up. */
+  options: ReactNode;
 }
 
 function HelpAssistantInput({
@@ -419,6 +374,7 @@ function HelpAssistantInput({
   onChange,
   onSubmit,
   onStop,
+  options,
 }: HelpAssistantInputProps) {
   const [isAiSetupOpen, { open: openAiSetup, close: closeAiSetup }] =
     useDisclosure(false);
@@ -469,7 +425,8 @@ function HelpAssistantInput({
           />
         </>
       )}
-      <Flex justify="flex-end">
+      <Flex justify="space-between" align="flex-end" gap="md">
+        <Box>{isConfigured && options}</Box>
         {isLoading ? (
           <ActionIcon
             variant="filled"
@@ -495,39 +452,52 @@ function HelpAssistantInput({
   );
 }
 
-interface HelpAssistantFooterProps {
+interface HelpAssistantOptionsProps {
   includeDiagnosticInfo: boolean;
   onIncludeDiagnosticInfoChange: (include: boolean) => void;
+  allowInstanceChecks: boolean;
+  onAllowInstanceChecksChange: (allow: boolean) => void;
 }
 
-function HelpAssistantFooter({
+function HelpAssistantOptions({
   includeDiagnosticInfo,
   onIncludeDiagnosticInfoChange,
-}: HelpAssistantFooterProps) {
+  allowInstanceChecks,
+  onAllowInstanceChecksChange,
+}: HelpAssistantOptionsProps) {
   return (
-    <Group justify="space-between" gap="sm">
+    <Group gap="md">
       <Checkbox
         checked={includeDiagnosticInfo}
         onChange={(event) =>
           onIncludeDiagnosticInfoChange(event.currentTarget.checked)
         }
         label={
+          <Group gap="xxs" wrap="nowrap">
+            <Text component="span" size="sm" c="text-secondary">
+              {t`Include diagnostic info`}
+            </Text>
+            <Tooltip
+              label={t`Sends your Metabase version, browser and system details with each question, the same details shown on the Diagnostic info page.`}
+              maw="20rem"
+              multiline
+            >
+              <Icon name="info" size={12} c="text-secondary" />
+            </Tooltip>
+          </Group>
+        }
+      />
+      <Checkbox
+        checked={allowInstanceChecks}
+        onChange={(event) =>
+          onAllowInstanceChecksChange(event.currentTarget.checked)
+        }
+        label={
           <Text component="span" size="sm" c="text-secondary">
-            {jt`Include ${(
-              <Link
-                key="diagnostics"
-                to={Urls.adminHelpDiagnostics()}
-                variant="brand"
-              >
-                {t`diagnostic info`}
-              </Link>
-            )}`}
+            {t`Let the assistant check logs and settings`}
           </Text>
         }
       />
-      <Text size="sm" c="text-secondary">
-        {t`Answers can be wrong. Check the sources.`}
-      </Text>
     </Group>
   );
 }

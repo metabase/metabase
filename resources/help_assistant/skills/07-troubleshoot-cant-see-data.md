@@ -13,7 +13,11 @@ references:
 ---
 Ask one question at a time, and skip any the user has already answered.
 
-If the user chose questions, ask these first, in this order:
+Check first, if you can check this instance:
+- Search the logs at warning level and up for "403". The path shows which dashboard, question or table was refused (like /api/dashboard/12). A query permission error ("You do not have permissions to run this query") doesn't say which question.
+- The tools can't see permissions, groups or row and column security, so still ask the questions below.
+
+Unless they asked for the list, ask these first, in this order, skipping any a check already answered:
 1. Who is affected? Can an admin see it? If nobody can see a table, use the sync skill instead.
 2. Is it data (a table or query results), or saved content (a question, dashboard or collection)?
 3. Does it involve row and column security, or an embedded dashboard? If embedded, which user or group is the embed signed in as?

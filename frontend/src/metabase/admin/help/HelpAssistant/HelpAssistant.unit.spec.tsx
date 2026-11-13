@@ -143,7 +143,7 @@ const ask = async (question: string) => {
 const getRecentChats = () => screen.getByLabelText("Recent chats");
 
 describe("HelpAssistant", () => {
-  it("shows a greeting, suggested prompts, and a link to the diagnostic info", () => {
+  it("shows a greeting, suggested prompts, and the diagnostic info option", () => {
     setup();
 
     expect(
@@ -155,8 +155,8 @@ describe("HelpAssistant", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "diagnostic info" }),
-    ).toHaveAttribute("href", "/admin/help/diagnostics");
+      screen.getByRole("checkbox", { name: /Include diagnostic info/ }),
+    ).toBeChecked();
   });
 
   it("sends a suggested prompt with the diagnostic info and shows the reply", async () => {
@@ -180,6 +180,7 @@ describe("HelpAssistant", () => {
         { role: "user", content: "My database connection stopped working" },
       ],
       diagnostic_info: expect.stringContaining("browser-info"),
+      instance_access: false,
     });
   });
 
@@ -194,7 +195,24 @@ describe("HelpAssistant", () => {
     await screen.findByText("connection string");
     expect(chat.lastRequestBody()).toEqual({
       messages: [{ role: "user", content: "Why is sync slow?" }],
+      instance_access: false,
     });
+  });
+
+  it("lets the assistant check logs and settings only when it's turned on", async () => {
+    const { chat } = setup();
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Let the assistant check logs and settings",
+    });
+    expect(checkbox).not.toBeChecked();
+
+    await userEvent.click(checkbox);
+    await ask("Why is sync slow?");
+
+    await screen.findByText("connection string");
+    expect(chat.lastRequestBody()).toEqual(
+      expect.objectContaining({ instance_access: true }),
+    );
   });
 
   it("shows how it got the answer", async () => {
@@ -320,7 +338,7 @@ describe("HelpAssistant", () => {
     expect(await screen.findByText("Working on it…")).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("link", { name: "diagnostic info" }),
+      screen.getByRole("link", { name: /Diagnostic info/ }),
     );
     expect(await screen.findByText("Diagnostics page")).toBeInTheDocument();
 
@@ -494,10 +512,7 @@ describe("HelpAssistant", () => {
 
     await ask("Why is sync slow?");
     await screen.findByText("connection string");
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Copy conversation/ }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /Copy chat/ }));
 
     expect(writeText).toHaveBeenCalledWith(
       `Metabase version: v1\n\n**Question:**\nWhy is sync slow?\n\n**Help assistant:**\nCheck the **connection string**.\n\nSources:\n- [${SOURCE.title}](${SOURCE.url})`,
@@ -623,7 +638,11 @@ describe("HelpAssistant", () => {
     );
     expect(await screen.findByText("hourly")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      within(getRecentChats()).getByRole("button", {
+        name: "Actions for How often does sync run?",
+      }),
+    );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Delete chat/ }),
     );
@@ -648,7 +667,11 @@ describe("HelpAssistant", () => {
     });
     await screen.findByText("hourly");
 
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      within(getRecentChats()).getByRole("button", {
+        name: "Actions for How often does sync run?",
+      }),
+    );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Delete chat/ }),
     );

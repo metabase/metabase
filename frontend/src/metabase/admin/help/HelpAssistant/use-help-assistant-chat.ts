@@ -48,6 +48,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
   }, []);
   const [draft, setDraft] = useState("");
   const [includeDiagnosticInfo, setIncludeDiagnosticInfo] = useState(true);
+  // Off until the admin turns it on: what the checks find goes to the AI provider.
+  const [allowInstanceChecks, setAllowInstanceChecks] = useState(false);
   const pendingRequestRef = useRef<AbortController | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<unknown>();
@@ -135,6 +137,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
             })),
             diagnostic_info: includeDiagnosticInfo ? diagnosticInfo : undefined,
             loaded_skills: loadedSkills.length > 0 ? loadedSkills : undefined,
+            instance_access: allowInstanceChecks,
           },
           {
             signal: controller.signal,
@@ -165,7 +168,13 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
         }
       }
     },
-    [diagnosticInfo, includeDiagnosticInfo, save, setEntries],
+    [
+      allowInstanceChecks,
+      diagnosticInfo,
+      includeDiagnosticInfo,
+      save,
+      setEntries,
+    ],
   );
 
   const send = useCallback(
@@ -322,6 +331,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       setDraft,
       includeDiagnosticInfo,
       setIncludeDiagnosticInfo,
+      allowInstanceChecks,
+      setAllowInstanceChecks,
       isLoading,
       error,
       pendingSteps,
@@ -346,6 +357,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       entries,
       draft,
       includeDiagnosticInfo,
+      allowInstanceChecks,
       isLoading,
       error,
       pendingSteps,

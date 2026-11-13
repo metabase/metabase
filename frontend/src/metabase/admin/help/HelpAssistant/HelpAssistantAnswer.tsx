@@ -21,6 +21,7 @@ import {
 } from "metabase/ui";
 import type {
   HelpAssistantChatEntry,
+  HelpAssistantCheck,
   HelpAssistantFeedback,
   HelpAssistantSource,
   HelpAssistantStep,
@@ -125,6 +126,8 @@ export function AnswerStep({ step }: { step: HelpAssistantStep }) {
           )}
         </StepLine>
       );
+    case "check":
+      return <CheckStep check={step.check} label={label} />;
     case "limit":
       return (
         <StepLine icon="warning">
@@ -134,11 +137,60 @@ export function AnswerStep({ step }: { step: HelpAssistantStep }) {
   }
 }
 
+function CheckStep({
+  check,
+  label,
+}: {
+  check?: HelpAssistantCheck;
+  label: string;
+}) {
+  switch (check) {
+    case "logs":
+      return (
+        <StepLine icon="audit">
+          {label
+            ? t`Checked recent logs for “${label}”`
+            : t`Checked recent logs`}
+        </StepLine>
+      );
+    case "databases":
+      return (
+        <StepLine icon="database">
+          {label
+            ? t`Checked sync status for ${label}`
+            : t`Checked sync status for all databases`}
+        </StepLine>
+      );
+    case "email_sso":
+      return (
+        <StepLine icon="gear">{t`Checked email and sign-in settings`}</StepLine>
+      );
+    case "subscriptions":
+      return (
+        <StepLine icon="subscription">
+          {label
+            ? t`Checked subscriptions and alerts for “${label}”`
+            : t`Checked subscriptions and alerts`}
+        </StepLine>
+      );
+    default:
+      return <StepLine icon="gear">{t`Checked this instance`}</StepLine>;
+  }
+}
+
 function StepLine({
   icon,
   children,
 }: {
-  icon: "lightbulb" | "search" | "document" | "warning";
+  icon:
+    | "lightbulb"
+    | "search"
+    | "document"
+    | "warning"
+    | "audit"
+    | "database"
+    | "gear"
+    | "subscription";
   children: ReactNode;
 }) {
   return (

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.help-assistant.core :as help-assistant]
+   [metabase.help-assistant.instance :as instance]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]))
@@ -140,10 +141,12 @@
     (let [text (#'help-assistant/instructions)]
       (is (str/starts-with? text "You are the Metabase Help assistant."))
       (is (not (str/includes? text "<!--")))
-      (is (str/starts-with? (#'help-assistant/system-prompt nil [] []) text)))))
+      (is (str/starts-with? (#'help-assistant/system-prompt {:skills []}) text))
+      (testing "they name the checkbox for checking this instance exactly as the Help page labels it"
+        (is (str/includes? text "\"Let the assistant check logs and settings\""))))))
 
 (deftest system-prompt-test
-  (let [prompt #(#'help-assistant/system-prompt nil test-skills %)]
+  (let [prompt #(#'help-assistant/system-prompt {:skills test-skills, :loaded-skills %})]
     (testing "every skill is listed, without its instructions"
       (is (str/includes? (prompt []) "- troubleshoot-timezones: Timezones. When to use: Dates are off."))
       (is (str/includes? (prompt []) "- howto-dashboards: Dashboards. When to use: Building dashboards."))
@@ -181,6 +184,34 @@
             (is (= {:type "skill", :label "Timezones", :skill_id "troubleshoot-timezones", :earlier true}
                    (first steps)))
             (is (= 3 (count steps)))))))))
+
+(def ^:private instance-tool-names #{"check_recent_logs" "check_databases" "check_email_and_sign_in"})
+
+(deftest chat-instance-access-test
+  (let [chat (fn [request respond]
+               (:result (do-with-stubbed-llm respond #(help-assistant/chat (merge {:messages question} request)))))
+        seen (atom nil)
+        look (fn [_n system tools]
+               (reset! seen {:system system, :tools (set (keys tools))})
+               [{:type :text, :id "final", :text "Done."}])]
+    (testing "when the admin hasn't allowed it, the tools that check the instance aren't offered"
+      (doseq [request [{} {:instance-access? false}]]
+        (chat request look)
+        (is (empty? (filter instance-tool-names (:tools @seen))))
+        (is (str/includes? (:system @seen) "Checking this instance: off."))))
+    (testing "when they have, they are"
+      (chat {:instance-access? true} look)
+      (is (= instance-tool-names (into #{} (filter instance-tool-names) (:tools @seen))))
+      (is (str/includes? (:system @seen) "Checking this instance: on.")))
+    (testing "each check is a step, without what it returned"
+      (mt/with-dynamic-fn-redefs [instance/recent-logs (constantly "ERROR password=[redacted]")]
+        (is (= [{:type "check", :check "logs", :label "ssl"}
+                {:type "check", :check "email_sso", :label ""}]
+               (:steps (chat {:instance-access? true}
+                             (fn [_n _system tools]
+                               ((get-in tools ["check_recent_logs" :fn]) {:keyword " ssl "})
+                               ((get-in tools ["check_email_and_sign_in" :fn]) {})
+                               [{:type :text, :id "final", :text "Done."}])))))))))
 
 (deftest chat-on-step-test
   (with-test-docs

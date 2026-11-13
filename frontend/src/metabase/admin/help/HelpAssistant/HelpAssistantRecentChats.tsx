@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useLocation } from "metabase/router";
-import { NavLink, Stack } from "metabase/ui";
+import { ActionIcon, Box, Icon, Menu, NavLink, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { useHelpAssistantChatContext } from "./HelpAssistantChatContext";
+import S from "./HelpAssistantRecentChats.module.css";
+import { useDeleteHelpAssistantChat } from "./use-delete-help-assistant-chat";
 
 // Enough to find a recent chat, without pushing the other Help pages down.
 const VISIBLE_CHAT_COUNT = 5;
@@ -15,6 +17,7 @@ export function HelpAssistantRecentChats() {
   const { conversations } = useHelpAssistantChatContext();
   const { pathname } = useLocation();
   const [isShowingAll, setIsShowingAll] = useState(false);
+  const deleteChat = useDeleteHelpAssistantChat();
 
   if (conversations.length === 0) {
     return null;
@@ -37,18 +40,22 @@ export function HelpAssistantRecentChats() {
       {visibleConversations.map(({ id, title }) => {
         const path = Urls.adminHelpChat(id);
         return (
-          <NavLink
-            key={id}
-            component={Link}
-            to={path}
-            variant="secondary"
-            label={title}
-            // The label is cut to one line, so show all of it on hover.
-            title={title}
-            noWrap
-            mb="xxs"
-            active={pathname === path}
-          />
+          <Box key={id} className={S.chat} mb="xxs">
+            <NavLink
+              component={Link}
+              to={path}
+              variant="secondary"
+              label={title}
+              // The label is cut to one line, so show all of it on hover.
+              title={title}
+              noWrap
+              // Room for the menu button, so it doesn't cover the title. Matches
+              // the button's width in HelpAssistantRecentChats.module.css.
+              pr="2rem"
+              active={pathname === path}
+            />
+            <RecentChatMenu title={title} onDelete={() => deleteChat(id)} />
+          </Box>
         );
       })}
       {canToggle && (
@@ -64,5 +71,30 @@ export function HelpAssistantRecentChats() {
         />
       )}
     </Stack>
+  );
+}
+
+interface RecentChatMenuProps {
+  title: string;
+  onDelete: () => void;
+}
+
+function RecentChatMenu({ title, onDelete }: RecentChatMenuProps) {
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon
+          className={S.menuButton}
+          aria-label={c("{0} is the title of a chat").t`Actions for ${title}`}
+        >
+          <Icon name="ellipsis" size={12} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item leftSection={<Icon name="trash" />} onClick={onDelete}>
+          {t`Delete chat`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }

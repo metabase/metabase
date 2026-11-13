@@ -14,7 +14,10 @@ references:
   - monitor/application-logs.md
   - configuring-metabase/environment-variables.md
 ---
-This is a decision tree built from recent support tickets. If the user chose questions, start at T1 and follow the tree. If they chose the list, list the likely causes for their symptom from the branches below, most likely first, and let them pick which to check. Each node is one question to ask (ASK), one thing for the user to look at (CHECK), or an end point (EXIT). Skip any node the user has already answered.
+This is a decision tree built from recent support tickets. Start at T1 and follow the tree, unless they asked for the list. If they chose the list, list the likely causes for their symptom from the branches below, most likely first, and let them pick which to check. Each node is one question to ask (ASK), one thing for the user to look at (CHECK), or an end point (EXIT). Skip any node the user has already answered.
+
+
+Check first, if you can check this instance: for an error, search the logs at warning level and up for "field-values" or words from the error before asking T1. Linked filters need more logging first (see EXIT-LOG).
 
 Two rules for using it:
 - The triage answers are clues, not gates. A clue moves the matching checks to the front of the branch. It never removes other checks. If the first checks don't find it, keep going down the branch (or, if they chose the list, offer the causes that are left).
@@ -154,7 +157,7 @@ Gotchas:
 - EXIT-E1: Too much filter state in the request. Self-hosted: increase MB_JETTY_REQUEST_HEADER_SIZE (default 8192), plus any limit on a proxy in front of Metabase. Metabase Cloud: support can raise it. Meanwhile, select fewer values or split the dashboard into tabs.
 - EXIT-E2: A known bug in some version 63 releases when filtering a text column for "true" or "false". If it happens on this instance's version, treat it as a bug. Workaround: a SQL question.
 - EXIT-E3: Pick the date from the calendar, or type it as YYYY-MM-DD.
-- EXIT-LOG: The cause is still unknown. Only if "linked" (a linked filter, or locked parameters in a guest or legacy static embed), explain how to increase logging for linked filters (the application logs page has an example configuration). Those logs don't help with a filter that isn't linked, so skip them otherwise. Ask them to open the dashboard, filter the logs by "chain-filter", and paste the lines here. Read them yourself. For example, "Could not choose between multiple FKs for a chain filters join" means two foreign key paths lead to the linked column: go to the foreign key check (A4).
+- EXIT-LOG: The cause is still unknown. Only if "linked" (a linked filter, or locked parameters in a guest or legacy static embed), the linked filter logs can help; they don't help with a filter that isn't linked, so skip them otherwise. Explain how to turn up logging for linked filters for a limited time (the application logs page has an example configuration that sets metabase.parameters.chain-filter to debug). Then ask them to open the dashboard in a new browser tab and use the filter, keeping this chat open, and to tell you when they've done it. If you can check this instance, read the lines yourself with check_recent_logs, the keyword "chain-filter" and level debug (these lines are debug, not warnings). Otherwise, ask them to filter the logs by "chain-filter" and paste the lines here, and read them yourself. "Could not choose between multiple FKs for a chain filters join" means two foreign key paths lead to the linked column: go to the foreign key check (A4). If nothing shows up, say so.
   If the log lines are a SQL query rather than an error:
   - Clean it up so it runs: unescape quotes and line breaks, and fill in any parameter placeholders with the values shown in the log. Give it back in a SQL code block.
   - Ask them to run it directly on their data warehouse (not through Metabase) and tell you whether it returns rows and how long it takes. No rows explains an empty dropdown. A slow run points to the slow dropdown checks (branch C).

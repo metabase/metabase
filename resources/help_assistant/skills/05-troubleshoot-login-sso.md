@@ -16,7 +16,13 @@ Never ask for passwords, private keys or client secrets.
 
 Ask one question at a time, and skip any the user has already answered.
 
-If the user chose questions, ask these first, in this order:
+Check first, if you can check this instance:
+- Check which sign-in methods are on (check_email_and_sign_in). If only one is, that answers which method.
+- Search the logs at warning level and up for "sso" (errors from LDAP, Google, OIDC, SAML and JWT) and "Authentication endpoint error" (failed sign-ins, including wrong passwords).
+- If an LDAP error appears just before "Password did not match stored password", the LDAP server is the problem, not the password: Metabase tried a local password after LDAP failed.
+- The logs don't say who tried to sign in, so still ask who's affected.
+
+Unless they asked for the list, ask these first, in this order, skipping any a check already answered:
 1. Which login method: password, SAML, JWT, OIDC, Google or LDAP?
 2. Is it everyone, or specific people?
 3. The exact error message, if there is one.

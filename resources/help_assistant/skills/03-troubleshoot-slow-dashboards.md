@@ -10,7 +10,10 @@ references:
 ---
 Ask one question at a time, and skip any the user has already answered.
 
-If the user chose questions, ask these first, in this order:
+Check first, if you can check this instance:
+- Search the logs at warning level and up for "timeout" and "Error processing query". They only show queries that hit Metabase's query timeout or failed. Ordinary slowness isn't logged, so still ask the questions below.
+
+Unless they asked for the list, ask these first, in this order, skipping any a check already answered:
 1. Is it one dashboard, or everything?
 2. Is it always slow, or only at certain times of day?
 3. Is the same query slow when run directly in the database? If it is, the database is the bottleneck, not Metabase.

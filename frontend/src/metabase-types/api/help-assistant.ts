@@ -13,16 +13,25 @@ export type HelpAssistantFeedback = {
   comment?: string | null;
 };
 
+/** What a `check` step looked at on this instance. */
+export type HelpAssistantCheck =
+  | "logs"
+  | "databases"
+  | "email_sso"
+  | "subscriptions";
+
 /**
  * One thing the assistant did to get an answer: load a skill, search the docs,
- * read a page, or run out of steps. `earlier` marks a skill it loaded earlier
- * in the conversation.
+ * read a page, check this instance, or run out of steps. `earlier` marks a
+ * skill it loaded earlier in the conversation. For a `check` step, `label` is
+ * the keyword or database it checked, or empty.
  */
 export type HelpAssistantStep = {
-  type: "skill" | "search" | "read" | "limit";
+  type: "skill" | "search" | "read" | "check" | "limit";
   label: string;
   skill_id?: string;
   url?: string;
+  check?: HelpAssistantCheck;
   earlier?: boolean;
 };
 
@@ -46,6 +55,8 @@ export type HelpAssistantChatRequest = {
   diagnostic_info?: string;
   /** Ids of the skills loaded earlier in the conversation. */
   loaded_skills?: string[];
+  /** Lets the assistant check this instance's logs, databases and email and sign-in settings. */
+  instance_access?: boolean;
 };
 
 export type HelpAssistantChatResponse = {

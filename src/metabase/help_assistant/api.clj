@@ -19,13 +19,15 @@
    [:url :string]])
 
 (def ^:private Step
-  "One thing the assistant did to get an answer: load a skill, search the docs, read a page, or run out of steps.
-  `:earlier` marks a skill loaded earlier in the conversation."
+  "One thing the assistant did to get an answer: load a skill, search the docs, read a page, check this instance, or
+  run out of steps. `:earlier` marks a skill loaded earlier in the conversation. `:check` says what a `check` step
+  looked at; its `:label` is the keyword or database it checked, or empty."
   [:map {:closed true}
-   [:type [:enum "skill" "search" "read" "limit"]]
+   [:type [:enum "skill" "search" "read" "check" "limit"]]
    [:label :string]
    [:skill_id {:optional true} :string]
    [:url {:optional true} :string]
+   [:check {:optional true} [:enum "logs" "databases" "email_sso" "subscriptions"]]
    [:earlier {:optional true} :boolean]])
 
 (def ^:private ChatRequest
@@ -34,7 +36,9 @@
                             [:role [:enum "user" "assistant"]]
                             [:content :string]]]]
    [:diagnostic_info {:optional true} [:maybe :string]]
-   [:loaded_skills {:optional true} [:maybe [:sequential :string]]]])
+   [:loaded_skills {:optional true} [:maybe [:sequential :string]]]
+   ;; lets the assistant check this instance's logs, databases and email and sign-in settings
+   [:instance_access {:optional true} [:maybe :boolean]]])
 
 (def ^:private ChatResponse
   [:map {:closed true}
@@ -43,9 +47,10 @@
    [:steps [:sequential Step]]])
 
 (defn- chat-request [body]
-  {:messages        (:messages body)
-   :diagnostic-info (:diagnostic_info body)
-   :loaded-skills   (:loaded_skills body)})
+  {:messages         (:messages body)
+   :diagnostic-info  (:diagnostic_info body)
+   :loaded-skills    (:loaded_skills body)
+   :instance-access? (boolean (:instance_access body))})
 
 (api.macros/defendpoint :post "/chat" :- ChatResponse
   "Send the conversation so far to the Help page assistant and get its reply. Admins only."
@@ -68,7 +73,7 @@
              [:message :string]
              [:status_code :int]]]])
 
-(defn- sse-line [payload]
+(defn- sse-line ^String [payload]
   (str "data: " (if (string? payload) payload (json/encode payload)) "\n\n"))
 
 (api.macros/defendpoint :post "/chat/stream" :- (sr/streaming-response-schema ChatEvent)

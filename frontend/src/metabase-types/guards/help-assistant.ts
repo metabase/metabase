@@ -9,6 +9,7 @@ const STEP_TYPES: ReadonlySet<unknown> = new Set<HelpAssistantStep["type"]>([
   "skill",
   "search",
   "read",
+  "check",
   "limit",
 ]);
 

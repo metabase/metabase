@@ -10,13 +10,18 @@
     build step. The model can search and read them with the `search_docs` and `read_doc` tools. When that folder is
     missing and you're running from source, the repo's own `docs/` folder is used instead.
   - The general instructions are in `resources/help_assistant/instructions.md`, also re-read on every request.
-  - Each answer comes with the steps behind it (skills loaded, searches, pages read), so you can see how it was made.
+  - When the admin allows it, the model can also check this instance with read-only tools: recent server logs,
+    database sync status, email and sign-in settings, and dashboard subscriptions and alerts. See
+    [[metabase.help-assistant.instance]].
+  - Each answer comes with the steps behind it (skills loaded, searches, pages read, checks), so you can see how it was
+    made.
   - When `MB_HELP_ASSISTANT_FLAGS_DIR` is set, admins can flag an answer for review, which saves the chat as a file in
     that folder, to turn into an eval case. This is for tuning skills on a local instance."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.help-assistant.instance :as instance]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as metabot.self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -194,67 +199,133 @@
 
 (declare skill->prompt)
 
+(defn- instance-tools
+  "Read-only tools for checking this instance. Only offered when the admin allows it. What they return can contain
+  customer details, so it's never logged."
+  [steps on-step]
+  (let [check! (fn [check label] (record-step! steps on-step {:type "check", :check check, :label (str label)}))]
+    {"check_recent_logs"
+     {:tool-name "check_recent_logs"
+      :doc       (str "Read this Metabase server's most recent log entries (kept in memory since it started), newest "
+                      "first. Filter by a keyword, like a database name, \"ssl\", \"ldap\" or an error message, and by "
+                      "minimum level. Secrets are removed. Use this before asking the admin to collect logs.")
+      :schema    [:=> [:cat [:map {:closed true}
+                             [:keyword {:optional true}
+                              [:maybe [:string {:description "Only entries containing this text, any case"}]]]
+                             [:level {:optional true}
+                              [:maybe [:enum {:description "Minimum level, e.g. warn for warnings and errors"}
+                                       "error" "warn" "info" "debug"]]]
+                             [:limit {:optional true}
+                              [:maybe [:int {:description (str "Most entries to return, up to " instance/max-log-lines)}]]]]]
+                  :any]
+      :fn        (fn [{:keys [keyword] :as args}]
+                   (check! "logs" (or (some-> keyword str/trim) ""))
+                   {:output (instance/recent-logs args)})}
+
+     "check_databases"
+     {:tool-name "check_databases"
+      :doc       (str "Check the databases connected to Metabase: engine, initial sync status, when sync last finished, "
+                      "and sync steps that failed in the last 7 days with their errors. Leave out database to check them "
+                      "all. Never returns connection details.")
+      :schema    [:=> [:cat [:map {:closed true}
+                             [:database {:optional true} [:maybe [:string {:description "A database name or id"}]]]]]
+                  :any]
+      :fn        (fn [{:keys [database]}]
+                   (let [{:keys [label output]} (instance/database-status-report database)]
+                     (check! "databases" label)
+                     {:output output}))}
+
+     "check_subscriptions_and_alerts"
+     {:tool-name "check_subscriptions_and_alerts"
+      :doc       (str "Check dashboard subscriptions and question alerts: names, the dashboard or question, schedules, "
+                      "channels, recipient counts with email addresses masked to the first letter and domain, and "
+                      "group names. Also returns sends that failed in the last 7 days and the latest warnings and errors "
+                      "from sending. Pass a name or id to check one subscription, alert, dashboard or question, or "
+                      "leave it out to list them all.")
+      :schema    [:=> [:cat [:map {:closed true}
+                             [:query {:optional true}
+                              [:maybe [:string {:description "A subscription, dashboard or question name or id"}]]]]]
+                  :any]
+      :fn        (fn [{:keys [query]}]
+                   (let [{:keys [label output]} (instance/subscriptions-and-alerts-report query)]
+                     (check! "subscriptions" label)
+                     {:output output}))}
+
+     "check_email_and_sign_in"
+     {:tool-name "check_email_and_sign_in"
+      :doc       (str "Check whether email (SMTP) is set up, and which sign-in methods are turned on and configured: "
+                      "password, Google, LDAP, SAML, JWT. Returns only yes/no and names, never setting values.")
+      :schema    [:=> [:cat [:map {:closed true}]] :any]
+      :fn        (fn [_]
+                   (check! "email_sso" "")
+                   {:output (instance/email-and-sign-in-status)})}}))
+
 (defn- make-tools
   "The tools the model can call. `sources` is an atom collecting the pages it read, to show under the answer, and
-  `steps` an atom collecting what it did, to show how it got the answer. `on-step` is called with each new step."
-  [{:keys [sources steps on-step skills]}]
-  {"load_skill"
-   {:tool-name "load_skill"
-    :doc       (str "Load the full instructions of one skill from the skill list. Pass the skill's id exactly as listed. "
-                    "Load a skill before you answer a question it matches, then follow it.")
-    :schema    [:=> [:cat [:map {:closed true}
-                           [:id [:string {:description "A skill id from the skill list, e.g. troubleshoot-filters"}]]]]
-                :any]
-    :fn        (fn [{:keys [id]}]
-                 (if-let [skill (find-skill skills id)]
-                   (do (record-step! steps on-step {:type "skill", :label (str (:title skill)), :skill_id (skill-id skill)})
-                       {:output (skill->prompt skill)})
-                   {:output (str "No skill with id \"" id "\". Use an id from the skill list.")}))}
+  `steps` an atom collecting what it did, to show how it got the answer. `on-step` is called with each new step.
+  The tools that check this instance are included only when `instance-access?` is true."
+  [{:keys [sources steps on-step skills instance-access?]}]
+  (merge
+   (when instance-access?
+     (instance-tools steps on-step))
+   {"load_skill"
+    {:tool-name "load_skill"
+     :doc       (str "Load the full instructions of one skill from the skill list. Pass the skill's id exactly as listed. "
+                     "Load a skill before you answer a question it matches, then follow it.")
+     :schema    [:=> [:cat [:map {:closed true}
+                            [:id [:string {:description "A skill id from the skill list, e.g. troubleshoot-filters"}]]]]
+                 :any]
+     :fn        (fn [{:keys [id]}]
+                  (if-let [skill (find-skill skills id)]
+                    (do (record-step! steps on-step {:type "skill", :label (str (:title skill)), :skill_id (skill-id skill)})
+                        {:output (skill->prompt skill)})
+                    {:output (str "No skill with id \"" id "\". Use an id from the skill list.")}))}
 
-   "search_docs"
-   {:tool-name "search_docs"
-    :doc       (str "Search the Metabase documentation for this Metabase version. Returns page paths, titles and a "
-                    "matching line. Use a few specific keywords, e.g. \"ldap group sync\" or \"dashboard slow cache\". "
-                    "Then call read_doc on the most relevant page.")
-    :schema    [:=> [:cat [:map {:closed true}
-                           [:query [:string {:description "A few keywords to search for"}]]]]
-                :any]
-    :fn        (fn [{:keys [query]}]
-                 (record-step! steps on-step {:type "search", :label (str query)})
-                 (let [results (search-docs query)]
-                   {:output (if (empty? results)
-                              (if (empty? @docs)
-                                "The documentation isn't available on this instance."
-                                (str "No pages matched \"" query "\". Try different or fewer keywords."))
-                              (str/join "\n"
-                                        (for [{:keys [path title snippet]} results]
-                                          (str "- path: " path "\n  title: " title
-                                               (when snippet (str "\n  match: " snippet))))))}))}
+    "search_docs"
+    {:tool-name "search_docs"
+     :doc       (str "Search the Metabase documentation for this Metabase version. Returns page paths, titles and a "
+                     "matching line. Use a few specific keywords, e.g. \"ldap group sync\" or \"dashboard slow cache\". "
+                     "Then call read_doc on the most relevant page.")
+     :schema    [:=> [:cat [:map {:closed true}
+                            [:query [:string {:description "A few keywords to search for"}]]]]
+                 :any]
+     :fn        (fn [{:keys [query]}]
+                  (record-step! steps on-step {:type "search", :label (str query)})
+                  (let [results (search-docs query)]
+                    {:output (if (empty? results)
+                               (if (empty? @docs)
+                                 "The documentation isn't available on this instance."
+                                 (str "No pages matched \"" query "\". Try different or fewer keywords."))
+                               (str/join "\n"
+                                         (for [{:keys [path title snippet]} results]
+                                           (str "- path: " path "\n  title: " title
+                                                (when snippet (str "\n  match: " snippet))))))}))}
 
-   "read_doc"
-   {:tool-name "read_doc"
-    :doc       "Read one documentation page. Pass a path exactly as returned by search_docs."
-    :schema    [:=> [:cat [:map {:closed true}
-                           [:path [:string {:description "e.g. troubleshooting-guide/timezones.md"}]]]]
-                :any]
-    :fn        (fn [{:keys [path]}]
-                 (if-let [{:keys [path title content]} (find-doc path)]
-                   (let [url (doc-url path)]
-                     (swap! sources assoc path {:title title, :url url})
-                     (record-step! steps on-step {:type "read", :label title, :url url})
-                     {:output (str "URL to cite: " url "\n\n" (u/truncate content 40000))})
-                   {:output (str "No page at \"" path "\". Use a path returned by search_docs.")}))}})
+    "read_doc"
+    {:tool-name "read_doc"
+     :doc       "Read one documentation page. Pass a path exactly as returned by search_docs."
+     :schema    [:=> [:cat [:map {:closed true}
+                            [:path [:string {:description "e.g. troubleshooting-guide/timezones.md"}]]]]
+                 :any]
+     :fn        (fn [{:keys [path]}]
+                  (if-let [{:keys [path title content]} (find-doc path)]
+                    (let [url (doc-url path)]
+                      (swap! sources assoc path {:title title, :url url})
+                      (record-step! steps on-step {:type "read", :label title, :url url})
+                      {:output (str "URL to cite: " url "\n\n" (u/truncate content 40000))})
+                    {:output (str "No page at \"" path "\". Use a path returned by search_docs.")}))}}))
 
 ;;; ---------------------------------------------------- Prompt ---------------------------------------------------
 
 (def ^:private skill-preamble
   "Goes at the top of every skill the model reads. A skill's own order (\"Start at T1\") is more specific and more recent
   than the general instructions, so without this reminder the model follows the skill and skips the user's choice."
-  (str "How to use this skill when troubleshooting: the general troubleshooting steps come first. If the user hasn't "
-       "said how they'd like to work and three or more causes fit, ask them first: questions to narrow it down, or a "
-       "list of common causes to pick from. If they chose questions, follow this skill's order. If they chose the list, "
-       "use this skill only to choose and order the causes; each time a cause is ruled out, show the ones that are left "
-       "and let them pick, instead of moving to the next one yourself."))
+  (str "How to use this skill when troubleshooting: the general troubleshooting steps come first. If you can check this "
+       "instance, do this skill's \"Check first\" steps before asking anything. Then, unless the user has already said "
+       "how they'd like to work, or you can already name just one or two likely causes, ask this skill's first question "
+       "and add one short line offering to list the common causes instead. If they asked for the list, use this skill only to choose and order the "
+       "causes; each time a cause is ruled out, show the ones that are left and let them pick, instead of moving to the "
+       "next one yourself. Otherwise, follow this skill's order."))
 
 (defn- skill->prompt [{:keys [id title description references body]}]
   (str "<skill id=\"" (name id) "\" title=\"" title "\">\n"
@@ -285,12 +356,14 @@
 
 (defn- system-prompt
   "`skills` are listed by id, title and when to use them. `loaded-skills`, the ones loaded earlier in this
-  conversation, are included in full, so the model doesn't have to load them again on every turn."
-  [diagnostic-info skills loaded-skills]
+  conversation, are included in full, so the model doesn't have to load them again on every turn. `instance-access?`
+  says whether the tools that check this instance are available; `instructions.md` says what to do either way."
+  [{:keys [diagnostic-info skills loaded-skills instance-access?]}]
   (str
    (instructions)
    "\n\n"
    "This instance is running Metabase " (:tag config/mb-version-info) ".\n\n"
+   "Checking this instance: " (if instance-access? "on" "off") ".\n\n"
    "Diagnostic info from this instance:\n<diagnostic_info>\n"
    (if (str/blank? diagnostic-info) "(not provided)" (u/truncate diagnostic-info 8000))
    "\n</diagnostic_info>\n\n"
@@ -381,6 +454,21 @@
    :source              "unknown"
    :tag                 "help-assistant"})
 
+(defn- collect-until-canceled
+  "The parts of `reducible` in a vector, stopping as soon as `canceled?` returns true."
+  [canceled? reducible]
+  ;; Not `(into [] (take-while ...))`: when the stream stops early, a stateful transducer inside `call-llm` can hand
+  ;; the `reduced` marker back to the reducing fn on completion, and `into`'s transient vector can't take it. A plain
+  ;; vector that leaves an already-reduced value alone, unwrapped at the end, handles that.
+  (loop [result (reduce (fn [acc part]
+                          (cond
+                            (reduced? acc) acc
+                            (canceled?)    (reduced acc)
+                            :else          (conj acc part)))
+                        []
+                        reducible)]
+    (if (reduced? result) (recur @result) result)))
+
 (defn- merge-streamed-text
   "The model's text arrives as many small parts with the same id; join them back into one part per id."
   [parts]
@@ -439,26 +527,29 @@
     (vec (if (seq cited) cited sources))))
 
 (defn- log-steps!
-  "One line per answer at INFO: how many steps it took, and which skills and pages it used. What it searched for is
-  logged at DEBUG, because a search can repeat what the user typed."
+  "One line per answer at INFO: how many steps it took, which skills and pages it used, and which kinds of checks it
+  ran. What it searched for and checked is logged at DEBUG, because it can repeat what the user typed or name customer
+  databases."
   [iterations steps]
-  (let [of-type (fn [t k] (let [xs (keep #(when (= t (:type %)) (k %)) steps)]
+  (let [of-type (fn [t k] (let [xs (distinct (keep #(when (= t (:type %)) (k %)) steps))]
                             (if (seq xs) (str/join ", " xs) "(none)")))]
-    (log/infof "Help assistant: answered in %d of %d steps. Skills: %s. Pages read: %s"
-               iterations max-iterations (of-type "skill" :skill_id) (of-type "read" :url))
-    (log/debugf "Help assistant: searched the docs for: %s" (of-type "search" :label))))
+    (log/infof "Help assistant: answered in %d of %d steps. Skills: %s. Pages read: %s. Checks: %s"
+               iterations max-iterations (of-type "skill" :skill_id) (of-type "read" :url) (of-type "check" :check))
+    (log/debugf "Help assistant: searched the docs for: %s. Checked: %s"
+                (of-type "search" :label) (of-type "check" :label))))
 
 (defn chat
   "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}], :steps [...]}`, where
-  `:steps` says how the answer was made: skills loaded (`skill`), searches (`search`), pages read (`read`), and
-  `limit` when it ran out of steps. `loaded-skills` are the ids of skills loaded earlier in the conversation. Throws a
-  403 or 503 when the AI connection can't be used, and a 502 when the AI provider returns an error.
+  `:steps` says how the answer was made: skills loaded (`skill`), searches (`search`), pages read (`read`), checks of
+  this instance (`check`), and `limit` when it ran out of steps. `loaded-skills` are the ids of skills loaded earlier in
+  the conversation. The tools that check this instance are offered only when `instance-access?` is true. Throws a 403
+  or 503 when the AI connection can't be used, and a 502 when the AI provider returns an error.
 
   Optional, for showing progress while it works:
   - `on-step` is called with each step as it happens, starting with the skills loaded earlier.
   - `canceled?` is a no-arg fn. Once it returns true, the model isn't called again, the call in progress is cut off, and
     `chat` returns nil."
-  [{:keys [messages diagnostic-info loaded-skills on-step canceled?]
+  [{:keys [messages diagnostic-info loaded-skills instance-access? on-step canceled?]
     :or   {on-step (constantly nil), canceled? (constantly false)}}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason :permission/metabot-other-tools)]
     (throw (unavailable-error reason)))
@@ -466,9 +557,16 @@
         earlier (vec (keep #(find-skill skills %) (distinct loaded-skills)))
         sources (atom {})
         steps   (atom [])
-        tools   (make-tools {:sources sources, :steps steps, :on-step on-step, :skills skills})
+        tools   (make-tools {:sources          sources
+                             :steps            steps
+                             :on-step          on-step
+                             :skills           skills
+                             :instance-access? instance-access?})
         model   (metabot.settings/llm-metabot-provider)
-        system  (system-prompt diagnostic-info skills earlier)
+        system  (system-prompt {:diagnostic-info  diagnostic-info
+                                :skills           skills
+                                :loaded-skills    earlier
+                                :instance-access? instance-access?})
         finish  (fn [iteration result]
                   (when (= iteration max-iterations)
                     (record-step! steps on-step {:type "limit", :label (str max-iterations)}))
@@ -485,13 +583,13 @@
       (let [last-step?  (= iteration max-iterations)
             ;; Tools run while the parts are reduced, so stopping the reduction also stops any further tool calls.
             parts       (when-not (canceled?)
-                          (-> (into []
-                                    (take-while (fn [_] (not (canceled?))))
-                                    (metabot.self/call-llm model
-                                                           (cond-> system last-step? (str last-step-instruction))
-                                                           history
-                                                           tools
-                                                           tracking-opts))
+                          (-> (collect-until-canceled
+                               canceled?
+                               (metabot.self/call-llm model
+                                                      (cond-> system last-step? (str last-step-instruction))
+                                                      history
+                                                      tools
+                                                      tracking-opts))
                               merge-streamed-text
                               metabot.self.core/merge-reasoning-parts))
             error       (some #(when (= :error (:type %)) %) parts)

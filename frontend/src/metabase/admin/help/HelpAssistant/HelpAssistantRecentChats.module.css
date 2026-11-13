@@ -1,0 +1,27 @@
+.chat {
+  position: relative;
+}
+
+/*
+ * Fills the space the chat's link leaves on its right (its pr), at the full
+ * height of the row, so a click near the icon opens the menu instead of
+ * landing on the link. It's a sibling of the link, so clicks never reach it.
+ * Shown on hover, on keyboard focus, and while its menu is open.
+ */
+.chat .menuButton {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2rem;
+  min-width: 2rem;
+  height: auto;
+  min-height: 0;
+  opacity: 0;
+}
+
+.chat:hover .menuButton,
+.chat:focus-within .menuButton,
+.chat .menuButton[data-expanded] {
+  opacity: 1;
+}

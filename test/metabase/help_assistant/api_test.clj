@@ -97,5 +97,25 @@
 (deftest chat-stream-admins-only-test
   (testing "only admins can use the assistant, and nothing is streamed to anyone else"
     (with-stubbed-llm answer-using-tools
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "help-assistant/chat/stream" request))))))
+      (doseq [body [request (assoc request :instance_access true)]]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "help-assistant/chat/stream" body)))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "help-assistant/chat" body)))))))
+
+(deftest chat-stream-instance-access-test
+  (let [tool-names (atom nil)
+        respond    (fn [tools]
+                     (reset! tool-names (set (keys tools)))
+                     (when-let [check (get-in tools ["check_email_and_sign_in" :fn])]
+                       (check {}))
+                     [{:type :text, :id "final", :text "Email is set up."}])]
+    (with-stubbed-llm respond
+      (testing "the checks are offered only when the request allows them"
+        (mt/user-http-request :crowberto :post 202 "help-assistant/chat/stream" request)
+        (is (not (contains? @tool-names "check_email_and_sign_in")))
+        (testing "and each check is streamed as a step"
+          (is (= {:type "step", :step {:type "check", :check "email_sso", :label ""}}
+                 (first (stream-events (mt/user-http-request :crowberto :post 202 "help-assistant/chat/stream"
+                                                             (assoc request :instance_access true))))))
+          (is (contains? @tool-names "check_email_and_sign_in")))))))
