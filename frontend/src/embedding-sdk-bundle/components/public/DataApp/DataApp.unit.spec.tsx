@@ -312,11 +312,18 @@ describe("DataApp", () => {
     postMessage.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Home" }));
 
+    // the iframe still has `boba-hq` from its first settings, so it also needs a navigation request
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-    expect(postMessage).toHaveBeenLastCalledWith(
-      settingsMessage("boba-hq"),
-      ORIGIN,
-    );
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq"), ORIGIN],
+      [
+        {
+          type: "metabase.embed.navigateToDataAppPath",
+          data: { path: "boba-hq" },
+        },
+        ORIGIN,
+      ],
+    ]);
   });
 
   it("ignores path changes from another origin", () => {
