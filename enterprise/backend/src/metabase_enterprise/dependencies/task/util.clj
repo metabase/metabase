@@ -40,30 +40,23 @@
   [{:keys [job-key]} :- Job]
   (keyword "metabase-enterprise.dependencies.task" job-key))
 
-(mu/defn run-locked! :- :any
-  "Call `thunk` holding the cluster lock `lock`, and return what it returns, or `busy` when another runner holds the
-  lock; the failure to take a lock `thunk` itself takes is rethrown. The lock is detached so that the work commits as
-  it goes, and taken without retrying, since every caller tries again itself."
-  [lock  :- :keyword
-   thunk :- [:fn {:error/message "a function"} ifn?]
-   busy  :- [:or ms/PositiveInt [:= :busy]]]
-  (let [lock-name (str (namespace lock) "/" (name lock))]
+(mu/defn- run-batch-locked! :- :any
+  "Run a batch of `job` holding its cluster lock, and return what it returns, or `busy` when another runner holds the
+  lock; the failure to take a lock the batch itself takes is rethrown. Taking a batch selects the pending statuses and
+  then inserts the missing ones, so two runners taking at once would process the same entities. Quartz keeps each job
+  to one scheduled run at a time across the cluster, but not a batch run in place, on any node. The lock is detached
+  so that the work commits as it goes, and taken without retrying, since every caller tries again itself."
+  [{:keys [run-batch!] :as job} :- Job
+   busy                         :- [:or ms/PositiveInt [:= :busy]]]
+  (let [lock      (batch-lock job)
+        lock-name (str (namespace lock) "/" (name lock))]
     (try
       (cluster-lock/with-detached-cluster-lock {:lock lock :retry-config {:max-retries 0}}
-        (thunk))
+        (run-batch!))
       (catch Throwable e
         (if (some #{lock-name} (:lock-names (ex-data e)))
           busy
           (throw e))))))
-
-(mu/defn- run-batch-locked! :- :any
-  "Run a batch of `job` holding its cluster lock, and return what it returns, or `busy` when another runner holds the
-  lock. Taking a batch selects the pending statuses and then inserts the missing ones, so two runners taking at once
-  would process the same entities. Quartz keeps each job to one scheduled run at a time across the cluster, but not a
-  batch run in place, on any node."
-  [{:keys [run-batch!] :as job} :- Job
-   busy                         :- [:or ms/PositiveInt [:= :busy]]]
-  (run-locked! (batch-lock job) run-batch! busy))
 
 (mu/defn- job-delay :- ms/IntGreaterThanOrEqualToZero
   "A random delay in seconds between `delay - variance` and `delay + variance` minutes."

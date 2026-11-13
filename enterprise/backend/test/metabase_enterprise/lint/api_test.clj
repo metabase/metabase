@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.lint.api :as lint.api]
    [metabase.config.core :as config]
@@ -54,14 +58,24 @@
           (update-card-query! model-card (deps.test/table-query :products))
           (f model-card dependents))))))
 
-(defn- do-with-broken-native-card!
-  "Call `f` with a card whose native SQL reads a table that does not exist."
-  [f]
+(defn- do-with-native-card!
+  "Call `f` with a card whose native SQL is `sql`."
+  [sql f]
   (mt/with-premium-features #{:dependencies}
     (mt/with-model-cleanup cleanup-models
       (mt/with-temp [:model/Card native-card {:name          "Lint native"
-                                              :dataset_query (mt/native-query {:query "SELECT * FROM orderz"})}]
+                                              :dataset_query (mt/native-query {:query sql})}]
         (f native-card)))))
+
+(defn- do-with-broken-native-card!
+  "Call `f` with a card whose native SQL reads a table that does not exist."
+  [f]
+  (do-with-native-card! "SELECT * FROM orderz" f))
+
+(defn- do-with-plain-native-card!
+  "Call `f` with a card whose native SQL is fine."
+  [f]
+  (do-with-native-card! "SELECT 1" f))
 
 (defn- lint-report
   "The lint report as Crowberto, which drains the analysis jobs first."
@@ -174,3 +188,75 @@
        (let [report (lint-report)]
          (is (= "failed" (:status report)))
          (is (= 1 (count (card-results report native-card)))))))))
+
+(defn- do-with-uncomputable-dependencies!
+  "Call `f` while computing the dependencies of `card` throws."
+  [card f]
+  (let [calculate-deps deps.calculation/calculate-deps]
+    (with-redefs [deps.calculation/calculate-deps (fn [entity-type entity]
+                                                    (if (and (= :card entity-type) (= (:id card) (:id entity)))
+                                                      (throw (ex-info "Dependencies broke" {}))
+                                                      (calculate-deps entity-type entity)))]
+      (f))))
+
+(deftest ^:synchronized uncomputable-dependencies-fail-test
+  (testing "POST /api/ee/lint fails on an entity whose dependencies cannot be computed, which the analysis never reaches"
+    (do-with-plain-native-card!
+     (fn [card]
+       (do-with-uncomputable-dependencies!
+        card
+        (fn []
+          (let [report (lint-report)]
+            (is (= "failed" (:status report)))
+            (is (= [{:ruleId    "validation-exception-error"
+                     :entity_id (:entity_id card)
+                     :detail    "Dependencies broke"
+                     :message   "The analysis failed: Dependencies broke"
+                     :cause     nil}]
+                   (card-results report card))))))))))
+
+(deftest ^:synchronized recomputed-dependencies-clear-failure-test
+  (testing "POST /api/ee/lint stops failing an analyzed entity once its dependencies, given up on, compute again"
+    (do-with-plain-native-card!
+     (fn [card]
+       (let [mark-stale! #(dependencies.db/mark-dependency-statuses-stale! {:card #{(:id card)}})]
+         (is (= [] (card-results (lint-report) card)))
+         (mark-stale!)
+         (do-with-uncomputable-dependencies!
+          card
+          #(is (= ["validation-exception-error"] (map :ruleId (card-results (lint-report) card)))))
+         (mark-stale!)
+         (is (= [] (card-results (lint-report) card))))))))
+
+(deftest ^:synchronized unreadable-entity-fails-test
+  (testing "POST /api/ee/lint fails on an entity whose stored row cannot be read, without failing the request"
+    (do-with-plain-native-card!
+     (fn [card]
+       (t2/update! (t2/table-name :model/Card) :id (:id card) {:parameters "[5]"})
+       (try
+         (let [report (lint-report)]
+           (is (= "failed" (:status report)))
+           (is (= ["validation-exception-error"] (map :ruleId (card-results report card)))))
+         (finally
+           (t2/update! (t2/table-name :model/Card) :id (:id card) {:parameters "[]"})))))))
+
+(deftest ^:synchronized waits-for-running-batch-test
+  (testing "POST /api/ee/lint called while a batch of the analysis runs elsewhere waits for it and reports what it found"
+    (do-with-broken-native-card!
+     (fn [native-card]
+       (deps.test/synchronously-run-dependency-job!)
+       (let [entered      (promise)
+             release      (promise)
+             check-entity deps.analysis/check-entity]
+         (with-redefs [deps.analysis/check-entity (fn [& args]
+                                                    (deliver entered true)
+                                                    @release
+                                                    (apply check-entity args))]
+           (let [batch (future (task.analysis-finding/run-batch-in-place!))]
+             (is (true? (deref entered 10000 false)))
+             (let [report (future (lint-report))]
+               (is (= ::waiting (deref report 1000 ::waiting)))
+               (deliver release true)
+               (is (= :worked (deref batch 10000 ::timed-out)))
+               (is (= ["missing-table-alias"]
+                      (map :ruleId (card-results (deref report 30000 nil) native-card))))))))))))

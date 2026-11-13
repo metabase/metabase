@@ -10,18 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:synchronized drain-pending-runs-one-at-a-time-test
-  (let [running (atom 0)
-        most    (atom 0)]
-    (with-redefs [deps.findings/job-batches [(fn []
-                                               (swap! most max (swap! running inc))
-                                               (Thread/sleep 200)
-                                               (swap! running dec)
-                                               :idle)]]
-      (run! deref [(future (deps.findings/drain-pending!))
-                   (future (deps.findings/drain-pending!))]))
-    (is (= 1 @most))))
-
 (deftest failed-entity-columns-cover-every-analyzed-type-test
   (is (= deps.analysis-finding/analyzable-entities
          (set (keys @#'dependencies.db/failed-entity-columns)))))
