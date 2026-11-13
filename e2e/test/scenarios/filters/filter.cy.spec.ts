@@ -641,7 +641,9 @@ describe("scenarios > filters", () => {
     cy.log("Enter does not submit an invalid expression");
     H.enterCustomColumnDetails({ formula: "[Rating] > 2E{enter}" });
     H.expressionEditorWidget()
-      .findByText("Missing exponent")
+      .findByText(
+        'This number has an "e" with nothing after it. Add a number, like 1e3, or remove the "e".',
+      )
       .should("be.visible");
     H.getNotebookStep("filter")
       .findByText("Rating is greater than 2")

@@ -1,19 +1,24 @@
 import type * as Lib from "metabase-lib";
 
-import { DiagnosticError } from "../errors";
+import { DiagnosticError, type ExpressionErrorKind } from "../errors";
 import { type Node, Token } from "../pratt";
 
 export function error(message: string): never;
-export function error(pos: Positionable, message?: string): never;
+export function error(
+  pos: Positionable,
+  message?: string,
+  kind?: ExpressionErrorKind,
+): never;
 export function error(
   posOrMessage: string | Positionable,
   message?: string,
+  kind?: ExpressionErrorKind,
 ): never {
   if (typeof posOrMessage === "string") {
     throw new DiagnosticError(posOrMessage);
   }
   if (typeof message === "string") {
-    throw new DiagnosticError(message, position(posOrMessage));
+    throw new DiagnosticError(message, { ...position(posOrMessage), kind });
   }
 
   throw Error("Unreachable");

@@ -135,7 +135,7 @@ type ClauseStepDndContextProps<T> = {
   onReorder: (sourceItem: T, targetItem: T) => void;
 };
 
-function ClauseStepDndContext<T>({
+export function ClauseStepDndContext<T>({
   items,
   children,
   onReorder,
@@ -174,7 +174,7 @@ type ClauseStepDndItemProps = {
   children: ReactNode;
 };
 
-const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
+export const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
   { index, readOnly, children }: ClauseStepDndItemProps,
   ref: Ref<HTMLDivElement>,
 ) {

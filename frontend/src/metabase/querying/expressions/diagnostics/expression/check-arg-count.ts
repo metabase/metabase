@@ -33,10 +33,11 @@ export function checkArgCount({
         error(
           node,
           ngettext(
-            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
-            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            msgid`${displayName}() needs at least ${minArgCount} value inside its parentheses.`,
+            `${displayName}() needs at least ${minArgCount} values, separated by commas.`,
             minArgCount,
           ),
+          "arguments",
         );
       }
     } else {
@@ -51,10 +52,11 @@ export function checkArgCount({
         error(
           node,
           ngettext(
-            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
-            `Function ${displayName} expects ${expectedArgsLength} arguments`,
+            msgid`${displayName}() needs ${expectedArgsLength} value inside its parentheses.`,
+            `${displayName}() needs ${expectedArgsLength} values, separated by commas.`,
             expectedArgsLength,
           ),
+          "arguments",
         );
       }
     }

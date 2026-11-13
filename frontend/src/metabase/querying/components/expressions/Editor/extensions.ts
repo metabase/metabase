@@ -2,12 +2,24 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
-import { suggestions } from "metabase/querying/expressions";
+import {
+  EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
+import {
+  type TextRequestOption,
+  expressionTemplates,
+  functionArgumentPlaceholders,
+  suggestions,
+} from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { POPULAR_FUNCTIONS } from "../ExpressionSidePanel/content";
+
 import S from "./Editor.module.css";
+import { useGetColumnValues } from "./column-values";
 import { customExpression } from "./language";
 
 type Options = {
@@ -17,6 +29,7 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
+  textRequest?: TextRequestOption;
   extensions?: Extension[];
 };
 
@@ -41,8 +54,13 @@ export function useExtensions(options: Options): Extension[] {
     availableColumns,
     availableMetrics,
     database,
+    textRequest,
     extensions: extra = [],
   } = options;
+  const getColumnValues = useGetColumnValues(query);
+  const [hasColumnsOutsideBrackets] = usePrototypeSetting(
+    EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
+  );
 
   return useMemo(() => {
     return [
@@ -55,6 +73,8 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      functionArgumentPlaceholders(),
+      expressionTemplates({ activeClassName: S.templateActive }),
       suggestions({
         query,
         stageIndex,
@@ -62,6 +82,10 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
+        columnsOutsideBrackets: hasColumnsOutsideBrackets,
+        popularFunctions: POPULAR_FUNCTIONS[expressionMode],
+        getColumnValues,
+        textRequest,
       }),
       tooltips({
         position: "fixed",
@@ -78,6 +102,9 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
+    hasColumnsOutsideBrackets,
+    getColumnValues,
+    textRequest,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

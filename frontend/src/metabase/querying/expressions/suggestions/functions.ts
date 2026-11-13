@@ -59,6 +59,9 @@ export function suggestFunctions({ expressionMode, database }: Options) {
       from: token.start,
       to: token.end,
       options,
+      // The matcher filters and orders the options, with aliases and typos
+      // that the filter of CodeMirror would drop.
+      filter: false,
     };
   };
 }

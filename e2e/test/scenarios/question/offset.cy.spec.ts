@@ -70,9 +70,9 @@ describe("scenarios > question > offset", () => {
 
       H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
-        cy.findByText("OFFSET is not supported in custom filters").should(
-          "exist",
-        );
+        cy.findByText(
+          "Offset() only works in Summarize, so it can't be used in a custom filter.",
+        ).should("exist");
       });
 
       H.expressionEditorWidget().button("Cancel").click();
@@ -96,9 +96,9 @@ describe("scenarios > question > offset", () => {
 
       H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
-        cy.findByText("OFFSET is not supported in custom columns").should(
-          "exist",
-        );
+        cy.findByText(
+          "Offset() only works in Summarize, so it can't be used in a custom column.",
+        ).should("exist");
       });
 
       H.expressionEditorWidget().button("Cancel").click();

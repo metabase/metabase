@@ -1,0 +1,153 @@
+.debugger {
+  margin-top: var(--mantine-spacing-md);
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mantine-spacing-md);
+  padding: 4px var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+
+  &:hover {
+    background-color: var(--mb-color-background_page-secondary);
+  }
+}
+
+.stepNumber {
+  flex: 0 0 48px;
+  color: var(--mb-color-text-tertiary);
+  font-size: 12px;
+  text-align: right;
+}
+
+.code {
+  flex: 1;
+  min-width: 0;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* A part that shows its value. */
+.value {
+  color: var(--mb-color-text-brand-strong);
+}
+
+/* The part that the next step evaluates. */
+.next {
+  padding: 1px 2px;
+  border-radius: 3px;
+  background-color: var(--mb-color-background_page-highlighted);
+  box-shadow: inset 0 0 0 1px var(--mb-color-border-brand);
+}
+
+/* The value that this step gives. */
+.result {
+  padding: 0 2px;
+  border-radius: 3px;
+  background-color: var(--mb-color-background_surface-success);
+  color: var(--mb-color-feedback-positive-strong);
+  font-weight: bold;
+}
+
+.null {
+  color: var(--mb-color-feedback-warning-strong);
+}
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--mb-color-border-brand);
+  }
+}
+
+.stepperCode {
+  position: relative;
+}
+
+/* Each piece moves and fades on its own, so it is a box. */
+.animatedCode .segment {
+  display: inline-block;
+  white-space: pre;
+}
+
+/* The text that the next step replaces fades out with a blur. The duration
+   is LEAVE_DURATION. */
+.animatedCode .leaving {
+  opacity: 0 !important;
+  filter: blur(4px) !important;
+  transition:
+    opacity 180ms ease-in,
+    filter 180ms ease-in;
+}
+
+/* The part that the next step evaluates, over several pieces. */
+.nextPart {
+  background-color: var(--mb-color-background_page-highlighted);
+  box-shadow:
+    inset 0 1px 0 var(--mb-color-border-brand),
+    inset 0 -1px 0 var(--mb-color-border-brand);
+}
+
+.nextStart {
+  padding-left: 2px;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  box-shadow:
+    inset 1px 0 0 var(--mb-color-border-brand),
+    inset 0 1px 0 var(--mb-color-border-brand),
+    inset 0 -1px 0 var(--mb-color-border-brand);
+}
+
+.nextEnd {
+  padding-right: 2px;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+  box-shadow:
+    inset -1px 0 0 var(--mb-color-border-brand),
+    inset 0 1px 0 var(--mb-color-border-brand),
+    inset 0 -1px 0 var(--mb-color-border-brand);
+}
+
+.nextStart.nextEnd {
+  box-shadow: inset 0 0 0 1px var(--mb-color-border-brand);
+}
+
+.stepperLabel {
+  flex: 0 0 96px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The column that a value comes from, like the parameter hints of the editor. */
+.columnLabel {
+  margin-right: 4px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+  font-family: var(--mb-default-font-family);
+  font-size: 0.85em;
+  font-weight: normal;
+}

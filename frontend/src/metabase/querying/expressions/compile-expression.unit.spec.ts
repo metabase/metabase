@@ -454,13 +454,13 @@ describe("Specific expressions", () => {
 
   it("should render a custom error message for unresolved fields that used to resolver to a function invocation", () => {
     expect(() => expr("now")).toThrow(
-      "Unknown column: now. Use now() instead.",
+      `"now" needs parentheses to work. Write now() instead.`,
     );
     expect(() => expr("Count")).toThrow(
-      "Unknown column: Count. Use Count() instead.",
+      `"Count" needs parentheses to work. Write Count() instead.`,
     );
     expect(() => expr("CumulativeCount")).toThrow(
-      "Unknown column: CumulativeCount. Use CumulativeCount() instead.",
+      `"CumulativeCount" needs parentheses to work. Write CumulativeCount() instead.`,
     );
   });
 });

@@ -25,6 +25,7 @@ export function checkLibDiagnostics({
   if (error) {
     throw new DiagnosticError(error.message, {
       friendly: Boolean(error.friendly),
+      kind: error.kind,
     });
   }
 }

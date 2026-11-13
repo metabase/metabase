@@ -44,6 +44,10 @@
   &.disabled {
     pointer-events: none;
   }
+
+  &.selected {
+    color: var(--mb-color-custom_column_label-selected);
+  }
 }
 
 .NotebookCellItemContentContainer {
@@ -62,6 +66,11 @@
       var(--notebook-cell-item-content-container-color),
       transparent 20%
     );
+  }
+
+  &.selected,
+  &.selected.canHover:hover {
+    background-color: var(--mb-color-custom_column-selected);
   }
 
   &.leftBorder {

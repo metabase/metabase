@@ -170,7 +170,9 @@ describe("scenarios > question > custom column > expression editor", () => {
     H.CustomExpressionEditor.type("{movetoend}{backspace}").blur();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expected expression");
+    cy.findByText(
+      "Something's missing here. Add a column, value or function to finish the expression.",
+    );
     cy.button("Done").should("be.disabled");
   });
 });

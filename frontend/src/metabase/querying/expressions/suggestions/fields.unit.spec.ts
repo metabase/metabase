@@ -17,6 +17,7 @@ import { queryWithAggregation, sharedProvider } from "../test/shared";
 
 import { complete } from "./__support__";
 import { suggestFields } from "./fields";
+import type { ExpressionSuggestion } from "./types";
 
 describe("suggestFields", () => {
   function setup() {
@@ -549,4 +550,87 @@ describe("suggestFields", () => {
       expect(aggregations).toHaveLength(1);
     },
   );
+});
+
+describe("suggestFields inside a function", () => {
+  function setup() {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const stageIndex = -1;
+    const source = suggestFields({
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
+    });
+    return (doc: string) => {
+      const result = complete(source, doc);
+      // suggestFields gives expression suggestions; `complete` widens them to
+      // CodeMirror's completion type.
+      const options = (
+        result != null && "options" in result ? result.options : []
+      ) as ExpressionSuggestion[];
+      return {
+        names: options.map((option) => option.displayLabel),
+        columns: options.flatMap((option) =>
+          option.column != null ? [option.column] : [],
+        ),
+      };
+    };
+  }
+
+  it.each(["length([|])", "length([|", "length([Us|"])(
+    "offers only text columns where a function takes text: %s",
+    (doc) => {
+      const { names, columns } = setup()(doc);
+      expect(names).toContain("User → Email");
+      expect(names).not.toContain("Discount");
+      expect(columns.every((column) => Lib.isStringOrStringLike(column))).toBe(
+        true,
+      );
+    },
+  );
+
+  it("keeps offering text columns once one is picked", () => {
+    const { names, columns } = setup()("length([User → Email|])");
+    expect(names).toContain("User → Email");
+    expect(names).not.toContain("Discount");
+    expect(columns.every((column) => Lib.isStringOrStringLike(column))).toBe(
+      true,
+    );
+  });
+
+  it("offers only number columns where a function takes a number", () => {
+    const { names, columns } = setup()("round([|])");
+    expect(names).toContain("Discount");
+    expect(columns.every((column) => Lib.isNumeric(column))).toBe(true);
+  });
+
+  it("offers only date columns where a function takes a date", () => {
+    const { names, columns } = setup()("year([|])");
+    expect(names).toContain("Created At");
+    expect(columns.every((column) => Lib.isTemporal(column))).toBe(true);
+  });
+
+  it.each([
+    ["a condition", "case([|]"],
+    ["a function that takes any value", "length(text([|]))"],
+    ["the repeated values of concat()", "concat([Tax], [Total], [|])"],
+    ["outside any function", "[|]"],
+  ])("offers every column in %s", (_description, doc) => {
+    const { names } = setup()(doc);
+    expect(names).toEqual(expect.arrayContaining(["Discount", "User → Email"]));
+  });
+
+  it("says so when no column of the type matches what's typed", () => {
+    const { names } = setup()("length([Disc|])");
+    expect(names).toEqual(['No text columns match "Disc".']);
+  });
+
+  it("says that a value that must be typed can't be a column", () => {
+    const { names } = setup()("datetimeAdd([Created At], 1, [|])");
+    expect(names).toEqual(["This value can't be a column. Type it instead."]);
+  });
 });

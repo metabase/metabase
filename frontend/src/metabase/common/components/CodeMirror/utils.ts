@@ -97,6 +97,7 @@ function useBaseExtensions({
       }),
       search(),
       keyboardShortcuts({ onFormat }),
+      formatWithAltShiftF({ onFormat }),
       closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
@@ -164,6 +165,32 @@ function closeSearchPanelAfterLastReplace() {
   }));
 }
 
+/**
+ * Alt+Shift+F formats, like in VS Code. It is not in the keymap: on macOS,
+ * Option changes the character of the key, so the key code is checked.
+ */
+function formatWithAltShiftF({ onFormat }: { onFormat?: () => void }) {
+  return Prec.highest(
+    EditorView.domEventHandlers({
+      keydown(event) {
+        if (
+          onFormat == null ||
+          event.code !== "KeyF" ||
+          !event.altKey ||
+          !event.shiftKey ||
+          event.metaKey ||
+          event.ctrlKey
+        ) {
+          return false;
+        }
+        event.preventDefault();
+        onFormat();
+        return true;
+      },
+    }),
+  );
+}
+
 function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
@@ -200,6 +227,7 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
           return true;
         },
       },
+
       ...searchKeymap.map((binding) => {
         if (binding.key === "Mod-f") {
           const replace: KeyBinding = {
