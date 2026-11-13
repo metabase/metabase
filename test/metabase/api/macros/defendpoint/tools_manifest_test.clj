@@ -120,6 +120,13 @@
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
               [:value {:optional true} [:maybe :any]]]))))))
 
+(deftest ^:parallel multi-publishes-any-of-test
+  (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
+    (is (= {:anyOf [{:type "string"} {:type "integer"}]}
+           (get-in (tools-manifest/malli->json-schema
+                    [:map [:op [:multi {:dispatch string?} [true :string] [false :int]]]])
+                   [:properties :op])))))
+
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
 

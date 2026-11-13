@@ -512,6 +512,13 @@
             (is (= scope (or labelled-scope bare-scope)))
             (is (= (registry/english-scope-label scope) label))))))))
 
+(deftest ^:parallel published-schemas-have-no-one-of-test
+  (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` anywhere"
+    (is (= []
+           (for [tool  (@#'registry/manifest)
+                 :when (some #(and (map? %) (contains? % :oneOf)) (tree-seq coll? seq tool))]
+             (:name tool))))))
+
 ;; not ^:parallel: flushes the shared manifest cache
 (deftest description-permission-text-ignores-caller-locale-test
   (testing "GHY-4543: the manifest is cached once for every caller, so the permission text must not take the locale

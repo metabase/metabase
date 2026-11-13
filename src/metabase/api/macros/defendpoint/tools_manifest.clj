@@ -163,24 +163,29 @@
       (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
         description (assoc :description description)))))
 
-(defn- maybe->nullable
-  "Rewrite every `{:oneOf [X {:type \"null\"}]}` in a JSON Schema, Malli's rendering of `[:maybe X]`, with
-  [[nullable]]."
+(defn- without-one-of
+  "Rewrite every `oneOf` in a JSON Schema.
+  A `{:oneOf [X {:type \"null\"}]}`, Malli's rendering of `[:maybe X]`, becomes [[nullable]] X.
+  Any other `oneOf`, such as a `:multi`'s, becomes an `anyOf` of the same branches."
   [json-schema]
+  ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
+  ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
   (match/replace-all json-schema
     {:oneOf [x {:type "null"}]}
     ;; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
-    (merge (nullable x) (dissoc &match :oneOf))))
+    (merge (nullable x) (dissoc &match :oneOf))
+    {:oneOf (branches :guard sequential?)}
+    (-> &match (dissoc :oneOf) (update :anyOf #(into (vec %) branches)))))
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
   `:map`, applies tool-description preferences, and transforms to JSON Schema.
-  Publishes `[:maybe ...]` as a nullable type rather than `oneOf` (see [[nullable]]).
+  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf` (see [[without-one-of]]).
   Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
-    (maybe->nullable (mjs/transform prepared))))
+    (without-one-of (mjs/transform prepared))))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
