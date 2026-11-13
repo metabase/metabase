@@ -21,8 +21,9 @@
         (keep (fn [{:keys [key value]}]
                 (try
                   ;; This write does not go through the setter, and the checks and the remap-row cleanup in the
-                  ;; setter of workspaces-enabled must not be skipped.
-                  (if (= (keyword key) :workspaces-enabled)
+                  ;; setter of workspaces-enabled must not be skipped. The settings code also resolves a key by its
+                  ;; kebab-case form, so compare that form.
+                  (if (= (u/->kebab-case-en (keyword key)) :workspaces-enabled)
                     (log/warnf "Skipping Setting %s: an import does not set it" key)
                     (setting/set-value-of-type! :string (keyword key) (some-> value str)))
                   nil
