@@ -309,6 +309,73 @@
           (finally
             (#'sql-jdbc.conn/swap-pools-state! update :pools dissoc cache-key)))))))
 
+(deftest failed-checkout-destroys-empty-swapped-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection also destroys an empty swapped pool (#84206)"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            cache-key   [db-id 12345]
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])
+            cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [_driver _db-or-id-or-spec _options] data-source)
+                                    sql-jdbc.conn/destroy-pool!
+                                    (fn [id spec] (swap! destroyed conj [id spec]))]
+          (.put cache cache-key pool-spec)
+          (try
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unable to connect to the database"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (some? (.getIfPresent cache cache-key))))
+            (finally
+              (.invalidate cache cache-key))))))))
+
+(deftest failed-checkout-keeps-newer-swapped-pool-test
+  (testing "A failed checkout does not remove a newer swapped pool that another thread put under the same key"
+    (let [db-id       Integer/MAX_VALUE
+          cache-key   [db-id 12345]
+          data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                        (getConnection [_]
+                          (throw (java.sql.SQLException. "password authentication failed")))
+                        (getNumConnectionsDefaultUser [_] 0))
+          newer-spec  {:datasource (reify com.mchange.v2.c3p0.PooledDataSource)}
+          cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)
+          ;; simulate the race: another thread replaces the cache entry after `invalidate-empty-pool!` read it
+          ;; but before it removes it. The first `:datasource` lookup runs in that window. Only the first lookup
+          ;; replaces the entry: a second `put` of the newer pool would evict that pool itself.
+          replaced?   (atom false)
+          old-spec    (reify clojure.lang.ILookup
+                        (valAt [this k] (.valAt this k nil))
+                        (valAt [_ k not-found]
+                          (if (= k :datasource)
+                            (do (when (compare-and-set! replaced? false true)
+                                  (.put cache cache-key newer-spec))
+                                data-source)
+                            not-found)))
+          destroyed   (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                  (fn [_driver _db-or-id-or-spec _options] data-source)
+                                  sql-jdbc.conn/destroy-pool!
+                                  (fn [id spec] (swap! destroyed conj [id spec]))]
+        (.put cache cache-key old-spec)
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Unable to connect to the database"
+               (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+          (is (identical? newer-spec (.getIfPresent cache cache-key)))
+          (is (not-any? (fn [[_ spec]] (identical? spec newer-spec)) @destroyed))
+          (finally
+            (.invalidate cache cache-key)))))))
+
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
