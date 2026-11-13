@@ -1,9 +1,11 @@
 (ns metabase-enterprise.security-center.task.run-health-checks-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.task.run-health-checks :as run-health-checks]
    [metabase.premium-features.core :as premium-features]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -34,3 +36,26 @@
                                                    :metabase-security-center/health-checks-last-run-timestamp-seconds)))
               (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
                                           {:check_id "read-only-connections", :severity "high", :status "fail"}))))))))))
+
+(deftest startup-logic-sets-the-gauges-test
+  (let [startup! #(startup/def-startup-logic! ::run-health-checks/HealthCheckGauges)]
+    (testing "sets the status gauge and the last-run gauge from the stored result, and refreshes nothing"
+      (mt/with-premium-features #{:admin-security-center}
+        (mt/with-temporary-setting-values [security-center-health-check-results stored-results]
+          (let [refreshes (atom 0)]
+            ;; the refresh of read-only-connections starts with this query
+            (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                        security-center.db/databases-with-details #(do (swap! refreshes inc) [])]
+              (mt/with-prometheus-system! [_ system]
+                (startup!)
+                (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                            {:check_id "read-only-connections", :severity "high", :status "pass"})))
+                (is (= 1793959200.0 (mt/metric-value system
+                                                     :metabase-security-center/health-checks-last-run-timestamp-seconds)))
+                (is (zero? @refreshes))))))))
+    (testing "does nothing when Security Center is off"
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly false)
+                                    health-checks/run-checks                  #(do (swap! calls inc) [])]
+          (startup!)
+          (is (zero? @calls)))))))

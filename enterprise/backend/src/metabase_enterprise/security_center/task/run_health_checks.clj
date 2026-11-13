@@ -8,6 +8,7 @@
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.premium-features.core :as premium-features]
+   [metabase.startup.core :as startup]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -35,6 +36,14 @@
    :concurrent? false}
   [_]
   (run-health-checks!))
+
+;; The gauges are in the memory of the process, so a restart clears them, and the job can be hours away. Startup logic
+;; runs on every node, after the settings of the config file are applied, which `task/init!` does not wait for. It
+;; refreshes nothing: a background check reads its stored result.
+(defmethod startup/def-startup-logic! ::HealthCheckGauges [_]
+  (when (premium-features/security-center-enabled?)
+    (metrics/set-health-check-gauges! (health-checks/run-checks))
+    (metrics/set-health-checks-last-run!)))
 
 (defmethod task/init! ::RunHealthChecks [_]
   (when (premium-features/security-center-enabled?)
