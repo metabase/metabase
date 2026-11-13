@@ -440,6 +440,8 @@
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
     :singleton?    true
+    ;; Usage reporting and the free-tier limit read the token meter named after this model, so it changes only
+    ;; together with the metering.
     :default-model "anthropic/claude-sonnet-4-6"
     ;; The proxy serves one benchmarked model rather than a listable catalog, so the models are fixed here instead
     ;; of fetched. This is also the allow-list `llm-metabot-provider` is validated against.

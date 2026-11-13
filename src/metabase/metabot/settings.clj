@@ -136,9 +136,8 @@
   "anthropic/claude-haiku-5-5")
 
 (def default-metabase-llm-metabot-provider
-  "Default model reference for Metabot on the managed provider. It also names the token meter that usage and the
-  free-tier limit read, so it changes only together with the metering."
-  (str llm.provider/managed-connection-key "/anthropic/claude-sonnet-4-6"))
+  "Default model reference for Metabot on the managed provider."
+  (str llm.provider/managed-connection-key "/" (llm.provider/default-model llm.provider/managed-connection-key)))
 
 (def azure-model-families
   "Wire-protocol families for models hosted on Azure: the first segment of the azure model
