@@ -16,6 +16,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -390,10 +391,23 @@
     (->> (map vector cols replaced-cols)
          (filter #(not= (first %) (second %))))))
 
+(def ^:private truncation-unit-order
+  (zipmap lib.schema.temporal-bucketing/ordered-datetime-truncation-units (range)))
+
+(defn- drop-unit-if-finer-than-inherited
+  "Drop the truncation unit of `a-ref` when it is finer than the unit the previous stage truncated its column to."
+  [a-ref]
+  (let [{:keys [temporal-unit inherited-temporal-unit]} (lib.options/options a-ref)
+        order           (truncation-unit-order temporal-unit)
+        inherited-order (truncation-unit-order inherited-temporal-unit)]
+    (cond-> a-ref
+      (and order inherited-order (< order inherited-order))
+      (lib.temporal-bucket/with-temporal-bucket nil))))
+
 (defn- next-stage-replacement
   "Replacements for the references in stage `next-stage-number` to `col`, a column that stage `stage-number` returned
   before the change and returns as `replaced-col` after it. A reference keeps its own bucketing when the column keeps
-  its type."
+  its type, unless its truncation unit is finer than the column's new one, in which case that unit is dropped."
   [query stage-number next-stage-number [col replaced-col]]
   (let [target-ref-id   (:lib/desired-column-alias col)
         replaced-ref    (lib.ref/ref (lib.field.util/update-keys-for-col-from-previous-stage replaced-col))
@@ -402,6 +416,7 @@
     (mapv (fn [target-ref]
             [target-ref (-> replaced-ref
                             (cond-> keep-bucketing? (with-bucketing-of target-ref))
+                            drop-unit-if-finer-than-inherited
                             fresh-ref)])
           (match/match-many (lib.util/query-stage query next-stage-number)
             [:field _ (id :guard (= id target-ref-id))] &match))))
