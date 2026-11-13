@@ -13,7 +13,6 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
@@ -35,6 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -185,10 +185,9 @@
   (json-out obj false))
 
 (defn- elide-data [obj]
-  (walk/postwalk (fn [x] (cond
-                           (string? x) (string/elide x 250)
-                           (and (sequential? x) (> (count x) 50)) (take 50 x)
-                           :else x)) obj))
+  (match/replace-all obj
+    #'string? (string/elide &match 250)
+    (xs :guard (and (sequential? xs) (> (count xs) 50))) (take 50 xs)))
 
 (defn- json-in-with-eliding
   [obj]

@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -14,9 +15,16 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
@@ -258,6 +266,53 @@
         (search.ingestion/update! (repeat 400 {::doc true}) [])
         (is (== 400 (mt/metric-value system :metabase-search/index-updates {:model "ingestion-test"})))))))
 
+(deftest ^:synchronized tombstone-ordering-within-a-batch-test
+  (testing "a tombstone applies where it sits in the batch, not before or after every re-index in it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Tombstoneorderingprobe"}]
+        (let [indexed?  #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))
+              reindex   ["card" [:= id :this.id]]
+              tombstone (search.ingestion/tombstone "card" [id])]
+          (testing "a re-index queued before the tombstone does not resurrect the entry"
+            (search.ingestion/bulk-ingest! [reindex tombstone])
+            (is (false? (indexed?))))
+          (testing "a re-index queued after it is authoritative"
+            (search.ingestion/bulk-ingest! [tombstone reindex])
+            (is (true? (indexed?)))))))))
+
+(deftest ^:synchronized failing-run-keeps-later-tombstones-test
+  (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Failingrunprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (is (thrown? Exception
+                       (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
+                                                       (search.ingestion/tombstone "card" [id])]))
+              "the failure still reaches the caller")
+          (is (false? (indexed?)))))))
+  (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Failingassertprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
+            (is (thrown? AssertionError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))
+                "the error still reaches the caller"))
+          (is (false? (indexed?)))))))
+  (testing "any other Error is fatal, and stops the batch before the tombstone"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Fatalerrorprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
+            (is (thrown? LinkageError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))))
+          (is (true? (indexed?))))))))
+
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
@@ -345,6 +400,27 @@
           (is (true? (deref attempted 2000 ::timeout)))
           (finally
             (queue/stop-listening! listener-name)))))))
+
+(deftest await-pending-updates-waits-for-after-commit-handoff-test
+  (testing "an after-commit handoff counts as pending until it finishes, though it queues nothing until then"
+    (let [running (promise)
+          release (promise)]
+      (with-redefs [search.ingestion/pending-updates (atom 0)]
+        (binding [search.ingestion/*force-sync* false]
+          (try
+            (t2/with-transaction [_conn]
+              (search/after-commit! "slow handoff"
+                                    (fn []
+                                      (deliver running true)
+                                      (deref release 5000 ::timeout)))
+              (is (true? (search.ingestion/await-pending-updates! 0))
+                  "nothing is pending before the commit"))
+            (is (true? (deref running 2000 ::timeout)))
+            (is (false? (search.ingestion/await-pending-updates! 10)))
+            (deliver release true)
+            (is (true? (search.ingestion/await-pending-updates! 2000)))
+            (finally
+              (deliver release true))))))))
 
 (deftest ingest-maybe-async!-queues-after-commit-test
   ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction

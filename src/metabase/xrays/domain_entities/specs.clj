@@ -1,6 +1,5 @@
 (ns metabase.xrays.domain-entities.specs
   (:require
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -12,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]))
 
@@ -41,13 +41,8 @@
   "Normalize the legacy MBQL fragment saved in X-Rays templates. This handles the special X-Rays version of `:dimension`
   clauses as well."
   [x]
-  (walk/postwalk
-   (fn [form]
-     (if (and (sequential? form)
-              (= (first form) "dimension"))
-       (normalize-xrays-dimension form)
-       form))
-   (mbql.normalize/normalize x)))
+  (match/replace-all (mbql.normalize/normalize x)
+    ["dimension" & _] (normalize-xrays-dimension &match)))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"

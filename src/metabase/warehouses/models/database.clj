@@ -426,6 +426,11 @@
         (when (pos? deleted)
           (recur))))))
 
+(def ^:private tombstone-chunk-size
+  "How many card ids share one [[metabase.search.core/after-commit!]] step when tombstoning a deleted
+  database's cards. Each step is caught and logged on its own, so a failed chunk costs only the ids in it."
+  1000)
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -438,18 +443,39 @@
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
-  (->> (eduction
-        (map t2.realize/realize)
-        (partition-all 1000)
-        ;; mysql and h2 both do not support `returning`, so we do the correct thing for postgres and
-        ;; then some sad version for those two
-        (if (= :postgres (mdb/db-type))
-          (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
-          (warehouses.db/card-ids-for-database-reducible id)))
-       (run! (fn [batch]
-               (search/delete! :model/Card (map (comp str :id) batch)))))
-  (when (not= :postgres (mdb/db-type))
-    (warehouses.db/delete-cards-for-database! id))
+  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
+  ;; their search documents are enumerated first.
+  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
+  ;; indexes, which Toucan never sees.
+  (let [{:keys [gone cascading]}
+        (reduce (fn [{:keys [gone cascading]} batch]
+                  (let [ids    (mapv :id batch)
+                        ;; A search error must not fail the database delete; those documents are left to the reindex.
+                        merged (try
+                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
+                                 (catch Exception e
+                                   (log/errorf e "Skipping search cascade enumeration for database %s" id)
+                                   cascading))]
+                    ;; A card that moved to another database since the scan survives, and keeps its documents.
+                    ;; Only a short count says one did, so a full batch skips the check.
+                    {:gone      (if (= (count ids) (warehouses.db/delete-cards! id ids))
+                                  (into gone ids)
+                                  (into gone (remove (warehouses.db/existing-card-ids ids)) ids))
+                     :cascading merged}))
+                {:gone [], :cascading nil}
+                (eduction
+                 (map t2.realize/realize)
+                 (partition-all 1000)
+                 (warehouses.db/card-ids-for-database-reducible id)))]
+    ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
+    ;; older re-index that may already have read a soon-to-be-deleted card.
+    (when (or (seq gone) (seq cascading))
+      (apply search/after-commit! "database delete"
+             ;; after-commit! catches and logs each step on its own and still runs the rest, so chunking the
+             ;; tombstones into their own steps keeps a failed chunk from costing the ones after it.
+             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
+                       (fn [] (search/delete! :model/Card chunk)))
+                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
   (try
     (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
