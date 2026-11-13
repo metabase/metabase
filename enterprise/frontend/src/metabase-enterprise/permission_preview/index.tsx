@@ -1,5 +1,10 @@
+import { t } from "ttag";
+
 import { PLUGIN_API } from "metabase/api/client";
-import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABS,
+  PLUGIN_PERMISSION_PREVIEW,
+} from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
@@ -43,6 +48,10 @@ export function initializePlugin() {
     return;
   }
 
+  PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
+    name: t`Troubleshoot`,
+    value: "troubleshoot",
+  });
   PLUGIN_PERMISSION_PREVIEW.isEnabled = true;
   PLUGIN_PERMISSION_PREVIEW.getDataRoutes = getDataRoutes;
   PLUGIN_PERMISSION_PREVIEW.getTabRoutes = getTabRoutes;

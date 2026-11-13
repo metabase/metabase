@@ -15,9 +15,9 @@ type PreviewSidebarProps = {
   title?: string;
   principalType: PrincipalType;
   principal: Principal | null;
-  /** The tab's other views, for the switch back out of Preview. */
-  entityViews: EntityView[];
-  onEntityChange: (view: EntityView) => void;
+  /** The tab's other views, for the switch back out of Preview; none on a page of its own. */
+  entityViews?: EntityView[];
+  onEntityChange?: (view: EntityView) => void;
   onPrincipalTypeChange: (type: PrincipalType) => void;
   onPrincipalChange: (principal: Principal) => void;
 };
@@ -53,7 +53,7 @@ export function PreviewSidebar({
       getSearchText={getSearchText}
       filterPlaceholder={getPlaceholder(principalType)}
       selectedId={principal?.type === principalType ? principal.id : undefined}
-      entityViewFocus="preview"
+      entityViewFocus={onEntityChange ? "preview" : undefined}
       entityViews={entityViews}
       onEntityChange={onEntityChange}
       headerContent={

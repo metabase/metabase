@@ -1,6 +1,9 @@
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type {
+  CardId,
+  DashboardId,
   DatabaseId,
+  FieldId,
   GroupId,
   TableId,
   UserAttributeMap,
@@ -125,6 +128,8 @@ export type StartPreviewRequest = Principal & {
 };
 
 export type StartPreviewResponse = {
+  /** Names the preview for `POST /preview/end`. */
+  preview_id: string;
   user_id: number;
   user_name: string;
   principal_name: string;
@@ -144,6 +149,34 @@ export type PreviewAttribute = {
   member_values: { value: string; count: number }[];
   other_values: string[];
   default: string | null;
+};
+
+export type AttributeRuleKind = "sandbox" | "impersonation" | "routing";
+
+/** A security rule that reads an attribute. */
+export type AttributeUse = {
+  kind: AttributeRuleKind;
+  label: string;
+  table_id?: TableId;
+  field_id?: FieldId;
+  database_id?: DatabaseId;
+};
+
+/** An attribute a security rule on a person's groups reads, with their value. */
+export type AffectingAttribute = {
+  attribute: string;
+  value: string | null;
+  uses: AttributeUse[];
+  /** False when an opened item queries none of the tables and databases its rules cover. */
+  applies: boolean;
+  member_values?: { value: string; count: number }[];
+  other_values?: string[];
+};
+
+export type AffectingAttributesRequest = {
+  principal: Principal;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
 };
 
 function principalParams({ type, id }: Principal) {
@@ -197,6 +230,36 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
         params: { "group-id": groupId },
       }),
     }),
+    getAffectingAttributes: builder.query<
+      AffectingAttribute[],
+      AffectingAttributesRequest
+    >({
+      query: ({ principal, cardId, dashboardId }) => ({
+        method: "GET",
+        url: "/api/ee/permission_debug/preview/attributes",
+        params: {
+          [`${principal.type}_id`]: principal.id,
+          card_id: cardId,
+          dashboard_id: dashboardId,
+        },
+      }),
+    }),
+    endPreview: builder.mutation<
+      void,
+      { request: StartPreviewRequest; preview: StartPreviewResponse }
+    >({
+      query: ({ request, preview }) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/end",
+        body: {
+          preview_id: preview.preview_id,
+          user_id: preview.user_id,
+          principal_type: request.type,
+          principal_id: request.id,
+          attributes: preview.attributes,
+        },
+      }),
+    }),
     startPreview: builder.mutation<StartPreviewResponse, StartPreviewRequest>({
       query: ({ type, id, attributes }) => ({
         method: "POST",
@@ -224,6 +287,8 @@ export const {
   useGetCollectionsPreviewQuery,
   useGetApplicationPreviewQuery,
   useGetPreviewAttributesQuery,
+  useGetAffectingAttributesQuery,
+  useEndPreviewMutation,
   useStartPreviewMutation,
   useIssuePreviewGrantMutation,
 } = permissionPreviewApi;

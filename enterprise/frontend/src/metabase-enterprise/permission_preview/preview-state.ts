@@ -78,12 +78,16 @@ export function readFramePreviewState(): PreviewState | null {
   return framePreviewState;
 }
 
-/** The user the app's requests run as: the frame's preview, else this tab's, else null for no preview. */
+/**
+ * The user the app's requests run as: inside a frame only the frame's own preview (the tab's
+ * sessionStorage belongs to the admin page around it), else this tab's, else null for no preview.
+ */
 export function getActivePreviewUserId(): number | null {
+  if (window.self !== window.top) {
+    return framePreviewState?.userId ?? null;
+  }
   return (
-    framePreviewState?.userId ??
-    parseStoredState(window.sessionStorage.getItem(STORAGE_KEY))?.userId ??
-    null
+    parseStoredState(window.sessionStorage.getItem(STORAGE_KEY))?.userId ?? null
   );
 }
 
@@ -92,6 +96,13 @@ export function getFramePreviewUrl(path: string, state: PreviewState) {
   const url = new URL(getPreviewUrl(path, state));
   url.searchParams.set(FRAME_PARAM, "1");
   return url.toString();
+}
+
+/** Where the framed app is, or null while it hasn't read its preview from the address yet. */
+export function getFramePath(location: Location): string | null {
+  return new URLSearchParams(location.search).has(FRAME_PARAM)
+    ? null
+    : `${location.pathname}${location.search}${location.hash}`;
 }
 
 function parseUrlState(params: URLSearchParams): PreviewState | null {

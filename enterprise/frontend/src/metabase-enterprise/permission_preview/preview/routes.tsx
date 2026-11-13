@@ -1,5 +1,7 @@
 import { Route } from "metabase/router";
 
+import { TroubleshootPage } from "../troubleshoot/TroubleshootPage";
+
 import { ApplicationPreviewPage } from "./ApplicationPreviewPage";
 import { CollectionPreviewPage } from "./CollectionPreviewPage";
 import { DataPreviewPage } from "./DataPreviewPage";
@@ -10,6 +12,12 @@ const PRINCIPAL_PATHS = [
   "preview",
   "preview/:principalType",
   "preview/:principalType/:principalId",
+];
+
+const TROUBLESHOOT_PATHS = [
+  "troubleshoot",
+  "troubleshoot/:principalType",
+  "troubleshoot/:principalType/:principalId",
 ];
 
 const DATA_PATHS = [
@@ -61,6 +69,9 @@ export function getTabRoutes() {
             />
           }
         />
+      ))}
+      {TROUBLESHOOT_PATHS.map((path) => (
+        <Route key={path} path={path} element={<TroubleshootPage />} />
       ))}
       {PRINCIPAL_PATHS.map((path) => (
         <Route
