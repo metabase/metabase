@@ -17,6 +17,7 @@ import { TableHeader } from "../../components/TableHeader";
 import S from "./TableMetadataPage.module.css";
 import { TableStructureSections } from "./TableStructureSections";
 import { TableSubjectFields } from "./TableSubjectFields";
+import { TableVisibilityFields } from "./TableVisibilityFields";
 
 type TableMetadataPageParams = {
   tableId: string;
@@ -65,6 +66,14 @@ export function TableMetadataPage() {
               <TableDefaultSegment table={table} readOnly={readOnly} />
               <TableRequiredFilter table={table} readOnly={readOnly} />
             </Stack>
+          </DatabaseInfoSection>
+          <DatabaseInfoSection
+            name={t`Data layer and visibility`}
+            description={t`The data layer decides who can find this table. Some roles and data layers hide a table from people browsing data.`}
+            contentPx="xxxl"
+            cardRadius="lg"
+          >
+            <TableVisibilityFields table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
         </Flex>
       </Box>

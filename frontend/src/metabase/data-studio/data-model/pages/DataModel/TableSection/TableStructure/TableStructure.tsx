@@ -609,6 +609,9 @@ function StructureForm({
           />
         </Box>
       </Input.Wrapper>
+      <Input.Wrapper label={t`Row identity`}>
+        <Text mt="xs">{getRowIdentityLabel(structure.rowIdentity)}</Text>
+      </Input.Wrapper>
       <Select
         label={t`Main date`}
         description={getMainDateInference(structure)}
