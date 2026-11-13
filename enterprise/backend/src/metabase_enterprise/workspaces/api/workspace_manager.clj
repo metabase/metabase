@@ -99,7 +99,10 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) and provision it (blocking). A failed provisioning is an error,
+   never a 200: the database's status code, or 500, with `message` and
+   `cleanup_required`, true when the workspace was kept and must be deleted to
+   finish the teardown."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -117,16 +120,21 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Tears down every database's warehouse isolation first
-  (blocking, any state). Each database is either fully torn down (its row is
-  deleted) or kept; when any teardown fails the workspace is kept too — with the
-  failed rows, so the delete can be retried — and the combined failure is
-  returned as the error. 204 on success, no response body.
+  "Delete a Workspace: tear down each database's warehouse isolation (blocking),
+  then delete the workspace. 409 (error code `workspace_busy`) while a create or
+  deprovision is running on any of its databases, meaning a row that is
+  `:provisioning` or `:deprovisioning` and was last updated within the last 15
+  minutes. An older such row is treated as left by a crashed instance and is torn
+  down. A row whose teardown succeeds is deleted. A row whose teardown fails is
+  kept as `teardown_failed`, the workspace is kept with it, and the combined
+  failure is the error, so the delete can be retried. 204 on success, no response
+  body.
 
   With `force=true`, databases in `teardown_failed` are first deleted without a
   warehouse teardown, and the identifiers of what may remain are logged at WARN for
   manual cleanup. Use it only when the warehouse is gone for good. The other
-  databases are torn down as usual."
+  databases are torn down as usual. This step runs before the busy check: it can
+  delete `teardown_failed` rows and still answer 409."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)
