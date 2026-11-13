@@ -29,6 +29,7 @@ import {
   Box,
   Button,
   Icon,
+  Input,
   MultiSelect,
   Select,
   Stack,
@@ -602,6 +603,9 @@ function StructureForm({
         disabled={readOnly}
         layout="form"
       />
+      <Input.Wrapper label={t`Row identity`}>
+        <Text mt="xs">{getRowIdentityLabel(structure.rowIdentity)}</Text>
+      </Input.Wrapper>
       {!isHistoryRole && (
         <Select
           label={t`Main date`}

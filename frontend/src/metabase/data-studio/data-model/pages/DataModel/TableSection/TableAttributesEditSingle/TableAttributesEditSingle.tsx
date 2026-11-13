@@ -10,10 +10,7 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { DataSourceInput, UserInput } from "metabase/metadata/components";
-import {
-  DATA_LAYER_VISIBILITY_ICONS,
-  useDataLayers,
-} from "metabase/metadata/data-layers";
+import { DATA_LAYER_VISIBILITY_ICONS } from "metabase/metadata/data-layers";
 import { Box, Icon, Select, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
@@ -21,6 +18,7 @@ import type { Table, TableDataSource, UserId } from "metabase-types/api";
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
 import S from "./TableAttributesEditSingle.module.css";
+import { useTableDataLayerSelect } from "./use-table-data-layer-select";
 
 interface Props {
   table: Table;
@@ -168,14 +166,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
   );
 }
 
-// Select value for "no override": the table uses its schema's layer
-const SCHEMA_LAYER_VALUE = "schema-layer";
-
-/**
- * PROTOTYPE: mocked. A table uses its schema's data layer unless it overrides
- * it. The real `data_layer` column defaults to "internal", so it can't mean
- * "inherit"; the override lives in the mocked layer store instead.
- */
+/** The table's data layer, its schema's unless it overrides it */
 function TableDataLayerRow({
   table,
   disabled,
@@ -183,39 +174,8 @@ function TableDataLayerRow({
   table: Table;
   disabled: boolean;
 }) {
-  const {
-    getDataLayers,
-    getSchemaDataLayer,
-    getTableDataLayer,
-    setTableDataLayerId,
-  } = useDataLayers();
-  const schemaLayer = getSchemaDataLayer(table.db_id, table.schema);
-  const { layer, isInherited } = getTableDataLayer(
-    table.db_id,
-    table.schema,
-    table.id,
-  );
-
-  const options = [
-    {
-      value: SCHEMA_LAYER_VALUE,
-      label: schemaLayer
-        ? t`Schema's layer (${schemaLayer.name})`
-        : t`Schema's layer`,
-    },
-    ...getDataLayers(table.db_id).map(({ id, name }) => ({
-      value: id,
-      label: name,
-    })),
-  ];
-
-  const handleChange = (value: string | null) => {
-    if (value === SCHEMA_LAYER_VALUE) {
-      setTableDataLayerId(table.db_id, table.id, null);
-    } else if (value != null) {
-      setTableDataLayerId(table.db_id, table.id, value);
-    }
-  };
+  const { layer, isInherited, options, value, onChange } =
+    useTableDataLayerSelect(table);
 
   return (
     <DetailsRow
@@ -232,7 +192,7 @@ function TableDataLayerRow({
         <Select
           aria-label={t`Data layer`}
           data={options}
-          value={isInherited ? SCHEMA_LAYER_VALUE : (layer?.id ?? null)}
+          value={value}
           allowDeselect={false}
           leftSection={
             layer && (
@@ -241,7 +201,7 @@ function TableDataLayerRow({
           }
           disabled={disabled}
           classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-          onChange={handleChange}
+          onChange={onChange}
           data-testid="table-data-layer-input"
         />
       }

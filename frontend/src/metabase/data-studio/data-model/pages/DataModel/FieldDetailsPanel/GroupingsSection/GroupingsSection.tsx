@@ -111,7 +111,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     <Stack gap="lg">
       <Flex justify="space-between" align="center" gap="md">
         <Text size="sm" c="text-secondary">
-          {t`In the query builders, users can select these in the Group By section.`}
+          {t`Users can group by these in query builders.`}
         </Text>
         {!readOnly && (
           <Button

@@ -1,3 +1,12 @@
+/* A property row whose value is a picker: the whole row opens it */
+.pickerProperty {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
 .textStyleWrapper {
   flex-grow: 1;
 }
