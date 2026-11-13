@@ -231,11 +231,15 @@
       collections.children/prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
-                  [:effective_ancestors :can_write]
+                  :effective_ancestors
                   :can_write
                   :is_personal
                   :can_restore
-                  :can_delete)))
+                  :can_delete)
+      (update :effective_ancestors
+              (partial map #(assoc % :can_write (if (collection.root/is-root-collection? %)
+                                                  (mi/can-write? %)
+                                                  (mi/can-write? :model/Collection (:id %))))))))
 
 (api.macros/defendpoint :get "/trash" :- ::Collection
   "Fetch the trash collection, as in `/api/collection/:trash-id`"

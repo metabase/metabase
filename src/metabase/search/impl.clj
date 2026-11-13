@@ -434,11 +434,19 @@
         results)
   results)
 
+(defn- add-collection-permission-columns
+  "Merges into the Collections among `results` the columns their permission checks read, which search rows don't
+  carry, in one query, and returns the results."
+  [results]
+  (let [id->columns (search.db/collection-permission-columns
+                     (into #{} (comp (filter #(t2/instance-of? :model/Collection %)) (map :id)) results))]
+    (map #(cond-> % (t2/instance-of? :model/Collection %) (merge (id->columns (:id %)))) results)))
+
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
   [search-ctx result]
-  (check-permissions-for-model search-ctx (normalize-result result)))
+  (check-permissions-for-model search-ctx (first (add-collection-permission-columns [(normalize-result result)]))))
 
 (defn- add-can-write [search-ctx row]
   (cond
@@ -530,7 +538,7 @@
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (partition-all permission-check-batch-size)
-                           (mapcat register-result-rows!)
+                           (mapcat (comp add-collection-permission-columns register-result-rows!))
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

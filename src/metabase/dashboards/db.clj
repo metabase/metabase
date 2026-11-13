@@ -381,11 +381,15 @@
 
 (mu/defn link-card-entity
   "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, projected the same way as
-  [[link-card-info-rows]], or nil."
+  [[link-card-info-rows]], or nil. A Collection also carries the columns its read check reads."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serialization/link-card-model->toucan-model model)
-                 (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
+  (if (= model "collection")
+    (some-> (t2/select-one [:model/Collection :id :name :description :type :namespace]
+                           :id (ensure-integer-link-card-id id))
+            (assoc :model model))
+    (t2/select-one (serialization/link-card-model->toucan-model model)
+                   (h2x/assert-map-or-nil! (link-card-info-query-for-model model id)))))
 
 (defn- link-card-info-query
   [link-card-model->ids]
@@ -394,6 +398,12 @@
     {:select   [:*]
      :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
+
+(mu/defn collection-read-columns
+  "The id, `:type`, and `:namespace` of the Collections with `collection-ids`, the columns their read check reads that
+  [[link-card-info-rows]] does not carry."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Collection :id :type :namespace] :id [:in collection-ids]))
 
 (mu/defn link-card-info-rows
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`

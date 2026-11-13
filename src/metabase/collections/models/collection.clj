@@ -331,33 +331,62 @@
 
 (doto :model/Collection
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
   (when-not (audit/analytics-dev-mode)
     (= id (:id (audit/default-audit-collection)))))
 
+(defn- check-read-keys
+  "Throws unless `collection` has the columns its read check reads."
+  [collection]
+  (api/check-500 (some? (:id collection)) "No :id is set for a Collection.")
+  (api/check-500 (contains? collection :type) "No :type is set for a Collection.")
+  (api/check-500 (contains? collection :namespace) "No :namespace is set for a Collection."))
+
+(defn- check-write-keys
+  "Throws unless `collection` has the columns its write check reads."
+  [collection]
+  (check-read-keys collection)
+  (api/check-500 (contains? collection :location) "No :location is set for a Collection."))
+
+(defmethod mi/can-read? :model/Collection
+  ([{:keys [id] :as collection}]
+   (check-read-keys collection)
+   (or (is-trash? collection)
+       (and (not (perms/audit-content-hidden? id))
+            (or (collection.root/unrestricted-snippets? collection)
+                (perms/user-has-permission-for-collection? api/*current-user-id* :read id
+                                                           {:root-namespace (:namespace collection)})))))
+  ([_model pk]
+   (api/check-500 (some? pk) "No Collection id: use `can-read-collection-or-root?` for a root Collection.")
+   (mi/can-read? (api/check-404 (collections.db/collection pk)))))
+
 (defmethod mi/can-write? :model/Collection
-  ([instance]
-   (and (not (default-audit-collection? instance))
-        (not (is-trash-or-descendant? instance))
-        (mi/current-user-has-full-permissions? :write instance)
-        (remote-sync/can-write? :model/Collection (:id instance))))
+  ([{:keys [id] :as collection}]
+   (check-write-keys collection)
+   (and (not (default-audit-collection? collection))
+        (not (is-trash-or-descendant? collection))
+        (or (collection.root/unrestricted-snippets? collection)
+            (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write id
+                                                       {:root-namespace (:namespace collection)}))
+        (remote-sync/can-write? :model/Collection id)))
   ([_model pk]
    (api/check-500 (some? pk) "No Collection id: use `can-write-collection-or-root?` for a root Collection.")
-   (mi/can-write? (collections.db/collection pk))))
+   (mi/can-write? (api/check-404 (collections.db/collection pk)))))
 
-(mu/defmethod mi/can-read? :model/Collection
-  ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection (t2/instance :model/Collection (select-keys instance [:id :namespace])))))
-  ([_model pk :- [:maybe pos-int?]]
-   (api/check-500 (some? pk) "No Collection id: use `can-read-collection-or-root?` for a root Collection.")
-   (or (is-trash? pk)
-       (mi/can-read? (collections.db/collection pk)))))
+(defmethod mi/can-read? metabase.collections.models.collection.root.RootCollection
+  [root]
+  (or (collection.root/unrestricted-snippets? root)
+      (perms/user-has-permission-for-collection? api/*current-user-id* :read nil
+                                                 {:root-namespace (:namespace root)})))
+
+(defmethod mi/can-write? metabase.collections.models.collection.root.RootCollection
+  [root]
+  (or (collection.root/unrestricted-snippets? root)
+      (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write nil
+                                                 {:root-namespace (:namespace root)})))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels, normalized from their names."
@@ -914,34 +943,32 @@
                                                    [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
 (defn visible-collection-id?
-  "Whether the current user can see the Collection with `collection-id`, at `:read` (the default) or `:write` level.
+  "Whether the current user can see the Collection with `collection-id`, at `:read` (the default) or `:write` level,
+  by the batched collection getter; the trash is visible to everyone.
 
-  Answered from the current user's permission set rather than by listing every visible Collection, so it costs no
-  query. Note that it answers only the permission question: unlike `perms/visible-collections-filter-clause` it applies no archival
-  filtering, and no `shared-tenant-collection` exclusion for instances with tenants disabled. Callers that need those
-  must say so themselves.
-
-  That is safe for the ancestors and descendants this is used on, because a collection tree never spans namespaces
-  (see `assert-valid-namespace`): they sit in the namespace of a collection the caller already holds, and so were
-  subject to the same filtering when the caller obtained it. Use `perms/visible-collections-filter-clause` to filter
-  *inside* a query."
+  It answers only the permission question: unlike `perms/visible-collections-filter-clause` it applies no archival
+  filtering, and no `shared-tenant-collection` exclusion for instances with tenants disabled. That is safe for the
+  ancestors and descendants this is used on, because a collection tree never spans namespaces (see
+  `assert-valid-namespace`): they sit in the namespace of a collection the caller already holds, and so were subject
+  to the same filtering when the caller obtained it."
   ([collection-id]
    (visible-collection-id? collection-id :read))
-
   ([collection-id permission-level]
-   (boolean
-    (or
-     (= collection-id (trash-collection-id))
-     (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                      (case permission-level
-                                        :read  (perms/collection-read-path collection-id)
-                                        :write (perms/collection-readwrite-path collection-id)))))))
+   (or (= collection-id (trash-collection-id))
+       (perms/user-has-permission-for-collection? api/*current-user-id*
+                                                  (case permission-level :read :read, :write :read-and-write)
+                                                  collection-id
+                                                  {:root-namespace nil}))))
 
 (mi/define-batched-hydration-method effective-location-path*
   :effective_location
   "Given a seq of `collections`, batch hydrates them with their effective location."
   [collections]
   (when (seq collections)
+    (doseq [collection collections
+            :when      (and (some? collection) (not (collection.root/is-root-collection? collection)))
+            id         (some-> (:location collection) location-path->ids)]
+      (models.cache/register-loaded! :model/Collection id))
     (for [collection collections]
       (when (some? collection)
         (assoc collection
@@ -1013,10 +1040,12 @@
     (some->> (effective-location-path collection)
              location-path->ids
              (map collection-id->collection)
-             (map #(select-keys % [:name :id :personal_owner_id :type]))
              (map #(t2/instance :model/Collection %))
              (cons (root-collection-with-ui-details (:namespace collection)))
-             (filter mi/can-read?))))
+             (filter mi/can-read?)
+             (map #(if (collection.root/is-root-collection? %)
+                     %
+                     (t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type])))))))
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
@@ -1225,8 +1254,8 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn perms-for-collection-and-descendants :- [:set perms/PathSchema]
-  "Return the set of write permissions for this collection and all its descendants.
+(mu/defn collection-and-descendant-ids :- [:set ms/PositiveInt]
+  "The ids of this collection and all its unarchived descendants, on which the current user needs write permission.
 
   This is useful for operations that need to modify a collection *and* its descendants - for example, moving
   or archiving a collection necessarily moves/archives all its descendants as well, so permissions on those
@@ -1245,14 +1274,11 @@
   ;; also make sure we're not trying to operate on a PERSONAL Collection
   (when (collections.db/personal-collection? (u/the-id collection))
     (throw (Exception. (tru "You cannot operate on a Personal Collection."))))
-  (set
-   (for [collection-or-id (cons
-                           collection
-                           (collections.db/unarchived-collection-ids-with-location-like (str (children-location collection) "%")))]
-     (perms/collection-readwrite-path (u/the-id collection-or-id)))))
+  (set (cons (u/the-id collection)
+             (collections.db/unarchived-collection-ids-with-location-like (str (children-location collection) "%")))))
 
-(mu/defn perms-for-archiving :- [:set perms/PathSchema]
-  "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
+(mu/defn collection-ids-for-archiving :- [:set ms/PositiveInt]
+  "The ids of the Collections on which the current user needs write permission to archive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
 
@@ -1267,10 +1293,11 @@
 
   You do NOT need permissions for A (the parent), as you're not modifying A itself, only removing B from it."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (perms-for-collection-and-descendants collection))
+  (collection-and-descendant-ids collection))
 
-(mu/defn perms-for-moving :- [:set perms/PathSchema]
-  "Return the set of Permissions needed to move a `collection`. Moving is recursive, so we require
+(mu/defn collection-ids-for-moving :- [:set ms/PositiveInt]
+  "The ids of the Collections on which the current user needs write permission to move a `collection`, the new
+  parent aside when it is a root Collection, which the caller checks through its own `can-write?`. Moving is recursive, so we require
   perms for the Collection and its descendants, plus permissions for the new parent Collection.
 
   For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a fourth Collection, D,
@@ -1297,9 +1324,8 @@
   (when (contains? (set (location-path->ids (children-location new-parent)))
                    (u/the-id collection))
     (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
-  (set
-   (cons (perms/collection-readwrite-path new-parent)
-         (perms-for-collection-and-descendants collection))))
+  (cond-> (collection-and-descendant-ids collection)
+    (not (collection.root/is-root-collection? new-parent)) (conj (u/the-id new-parent))))
 
 (mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   "Gets the IDs of all descendant collections for a given collection.
@@ -1308,8 +1334,8 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (collections.db/collection-ids-with-location-like (str (children-location collection) "%")))
 
-(mu/defn perms-for-unarchiving :- [:set perms/PathSchema]
-  "Return the set of Permissions needed to unarchive a `collection`. Since unarchiving is
+(mu/defn collection-ids-for-unarchiving :- [:set ms/PositiveInt]
+  "The ids of the Collections on which the current user needs write permission to unarchive a `collection`. Since unarchiving is
   *recursive* (all descendants archived together get unarchived), we require write ('curate')
   permissions for the collection and all descendants being unarchived."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1317,9 +1343,16 @@
         descendant-ids (collections.db/archived-collection-ids-in-operation-with-location-like
                         (str (children-location collection) "%")
                         archive-operation-id)]
-    (set
-     (cons (perms/collection-readwrite-path (u/the-id collection))
-           (map perms/collection-readwrite-path descendant-ids)))))
+    (set (cons (u/the-id collection) descendant-ids))))
+
+(mu/defn can-write-collection-ids? :- :boolean
+  "Whether the current user has write permission on each of the Collections with `collection-ids`, asked of the
+  collection getter in one batch."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (doseq [id collection-ids]
+    (models.cache/register-loaded! :model/Collection id))
+  (every? #(perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write % {:root-namespace nil})
+          collection-ids))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
@@ -1343,10 +1376,7 @@
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (api/check-403
-   (perms/set-has-full-permissions-for-set?
-    @api/*current-user-permissions-set*
-    (perms-for-archiving collection)))
+  (api/check-403 (can-write-collection-ids? (vec (collection-ids-for-archiving collection))))
   (api/check-400
    (or *allow-modifying-tenant-root-collections?*
        (not= (:type collection) tenant-specific-root-collection-type)))
@@ -1404,9 +1434,7 @@
     (if (contains? updates :parent_id)
       (api/check-403
        (and (mi/can-write? new-parent)
-            (perms/set-has-full-permissions-for-set?
-             @api/*current-user-permissions-set*
-             (perms-for-unarchiving collection))))
+            (can-write-collection-ids? (vec (collection-ids-for-unarchiving collection)))))
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
@@ -1563,7 +1591,7 @@
                        "Tenant Collection")
         unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
                       :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
-                      ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
+                      ;; The checks below should be redundant because the `collection-ids-for-moving` and `collection-ids-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
                       :location          (tru "You are not allowed to move a {0}." ctype)
@@ -2004,15 +2032,11 @@
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)
-                  descendant-ids (get op-id->descendant-ids (:archive_operation_id coll) [])
-                  perm-paths (set (cons (perms/collection-readwrite-path (u/the-id coll))
-                                        (map perms/collection-readwrite-path descendant-ids)))]]
+                  descendant-ids (get op-id->descendant-ids (:archive_operation_id coll) [])]]
         (assoc coll :can_restore (boolean (and (:archived coll)
                                                archived-directly?
                                                (not parent-archived?)
-                                               (perms/set-has-full-permissions-for-set?
-                                                @api/*current-user-permissions-set*
-                                                perm-paths))))))))
+                                               (can-write-collection-ids? (vec (cons (u/the-id coll) descendant-ids))))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
   (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
