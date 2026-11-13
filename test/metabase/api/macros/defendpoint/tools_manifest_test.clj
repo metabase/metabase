@@ -150,6 +150,26 @@
                                                                      :b ["c"]}}}]]])
                      [:properties :k]))))))
 
+(deftest ^:parallel one-of-rewrite-keeps-meaning-test
+  (testing "a hand-written `oneOf` rewrite accepts exactly what the `oneOf` and its sibling keywords accepted"
+    (let [published (fn [json-schema]
+                      (get-in (tools-manifest/malli->json-schema [:map [:k [:any {:json-schema json-schema}]]])
+                              [:properties :k]))]
+      ;; a keyword that may reject `null` keeps the branches apart
+      (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
+             (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
+      ;; an enum that already lists `null` lists it once
+      (is (= {:type ["string" "null"], :enum ["a" nil]}
+             (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
+      ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
+      (is (= {:anyOf [{:type "string"}]
+              :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
+             (published {:anyOf [{:type "string"}], :oneOf [{:minLength 1} {:maxLength 0}]})))
+      ;; and so must a sibling `type`
+      (is (= {:type  "string"
+              :allOf [{:type ["integer" "null"]}]}
+             (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]}))))))
+
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
     (is (= {:anyOf [{:type "string"} {:type "integer"}]}
