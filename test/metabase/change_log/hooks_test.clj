@@ -216,12 +216,12 @@
           (is (every? #(or (contains? logged (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
 
 (defn- load-models!
-  "Loads the namespace of every model. A model derives the hook when its namespace loads, and Metabase loads some only
-  when they are first used."
+  "Loads the namespace of every model, and returns the models. A model derives the hook when its namespace loads, and
+  Metabase loads some only when they are first used. Without EE, it leaves out the EE models."
   []
-  (doseq [[model nspace] models.resolution/model->namespace
-          :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
-    (t2/resolve-model model)))
+  (vec (for [[model nspace] models.resolution/model->namespace
+             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+         (t2/resolve-model model))))
 
 (deftest logged-model-keys-test
   (testing "each logged model's key is one integer column"
@@ -261,6 +261,183 @@
       (doseq [model (vals (change-log.cascade/logged-models))]
         (is (contains? startup (models.resolution/model->namespace model))
             (str model "'s namespace does not load at startup: require it from a namespace that does"))))))
+
+(def ^:private logged-models
+  "The models we want logged. [[logged-models-test]] checks that each one derives `:hook/change-log` (see
+  `metabase.change-log.core`)."
+  #{:model/Card
+    :model/Dashboard
+    :model/Database
+    :model/Field
+    :model/FieldUserSettings
+    :model/NativeQuerySnippet
+    :model/Notification
+    :model/NotificationCard
+    :model/NotificationHandler
+    :model/NotificationRecipient
+    :model/NotificationSubscription
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/Pulse
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/Table
+    :model/Tenant
+    :model/User})
+
+(def ^:private unlogged-models
+  "The models we do not want logged. [[logged-models-test]] checks that none derives `:hook/change-log`. A new model
+  goes here, or in [[logged-models]] when a reader of the change log needs its changes."
+  #{:model/Action
+    :model/AgentApiCallLog
+    :model/AiUsageLog
+    :model/AnalysisFinding
+    :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
+    :model/ApiKey
+    :model/ApiKeyUsageLog
+    :model/ApplicationPermissionsRevision
+    :model/AuditLog
+    :model/AuthIdentity
+    :model/BookmarkOrdering
+    :model/CacheConfig
+    :model/CardBookmark
+    :model/CardTest
+    :model/Channel
+    :model/ChannelTemplate
+    :model/CloudMigration
+    :model/Collection
+    :model/CollectionBookmark
+    :model/CollectionPermissionGraphRevision
+    :model/Comment
+    :model/CommentReaction
+    :model/ConnectionImpersonation
+    :model/ContentDiagnosticsFinding
+    :model/ContentTranslation
+    :model/CustomVizPlugin
+    :model/DashboardBookmark
+    :model/DashboardCard
+    :model/DashboardCardSeries
+    :model/DashboardTab
+    :model/DataApp
+    :model/DatabaseRouter
+    :model/DataComplexityScore
+    :model/DataPermissions
+    :model/DataTestRun
+    :model/Dependency
+    :model/DependencyStatus
+    :model/Dimension
+    :model/Document
+    :model/DocumentBookmark
+    :model/EmbeddingSdkReact18Host
+    :model/EmbeddingTheme
+    :model/Exploration
+    :model/ExplorationBlock
+    :model/ExplorationBookmark
+    :model/ExplorationPage
+    :model/ExplorationQuery
+    :model/ExplorationQueryResult
+    :model/ExplorationThread
+    :model/ExplorationThreadTimeline
+    :model/FieldValues
+    :model/Glossary
+    :model/ImpersonationQueryCache
+    :model/ImplicitAction
+    :model/LoginHistory
+    :model/McpFeedback
+    :model/McpGroupPermission
+    :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
+    :model/Measure
+    :model/Metabot
+    :model/MetabotConversation
+    :model/MetabotFeedback
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
+    :model/MetabotMessage
+    :model/MetabotPermissions
+    :model/MetabotPrompt
+    :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
+    :model/ModelIndex
+    :model/ModelIndexValue
+    :model/ModerationReview
+    :model/OAuthAccessToken
+    :model/OAuthAuthorizationCode
+    :model/OAuthClient
+    :model/OAuthClientEvent
+    :model/OAuthRefreshToken
+    :model/OsiAiContext
+    :model/ParameterCard
+    :model/Permissions
+    :model/PermissionsRevision
+    :model/PersistedInfo
+    :model/PremiumFeaturesCache
+    :model/PythonLibrary
+    :model/Query
+    :model/QueryAction
+    :model/QueryCache
+    :model/QueryExecution
+    :model/QueryField
+    :model/QueryTable
+    :model/RecentViews
+    :model/RemoteSyncTask
+    :model/ReplacementRun
+    :model/ResultMetadataStatus
+    :model/Revision
+    :model/Sandbox
+    :model/SearchIndexMetadata
+    :model/Secret
+    :model/SecurityAdvisory
+    :model/Segment
+    :model/SemanticSearchTokenTracking
+    :model/Session
+    :model/Setting
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
+    :model/SsoRelayState
+    :model/StoredResult
+    :model/StoredResultUse
+    :model/SupportAccessGrantLog
+    :model/TableIndex
+    :model/TableRemapping
+    :model/TableUserSettings
+    :model/TaskHistory
+    :model/TaskRun
+    :model/Timeline
+    :model/TimelineEvent
+    :model/Transform
+    :model/TransformDagRun
+    :model/TransformJob
+    :model/TransformJobRun
+    :model/TransformJobTransformTag
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformTag
+    :model/TransformTest
+    :model/TransformTransformTag
+    :model/Undo
+    :model/UserKeyValue
+    :model/UserParameterValue
+    :model/ViewLog
+    :model/Workspace
+    :model/WorkspaceDatabase})
+
+(deftest logged-models-test
+  (let [models (set (load-models!))]
+    (testing "each model is in `logged-models` or `unlogged-models`, and not in both"
+      (is (= models (set (filter models (concat logged-models unlogged-models)))))
+      (is (empty? (filter logged-models unlogged-models))))
+    (testing "the models in `logged-models` derive :hook/change-log, and no other model does"
+      (is (= (set (filter models logged-models))
+             (set (filter #(isa? % :hook/change-log) models)))))
+    (testing "both name only models"
+      (is (empty? (remove models.resolution/model->namespace (concat logged-models unlogged-models)))))))
 
 (deftest cascade-test
   (when config/ee-available?
