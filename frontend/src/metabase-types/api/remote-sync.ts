@@ -15,6 +15,7 @@ export type RemoteSyncEntityModel =
   | "card"
   | "cardtest"
   | "collection"
+  | "customvizplugin"
   | "dashboard"
   | "dataapp"
   | "document"

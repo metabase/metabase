@@ -56,6 +56,10 @@
 (defmethod where :model/Document [_ {:keys [collection-set]}]
   [:and (when (seq collection-set) (in-collections collection-set)) [:= :exploration_id nil]])
 
+(defmethod where :model/CustomVizPlugin [_ _opts]
+  ;; a dev-only plugin has no stored bundle to export
+  [:not= :bundle_hash nil])
+
 (defmethod where :model/Database [_ {:keys [include-h2?]}]
   [:and
    [:= :router_database_id nil]
