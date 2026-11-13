@@ -15,7 +15,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mb-color-border-highlight);
+    outline: 2px solid var(--mb-color-input-focus);
     outline-offset: 2px;
   }
 
