@@ -204,11 +204,10 @@ export const ResourceCard = () => {
 
           <Button
             leftSection={<Icon name={icon} c="core-brand" size={16} />}
-            rightSection={<Icon name="chevrondown" size={12} />}
+            rightSection={<Icon name="chevronright" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
             aria-label={label}
-            size="lg"
             fullWidth
             styles={{ label: { flex: 1, textAlign: "left" } }}
           >
