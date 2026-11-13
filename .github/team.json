@@ -125,6 +125,17 @@
         "enthym-aa",
         "johnswanson"
       ]
+    },
+    {
+      "name": "Verification",
+      "label": ".Team/Verification",
+      "codeowner": "@metabase/verification",
+      "members": [
+        "escherize",
+        "sloansparger",
+        "galdre",
+        "undrfined"
+      ]
     }
   ]
 }

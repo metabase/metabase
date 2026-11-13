@@ -16,6 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -632,6 +633,25 @@
   (let [model (deps.dependency-types/dependency-type->model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
+(mu/defn readable-entities :- [:sequential :any]
+  "`(read-entities ids)`. If that throws, read each id alone and call `on-unreadable` with the id and exception of each
+  that fails, so one unreadable row doesn't block the rest."
+  [read-entities :- [:fn {:error/message "a function"} ifn?]
+   ids           :- [:set ::deps.dependency-types/entity-id]
+   on-unreadable :- [:fn {:error/message "a function"} ifn?]]
+  (try
+    (vec (read-entities ids))
+    (catch Exception e
+      (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
+      (into []
+            (mapcat (fn [id]
+                      (try
+                        (vec (read-entities #{id}))
+                        (catch Exception e
+                          (on-unreadable id e)
+                          nil))))
+            ids))))
+
 (mu/defn entity
   "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -643,8 +663,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-             :id [:in ids]))
+  (let [model (into [(deps.dependency-types/dependency-type->model entity-type)] columns)]
+    (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
 (mu/defn entity-with-columns
   "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
@@ -1143,7 +1163,45 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private failed-entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
+(mu/defn failed-analysis-entities :- [:sequential [:map
+                                                   [:id            ms/PositiveInt]
+                                                   [:entity_id     :string]
+                                                   [:name          :string]
+                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  "The entities of `entity-type` whose analysis failed, excluding archived and Metabase-managed content."
+  [entity-type :- (into [:enum] (keys failed-entity-columns))]
+  (let [model                           (deps.dependency-types/dependency-type->model entity-type)
+        {:keys [archived? collection?]} (failed-entity-columns entity-type)]
+    (t2/query {:select   (cond-> [:entity.id :entity.entity_id :entity.name]
+                           collection? (conj :entity.collection_id))
+               :from     [[(t2/table-name model) :entity]]
+               :join     [:analysis_finding [:and
+                                             [:= :analysis_finding.entity_id :entity.id]
+                                             [:= :analysis_finding.entity_type (name entity-type)]]]
+               :where    (cond-> [:and
+                                  [:= :analysis_finding.result false]
+                                  (mi/exclude-internal-content-hsql model :table-alias :entity)]
+                           archived? (conj [:= :entity.archived false]))
+               :order-by [[:entity.id :asc]]})))
+
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
+
+(mu/defn finding-errors-for-entities
+  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, oldest first."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (into []
+        (mapcat #(t2/select :model/AnalysisFindingError
+                            :analyzed_entity_type entity-type
+                            :analyzed_entity_id   [:in %]
+                            {:order-by [[:id :asc]]}))
+        (partition-all 1000 entity-ids)))
 
 (mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."

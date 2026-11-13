@@ -43,6 +43,11 @@
    :variance-minutes deps.settings/dependency-result-metadata-variance-minutes
    :run-batch!       #'run-batch!})
 
+(mu/defn run-batch-in-place! :- ::task.util/batch-outcome
+  "Run a batch of the UpdateResultMetadata job now rather than on its schedule."
+  []
+  (task.util/run-batch-in-place! job))
+
 (mu/defn trigger-result-metadata-job! :- :any
   "Trigger the UpdateResultMetadata job, unless a MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE that isn't positive
   disables it."

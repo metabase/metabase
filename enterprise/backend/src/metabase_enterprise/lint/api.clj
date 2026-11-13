@@ -1,0 +1,153 @@
+(ns metabase-enterprise.lint.api
+  "`/api/ee/lint`: the errors the dependency analysis finds in the instance's content, as a report for an agent or CI
+  step."
+  (:require
+   [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.util.handlers :as handlers]
+   [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+(set! *warn-on-reflection* true)
+
+(mr/def ::severity
+  [:enum :error :warning])
+
+(mr/def ::rule
+  [:map {:closed true}
+   [:severity    ::severity]
+   [:description :string]])
+
+;; `validation-exception-error` is an error: an entity the analysis couldn't check must not pass.
+(def ^:private rules
+  "One rule per analysis error type."
+  {:missing-column             {:severity    :error
+                                :description "A query reads a column its source does not have."}
+   :missing-table-alias        {:severity    :error
+                                :description "Native SQL reads a table no known table matches."}
+   :missing-table              {:severity    :error
+                                :description "A query reads a table that no longer exists."}
+   :missing-card               {:severity    :error
+                                :description "A query reads a saved question that no longer exists."}
+   :duplicate-column           {:severity    :error
+                                :description "A query returns two columns with the same name."}
+   :syntax-error               {:severity    :error
+                                :description "Native SQL does not parse."}
+   :validation-exception-error {:severity    :error
+                                :description "The analysis of the query failed."}})
+
+(mr/def ::result
+  "One error; `entity_id` keys into `entities`."
+  [:map {:closed true}
+   [:ruleId    ::lib.schema.validate/validate-error-type]
+   [:entity_id :string]
+   [:message   :string]
+   [:detail    [:maybe :string]]
+   [:cause     [:maybe ::deps.findings/cause]]])
+
+(mr/def ::entity
+  "An entity a result names, keyed by its serialization `entity_id`."
+  [:map {:closed true}
+   [:id   ms/PositiveInt]
+   [:type ::deps.findings/analyzed-type]
+   [:data [:map {:closed true}
+           [:name          :string]
+           [:collection_id [:maybe ms/PositiveInt]]]]])
+
+(mr/def ::report
+  [:map {:closed true}
+   [:status   [:enum :passed :failed]]
+   [:summary  [:map {:closed true}
+               [:errors   nat-int?]
+               [:warnings nat-int?]
+               [:entities nat-int?]]]
+   [:entities [:map-of :string ::entity]]
+   [:rules    [:map-of ::lib.schema.validate/validate-error-type ::rule]]
+   [:results  [:sequential ::result]]])
+
+(mu/defn- cause-text :- :string
+  "How a message names `cause`: by name, or by id when the entity no longer exists."
+  [{:keys [type id], entity-name :name} :- ::deps.findings/cause]
+  (if entity-name
+    (str (name type) " \"" entity-name "\"")
+    (str (name type) " " id " (deleted)")))
+
+(mu/defn- message :- :string
+  "A sentence for one error, from its type, detail and cause."
+  [{:keys [type detail cause]} :- ::deps.findings/error]
+  (case type
+    :missing-column
+    (if cause
+      (str "Column " detail " is not on " (cause-text cause))
+      (str "Column " detail " is not on any table the query reads"))
+
+    :missing-table-alias
+    (str "Native SQL reads " detail ", which no known table matches")
+
+    :missing-table
+    (if cause
+      (str "The query reads " (cause-text cause) ", which no longer exists")
+      "The query reads a table that no longer exists")
+
+    :missing-card
+    (if cause
+      (str "The query reads " (cause-text cause) ", which no longer exists")
+      "The query reads a saved question that no longer exists")
+
+    :duplicate-column
+    (str "The query returns column " detail " more than once")
+
+    :syntax-error
+    (if detail
+      (str "Native SQL does not parse: " detail)
+      "Native SQL does not parse")
+
+    :validation-exception-error
+    (if detail
+      (str "The analysis failed: " detail)
+      "The analysis failed")))
+
+(mu/defn- result :- ::result
+  [entity :- ::deps.findings/failed-entity
+   error  :- ::deps.findings/error]
+  {:ruleId    (:type error)
+   :entity_id (:entity_id entity)
+   :message   (message error)
+   :detail    (:detail error)
+   :cause     (:cause error)})
+
+(mu/defn- report :- ::report
+  [failed :- [:sequential ::deps.findings/failed-entity]]
+  (let [results (vec (for [entity failed, error (:errors entity)] (result entity error)))
+        counts  (frequencies (map #(get-in rules [(:ruleId %) :severity]) results))]
+    {:status   (if (:error counts) :failed :passed)
+     :summary  {:errors   (:error counts 0)
+                :warnings (:warning counts 0)
+                :entities (count failed)}
+     :entities (into {}
+                     (map (fn [{:keys [entity_id id type collection_id], entity-name :name}]
+                            [entity_id {:id   id
+                                        :type type
+                                        :data {:name entity-name :collection_id collection_id}}]))
+                     failed)
+     :rules    (select-keys rules (map :ruleId results))
+     :results  results}))
+
+(api.macros/defendpoint :post "/" :- ::report
+  "Lint report of the instance's cards, transforms and segments, for superusers. Each `result` is one error the query
+  analysis found, with its rule and, when traced, the entity that caused it. Pending analysis runs first, so the
+  report reflects every write committed before the request. Fails with a 503 when the analysis can't run: a job is
+  disabled or the instance is read-only."
+  [_route-params _query-params]
+  (api/check-superuser)
+  (deps.findings/drain-pending!)
+  (report (deps.findings/failed-entities)))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/lint` routes."
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)))

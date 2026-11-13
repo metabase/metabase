@@ -107,6 +107,21 @@
         (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 
+(mu/defn- record-failure! :- :nil
+  "Count a failure `e` to compute the dependencies of `entity-type` `entity-id`. The analysis only runs on current
+  dependencies, so an analyzable entity the job gives up on gets `e` as its finding, and is marked stale so the
+  analysis replaces that finding once its dependencies compute again."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (log/errorf "Computing the dependencies of %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (when (dependencies.db/record-dependency-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the dependencies of %s %s until it changes" (name entity-type) entity-id)
+    (when (contains? deps.analysis-finding/analyzable-entities entity-type)
+      (dependencies.db/mark-analysis-finding-statuses-stale! {entity-type #{entity-id}})
+      (deps.analysis-finding/record-failed-finding! entity-type entity-id e)))
+  nil)
+
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
   unless a write raised it meanwhile, or counting its failure, returning how many it took."
@@ -118,15 +133,15 @@
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (doseq [entity (when (seq statuses) (hydrated-entities entity-type (set (keys stale))))]
+      (doseq [entity (when (seq statuses)
+                       (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                          (set (keys stale))
+                                                          #(record-failure! entity-type %1 %2)))]
         (try
           (compute-deps-for-entity! entity-type entity)
           (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
-            (log/errorf "Computing the dependencies of %s %s failed: %s" type-name (:id entity) (ex-message e))
-            (when (dependencies.db/record-dependency-failure! entity-type (:id entity)
-                                                              (deps.settings/dependency-max-failures))
-              (log/warnf "Giving up on the dependencies of %s %s until it changes" type-name (:id entity)))
+            (record-failure! entity-type (:id entity) e)
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
       (count statuses))))
@@ -189,6 +204,11 @@
    :delay-minutes    deps.settings/dependency-backfill-delay-minutes
    :variance-minutes deps.settings/dependency-backfill-variance-minutes
    :run-batch!       #'run-batch!})
+
+(mu/defn run-batch-in-place! :- ::task.util/batch-outcome
+  "Run a batch of the UpdateDependencies job now rather than on its schedule."
+  []
+  (task.util/run-batch-in-place! job))
 
 (mu/defn trigger-dependency-job! :- :any
   "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive
