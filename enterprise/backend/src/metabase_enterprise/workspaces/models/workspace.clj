@@ -117,7 +117,7 @@
   Cascade-deletes `:unprovisioned` children via the FK."
   [id]
   (when (ws.db/workspace-has-active-databases? id)
-    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"
+    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; they must be torn down first"
                     {:status-code 409
                      :workspace_id id})))
   (ws.db/delete-workspace! id))

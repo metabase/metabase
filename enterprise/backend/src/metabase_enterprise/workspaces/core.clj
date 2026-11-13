@@ -322,6 +322,33 @@
                                                      (:status-code (ex-data (first failures))))
                                                    500)})))))
 
+(defn- clean-up-failed-create!
+  "Clean up every WorkspaceDatabase of `workspace-id` after its create failed. Deletes the rows with ids in
+  `never-started`, see [[delete-never-started-workspace-database!]], and tears down every other row. Continues past
+  failures, so each row gets its attempt. Sets a row whose cleanup fails to `:teardown_failed`: a failed destroy
+  already does, and a failure before the destroy, or on a never-started row, leaves the row's status as it was. A
+  row left `:provisioning` would refuse a delete as busy, and a row left `:provisioned` would make the failed
+  create look like one that succeeded. Throws the combined failures (500) when any cleanup failed. An error from
+  setting the status is attached to that row's failure as suppressed."
+  [workspace-id never-started]
+  (let [never-started? (set never-started)
+        failures       (into []
+                             (keep (fn [wsd]
+                                     (try
+                                       (if (never-started? (:id wsd))
+                                         (delete-never-started-workspace-database! (:id wsd))
+                                         (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner))
+                                       nil
+                                       (catch Throwable t
+                                         (try
+                                           (provisioning/mark-workspace-database-teardown-failed! (:id wsd))
+                                           (catch Throwable mark-t
+                                             (.addSuppressed t mark-t)))
+                                         t))))
+                             (ws.db/workspace-databases workspace-id))]
+    (when (seq failures)
+      (throw (combined-exception failures {:status-code 500})))))
+
 (defn- insert-workspace-or-find-retried!
   "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
   `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
@@ -434,8 +461,7 @@
       (do
         (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
           (let [cleanup-error (try
-                                (run! delete-never-started-workspace-database! never-started)
-                                (teardown-workspace-databases! (:id ws))
+                                (clean-up-failed-create! (:id ws) never-started)
                                 nil
                                 ;; Cleanup failed: the workspace and the failed rows are
                                 ;; kept so the teardown can be retried via delete. The
