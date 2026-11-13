@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
@@ -26,6 +27,12 @@ export const StructuredQueryRightSidebar = ({
   question,
   updateQuestion,
 }: StructuredQueryRightSidebarProps) => {
+  const query = question.query();
+  const summaryStageIndex = Lib.stageIndexes(query).findLast(
+    (stageIndex) =>
+      Lib.aggregations(query, stageIndex).length > 0 ||
+      Lib.breakouts(query, stageIndex).length > 0,
+  );
   return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
@@ -35,12 +42,13 @@ export const StructuredQueryRightSidebar = ({
   })
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
-        query={question.query()}
-        onQueryChange={(nextQuery) => {
-          const nextQuestion = question.setQuery(nextQuery);
-          updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
-        }}
-        stageIndex={-1}
+        query={query}
+        onQueryChange={(nextQuery) =>
+          updateQuestion(question.setQuery(nextQuery).setDefaultDisplay(), {
+            run: true,
+          })
+        }
+        stageIndex={summaryStageIndex ?? -1}
       />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)

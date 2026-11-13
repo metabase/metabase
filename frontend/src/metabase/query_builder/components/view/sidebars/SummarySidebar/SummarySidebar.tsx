@@ -10,21 +10,27 @@ import { t } from "ttag";
 import { useDndSensors } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
+import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
 
 import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
+import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import type {
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
+  SummaryQueryChangeOptions,
   SummaryWellId,
 } from "./types";
+import { updateSummaryFormula } from "./update-summary-formula";
 import {
   addField,
   areQueriesEqual,
@@ -34,8 +40,6 @@ import {
   getFieldSections,
   replaceWellWithField,
 } from "./utils";
-
-type SummarySidebarProps = UpdateQueryHookProps;
 
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
 
@@ -67,7 +71,27 @@ export function SummarySidebar({
   query,
   onQueryChange,
   stageIndex,
-}: SummarySidebarProps) {
+}: UpdateQueryHookProps) {
+  const dispatch = useDispatch();
+  const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
+  const handleQueryChange = (
+    nextQuery: Lib.Query,
+    options?: SummaryQueryChangeOptions,
+  ) => {
+    const result = updateSummaryFormula({
+      query,
+      nextQuery,
+      stageIndex,
+      generatedExpressions,
+      ...options,
+    });
+    dispatch(
+      setUIControls({
+        summaryGeneratedExpressions: result.generatedExpressions,
+      }),
+    );
+    onQueryChange(result.query);
+  };
   const tc = useTranslateContent();
   const sections = useMemo(
     () => translateSections(getFieldSections(query, stageIndex), tc),
@@ -77,7 +101,11 @@ export function SummarySidebar({
     Lib.aggregations(query, stageIndex).length > 0 ||
     Lib.breakouts(query, stageIndex).length > 0;
 
-  const handleWellAdd = (nextQuery: Lib.Query, wellId: SummaryWellId) => {
+  const handleWellAdd = (
+    nextQuery: Lib.Query,
+    wellId: SummaryWellId,
+    createdFormula = false,
+  ) => {
     const isGroupingWithoutValues =
       wellId === "columns" &&
       Lib.aggregations(nextQuery, stageIndex).length === 0;
@@ -85,9 +113,16 @@ export function SummarySidebar({
       ? Lib.aggregateByCount(nextQuery, stageIndex)
       : nextQuery;
     if (!areQueriesEqual(query, nextSummary)) {
-      onQueryChange(nextSummary);
+      handleQueryChange(nextSummary, { createdFormula });
     }
   };
+
+  const { bar, formulaInputs, draftFormula } = useSummaryFormulaBar({
+    query,
+    stageIndex,
+    onAdd: (nextQuery, wellId) =>
+      handleWellAdd(nextQuery, wellId, wellId === "columns"),
+  });
 
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
     handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
@@ -101,7 +136,7 @@ export function SummarySidebar({
   };
 
   const handleClearAll = () =>
-    onQueryChange(
+    handleQueryChange(
       clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
     );
 
@@ -139,14 +174,17 @@ export function SummarySidebar({
       onDragCancel={() => setDraggedItem(null)}
     >
       <Box className={S.sidebar} data-testid="summary-sidebar">
+        {bar}
         <Box className={S.wellsColumn}>
           <SummaryWells
             query={query}
             stageIndex={stageIndex}
             sections={sections}
             draggedItem={draggedItem}
+            formulaInputs={formulaInputs}
+            draftFormula={draftFormula}
             onPick={handleAdd}
-            onChange={onQueryChange}
+            onChange={handleQueryChange}
           />
           <Flex
             className={S.wellsFooter}

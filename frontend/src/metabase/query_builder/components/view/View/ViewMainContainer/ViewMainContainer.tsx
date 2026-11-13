@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
@@ -11,6 +12,8 @@ import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { useDispatch } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -26,14 +29,11 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
+import { useColumnFormulaBar } from "../../ColumnFormulaBar";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
-
-const clickActionMode = new Mode(getQueryMode, {
-  hasColumnShortcutActions: true,
-});
 
 interface ViewMainContainerProps {
   question: Question;
@@ -93,6 +93,7 @@ interface ViewMainContainerProps {
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
+  const dispatch = useDispatch();
   const {
     queryBuilderMode,
     question,
@@ -110,12 +111,28 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
+  const columnFormula = useColumnFormulaBar({
+    question,
+    readOnly: props.readOnly,
+    isActive: queryBuilderMode === "view",
+    onQuestionChange: (nextQuestion) => {
+      dispatch(setUIControls({ scrollToLastColumn: true }));
+      updateQuestion(nextQuestion, { run: true });
+    },
+  });
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const onAddColumn = columnFormula.open;
+  const clickActionMode = useMemo(
+    () =>
+      new Mode(getQueryMode, { hasColumnShortcutActions: true, onAddColumn }),
+    [onAddColumn],
+  );
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
   }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
@@ -149,6 +166,11 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         <QueryVisualization
           {...props}
           {...visualizationResultProps}
+          scrollToLastColumn={
+            visualizationResultProps.scrollToLastColumn &&
+            !props.isRunning &&
+            !props.isResultDirty
+          }
           noHeader
           className={CS.spread}
           mode={clickActionMode}
@@ -161,6 +183,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         />
       </DebouncedFrame>
       <ObjectDetailSidesheet />
+      {columnFormula.bar}
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />

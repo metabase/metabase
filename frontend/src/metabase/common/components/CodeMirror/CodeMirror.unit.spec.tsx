@@ -9,10 +9,33 @@ import {
   setSearchQuery,
 } from "@codemirror/search";
 import type { EditorView } from "@codemirror/view";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useMemo, useState } from "react";
 
-import { CodeMirror } from "./CodeMirror";
+import { defer } from "metabase/utils/promise";
+
+import { CodeMirror, type CodeMirrorProps } from "./CodeMirror";
+
+type SetupOpts = Pick<CodeMirrorProps, "indentWithTab" | "tabMovesFocus">;
+
+async function setup({ indentWithTab, tabMovesFocus }: SetupOpts = {}) {
+  const created = defer<EditorView>();
+  render(
+    <>
+      <button>Previous</button>
+      <CodeMirror
+        value="value"
+        autoFocus
+        indentWithTab={indentWithTab}
+        tabMovesFocus={tabMovesFocus}
+        onCreateEditor={created.resolve}
+      />
+      <button>Next</button>
+    </>,
+  );
+  return { view: await created.promise };
+}
 
 function SearchReplaceHarness({
   initialValue,
@@ -43,6 +66,22 @@ function SearchReplaceHarness({
 }
 
 describe("CodeMirror", () => {
+  it("keeps custom Tab indentation and backward focus when built-in bindings are disabled", async () => {
+    const { view } = await setup({ indentWithTab: false });
+    await userEvent.tab();
+    expect(view.state.doc.toString()).toBe("  value");
+    expect(view.hasFocus).toBe(true);
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Previous" })).toHaveFocus();
+  });
+
+  it("moves focus with Tab when navigation is enabled", async () => {
+    const { view } = await setup({ tabMovesFocus: true });
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Next" })).toHaveFocus();
+    expect(view.state.doc.toString()).toBe("value");
+  });
+
   it("keeps the find/replace panel open while matches remain and closes after the last replace", async () => {
     const initialValue = "test1, test2, test1, test3";
     let editorView: EditorView | undefined;

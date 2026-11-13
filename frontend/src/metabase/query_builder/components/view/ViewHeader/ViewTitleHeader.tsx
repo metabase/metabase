@@ -9,11 +9,12 @@ import type {
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { FormulaBarSlotTarget } from "../FormulaBar";
 import { ViewSection } from "../ViewSection";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
@@ -210,16 +211,19 @@ export function ViewTitleHeader({
         />
       </ViewSection>
 
-      {QuestionFiltersHeader.shouldRender({
-        question,
-        queryBuilderMode,
-      }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={updateQuestion}
-        />
-      )}
+      <Box className={ViewTitleHeaderS.FormulaBarAndFilters}>
+        {QuestionFiltersHeader.shouldRender({
+          question,
+          queryBuilderMode,
+        }) && (
+          <QuestionFiltersHeader
+            expanded={areFiltersExpanded}
+            question={question}
+            updateQuestion={updateQuestion}
+          />
+        )}
+        <FormulaBarSlotTarget className={ViewTitleHeaderS.FormulaBarSlot} />
+      </Box>
     </>
   );
 }

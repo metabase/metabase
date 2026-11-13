@@ -221,3 +221,19 @@
     padding-inline: 1.325rem;
   }
 }
+
+.FormulaBarAndFilters {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+}
+
+.FormulaBarSlot {
+  position: relative;
+  top: 1px;
+  z-index: 1;
+  align-self: start;
+}

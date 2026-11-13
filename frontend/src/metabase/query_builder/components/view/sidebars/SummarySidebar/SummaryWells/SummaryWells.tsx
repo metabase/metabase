@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box, Ellipsified } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -20,6 +21,10 @@ import {
 } from "../utils";
 
 import { DimensionBucketMenu } from "./DimensionBucketMenu";
+import {
+  DraftFormulaChip,
+  type DraftFormulaChipProps,
+} from "./DraftFormulaChip";
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
@@ -29,6 +34,8 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
+  draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
@@ -38,6 +45,8 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
+  formulaInputs,
+  draftFormula,
   draggedItem,
   onPick,
   onChange,
@@ -82,6 +91,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="values"
+          formulaInput={formulaInputs?.values}
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
@@ -103,6 +113,9 @@ export function SummaryWells({
               onRemove={() => handleRemove(item.clause)}
             />
           ))}
+          {draftFormula?.wellId === "values" && (
+            <DraftFormulaChip {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
       <SummaryWell
@@ -112,6 +125,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="columns"
+          formulaInput={formulaInputs?.columns}
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
           onPick={(field) => onPick("columns", field)}
@@ -148,6 +162,9 @@ export function SummaryWells({
               )}
             </WellChip>
           ))}
+          {draftFormula?.wellId === "columns" && (
+            <DraftFormulaChip {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
     </Box>

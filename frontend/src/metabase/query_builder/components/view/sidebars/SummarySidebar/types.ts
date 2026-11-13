@@ -4,6 +4,10 @@ import type { IconName } from "metabase-types/api";
 /** `values` is Summarize by, `columns` is Group by. */
 export type SummaryWellId = "values" | "columns";
 
+export type SummaryQueryChangeOptions = {
+  createdFormula?: boolean;
+};
+
 export type SummaryField =
   | { kind: "count" }
   | { kind: "column"; column: Lib.ColumnMetadata }
@@ -54,6 +58,7 @@ export type SummaryBucketOption = {
 
 export type SummaryDimensionItem = {
   clause: Lib.BreakoutClause;
+  expression?: Lib.ExpressionClause;
   key: string;
   label: string;
   bucketOptions: SummaryBucketOption[];
