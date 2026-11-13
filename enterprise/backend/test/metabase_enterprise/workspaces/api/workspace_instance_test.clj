@@ -176,7 +176,7 @@
       (testing "POST /current 200"
         (is (= "2" (version (mt/user-http-request-full-response
                              :crowberto :post 200 "ee/workspace-instance/current"
-                             {:name "Header" :databases {(mt/id) {:input_schemas ["PUBLIC"] :output {:schema "ws_hdr"}}}})))))
+                             {:databases [{:database_id (mt/id) :schema "ws_hdr"}]})))))
       (testing "DELETE /current 204"
         (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204 "ee/workspace-instance/current")))))
       (testing "GET /table-remappings 200"
