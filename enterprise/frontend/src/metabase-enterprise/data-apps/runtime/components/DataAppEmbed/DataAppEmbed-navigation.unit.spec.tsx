@@ -9,8 +9,9 @@ import {
 
 import userEvent from "@testing-library/user-event";
 
-import { render, renderHook, screen } from "__support__/ui";
+import { act, render, renderHook, screen, waitFor } from "__support__/ui";
 import { useDataAppLocation } from "embedding-sdk-package/hooks/public/use-data-app-location";
+import { navigate } from "embedding-sdk-package/lib/private/data-app-routing";
 
 import { DataAppEmbed } from "./DataAppEmbed";
 import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
@@ -179,4 +180,51 @@ describe("DataAppEmbed - router navigation", () => {
 
     expect(pushState).not.toHaveBeenCalled();
   });
+
+  it("reports the query as it appears in the url", () => {
+    const { onPathChange } = setupPathNavigation({ path: "sales" });
+
+    act(() => navigate("/search?q=a%20b&ids=1,2&flag"));
+
+    expect(window.location.search).toBe("?q=a%20b&ids=1,2&flag");
+    expect(onPathChange).toHaveBeenCalledWith(
+      "sales/search?q=a%20b&ids=1,2&flag",
+    );
+  });
+
+  it("reports the app root as the bare slug", async () => {
+    window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
+
+    const { onPathChange, rerender } = setupPathNavigation({
+      path: "sales/orders",
+    });
+
+    rerender({ path: "sales" });
+    act(() => navigate("/products"));
+    act(() => window.history.back());
+
+    await waitFor(() => expect(onPathChange).toHaveBeenCalledTimes(2));
+    expect(onPathChange).toHaveBeenLastCalledWith("sales");
+  });
+
+  it("does not report navigation that leaves the app", () => {
+    const { onPathChange } = setupPathNavigation({ path: "sales" });
+
+    act(() => navigate("/../other-app/foo"));
+
+    expect(window.location.pathname).toBe("/embed/embedded-apps/other-app/foo");
+    expect(onPathChange).not.toHaveBeenCalled();
+  });
 });
+
+function setupPathNavigation({ path }: { path: string }) {
+  const onPathChange = jest.fn<void, [string]>();
+
+  const view = renderHook(
+    ({ path }) =>
+      useDataAppPathNavigation({ slug: "sales", path, onPathChange }),
+    { initialProps: { path } },
+  );
+
+  return { ...view, onPathChange };
+}

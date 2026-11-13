@@ -78,9 +78,14 @@ const message = (
     ),
   );
 
-const pathChangeMessage = (iframe: HTMLIFrameElement, path: string) =>
+const pathChangeMessage = (
+  iframe: HTMLIFrameElement,
+  path: unknown,
+  overrides: Partial<MessageEventInit> = {},
+) =>
   message(iframe, "metabase.embed.dataAppPathChange", {
     data: { type: "metabase.embed.dataAppPathChange", data: { path } },
+    ...overrides,
   });
 
 function HostWithPathState() {
@@ -319,15 +324,88 @@ describe("DataApp", () => {
 
     const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
 
-    message(iframe, "metabase.embed.dataAppPathChange", {
+    pathChangeMessage(iframe, "boba-hq/orders", {
       origin: "https://other.example.com",
-      data: {
-        type: "metabase.embed.dataAppPathChange",
-        data: { path: "boba-hq/orders" },
-      },
     });
 
     expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+  });
+
+  it.each(["boba-hq/customers/acme%2Feu", "boba-hq/notes#a\\b", "other-app"])(
+    "ignores a reported path that `path` rejects or that names another app: %s",
+    (reportedPath) => {
+      render(<HostWithPathState />);
+
+      const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+
+      message(iframe, "metabase.embed.iframeReady");
+      pathChangeMessage(iframe, reportedPath);
+
+      expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    },
+  );
+
+  it("does not send an older reported path back to the app after a newer report", () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/orders");
+    pathChangeMessage(iframe, "boba-hq/orders/list");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/list",
+    );
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("sends new settings at a reported path when the locale changes", () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders");
+    postMessage.mockClear();
+
+    act(() =>
+      ensureMetabaseProviderPropsStore().setProps({
+        authConfig: CONFIG,
+        locale: "de",
+      }),
+    );
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({ path: "boba-hq/orders", locale: "de" }),
+      }),
+      ORIGIN,
+    );
+  });
+
+  it("does not call onPathChange for a path change message without a string path", () => {
+    const onPathChange = jest.fn<void, [string]>();
+    const onError = jest.fn((event: ErrorEvent) => event.preventDefault());
+    window.addEventListener("error", onError);
+
+    try {
+      const { iframe } = setup({ path: "boba-hq", onPathChange });
+
+      pathChangeMessage(iframe, 42);
+      message(iframe, "metabase.embed.dataAppPathChange");
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onPathChange).not.toHaveBeenCalled();
   });
 
   it("keeps the same iframe when a leading slash is added", () => {

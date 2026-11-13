@@ -27,17 +27,21 @@ export interface DataAppProps {
   path: string;
 
   /**
-   * Called with the new path when the user navigates inside the app,
-   * such as by clicking a link. It is not called when `path` changes.
+   * Called with the new path whenever the app's page changes, for example when the user
+   * clicks a link, goes back or forward, or the app redirects. It is not called for a page
+   * that the host navigated to by changing `path`.
    *
-   * The path has the same format as `path`, such as `my-store/orders/42?tab=items`.
+   * The path has the same format as `path`: the app slug, then the route, query and hash,
+   * such as `my-store/orders/42?tab=items`. Pages whose path `path` does not accept are not reported.
    *
    * @example
    * ```tsx
    * const [path, setPath] = useState("my-store/orders");
    *
-   * <button onClick={() => setPath("my-store/orders")}>Orders</button>
-   * <DataApp path={path} onPathChange={setPath} />
+   * <>
+   *   <button onClick={() => setPath("my-store/orders")}>Orders</button>
+   *   <DataApp path={path} onPathChange={setPath} />
+   * </>
    * ```
    **/
   onPathChange?: (path: string) => void;

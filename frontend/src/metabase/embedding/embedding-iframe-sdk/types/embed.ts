@@ -119,8 +119,8 @@ export type SdkIframeEmbedComponentTagMessage =
     }
   | SdkIframeEmbedTagDataAppPathChangeMessage;
 
-/** Sent when the user navigates inside a data app. */
-export type SdkIframeEmbedTagDataAppPathChangeMessage = {
+/** Sent when the page of a data app changes, except for navigation that the host requested. */
+type SdkIframeEmbedTagDataAppPathChangeMessage = {
   type: "metabase.embed.dataAppPathChange";
   data: { path: string };
 };

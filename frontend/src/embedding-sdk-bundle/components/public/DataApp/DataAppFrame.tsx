@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { match } from "ts-pattern";
+import { useLatest } from "react-use";
+import { P, match } from "ts-pattern";
 import { isEqual, omit } from "underscore";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/store/auth";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { listenForIframeMessages } from "embedding-sdk-shared/lib/listen-for-iframe-messages";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -56,7 +58,11 @@ export function DataAppFrame({
   const pathRef = useRef(path);
 
   // A ref so an inline callback does not re-send the settings on every render.
-  const onPathChangeRef = useRef(onPathChange);
+  const onPathChangeRef = useLatest(onPathChange);
+
+  // The latest path the iframe reported, and the path of the last effect run.
+  const reportedPathRef = useRef<string | null>(null);
+  const settingsPathRef = useRef(path);
 
   // An error belongs to the path it happened on, so a route change loads the iframe again.
   const [failure, setFailure] = useState<{
@@ -76,15 +82,13 @@ export function DataAppFrame({
   }, [path]);
 
   useLayoutEffect(() => {
-    onPathChangeRef.current = onPathChange;
-  }, [onPathChange]);
-
-  useLayoutEffect(() => {
     const iframe = iframeRef.current;
 
     if (!iframe || error) {
       return;
     }
+
+    const slug = getEmbeddedAppSlugFromPath(path);
 
     const isCurrentAuthRequest = () =>
       iframeRef.current === iframe &&
@@ -159,9 +163,21 @@ export function DataAppFrame({
           .with({ type: "metabase.embed.requestSessionToken" }, () => {
             authenticate();
           })
-          .with({ type: "metabase.embed.dataAppPathChange" }, ({ data }) => {
-            onPathChangeRef.current?.(data.path);
-          })
+          .with(
+            {
+              type: "metabase.embed.dataAppPathChange",
+              data: { path: P.string },
+            },
+            ({ data }) => {
+              // Ignore paths that `path` rejects, so `onPathChange={setPath}` cannot break the embed.
+              if (getEmbeddedAppSlugFromPath(data.path) !== slug) {
+                return;
+              }
+
+              reportedPathRef.current = data.path;
+              onPathChangeRef.current?.(data.path);
+            },
+          )
           .with({ type: "metabase.embed.handleLink" }, ({ data }) => {
             send({
               type: "metabase.embed.handleLinkResponse",
@@ -171,12 +187,18 @@ export function DataAppFrame({
           .otherwise(() => undefined),
     });
 
-    if (readyRef.current) {
+    // The host echoes reported paths back through `path`. The iframe is already
+    // on that page, and an older echo would move it back to a page it left.
+    const isPathChange = path !== settingsPathRef.current;
+    const isReportedPath = path === reportedPathRef.current;
+    settingsPathRef.current = path;
+
+    if (readyRef.current && !(isPathChange && isReportedPath)) {
       sendSettings();
     }
 
     return removeMessageListener;
-  }, [origin, path, authConfig, store, locale, error]);
+  }, [origin, path, authConfig, store, locale, error, onPathChangeRef]);
 
   if (error) {
     return <SdkError message={error} />;

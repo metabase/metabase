@@ -16,8 +16,8 @@ import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedd
 /**
  * Keeps the data app router and the host's `path` in sync.
  *
- * Navigates the router when the `path` prop changes, and calls
- * `onPathChange` when the user navigates inside the app.
+ * Navigates the router when `path` or `navigationRequest` changes, and calls
+ * `onPathChange` for every other change of the app's page.
  **/
 export function useDataAppPathNavigation({
   slug,
@@ -30,7 +30,7 @@ export function useDataAppPathNavigation({
   navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
   onPathChange?: (path: string) => void;
 }) {
-  // The host already knows about the paths it navigates to.
+  // True while the router follows the host's `path`, so the host is not told about its own navigation.
   const isNavigatingToHostPathRef = useRef(false);
 
   useEffect(() => {
@@ -39,8 +39,10 @@ export function useDataAppPathNavigation({
     }
 
     return subscribeToDataAppRouting(() => {
-      if (!isNavigatingToHostPathRef.current) {
-        onPathChange(getCurrentDataAppPath(slug));
+      const currentPath = getCurrentDataAppPath(slug);
+
+      if (!isNavigatingToHostPathRef.current && currentPath !== null) {
+        onPathChange(currentPath);
       }
     });
   }, [slug, onPathChange]);
@@ -74,16 +76,29 @@ function getCurrentUrl(): URL {
   const url = new URL(window.location.href);
 
   // Added by embed.js for loading iframes in parallel.
-  // It is not part of the app's path.
-  url.searchParams.delete(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME);
+  // It is not part of the app's path. `delete` re-encodes the whole query,
+  // so only call it when the parameter is there.
+  if (url.searchParams.has(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME)) {
+    url.searchParams.delete(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME);
+  }
 
   return url;
 }
 
-/** The current location in the same format as the host's `path`. */
-function getCurrentDataAppPath(slug: string): string {
-  const { pathname, search, hash } = getCurrentUrl();
-  const route = pathname.slice(getBasename().length);
+/**
+ * The current location in the same format as the host's `path`,
+ * or `null` when the router left this app.
+ */
+function getCurrentDataAppPath(slug: string): string | null {
+  const basename = getBasename();
 
-  return `${slug}${route}${search}${hash}`;
+  if (!basename.endsWith(`/${slug}`)) {
+    return null;
+  }
+
+  const { pathname, search, hash } = getCurrentUrl();
+  const route = pathname.slice(basename.length);
+
+  // The host's `path` for the app root is the bare slug.
+  return `${slug}${route === "/" ? "" : route}${search}${hash}`;
 }
