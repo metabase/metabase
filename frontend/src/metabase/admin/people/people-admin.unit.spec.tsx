@@ -5,6 +5,8 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupEnginesEndpoint,
+  setupSdkReact18HostsEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -424,6 +426,12 @@ function setupPeopleBackend({
 
   setupDatabaseListEndpoint([]);
   setupEnginesEndpoint({});
+  setupSdkReact18HostsEndpoint([]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "sdk-react-18-notice",
+    value: false,
+  });
 
   return {
     getMembershipId: (userId: number, groupId: number) =>
