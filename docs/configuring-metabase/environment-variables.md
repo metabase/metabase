@@ -489,6 +489,17 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DEPRECATED_AGENT_API_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.66.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+
+Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
+
 ### `MB_DISABLE_AUTO_SYNC`
 
 - Type: boolean
