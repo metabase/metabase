@@ -62,7 +62,7 @@
           "x-status": "hardening",
           "x-pr": 86735,
           "properties": {
-            "database-workspace-schema": { "type": "string", "minLength": 1, "description": "The schema this database's transforms write to (MySQL: a database name)." }
+            "database-workspace-schema": { "type": "string", "minLength": 1, "description": "The schema this database's transforms write to (MySQL: a database name). The sidecar refuses to boot when this value and the `workspace` section name different schemas for this database; see `workspaceSection`." }
           }
         }
       }
@@ -143,7 +143,7 @@
       "type": "object",
       "required": ["name", "databases"],
       "x-pr": 86735,
-      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock. Its absence does not turn `workspaces-enabled` off: a workspace stored by an earlier boot or by POST /current stays, with its remap rows. Use a fresh app DB or DELETE /current. `MB_WORKSPACES_ENABLED=false` leaves the remap rows.",
+      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock. Its absence does not turn `workspaces-enabled` off: a workspace stored by an earlier boot or by POST /current stays, with its remap rows. Use a fresh app DB or DELETE /current. `MB_WORKSPACES_ENABLED=false` leaves the remap rows. #86735: when a database's `settings.database-workspace-schema` and this section's entry for the same database (output.schema, or output.db when output.schema is not set) name different schemas, the sidecar refuses to boot and applies nothing from the file. The error is `Database \"<name>\" has two workspace schemas in config.yml: \"<schema>\" in its settings, \"<schema>\" in the workspace section.` The comparison ignores leading and trailing whitespace.",
       "properties": {
         "name": { "type": "string", "pattern": "\\S" },
         "id": {

@@ -12,9 +12,14 @@ info:
     (`EE/transform_hooks.clj:11`, `EE/query_processor/middleware.clj`.)
 
     Workspace mode is not a security boundary. Isolation comes only from the warehouse login. Workspace mode
-    redirects transform output and nothing else: native SQL writes, per-database model persistence and data-grid edits still
-    reach production when the login can write there. `POST /current` checks only the shape of the body, not the
-    namespaces it names (`src/metabase/workspaces/core.clj:46-77,100-112`).
+    redirects transform output. It refuses four features with 400 ("<feature> is not supported on a workspace
+    instance."): running a saved action, CSV upload, enabling model persistence (`POST /api/persist/enable`) and
+    setting up database routing. Native SQL writes still reach production when the login can write there. So does
+    per-database model persistence when model persistence is already enabled.
+    master: data-grid edits also reach production. #86603: the sidecar refuses a data-grid edit with 400 ("Editing
+    table data is not supported on a workspace instance.").
+    master: `POST /current` checks only the shape of the body, not the namespaces or the database ids it names
+    (`src/metabase/workspaces/core.clj:46-77,100-112`). #86735: it also refuses an unknown database id with 400.
 
     Remapping follows remap rows, not the mode: queries are rewritten whenever rows exist
     (`src/metabase/workspaces/core.clj:14-19`). master: booting without the `config.yml` `workspace:` section does
@@ -24,8 +29,8 @@ info:
     Request bodies: the server ignores unknown keys instead of rejecting them, also where a schema says
     `additionalProperties: false` (`src/metabase/api/macros.clj:428-437`).
 
-    Every `/api/ee/workspace-instance` route needs a session or API key, the `:workspaces` premium feature (402
-    otherwise), and a superuser on the sidecar (403 otherwise). The two core routes at the end of `paths` (#86735)
+    Every `/api/ee/workspace-instance` route needs a session or API key (401 otherwise), the `:workspaces` premium
+    feature (402 otherwise), and a superuser on the sidecar (403 otherwise). The two core routes at the end of `paths` (#86735)
     need no premium feature.
 
     #86735 (hardening) makes workspace mode two ordinary settings, so the settings API, env vars and `config.yml`
@@ -119,8 +124,8 @@ paths:
       summary: Enter workspace mode at runtime, without a restart. Persists across restarts.
       description: |
         Keyed by database id (config.yml keys by database name). The sidecar must already have the databases,
-        connected as the workspace user; this call does not carry credentials. The ids are not checked against
-        the instance's databases.
+        connected as the workspace user; this call does not carry credentials. master: the ids are not checked
+        against the instance's databases.
 
         #86735: the body and response become `WorkspaceInstanceSettings`. It turns `workspaces-enabled` on, sets
         each listed database's `database-workspace-schema` and clears it on every other database. 400 for an
@@ -186,10 +191,13 @@ paths:
       x-source: EE/api/workspace_instance.clj:122
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/TableRemapping" } }
           description: Remap rows.
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
@@ -240,8 +248,8 @@ paths:
       description: |
         `PUT /api/database/{id}`, Metabase's general database update. This contract covers only
         `settings.database-workspace-schema`; the route's other keys are out of scope. Settings merge into the
-        stored ones (a PATCH), and `null` unsets this one. The value is stored as sent and trimmed when read; a blank
-        value means no schema.
+        stored ones (a PATCH), and `null` unsets this one. The sidecar ignores leading and trailing whitespace in the
+        value; a blank value means no schema.
 
         A changed value deletes this database's remap rows, so reads do not follow old rows into the old schema.
         The value has no effect while `workspaces-enabled` is off. On a workspace instance, a transform whose
@@ -287,8 +295,8 @@ paths:
             when the same request changes `details` or `engine`).
         "403":
           description: |
-            Changing `database-workspace-schema` (setting or clearing it) needs a superuser, even for a user who may
-            otherwise edit the database: it is a `:visibility :admin` database-local setting. Plain-text body.
+            Sending `database-workspace-schema` needs a superuser, whatever the value: a new value, `null`, or the
+            stored value. A user who may otherwise edit the database also gets this 403. Plain-text body.
           content:
             text/plain:
               schema: { type: string }
@@ -348,6 +356,15 @@ components:
       schema: { type: string, const: "2" }
 
   responses:
+    Unauthenticated:
+      description: |
+        No valid session or API key. Body is the plain-text `Unauthenticated`. hardening (#86790): carries the
+        version header.
+      x-source: src/metabase/api/routes/common.clj:87
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
+      content:
+        text/plain: { schema: { type: string } }
     FeatureMissing:
       description: |
         The instance's token lacks the `:workspaces` feature. Body has `message` and
@@ -417,8 +434,7 @@ components:
       x-status: hardening
       x-pr: 86735
       description: |
-        Each database with a `database-workspace-schema`. A list, not a map keyed by id: request decoding silently
-        drops map entries that don't validate, so a malformed body would become a workspace with no databases.
+        Each database with a `database-workspace-schema`. `databases` is a list, not a map keyed by id.
         The `{db, schema}` the sidecar writes to is derived: `schema` is this value, `db` is the database's own
         catalog on SQL Server and BigQuery; on MySQL the value is the `db`. Unknown keys are ignored.
       type: object
@@ -449,9 +465,13 @@ components:
 
     TableRemapping:
       description: |
-        A row means a transform run targeted the table, not that the run succeeded. On master the row is written
-        when a run starts and kept after a failed run (`src/metabase/transforms/execute.clj:37`). Check the run's
-        own status in the transform API.
+        A row does not mean that a run succeeded. Check the run's own status in the transform API.
+
+        master: a row means a transform run targeted the table. The row is written when a run starts and kept
+        after a failed run (`src/metabase/transforms/execute.clj:37`).
+
+        #86604: the row is written after the run's write to the scratch table returns. A run that fails before
+        its write records nothing. A run can still fail after the row is written.
       type: object
       required: [id, database_id, from_db, from_schema, from_table_name, to_db, to_schema, to_table_name, created_at]
       x-source: EE/models/table_remapping.clj:4
