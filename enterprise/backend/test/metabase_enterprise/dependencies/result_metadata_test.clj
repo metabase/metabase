@@ -479,6 +479,22 @@
           (is (= before (t2/select-one-fn :updated_at :model/Card :id card-id)))
           (is (seq @submitted)))))))
 
+(deftest storing-card-leaves-dependencies-current-test
+  (testing "storing a re-derived card leaves its dependencies current, whatever schema the card was stored with, so
+           the dependency job never has work again from the result metadata job"
+    (doseq [card-schema [nil 20]]
+      (testing (str "card_schema " (or card-schema "current"))
+        (with-dependencies-feature
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
+            (run-jobs!)
+            (t2/update! (t2/table-name :model/Card) :id card-id
+                        (cond-> {:result_metadata (json/encode [])}
+                          card-schema (assoc :card_schema card-schema)))
+            (reprocess! card-id)
+            (rederive!)
+            (is (some? (column card-id "TOTAL")))
+            (is (not (deps.test/dependency-pending? :card card-id)))))))))
+
 (deftest sandboxed-creator-test
   (testing "a card is re-derived as no user, so its creator's sandbox doesn't decide its columns, and the columns its
            stored metadata lacks get no fingerprint"

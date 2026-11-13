@@ -23,8 +23,8 @@
    [:severity    ::severity]
    [:description :string]])
 
-;; `validation-exception-error` is a warning: the analysis threw rather than found something wrong with the query,
-;; so it must not fail a CI run on its own.
+;; `validation-exception-error` is an error although the analysis threw rather than found something wrong with the
+;; query: an entity it could not check must not let the report pass.
 (def ^:private rules
   "One rule per analysis error type."
   {:missing-column             {:severity    :error
@@ -39,7 +39,7 @@
                                 :description "A query returns two columns with the same name."}
    :syntax-error               {:severity    :error
                                 :description "Native SQL does not parse."}
-   :validation-exception-error {:severity    :warning
+   :validation-exception-error {:severity    :error
                                 :description "The analysis of the query failed."}})
 
 (mr/def ::result

@@ -8,7 +8,6 @@
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
-   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
@@ -28,9 +27,15 @@
    task.result-metadata/run-batch-in-place!
    task.analysis-finding/run-batch-in-place!])
 
-(mu/defn- drain-jobs! :- :nil
-  "Run the jobs' batches until none has anything left to do."
+(mu/defn drain-pending! :- :nil
+  "Run the dependency, result metadata and analysis jobs in place until none has anything left to do, so that the
+  findings reflect every write committed before the call. A write marks what it makes stale in its own transaction, so
+  nothing committed is missed; only the jobs' scheduling is deferred. Throws when the findings cannot be made current:
+  the app DB is read-only, or a job is disabled."
   []
+  (when (cloud-migration/read-only-mode)
+    (throw (ex-info (tru "The analysis cannot run while Metabase is in read-only mode.")
+                    {:status-code 503})))
   (loop [job 0, idle 0]
     ;; a job that worked may have made any job's entities stale, so the drain is done only once every job in a row
     ;; finds nothing
@@ -41,20 +46,6 @@
         :busy     (recur job idle)
         :disabled (throw (ex-info (tru "The analysis cannot run while one of its jobs is disabled by its batch size.")
                                   {:status-code 503}))))))
-
-(mu/defn drain-pending! :- :nil
-  "Run the dependency, result metadata and analysis jobs in place until none has anything left to do, so that the
-  findings reflect every write committed before the call. A write marks what it makes stale in its own transaction, so
-  nothing committed is missed; only the jobs' scheduling is deferred. One drain runs at a time across the cluster: a
-  caller that finds one running waits for it, then runs its own, which has only the writes since to take. Throws when
-  the findings cannot be made current: the app DB is read-only, or a job is disabled."
-  []
-  (when (cloud-migration/read-only-mode)
-    (throw (ex-info (tru "The analysis cannot run while Metabase is in read-only mode.")
-                    {:status-code 503})))
-  (loop []
-    (when (= :busy (task.util/run-locked! ::drain drain-jobs! :busy))
-      (recur))))
 
 ;;; ------------------------------------------- Reading the findings -------------------------------------------
 

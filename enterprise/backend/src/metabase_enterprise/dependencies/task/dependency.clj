@@ -107,6 +107,22 @@
         (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 
+(mu/defn- record-failure! :- :nil
+  "Count the failure `e` to compute the dependencies of the entity `entity-type` `entity-id`, which the job gives up on
+  after `dependency-max-failures` of them in a row. The analysis waits for current dependencies, so it never reaches
+  an entity given up on here: an analyzable one gets the failure as its finding instead, and is marked stale for the
+  analysis, which would otherwise keep that finding once the dependencies compute again without changing."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (log/errorf "Computing the dependencies of %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (when (dependencies.db/record-dependency-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the dependencies of %s %s until it changes" (name entity-type) entity-id)
+    (when (contains? deps.analysis-finding/analyzable-entities entity-type)
+      (dependencies.db/mark-analysis-finding-statuses-stale! {entity-type #{entity-id}})
+      (deps.analysis-finding/record-failed-finding! entity-type entity-id e)))
+  nil)
+
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
   unless a write raised it meanwhile, or counting its failure, returning how many it took."
@@ -118,15 +134,15 @@
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (doseq [entity (when (seq statuses) (hydrated-entities entity-type (set (keys stale))))]
+      (doseq [entity (when (seq statuses)
+                       (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                          (set (keys stale))
+                                                          #(record-failure! entity-type %1 %2)))]
         (try
           (compute-deps-for-entity! entity-type entity)
           (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
-            (log/errorf "Computing the dependencies of %s %s failed: %s" type-name (:id entity) (ex-message e))
-            (when (dependencies.db/record-dependency-failure! entity-type (:id entity)
-                                                              (deps.settings/dependency-max-failures))
-              (log/warnf "Giving up on the dependencies of %s %s until it changes" type-name (:id entity)))
+            (record-failure! entity-type (:id entity) e)
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
       (count statuses))))

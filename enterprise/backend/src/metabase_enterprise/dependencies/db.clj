@@ -16,6 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -631,6 +632,26 @@
    ids         :- [:set ::deps.dependency-types/entity-id]]
   (let [model (deps.dependency-types/dependency-type->model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
+
+(mu/defn readable-entities :- [:sequential :any]
+  "What `read-entities` returns for the set of entity ids `ids`. When reading them together throws, each is read on its
+  own, and `on-unreadable` is called with the id and the exception of each one whose read throws, so that one entity
+  that cannot be read does not keep the others from being processed."
+  [read-entities :- [:fn {:error/message "a function"} ifn?]
+   ids           :- [:set ::deps.dependency-types/entity-id]
+   on-unreadable :- [:fn {:error/message "a function"} ifn?]]
+  (try
+    (vec (read-entities ids))
+    (catch Exception e
+      (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
+      (into []
+            (mapcat (fn [id]
+                      (try
+                        (vec (read-entities #{id}))
+                        (catch Exception e
+                          (on-unreadable id e)
+                          nil))))
+            ids))))
 
 (mu/defn entity
   "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."

@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -55,21 +56,37 @@
          entity-type entity-id false
          #{(lib/validation-exception-error "Could not resolve a database for this entity.")})))))
 
+(mu/defn record-failed-finding! :- :nil
+  "Record the failure `e` to analyze the entity `entity-type` `entity-id` as its finding, so it shows as failed rather
+  than keep an older finding or none, logging rather than throwing a failure to record it."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (try
+    (models.analysis-finding/upsert-analysis!
+     entity-type entity-id false #{(lib/validation-exception-error (or (ex-message e) (.getName (class e))))})
+    (catch Exception record-e
+      (log/errorf "Recording the failure of entity %s %s failed: %s" (name entity-type) entity-id (ex-message record-e))))
+  nil)
+
 (mu/defn- analyze-entity!
   "Analyze `entity`, recording a failure as a failed finding before rethrowing it."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (try (upsert-analysis! entity)
-       (catch Exception e
+       (catch Throwable e
          (log/errorf "Analyzing entity %s %s failed: %s"
                      (t2/model entity) (:id entity) (ex-message e))
-         (try
-           (models.analysis-finding/upsert-analysis!
-            (deps.dependency-types/model->dependency-type (t2/model entity)) (:id entity) false
-            #{(lib/validation-exception-error (ex-message e))})
-           (catch Exception record-e
-             (log/errorf "Recording the failure of entity %s %s failed: %s"
-                         (t2/model entity) (:id entity) (ex-message record-e))))
+         (record-failed-finding! (deps.dependency-types/model->dependency-type (t2/model entity)) (:id entity) e)
          (throw e))))
+
+(mu/defn- record-analysis-failure! :- :nil
+  "Count a failure to analyze the entity `entity-type` `entity-id`, which the job gives up on after
+  `dependency-max-failures` of them in a row."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-id   :- ms/PositiveInt]
+  (when (dependencies.db/record-analysis-finding-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on analyzing %s %s until it changes" (name entity-type) entity-id))
+  nil)
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
@@ -114,15 +131,19 @@
       (let [taken (take-pending-statuses! batch-size)]
         (doseq [[entity-type statuses] taken
                 :let   [stale (into {} (map (juxt :entity_id :stale)) statuses)]
-                entity (dependencies.db/entities entity-type (set (keys stale)))]
+                entity (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
+                                                          (set (keys stale))
+                                                          (fn [entity-id e]
+                                                            (log/errorf "Reading %s %s failed: %s"
+                                                                        (name entity-type) entity-id (ex-message e))
+                                                            (record-failed-finding! entity-type entity-id e)
+                                                            (record-analysis-failure! entity-type entity-id)))]
           (try
             (analyze-entity! entity)
             (dependencies.db/clear-analysis-finding-status!
              entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*)
             (catch Throwable e
-              (when (dependencies.db/record-analysis-finding-failure! entity-type (:id entity)
-                                                                      (deps.settings/dependency-max-failures))
-                (log/warnf "Giving up on analyzing %s %s until it changes" (name entity-type) (:id entity)))
+              (record-analysis-failure! entity-type (:id entity))
               (when-not (instance? Exception e)
                 (throw e)))))
         (+ removed (reduce + (map count (vals taken))))))))
