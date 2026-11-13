@@ -1,0 +1,1 @@
+export { SmallMultiplesLayout } from "./SmallMultiplesLayout";

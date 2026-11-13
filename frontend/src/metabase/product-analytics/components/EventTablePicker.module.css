@@ -1,0 +1,13 @@
+/* Matches the mini picker's search results, which split each row 60/40. */
+.itemLabel {
+  min-width: 0;
+  overflow: hidden;
+  flex-basis: 60%;
+}
+
+.itemSection[data-position="right"] {
+  min-width: 0;
+  overflow: hidden;
+  flex-basis: 40%;
+  justify-content: end;
+}

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import {
   createMockDatabase,
   createMockSegment,
@@ -93,6 +93,81 @@ describe("TableSection", () => {
   });
 
   describe("tabs", () => {
+    describe("events", () => {
+      const EVENT_TABLE = createMockTable({ entity_type: "entity/EventTable" });
+      const GENERIC_TABLE = createMockTable({
+        entity_type: "entity/GenericTable",
+      });
+
+      it("shows the Events tab for an event table", () => {
+        setup({ table: EVENT_TABLE });
+
+        expect(screen.getByRole("tab", { name: /Events/ })).toBeInTheDocument();
+      });
+
+      it("doesn't show the Events tab for another table", () => {
+        setup({ table: GENERIC_TABLE });
+
+        expect(
+          screen.queryByRole("tab", { name: /Events/ }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("warns that a table with its columns set isn't usable until it's an event table", () => {
+        const roles = {
+          schema: "snowplow",
+          settings: {
+            "columns.timestamp": "derived_tstamp",
+            "columns.person": "domain_userid",
+          },
+        };
+        setup({
+          table: { ...GENERIC_TABLE, detected_event_settings: roles },
+          activeTab: "events",
+        });
+        expect(
+          within(screen.getByRole("tab", { name: /Events/ })).getByRole("img", {
+            name: /warning/,
+          }),
+        ).toBeInTheDocument();
+      });
+
+      it("doesn't warn about an event table that's set up", () => {
+        setup({
+          table: {
+            ...EVENT_TABLE,
+            detected_event_settings: {
+              schema: "snowplow",
+              settings: {
+                "columns.timestamp": "derived_tstamp",
+                "columns.person": "domain_userid",
+              },
+            },
+          },
+          activeTab: "events",
+        });
+
+        expect(
+          within(screen.getByRole("tab", { name: /Events/ })).queryByRole(
+            "img",
+            { name: /warning/ },
+          ),
+        ).not.toBeInTheDocument();
+      });
+
+      it("shows the Events tab for another table opened on it, to set it up", () => {
+        setup({ table: GENERIC_TABLE, activeTab: "events" });
+
+        expect(screen.getByRole("tab", { name: /Events/ })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        expect(
+          screen.getByRole("button", { name: "Set entity type to Event" }),
+        ).toBeInTheDocument();
+      });
+    });
+
     it("should render Fields and Segments tabs", () => {
       setup({ activeTab: "field" });
 

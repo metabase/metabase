@@ -6,6 +6,11 @@
   gap: var(--mantine-spacing-sm);
 }
 
+.hint {
+  margin-inline-start: var(--mantine-spacing-xxs);
+  vertical-align: middle;
+}
+
 /* Important that margin-inline is set in a class so that
    the `style prop` can override it's value. */
 .root {

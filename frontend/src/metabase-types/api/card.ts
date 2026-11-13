@@ -484,6 +484,27 @@ export type VisualizationSettings = {
   /** Explicit order, labels, colors, and enabled state for funnel steps. */
   "funnel.rows"?: SeriesOrderSetting[];
 
+  /** Show the total rows in a stacked chart's tooltip. Not user-editable. */
+  "graph.tooltip_show_stack_totals"?: boolean;
+
+  /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
+  "product_analytics.funnel_steps"?: boolean;
+
+  /** A chart per value of this column, one above another. Not user-editable. */
+  "small_multiples.column"?: string | null;
+
+  /**
+   * Draws split panels as a chart per breakout value, scrolling, rather than
+   * panels in one chart. Not user-editable.
+   */
+  "graph.split_panels_small_multiples"?: boolean;
+
+  /** Each funnel step's bar color, by step. Set from the event analysis display panel. */
+  "product_analytics.funnel_step_colors"?: string[];
+
+  /** Draws a sankey chart as product analytics paths. Not user-editable. */
+  "product_analytics.paths"?: boolean;
+
   /** Conditional formatting rules for table cells. */
   "table.column_formatting"?: ColumnFormattingSetting[];
 
@@ -568,6 +589,15 @@ export type VisualizationSettings = {
   /** Formatting for Sankey edge labels. */
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
+  /** Result column name that splits each Sankey flow into one per value. Not user-editable yet. */
+  "sankey.breakout"?: string;
+
+  /** A Sankey per breakout value, one above another. */
+  "sankey.split_panels"?: boolean;
+
+  /** Colors for Sankey breakout values, keyed by formatted value. Not user-editable yet. */
+  "sankey.breakout_colors"?: Record<string, string>;
+
   /** Treemap settings */
   "treemap.grouping"?: string;
   "treemap.sub_grouping"?: string | null;
@@ -617,6 +647,8 @@ export type VisualizationSettings = {
 
   /** Draw timeline events on time series charts. */
   "timeline_events.enabled"?: boolean;
+
+  "cohort.color"?: string;
 
   [key: string]: any;
 } & EmbedVisualizationSettings;

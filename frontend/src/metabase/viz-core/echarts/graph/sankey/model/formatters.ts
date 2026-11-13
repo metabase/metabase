@@ -22,9 +22,12 @@ export const getSankeyFormatters = (
 
   const node = (node: SankeyNode) =>
     !node.hasOutputs ? target(node.rawName) : source(node.rawName);
+  const nodeLabel = (node: SankeyNode) =>
+    !node.hasOutputs ? target(node.displayName) : source(node.displayName);
 
   return {
     node,
+    nodeLabel,
     source,
     target,
     value: memoize((value) => {

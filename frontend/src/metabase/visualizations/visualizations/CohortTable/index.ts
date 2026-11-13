@@ -1,0 +1,1 @@
+export { CohortTable } from "./CohortTable";

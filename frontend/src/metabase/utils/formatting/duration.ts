@@ -56,3 +56,27 @@ export function formatDurationLong(durationMs: number): string {
   // asHours (vs hours()) so very long backfills don't wrap past 24h.
   return t`${Math.floor(d.asHours())}h ${d.minutes()}m`;
 }
+
+/**
+ * A compact duration in at most two units, e.g. "45s", "12m", "3h 20m" or
+ * "2d 4h". Rounds to the smaller unit shown; negative inputs clamp to 0s.
+ */
+export function formatDurationShort(durationMs: number): string {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1_000));
+  if (totalSeconds < 60) {
+    return t`${totalSeconds}s`;
+  }
+  const totalMinutes = Math.round(totalSeconds / 60);
+  if (totalMinutes < 60) {
+    return t`${totalMinutes}m`;
+  }
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (totalHours < 24) {
+    return minutes === 0 ? t`${totalHours}h` : t`${totalHours}h ${minutes}m`;
+  }
+  const roundedHours = Math.round(totalMinutes / 60);
+  const days = Math.floor(roundedHours / 24);
+  const hours = roundedHours % 24;
+  return hours === 0 ? t`${days}d` : t`${days}d ${hours}h`;
+}
