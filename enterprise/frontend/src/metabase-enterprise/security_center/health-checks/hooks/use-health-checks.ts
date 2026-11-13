@@ -22,7 +22,7 @@ export const useHealthChecks = () => {
     if (recheckError) {
       sendToast({
         variant: "negative",
-        message: t`Failed to re-check. Please try again.`,
+        message: t`Failed to refresh health checks. Please try again.`,
       });
     }
   };

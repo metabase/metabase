@@ -126,19 +126,19 @@ describe("HealthChecksPage", () => {
   it("shows how many checks pass", async () => {
     await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK] });
 
-    expect(screen.getByText("0 of 2 checks pass")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 health checks pass")).toBeInTheDocument();
   });
 
   it("uses the singular verb when one check passes", async () => {
     await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK, PASSING_CHECK] });
 
-    expect(screen.getByText("1 of 3 checks passes")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 health checks passes")).toBeInTheDocument();
   });
 
   it("shows the all clear state only when every check passes", async () => {
     await setup({ checks: [PASSING_CHECK] });
 
-    expect(screen.getByText("All security checks pass")).toBeInTheDocument();
+    expect(screen.getByText("All health checks pass")).toBeInTheDocument();
     expect(screen.queryByTestId(/^health-check-card-/)).not.toBeInTheDocument();
 
     await openGroup(/Passed/);
@@ -150,7 +150,7 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [UNKNOWN_CHECK, PASSING_CHECK] });
 
     expect(
-      screen.queryByText("All security checks pass"),
+      screen.queryByText("All health checks pass"),
     ).not.toBeInTheDocument();
   });
 
@@ -161,7 +161,7 @@ describe("HealthChecksPage", () => {
       screen.getByText("No health checks apply to this instance."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("All security checks pass"),
+      screen.queryByText("All health checks pass"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "sync icon Refresh" }),
@@ -521,7 +521,7 @@ describe("HealthChecksPage", () => {
     );
 
     expect(
-      await screen.findByText("All security checks pass"),
+      await screen.findByText("All health checks pass"),
     ).toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls(
@@ -556,7 +556,9 @@ describe("HealthChecksPage", () => {
     );
 
     expect(
-      await screen.findByText("Failed to re-check. Please try again."),
+      await screen.findByText(
+        "Failed to refresh health checks. Please try again.",
+      ),
     ).toBeInTheDocument();
   });
 

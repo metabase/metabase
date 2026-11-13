@@ -23,7 +23,7 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
         size="compact"
         color="success"
         icon={<Icon name={icon} />}
-        title={t`All security checks pass`}
+        title={t`All health checks pass`}
       />
     );
   }
@@ -33,8 +33,8 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   const summary = c(
     "{0} is the number of passing checks, {1} is the total number of checks",
   ).ngettext(
-    msgid`${passedCount} of ${totalCount} checks passes`,
-    `${passedCount} of ${totalCount} checks pass`,
+    msgid`${passedCount} of ${totalCount} health checks passes`,
+    `${passedCount} of ${totalCount} health checks pass`,
     passedCount,
   );
 
