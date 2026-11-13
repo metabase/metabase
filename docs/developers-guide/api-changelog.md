@@ -98,6 +98,12 @@ summary: Breaking changes to the Metabase API, listed by release.
   `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
   way.
 
+- `PUT /api/collection/:id` with `{"archived": true}` answers `400 Bad Request` for a collection in the `transforms`
+  namespace (a transforms folder). Unarchiving a transforms folder still works.
+
+- New `DELETE /api/transform/collection/:id` deletes a transforms folder, its subfolders and every transform in them.
+  It keeps the output tables of the transforms. With `delete-tables=true`, it drops the output tables too.
+
 - `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
   subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its
   dashboard's collection, and it has no collection position. `POST` accepts a `collection_id` that is absent, `null`

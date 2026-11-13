@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -243,3 +244,28 @@
                          {:object transform
                           :user-id api/*current-user-id*})
   nil)
+
+(mu/defn delete-transforms-folder! :- :nil
+  "Delete the transforms folder `collection`, its subfolders and every Transform in them. With `delete-tables?`,
+  drop the output table of each Transform first. Throws a 400 unless `collection` is in the transforms namespace,
+  and a 403 unless the current user can write every Transform inside; nothing is deleted then. Returns nil."
+  [collection     :- :metabase.collections.schema/collection
+   delete-tables? :- :boolean]
+  (api/check-400 (= collections/transforms-ns (:namespace collection))
+                 (deferred-tru "Only a transforms folder can be deleted this way."))
+  (let [collection-ids (cons (:id collection) (collections/descendant-ids collection))
+        transforms     (transforms.db/transforms-in-collections collection-ids)]
+    ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
+    ;; write, and from the premium feature of their type.
+    (run! api/write-check transforms)
+    ;; Drop the tables before the transaction, in the order of the single delete in the frontend (table, then
+    ;; transform). A failed drop stops the delete with every Transform row in place, so the user can retry; the tables
+    ;; dropped before it stay dropped. `delete-target-table!` needs the Transform row to find its target.
+    (when delete-tables?
+      (run! transforms-base.u/delete-target-table! transforms))
+    (t2/with-transaction [_]
+      ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
+      ;; deletes the subfolders.
+      (run! delete-transform! transforms)
+      (transforms.db/delete-collection! (:id collection)))
+    nil))

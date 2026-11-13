@@ -2283,7 +2283,15 @@
 ;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
 (defmethod serialization/before-load :model/Collection [_ items]
-  (mapv (fn [{:keys [local] :as item}]
+  (mapv (fn [{:keys [local row] :as item}]
+          ;; An import skips `update-collection!`, so an export from an older version can bring back an archived
+          ;; transforms folder.
+          (when (and (:archived row)
+                     (= transforms-ns (some-> (:namespace row) keyword)))
+            (throw (ex-info (tru "Transforms folder \"{0}\" is archived and cannot be imported. Delete it in the source, or unarchive it there, and export again."
+                                 (:name row))
+                            {:status-code 400
+                             :entity_id   (:entity_id row)})))
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))

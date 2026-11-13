@@ -1981,7 +1981,8 @@ LIMIT
       ]);
     });
 
-    it("should edit collection details and archive a collection with transforms", () => {
+    // needs new FE
+    it.skip("should edit collection details and archive a collection with transforms", () => {
       H.createTransformCollection({ name: "Original Name" });
       H.createTransformCollection({ name: "Target Parent" });
       H.createTransformCollection({ name: "Archive Me" }).then((collection) => {

@@ -70,6 +70,25 @@
             (is (=? {:status :success} (remote-sync.tu/push! url nil)))
             (is (nil? (remote-sync.tu/entity-path! url "main" daily)))))))))
 
+(deftest push-after-transforms-folder-delete-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Collection folder    {:name "Folder" :namespace "transforms" :location "/"}
+                       :model/Collection subfolder {:name      "Subfolder"
+                                                    :namespace "transforms"
+                                                    :location  (str "/" (:id folder) "/")}
+                       :model/Transform  outer     {:name "Outer transform" :collection_id (:id folder)}
+                       :model/Transform  inner     {:name "Inner transform" :collection_id (:id subfolder)}]
+          (let [deleted       [folder subfolder outer inner]
+                {v1 :version} (remote-sync.tu/push! url nil)]
+            (testing "a push commits the transforms folder, its subfolder and the transforms in them"
+              (is (every? #(some? (remote-sync.tu/entity-path! url "main" %)) deleted)))
+            (mt/user-http-request :crowberto :delete 204 (str "transform/collection/" (:id folder)))
+            (testing "the push after the folder delete removes them from the remote"
+              (is (=? {:status :success :outcome {:kind "pushed"}} (remote-sync.tu/push! url v1)))
+              (is (every? #(nil? (remote-sync.tu/entity-path! url "main" %)) deleted)))))))))
+
 (deftest pull-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
