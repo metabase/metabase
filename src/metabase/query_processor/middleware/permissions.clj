@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -15,7 +15,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -77,8 +76,6 @@
                      *current-user-id*))
         (check-audit-db-permissions outer-query))
       (when *current-user-id*
-        (log/tracef "Checking query permissions. Current user permissions = %s"
-                    (pr-str (perms/permissions-for-user *current-user-id*)))
         (check-query-does-not-access-inactive-tables outer-query)
         (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
               source-card-ids (:card-ids required-perms)]
@@ -157,7 +154,6 @@
 (mu/defn check-query-action-permissions*
   "Throws unless the current user can run an action with the already preprocessed `query`."
   [{database-id :database, :as query} :- ::lib.schema/query]
-  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (check-no-sandboxed-action-access database-id)
   (when *card-id*
     (query-perms/check-card-read-perms database-id *card-id*))

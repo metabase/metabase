@@ -1920,21 +1920,6 @@
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
-;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
-(defmethod mi/perms-objects-set :model/Collection
-  [collection-or-id read-or-write]
-  (let [collection (if (integer? collection-or-id)
-                     (collections.db/collection-id-and-namespace collection-or-id)
-                     collection-or-id)]
-    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (premium-features/enable-snippet-collections?)))
-      #{}
-      ;; This is not entirely accurate as you need to be a superuser to modify a collection itself (e.g., changing its
-      ;; name) but if you have write perms you can add/remove cards
-      #{(case read-or-write
-          :read  (perms/collection-read-path (u/the-id collection-or-id))
-          :write (perms/collection-readwrite-path (u/the-id collection-or-id)))})))
-
 (def instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")

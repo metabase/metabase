@@ -5,6 +5,7 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -29,17 +30,25 @@
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set :model/TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskHistory rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.

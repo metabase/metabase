@@ -623,13 +623,12 @@
       (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
 
 (defmethod search-query-for-model "table"
-  [model {:keys [current-user-perms table-db-id], :as search-ctx}]
-  (when (seq current-user-perms)
-    (-> (base-query-for-model model search-ctx)
-        (add-table-db-id-clause table-db-id)
-        (add-table-where-clauses model search-ctx)
-        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
-        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
+  [model {:keys [table-db-id], :as search-ctx}]
+  (-> (base-query-for-model model search-ctx)
+      (add-table-db-id-clause table-db-id)
+      (add-table-where-clauses model search-ctx)
+      (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
+      (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id])))
 
 (defn- extract-and-hoist-ctes
   "Extract :with clauses from a collection of queries and return a map with:

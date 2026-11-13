@@ -175,12 +175,6 @@
   (pre-delete-check-sandbox-constraints-for-segment segment)
   segment)
 
-(defmethod mi/perms-objects-set :model/Segment
-  [segment read-or-write]
-  (let [table (or (:table segment)
-                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
-
 (defn- maybe-migrated-segment-definition
   [segment]
   (try

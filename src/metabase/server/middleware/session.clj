@@ -320,8 +320,8 @@
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
-  [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
+  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]], and
+  [[metabase.settings.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
@@ -329,7 +329,6 @@
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
-  *  `*current-user-permissions-set*`   delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]

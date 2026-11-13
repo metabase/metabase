@@ -22,7 +22,7 @@
 (doto :model/AuthIdentity
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
 (defn- parse-credentials-timestamps-out

@@ -1,8 +1,6 @@
 (ns metabase.collections.models.collection.root
   (:require
    [medley.core :as m]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.path :as permissions.path]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -29,17 +27,6 @@
   Class
   (dispatch-value [klass]
     klass))
-
-(defmethod mi/perms-objects-set RootCollection
-  [collection read-or-write]
-  {:pre [(map? collection)]}
-  ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE snippet collections are enabled
-  (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (premium-features/enable-snippet-collections?)))
-    #{}
-    #{((case read-or-write
-         :read  permissions.path/collection-read-path
-         :write permissions.path/collection-readwrite-path) collection)}))
 
 (defn unrestricted-snippets?
   "Whether `collection`, a Collection or a root Collection, is in the snippets namespace while EE snippet Collections

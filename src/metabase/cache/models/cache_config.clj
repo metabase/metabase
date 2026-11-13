@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -45,8 +46,10 @@
     "root"      (mi/superuser?)
     "database"  (boolean (some-> target-database (t2/hydrate :can_write) mi/can-write?))
     ("dashboard" "question")
-    (mi/current-user-has-full-permissions?
-     (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
+    (perms/collection-permission-at-least?
+     (get (perms/collection-permissions-for-user (api/current-user-info) [target-collection-id] {:root-namespace nil})
+          target-collection-id)
+     :read-and-write)))
 
 (methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
   "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they

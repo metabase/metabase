@@ -26,10 +26,9 @@
   permissions matching an path or path using `LIKE`; see [[metabase.warehouses.models.database/pre-delete]] for
   an example of the sort of efficient queries the prefix system facilitates.
 
-  The union of all permissions the current User's gets from all groups of which they are a member are automatically
-  bound to [[metabase.api.common/*current-user-permissions-set*]] by
-  [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
-  queries are ran in a non-API thread (e.g. for scheduled Dashboard Subscriptions).
+  A User's permissions are answered by the bulk functions of [[metabase.permissions.collection-permissions]],
+  [[metabase.permissions.application-permissions]] and the data permission namespaces, which read the rows of the
+  groups they are a member of every time they are asked.
 
   ### Different types of permissions
 
@@ -100,9 +99,8 @@
   newer [[metabase.models.interface/can-create?]] and [[metabase.models.interface/can-update?]] methods.
   Implementations for these methods live in `metabase.models.*` namespaces.
 
-  The implementation of these methods is up to individual models. The majority of implementations check whether
-  [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
-  using [[set-has-full-permissions?]], or for a set of paths using [[set-has-full-permissions-for-set?]].
+  The implementation of these methods is up to individual models, which hydrate `:can_read` and `:can_write` in
+  batches from the bulk permission functions.
 
   ### Determining query permissions
 
@@ -159,15 +157,12 @@
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
   (:require
-   [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
-   [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -228,65 +223,6 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
-(defn- granting-paths
-  "The permissions paths that grant full access to `path` — `path` itself and each of its ancestors, most specific
-  first:
-
-    (granting-paths \"/a/b/c/\") ; => [\"/a/b/c/\" \"/a/b/\" \"/a/\" \"/\"]
-
-  Every permissions path ends in a slash (see this namespace's docstring), so a granted path is a prefix of `path`
-  exactly when it is one of these. There is only one per segment of `path`, which is what lets
-  [[set-has-full-permissions?]] answer with a handful of hash lookups instead of a scan of every path the User was
-  granted. A `path` that does not end in a slash can have no descendants, so it only ever matches itself."
-  [^String path]
-  (loop [acc (cond-> (transient [])
-               (not (str/ends-with? path "/")) (conj! path))
-         i   (.lastIndexOf path (int \/))]
-    (if (neg? i)
-      (persistent! acc)
-      (recur (conj! acc (.substring path 0 (inc i)))
-             (.lastIndexOf path (int \/) (dec i))))))
-
-(mu/defn set-has-full-permissions? :- :boolean
-  "Does `permissions-set` grant *full* access to object with `path`? A `nil` `permissions-set` grants nothing."
-  [permissions-set :- [:maybe [:set :string]]
-   path            :- :string]
-  (boolean (and permissions-set
-                (some permissions-set (granting-paths path)))))
-
-(mu/defn set-has-full-permissions-for-set? :- :boolean
-  "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set :- [:maybe [:set :string]]
-   paths-set       :- [:set :string]]
-  (every? #(set-has-full-permissions? permissions-set %) paths-set))
-
-(mu/defn set-has-application-permission-of-type? :- :boolean
-  "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
-  [permissions-set :- [:maybe [:set :string]]
-   perm-type       :- [:enum :setting :monitoring :subscription]]
-  (set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type)))
-
-(mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
-  "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
-  This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
-  Collection if `collection_id` is `nil`."
-  ([collection-id :- [:maybe ms/PositiveInt]
-    read-or-write :- [:enum :read :write]]
-   (perms-objects-set-for-parent-collection nil collection-id read-or-write))
-
-  ([collection-namespace :- [:maybe ms/KeywordOrString]
-    collection-id        :- [:maybe ms/PositiveInt]
-    read-or-write        :- [:enum :read :write]]
-   ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
-   (let [path-fn (case read-or-write
-                   :read  permissions.path/collection-read-path
-                   :write permissions.path/collection-readwrite-path)]
-     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
-     ;; Collection
-     #{(path-fn (or collection-id
-                    {:metabase.collections.models.collection.root/is-root? true
-                     :namespace                                collection-namespace}))})))
-
 (mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
   "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
   `collection-id`, or for the Root Collection when `collection-id` is `nil`. Reflects explicit grant rows only, so
@@ -341,18 +277,6 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(defn- clear-current-user-cached-permissions!
-  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
-  Called by [[metabase.permissions.models.permissions/delete-related-permissions!]]
-  and [[metabase.permissions.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a
-  current user and then grant or revoke permissions for that user without rebinding it."
-  []
-  (when-let [current-user-id api/*current-user-id*]
-    ;; [[api/*current-user-permissions-set*]] is dynamically bound
-    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
-      (.set #'api/*current-user-permissions-set* (delay (permissions.user/user-permissions-set current-user-id)))))
-  nil)
-
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
@@ -373,17 +297,16 @@
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths)
-      (clear-current-user-cached-permissions!))))
+      (permissions.db/delete-related-permissions! group-id path paths))))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
+  "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
     (permissions.db/insert-permissions! (map (fn [path-object]
                                                {:group_id (u/the-id group-or-id) :object path-object})
                                              (distinct (conj (perms.u/->v2-path path) path))))
-    (clear-current-user-cached-permissions!)
+    nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))

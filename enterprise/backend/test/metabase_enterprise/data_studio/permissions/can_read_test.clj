@@ -3,7 +3,6 @@
   Published tables should grant database read access via collection permissions."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -44,10 +43,7 @@
                     ;; Revoke from both groups since user is in All Users automatically
                     (perms/revoke-collection-permissions! group-id collection-id)
                     (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (if collection-readable?
-                                                                  #{(perms/collection-read-path collection-id)}
-                                                                  #{}))]
+                (mt/with-current-user user-id
                   (is (= (and (contains? features :library)
                               collection-readable?
                               table-is-published?)

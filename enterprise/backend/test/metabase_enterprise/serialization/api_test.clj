@@ -247,7 +247,6 @@
       :is-sandboxed-user?    false
       :is-routed-user?       false
       :models                #{model}
-      :current-user-perms    #{"/"}
       :search-string         search-string}))))
 
 (deftest export-happy-path-test

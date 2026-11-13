@@ -5,7 +5,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
@@ -90,10 +89,7 @@
                       ;; Revoke from both groups since user is in All Users automatically
                       (perms/revoke-collection-permissions! group-id collection-id)
                       (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                  (binding [*current-user-id*              user-id
-                            *current-user-permissions-set* (delay (if collection-readable?
-                                                                    #{(perms/collection-read-path collection-id)}
-                                                                    #{}))]
+                  (mt/with-current-user user-id
                     (is (= (and (contains? features :library)
                                 collection-readable?
                                 table-is-published?
@@ -119,9 +115,7 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-              (binding [*current-user-id*              user-id
-                        *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                        *is-superuser?*                false]
+              (mt/with-current-user user-id
                 (testing "Should grant create-queries via collection permissions"
                   (is (= :query-builder
                          (get (perms/table-permissions-for-user (perms/user-info user-id) :perms/create-queries {(mt/id :venues) (mt/id)}) (mt/id :venues)))

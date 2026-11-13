@@ -176,8 +176,7 @@
                                       (group-by :card_id))
         dashboard-ids (->> (map :id cards)
                            (mapcat card-id->dashboard-cards)
-                           (map :dashboard_id)
-                           distinct)
+                           (into #{} (map :dashboard_id)))
         best          (when (seq dashboard-ids)
                         (->> (xrays.db/dashboards dashboard-ids)
                              filter-visible

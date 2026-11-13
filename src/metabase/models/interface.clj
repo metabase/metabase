@@ -644,21 +644,6 @@
 
 ;;; TODO -- consider moving all this stuff into the `permissions` module
 
-(defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
-  be something like
-
-    #{\"/db/1/schema/public/table/20/\"}
-
-  `read-or-write` will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be
-  the same sets for most models; they can ignore this param)."
-  {:arglists '([instance read-or-write])}
-  dispatch-on-model)
-
-(defmethod perms-objects-set :default
-  [_instance _read-or-write]
-  nil)
-
 (defn- model-name
   "The name of the model of `instance`, for a message."
   [instance]
@@ -764,42 +749,6 @@
   []
   @(requiring-resolve 'metabase.api.common/*current-user-id*))
 
-(defn- current-user-permissions-set []
-  @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
-
-(defn- current-user-has-root-permissions? []
-  (contains? (current-user-permissions-set) "/"))
-
-(mu/defn- check-perms-with-fn
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    a-model       :- qualified-keyword?
-    object-id     :- [:or pos-int? string?]]
-   (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
-
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    object        :- [:maybe [:fn {:error/message "a Toucan instance or model-like record"}
-                              #(some? (t2.protocols/model %))]]]
-   (and object
-        (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
-
-  ([fn-symb   :- qualified-symbol?
-    perms-set :- [:set :string]]
-   ;; resolves the permissions implementation lazily to avoid a models -> permissions load cycle
-   (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve fn-symb)]
-     (assert f)
-     (u/prog1 (f (current-user-permissions-set) perms-set)
-       (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
-
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-full-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
-
 (methodical/defmethod t2/simple-hydrate [::read-policy.always-allow :can_read]
   [_model k instance]
   (vary-meta instance assoc k (boolean true)))
@@ -807,14 +756,6 @@
 (methodical/defmethod t2/simple-hydrate [::write-policy.always-allow :can_write]
   [_model k instance]
   (assoc instance k (boolean true)))
-
-(methodical/defmethod t2/simple-hydrate [::read-policy.full-perms-for-perms-set :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (current-user-has-full-permissions? :read instance))))
-
-(methodical/defmethod t2/simple-hydrate [::write-policy.full-perms-for-perms-set :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (current-user-has-full-permissions? :write instance))))
 
 (methodical/defmethod t2/simple-hydrate [::read-policy.superuser :can_read]
   [_model k instance]

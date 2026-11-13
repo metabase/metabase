@@ -223,10 +223,6 @@
   [_model {collection-id :collection_id}]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
-(defmethod mi/perms-objects-set :model/Card
-  [card read-or-write]
-  (perms/perms-objects-set-for-parent-collection (:collection_id card) read-or-write))
-
 (def card-read-check-columns
   "The columns the `:can_read` hydration reads from a Card."
   [:id :collection_id :document_id])

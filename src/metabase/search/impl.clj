@@ -36,26 +36,22 @@
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
-(defmacro ^:private ensure-current-user-perms-set-is-bound
-  "TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user-permissions-set*]] to be
-  bound (since [[mi/can-write?]] and [[mi/can-read?]] depend on it) despite search context requiring
-  `:current-user-perms` to be passed in. We should fix things so search works independently of API-specific dynamic
-  variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
-  on dynamic variables."
-  {:style/indent 0}
-  [current-user-id current-user-perms & body]
-  `(binding [api/*current-user-id*              ~current-user-id
-             api/*current-user-permissions-set* (atom ~current-user-perms)]
+(defmacro ^:private with-search-user
+  "Runs `body` with the user of `search-ctx` as the current user, whom `mi/can-read?` and `mi/can-write?` answer for."
+  {:style/indent 1}
+  [search-ctx & body]
+  `(binding [api/*current-user-id* (:current-user-id ~search-ctx)
+             api/*is-superuser?*   (boolean (:is-superuser? ~search-ctx))]
      ~@body))
 
-(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? (t2/hydrate instance :can_write))))
+(defn- can-write? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-write? (t2/hydrate instance :can_write))))
 
-(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? (t2/hydrate instance :can_read))))
+(defn- can-read? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-read? (t2/hydrate instance :can_read))))
 
-(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? (t2/hydrate instance :can_query))))
+(defn- can-query? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-query? (t2/hydrate instance :can_query))))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
@@ -262,7 +258,6 @@
    [:is-routed-user?                                      :boolean]
    [:is-superuser?                                        :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
-   [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -299,7 +294,6 @@
            created-at
            created-by
            current-user-id
-           current-user-perms
            display-type
            filter-items-in-personal-collection
            ids
@@ -329,7 +323,7 @@
            curated
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
-  {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
+  {:pre [(pos-int? current-user-id)]}
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -342,7 +336,6 @@
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
-                        :current-user-perms                  current-user-perms
                         :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
@@ -453,12 +446,12 @@
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
   per model its [[hydrated-checks]], and `:can_write` on Collections. Without `write?`, `:can_write` is left out."
-  [{:keys [current-user-id current-user-perms]} write? results]
+  [search-ctx write? results]
   (let [results        (vec results)
         collection-ids (when write?
                          (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
-        answers        (ensure-current-user-perms-set-is-bound current-user-id current-user-perms
-                                                               (merge (collection-check-answers collection-ids) (model-check-answers write? results)))]
+        answers        (with-search-user search-ctx
+                         (merge (collection-check-answers collection-ids) (model-check-answers write? results)))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))

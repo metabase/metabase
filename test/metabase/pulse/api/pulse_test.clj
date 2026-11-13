@@ -1804,8 +1804,7 @@
              ;; The tenant caller must be able to write the pulse, otherwise the update 403s before
              ;; it ever reaches the recipient merge this test is about. Collection permissions are
              ;; orthogonal to the recipient filtering under test.
-             (with-redefs [mi/can-write? (constantly true)
-                           mi/current-user-has-full-permissions? (constantly true)]
+             (mt/with-dynamic-fn-redefs [mi/can-write? (constantly true)]
                (mt/with-current-user caller-id
                  (let [read-back (-> (models.pulse/retrieve-pulse pulse-id)
                                      models.pulse/maybe-filter-pulse-recipients)

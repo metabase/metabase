@@ -143,12 +143,6 @@
   (pre-delete-check-sandbox-constraints-for-measure measure)
   measure)
 
-(defmethod mi/perms-objects-set :model/Measure
-  [measure read-or-write]
-  (let [table (or (:table measure)
-                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
-    (mi/perms-objects-set table read-or-write)))
-
 (defn- normalize-definition-from-db
   "Normalize a measure definition read from the database.
   This handles keyword normalization after JSON round-trip (e.g., string \"mbql/query\" -> keyword :mbql/query)."

@@ -1,6 +1,7 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
   (:require
+   [metabase.permissions.application-permissions]
    [metabase.permissions.collection-permissions]
    [metabase.permissions.data-access-token]
    [metabase.permissions.data-permissions]
@@ -35,9 +36,12 @@
   metabase.permissions.user/keep-me
   metabase.permissions.util/keep-me
   metabase.permissions.validation/keep-me
-  metabase.permissions.collection-permissions/keep-me)
+  metabase.permissions.collection-permissions/keep-me
+  metabase.permissions.application-permissions/keep-me)
 
 (p/import-vars
+ [metabase.permissions.application-permissions
+  application-permissions-for-user]
  [metabase.permissions.collection-permissions
   collection-permission-at-least?
   collection-permissions-for-user
@@ -94,12 +98,8 @@
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
   grant-permissions!
-  perms-objects-set-for-parent-collection
   revoke-application-permissions!
-  revoke-collection-permissions!
-  set-has-application-permission-of-type?
-  set-has-full-permissions-for-set?
-  set-has-full-permissions?]
+  revoke-collection-permissions!]
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups
@@ -125,7 +125,6 @@
   collection-path?]
  [metabase.permissions.user
   query-creation-capabilities
-  user-permissions-set
   user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema

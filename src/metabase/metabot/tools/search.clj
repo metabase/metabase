@@ -392,7 +392,6 @@
                                                           :last-edited-at                      last-edited-at
                                                           :current-user-id                     api/*current-user-id*
                                                           :is-superuser?                       api/*is-superuser?*
-                                                          :current-user-perms                  @api/*current-user-permissions-set*
                                                           :filter-items-in-personal-collection "exclude-others"
                                                           :context                             :metabot
                                                           :archived                            (boolean archived)})
@@ -461,7 +460,6 @@
                                                             {:search-string      nil
                                                              :models             search-models
                                                              :current-user-id    api/*current-user-id*
-                                                             :current-user-perms @api/*current-user-permissions-set*
                                                              :is-superuser?      api/*is-superuser?*
                                                              :offset             (or offset 0)
                                                              :limit              limit}))

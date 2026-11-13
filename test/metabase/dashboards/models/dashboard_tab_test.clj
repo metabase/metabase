@@ -30,12 +30,7 @@
   `(do-with-dashtab-in-personal-collection (fn [~binding] ~@body)))
 
 (deftest perms-test
-  (with-dashtab-in-personal-collection {:keys [dashboard dashtab] :as _dashtab}
-    (testing "dashtab's permission is the permission of dashboard they're on"
-      (is (= (mi/perms-objects-set dashtab :read)
-             (mi/perms-objects-set dashboard :read)))
-      (is (= (mi/perms-objects-set dashtab :write)
-             (mi/perms-objects-set dashboard :write))))
+  (with-dashtab-in-personal-collection {:keys [dashtab] :as _dashtab}
     (testing "A user that can't see the Collection that the Dashboard is in can't read and write the dashtab"
       (mt/with-current-user (mt/user->id :lucky)
         (is (= false (mi/can-read? (t2/hydrate dashtab :can_read))))

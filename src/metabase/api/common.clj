@@ -137,11 +137,6 @@
 
 ;;; TODO -- move this to [[metabase.request.current]]
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
-  more information about the Metabase permissions system."
-  (atom #{}))
-
 (defn current-user-info
   "The current user as the permission functions take one: their id, nil without a user, and whether they are a
   superuser and a data analyst."

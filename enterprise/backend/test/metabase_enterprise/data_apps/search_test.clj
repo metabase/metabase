@@ -41,7 +41,6 @@
   [user]
   (mt/with-current-user (mt/user->id user)
     (-> (search/search-context {:current-user-id       api/*current-user-id*
-                                :current-user-perms    @api/*current-user-permissions-set*
                                 :is-superuser?         api/*is-superuser?*
                                 :is-impersonated-user? false
                                 :is-sandboxed-user?    false

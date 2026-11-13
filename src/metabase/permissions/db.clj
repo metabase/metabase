@@ -1090,6 +1090,20 @@
                                      :else                    [:inline 0]]
                                     :rank]]}))))
 
+(mu/defn user-permission-objects :- [:set :string]
+  "The permission objects among `objects` that a group of the User with `user-id` holds a row for."
+  [user-id :- ::lib.schema.id/user
+   objects :- [:sequential :string]]
+  (into #{}
+        (map :object)
+        (t2/query {:select-distinct [:p.object]
+                   :from            [[(t2/table-name :model/Permissions) :p]]
+                   :join            [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                     [:= :pgm.group_id :p.group_id]]
+                   :where           [:and
+                                     [:= :pgm.user_id user-id]
+                                     [:in :p.object objects]]})))
+
 (mu/defn root-collection-rank :- :int
   "2 when a group of the user with `user-id` holds the permission row `write-object` of a root Collection, 1 when one
   holds its `read-object`, and 0 otherwise."
