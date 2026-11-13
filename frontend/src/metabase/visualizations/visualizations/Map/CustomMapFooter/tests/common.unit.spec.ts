@@ -1,6 +1,12 @@
 import { screen } from "__support__/ui";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { setup } from "./setup";
+
+jest.mock("metabase/embedding-sdk/config", () => ({
+  ...jest.requireActual("metabase/embedding-sdk/config"),
+  isEmbeddingSdk: jest.fn(() => false),
+}));
 
 describe("CustomMapFooter (OSS)", () => {
   describe("admin users", () => {
@@ -56,6 +62,21 @@ describe("CustomMapFooter (OSS)", () => {
         "href",
         "https://www.metabase.com/docs/latest/configuring-metabase/custom-maps.html",
       );
+    });
+  });
+
+  describe("embedding SDK", () => {
+    afterEach(() => {
+      jest.mocked(isEmbeddingSdk).mockReturnValue(false);
+    });
+
+    it("should not show the link, which has no route to go to", () => {
+      jest.mocked(isEmbeddingSdk).mockReturnValue(true);
+      setup({ isAdmin: true, showMetabaseLinks: true });
+
+      expect(
+        screen.queryByRole("link", { name: "Custom map" }),
+      ).not.toBeInTheDocument();
     });
   });
 });
