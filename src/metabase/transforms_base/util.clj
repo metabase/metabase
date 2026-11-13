@@ -891,6 +891,19 @@
             (apply-index-outcomes!
              (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
+(defn- canonical-sync-target
+  "The target [[complete-execution!]] syncs. For a workspace-rewritten transform that is the canonical target the run
+   recorded at its start. The remap row maps the written copy back to the canonical table in `:model/Table` row
+   vocabulary (nil `:db` and `:schema` on MySQL, whose Table rows carry neither). When the row is gone, the recorded
+   canonical target is used as it is, and the written copy is never synced."
+  [db-id {:keys [target] canonical :workspace-canonical-target}]
+  (if canonical
+    (let [row-target (canonicalize-target db-id target)]
+      (if (= row-target target)
+        canonical
+        (merge canonical (select-keys row-target [:db :schema :name]))))
+    target))
+
 (mu/defn complete-execution! :- :nil
   "Post-processing steps after a transform has been executed successfully.
 
@@ -912,7 +925,7 @@
         database (driver.u/lib-database db-id)
         ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
         ;; remap row: a schema change may have deleted that row since the run recorded it.
-        table (sync-target! (or (:workspace-canonical-target transform) target) database)]
+        table (sync-target! (canonical-sync-target db-id transform) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
