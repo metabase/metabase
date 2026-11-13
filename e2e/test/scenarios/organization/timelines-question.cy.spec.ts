@@ -46,12 +46,13 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("RC1").should("be.visible");
     });
 
-    cy.log("the event and its new timeline are stored");
+    cy.log("the event, its creator and its new timeline are stored");
     cy.reload();
     openQuestionEvents();
     H.rightSidebar().within(() => {
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
+      cy.findByText(/^Bobby Tables added this on/).should("be.visible");
     });
   });
 
