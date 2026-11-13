@@ -412,7 +412,7 @@
    user-id    :- ::lib.schema.id/user
    key-hashed :- :string
    token      :- [:maybe :string]
-   expires-at :- some?]
+   expires-at :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (t2/query-one {:insert-into (t2/table-name :model/Session)
                  :values      [{:id              session-id
                                 :user_id         user-id
@@ -431,7 +431,7 @@
 (mu/defn renew-preview-session!
   "Set the `expires_at` of the Session with `session-id` to `expires-at`."
   [session-id :- :string
-   expires-at :- some?]
+   expires-at :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (t2/query-one {:update (t2/table-name :model/Session)
                  :set    {:expires_at expires-at}
                  :where  [:= :id [:auto/param session-id]]}))
