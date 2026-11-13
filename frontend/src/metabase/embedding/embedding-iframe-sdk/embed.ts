@@ -70,6 +70,11 @@ export const setupConfigWatcher = () => {
         updateAllEmbeds({ [prop]: newValue });
         return true;
       },
+      deleteProperty(metabaseConfig, prop) {
+        const isDeleted = Reflect.deleteProperty(metabaseConfig, prop);
+        updateAllEmbeds({ [prop]: undefined });
+        return isDeleted;
+      },
     });
 
   // Unjustified type cast. FIXME
