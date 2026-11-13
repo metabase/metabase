@@ -12,8 +12,8 @@
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceInstance
-  "Each database with a `database-workspace-schema`, as a list of
-  `{:database_id :schema}` maps."
+  "`{:databases [{:database_id :schema}]}`: one entry per database that has, or is to get, a
+  `database-workspace-schema`."
   [:map {:closed true}
    [:databases [:sequential [:map {:closed true}
                              [:database_id ::lib.schema.id/database]
@@ -58,7 +58,8 @@
   "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
   database's `database-workspace-schema`, clearing it on every other database. A database
   whose schema changes or is cleared loses its `TableRemapping` rows. Returns 400 for an
-  unknown database id, on a parent, and while `MB_WORKSPACES_ENABLED=false`."
+  unknown database id, when this instance manages workspaces, or while
+  `MB_WORKSPACES_ENABLED=false`."
   [_route-params
    _query-params
    body :- WorkspaceInstance]

@@ -688,13 +688,12 @@
 
   On a workspace instance the canonical target is backed by a copy in the workspace schema. The
   workspace user can only DROP inside that schema, so the drop must name the copy, never the
-  canonical table. The copy is the one recorded in `table_remapping` for the target. With no row
-  (a transform whose runs all failed has none, but may still have left a copy behind), it is the
-  table the transform would write to, which
-  [[transforms-base.workspace-hooks/workspace-transform-target]] returns. A row decides the copy
-  whenever one exists, on a workspace instance or off one, and the hook is then not called. With
-  no row, the hook throws a 400 on a workspace instance when the database has no workspace
-  schema. The workspace schema is in `:schema` for schema-based drivers and in `:db` for MySQL;
+  canonical table. With no `table_remapping` row for the target (a transform whose runs all
+  failed has none, but may still have left a copy behind), the copy is the table the transform
+  would write to, which [[transforms-base.workspace-hooks/workspace-transform-target]] returns.
+  A row decides the copy whenever one exists, on a workspace instance or off one, and the hook
+  is then not called. With no row, the hook throws a 400 on a workspace instance when the
+  database has no workspace schema. The workspace schema is in `:schema` for schema-based drivers and in `:db` for MySQL;
   collapse to the single `:schema` slot the driver drop path qualifies on. Off a workspace
   instance with no row, `target` is returned unchanged."
   [db-id target]
@@ -717,8 +716,8 @@
   `:target`, since that is what sync surfaces. It stands in for the copy only when a
   `table_remapping` row records the copy. With no such row (every run failed) on a workspace
   instance, it is the live canonical warehouse table, which the drop did not touch, so it stays
-  active. Off a workspace instance with no row, the drop names the canonical table and the row is
-  deactivated."
+  active. Off a workspace instance with no remap row, the drop names the canonical table, and its
+  Table row is deactivated."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]

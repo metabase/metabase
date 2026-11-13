@@ -26,7 +26,7 @@
 
 (defn- check-workspace-schema!
   "On a workspace instance, throws a 400 when database `db-id` has no `database-workspace-schema`, so that no
-   transform writes to, or is checked against, a production table: fail closed."
+   production table is used as a transform's target: written, checked for existence, or dropped."
   [db-id]
   (when (and (ws/workspace-mode?) (nil? (ws/db-workspace-namespace db-id)))
     (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
@@ -47,8 +47,8 @@
 
    On a non-workspace instance the canonical target passes through unchanged. On a
    workspace instance, throws a 400 when the database has no `database-workspace-schema`,
-   so that no transform writes to a production table, checks one for existence, or drops
-   one.
+   so that no production table is used as a transform's target: written, checked for
+   existence, or dropped.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
