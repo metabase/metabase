@@ -120,8 +120,10 @@
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
    [[metabase-enterprise.advanced-config.file/initialize!]]) and makes the instance a
-   workspace. Each database's schema is `:output`'s `:schema`, else its `:db` (the
-   parent puts the namespace there on engines without schemas, such as MySQL). On
+   workspace. A database the section does not list loses its
+   `database-workspace-schema` and its remap rows. Each database's schema is `:output`'s
+   `:schema`, else its `:db` (the parent puts the namespace there on engines without
+   schemas, such as MySQL). On
    engines with a catalog slot, an `:output` `:db` given with a `:schema` is ignored;
    the catalog comes from `Database.details`."
   [section-config]

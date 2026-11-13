@@ -324,7 +324,7 @@
                     ;; MySQL is special-cased: it has no schema layer, so Phase 1 (table
                     ;; metadata mutation) adds the iso `:db` qualifier — Phase 2's SQLGlot
                     ;; rewriter never sees a qualifier to swap. Skip the rewriter SQL
-                    ;; assertions for MySQL; the atom-output assertion above is what matters.
+                    ;; assertions for MySQL; the db-workspace-namespace assertion above is what matters.
                     (when (not= driver :mysql)
                       (testing "rewritten SQL parses to the workspace :schema slot"
                         (let [expected-schema (or (:schema expected-output) (:db expected-output))]

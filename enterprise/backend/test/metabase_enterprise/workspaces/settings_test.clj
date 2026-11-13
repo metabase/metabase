@@ -23,12 +23,12 @@
                         (finally
                           (ws/clear-instance-workspace!)))))
 
-(deftest workspace-mode?-false-when-setting-empty-test
-  (testing "workspace-mode? is false when no :workspace section has been loaded"
+(deftest workspace-mode?-false-when-workspaces-enabled-is-off-test
+  (testing "workspace-mode? is false when workspaces-enabled is off"
     (ws/clear-instance-workspace!)
     (is (false? (ws/workspace-mode?)))))
 
-(deftest workspace-mode?-true-when-setting-populated-test
+(deftest workspace-mode?-true-when-workspaces-enabled-is-on-test
   (testing "workspace-mode? flips to true once workspaces-enabled is on"
     (ws/clear-instance-workspace!)
     (is (false? (ws/workspace-mode?)))
