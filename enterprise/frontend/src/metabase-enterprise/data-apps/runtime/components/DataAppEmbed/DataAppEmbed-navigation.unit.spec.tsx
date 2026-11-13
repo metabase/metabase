@@ -102,7 +102,7 @@ describe("DataAppEmbed - router navigation", () => {
     });
   });
 
-  it("does not report navigation to the host's own path", () => {
+  it("does not report navigation when host explicitly changes the path", () => {
     const onPathChange = jest.fn<void, [string]>();
 
     const { rerender } = renderHook(
