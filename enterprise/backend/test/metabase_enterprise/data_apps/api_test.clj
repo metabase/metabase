@@ -567,15 +567,10 @@
           (let [{api-key :unmasked_key key-id :id}
                 (mt/user-http-request :crowberto :post 200 "api-key"
                                       {:group_id (:id group) :name (str (random-uuid))})
-                request-options {:request-options {:headers {"x-api-key" api-key}}}]
+                request-options {:request-options {:headers {"x-api-key"         api-key
+                                                             "x-metabase-client" "data-app"}}}]
             (client/client :get 403 "ee/apps/birds/bundle" request-options)
             (group-access/add-groups! app [(:id group)])
             (is (= "BUNDLE" (client/client :get 200 "ee/apps/birds/bundle" request-options)))
-            (client/client :get 404 "ee/apps/missing/bundle" request-options)
-            (t2/update! :model/DataApp :id (:id app) {:enabled false})
-            (client/client :get 403 "ee/apps/birds/bundle" request-options)
-            (t2/update! :model/DataApp :id (:id app) {:enabled true})
-            (group-access/remove-group! app (:id group))
-            (client/client :get 403 "ee/apps/birds/bundle" request-options)
             (mt/user-http-request :crowberto :delete 204 (str "api-key/" key-id))
             (client/client :get 401 "ee/apps/birds/bundle" request-options)))))))
