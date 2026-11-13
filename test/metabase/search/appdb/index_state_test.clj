@@ -5,7 +5,9 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.util.concurrent.atomic AtomicBoolean)))
 
 (set! *warn-on-reflection* true)
 
@@ -69,10 +71,11 @@
 
 (deftest ^:synchronized one-stale-read-waits-for-the-slot-lock-test
   (testing "when a sync is due while a writer holds the slot lock, one reader waits to sync and the others read on"
-    (let [handle  (search.index/indexes-handle)
-          syncs   (atom 0)
-          release (promise)
-          held    (promise)]
+    (let [handle   (search.index/indexes-handle)
+          claiming ^AtomicBoolean @#'search.index/claiming-sync?
+          syncs    (atom 0)
+          release  (promise)
+          held     (promise)]
       (mc/binding handle {:active ::active, :pending nil, :next-sync-at nil}
                   (fn []
                     (mt/with-dynamic-fn-redefs [search.index/sync-tracking-atoms! #(swap! syncs inc)]
@@ -82,11 +85,18 @@
                             _      @held
                             waiter (future (search.index/active-table))]
                         (try
-                          ;; gives the first reader time to claim the sync and reach the lock
-                          (let [first-read  (deref waiter 300 ::waiting)
+                          ;; the second reader starts only once the first has claimed the sync, so it cannot claim it
+                          (let [claimed?    (loop [tries 0]
+                                              (cond
+                                                (.get claiming) true
+                                                (< tries 500)   (do (Thread/sleep 10) (recur (inc tries)))
+                                                :else           false))
                                 second-read (deref (future (search.index/active-table)) 1000 ::waited)]
-                            (is (= {:first ::waiting, :second ::active, :syncs 0}
-                                   {:first first-read, :second second-read, :syncs @syncs})))
+                            (is (= {:first-claimed? true, :first-done? false, :second ::active, :syncs 0}
+                                   {:first-claimed? claimed?
+                                    :first-done?    (realized? waiter)
+                                    :second         second-read
+                                    :syncs          @syncs})))
                           (finally
                             (deliver release true)
                             @holder))

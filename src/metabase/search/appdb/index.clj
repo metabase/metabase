@@ -391,6 +391,10 @@
                                       (safe-batch-upsert! :pending (constantly reindex-table) entries)
                                       ;; Incremental / in-place: dual-write so an in-progress rebuild stays
                                       ;; current. Either table may legitimately be absent.
+                                      ;; TODO (Chris 2026-11-13) -- The two tables are read one after the other. An
+                                      ;; activation between the reads leaves these entries out of the table it made
+                                      ;; active, until they change again or the next reindex. Read both from one
+                                      ;; deref of the state, here and in `delete!`.
                                       (let [active-updated  (safe-batch-upsert! :active active-table entries)
                                             pending-updated (safe-batch-upsert! :pending pending-table entries)]
                                         (or active-updated pending-updated)))]
