@@ -2,7 +2,14 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupActionsEndpoints } from "__support__/server-mocks";
-import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
+import {
+  fireEvent,
+  getIcon,
+  queryIcon,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { WritebackAction } from "metabase-types/api";
@@ -92,6 +99,34 @@ describe("ActionCreator > Query Actions", () => {
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
         "To enable creating a shareable link you first need to save your action",
       );
+    });
+
+    it("turns only variable template tags into parameters and keeps them when the window is resized (metabase#32750)", async () => {
+      await setup();
+
+      const editor = within(
+        screen.getByTestId("mock-native-query-editor"),
+      ).getByRole("textbox");
+      const query = "{{#1-orders-model}} {{snippet:101}} {{id}}";
+      fireEvent.change(editor, { target: { value: query } });
+
+      expect(await screen.findByLabelText("ID")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("#1 Orders Model"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Snippet:101")).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("form-field-container")).toHaveLength(1);
+
+      const initialWidth = window.innerWidth;
+      for (const width of [320, 1440]) {
+        window.innerWidth = width;
+        fireEvent(window, new Event("resize"));
+
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+        expect(editor).toHaveValue(query);
+        expect(screen.getByLabelText("ID")).toBeInTheDocument();
+      }
+      window.innerWidth = initialWidth;
     });
 
     describe("Save Modal", () => {
