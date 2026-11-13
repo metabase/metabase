@@ -1,36 +1,8 @@
 diff --git a/src/create-chrome-target.js b/src/create-chrome-target.js
-index 69878eff92fdb2efaabf61eef2fb42049f4a4e6e..234ad5134213d5f55332e40f562a1701d1e32be6 100644
+index 69878eff92fdb2efaabf61eef2fb42049f4a4e6e..41eeedaf082d4b9f9825689b81a5bc060518f903 100644
 --- a/src/create-chrome-target.js
 +++ b/src/create-chrome-target.js
-@@ -35,6 +35,19 @@ const RESIZE_DELAY = 500;
- const delay = (duration) =>
-   new Promise((resolve) => setTimeout(resolve, duration));
- 
-+// The page's own scrollbars aren't part of the story, and they would show in
-+// the screenshot when a story is bigger than the window. Scrollbars inside the
-+// story, like a scrolling table's, stay visible.
-+const hidePageScrollbars = (window) => {
-+  window.document.addEventListener('DOMContentLoaded', () => {
-+    const styleElement = window.document.createElement('style');
-+    window.document.documentElement.appendChild(styleElement);
-+    styleElement.sheet.insertRule(
-+      'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }'
-+    );
-+  });
-+};
-+
- function createChromeTarget(
-   start,
-   stop,
-@@ -200,6 +213,7 @@ function createChromeTarget(
-       }
-       await evaluateOnNewDocument(`(${disablePointerEvents})(window);`);
-       await evaluateOnNewDocument(`(${disableInputCaret})(window);`);
-+      await evaluateOnNewDocument(`(${hidePageScrollbars})(window);`);
-       await evaluateOnNewDocument(`(${setLokiIsRunning})(window);`);
- 
-       debug(`Navigating to ${url}`);
-@@ -288,7 +302,12 @@ function createChromeTarget(
+@@ -288,7 +288,12 @@ function createChromeTarget(
          }
  
          // Clap width/height to fit in viewport
@@ -44,7 +16,7 @@ index 69878eff92fdb2efaabf61eef2fb42049f4a4e6e..234ad5134213d5f55332e40f562a1701
            clip.width = deviceMetrics.width - clip.x;
          }
  
-@@ -299,16 +318,21 @@ function createChromeTarget(
+@@ -299,16 +304,21 @@ function createChromeTarget(
            clip.height = deviceMetrics.height - clip.y;
          }
  
