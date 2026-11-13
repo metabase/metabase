@@ -45,8 +45,7 @@
    ;; Day of year: In Java we use "D". In CLJS we use a placeholder that will be replaced
    ;; by special handling in the formatter since dayjs doesn't have a format token for day-of-year.
    ;; The placeholder is escaped with [] so dayjs doesn't interpret it as format tokens.
-   :day-of-year       #?(:cljs "[__DAY_OF_YEAR__]"  :clj "D")     ; 235
-   :week-of-year      #?(:cljs "wo"   :clj "w")})   ; 34th in CLJS, 34 in CLJ. No ordinal numbers in Java.
+   :day-of-year       #?(:cljs "[__DAY_OF_YEAR__]"  :clj "D")})    ; 235
 
 (defn- format-string-literal [lit]
   #?(:cljs (str "[" lit "]")

@@ -48,10 +48,6 @@
    ["dayjs/plugin/objectSupport" :as objectSupport]
    ["dayjs/plugin/quarterOfYear" :as quarterOfYear]
    ["dayjs/plugin/utc" :as utc]
-   ;; cljfmt reorders these namespaces to be out of order, then kondo complains about it.
-   ;; so let's just live with the 1 unordered namespace require for now. :skull:
-   ^{:clj-kondo/ignore [:unsorted-required-namespaces]}
-   ["dayjs/plugin/weekOfYear" :as weekOfYear]
    [metabase.util.time.impl-common :as common]))
 
 ;; Initialize dayjs plugins
@@ -63,9 +59,6 @@
 (dayjs/extend objectSupport)
 (dayjs/extend quarterOfYear)
 (dayjs/extend utc)
-;; TODO (Chris 2026-10-02) -- the date formatters' locale `wo` week pattern is this plugin's only CLJS use, and
-;; nothing reaches it now that labels number weeks like queries. Drop both unless the frontend relies on the plugin.
-(dayjs/extend weekOfYear)
 
 (defn- now [] (dayjs))
 
