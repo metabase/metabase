@@ -18,7 +18,7 @@ To start, check if your current browser settings are compatible with Metabase:
 
 **Explanation**
 
-A dashboard card uses the visualization settings of the original question, plus any settings that you change on the card. When you change a setting on the card, the card's setting overrides the question's setting for that card only. The question's other settings still apply to the card.
+Questions and dashboard cards have [separate visualization settings](../questions/visualizations/visualizing-results.md#questions-and-dashboard-cards-have-separate-visualization-settings). A dashboard card uses the visualization settings of the original question, plus any settings that you change on the card. When you change a setting on the card, the card's setting overrides the question's setting for that card only. The question's other settings still apply to the card.
 
 ## Changes to a question don't show up on a dashboard card
 

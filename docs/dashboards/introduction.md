@@ -267,7 +267,9 @@ Toggling events on a dashboard only applies to your session. To change what ever
 
 ## Changing a card's visualization settings
 
-You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings. Changes to the question's visualization settings do show up on the dashboard card, unless you changed the same setting on the card. See [Changes to a question don't show up on a dashboard card](../troubleshooting-guide/visualization.md#changes-to-a-question-dont-show-up-on-a-dashboard-card).
+A dashboard card has its own visualization settings, separate from the [question's visualization settings](../questions/visualizations/visualizing-results.md#questions-and-dashboard-cards-have-separate-visualization-settings). You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
+
+The card uses the question's settings for each setting that you haven't changed on the card. So changes to the question's visualization settings do show up on the dashboard card, unless you changed the same setting on the card. See [Changes to a question don't show up on a dashboard card](../troubleshooting-guide/visualization.md#changes-to-a-question-dont-show-up-on-a-dashboard-card).
 
 Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **pencil** icon or **palette** icon (depending on the chart type) to edit a card's visualization's settings.
 
