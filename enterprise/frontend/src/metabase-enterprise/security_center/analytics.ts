@@ -18,8 +18,8 @@ export const trackHealthChecksPageViewed = () => {
   });
 };
 
-export const trackHealthChecksRecheckClicked = () => {
+export const trackHealthChecksRefreshClicked = () => {
   trackSimpleEvent({
-    event: "security_center_health_check_recheck_clicked",
+    event: "security_center_health_checks_refresh_clicked",
   });
 };

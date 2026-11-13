@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 
-import { trackHealthChecksRecheckClicked } from "../../analytics";
+import { trackHealthChecksRefreshClicked } from "../../analytics";
 import {
   useListHealthChecksQuery,
   useRecheckHealthChecksMutation,
@@ -17,7 +17,7 @@ export const useHealthChecks = () => {
   const [sendToast] = useToast();
 
   const recheckAll = async () => {
-    trackHealthChecksRecheckClicked();
+    trackHealthChecksRefreshClicked();
     const { error: recheckError } = await recheckAllMutation();
     if (recheckError) {
       sendToast({

@@ -530,8 +530,8 @@ describe("HealthChecksPage", () => {
     ).toHaveLength(1);
   });
 
-  it("tracks the re-check click", async () => {
-    const track = jest.spyOn(analytics, "trackHealthChecksRecheckClicked");
+  it("tracks the refresh click", async () => {
+    const track = jest.spyOn(analytics, "trackHealthChecksRefreshClicked");
     setupRecheckHealthChecksEndpoint([FAILING_CHECK]);
     await setup({ checks: [FAILING_CHECK] });
 
