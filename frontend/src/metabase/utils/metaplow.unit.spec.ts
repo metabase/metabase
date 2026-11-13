@@ -152,6 +152,22 @@ describe("metaplow", () => {
       const { payload } = getSentPayload();
       expect(payload.url.startsWith(ANON_ORIGIN)).toBe(true);
     });
+
+    it("drops an embedded data app's name, route and query from the url", async () => {
+      const initialPath = window.location.pathname;
+      await setup();
+      window.history.replaceState(
+        null,
+        "",
+        "/mb/embed/embedded-apps/acme-store/orders/42?customer=acme",
+      );
+
+      await trackMetaplowEvent("setup");
+
+      const { payload } = getSentPayload();
+      expect(payload.url).toBe(`${ANON_ORIGIN}/mb/embed/embedded-apps`);
+      window.history.replaceState(null, "", initialPath);
+    });
   });
 
   describe("trackMetaplowPageView", () => {

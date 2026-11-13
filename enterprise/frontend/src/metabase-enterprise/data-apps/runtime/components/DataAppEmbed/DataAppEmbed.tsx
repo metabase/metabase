@@ -3,15 +3,12 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import {
-  EMBEDDED_DATA_APP_PREFIX,
-  getEmbeddedAppSlugFromPath,
-} from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
-import { createSnowplowTracker } from "metabase/analytics";
+import { createSnowplowTracker, setSnowplowPageUrl } from "metabase/analytics";
 import { PLUGIN_API } from "metabase/api/client";
 import { getUserId } from "metabase/current-user";
 import { SdkIframeError } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
@@ -28,11 +25,11 @@ import { DataAppEmbedContent } from "./DataAppEmbedContent";
 // Creates SDK store for embedded data apps
 const store = getSdkStore();
 
-createSnowplowTracker(() => getUserId(store.getState()), {
-  // The document URL carries the app slug, subpath
-  // and query string, which must not reach analytics.
-  pageUrl: `${getCurrentMetabaseInstanceUrl()}${EMBEDDED_DATA_APP_PREFIX}`,
-});
+createSnowplowTracker(() => getUserId(store.getState()));
+
+// The document URL carries the app slug, subpath
+// and query string, which must not reach analytics.
+setSnowplowPageUrl(window.location.pathname);
 
 initMetaplow({
   hostUrl: getCollectorHostUrl(),
