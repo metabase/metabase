@@ -70,6 +70,15 @@
       (throw (ex-info "Week-based time operations require :start-of-week"
                       {:time-config time-config}))))
 
+;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
+;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
+;; Keep in step with the copy in impl.cljs and with `sql.qp/date [:sql :week-of-year]`.
+;; The rules test, `week-of-year-rules-test`, holds both copies to the same rules, and
+;; `week-of-year-label-matches-query-test` checks labels against what each driver returns.
+(defn- week-of-year [time-config t]
+  (let [week-start (t/adjust t :previous-or-same-day-of-week (start-of-week time-config))]
+    (-> (t/as week-start :day-of-year) (+ 6) (quot 7))))
+
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- minus-ms [value]
   (t/minus value (t/millis 1)))
@@ -207,8 +216,8 @@
   (-> (now)
       (t/truncate-to :days)
       (t/adjust :first-day-of-year)
-      (t/adjust :previous-or-same-day-of-week (start-of-week options))
-      (t/plus (t/weeks (dec value)))))
+      (t/plus (t/weeks (dec value)))
+      (t/adjust :next-or-same-day-of-week (start-of-week options))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   (t/offset-date-time (t/year (now)) value 1))
@@ -345,18 +354,20 @@
    :hour-of-day-24     "H"
    :day-of-month       "d"
    :day-of-year        "D"
-   :week-of-year       "w"
    :quarter-of-year    "'Q'Q"})
 
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit {:keys [locale]}]
-  (when-let [^DateTimeFormatter formatter (some-> unit
-                                                  unit-formats
-                                                  t/formatter
-                                                  (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
-    (.format formatter t)))
+  [time-config t unit {:keys [locale]}]
+  (if (= unit :week-of-year)
+    (str (week-of-year time-config t))
+    (when-let [^DateTimeFormatter formatter (some-> unit
+                                                    unit-formats
+                                                    t/formatter
+                                                    (cond-> #_formatter locale
+                                                            (.withLocale (i18n/locale locale))))]
+      (.format formatter t))))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
@@ -375,7 +386,7 @@
                date-time? (coerce-local-date-time input))]
        (if t
          (or
-          (format-extraction-unit t unit format-options)
+          (format-extraction-unit time-config t unit format-options)
           (cond
             time? (t/format "h:mm a" t)
             date? (t/format "MMM d, yyyy" t)
@@ -387,15 +398,17 @@
        :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
                           " "
                           (if (<= input 11) "AM" "PM"))
+       :week-of-year (str input)
        (or
-        (format-extraction-unit (common/number->timestamp input (assoc time-config :unit unit))
+        (format-extraction-unit time-config
+                                (common/number->timestamp input (assoc time-config :unit unit))
                                 unit
                                 format-options)
         (str input)))
 
      (instance? java.time.temporal.TemporalAccessor input)
      (let [input ^java.time.temporal.TemporalAccessor input]
-       (or (format-extraction-unit input unit format-options)
+       (or (format-extraction-unit time-config input unit format-options)
            (cond
              ;; no hour, must be date
              (not (.isSupported input (t/field :hour-of-day)))
@@ -414,12 +427,15 @@
   ([str unit]
    (parse-unit str unit nil))
   ([str unit locale]
-   (some-> unit
-           unit-formats
-           t/formatter
-           (cond-> #_formatter
-            locale (.withLocale (i18n/locale locale)))
-           (.parse str))))
+   (if (= unit :week-of-year)
+     ;; A week number stands for itself, since `format-unit` numbers weeks by `:start-of-week`, not the locale.
+     (parse-long str)
+     (some-> unit
+             unit-formats
+             t/formatter
+             (cond-> #_formatter
+              locale (.withLocale (i18n/locale locale)))
+             (.parse str)))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.
@@ -553,6 +569,9 @@
       (t/format format t))))
 
 (defn extract
-  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`.
+  Week-of-year numbers match how queries group `:week-of-year`, whatever the locale."
   [time-config t unit]
-  (u.date/extract time-config t unit))
+  (if (= unit :week-of-year)
+    (week-of-year time-config t)
+    (u.date/extract time-config t unit)))

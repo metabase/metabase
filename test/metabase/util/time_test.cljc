@@ -104,14 +104,11 @@
         "2016-01-02T00:00:00"   2 "day-of-month"
         "2016-01-31T00:00:00"  31 "day-of-month"
 
-        ;; week-of-year 1 means the first week, which is the week that contains Jan 1, even if it's in December.
-        ;; Note that the first day of the week differs by locale!
-        ;; But since we force "en" locale in our dev environment, Sunday is the start of the week.
-        ;; In 2022 the first week starts on Sunday, Dec. 26, 2021.
-        "2021-12-26T00:00:00"  1 "week-of-year"
-        "2022-01-02T00:00:00"  2 "week-of-year"
-        "2022-12-18T00:00:00" 52 "week-of-year"
-        "2022-12-25T00:00:00" 53 "week-of-year"
+        ;; Week 1 is the first week that starts on or after Jan 1.
+        ;; Weeks start on Sunday here, so 2022's week 1 starts on Sunday, Jan. 2.
+        "2022-01-02T00:00:00"  1 "week-of-year"
+        "2022-01-09T00:00:00"  2 "week-of-year"
+        "2022-12-25T00:00:00" 52 "week-of-year"
 
         "2022-01-01T00:00:00"  1 "month-of-year"
         "2022-02-01T00:00:00"  2 "month-of-year"
@@ -301,7 +298,105 @@
   (is (= "30" (format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (format-unit 13 :hour-of-day)))
   (is (= "12 AM" (format-unit 0 :hour-of-day)))
-  (is (= "1" (format-unit 1 :week-of-year))))
+  (is (= "1" (format-unit 1 :week-of-year)))
+  (testing "week-of-year respects start-of-week"
+    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-01" :week-of-year)))
+    (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2023-01-01" :week-of-year)))))
+
+(deftest ^:parallel week-of-year-numbering-test
+  (testing "a week number formats as itself, including week 53"
+    (is (= "53" (format-unit 53 :week-of-year))))
+  (testing "the locale does not change the number"
+    (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2021-01-01" :week-of-year {:locale "de"}))))
+  ;; Weeks are numbered by the day of year they start on, as the query processor buckets `:week-of-year`.
+  ;; Early January dates in a week that started in December get the previous year's last week.
+  (testing "weeks around the year boundary"
+    (are [start-of-week date week]
+         (= (str week) (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year))
+      :sunday    "2018-12-30" 52
+      :sunday    "2019-01-01" 52
+      :sunday    "2019-12-28" 51
+      :sunday    "2019-12-29" 52
+      :sunday    "2020-01-04" 52
+      :sunday    "2020-01-05" 1
+      :sunday    "2020-12-31" 52
+      :sunday    "2021-01-03" 1
+      :monday    "2018-12-31" 53
+      :monday    "2019-01-01" 53
+      :monday    "2019-12-29" 51
+      :monday    "2019-12-30" 52
+      :monday    "2020-01-05" 52
+      :monday    "2020-01-06" 1
+      :monday    "2021-01-03" 52
+      :monday    "2021-01-04" 1
+      :wednesday "2018-12-26" 52
+      :wednesday "2019-01-01" 52
+      :wednesday "2019-01-02" 1
+      :thursday  "2020-01-01" 52
+      :thursday  "2020-01-02" 1
+      :friday    "2016-12-30" 53
+      :friday    "2017-01-06" 1
+      :saturday  "2016-12-31" 53
+      :saturday  "2019-12-28" 52
+      :saturday  "2020-01-01" 52
+      :saturday  "2020-01-04" 1
+      :saturday  "2021-01-01" 52
+      :saturday  "2021-01-02" 1)))
+
+(defn- consecutive-dates
+  "Each date from `start` up to `end` as `[yyyy-MM-dd day-of-week]`, where Sunday is day 0."
+  [start end]
+  #?(:clj  (for [date (iterate #(.plusDays ^java.time.LocalDate % 1) (t/local-date start))
+                 :while (.isBefore ^java.time.LocalDate date (t/local-date end))]
+             [(str date) (mod (.getValue (.getDayOfWeek ^java.time.LocalDate date)) 7)])
+     :cljs (for [date (iterate #(.add ^js % 1 "day") (dayjs start))
+                 :while (.isBefore date (dayjs end))]
+             [(.format date "YYYY-MM-DD") (.day date)])))
+
+(def ^:private days-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday])
+
+(deftest ^:parallel week-of-year-rules-test
+  ;; States the numbering rules day by day instead of restating the formula, for every first day of the week.
+  ;; 2015 through 2030 starts a year on every day of the week and includes leap years. The other ranges cross century
+  ;; years: 1900 and 2100 are not leap years, while 2000 is.
+  (doseq [[start end]                 [["2015-01-01" "2031-01-01"]
+                                       ["1899-12-01" "1901-02-01"]
+                                       ["1999-12-01" "2001-02-01"]
+                                       ["2099-12-01" "2101-02-01"]]
+          [start-index start-of-week] (map-indexed vector days-of-week)]
+    (testing (str start " to " end ", " start-of-week)
+      (let [week-of (fn [date] (parse-long (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year)))
+            days    (for [[date day-of-week] (consecutive-dates start end)]
+                      {:date        date
+                       :day-of-week day-of-week
+                       :week        (week-of date)})]
+        (is (= []
+               (for [[previous {:keys [date day-of-week week]}] (partition 2 1 days)
+                     :let  [expected (cond
+                                       ;; A week keeps its number until the next one starts.
+                                       (not= start-index day-of-week) (:week previous)
+                                       ;; Week 1 is the first week that starts in the new year.
+                                       (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
+                                       :else (inc (:week previous)))]
+                     :when (not= expected week)]
+                 [date week expected])))))))
+
+(deftest week-of-year-number->timestamp-test
+  (testing "every week round-trips, for every first day of the week"
+    (is (= []
+           (for [year          (range 2015 2031)
+                 start-of-week days-of-week
+                 :let          [config    {:start-of-week start-of-week}
+                                ;; The week holding Dec 31 is the year's last.
+                                last-week (parse-long (shared.ut/format-unit config (str year "-12-31") :week-of-year))]
+                 week          (range 1 (inc last-week))
+                 :let          [round-trip (with-redefs [internal/now (fn [] (from (str year "-06-15T12:00:00")))]
+                                             (shared.ut/extract config
+                                                                (shared.ut/coerce-to-timestamp
+                                                                 week (assoc config :unit :week-of-year))
+                                                                :week-of-year))]
+                 :when         (not= week round-trip)]
+             [year start-of-week week round-trip])))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
@@ -309,6 +404,8 @@
                   (format-unit      unit-out locale-out)))
     "Wednesday" "Wed" :day-of-week-abbrev :day-of-week   "en" "en"
     "lundi"     "Mon" :day-of-week-abbrev :day-of-week   "en" "fr"
+    "53"        "53"  :week-of-year       :week-of-year  "en" "en"
+    "6"         "6"   :week-of-year       :week-of-year  "de" "de"
 
     "January"   "Jan" :month-of-year :month-of-year-full "en" "en"
     "janvier"   "Jan" :month-of-year :month-of-year-full "en" "fr"
@@ -535,7 +632,7 @@
       :day-of-week-iso  5
       :day-of-month     6
       :day-of-year      341
-      :week-of-year     49
+      :week-of-year     48
       :month-of-year    12
       :quarter-of-year  4
       :year             2024)))
