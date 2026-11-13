@@ -19,8 +19,8 @@ import { readSlugFromUrl } from "../../lib/read-slug-from-url";
 
 import { DataAppEmbedContent } from "./DataAppEmbedContent";
 
-// Creates SDK store for embedded data apps
-const store = getSdkStore();
+/** The SDK store for embedded data apps. */
+export const store = getSdkStore();
 
 export function DataAppEmbed() {
   const slug = useMemo(() => readSlugFromUrl(), []);
