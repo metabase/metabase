@@ -32,11 +32,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
-import {
-  type FieldId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
@@ -131,13 +127,11 @@ const TableSectionBase = ({
   };
 
   const registerDependencyGraphTrackingEvent = () => {
-    if (isConcreteTableId(table.id)) {
-      trackDependencyEntitySelected({
-        entityId: table.id,
-        triggeredFrom: "data-structure",
-        eventDetail: "table",
-      });
-    }
+    trackDependencyEntitySelected({
+      entityId: table.id,
+      triggeredFrom: "data-structure",
+      eventDetail: "table",
+    });
   };
 
   return (

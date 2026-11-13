@@ -113,7 +113,6 @@
       "include_csv": false,
       "display": "bar",
       "entity_id": "NWMIyzjNGrefJNtrilG7k",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_trendline": true,
         "table.cell_column": "critics",

@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
@@ -34,6 +36,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -339,7 +342,7 @@
                                          :name         "price"
                                          :display-name "Price"
                                          :type         :dimension
-                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :field-id     (mt/id :venues :price)
                                          :widget-type  :category}
                     "snippet: greeting" {:type         :snippet
                                          :name         "snippet: greeting"
@@ -580,7 +583,7 @@
                        :name         "price"
                        :display-name "Price"
                        :type         :dimension
-                       :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                       :field-id     (mt/id :venues :price)
                        :widget-type  :category}})
            :parameters [{:id "_PRICE_" :type :category :target [:dimension [:template-tag "price"]]}]})]
         (is (=? {:status     "completed"
@@ -706,7 +709,7 @@
                                   {:database (mt/id)
                                    :type     :native
                                    :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                              :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                              :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                           :display-name "Venue ID",
                                                                           :id           "_VENUE_ID_",
                                                                           :name         "venue_id",
@@ -807,7 +810,7 @@
                                                            :display-name "Date"
                                                            :id           "_DATE_"
                                                            :type         "dimension"
-                                                           :dimension    [:field (mt/id :checkins :date) nil]
+                                                           :field-id     (mt/id :checkins :date)
                                                            :widget-type  "date/quarter-year"}}}}))
 
 (deftest make-sure-csv--etc---downloads-take-editable-params-into-account---6407----
@@ -1149,7 +1152,7 @@
                                     {:database (mt/id)
                                      :type     :native
                                      :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                                :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
+                                                :template-tags {"venue_id" {:field-id (mt/id :venues :id)
                                                                             :display-name "Venue ID"
                                                                             :id           "_VENUE_ID_"
                                                                             :name         "venue_id"
@@ -1625,7 +1628,7 @@
                                                                   :name         "category"
                                                                   :display-name "Category"
                                                                   :type         :dimension
-                                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                  :field-id     (mt/id :venues :category_id)
                                                                   :widget-type  :id}})))]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -1740,13 +1743,13 @@
                                                                             :name         "id"
                                                                             :display-name "ID"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                            :field-id     (mt/id :venues :id)
                                                                             :widget-type  :id}
                                                                 "category" {:id           "_CATEGORY_"
                                                                             :name         "category"
                                                                             :display-name "Category"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                            :field-id     (mt/id :venues :category_id)
                                                                             :widget-type  :id}})))]
           (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
             (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
@@ -1772,7 +1775,7 @@
                                                                                     :name         "category"
                                                                                     :display-name "Category"
                                                                                     :type         :dimension
-                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :field-id     (mt/id :venues :category_id)
                                                                                     :widget-type  :id}}))}
                        :model/DashboardCard _    {:dashboard_id       (:id dash)
                                                   :card_id            (:id card)
@@ -1916,7 +1919,7 @@
                                                                           :name         "NAME"
                                                                           :display_name "Name"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
+                                                                          :field-id     (mt/id :venues :name)
                                                                           :required     true}}}}
                                       :name       "native card with field filter"
                                       :parameters [{:id     param-field-values
@@ -1933,7 +1936,7 @@
                                                                         :name         "ID"
                                                                         :display_name "Id"
                                                                         :type         :dimension
-                                                                        :dimension    [:field (mt/id :people :id) nil]
+                                                                        :field-id     (mt/id :people :id)
                                                                         :required     true}}}}
                                       :name       "native card with named field filter"
                                       :parameters [{:id     param-labeled-field-values
@@ -2099,7 +2102,7 @@
                                                    :display-name "D"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+                                                   :field-id     (mt/id :orders :created_at)}}}}
    :parameters    [{:id     "d"
                     :type   :date/all-options
                     :name   "D"
@@ -2152,6 +2155,40 @@
             (assert-generic-query-error
              (client/client-full-response :get (format "public/card/%s/query" uuid)
                                           :parameters unparseable-date-param))))))))
+
+(defn- matches?
+  "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
+  would read that schema."
+  [schema body]
+  ;; The test client reads a JSON array as a list, and `:tuple` only accepts a vector.
+  (let [transformer (mtx/transformer
+                     (mtx/json-transformer)
+                     {:name :tuples, :decoders {:tuple #(cond-> % (sequential? %) vec)}})]
+    (mr/validate schema (mc/decode schema body transformer))))
+
+(deftest public-query-result-schema-test
+  (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
+    (mt/dataset test-data
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :table)]
+          (let [url (format "public/card/%s/query" uuid)]
+            (testing "a completed query"
+              (let [body (client/client :get 202 url)]
+                (is (= "completed" (:status body)))
+                (is (matches? ::api.public/query-result body))))
+            (testing "a failed query"
+              (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+                (is (contains? #{400 500} status))
+                (is (= "failed" (:status body)))
+                (is (matches? ::api.public/query-error body))))))
+        (testing "a completed query with a trend line"
+          (with-temp-public-card [{uuid :public_uuid} {:display       :line
+                                                       :dataset_query (mt/mbql-query orders
+                                                                        {:aggregation [[:count] [:sum $total]]
+                                                                         :breakout    [!month.created_at]})}]
+            (let [body (client/client :get 202 (format "public/card/%s/query" uuid))]
+              (is (seq (get-in body [:data :insights])))
+              (is (matches? ::api.public/query-result body)))))))))
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"

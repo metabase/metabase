@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -30,11 +29,8 @@
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."
   [x]
-  (walk/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :source-metadata :lib/stage-metadata)))
-   x))
+  (match/replace-all x
+    #'map? (dissoc &match :source-metadata :lib/stage-metadata)))
 
 (defn- add-alias-info [query]
   (if-not (:lib/type query)

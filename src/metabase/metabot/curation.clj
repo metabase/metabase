@@ -138,7 +138,7 @@
   dependency. Recognizes the Metabot recent-view models: card/dataset/metric, dashboard, table."
   [model+ids]
   (into #{}
-        (for [[model ids]  (update-vals (group-by first model+ids) #(into [] (comp (map second) (distinct)) %))
+        (for [[model ids]  (u/group-by first second conj #{} model+ids)
               batch        (partition-all curation-batch-size ids)
               [id signals] (curation-signals model (vec batch))
               :when        (curation/curated? signals)]

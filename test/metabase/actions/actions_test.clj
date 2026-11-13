@@ -4,7 +4,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
    [metabase.actions.error :as actions.error]
    [metabase.actions.execution :as actions.execution]
@@ -21,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -368,20 +368,16 @@
           (is (= 75 (categories-row-count)))
           (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
                   {:table-id table-id, :op :deleted, :row {:id 74}}]
-                 (walk/postwalk
-                  (fn [x]
-                    (if (map? x)
-                      (u/lower-case-map-keys x)
-                      x))
-                  (:outputs
-                   (actions/perform-action-v2! :table.row/delete
-                                               test-scope
-                                               [{:database (mt/id)
-                                                 :table-id table-id
-                                                 :row      {(format-field-name :id) 75}}
-                                                {:database (mt/id)
-                                                 :table-id table-id
-                                                 :row      {(format-field-name :id) 74}}])))))
+                 (match/replace-all (:outputs
+                                     (actions/perform-action-v2! :table.row/delete
+                                                                 test-scope
+                                                                 [{:database (mt/id)
+                                                                   :table-id table-id
+                                                                   :row      {(format-field-name :id) 75}}
+                                                                  {:database (mt/id)
+                                                                   :table-id table-id
+                                                                   :row      {(format-field-name :id) 74}}]))
+                   #'map? (u/lower-case-map-keys &match))))
           (is (= 73 (categories-row-count))))))))
 
 (deftest table-row-delete-no-pk
@@ -843,13 +839,13 @@
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before action execution"
-              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (binding [*current-user-permissions-set* (delay #{"/"})]
               (actions/perform-action! :model.row/create
                                        (assoc (mt/mbql-query categories)
                                               :create-row {(format-field-name :name) "write_pool_test"})))
             (testing "write pool is created during action execution"
-              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+              (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key)))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 

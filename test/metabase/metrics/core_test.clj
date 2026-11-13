@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -177,8 +177,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (uncurate! (:id metric))
-      (let [extract #(serdes/with-cache
-                       (serdes/extract-one "Card" {} (t2/select-one :model/Card :id (:id metric))))
+      (let [extract #(first (serialization/export-batch :model/Card [(t2/select-one :model/Card :id (:id metric))]))
             before  (extract)]
         (is (seq (:dimensions before))
             "the backfilled dimensions are part of what a metric serializes to")

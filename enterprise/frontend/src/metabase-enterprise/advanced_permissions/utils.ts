@@ -2,9 +2,13 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/permissions";
-import type { GroupId, PermissionEntityId } from "metabase-types/api";
+import type { Database, GroupId, PermissionEntityId } from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
+
+// for redshift, we impersonate using users, not roles
+export const impersonatesUsers = (database: Database) =>
+  database.engine === "redshift";
 
 export const getImpersonatedDatabaseId = ({
   databaseId,

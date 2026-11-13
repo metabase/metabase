@@ -7,7 +7,6 @@ import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/ana
 import {
   canCoerceFieldType,
   getFieldRawName,
-  getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -31,7 +30,7 @@ const DataSectionBase = ({
   disabled,
   onTrackMetadataChange,
 }: DataSectionBaseProps) => {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );

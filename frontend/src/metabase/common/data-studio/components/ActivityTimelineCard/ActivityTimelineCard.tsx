@@ -8,15 +8,13 @@ import { getActivityTimelineEvents } from "metabase/common/components/RevisionHi
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Card, Text } from "metabase/ui";
-import type { CardId, DashboardId, ModerationReview } from "metabase-types/api";
+import type { CardId, ModerationReview } from "metabase-types/api";
 
 import S from "./ActivityTimelineCard.module.css";
 
-type ActivityTimelineTarget =
-  | { entity: "card"; id: CardId }
-  | { entity: "dashboard"; id: DashboardId };
-
-type ActivityTimelineCardProps = ActivityTimelineTarget & {
+type ActivityTimelineCardProps = {
+  entity: "card";
+  id: CardId;
   moderationReviews?: ModerationReview[];
   canWrite: boolean;
   "data-testid": string;

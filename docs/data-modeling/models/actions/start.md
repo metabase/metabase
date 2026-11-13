@@ -1,5 +1,6 @@
 ---
 title: Model actions
+summary: Use model actions to let people update data in your database from Metabase, through forms, dashboard buttons, or Data Studio.
 redirect_from:
   - /docs/latest/data-modeling/models/actions/start
 ---

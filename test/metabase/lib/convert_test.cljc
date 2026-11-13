@@ -121,12 +121,12 @@
                        {:name         "NAME"
                         :display-name "Name"
                         :type         :dimension
-                        :dimension    [:field 866 nil]
+                        :field-id     866
                         :widget-type  :string/=
                         :default      nil}}}
                      :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
+      (is (=? {:stages [{:template-tags [{:field-id 866}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
 
@@ -134,7 +134,7 @@
   (is (= {:database 76
           :native {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                    :template-tags {"NAME" {:default      nil
-                                           :dimension    [:field 866 nil]
+                                           :field-id     866
                                            :display-name "Name"
                                            :name         "NAME"
                                            :type         :dimension
@@ -145,7 +145,7 @@
            :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                        :template-tags
                        [{:default      nil
-                         :dimension    [:field {:lib/uuid "7ba4c681-b39e-418b-8b77-b98ad974eeb1"} 866]
+                         :field-id     866
                          :display-name "Name"
                          :name         "NAME"
                          :type         :dimension
@@ -411,7 +411,7 @@
        {:name "NAME"
         :display-name "Name"
         :type :dimension
-        :dimension [:field 866 nil]
+        :field-id  866
         :widget-type :string/=
         :default nil}}}
      :database 76}
@@ -1719,7 +1719,7 @@
                                             :display-name "Checkin Date"
                                             :type         :dimension
                                             :widget-type  :date/all-options
-                                            :dimension    [:field 2 nil]}}}))))
+                                            :field-id     2}}}))))
 
 (deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
   (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> MBQL 5 round-trip"

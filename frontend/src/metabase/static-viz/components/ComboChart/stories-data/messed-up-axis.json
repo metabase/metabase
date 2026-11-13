@@ -102,7 +102,6 @@
       "include_csv": false,
       "display": "bar",
       "entity_id": "hEsBfhQIjP_kAu8mDvP7W",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.x_axis.scale": "ordinal",
         "graph.x_axis.axis_enabled": "rotate-45",

@@ -4,7 +4,6 @@ import type {
   Card,
   ConcreteFieldReference,
   DashboardId,
-  StructuredQuery,
 } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
@@ -123,7 +122,7 @@ export function createBaseQuestions() {
 }
 
 // Q1 - join, custom column, no aggregations, no breakouts
-export function createQ1Query(source: Card): StructuredQuery {
+export function createQ1Query(source: Card) {
   return {
     "source-table": `card__${source.id}`,
     expressions: {
@@ -153,7 +152,7 @@ export function createQ1Query(source: Card): StructuredQuery {
 }
 
 // Q3 - join, custom column, no aggregations, 3 breakouts
-function createQ3Query(source: Card): StructuredQuery {
+function createQ3Query(source: Card) {
   return {
     ...createQ1Query(source),
     breakout: [
@@ -187,7 +186,7 @@ function createQ3Query(source: Card): StructuredQuery {
 }
 
 // Q4 - join, custom column, 2 aggregations, 2 breakouts
-function createQ4Query(source: Card): StructuredQuery {
+function createQ4Query(source: Card) {
   return {
     ...createQ3Query(source),
     aggregation: [["count"], ["sum", TOTAL_FIELD]],
@@ -195,7 +194,7 @@ function createQ4Query(source: Card): StructuredQuery {
 }
 
 // Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts
-function createQ5Query(source: Card): StructuredQuery {
+function createQ5Query(source: Card) {
   return {
     "source-query": createQ4Query(source),
     expressions: {
@@ -242,7 +241,7 @@ function createQ5Query(source: Card): StructuredQuery {
 }
 
 // Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts
-function createQ7Query(source: Card): StructuredQuery {
+function createQ7Query(source: Card) {
   return {
     ...createQ5Query(source),
     breakout: [
@@ -266,7 +265,7 @@ function createQ7Query(source: Card): StructuredQuery {
 }
 
 // Q8 - Q4 + 2nd stage with join, custom column, 2 aggregations, 2 breakouts
-export function createQ8Query(source: Card): StructuredQuery {
+export function createQ8Query(source: Card) {
   return {
     ...createQ7Query(source),
     aggregation: [
@@ -286,7 +285,7 @@ export function createQ8Query(source: Card): StructuredQuery {
   };
 }
 
-type CreateQuery = (source: Card) => StructuredQuery;
+type CreateQuery = (source: Card) => unknown;
 
 export function createAndVisitDashboardWithCardMatrix(
   createQueryFromCard: CreateQuery,

@@ -541,6 +541,41 @@ describe("archived exploration", () => {
     ).toEqual({ archived: false });
   });
 
+  it("permanently deletes the exploration from the trash banner and lands on the trash page", async () => {
+    explorationData = {
+      ...makeMultiPageExploration(),
+      archived: true,
+      can_restore: true,
+      can_delete: true,
+    };
+    const deleteUrl = `path:/api/exploration/${explorationData.id}`;
+    fetchMock.delete(deleteUrl, 204);
+
+    const { router } = renderExplorationPage();
+    if (!router) {
+      throw new Error("expected router");
+    }
+
+    const banner = await screen.findByTestId("archive-banner");
+    fireEvent.click(within(banner).getByText("Delete permanently"));
+
+    const modal = await screen.findByTestId("delete-confirmation");
+    expect(fetchMock.callHistory.called(deleteUrl)).toBe(false);
+    fireEvent.click(
+      within(modal).getByRole("button", { name: "Delete permanently" }),
+    );
+
+    await waitFor(() => {
+      expect(router.location.pathname).toBe("/trash");
+    });
+    expect(
+      fetchMock.callHistory.calls(deleteUrl, { method: "DELETE" }),
+    ).toHaveLength(1);
+    expect(
+      await screen.findByText("This item has been permanently deleted."),
+    ).toBeInTheDocument();
+  });
+
   it("does not show the trash banner for an exploration that is not archived", () => {
     explorationData = makeMultiPageExploration();
 

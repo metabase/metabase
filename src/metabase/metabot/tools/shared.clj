@@ -1,10 +1,27 @@
 (ns metabase.metabot.tools.shared
   "Shared tool helpers and state accessors."
   (:require
+   [malli.util :as mut]
    [metabase.metabot.curation :as curation]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(def show-chart-arg
+  "The optional `show_chart` argument of the tools that build a query. Passing false shows the user nothing, for a
+   query the model builds only to read its values with run_query."
+  [:show_chart {:optional true
+                :description (str "Pass false for a query you build only to read its values with run_query: "
+                                  "the user is then shown no chart. Defaults to true.")}
+   [:maybe :boolean]])
+
+(defn without-show-chart
+  "Returns the tool definition `tool` with `show_chart` left out of its `:schema`, so the model is not told about the
+   argument. A tool without the argument is returned unchanged."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 (def chart-types
   "Display types the chart tools can produce, as model-facing strings. The main
@@ -13,6 +30,18 @@
   ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
+(def visualization-arg
+  "The optional `visualization` argument of the tools that build a query: the chart type the query is drawn as."
+  [:visualization {:optional true} [:map {:closed true}
+                                    [:chart_type (into [:enum] chart-types)]]])
+
+(defn visualization-chart-type
+  "The chart type keyword a `visualization` argument names, or `:table` when it names none. The tool args keep
+  nested keys as the model sent them, so `chart_type` may be a string or keyword key, in either case style."
+  [visualization]
+  (or (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)) :chart-type keyword)
+      :table))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*

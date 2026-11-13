@@ -1,8 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import type { ReactElement } from "react";
 import _ from "underscore";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -27,7 +31,12 @@ import {
   MetabotContext,
   defaultContext,
 } from "metabase/metabot";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Database,
@@ -36,8 +45,6 @@ import type {
 import {
   createMockCard,
   createMockCollection,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -56,13 +63,9 @@ jest.unmock("@uiw/react-codemirror");
 const TEST_DB = createSampleDatabase();
 
 const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    type: "native",
-    database: TEST_DB.id,
-    native: {
-      query: "select * from orders",
-      "template-tags": undefined,
-    },
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
   }),
 });
 
@@ -75,10 +78,11 @@ const TEST_NATIVE_MODEL = createMockCard({
 const TEST_NOTEBOOK_MODEL = createMockCard({
   id: 3,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: TEST_DB.id,
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 const MONGO_DB = createSampleDatabase({ engine: "mongo" });
@@ -86,10 +90,14 @@ const MONGO_DB = createSampleDatabase({ engine: "mongo" });
 const TEST_MONGO_MODEL = createMockCard({
   id: 4,
   type: "model",
-  dataset_query: createMockNativeDatasetQuery({
-    database: MONGO_DB.id,
-    native: { query: '[{"$limit":1}]', collection: "ORDERS" },
-  }),
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(
+    createMetadataProvider({
+      databaseId: MONGO_DB.id,
+      metadata: createMockMetadata({ databases: [MONGO_DB] }),
+    }),
+    { query: '[{"$limit":1}]' },
+  ),
 });
 
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
@@ -113,6 +121,7 @@ const setup = async ({
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
+  fetchMock.get("path:/api/table", database.tables ?? []);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupSearchEndpoints([]);
@@ -129,7 +138,7 @@ const setup = async ({
     }),
   });
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
   const onSetDatabaseId = jest.fn();
   const registerChatContextProvider = jest.fn(
     (_provider: ChatContextProviderFn): DeregisterChatContextProviderFn =>
@@ -152,7 +161,7 @@ const setup = async ({
         readOnly={readOnly}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setQuery={_.noop}
         isNativeEditorOpen
       />,
     ),
@@ -223,7 +232,7 @@ describe("DatasetQueryEditor", () => {
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setQuery={_.noop}
         isNativeEditorOpen
       />,
     );

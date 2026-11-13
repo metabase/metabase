@@ -1,5 +1,6 @@
 ---
 title: About the anonymous usage data we collect
+summary: What anonymous usage data Metabase collects, what it's used for, and how to opt out.
 redirect_from:
   - /docs/latest/information-collection
 ---

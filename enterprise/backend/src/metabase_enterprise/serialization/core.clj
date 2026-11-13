@@ -1,27 +1,34 @@
 (ns metabase-enterprise.serialization.core
   (:require
+   [metabase-enterprise.serialization.db]
    [metabase-enterprise.serialization.dump]
    [metabase-enterprise.serialization.v2.extract]
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
+   [metabase-enterprise.serialization.v2.select]
    [metabase-enterprise.serialization.v2.storage]
    [metabase-enterprise.serialization.v2.storage.files]
    [metabase-enterprise.serialization.v2.storage.util]
    [potemkin :as p]))
 
 (comment
+  metabase-enterprise.serialization.db/keep-me
   metabase-enterprise.serialization.dump/keep-me
   metabase-enterprise.serialization.v2.extract/keep-me
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
+  metabase-enterprise.serialization.v2.select/keep-me
   metabase-enterprise.serialization.v2.storage/keep-me
   metabase-enterprise.serialization.v2.storage.files/keep-me
   metabase-enterprise.serialization.v2.storage.util/keep-me)
 
 (p/import-vars
+ [metabase-enterprise.serialization.db
+  collection-subtree-ids]
  [metabase-enterprise.serialization.dump
   serialization-deep-sort]
  [metabase-enterprise.serialization.v2.extract
+  export-ids
   make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
@@ -29,25 +36,30 @@
   legal-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths
-  strip-labels
   Ingestable
   ingest-yaml
   ingest-list
-  ingest-one
+  ingest-many
   ingest-errors
+  ingested
   read-resources
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load
   load-metabase!]
+ [metabase-enterprise.serialization.v2.select
+  select-ids
+  select-rows]
  [metabase-enterprise.serialization.v2.storage
   store!]
  [metabase-enterprise.serialization.v2.storage.files
   file-writer]
  [metabase-enterprise.serialization.v2.storage.util
   entity-file-path
+  entity-file-paths
   entity-yaml
-  resolve-storage-path
+  file-namer
+  resolve-storage-paths
   resource-files
   slugify-name
   without-resources

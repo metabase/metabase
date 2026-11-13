@@ -66,7 +66,7 @@
   nil)
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless `data-app` may use the card with `card-id`, after a read check of the card; does nothing without
+  "Throws a 400 unless `data-app` may run the card with `card-id`, after a read check of the card; does nothing without
   the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app-info
@@ -86,34 +86,4 @@
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app-info
    _action   :- ::actions.schema/action.adhoc]
-  nil)
-
-(defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
-  "The `actions` that `data-app` may use; all of them without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app-info
-   actions   :- [:sequential ::actions.schema/action]]
-  actions)
-
-(defenterprise-schema check-user-key-value :- :nil
-  "Throws a 400 unless `data-app` may use the user key-value `k` in `nmspace`; does nothing without the data-apps
-  feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app-info
-   _nmspace  :- :string
-   _k        :- :string]
-  nil)
-
-(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
-  "The types of the collections that `data-app` may see, or nil, meaning any, without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app-info]
-  nil)
-
-(defenterprise-schema check-collection :- :nil
-  "Throws a 400 unless `data-app` may see the collection with `collection-id`, after a read check of the collection;
-  does nothing without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app      :- ::data-apps.schema/data-app-info
-   _collection-id :- ::lib.schema.id/collection]
   nil)

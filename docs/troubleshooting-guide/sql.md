@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting SQL questions
+summary: Track down wrong results, variable problems, and syntax errors in SQL questions.
 ---
 
 # Troubleshooting SQL questions

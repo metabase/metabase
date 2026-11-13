@@ -1,14 +1,7 @@
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  Card,
   Collection,
   CollectionId,
   CollectionItem,
@@ -122,40 +115,6 @@ export function setupCollectionsEndpoints({
   });
 }
 
-function getCollectionVirtualSchemaURLs(collection: Collection) {
-  const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
-  const schemaName = getCollectionVirtualSchemaName(collection);
-  const schema = encodeURIComponent(schemaName);
-
-  const questions = ["path:/api/database/", db, "/schema/", schema].join("");
-  const models = ["path:/api/database/", db, "/datasets/", schema].join("");
-
-  return { questions, models };
-}
-
-export function setupCollectionVirtualSchemaEndpoints(
-  collection: Collection,
-  cards: Card[],
-) {
-  const urls = getCollectionVirtualSchemaURLs(collection);
-
-  const [models, questions] = _.partition(
-    cards,
-    (card) => card.type === "model",
-  );
-  const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
-  const questionVirtualTables = questions.map(
-    convertSavedQuestionToVirtualTable,
-  );
-
-  fetchMock.get(urls.questions, questionVirtualTables, {
-    name: "collection-questions-virtual-tables",
-  });
-  fetchMock.get(urls.models, modelVirtualTables, {
-    name: "collection-models-virtual-tables",
-  });
-}
-
 function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
   if (pinnedState === "is_pinned") {
     return item.collection_position != null;
@@ -191,7 +150,9 @@ function handleCollectionItemsResponse({
     ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
     : matchedItems;
 
-  const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
+  // As in the API, `limit=0` is a count-only request: no rows, just `total`.
+  const limitParam = url.searchParams.get("limit");
+  const limit = limitParam === null ? searchedItems.length : Number(limitParam);
   const offset = Number(url.searchParams.get("offset")) || 0;
 
   return {

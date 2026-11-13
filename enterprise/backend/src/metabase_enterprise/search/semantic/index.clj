@@ -19,6 +19,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -141,7 +142,7 @@
     (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
-          direct               (into {} (map (juxt :id :personal_owner_id)) personal)
+          direct               (u/index-by :id :personal_owner_id personal)
           roots                (keep (fn [{:keys [id location]}]
                                        (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
                                          [id root-id]))
@@ -330,7 +331,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 5}))
+     :version 6}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -500,9 +501,12 @@
   ;; text_search_with_native_query_vector => tswnqv
   (index-name index "_tswnqv_gin_idx"))
 
-(defn- content-index-name
-  "Returns the name for a B-tree database index on `content` for the given semantic search index configuration.
-   Used for efficient `content IN ..` queries."
+;; A hash index, because a B-tree entry is capped at about 2.7 KB and the lookup only needs equality. Older versions
+;; create an index under this name at startup with IF NOT EXISTS, so in a rolling upgrade or a rollback they find
+;; this one and add no B-tree.
+(defn content-index-name
+  "Returns the name for the hash index on `content` for the given semantic search index configuration.
+  It serves the `content IN ..` lookup that reuses embeddings for identical text."
   [index]
   (index-name index "_content_idx"))
 
@@ -582,7 +586,7 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (content-index-name index)) :if-not-exists]
-            [(keyword table-name) :content])
+            [(keyword table-name) :using-hash :content])
            sql-format-quoted)))
     (catch Exception e
       ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
@@ -980,6 +984,12 @@
   Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
+;; A Card's after-select transforms normalize its query, metadata and settings, which costs far more than the read
+;; check itself, and the permission filter loads every candidate a semantic search returns.
+(def ^:private read-check-selects
+  "Per model, a select of only the columns its `mi/can-read?` reads, for models too costly to load in full."
+  {:model/Card (into [:model/Card] queries/card-read-check-columns)})
+
 (defn- filter-read-permitted
   "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
@@ -998,8 +1008,9 @@
         coll-readable? (memoize perms/can-read-via-parent-collection?)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
-                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (semantic-search.db/instances t2-model (map :id docs))]
+                           (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
+                                 :let [modelable (get read-check-selects t2-model t2-model)]
+                                 t2-instance (semantic-search.db/instances modelable ids)]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1020,8 +1031,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (semantic-search.db/collection-locations collection-ids)
-                               (into {} (map (juxt :id identity)))))]
+                          (u/index-by :id (semantic-search.db/collection-locations collection-ids)))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
                  (or (= doc-collection-id collection-id)
@@ -1417,8 +1427,6 @@
   ;; no user
   (query-index db index {:search-string "Copper knife"})
 
-  ;; REPL scratch; metabase.test is off-limits to this module's real code
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))

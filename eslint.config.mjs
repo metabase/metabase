@@ -59,6 +59,17 @@ const configs = [
     ...entry,
     ...(entry.rules && { rules: aliasRules(entry.rules) }),
   })),
+  // Oxlint runs type-aware rules through oxlint-tsgolint. This config has no type information.
+  // With those rules off, every disable comment for them looks unused here, so editors would
+  // flag (and could auto-remove) them. Oxlint reports unused directives in CI instead.
+  {
+    linterOptions: { reportUnusedDisableDirectives: "off" },
+    rules: Object.fromEntries(
+      Object.entries(tseslint.plugin.rules ?? {})
+        .filter(([, rule]) => rule.meta?.docs?.requiresTypeChecking)
+        .map(([name]) => [`@typescript-eslint/${name}`, "off"]),
+    ),
+  },
 ];
 if (shouldLintCssModules) {
   try {
