@@ -625,50 +625,50 @@
 
 (deftest delete-transform-table-never-drops-the-canonical-target-on-a-workspace-instance-test
   (testing "on a workspace instance, DELETE /api/transform/:id/table drops the workspace copy or refuses; it never drops the canonical table"
-    (mt/with-premium-features #{:workspaces :transforms-basic}
-      (mt/with-temporary-setting-values [transforms-enabled true]
-        (let [mp     (mt/metadata-provider)
-              query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-              drops  (atom [])
-              delete (fn [transform-id]
-                       (reset! drops [])
-                       (with-redefs [driver/drop-transform-target! (fn [_driver _database target]
-                                                                     (swap! drops conj (select-keys target [:schema :name])))]
-                         (mt/user-http-request-full-response :crowberto :delete (str "transform/" transform-id "/table"))))]
-          (with-instance-workspace-for-db! "ws"
-            (fn []
-              (try
-                (testing "with a remap row for the target, the drop names the workspace copy"
-                  (let [target {:type "table" :schema "PUBLIC" :name "t3a_with_row"}]
-                    (mt/with-temp [:model/Transform transform {:name "t3a with row" :source {:type :query :query query} :target target}]
-                      (ws.table-remapping/clear-mappings-for-db! (mt/id))
-                      (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
-                      (delete (:id transform))
-                      (is (= [{:schema "ws" :name "PUBLIC__t3a_with_row"}] @drops)))))
-                (testing "with no remap row for the target, the canonical table is not dropped"
-                  (let [target {:type "table" :schema "PUBLIC" :name "t3a_no_row"}]
-                    (mt/with-temp [:model/Transform transform {:name "t3a no row" :source {:type :query :query query} :target target}]
-                      (ws.table-remapping/clear-mappings-for-db! (mt/id))
-                      (delete (:id transform))
-                      (is (not-any? #{{:schema "PUBLIC" :name "t3a_no_row"}} @drops)
-                          (str "drops recorded: " (pr-str @drops)))
-                      (testing "and the drop names the workspace copy the transform would write to"
-                        (is (= [{:schema "ws" :name "PUBLIC__t3a_no_row"}] @drops))))))
-                (finally
-                  (ws.table-remapping/clear-mappings-for-db! (mt/id))))))
-          (testing "when the database has no workspace schema, the request gets a 400 and nothing is dropped"
-            (let [target {:type "table" :schema "PUBLIC" :name "t3a_no_schema"}]
-              (mt/with-temp [:model/Transform transform {:name "t3a no schema" :source {:type :query :query query} :target target}]
-                (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
-                  (try
-                    (ws.settings/workspaces-enabled! true)
-                    (is (= 400 (:status (delete (:id transform)))))
-                    (is (= [] @drops))
-                    (finally
-                      (ws/clear-instance-workspace!)))))))
-          (testing "off a workspace instance, the canonical table is dropped"
-            (let [target {:type "table" :schema "PUBLIC" :name "t3a_off_workspace"}]
-              (mt/with-temp [:model/Transform transform {:name "t3a off workspace" :source {:type :query :query query} :target target}]
-                (is (false? (ws/workspace-mode?)))
-                (is (= 204 (:status (delete (:id transform)))))
-                (is (= [{:schema "PUBLIC" :name "t3a_off_workspace"}] @drops))))))))))
+    ;; :hosting with :transforms-basic turns transforms on without a write to `transforms-enabled`.
+    (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+      (let [mp     (mt/metadata-provider)
+            query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            drops  (atom [])
+            delete (fn [transform-id]
+                     (reset! drops [])
+                     (with-redefs [driver/drop-transform-target! (fn [_driver _database target]
+                                                                   (swap! drops conj (select-keys target [:schema :name])))]
+                       (mt/user-http-request-full-response :crowberto :delete (str "transform/" transform-id "/table"))))]
+        (with-instance-workspace-for-db! "ws"
+          (fn []
+            (try
+              (testing "with a remap row for the target, the drop names the workspace copy"
+                (let [target {:type "table" :schema "PUBLIC" :name "t3a_with_row"}]
+                  (mt/with-temp [:model/Transform transform {:name "t3a with row" :source {:type :query :query query} :target target}]
+                    (ws.table-remapping/clear-mappings-for-db! (mt/id))
+                    (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
+                    (delete (:id transform))
+                    (is (= [{:schema "ws" :name "PUBLIC__t3a_with_row"}] @drops)))))
+              (testing "with no remap row for the target, the canonical table is not dropped"
+                (let [target {:type "table" :schema "PUBLIC" :name "t3a_no_row"}]
+                  (mt/with-temp [:model/Transform transform {:name "t3a no row" :source {:type :query :query query} :target target}]
+                    (ws.table-remapping/clear-mappings-for-db! (mt/id))
+                    (delete (:id transform))
+                    (is (not-any? #{{:schema "PUBLIC" :name "t3a_no_row"}} @drops)
+                        (str "drops recorded: " (pr-str @drops)))
+                    (testing "and the drop names the workspace copy the transform would write to"
+                      (is (= [{:schema "ws" :name "PUBLIC__t3a_no_row"}] @drops))))))
+              (finally
+                (ws.table-remapping/clear-mappings-for-db! (mt/id))))))
+        (testing "when the database has no workspace schema, the request gets a 400 and nothing is dropped"
+          (let [target {:type "table" :schema "PUBLIC" :name "t3a_no_schema"}]
+            (mt/with-temp [:model/Transform transform {:name "t3a no schema" :source {:type :query :query query} :target target}]
+              (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+                (try
+                  (ws.settings/workspaces-enabled! true)
+                  (is (= 400 (:status (delete (:id transform)))))
+                  (is (= [] @drops))
+                  (finally
+                    (ws/clear-instance-workspace!)))))))
+        (testing "off a workspace instance, the canonical table is dropped"
+          (let [target {:type "table" :schema "PUBLIC" :name "t3a_off_workspace"}]
+            (mt/with-temp [:model/Transform transform {:name "t3a off workspace" :source {:type :query :query query} :target target}]
+              (is (false? (ws/workspace-mode?)))
+              (is (= 204 (:status (delete (:id transform)))))
+              (is (= [{:schema "PUBLIC" :name "t3a_off_workspace"}] @drops)))))))))
