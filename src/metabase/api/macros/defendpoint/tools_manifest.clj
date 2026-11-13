@@ -16,8 +16,8 @@
    [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.malli.json-schema :as mu.json-schema]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -168,13 +168,21 @@
   ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
   ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
   ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
-  (match/replace-all json-schema
-    ;; [:maybe X]; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
-    {:oneOf [x {:type "null"}]}
-    (merge (nullable x) (dissoc &match :oneOf))
-    ;; any other branching, such as a :multi; a property named `oneOf` puts a schema map, not branches, under the key
-    {:oneOf (branches :guard sequential?)}
-    (-> &match (dissoc :oneOf) (update :anyOf #(into (vec %) branches)))))
+  ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
+  (mu.json-schema/postwalk-schemas
+   (fn [{[x y :as branches] :oneOf :as node}]
+     (cond
+       ;; [:maybe X]; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
+       (and (= 2 (count branches)) (= {:type "null"} y))
+       (merge (nullable x) (dissoc node :oneOf))
+
+       ;; any other branching, such as a :multi
+       branches
+       (-> node (dissoc :oneOf) (update :anyOf #(into (vec %) branches)))
+
+       :else
+       node))
+   json-schema))
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).

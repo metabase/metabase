@@ -127,6 +127,12 @@
             :required   [:oneOf]}
            (tools-manifest/malli->json-schema [:map [:oneOf :int]])))))
 
+(deftest ^:parallel one-of-in-a-value-test
+  (testing "a `oneOf` key inside a constant is data, so it publishes unchanged"
+    (is (= {:const {:oneOf ["a" "b"]}}
+           (get-in (tools-manifest/malli->json-schema [:map [:k [:= {} {:oneOf ["a" "b"]}]]])
+                   [:properties :k])))))
+
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
     (is (= {:anyOf [{:type "string"} {:type "integer"}]}
