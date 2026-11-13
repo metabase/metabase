@@ -61,7 +61,8 @@
 (mu/defn public-document
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."
   [document-id :- [:maybe ms/PositiveInt]]
-  (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+  (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at
+                  :show_public_timeline_events]
                  :id document-id, :archived false))
 
 (mu/defn document-content

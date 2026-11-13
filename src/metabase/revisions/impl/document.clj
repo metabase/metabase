@@ -23,7 +23,8 @@
     :collection_position
     :public_uuid
     :public_uuid_prefix
-    :made_public_by_id})
+    :made_public_by_id
+    :show_public_timeline_events})
 
 (defmethod revision/serialize-instance :model/Document
   [_model _id instance]

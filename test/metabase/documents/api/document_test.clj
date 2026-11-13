@@ -2167,6 +2167,16 @@
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
                                                 (format "document/%d/public-link" (:id document))))))))))
+    (testing "Sharing a Document shows its timeline events on the public link"
+      (mt/with-temp [:model/Document document {:name                        "Test Document"
+                                               :document                    (documents.test-util/text->prose-mirror-ast "Test content")
+                                               :show_public_timeline_events false}]
+        (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+        (is (true? (t2/select-one-fn :show_public_timeline_events :model/Document :id (:id document))))))
+    (testing "Re-sharing an already shared Document keeps its timeline events hidden"
+      (mt/with-temp [:model/Document document (document-with-public-link {:show_public_timeline_events false})]
+        (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+        (is (false? (t2/select-one-fn :show_public_timeline_events :model/Document :id (:id document))))))
     (mt/with-temp [:model/Document document {:name "Test Document"
                                              :document (documents.test-util/text->prose-mirror-ast "Test content")}]
       (testing "Test that we *cannot* share a Document if we aren't admins"

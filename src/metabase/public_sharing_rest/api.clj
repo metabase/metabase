@@ -881,7 +881,10 @@
     (-> document
         ;; Filter sensitive fields from all cards before exposing publicly
         (assoc :cards (update-vals cards remove-card-non-public-columns)
-               :card_timeline_events (public-cards-timeline-events (vals cards)))
+               ;; Documents that were already public when public documents started showing events keep them hidden
+               :card_timeline_events (if (:show_public_timeline_events document)
+                                       (public-cards-timeline-events (vals cards))
+                                       {}))
         (dissoc :content_type)
         remove-document-non-public-columns)))
 

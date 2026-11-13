@@ -214,6 +214,26 @@
           (testing "the same for a signed-in viewer who cannot read the timeline"
             (is (= expected (card-timeline-event-ids (mt/user-http-request :rasta :get 200 path))))))))))
 
+(deftest public-document-hides-timeline-events-when-flag-off-test
+  (testing "GET /api/public/document/:uuid shows no events for a document that was public before public documents
+           showed them"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Timeline timeline {}
+                     :model/TimelineEvent _event {:timeline_id (:id timeline)}
+                     :model/Document document (document-with-public-link {:show_public_timeline_events false})
+                     :model/Card card {:display                :line
+                                       :document_id            (:id document)
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (t2/update! :model/Document :id (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
+        (let [response (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
+          (testing "the card is still there"
+            (is (contains? (:cards response) (:id card))))
+          (testing "but shows no events"
+            (is (= {} (:card_timeline_events response))))
+          (testing "and the flag itself is not exposed"
+            (is (not (contains? response :show_public_timeline_events)))))))))
+
 (deftest public-document-editor-cannot-publish-unreadable-timeline-test
   (testing "an editor who cannot read a timeline cannot publish its events by embedding a card that selects it, even
            when the document already shows that timeline with some of its events hidden"

@@ -691,7 +691,7 @@
   {:schema    ::documents.schema/external-document
    :copy      [:archived :archived_directly :content_type :entity_id :name :collection_position]
    :skip      [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id
-               :is_placeholder]
+               :is_placeholder :show_public_timeline_events]
    :transform {:document      {:export (fn [store documents _ _]
                                          (serialization/export-in-bulk store documents walk-export-document))
                                :import (fn [store entities _ opts]
