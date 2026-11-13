@@ -13,6 +13,8 @@ export type FormulaEditorProps = {
   stageIndex: number;
   database: Database | undefined;
   expressionMode: Lib.ExpressionMode;
+  /** Position of the edited clause, so the formula cannot refer to itself. */
+  expressionIndex?: number;
   initialSource?: string;
   submitLabel: string;
   onEditorCreate?: (view: EditorView) => void;

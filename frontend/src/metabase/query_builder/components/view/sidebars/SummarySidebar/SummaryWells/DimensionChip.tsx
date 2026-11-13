@@ -90,7 +90,12 @@ export function DimensionChip({
       onRemove={onRemove}
     >
       {handleEdit && (
-        <FormulaEditButton label={item.label} onEdit={handleEdit}>
+        <FormulaEditButton
+          label={item.label}
+          isEditing={isEditing}
+          onEdit={handleEdit}
+          onCancelEdit={() => formulaInput?.cancelEdit(item.key)}
+        >
           {label}
         </FormulaEditButton>
       )}

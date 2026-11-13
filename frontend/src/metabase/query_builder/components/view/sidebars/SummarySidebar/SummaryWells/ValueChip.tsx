@@ -4,6 +4,7 @@ import type { IconName } from "metabase-types/api";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type { SummaryValueItem } from "../types";
+import { isFormulaValue } from "../utils";
 
 import { ColumnValueMenu } from "./ColumnValueMenu";
 import { FormulaEditButton } from "./FormulaEditButton";
@@ -42,7 +43,7 @@ export function ValueChip({
   onRemove,
 }: ValueChipProps) {
   const wellFieldRef = useWellFieldRef();
-  const isFormula = item.kind === "expression" || item.isNamed;
+  const isFormula = isFormulaValue(item);
   const handleRename = (name: string) =>
     onChange(
       Lib.replaceClause(
@@ -82,7 +83,12 @@ export function ValueChip({
       onRemove={onRemove}
     >
       {handleEdit && (
-        <FormulaEditButton label={item.label} onEdit={handleEdit}>
+        <FormulaEditButton
+          label={item.label}
+          isEditing={isEditing}
+          onEdit={handleEdit}
+          onCancelEdit={() => formulaInput?.cancelEdit(item.key)}
+        >
           {icon}
           {label}
         </FormulaEditButton>
