@@ -2160,7 +2160,11 @@
   "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
   would read that schema."
   [schema body]
-  (mr/validate schema (mc/decode schema body (mtx/json-transformer))))
+  ;; The test client reads a JSON array as a list, and `:tuple` only accepts a vector.
+  (let [transformer (mtx/transformer
+                     (mtx/json-transformer)
+                     {:name :tuples, :decoders {:tuple #(cond-> % (sequential? %) vec)}})]
+    (mr/validate schema (mc/decode schema body transformer))))
 
 (deftest public-query-result-schema-test
   (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
@@ -2176,7 +2180,15 @@
               (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
                 (is (contains? #{400 500} status))
                 (is (= "failed" (:status body)))
-                (is (matches? ::api.public/query-error body))))))))))
+                (is (matches? ::api.public/query-error body))))))
+        (testing "a completed query with a trend line"
+          (with-temp-public-card [{uuid :public_uuid} {:display       :line
+                                                       :dataset_query (mt/mbql-query orders
+                                                                        {:aggregation [[:count] [:sum $total]]
+                                                                         :breakout    [!month.created_at]})}]
+            (let [body (client/client :get 202 (format "public/card/%s/query" uuid))]
+              (is (seq (get-in body [:data :insights])))
+              (is (matches? ::api.public/query-result body)))))))))
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
