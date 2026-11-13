@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
@@ -52,7 +52,7 @@
   [{old-coll :collection_id} updates]
   (when (and (contains? updates :collection_id)
              (not= old-coll (:collection_id updates)))
-    (governing-collection/check-write-governing-collection nil (:collection_id updates))))
+    (collections/check-write-governing-collection nil (:collection_id updates))))
 
 (def ^:private summary-document-name
   "Name for the auto-created Summary document on each exploration."

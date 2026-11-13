@@ -10,7 +10,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
@@ -260,7 +260,7 @@
                         (:collection_id destination)
                         (personal-collection-id))]
     (tools/with-entity {:kind :collection :id collection-id}
-      (governing-collection/check-read-governing-collection nil collection-id))
+      (collections/check-read-governing-collection nil collection-id))
     (check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
                      #(api/create-check :model/Card {:collection_id collection-id}))
     (let [card (queries/create-card!

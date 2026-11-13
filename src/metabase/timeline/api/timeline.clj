@@ -3,7 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
@@ -145,7 +145,7 @@
    {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (governing-collection/check-read-governing-collection nil nil)
+  (collections/check-read-governing-collection nil nil)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
@@ -160,6 +160,6 @@
    {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (governing-collection/check-read-governing-collection nil id)
+  (collections/check-read-governing-collection nil id)
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))

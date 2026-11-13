@@ -16,7 +16,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
@@ -455,7 +455,7 @@
   A collection in the trash is refused. `creating?` says whether the dashboard is new, which changes the advice."
   [collection-id creating?]
   (let [collection (tools/with-entity {:kind :collection, :id collection-id}
-                     (governing-collection/check-read-governing-collection nil collection-id))]
+                     (collections/check-read-governing-collection nil collection-id))]
     (when (:archived collection)
       (collection-trashed! {:collection-id collection-id})))
   (try

@@ -1,7 +1,7 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -48,7 +48,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod governing-collection/root-namespace :model/Exploration [_model] nil)
+(defmethod collections/root-namespace :model/Exploration [_model] nil)
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
