@@ -656,6 +656,20 @@
                       (is (= [{:schema "ws" :name "PUBLIC__t3a_no_row"}] @drops))))))
               (finally
                 (ws.table-remapping/clear-mappings-for-db! (mt/id))))))
+        (testing "with a remap row to another schema than the database's workspace schema, the drop names the row's copy"
+          (with-instance-workspace-for-db! "ws_new"
+            (fn []
+              (let [target {:type "table" :schema "PUBLIC" :name "t3a_stale_row"}]
+                (mt/with-temp [:model/Transform transform {:name "t3a stale row" :source {:type :query :query query} :target target}]
+                  (try
+                    (ws.table-remapping/clear-mappings-for-db! (mt/id))
+                    (t2/insert! :model/TableRemapping {:database_id (mt/id) :from_db "" :from_schema "PUBLIC"
+                                                       :from_table_name "t3a_stale_row"
+                                                       :to_db "" :to_schema "ws_old" :to_table_name "PUBLIC__t3a_stale_row"})
+                    (is (= 204 (:status (delete (:id transform)))))
+                    (is (= [{:schema "ws_old" :name "PUBLIC__t3a_stale_row"}] @drops))
+                    (finally
+                      (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
         (testing "when the database has no workspace schema, the request gets a 400 and nothing is dropped"
           (let [target {:type "table" :schema "PUBLIC" :name "t3a_no_schema"}]
             (mt/with-temp [:model/Transform transform {:name "t3a no schema" :source {:type :query :query query} :target target}]
