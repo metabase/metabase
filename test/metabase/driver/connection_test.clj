@@ -6,7 +6,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (comment =?/keep-me)
 
