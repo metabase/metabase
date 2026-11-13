@@ -304,7 +304,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
 
       cy.log("Fix the setting and re-check");
       H.updateSetting("site-url", "https://metabase.example.com");
-      cy.findByRole("button", { name: /Re-check/ }).click();
+      cy.findByRole("button", { name: /Refresh/ }).click();
 
       cy.log("The check moves to Passed");
       openCheckGroup(/Passed/).within(() => {

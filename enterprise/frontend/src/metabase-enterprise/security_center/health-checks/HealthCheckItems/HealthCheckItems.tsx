@@ -56,7 +56,7 @@ export const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
     : [...problemItems, ...passedItems];
 
   return (
-    <Card withBorder p={0} className={S.itemList}>
+    <Card withBorder p={0} shadow="none" className={S.itemList}>
       {visibleItems.map((item, index) => (
         <HealthCheckItemRow key={index} checkId={check.id} item={item} />
       ))}
