@@ -135,11 +135,13 @@
 
 (deftest ^:parallel hand-written-one-of-test
   (testing "a `oneOf` under any subschema keyword of a hand-written `:json-schema` publishes as `anyOf`"
-    (is (= {:else     {:anyOf [{:type "integer"} {:type "boolean"}]}
-            :contains {:anyOf [{:type "integer"} {:type "boolean"}]}}
+    (is (= {:else          {:anyOf [{:type "integer"} {:type "boolean"}]}
+            :contains      {:anyOf [{:type "integer"} {:type "boolean"}]}
+            :contentSchema {:anyOf [{:type "integer"} {:type "boolean"}]}}
            (get-in (tools-manifest/malli->json-schema
-                    [:map [:k [:any {:json-schema {:else     {:oneOf [{:type "integer"} {:type "boolean"}]}
-                                                   :contains {:oneOf [{:type "integer"} {:type "boolean"}]}}}]]])
+                    [:map [:k [:any {:json-schema {:else          {:oneOf [{:type "integer"} {:type "boolean"}]}
+                                                   :contains      {:oneOf [{:type "integer"} {:type "boolean"}]}
+                                                   :contentSchema {:oneOf [{:type "integer"} {:type "boolean"}]}}}]]])
                    [:properties :k])))))
 
 (deftest ^:parallel multi-publishes-any-of-test

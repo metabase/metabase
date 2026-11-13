@@ -124,6 +124,7 @@
            (map? (:properties node))            (update :properties update-vals walk)
            (map? (:patternProperties node))     (update :patternProperties update-vals walk)
            (map? (:dependentSchemas node))      (update :dependentSchemas update-vals walk)
+           (map? (:dependencies node))          (update :dependencies update-vals walk)
            (map? (:definitions node))           (update :definitions update-vals walk)
            (map? (:$defs node))                 (update :$defs update-vals walk)
            (map? (:items node))                 (update :items walk)
@@ -141,6 +142,7 @@
            (map? (:not node))                   (update :not walk)
            (map? (:if node))                    (update :if walk)
            (map? (:then node))                  (update :then walk)
+           (map? (:contentSchema node))         (update :contentSchema walk)
            (map? (:else node))                  (update :else walk))))))
 
 (defn- subschemas
