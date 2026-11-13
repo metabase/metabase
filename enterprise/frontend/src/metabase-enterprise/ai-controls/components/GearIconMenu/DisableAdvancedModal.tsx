@@ -24,12 +24,12 @@ export function DisableAdvancedModal({ loading, onConfirm, onClose }: Props) {
       onClose={onClose}
       title={t`Remove group-level access?`}
       message={
-        <>
+        <Text>
           {t`If you don't need to set access granularly for each group, you can switch back to controlling access via just the "All Users" group.`}{" "}
           <Text fw="bold" component="strong" display="inline">
             {t`This will remove access from all of your other groups.`}
           </Text>
-        </>
+        </Text>
       }
       confirmButtonText={t`Remove access from all groups`}
       confirmButtonProps={{ loading }}
