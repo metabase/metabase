@@ -13,7 +13,7 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.malli.json-schema :as mu.json-schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -516,9 +516,11 @@
 (deftest ^:parallel published-schemas-have-no-one-of-test
   (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` anywhere"
     (is (= []
-           (for [tool  (@#'registry/manifest)
-                 :when (match/match-one tool {:oneOf _} true)]
-             (:name tool))))))
+           ;; a schema is free of `oneOf` when dropping it from every subschema changes nothing
+           (for [{tool-name :name :as tool} (@#'registry/manifest)
+                 schema                     ((juxt :inputSchema :outputSchema) tool)
+                 :when                      (not= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf) schema))]
+             tool-name)))))
 
 ;; not ^:parallel: flushes the shared manifest cache
 (deftest description-permission-text-ignores-caller-locale-test
