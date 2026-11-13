@@ -11,6 +11,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -193,3 +194,9 @@
 (defmethod skip-reason :default
   [_notification-payload]
   nil)
+
+(def skip-reason->message
+  "Warning message for why a notification send was skipped"
+  {:empty        (deferred-tru "No results")
+   :archived     (deferred-tru "Archived")
+   :goal-not-met (deferred-tru "Goal not met")})
