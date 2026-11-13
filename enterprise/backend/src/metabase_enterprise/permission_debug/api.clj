@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.permission-debug.explain :as permission-debug.explain]
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.preview-grant :as preview-grant]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -107,6 +108,34 @@
   (permission-debug.impl/start-preview! {:principal-type principal_type
                                          :principal-id   principal_id
                                          :attributes     attributes}))
+
+(api.macros/defendpoint :post "/preview/grant" :- [:map
+                                                   [:grant :string]
+                                                   [:expires_at :int]
+                                                   [:user_id ms/PositiveInt]
+                                                   [:user_name :string]
+                                                   [:principal_name :string]
+                                                   [:attributes [:map-of :string :string]]]
+  "Start previewing a user, group or tenant in the isolated preview frame. Takes the same body as `POST
+  /preview/start`, records the start in the audit log, and returns a grant valid for this browser session only, for
+  `expires_at` (epoch seconds). The host page's broker sends it as `X-Metabase-Preview-Grant` on each request it makes
+  for the frame; the request then runs as `user_id`, read-only.
+
+  Only a superuser's own browser session (the `metabase.SESSION` cookie) can get a grant."
+  [_route-params
+   _query-params
+   {:keys [principal_type principal_id attributes]} :- [:map {:closed true}
+                                                        [:principal_type permission-debug.impl/PrincipalType]
+                                                        [:principal_id ms/PositiveInt]
+                                                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]]
+   {session-key-hash :metabase/authed-session-key-hash, session-type :metabase-session-type}]
+  (api/check (and session-key-hash (= :normal session-type))
+             [403 "Previewing in the preview frame needs a browser session."])
+  (let [{:keys [user_id] :as preview} (permission-debug.impl/start-preview! {:principal-type principal_type
+                                                                             :principal-id   principal_id
+                                                                             :attributes     attributes})
+        {:keys [grant expires-at]}    (preview-grant/issue api/*current-user-id* user_id session-key-hash)]
+    (assoc preview :grant grant :expires_at expires-at)))
 
 (api.macros/defendpoint :get "/preview/attributes" :- permission-debug.impl/PreviewAttributesResponse
   "The attributes the access of the group with `group-id` depends on (row-level security, connection impersonation,
