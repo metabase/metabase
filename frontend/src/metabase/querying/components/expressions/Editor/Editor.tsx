@@ -139,6 +139,11 @@ export type EditorProps = {
   validateRef?: MutableRefObject<ValidateNow | null>;
   /** Set to a function that sends the whole text to the AI as a request. */
   generateRef?: MutableRefObject<GenerateNow | null>;
+  /**
+   * True for a new column: text that reads like a request offers to
+   * generate the expression with AI in autocomplete.
+   */
+  canGenerateFromText?: boolean;
 };
 
 export type GenerateNow = () => Promise<void>;
@@ -196,6 +201,7 @@ export function Editor(props: EditorProps) {
     showErrors = true,
     validateRef,
     generateRef,
+    canGenerateFromText,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -245,6 +251,16 @@ export function Editor(props: EditorProps) {
     ),
   });
 
+  // "Generate with AI" in autocomplete, for a request in a new column. The
+  // extensions don't change for it, so it reads the latest values from a ref.
+  const textRequestRef = useRef({ isEnabled: false, run: () => {} });
+  const textRequestOption = useMemo(
+    () => ({
+      isEnabled: () => textRequestRef.current.isEnabled,
+      run: () => textRequestRef.current.run(),
+    }),
+    [],
+  );
   const baseExtensions = useExtensions({
     expressionMode,
     query,
@@ -252,6 +268,7 @@ export function Editor(props: EditorProps) {
     availableColumns,
     availableMetrics,
     database,
+    textRequest: textRequestOption,
     extensions: [customTooltip],
   });
 
@@ -527,6 +544,8 @@ export function Editor(props: EditorProps) {
     applySource,
     onAcceptName,
     generateRef,
+    requestRef: textRequestRef,
+    isEnabled: Boolean(canGenerateFromText),
   });
   const { clearError: clearTextRequestError } = textRequest;
 
@@ -1088,6 +1107,8 @@ function useTextRequest({
   applySource,
   onAcceptName,
   generateRef,
+  requestRef,
+  isEnabled,
 }: {
   source: string;
   onStart: () => void;
@@ -1095,6 +1116,9 @@ function useTextRequest({
   applySource: (source: string) => Promise<unknown>;
   onAcceptName?: (name: string) => void;
   generateRef?: MutableRefObject<GenerateNow | null>;
+  /** Set to the request for autocomplete, with whether it is possible. */
+  requestRef: MutableRefObject<{ isEnabled: boolean; run: () => void }>;
+  isEnabled: boolean;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -1129,6 +1153,7 @@ function useTextRequest({
   if (generateRef) {
     generateRef.current = run;
   }
+  requestRef.current = { isEnabled, run: () => void run() };
 
   return {
     isLoading,

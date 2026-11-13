@@ -10,3 +10,4 @@ export * from "./position";
 export * from "./suggestions";
 export * from "./templates";
 export * from "./types";
+export * from "./request-text";

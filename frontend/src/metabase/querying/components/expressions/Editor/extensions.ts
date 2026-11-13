@@ -7,6 +7,7 @@ import {
   usePrototypeSetting,
 } from "metabase/prototype";
 import {
+  type TextRequestOption,
   expressionTemplates,
   functionArgumentPlaceholders,
   suggestions,
@@ -28,6 +29,7 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
+  textRequest?: TextRequestOption;
   extensions?: Extension[];
 };
 
@@ -52,6 +54,7 @@ export function useExtensions(options: Options): Extension[] {
     availableColumns,
     availableMetrics,
     database,
+    textRequest,
     extensions: extra = [],
   } = options;
   const getColumnValues = useGetColumnValues(query);
@@ -82,6 +85,7 @@ export function useExtensions(options: Options): Extension[] {
         columnsOutsideBrackets: hasColumnsOutsideBrackets,
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
         getColumnValues,
+        textRequest,
       }),
       tooltips({
         position: "fixed",
@@ -100,6 +104,7 @@ export function useExtensions(options: Options): Extension[] {
     database,
     hasColumnsOutsideBrackets,
     getColumnValues,
+    textRequest,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

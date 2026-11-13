@@ -9,3 +9,4 @@ export {
 } from "./values";
 export { FUNCTION_ALIASES } from "./aliases";
 export { findRelatedFunctions } from "./semantic";
+export { type TextRequestOption } from "./text-request";

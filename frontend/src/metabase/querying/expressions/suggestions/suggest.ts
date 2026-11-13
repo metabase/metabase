@@ -20,6 +20,8 @@ export type SuggestOptions = {
   popularFunctions?: string[];
   /** Gives the values of a column, for a value that is compared to it. */
   getColumnValues?: GetColumnValues;
+  /** Sends a request in words to the AI, from a new column. */
+  textRequest?: TextRequestOption;
 };
 
 import { getTemplateFieldKind } from "../templates";
@@ -39,6 +41,11 @@ import { openWhenEmpty, suggestPopular } from "./popular";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
 import {
+  type TextRequestOption,
+  quietOnTextRequest,
+  suggestTextRequest,
+} from "./text-request";
+import {
   type GetColumnValues,
   isOnColumnValue,
   suggestColumnValues,
@@ -51,21 +58,24 @@ export function suggestions(options: SuggestOptions) {
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
-      quietOnTemplateBlanks(suggestColumnValues(options)),
+      suggestTextRequest(options.textRequest),
       ...[
-        quietOnTemplateBlanks(popular),
-        quietOnTemplateBlanks(suggestLiterals()),
-        quietOnTemplateBlanks(suggestFunctions(options)),
-        quietOnTemplateBlanks(suggestAggregations(options)),
-        // Offers every column on a template's column blank.
-        suggestFields(options),
-        quietOnTemplateBlanks(suggestMetrics(options)),
-        quietOnTemplateBlanks(suggestMeasures(options)),
-        quietOnTemplateBlanks(suggestSegments(options)),
-        // Last, so that their options come after the text matches.
-        quietOnTemplateBlanks(suggestRelatedFunctions(options)),
-        quietOnTemplateBlanks(suggestRelatedColumns(options)),
-      ].map(quietOnColumnValues),
+        quietOnTemplateBlanks(suggestColumnValues(options)),
+        ...[
+          quietOnTemplateBlanks(popular),
+          quietOnTemplateBlanks(suggestLiterals()),
+          quietOnTemplateBlanks(suggestFunctions(options)),
+          quietOnTemplateBlanks(suggestAggregations(options)),
+          // Offers every column on a template's column blank.
+          suggestFields(options),
+          quietOnTemplateBlanks(suggestMetrics(options)),
+          quietOnTemplateBlanks(suggestMeasures(options)),
+          quietOnTemplateBlanks(suggestSegments(options)),
+          // Last, so that their options come after the text matches.
+          quietOnTemplateBlanks(suggestRelatedFunctions(options)),
+          quietOnTemplateBlanks(suggestRelatedColumns(options)),
+        ].map(quietOnColumnValues),
+      ].map(quietOnTextRequest(options.textRequest)),
     ].filter(isNotNull),
   });
   return [

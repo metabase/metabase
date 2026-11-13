@@ -1,7 +1,10 @@
 import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { ExpressionError } from "metabase/querying/expressions";
+import {
+  type ExpressionError,
+  isRequestText,
+} from "metabase/querying/expressions";
 import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
@@ -12,7 +15,6 @@ import type {
   GenerateNow,
   ValidateNow,
 } from "../../../components/expressions/Editor/Editor";
-import { isRequestText } from "../../../components/expressions/Editor/request-text";
 import { Layout } from "../../../components/expressions/Layout";
 
 import { ExpressionPreview } from "./ExpressionPreview";
@@ -269,6 +271,7 @@ export function InlineExpressionEditor({
         showErrors={isErrorShown}
         validateRef={validateRef}
         generateRef={generateRef}
+        canGenerateFromText={isNewExpression && !readOnly}
         readOnly={readOnly}
         toolbarStart={
           canGenerate ? (
