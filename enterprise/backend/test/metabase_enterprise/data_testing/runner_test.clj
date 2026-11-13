@@ -107,6 +107,19 @@
         (testing "fails when the query returns rows"
           (check-empty-expectation! schema table transform "rows returned" "name = 'abc'" :failed))))))
 
+(deftest run-transform-test-equals-sql-expectation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform]
+        (let [statuses (fn [sql]
+                         (mapv :status (:expectations (run-test! schema table transform one-row
+                                                                 [{:type :equals :name "rows" :format :sql :sql sql}]))))]
+          (testing "the expected rows read the target table, which the run rewrites to the output"
+            (is (= [:passed] (statuses (str "SELECT id, name FROM " schema ".people_summary")))))
+          (testing "literal expected rows"
+            (is (= [:passed] (statuses one-row)))
+            (is (= [:failed] (statuses "SELECT 2 AS id")))))))))
+
 (deftest run-transform-test-expectation-after-a-warehouse-error-test
   (testing "an expectation whose query fails at the warehouse does not change the result of the next one"
     ;; Redshift rejects SAVEPOINT, so there a failed statement still aborts the rest of the run.

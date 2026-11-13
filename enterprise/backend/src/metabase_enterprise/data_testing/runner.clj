@@ -78,14 +78,15 @@
 (mr/def ::context
   "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
   the columns it has, the input-table replacements, the token its SQL may write for the output, and the expectation's
-  own temp tables once they exist."
+  own temp tables and their columns once they exist."
   [:map {:closed true}
-   [:driver         :keyword]
-   [:output-table   :string]
-   [:replacements   ::data-testing.compile/table-replacements]
-   [:output-token   {:optional true} [:maybe ::data-testing.compile/output-token]]
-   [:output-columns {:optional true} [:sequential ::data-testing.schema/result-column]]
-   [:temp-tables    {:optional true} [:map-of :string :string]]])
+   [:driver             :keyword]
+   [:output-table       :string]
+   [:replacements       ::data-testing.compile/table-replacements]
+   [:output-token       {:optional true} [:maybe ::data-testing.compile/output-token]]
+   [:output-columns     {:optional true} [:sequential ::data-testing.schema/result-column]]
+   [:temp-tables        {:optional true} [:map-of :string :string]]
+   [:temp-table-columns {:optional true} [:map-of :string [:sequential ::data-testing.schema/result-column]]]])
 
 (mr/def ::probe
   "A query an expectation needs run."
@@ -97,9 +98,10 @@
 (mr/def ::probes
   "The queries an expectation needs, by probe id: the ids the expectation types use."
   [:map {:closed true}
-   [:violations   {:optional true} ::probe]
-   [:comparison   {:optional true} ::probe]
-   [:actual-count {:optional true} ::probe]])
+   [:violations     {:optional true} ::probe]
+   [:comparison     {:optional true} ::probe]
+   [:actual-count   {:optional true} ::probe]
+   [:expected-count {:optional true} ::probe]])
 
 (mr/def ::probe-results
   "What each probe of [[::probes]] read: its rows and the columns describing them."
@@ -107,9 +109,10 @@
                 [:rows    [:sequential [:sequential ms/FieldValue]]]
                 [:columns [:sequential ::data-testing.schema/result-column]]]]
     [:map {:closed true}
-     [:violations   {:optional true} result]
-     [:comparison   {:optional true} result]
-     [:actual-count {:optional true} result]]))
+     [:violations     {:optional true} result]
+     [:comparison     {:optional true} result]
+     [:actual-count   {:optional true} result]
+     [:expected-count {:optional true} result]]))
 
 (mu/defn- table-labels :- ::labels
   "The map from each temp table of the run to the name the author wrote, for rewriting warehouse error messages that
@@ -165,9 +168,13 @@
         (let [table (driver/temp-table-name driver)]
           (swap! temp-tables assoc id table)
           (data-testing.executor/create-temp-table! driver conn table query)))
-      (->> (expectations.protocol/probes expectation (assoc context :temp-tables @temp-tables))
-           (run-probes! driver conn)
-           (expectations.protocol/interpret expectation context))
+      (let [context (assoc context
+                           :temp-tables        @temp-tables
+                           :temp-table-columns (update-vals @temp-tables
+                                                            #(data-testing.executor/table-columns driver conn %)))]
+        (->> (expectations.protocol/probes expectation context)
+             (run-probes! driver conn)
+             (expectations.protocol/interpret expectation context)))
       (catch Exception e
         {:name   (:name expectation)
          :type   (:type expectation)

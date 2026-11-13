@@ -232,21 +232,87 @@
 
 ;;; ------------------------------------------- EqualsSql -------------------------------------------
 
-(deftest equals-sql-is-unimplemented-test
-  (testing "the sql form builds, then refuses to produce probes"
-    (let [expectation (build {:type   :equals
-                              :name   "sql form"
-                              :format :sql
-                              :sql    "SELECT 1"})
-          e           (caught #(expectations.protocol/probes expectation
-                                                             {:driver         :h2
-                                                              :output-table   "t"
-                                                              :output-columns ["id"]
-                                                              :replacements   {}}))]
-      ;; Its own type, not an authoring error: the expectation is well-formed, the feature is
-      ;; simply not built. The author is told which form to use instead.
-      (is (= ::data-testing.errors/unsupported-format (:error-type (ex-data e))))
-      (is (= {:expectation "sql form" :format :sql} (dissoc (ex-data e) :error-type)))
-      (is (re-find #"not implemented yet" (ex-message e)))
-      (is (re-find #"columns" (ex-message e)))
-      (is (re-find #"rows" (ex-message e))))))
+(defn- equals-sql
+  "An `:equals`/`:sql` record."
+  [sql]
+  (build {:type :equals :name "sql form" :format :sql :sql sql}))
+
+(def ^:private sql-context
+  "A run's context for the SQL form, once its temp table `expected` exists: the input `orders` stands in for by
+  `tmp_orders`, the output is `tmp_output`, and the expected table spells its columns as H2 folds them."
+  {:driver             :h2
+   :output-table       "tmp_output"
+   :output-token       "{{output}}"
+   :replacements       {{:table "orders"} {:db nil :schema nil :table "tmp_orders"}}
+   :output-columns     output-columns
+   :temp-tables        {"expected" "tmp_expected"}
+   :temp-table-columns {"expected" [{:name "NAME" :database_type "CHARACTER VARYING"}
+                                    {:name "ID" :database_type "INTEGER"}]}})
+
+(deftest equals-sql-temp-table-test
+  (testing "the expected rows are the author's SQL, reading the input temp tables and the output"
+    (let [{:keys [query params]} (get (expectations.protocol/temp-tables
+                                       (equals-sql "SELECT o.id, o.name FROM orders o JOIN {{output}} x ON o.id = x.id")
+                                       sql-context)
+                                      "expected")]
+      (is (re-find #"FROM \"?tmp_orders\"? (AS )?o\b" query) query)
+      (is (re-find #"JOIN \"?__mb_output\"? (AS )?x\b" query) query)
+      (is (not (re-find #"(?<!tmp_)orders\b" query)) query)
+      (is (= [] params)))))
+
+(deftest equals-sql-probes-test
+  (let [probes (expectations.protocol/probes (equals-sql "SELECT name, id FROM orders") sql-context)]
+    (testing "the comparison reads the output under its own spellings and the expected table under its own"
+      ;; Both sides list the columns in the expected table's order, so the union pairs them by position.
+      (let [query (get-in probes [:comparison :query])]
+        (is (re-find #"SELECT \"NAME\", \"ID\", 1 AS \"__mb_src\" FROM \"tmp_output\"" query) query)
+        (is (re-find #"SELECT \"NAME\", \"ID\", -1 AS \"__mb_src\" FROM \"tmp_expected\"" query) query)))
+    (testing "the expected rows are counted from the expected table"
+      (is (re-find #"FROM \"tmp_expected\"" (get-in probes [:expected-count :query]))))))
+
+(deftest equals-sql-probes-resolve-against-the-output-test
+  (testing "an expected column matches the output column that differs from it only in case"
+    (let [context (assoc sql-context
+                         :output-columns     [{:name "sum" :database_type "DECIMAL"}]
+                         :temp-table-columns {"expected" [{:name "SUM" :database_type "INTEGER"}]})
+          query   (get-in (expectations.protocol/probes (equals-sql "SELECT 10 AS sum") context)
+                          [:comparison :query])]
+      (is (re-find #"SELECT \"sum\", 1 AS \"__mb_src\" FROM \"tmp_output\"" query) query)
+      (is (re-find #"SELECT \"SUM\", -1 AS \"__mb_src\" FROM \"tmp_expected\"" query) query)))
+  (testing "an expected column the output lacks is refused, listing what the output has"
+    (let [context (assoc sql-context :temp-table-columns {"expected" [{:name "NOPE" :database_type "INTEGER"}]})
+          e       (caught #(expectations.protocol/probes (equals-sql "SELECT 1 AS nope") context))]
+      (is (= ::data-testing.errors/unknown-column (:error-type (ex-data e))))
+      (is (= {:expectation "sql form" :column "NOPE" :available ["ID" "NAME"]}
+             (dissoc (ex-data e) :error-type))))))
+
+(deftest equals-sql-interpret-test
+  (let [interpret (fn [comparison expected-count]
+                    (expectations.protocol/interpret
+                     (equals-sql "SELECT name, id FROM orders")
+                     sql-context
+                     {:comparison     {:rows    comparison
+                                       :columns [{:name "NAME" :database_type "CHARACTER VARYING"}
+                                                 {:name "ID" :database_type "INTEGER"}
+                                                 {:name "__mb_delta" :database_type "BIGINT"}]}
+                      :actual-count   {:rows [[2]] :columns [{:name "__mb_count" :database_type "BIGINT"}]}
+                      :expected-count {:rows [[expected-count]] :columns [{:name "__mb_count" :database_type "BIGINT"}]}}))]
+    (testing "a pass reports the expected table's columns, typed as the output types them, and both row counts"
+      (is (= {:name            "sql form"
+              :type            :equals
+              :status          :passed
+              :columns         [{:name "NAME" :database_type "CHARACTER VARYING"}
+                                {:name "ID" :database_type "INTEGER"}]
+              :row-counts      {:actual 2 :expected 2}
+              :extra-rows      []
+              :missing-rows    []
+              :truncated       0
+              :cell-mismatches []}
+             (interpret [] 2))))
+    (testing "a one-for-one difference names the differing cell"
+      (let [result (interpret [["abc" 1 1] ["xyz" 1 -1]] 3)]
+        (is (= :failed (:status result)))
+        (is (= {:actual 2 :expected 3} (:row-counts result)))
+        (is (= [{"NAME" "abc" "ID" 1}] (:extra-rows result)))
+        (is (= [{"NAME" "xyz" "ID" 1}] (:missing-rows result)))
+        (is (= [{:column "NAME" :expected "xyz" :actual "abc"}] (:cell-mismatches result)))))))

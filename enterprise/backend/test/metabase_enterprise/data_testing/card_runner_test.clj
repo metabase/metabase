@@ -15,6 +15,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -157,6 +158,37 @@
              (:status (run-card-test! (people-card)
                                       [(people-input one-person)]
                                       [{:type :empty :name "only the input row" :sql "SELECT * FROM {{output}} WHERE id <> 1"}])))))))
+
+(deftest equals-sql-expectations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [run! (fn [& expectations]
+                 (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
+          sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
+      (testing "literal expected rows"
+        (let [results (run! (sql "same row" one-person)
+                            (sql "other name" "SELECT 1 AS id, 'xyz' AS name"))]
+          (is (= :passed (results "same row")))
+          (is (= {:status          :failed
+                  :row-counts      {:actual 1 :expected 1}
+                  :cell-mismatches [{:column "name" :expected "xyz" :actual "abc"}]}
+                 (-> (results "other name")
+                     (select-keys [:status :row-counts :cell-mismatches])
+                     ;; Each warehouse spells the column as it folds `name`.
+                     (update :cell-mismatches (partial mapv #(update % :column u/lower-case-en)))))
+              (pr-str (results "other name")))))
+      (testing "only the columns the expected query returns are compared"
+        (is (= {"name only" :passed}
+               (run! (sql "name only" "SELECT 'abc' AS name")))))
+      (testing "the expected query reads the input and the output through the run's temp tables"
+        (is (= {"from the input" :passed "from the output" :passed}
+               (run! (sql "from the input" (str "SELECT id, name FROM " (qualified :people)))
+                     (sql "from the output" "SELECT id, name FROM {{output}}")))))
+      (testing "a column the output lacks makes that expectation an error"
+        (is (= ::data-testing.errors/unknown-column
+               (get-in (run! (sql "no such column" "SELECT 1 AS nope")) ["no such column" :error :type]))))
+      (testing "an expected query that reads a table the test does not stand in for is refused before it runs"
+        (is (= ::data-testing.errors/unremapped-reference
+               (:error-type (refusal #(run! (sql "real table" (str "SELECT id FROM " (qualified :orders))))))))))))
 
 (deftest card-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

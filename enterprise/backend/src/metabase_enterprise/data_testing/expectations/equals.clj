@@ -1,8 +1,9 @@
 (ns metabase-enterprise.data-testing.expectations.equals
-  "The `equals` expectation: the output of the query under test holds exactly the declared rows, over exactly the
-  declared columns.
+  "The `equals` expectation: the output of the query under test holds exactly the expected rows, over exactly their
+  columns. The expected rows are written out (`format: rows`), or are what a SQL query returns (`format: sql`); that
+  query reads the run's temp tables, rewritten as every expectation's SQL is.
 
-  Only the declared columns are compared, so a column the expectation does not name — a `NOW()`
+  Only the expected columns are compared, so a column the expectation does not name — a `NOW()`
   timestamp, say — never enters the query. It also means `equals` says nothing about a column the
   output has and the expectation does not."
   (:require
@@ -123,6 +124,14 @@
                    :column      declared-name
                    :available   (vec output-columns)}))))))
 
+(mu/defn- resolve-names :- [:sequential :string]
+  "The output table's own spelling of each of `column-names`, in order."
+  [expectation-name :- :string
+   column-names     :- [:sequential :string]
+   output-columns   :- [:sequential ::data-testing.schema/result-column]]
+  (let [output-names (mapv :name output-columns)]
+    (mapv #(resolve-column expectation-name output-names %) column-names)))
+
 (mu/defn resolve-columns :- [:sequential :string]
   "The output table's own spelling of each column `expectation` declares, in declared order.
 
@@ -130,8 +139,74 @@
   what they can find in their own test."
   [{:keys [name columns]} :- ::expectation
    output-columns         :- [:sequential ::data-testing.schema/result-column]]
-  (let [output-names (mapv :name output-columns)]
-    (mapv #(resolve-column name output-names (:name %)) columns)))
+  (resolve-names name (mapv :name columns) output-columns))
+
+;;; ---------------------------------------------- Comparing --------------------------------------------
+
+(defn- comparison-probes
+  "The probes comparing `output-table` with `expected-table`, over the columns the output spells `output-names` and
+  the expected table spells `expected-names`, position for position."
+  [driver output-table expected-table output-names expected-names]
+  {:comparison   (assoc (data-testing.compile/comparison-query driver output-table expected-table
+                                                               output-names expected-names)
+                        :max-rows (inc expectations.report/row-cap))
+   :actual-count (assoc (data-testing.compile/row-count-query driver output-table) :max-rows 1)})
+
+(defn- probe-count
+  "The count a row-count probe read, or 0 when it read none."
+  [result]
+  (or (some-> result :rows ffirst long) 0))
+
+(mu/defn- comparison-result :- ::result
+  "What the expectation `expectation-name` found, from the rows its comparison probe read and the row counts of the
+  output and of the expected rows. `column-names` are the expected columns as a report names them, and `output-names`
+  the output's spelling of each."
+  [expectation-name :- :string
+   column-names     :- [:sequential :string]
+   output-names     :- [:sequential :string]
+   output-columns   :- [:sequential ::data-testing.schema/result-column]
+   comparison-rows  :- [:sequential [:sequential ms/FieldValue]]
+   actual-count     :- :int
+   expected-count   :- :int]
+  (let [;; A comparison row is the expected columns followed by the signed multiplicity: how many
+        ;; times too often the row appears in the output (+) or in the expectation (-).
+        diffs        (for [row comparison-rows]
+                       [(long (last row))
+                        (zipmap column-names (map expectations.report/cell (butlast row)))])
+        expand       (fn [keep?]
+                       ;; Take inside the expansion, not after it. A single comparison row can
+                       ;; carry a multiplicity of millions, and realizing that many copies just to
+                       ;; drop all but `row-cap` of them turns a failed assertion into a memory
+                       ;; event. The transducer short-circuits, so `repeat` is never realized past
+                       ;; the cap; the dropped count comes from arithmetic rather than counting.
+                       (let [matching (filterv (comp keep? first) diffs)
+                             total    (reduce + 0 (map (comp abs first) matching))
+                             rows     (into [] (comp (mapcat (fn [[delta cells]]
+                                                               (repeat (abs delta) cells)))
+                                                     (take expectations.report/row-cap))
+                                            matching)]
+                         [rows (- total (count rows))]))
+        [extra   extra-dropped]   (expand pos?)
+        [missing missing-dropped] (expand neg?)
+        ;; name -> the output table's type for each column
+        output-type  (into {} (map (juxt :name :database_type)) output-columns)
+        reported     (mapv (fn [column-name output-name]
+                             {:name column-name :database_type (output-type output-name)})
+                           column-names
+                           output-names)]
+    ;; Every key is always present: a consumer should not have to tell nil from [].
+    (cond-> {:name            expectation-name
+             :type            :equals
+             :status          (if (and (empty? extra) (empty? missing)) :passed :failed)
+             :columns         reported
+             :row-counts      {:actual actual-count :expected expected-count}
+             :extra-rows      extra
+             :missing-rows    missing
+             :truncated       (+ extra-dropped missing-dropped)
+             :cell-mismatches []}
+
+      (cell-mismatches column-names missing extra)
+      (assoc :cell-mismatches (cell-mismatches column-names missing extra)))))
 
 ;;; ----------------------------------------------- Types -----------------------------------------------
 
@@ -140,76 +215,38 @@
   (temp-tables [this {:keys [driver output-columns]}]
     {"expected" (data-testing.compile/rows-query driver columns (resolve-columns this output-columns) rows)})
 
+  ;; The expected table is built with the output's own spellings, so both sides name the columns alike.
   (probes [this {:keys [driver output-table output-columns temp-tables]}]
-    {:comparison   (assoc (data-testing.compile/comparison-query driver output-table (get temp-tables "expected")
-                                                                 (resolve-columns this output-columns))
-                          :max-rows (inc expectations.report/row-cap))
-     :actual-count (assoc (data-testing.compile/row-count-query driver output-table) :max-rows 1)})
+    (let [output-names (resolve-columns this output-columns)]
+      (comparison-probes driver output-table (get temp-tables "expected") output-names output-names)))
 
   (interpret [this {:keys [output-columns]} results]
-    (let [column-names (mapv :name columns)
-          ;; A comparison row is the declared columns followed by the signed multiplicity: how many
-          ;; times too often the row appears in the output (+) or in the expectation (-).
-          diffs        (for [row (:rows (:comparison results))]
-                         [(long (last row))
-                          (zipmap column-names (map expectations.report/cell (butlast row)))])
-          expand       (fn [keep?]
-                         ;; Take inside the expansion, not after it. A single comparison row can
-                         ;; carry a multiplicity of millions, and realizing that many copies just to
-                         ;; drop all but `row-cap` of them turns a failed assertion into a memory
-                         ;; event. The transducer short-circuits, so `repeat` is never realized past
-                         ;; the cap; the dropped count comes from arithmetic rather than counting.
-                         (let [matching (filterv (comp keep? first) diffs)
-                               total    (reduce + 0 (map (comp abs first) matching))
-                               rows     (into [] (comp (mapcat (fn [[delta cells]]
-                                                                 (repeat (abs delta) cells)))
-                                                       (take expectations.report/row-cap))
-                                              matching)]
-                           [rows (- total (count rows))]))
-          [extra   extra-dropped]   (expand pos?)
-          [missing missing-dropped] (expand neg?)
-          actual-count (some-> results :actual-count :rows ffirst long)
-          ;; name -> the output table's type for each column
-          output-type  (into {} (map (juxt :name :database_type)) output-columns)
-          reported     (mapv (fn [declared resolved]
-                               {:name declared :database_type (output-type resolved)})
-                             column-names
-                             (resolve-columns this output-columns))]
-      ;; Every key is always present: a consumer should not have to tell nil from [].
-      (cond-> {:name            name
-               :type            :equals
-               :status          (if (and (empty? extra) (empty? missing)) :passed :failed)
-               :columns         reported
-               :row-counts      {:actual (or actual-count 0) :expected (count rows)}
-               :extra-rows      extra
-               :missing-rows    missing
-               :truncated       (+ extra-dropped missing-dropped)
-               :cell-mismatches []}
+    (comparison-result name (mapv :name columns) (resolve-columns this output-columns) output-columns
+                       (:rows (:comparison results)) (probe-count (:actual-count results)) (count rows))))
 
-        (cell-mismatches column-names missing extra)
-        (assoc :cell-mismatches (cell-mismatches column-names missing extra))))))
-
-(mu/defn- not-implemented :- (ms/InstanceOfClass clojure.lang.ExceptionInfo)
-  [expectation-name :- :string]
-  (data-testing.errors/ex
-   ::data-testing.errors/unsupported-format
-   (tru "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
-        (pr-str expectation-name))
-   {:expectation expectation-name :format :sql}))
+(defn- expected-columns
+  "The column names of the temp table that holds the expected rows, as the warehouse spells them."
+  [{:keys [temp-table-columns]}]
+  (mapv :name (get temp-table-columns "expected")))
 
 (defrecord EqualsSql [type name format sql]
   expectations.protocol/Expectation
-  ;; The form is accepted at authoring time and refused when it runs. Refusing it at construction
-  ;; would be the friendlier place, but reading is construction here, so it would also make every
-  ;; already-stored test of this shape unreadable — including the one upstream's serdes round-trip
-  ;; carries. Until the form is implemented, the refusal rides back on the expectation itself,
-  ;; naming it, while its siblings still report.
-  (temp-tables [_this _context]
-    (throw (not-implemented name)))
-  (probes [_this _context]
-    (throw (not-implemented name)))
-  (interpret [_this _context _results]
-    (throw (not-implemented name))))
+  (temp-tables [_this {:keys [driver replacements output-token]}]
+    {"expected" {:query  (data-testing.compile/replace-tables driver sql replacements output-token)
+                 :params []}})
+
+  (probes [_this {:keys [driver output-table output-columns temp-tables] :as context}]
+    (let [expected-names (expected-columns context)
+          expected-table (get temp-tables "expected")]
+      (assoc (comparison-probes driver output-table expected-table
+                                (resolve-names name expected-names output-columns) expected-names)
+             :expected-count (assoc (data-testing.compile/row-count-query driver expected-table) :max-rows 1))))
+
+  (interpret [_this {:keys [output-columns] :as context} results]
+    (let [expected-names (expected-columns context)]
+      (comparison-result name expected-names (resolve-names name expected-names output-columns) output-columns
+                         (:rows (:comparison results)) (probe-count (:actual-count results))
+                         (probe-count (:expected-count results))))))
 
 ;;; --------------------------------------------- Building ----------------------------------------------
 

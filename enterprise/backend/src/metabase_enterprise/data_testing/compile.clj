@@ -210,22 +210,30 @@
 
 (mu/defn comparison-query :- ::compiled-query
   "The query returning each row over the columns `sql-names` whose count differs between the temp tables `output-table`
-  and `expected-table`, followed by how many more times it appears in `output-table`."
-  [driver         :- :keyword
-   output-table   :- :string
-   expected-table :- :string
-   sql-names      :- [:sequential :string]]
-  (let [columns (mapv field sql-names)
-        src     (field "__mb_src")
-        tagged  (fn [table tag]
-                  {:select (conj (mapv as columns) [[:inline tag] (as :field-alias "__mb_src")])
-                   :from   [(from table)]})]
-    (compiled driver {:select   (conj (mapv as columns) [[:sum src] (as :field-alias "__mb_delta")])
-                      :from     [[{:union-all [(tagged output-table 1)
-                                               (tagged expected-table -1)]}
-                                  (as :table-alias "__mb_comparison")]]
-                      :group-by columns
-                      :having   [:<> [:sum src] [:inline 0]]})))
+  and `expected-table`, followed by how many more times it appears in `output-table`. `expected-names`, when given,
+  are those columns as `expected-table` spells them, position for position."
+  ([driver         :- :keyword
+    output-table   :- :string
+    expected-table :- :string
+    sql-names      :- [:sequential :string]]
+   (comparison-query driver output-table expected-table sql-names sql-names))
+  ([driver         :- :keyword
+    output-table   :- :string
+    expected-table :- :string
+    sql-names      :- [:sequential :string]
+    expected-names :- [:sequential :string]]
+   (let [columns (mapv field sql-names)
+         src     (field "__mb_src")
+         tagged  (fn [table table-columns tag]
+                   {:select (conj (mapv as table-columns) [[:inline tag] (as :field-alias "__mb_src")])
+                    :from   [(from table)]})]
+     ;; `UNION ALL` takes its column names from its first branch, so the expected side needs no aliases.
+     (compiled driver {:select   (conj (mapv as columns) [[:sum src] (as :field-alias "__mb_delta")])
+                       :from     [[{:union-all [(tagged output-table columns 1)
+                                                (tagged expected-table (mapv field expected-names) -1)]}
+                                   (as :table-alias "__mb_comparison")]]
+                       :group-by columns
+                       :having   [:<> [:sum src] [:inline 0]]}))))
 
 ;;; ------------------------------------------------- Inputs --------------------------------------------------
 

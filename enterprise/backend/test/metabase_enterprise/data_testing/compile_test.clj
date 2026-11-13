@@ -158,7 +158,12 @@
   (testing "a column name the warehouse folded to something dotted stays one identifier"
     (let [{:keys [query]} (data-testing.compile/comparison-query :postgres "out" "exp" ["a.b"])]
       (is (str/includes? query "GROUP BY \"a.b\"") (pr-str query))
-      (is (not (str/includes? query "\"a\".\"b\"")) (pr-str query)))))
+      (is (not (str/includes? query "\"a\".\"b\"")) (pr-str query))))
+  (testing "the expected table may spell the columns otherwise; the union pairs them by position"
+    (let [{:keys [query]} (data-testing.compile/comparison-query :postgres "out" "exp" ["id" "name"] ["ID" "NAME"])]
+      (is (str/includes? query "SELECT \"id\", \"name\", 1 AS \"__mb_src\" FROM \"out\"") (pr-str query))
+      (is (str/includes? query "SELECT \"ID\", \"NAME\", -1 AS \"__mb_src\" FROM \"exp\"") (pr-str query))
+      (is (str/includes? query "GROUP BY \"id\", \"name\"") (pr-str query)))))
 
 (deftest row-count-and-columns-queries-test
   (testing "the row count is a plain COUNT over the table"
