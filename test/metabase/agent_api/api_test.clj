@@ -1,4 +1,4 @@
-(ns metabase.agent-api.api-test
+(ns ^:synchronized metabase.agent-api.api-test
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
@@ -7,7 +7,6 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api.macros :as api.macros]
@@ -52,6 +51,12 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The Agent API is deprecated and off until an admin opts in. These tests exercise it, so they opt in.
+;; The namespace is `^:synchronized` because this fixture sets a Setting.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+                        (thunk))))
 
 (defn- orders-count-query
   "Create a simple count query on the orders table using lib functions."
@@ -166,16 +171,34 @@
       (testing "a session request with nil token-scopes is still unrestricted"
         (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
-(deftest agent-api-enabled-setting-test
-  (testing "External Agent API routes return 403 when disabled"
-    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
-      (is (= "Agent API is not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+(def ^:private agent-api-off-message
+  "The Agent API is deprecated and off by default. An admin can turn it on in Admin > AI > MCP.")
+
+(deftest deprecated-agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 until an admin opts in to the deprecated Agent API"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
+      (is (= agent-api-off-message
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))
+      ;; `agent-api-enabled?` is a stub with no effect. An upgraded instance can still hold a value for it: a stored
+      ;; row, or the env var. The rows are written raw, because the setter of the stub stores nothing.
+      (testing "a stored value of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
+      (testing "the env var of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temp-env-var-value! [mb-agent-api-enabled "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))))
+  (testing "External Agent API routes are served after the opt-in, whatever the old agent-api-enabled? holds"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+      (mt/with-temporary-raw-setting-values [:agent-api-enabled? "false"]
+        (is (= {:message "pong"}
+               (mt/user-http-request :rasta :get 200 "agent/v1/ping")))))))
 
 (deftest ai-features-enabled-setting-test
   (testing "External Agent API routes return 403 when AI features are globally disabled"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
-                                           :agent-api-enabled?   "true"]
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?          "false"
+                                           :deprecated-agent-api-enabled? "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
@@ -2201,7 +2224,7 @@
           (is (str/includes? (:error item) listing-uri))
           (is (not (str/includes? (:error item) "Call `search`"))))))))
 
-(deftest ^:parallel read-resource-tool-description-test
+(deftest read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]
                             (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
                               endpoint))

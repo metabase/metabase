@@ -430,9 +430,9 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection coll {}]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic _event]
-                                                            (when (= :event/card-create topic)
-                                                              (throw (ex-info "A subscriber failed." {}))))]
+        (with-redefs [events/publish-event! (fn [topic _event]
+                                              (when (= :event/card-create topic)
+                                                (throw (ex-info "A subscriber failed." {}))))]
           (testing "the save succeeds and creates one card even when a card-create subscriber fails"
             (let [outcome (invoke-save-entity
                            (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]

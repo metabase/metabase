@@ -9,7 +9,11 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
@@ -77,6 +81,7 @@ export async function setup({
     />,
     { storeInitialState: state, withRouter: true },
   );
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
 
   return {
