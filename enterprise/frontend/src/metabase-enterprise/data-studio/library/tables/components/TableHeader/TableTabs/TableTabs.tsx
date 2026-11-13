@@ -4,7 +4,6 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { useIsHistoryTable } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableStructure";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -21,16 +20,14 @@ type TableTabsProps = {
 
 export function TableTabs({ table }: TableTabsProps) {
   const location = useLocation();
-  const isHistoryTable = useIsHistoryTable(table);
   const [hierarchyPlacement] = useHierarchyPlacement();
-  const tabs = getTabs(table, location, isHistoryTable, hierarchyPlacement);
+  const tabs = getTabs(table, location, hierarchyPlacement);
   return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   table: Table,
   location: Omit<Location, "query" | "action">,
-  isHistoryTable: boolean,
   hierarchyPlacement: HierarchyPlacement,
 ): PillTab[] {
   const tabs: PillTab[] = [];
@@ -52,13 +49,6 @@ function getTabs(
       Urls.dataStudioTableFields(table.id),
     ),
   });
-
-  if (isHistoryTable) {
-    tabs.push({
-      label: t`History`,
-      to: Urls.dataStudioTableHistory(table.id),
-    });
-  }
 
   tabs.push({
     label: t`Segments`,

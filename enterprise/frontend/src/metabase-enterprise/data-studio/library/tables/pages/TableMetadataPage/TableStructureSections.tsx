@@ -29,14 +29,16 @@ export function TableStructureSections({ table }: { table: Table }) {
     <>
       <DatabaseInfoSection
         name={t`Structure`}
-        description={t`Its role, what one row is, its main date, and who can see it. These change how queries on this table work.`}
-        hasCard={false}
+        description={t`Its role, what one row is, and its main date. These change how queries on this table work.`}
+        contentPx="xxxl"
+        cardRadius="lg"
       >
         <Stack gap="xxl">
           <TableStructure
             table={table}
             readOnly={!table.can_write}
             hasTitle={false}
+            layout="form"
             getFieldUrl={(fieldId) =>
               Urls.dataStudioTableFields(table.id, fieldId)
             }

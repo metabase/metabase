@@ -22,12 +22,13 @@ import {
   getFieldRawName,
 } from "metabase/metadata/utils/field";
 import { Box, Code, Stack, Switch, Tabs, Text } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
+import { ChangesOverTimeSection } from "./ChangesOverTime";
 import { CustomFieldSection } from "./CustomFieldSection";
 import S from "./FieldDetails.module.css";
 import { FieldHierarchyRow } from "./FieldHierarchyRow";
@@ -79,6 +80,7 @@ export function FieldDetails({
 }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
+  const canChangeOverTime = !isHistoryTable && !isPK(field) && !isFK(field);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
@@ -231,6 +233,13 @@ export function FieldDetails({
               />
             </DetailsTable>
           </SidebarSection>
+          {canChangeOverTime && (
+            <ChangesOverTimeSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
           <CustomFieldSection field={field} table={table} />
           <FieldSemanticsSection field={field} table={table} />
         </Stack>

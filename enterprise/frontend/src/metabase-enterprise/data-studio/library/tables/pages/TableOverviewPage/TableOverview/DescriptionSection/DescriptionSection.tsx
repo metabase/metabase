@@ -12,6 +12,11 @@ import {
   DATA_LAYER_VISIBILITY_ICONS,
   useDataLayers,
 } from "metabase/metadata/data-layers";
+import {
+  getRowIdentityLabel,
+  getTableHiddenReason,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -46,6 +51,12 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
     table.schema,
     table.id,
   ).layer;
+  const structure = useTableStructures().getTableStructure(table);
+  const hiddenReason = getTableHiddenReason({
+    table,
+    role: structure.role,
+    dataLayer,
+  });
 
   const handleChange = async (newValue: string) => {
     const newDescription = newValue.trim();
@@ -206,6 +217,33 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Data layer`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="lg">
+          <Group gap="sm" mb={4} wrap="nowrap">
+            <Icon name="key" c="core-brand" />
+            <Text size="md" fw={600} lh="1rem">
+              {getRowIdentityLabel(structure.rowIdentity)}
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Row identity`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="lg">
+          <Group gap="sm" mb={4} wrap="nowrap" align="flex-start">
+            <Icon
+              name={hiddenReason ? "eye_crossed_out" : "eye"}
+              c={hiddenReason ? "icon-disabled" : "core-brand"}
+            />
+            <Text size="md" fw={600} lh="1.25rem">
+              {hiddenReason
+                ? t`Hidden: ${hiddenReason}`
+                : t`Shown to people who can see its data layer`}
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Visibility`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="lg">

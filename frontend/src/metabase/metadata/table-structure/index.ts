@@ -121,3 +121,13 @@ export {
   useHistoryReview,
   useHistoryReviewStatus,
 } from "./history-review";
+export {
+  type ChangingAttribute,
+  type PastValuesSource,
+  type VersionChoice,
+  findColumnByName,
+  findFieldById,
+  getHistoryTableCandidates,
+  isHistoryTableName,
+  useChangingAttributes,
+} from "./changing-attributes";
