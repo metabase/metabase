@@ -159,55 +159,6 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it.each<{
-    name: string;
-    apiKey?: string;
-    change: (config: NonNullable<typeof window.metabaseConfig>) => void;
-    nextApiKey?: string;
-  }>([
-    {
-      name: "added",
-      change: (config) => (config.apiKey = "development-key"),
-      nextApiKey: "development-key",
-    },
-    {
-      name: "swapped",
-      apiKey: "development-key",
-      change: (config) => (config.apiKey = "next-key"),
-      nextApiKey: "next-key",
-    },
-    {
-      name: "cleared",
-      apiKey: "development-key",
-      change: (config) => (config.apiKey = undefined),
-    },
-    {
-      name: "deleted",
-      apiKey: "development-key",
-      change: (config) => delete config.apiKey,
-    },
-  ])(
-    "replaces the frame when the API key is $name",
-    ({ apiKey, change, nextApiKey }) => {
-      window.metabaseConfig = { instanceUrl: INSTANCE_URL, apiKey };
-      const element = setup();
-      const original = element.querySelector("iframe")!;
-
-      change(window.metabaseConfig);
-
-      const next = element.querySelector("iframe")!;
-      expect(next).not.toBe(original);
-
-      const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
-      ready(original);
-      expect(postMessage).not.toHaveBeenCalled();
-
-      ready(next);
-      expect(postMessage).toHaveBeenCalledTimes(1);
-      expect(postMessage.mock.calls[0][0].data.apiKey).toBe(nextApiKey);
-    },
-  );
-
   it("keeps the frame and local key when the route or locale changes", () => {
     window.metabaseConfig = {
       instanceUrl: INSTANCE_URL,

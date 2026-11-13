@@ -78,34 +78,6 @@ describe("DataAppEmbed", () => {
     },
   );
 
-  it("allows local API-key development without the embedding license", () => {
-    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
-    setupSettings({ apiKey: "development-key" }, "http://localhost:3000");
-    render(<DataAppEmbed />);
-
-    expect(mockComponentProvider.mock.lastCall?.[0]).toMatchObject({
-      authConfig: {
-        metabaseInstanceUrl: window.location.origin,
-        apiKey: "development-key",
-      },
-    });
-    expect(mockUseDataAppBundle).toHaveBeenCalledWith("sales", {
-      embedded: true,
-    });
-  });
-
-  it("refuses an API key from a production host and says why, even though a key waives the license", () => {
-    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
-    setupSettings({ apiKey: "development-key" }, "https://host.example.com");
-    render(<DataAppEmbed />);
-
-    expect(
-      screen.getByText("Using an API key in production is not allowed."),
-    ).toBeInTheDocument();
-    expect(mockComponentProvider).not.toHaveBeenCalled();
-    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
-  });
-
   it("waits for settings to arrive before starting auth", () => {
     mockUseSdkIframeEmbedEventBus.mockReturnValue({
       embedSettings: null,
@@ -170,5 +142,37 @@ describe("DataAppEmbed", () => {
 
     render(<DataAppEmbed />);
     expect(screen.getByText("Access denied")).toBeInTheDocument();
+  });
+
+  it("refuses an API key from a production domain", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+    setupSettings({ apiKey: "development-key" }, "https://host.example.com");
+
+    render(<DataAppEmbed />);
+
+    expect(
+      screen.getByText("Using an API key in production is not allowed."),
+    ).toBeInTheDocument();
+
+    expect(mockComponentProvider).not.toHaveBeenCalled();
+    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+  });
+
+  it("allows API keys on localhost without an embedding license", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+    setupSettings({ apiKey: "development-key" }, "http://localhost:3000");
+
+    render(<DataAppEmbed />);
+
+    expect(mockComponentProvider.mock.lastCall?.[0]).toMatchObject({
+      authConfig: {
+        metabaseInstanceUrl: window.location.origin,
+        apiKey: "development-key",
+      },
+    });
+
+    expect(mockUseDataAppBundle).toHaveBeenCalledWith("sales", {
+      embedded: true,
+    });
   });
 });
