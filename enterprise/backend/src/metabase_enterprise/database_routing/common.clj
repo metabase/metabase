@@ -8,16 +8,26 @@
    [metabase.util.i18n :refer [tru]]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^:private *anonymous-router-access?*
-  "Whether work with no current user may reach a router itself; see [[do-with-anonymous-router-access]]."
-  false)
+(def ^:dynamic ^:private *anonymous-router-access*
+  "Determines how anonymous traffic (no `api/*current-user-id*` bound) is treated when it tries to access the router database:
+  - `:if-granted` => reject it unless anonymous access has been granted to the database
+  - `:always` => accept it (enables things like sync)
+  - `nil` (or anything else) => reject it with an error"
+  nil)
 
 (defenterprise do-with-anonymous-router-access
-  "Enterprise version. Calls `thunk` with no current user, letting it reach a router itself."
+  "Enterprise version. Calls `thunk` with no current user, always hitting the router database."
   :feature :none
   [thunk]
-  (binding [api/*current-user-id*      nil
-            *anonymous-router-access?* true]
+  (binding [api/*current-user-id*     nil
+            *anonymous-router-access* :always]
+    (thunk)))
+
+(defenterprise do-with-database-routing-off-if-granted
+  "Enterprise version. Calls the function, allowing access to the router database only if an admin has granted anonymous access."
+  :feature :none
+  [thunk]
+  (binding [*anonymous-router-access* :if-granted]
     (thunk)))
 
 (defn- user-attribute
@@ -33,8 +43,15 @@
   (when-let [attr-name (user-attribute db)]
     (let [database-name (get user-attributes attr-name)]
       (cond
+        (= :if-granted *anonymous-router-access*)
+        (when-not (database-routing.db/router-anonymous-access-granted? (:id db))
+          (throw (ex-info (tru "This database does not allow anonymous access.")
+                          {:status-code                  400
+                           :anonymous-access-not-granted true
+                           :router-database-id           (:id db)})))
+
         is-anonymous-user?
-        (when-not *anonymous-router-access?*
+        (when-not (= :always *anonymous-router-access*)
           (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.")
                           {:status-code              400
                            :database-routing-enabled true
@@ -81,7 +98,7 @@
   they go to `database` itself; with no user bound, a router is refused outside [[do-with-anonymous-router-access]]."
   :feature :none
   [database]
-  (when-not (and (nil? api/*current-user-id*) *anonymous-router-access?*)
+  (when-not (and (nil? api/*current-user-id*) (= :always *anonymous-router-access*))
     (when-let [destination-id (router-db->destination-db-id database)]
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (driver.u/lib-database destination-id))))
