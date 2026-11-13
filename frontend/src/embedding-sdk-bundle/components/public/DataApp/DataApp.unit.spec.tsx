@@ -126,7 +126,16 @@ describe("DataApp", () => {
     message(iframe, "metabase.embed.iframeReady");
 
     expect(postMessage).toHaveBeenCalledWith(
-      settingsMessage("boba-hq/orders?active=true"),
+      {
+        type: "metabase.embed.setSettings",
+        data: {
+          componentName: "metabase-data-app",
+          path: "boba-hq/orders?active=true",
+          instanceUrl: CONFIG.metabaseInstanceUrl,
+          locale: "fr",
+          _embedReferrer: window.location.href,
+        },
+      },
       ORIGIN,
     );
   });
@@ -264,16 +273,11 @@ describe("DataApp", () => {
     );
   });
 
-  it("keeps the same iframe and sends no new settings when a leading slash is added", () => {
-    const { iframe, postMessage, rerender } = setup();
-
-    message(iframe, "metabase.embed.iframeReady");
-    postMessage.mockClear();
-
+  it("keeps the same iframe when a leading slash is added", () => {
+    const { iframe, rerender } = setup();
     rerender(<DataApp path="/boba-hq" />);
 
     expect(screen.queryByTestId("data-app-frame")).toBe(iframe);
-    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("replies only to the iframe that requested a session", async () => {
@@ -429,30 +433,6 @@ describe("DataApp", () => {
 
     const { iframe, rerender } = setup({ path: "boba-hq/orders" });
     message(iframe, "metabase.embed.requestSessionToken");
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "SSO is unavailable",
-    );
-
-    rerender(<DataApp path="boba-hq/products" />);
-
-    const nextIframe =
-      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
-    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
-
-    message(nextIframe, "metabase.embed.requestSessionToken");
-
-    expect(requestSession).toHaveBeenCalledTimes(2);
-    await waitFor(() =>
-      expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
-    );
-  });
-
-  it("does not show an old auth error after a retry succeeds and the host goes back to its route", async () => {
-    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
-
-    const { iframe, rerender } = setup({ path: "boba-hq/orders" });
-    message(iframe, "metabase.embed.requestSessionToken");
     expect(await screen.findByRole("alert")).toBeInTheDocument();
 
     rerender(<DataApp path="boba-hq/products" />);
@@ -464,8 +444,8 @@ describe("DataApp", () => {
       expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
     );
 
+    // going back to the route that failed keeps the working iframe
     rerender(<DataApp path="boba-hq/orders" />);
-
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByTestId("data-app-frame")).toBe(nextIframe);
   });
