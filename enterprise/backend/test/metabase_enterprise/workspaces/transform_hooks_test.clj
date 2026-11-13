@@ -686,3 +686,35 @@
               (is (false? (ws/workspace-mode?)))
               (is (= 204 (:status (delete (:id transform)))))
               (is (= [{:schema "PUBLIC" :name "t3a_off_workspace"}] @drops)))))))))
+
+(deftest workspace-transform-target-with-the-schema-cleared-mid-call-is-not-the-canonical-target-test
+  (testing "a database-workspace-schema cleared while workspace-transform-target runs gives a refusal or the workspace
+            copy, never the canonical target"
+    (with-instance-workspace-for-db! "ws_cleared"
+      (fn []
+        (let [canonical {:schema "PUBLIC" :name "VENUES" :type :table}
+              resolve!  #(try
+                           (ws.transform-hooks/workspace-transform-target (mt/id) canonical)
+                           (catch clojure.lang.ExceptionInfo _
+                             :refused))
+              real-read (mt/original-fn #'ws/db-workspace-namespace)]
+          (testing "control: with the schema in place, the target is the workspace copy"
+            (is (= {:db nil :schema "ws_cleared" :name "PUBLIC__VENUES" :type :table} (resolve!))))
+          (let [first-read (promise)
+                proceed    (promise)
+                reads      (atom 0)]
+            (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace (fn [db-id]
+                                                                    (let [result (real-read db-id)]
+                                                                      (when (= 1 (swap! reads inc))
+                                                                        (deliver first-read true)
+                                                                        @proceed)
+                                                                      result))]
+              (let [call (future (resolve!))]
+                (is (true? (deref first-read 30000 ::timeout)) "premise: the call read the schema once")
+                (try
+                  (mt/user-http-request :crowberto :put 200 (str "database/" (mt/id))
+                                        {:settings {:database-workspace-schema nil}})
+                  (finally
+                    (deliver proceed true)))
+                (is (nil? (real-read (mt/id))) "premise: the schema is cleared")
+                (is (not= canonical (deref call 30000 ::timeout)))))))))))
