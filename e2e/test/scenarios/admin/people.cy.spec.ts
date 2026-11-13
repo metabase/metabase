@@ -120,6 +120,12 @@ describe("scenarios > admin > people", () => {
         cy.log("Reactivate the user");
         cy.visit("/admin/people");
         cy.findByRole("tab", { name: "Deactivated" }).click();
+        cy.log("The Deactivated tab lists deactivated users only");
+        cy.findByTestId("admin-people-list-table").within(() => {
+          cy.findByText(NEW_FULL_NAME).should("exist");
+          cy.findByText(adminUserName).should("not.exist");
+          cy.findByText(normalUserName).should("not.exist");
+        });
         cy.findByTestId("admin-people-list-table")
           .findByText(NEW_FULL_NAME)
           .closest("tr")

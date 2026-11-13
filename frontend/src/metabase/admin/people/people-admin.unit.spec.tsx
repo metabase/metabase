@@ -720,10 +720,11 @@ describe("admin > people", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Add members" }),
       );
-      await userEvent.type(
+      expect(
         screen.getByRole("textbox", { name: "Search for a user to add" }),
-        "Bobby",
-      );
+      ).toHaveFocus();
+      // Type into whatever has focus, as the user does after the click.
+      await userEvent.keyboard("Bobby");
       await userEvent.click(await screen.findByText(ADMIN_NAME));
       await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
