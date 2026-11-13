@@ -168,7 +168,13 @@
       ;; and so must a sibling `type`
       (is (= {:type  "string"
               :allOf [{:type ["integer" "null"]}]}
-             (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]}))))))
+             (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]})))
+      ;; a branch's `additionalProperties` must not start reading the sibling `properties`
+      (is (= {:properties {:a {}}
+              :allOf      [{:type                 ["object" "null"]
+                            :additionalProperties false}]}
+             (published {:properties {:a {}}
+                         :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]}))))))
 
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"

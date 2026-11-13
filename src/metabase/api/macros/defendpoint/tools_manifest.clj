@@ -184,8 +184,8 @@
 
 (defn- without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
-  Keywords beside the `oneOf` stay; where one of them would clash with the replacement's, the replacement joins
-  them under `allOf` instead."
+  Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win.
+  Where any other keyword does, the replacement joins those keywords under `allOf`."
   [json-schema]
   ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
   ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
@@ -198,11 +198,12 @@
        node
        (let [siblings    (dissoc node :oneOf)
              replacement (one-of-replacement branches)]
-         ;; a sibling `anyOf` or `type` constrains the value as well, so merging into it would change the schema;
-         ;; a sibling annotation (the `[:maybe]`'s own description, say) wins over the replacement's
-         (if (some #(contains? siblings %) (remove annotation-keys (keys replacement)))
-           (update siblings :allOf (fnil conj []) replacement)
-           (merge replacement siblings)))))
+         ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
+         ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
+         ;; A sibling annotation, such as the `[:maybe]`'s own description, wins over the replacement's.
+         (if (every? annotation-keys (keys siblings))
+           (merge replacement siblings)
+           (update siblings :allOf (fnil conj []) replacement)))))
    json-schema))
 
 (defn malli->json-schema
