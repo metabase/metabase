@@ -12,7 +12,9 @@ export const DetailViewNav = () => {
 
   return (
     <Box data-testid="detail-view-nav">
-      {detailView && <Nav detailView={detailView} />}
+      {detailView && (
+        <Nav rowName={detailView.rowName} table={detailView.table} />
+      )}
     </Box>
   );
 };

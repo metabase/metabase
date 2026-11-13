@@ -22,6 +22,7 @@ import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 import {
   createMockCard,
@@ -30,6 +31,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -39,12 +41,14 @@ import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersDiscountDatasetColumn,
   createOrdersIdDatasetColumn,
+  createOrdersIdField,
   createOrdersProductIdDatasetColumn,
   createOrdersQuantityDatasetColumn,
   createOrdersSubtotalDatasetColumn,
   createOrdersTaxDatasetColumn,
   createOrdersTotalDatasetColumn,
   createOrdersUserIdDatasetColumn,
+  createOrdersUserIdField,
   createPeopleIdField,
   createProductsCategoryDatasetColumn,
   createProductsCreatedAtDatasetColumn,
@@ -62,6 +66,7 @@ import { ModelDetailPage } from "./ModelDetailPage";
 registerVisualizations();
 
 const MODEL_ID = 10;
+const MODEL_TABLE_ID = getQuestionVirtualTableId(MODEL_ID);
 const FIRST_COLLECTION_ID = 1;
 const SECOND_COLLECTION_ID = 2;
 
@@ -244,7 +249,6 @@ function setup({ rowId, columns = MODEL_COLUMNS, row = MODEL_ROW }: SetupOpts) {
     dataset_query: Lib.toJsQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     ),
-    result_metadata: MODEL_COLUMNS,
   });
 
   setupCardEndpoints(model);
@@ -252,7 +256,21 @@ function setup({ rowId, columns = MODEL_COLUMNS, row = MODEL_ROW }: SetupOpts) {
     model,
     createMockCardQueryMetadata({
       databases: [SAMPLE_DATABASE],
-      cards: [model],
+      tables: [
+        createMockTable({
+          id: MODEL_TABLE_ID,
+          db_id: SAMPLE_DATABASE.id,
+          display_name: model.name,
+          type: "model",
+          fields: [
+            createOrdersIdField({ table_id: MODEL_TABLE_ID }),
+            createOrdersUserIdField({
+              table_id: MODEL_TABLE_ID,
+              target: createPeopleIdField(),
+            }),
+          ],
+        }),
+      ],
     }),
   );
   setupCollectionByIdEndpoint({
