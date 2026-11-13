@@ -621,9 +621,9 @@
   ;; The output-namespace name init creates is *deterministic* from `workspace.id`
   ;; (see `driver.u/workspace-isolation-namespace-name`), not random — so init can
   ;; land on an already-existing namespace (e.g., from a partial prior init that
-  ;; was never cleaned up, or from another process). All current driver impls use
-  ;; `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
-  ;; the namespace exists. This test pins that behavior: init must not crash on
+  ;; was never cleaned up, or from another process). Every driver this test runs
+  ;; on uses `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently
+  ;; succeeds when the namespace exists. This test pins that behavior: init must not crash on
   ;; collision and the standard read-only-input + full-output contract must still
   ;; hold afterward.
   ;;
@@ -633,7 +633,8 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  ;; MySQL refuses the existing database instead: see `metabase.driver.mysql.workspace-test`.
+  ;; The test skips MySQL: its init refuses an existing database with a 409, which
+  ;; `metabase.driver.mysql.workspace-test` covers.
   (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
                         (filter #(isa? driver/hierarchy % :sql-jdbc))
                         (remove #{:mysql}))
@@ -1037,9 +1038,10 @@
           ;; helps engines that check existence before privileges (SQL Server's
           ;; guarded EXEC); ClickHouse checks privileges regardless, so there
           ;; the batch dies on the namespace statement and never reaches
-          ;; CREATE USER. MySQL runs no `IF NOT EXISTS`: its init first reads
-          ;; `mysql.user` to refuse an existing user, and the low-privilege
-          ;; login cannot read it, so init fails before any DDL. On both, the
+          ;; CREATE USER. MySQL runs no `IF NOT EXISTS`, so the pre-created
+          ;; namespace does not matter there: its init first reads `mysql.user`
+          ;; to refuse an existing user, and the low-privilege login cannot
+          ;; read it, so init fails before any DDL. On both, the
           ;; leak assertion still covers whatever exception surfaces, it just
           ;; can't prove the echo path there.
           (when (#{:postgres :redshift} driver)

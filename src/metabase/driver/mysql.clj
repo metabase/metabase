@@ -1427,8 +1427,10 @@
            {:status-code 409, :workspace/cleanup? false}))
 
 (defn- init-workspace-isolation-sqls
-  "The statements that create the workspace database `db-name` and the user `user`, and grant the user its database.
-  Neither has IF NOT EXISTS: an object that is already there may belong to another workspace."
+  "The three statements that create the workspace database `db-name`, create the user `user` with the password
+  `escaped-password`, and grant the user DML and DDL privileges on that database. `escaped-password` must already be
+  escaped for a SQL string literal. `wildcards?` says whether `_` and `%` are wildcards in the database name of the
+  GRANT. No statement uses IF NOT EXISTS: an object that is already there may belong to another workspace."
   [wildcards? db-name user escaped-password]
   (let [quoted-user (quote-field user)]
     [(format "CREATE DATABASE %s" (quote-schema db-name))
@@ -1500,14 +1502,15 @@
     nil))
 
 (defn- lock-workspace-user-sql
-  "Locks the workspace user's account, so it cannot open a session between the kills and the drops of teardown."
+  "The statement that locks the account of the workspace user `user`, so that the user cannot open a session between
+  the kills and the drops of teardown."
   [user]
   (format "ALTER USER IF EXISTS %s@'%%' ACCOUNT LOCK" (quote-field user)))
 
 (defn- account-lock-supported?
-  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version; MariaDB from 10.4. Compares major
-  and minor as integers, because `db-version` reads MariaDB 10.11 as 10.1."
+  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version, and MariaDB has it from 10.4."
   [^DatabaseMetaData metadata]
+  ;; not `db-version`: it parses the version as a double, and the double 10.11 is less than 10.4
   (or (not= "MariaDB" (.getDatabaseProductName metadata))
       (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 4]) 0)))
 
@@ -1551,11 +1554,11 @@
              (.execute stmt ^String sql))))))))
 
 (defn- grant-workspace-read-access-sqls
-  "Build SQL statements that grant `username` SELECT on all tables in `bound-db`, the database the Metabase `Database`
-  connects to, and in each database named in `schemas`. MySQL has no schema layer — `qualified-name-components`
-  is `[]` — so each entry in `schemas` is interpreted as a database name, and the input schemas are empty: the
-  workspace reads the bound database, and its JDBC handshake needs access to it.
-  Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
+  "The statements that grant `username` SELECT on all tables in `bound-db`, the database that the Metabase `Database`
+  connects to, and in each database named in `schemas`. MySQL has no schema layer, so each entry of `schemas` is a
+  database name. `schemas` may be empty. The grant on `bound-db` is always made, because the workspace reads that
+  database and the JDBC handshake of the workspace user needs access to it. `wildcards?` says whether `_` and `%`
+  are wildcards in the database name of a GRANT."
   [wildcards? username bound-db schemas]
   (let [quoted-user (quote-field username)]
     (mapv (fn [db]

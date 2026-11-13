@@ -29,7 +29,7 @@
     (is (= "`a\\_b%`" (#'mysql/quote-grant-db false "a\\_b%")))))
 
 (deftest grant-workspace-read-access-sqls-test
-  (testing "the bound database is always granted, once, and `_` and `%` in the names are escaped"
+  (testing "the bound database is always granted, once, and `_` and `%` in the names are escaped when they are wildcards"
     (is (= ["GRANT SELECT ON `test\\_data`.* TO `u`@'%'"
             "GRANT SELECT ON `other\\%db`.* TO `u`@'%'"]
            (#'mysql/grant-workspace-read-access-sqls true "u" "test_data" ["test_data" "other%db"])))
@@ -71,7 +71,8 @@
     (merge workspace (driver/workspace-isolation-details :mysql database workspace))))
 
 (defn- open-session
-  "A connection as the workspace user, outside any pool: the session must stay open across the code under test."
+  "A connection as the user in `(:database_details workspace)`, outside any pool: the session must stay open across the
+  code under test."
   ^java.sql.Connection [database workspace]
   (let [{:keys [subprotocol subname user password]} (user-spec database workspace)]
     (java.sql.DriverManager/getConnection (str "jdbc:" subprotocol ":" subname) ^String user ^String password)))
@@ -201,7 +202,7 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace))))))
 
-(deftest ^:synchronized kill-denied-is-logged-not-thrown-test
+(deftest ^:synchronized kill-denied-is-not-thrown-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
