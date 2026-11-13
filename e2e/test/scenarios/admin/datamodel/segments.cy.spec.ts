@@ -164,6 +164,42 @@ describe("scenarios > admin > datamodel > segments", () => {
         .findByText("Foo")
         .should("be.visible");
     });
+
+    it("should show segment revision history (metabase#45577, metabase#45594)", () => {
+      cy.request("PUT", "/api/segment/1", {
+        description: "Medium orders",
+        revision_message: "Foo",
+      });
+
+      cy.visit("/reference/segments/1/revisions");
+      cy.findByTestId("segment-revisions").within(() => {
+        cy.findByText(`Revision history for ${SEGMENT_NAME}`).should(
+          "be.visible",
+        );
+        assertRevisionHistory();
+      });
+
+      cy.visit("/admin/datamodel/segment/1/revisions");
+      cy.findByTestId("segment-revisions").within(() => {
+        cy.findByRole("heading", {
+          name: `Revision History for "${SEGMENT_NAME}"`,
+        }).should("be.visible");
+        assertRevisionHistory();
+      });
+
+      function assertRevisionHistory() {
+        cy.findAllByRole("listitem").as("revisions").should("have.length", 2);
+        cy.get("@revisions")
+          .first()
+          .should("contain", "You edited the description")
+          .and("contain", "Foo");
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        cy.get("@revisions")
+          .last()
+          .should("contain", `You created "${SEGMENT_NAME}"`)
+          .and("contain", "All orders with a total under $100.");
+      }
+    });
   });
 
   describe("x-ray", () => {
