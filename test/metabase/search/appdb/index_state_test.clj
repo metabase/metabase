@@ -66,3 +66,29 @@
                         (finally
                           (deliver release true)
                           @holder))))))))
+
+(deftest ^:synchronized one-stale-read-waits-for-the-slot-lock-test
+  (testing "when a sync is due while a writer holds the slot lock, one reader waits to sync and the others read on"
+    (let [handle  (search.index/indexes-handle)
+          syncs   (atom 0)
+          release (promise)
+          held    (promise)]
+      (mc/binding handle {:active ::active, :pending nil, :next-sync-at nil}
+                  (fn []
+                    (mt/with-dynamic-fn-redefs [search.index/sync-tracking-atoms! #(swap! syncs inc)]
+                      (let [holder (future (mc/with-slot-lock handle
+                                             (deliver held true)
+                                             @release))
+                            _      @held
+                            waiter (future (search.index/active-table))]
+                        (try
+                          ;; gives the first reader time to claim the sync and reach the lock
+                          (let [first-read  (deref waiter 300 ::waiting)
+                                second-read (deref (future (search.index/active-table)) 1000 ::waited)]
+                            (is (= {:first ::waiting, :second ::active, :syncs 0}
+                                   {:first first-read, :second second-read, :syncs @syncs})))
+                          (finally
+                            (deliver release true)
+                            @holder))
+                        (is (= {:first ::active, :syncs 1}
+                               {:first (deref waiter 5000 ::waited), :syncs @syncs})))))))))

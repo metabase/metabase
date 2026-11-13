@@ -22,7 +22,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent.atomic AtomicBoolean)))
 
 (comment
   h2/keep-me
@@ -83,6 +85,14 @@
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
 
+;; True while a thread is claiming a sync that has come due.
+;; The claim is a write, so it waits for the slot lock, which a reindex can hold for as long as its database work
+;; takes. Only the thread that sets this flag waits. The others read the state as it is, and a later read syncs it.
+;; The flag is one for the process, so a binding of the index state shares it with the root.
+;; TODO (Chris 2026-11-13) -- This stands in for a write that gives up when the slot lock is held, which a monitor
+;; cannot do. If a second component needs one, make the slot locks `ReentrantLock`s and drop this flag.
+(defonce ^:private ^AtomicBoolean claiming-sync? (AtomicBoolean. false))
+
 (defn- sync-tracking-atoms-if-stale! []
   (when-not *mocking-tables*
     (let [now-ns (now)
@@ -94,7 +104,12 @@
                                                   (fn [state]
                                                     (cond-> state
                                                       (stale? state) (assoc :next-sync-at (+ now-ns sync-tracking-period)))))))]
-      (when (and (stale? @indexes-component) (claimed?))
+      (when (and (stale? @indexes-component)
+                 (.compareAndSet claiming-sync? false true)
+                 (try
+                   (claimed?)
+                   (finally
+                     (.set claiming-sync? false))))
         (sync-tracking-atoms!)))))
 
 (defn active-table
@@ -252,6 +267,8 @@
             (track-tables! {:pending nil, :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
+        ;; TODO (Chris 2026-11-13) -- This runs with the slot lock held, which a reader that syncs then waits for.
+        ;; It could run once the lock is released, as the reindex's own call does.
         (delete-obsolete-tables!)
         ;; Did *we* do a rotation?
         (boolean pending)))))
