@@ -71,7 +71,7 @@ You can think of semantic types as adding meaning and context to a field to comm
 
 ### Semantic types for text fields
 
-- Entity name
+- [Entity name](#entity-names-label-records-in-filters)
 - Email
   - URL
   - Image URL
@@ -161,6 +161,16 @@ For some fields, you can quickly extract values from columns using [shortcuts in
 | URL semantic types  | Extract host, domain, subdomain, path   |
 | Email semantic type | Extract host, domain                    |
 | Temporal data types | Extract date parts like month, day, etc |
+
+### Entity names label records in filters
+
+The **Entity Name** semantic type marks the column that holds the "name" of each record, like a product title or a person's name. When you filter on a table's entity key, Metabase searches the values of the table's Entity Name column, and shows each ID next to its name. Filters on a foreign key that points to that entity key work the same way.
+
+Set only one column in each table to **Entity Name**. If a table has more than one Entity Name column, like both a first name and a last name column, Metabase uses one of them, and which one it uses isn't guaranteed. That's why a filter can show IDs with first names for one table and with last names for another table. To pick the column that Metabase shows, keep **Entity Name** on that column, and change the [semantic type](./metadata-editing.md#semantic-type) of the other ones.
+
+When Metabase [syncs](../../databases/sync-scan.md) new columns, it sets the Entity Name type on at most one column per table, based on column names like `name`, `first_name`, `last_name`, or `full_name`. If the table already has an Entity Name column, Metabase doesn't add another one.
+
+For a foreign key column, you can also pick the column to show with [display values](./metadata-editing.md#display-values).
 
 ### X-rays
 
