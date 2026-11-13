@@ -5,6 +5,7 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
+   [metabase.change-log.hooks :as change-log.hooks]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
@@ -71,6 +72,13 @@
             (is (= [] (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))
             (is (= [["pulse_card" (:id pc) "update"]]
                    (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv true}))))))
+        (testing "an update that sets only ignored columns logs nothing"
+          (mt/with-temp [:model/Field f {:table_id (:id t)}]
+            (is (= [] (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 99}))))
+            (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))
+            (testing "and one that also sets another column logs the row"
+              (is (= [["metabase_field" (:id f) "update"]]
+                     (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 100, :description "d"})))))))
         (testing "an update that matches no row logs nothing"
           (is (= [] (logged-by #(t2/update! :model/Table :id Integer/MAX_VALUE {:name "none"})))))
         (testing "`t2/insert!` logs the rows it inserts, and still returns their count"
@@ -452,6 +460,13 @@
              (set (filter #(isa? % :hook/change-log) models)))))
     (testing "both name only models"
       (is (empty? (remove models.resolution/model->namespace (concat logged-models unlogged-models)))))))
+
+(deftest ignored-columns-test
+  (testing "ignored columns are columns of logged tables"
+    (let [logged-tables (into #{} (map name) (vals toucan.db-ns/change-log-tables))]
+      (doseq [[table columns] @#'change-log.hooks/ignored-columns]
+        (is (logged-tables table))
+        (is (some? (t2/query {:select (vec columns), :from [(keyword table)], :limit 1})))))))
 
 (deftest lint-tables-test
   (testing "the `:metabase/change-log-raw-write` lint knows each logged model and its table"
