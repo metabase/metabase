@@ -21,9 +21,17 @@
 
 (def ^:private preview-header "x-metabase-preview-as")
 
+(def ^:private preview-param
+  "The query parameter that carries the preview on requests the browser makes without the API client (map tiles)."
+  "preview_as")
+
+(def ^:private preview-end-uri
+  "Ending a preview is the admin's own request, even from a tab that still sends the header."
+  "/api/ee/permission_debug/preview/end")
+
 (def ^:private read-only-posts
-  "`POST` endpoints that only read: running a query, a saved question, a dashboard card, or loading parameter values.
-  Downloads (`/api/card/:id/query/:format`) aren't here: a preview shows the rows, it doesn't export them."
+  "`POST` endpoints that only read: running a query, a saved question, a dashboard card, loading parameter values, or
+  downloading results, which run as the previewed user with their download permissions."
   [#"^/api/dataset$"
    #"^/api/dataset/pivot$"
    #"^/api/dataset/native$"
@@ -33,7 +41,11 @@
    #"^/api/card/\d+/query$"
    #"^/api/card/pivot/\d+/query$"
    #"^/api/dashboard/\d+/dashcard/\d+/card/\d+/query$"
-   #"^/api/dashboard/pivot/\d+/dashcard/\d+/card/\d+/query$"])
+   #"^/api/dashboard/pivot/\d+/dashcard/\d+/card/\d+/query$"
+   #"^/api/dataset/(csv|json|xlsx)$"
+   #"^/api/card/\d+/query/(csv|json|xlsx)$"
+   #"^/api/dashboard/\d+/dashcard/\d+/card/\d+/query/(csv|json|xlsx)$"
+   #"^/api/document/\d+/card/\d+/query/(csv|json|xlsx)$"])
 
 (def ^:private user-info-keys
   "The keys of a request's current-user info, all replaced by the previewed user's own."
@@ -68,13 +80,38 @@
   (when (re-matches #"\d+" (str header-value))
     (parse-long header-value)))
 
+(defn- preview-param-value
+  "The `preview_as` value of a map tile request, or nil. Only tiles: the browser loads them as images, without the API
+  client that sends the header."
+  [{:keys [request-method uri query-string]}]
+  (when (and (= :get request-method) query-string (str/starts-with? uri "/api/tiles/"))
+    (some (fn [pair]
+            (let [[k v] (str/split pair #"=" 2)]
+              (when (= preview-param k) (or v ""))))
+          (str/split query-string #"&"))))
+
+(defn- without-preview-param
+  "`request` without `preview_as` in its query string, since the tile endpoints accept no other parameters."
+  [{:keys [query-string] :as request}]
+  (if-not query-string
+    request
+    (assoc request :query-string (not-empty (str/join "&" (remove #(or (= preview-param %)
+                                                                       (str/starts-with? % (str preview-param "=")))
+                                                                  (str/split query-string #"&")))))))
+
 (defenterprise preview-as-request
-  "EE implementation: when a superuser's browser session sends `X-Metabase-Preview-As: <user-id>`, rebind the request
-  to that user, refuse writes, and record each query run in the audit log under the admin."
+  "EE implementation: when a superuser's browser session sends `X-Metabase-Preview-As: <user-id>` (or, for a map tile,
+  `?preview_as=<user-id>`), rebind the request to that user, refuse writes, and record each query run in the audit log
+  under the admin. Returns `:admin-id` too, so the request runs with
+  [[metabase.request.core/previewing-admin-id]] bound and every audit row names the admin."
   :feature :advanced-permissions
   [request]
-  (let [header-value (get-in request [:headers preview-header])]
-    (if-not (and header-value (previewing-session? request))
+  (let [param-value  (preview-param-value request)
+        header-value (or (get-in request [:headers preview-header]) param-value)
+        request      (cond-> request param-value without-preview-param)]
+    (if-not (and header-value
+                 (previewing-session? request)
+                 (not= preview-end-uri (:uri request)))
       {:request request}
       (let [admin-id    (:metabase-user-id request)
             target-id   (parse-user-id header-value)
@@ -98,4 +135,5 @@
                                       :model-id target-id
                                       :details  {:action "query"
                                                  :uri    (:uri request)}}))
-            {:request (merge (apply dissoc request user-info-keys) target-info)}))))))
+            {:request  (merge (apply dissoc request user-info-keys) target-info)
+             :admin-id admin-id}))))))

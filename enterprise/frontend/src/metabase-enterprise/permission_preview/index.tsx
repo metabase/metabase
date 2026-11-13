@@ -6,6 +6,7 @@ import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
 import { ViewAsButton } from "./ViewAsButton";
 import {
+  getActivePreviewUserId,
   getPreviewAsHeaderHandler,
   readFramePreviewState,
   readPreviewState,
@@ -20,6 +21,8 @@ export function initializePlugin() {
   if (!hasPremiumFeature("advanced_permissions")) {
     return;
   }
+
+  PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId = getActivePreviewUserId;
 
   // The host page around the frame shows who is previewed, so the frame has no banner.
   const framePreviewState = readFramePreviewState();

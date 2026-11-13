@@ -320,8 +320,8 @@
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
 (defenterprise preview-as-request
-  "Returns `{:request request}` to bind and handle, possibly rebound to another user, or `{:response response}` to
-  answer without handling the request. OSS: the request, unchanged."
+  "Returns `{:request request}` to bind and handle, possibly rebound to another user (then with `:admin-id`, the admin
+  previewing), or `{:response response}` to answer without handling the request. OSS: the request, unchanged."
   metabase-enterprise.permission-debug.preview
   [request]
   {:request request})
@@ -362,11 +362,13 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (let [{request :request, response :response} (preview-as-request request)]
+    (let [{request :request, response :response, admin-id :admin-id} (preview-as-request request)]
       (if response
         (respond response)
-        (with-current-user-for-request request
-          (handler request respond raise))))))
+        (request/do-with-previewing-admin-id admin-id
+                                             (fn []
+                                               (with-current-user-for-request request
+                                                 (handler request respond raise))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         session activity tracking                                              |

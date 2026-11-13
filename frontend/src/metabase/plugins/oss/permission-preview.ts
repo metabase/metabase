@@ -26,6 +26,8 @@ type PermissionPreviewPlugin = {
   PermissionsToolbarButtons: ComponentType | null;
   ViewAsButton: ComponentType<ViewAsButtonProps> | null;
   PreviewBanner: ComponentType | null;
+  /** The user this page previews as, for requests made without the API client (map tiles); null when not previewing. */
+  getActivePreviewUserId: () => number | null;
 };
 
 const getDefaultPermissionPreview = (): PermissionPreviewPlugin => ({
@@ -36,6 +38,7 @@ const getDefaultPermissionPreview = (): PermissionPreviewPlugin => ({
   PermissionsToolbarButtons: null,
   ViewAsButton: null,
   PreviewBanner: null,
+  getActivePreviewUserId: () => null,
 });
 
 export const PLUGIN_PERMISSION_PREVIEW = definePluginSlot(
