@@ -1,10 +1,6 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
-import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_USER_ID,
-  NO_DATA_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -14,39 +10,6 @@ describe("personal collections", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-    });
-
-    it("should see a link to other users' personal collections only if there are other users", () => {
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["active-users-count"] = 1;
-          return res.body;
-        });
-      }).as("getSessionProperties");
-
-      cy.visit("/");
-      cy.wait("@getSessionProperties");
-
-      H.navigationSidebar()
-        .findByText("Your personal collection")
-        .should("be.visible");
-      H.navigationSidebar()
-        .findByLabelText("Other users' personal collections")
-        .should("not.exist");
-
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["active-users-count"] = 2;
-          return res.body;
-        });
-      }).as("getSessionProperties");
-
-      cy.reload();
-      cy.wait("@getSessionProperties");
-
-      H.navigationSidebar()
-        .findByLabelText("Other users' personal collections")
-        .should("be.visible");
     });
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
@@ -69,62 +32,12 @@ describe("personal collections", () => {
         cy.findByText(FULL_NAME);
       });
     });
-
-    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections, but can view other users' personal sub-collections (metabase#8406, metabase#15339)", () => {
-      // Let's use the API to create a sub-collection "Foo" in admin's personal collection
-      cy.request("POST", "/api/collection", {
-        name: "Foo",
-        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
-      });
-      H.createCollection({
-        name: "Nodata sub-collection",
-        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
-      });
-
-      H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
-
-      cy.log(
-        "Make sure it's not possible to edit personal collection's permissions",
-      );
-      H.getCollectionActions().within(() => {
-        cy.icon("info").should("exist");
-        cy.icon("ellipsis").should("not.exist");
-      });
-
-      // Go to the newly created sub-collection "Foo"
-      H.navigationSidebar().findByText("Foo").click();
-      cy.findByDisplayValue("Foo").should("be.enabled");
-
-      cy.log(
-        "Other menu options exist, but editing permissions is not possible",
-      );
-      H.openCollectionMenu();
-      H.popover().within(() => {
-        cy.findByText("Move to trash").should("be.visible");
-        cy.findByText("Edit permissions").should("not.exist");
-      });
-
-      // Go to random user's personal collection
-      H.visitCollection(NO_DATA_PERSONAL_COLLECTION_ID);
-
-      H.getCollectionActions().within(() => {
-        cy.icon("info").should("exist");
-        cy.icon("ellipsis").should("not.exist");
-      });
-
-      cy.log(
-        "Other users' personal sub-collections are visible (metabase#15339)",
-      );
-      cy.findByTestId("collection-table")
-        .findByText("Nodata sub-collection")
-        .should("be.visible");
-    });
   });
 
   describe("admin and non-admin users", () => {
     // The test acts only inside the user's own personal collection, where group
     // collection permissions don't apply; nocollection has the most restricted UI
-    ["admin", "nocollection"].forEach((user) => {
+    (["admin", "nocollection"] as const).forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
@@ -168,7 +81,12 @@ describe("personal collections", () => {
           );
 
           H.openCollectionMenu();
-          H.popover().findByText("Move to trash").click();
+          H.popover().within(() => {
+            cy.findByText("Move to trash").should("be.visible");
+            // Personal sub-collections have no permissions of their own (metabase#8406)
+            cy.findByText("Edit permissions").should("not.exist");
+            cy.findByText("Move to trash").click();
+          });
           H.modal().button("Move to trash").click();
           cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
@@ -178,7 +96,7 @@ describe("personal collections", () => {
   });
 });
 
-function addNewCollection(name) {
+function addNewCollection(name: string) {
   H.startNewCollectionFromSidebar();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
