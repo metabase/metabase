@@ -1,4 +1,8 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
+  findRequests,
   setupDatabasesEndpoints,
   setupEnginesEndpoint,
   setupListTransformsEndpoint,
@@ -17,17 +21,27 @@ import {
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
+const ROUTER_UPDATE_ERROR = "Could not update database routing";
+
 interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
+  routerUpdateStatus?: number;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
+  routerUpdateStatus = 200,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
+  fetchMock.put(
+    "express:/api/ee/database-routing/router-database/:id",
+    routerUpdateStatus === 200
+      ? 200
+      : { status: routerUpdateStatus, body: { message: ROUTER_UPDATE_ERROR } },
+  );
   setupListTransformsEndpoint([]);
   setupEnginesEndpoint(
     createMockEngines({
@@ -47,6 +61,7 @@ const setup = ({
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState(createMockSettings()),
     },
+    withUndos: true,
   });
 };
 
@@ -164,5 +179,127 @@ describe("DatabaseRoutingSection", () => {
         "Database routing can't be enabled when a Writable Connection is enabled.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("DatabaseRoutingSection anonymous access grant", () => {
+  const routedDatabase = (overrides: Partial<Database> = {}): Database =>
+    createMockDatabase({
+      engine: "postgres",
+      features: ["database-routing"],
+      router_user_attribute: "cool_guy",
+      ...overrides,
+    });
+
+  it("should render the grant as an unchecked toggle when it is not granted", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+    });
+
+    expect(
+      await screen.findByLabelText("Allow anonymous access"),
+    ).not.toBeChecked();
+  });
+
+  it("should render the grant as a checked toggle when it is granted", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: true }),
+    });
+
+    expect(
+      await screen.findByLabelText("Allow anonymous access"),
+    ).toBeChecked();
+  });
+
+  it("should grant anonymous access alongside the stored user attribute", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    const puts = await findRequests("PUT");
+    const [{ url, body }] = puts.slice(-1);
+    expect(url).toMatch(/\/api\/ee\/database-routing\/router-database\/\d+$/);
+    expect(body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+  });
+
+  it("should revoke anonymous access", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: true }),
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    const puts = await findRequests("PUT");
+    const [{ body }] = puts.slice(-1);
+    expect(body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+  });
+
+  it("should confirm a successful change with a toast", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    expect(
+      await screen.findByText("Anonymous access allowed"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not claim success when the request fails", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+      routerUpdateStatus: 400,
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    expect(await screen.findByText(ROUTER_UPDATE_ERROR)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Anonymous access allowed"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not let a non-admin change the grant", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: true }),
+      isAdmin: false,
+    });
+
+    expect(
+      await screen.findByLabelText("Allow anonymous access"),
+    ).toBeDisabled();
+  });
+
+  it("should disable the grant until routing is enabled", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: null,
+      }),
+    });
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+    expect(
+      await screen.findByLabelText("Allow anonymous access"),
+    ).toBeDisabled();
   });
 });
