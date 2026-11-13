@@ -515,27 +515,35 @@
               (distinct))
         ops))
 
-(def ^:private parameter-ops
-  "The ops that may give a filter a question to take its values from."
-  #{"add_parameter" "update_parameter"})
+(defn- final-parameters
+  "The filters of `dashboard`, nil on a create, by id, as `ops` leave them.
+  This folds the filter ops the way the compiler applies them: an update merges into the filter and drops what it
+  clears."
+  [dashboard ops]
+  (reduce (fn [params {op-name :op :keys [parameter_id clear] :as op}]
+            (case op-name
+              "add_parameter"    (assoc params parameter_id (dissoc op :op :parameter_id))
+              "update_parameter" (cond-> params
+                                   (contains? params parameter_id)
+                                   (update parameter_id #(apply dissoc (merge % (dissoc op :op :parameter_id :clear))
+                                                                (map keyword clear))))
+              "remove_parameter" (dissoc params parameter_id)
+              params))
+          (u/index-by :id (:parameters dashboard))
+          ops))
 
 (defn- source-card-ids
-  "The ids of the questions `ops` make a filter of `dashboard`, nil on a create, take its values from.
-  A question the filter already takes its values from is left out, so renaming that filter doesn't judge it again."
+  "The ids of the questions that `ops` make a filter of `dashboard`, nil on a create, take its values from.
+  A question the filter already took its values from is left out, so renaming that filter doesn't judge it again."
   [dashboard ops]
   (let [stored (u/index-by :id (:parameters dashboard))]
     (into []
-          (comp (filter (comp parameter-ops :op))
-                ;; As the compiler applies them: an update merges into the stored filter and drops what it clears.
-                (keep (fn [{op-name :op :keys [parameter_id clear] :as op}]
-                        (let [before (when (= "update_parameter" op-name) (get stored parameter_id))
-                              after  (apply dissoc (merge before (dissoc op :op :parameter_id :clear))
-                                            (map keyword clear))
-                              card   (dashboard-ops/source-card-id after)]
-                          (when (not= card (some-> before dashboard-ops/source-card-id))
+          (comp (keep (fn [[id param]]
+                        (let [card (dashboard-ops/source-card-id param)]
+                          (when (not= card (some-> (get stored id) dashboard-ops/source-card-id))
                             card))))
                 (distinct))
-          ops)))
+          (final-parameters dashboard ops))))
 
 (defn- saved-by-this-conversation?
   "Whether `card` was saved from a chart of this conversation, and its query reads only curated content.

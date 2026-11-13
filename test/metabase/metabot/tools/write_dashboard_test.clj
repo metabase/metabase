@@ -865,6 +865,13 @@
                     (failure {:dashboard_id dash-id
                               :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"}
                                              (merge {:op "update_parameter", :parameter_id "p"} (source plain-id))]})))
+            (testing "even when one op sets the source type and a later one the question"
+              (is (=? {:code ::write-dashboard/cards-not-curated}
+                      (failure {:dashboard_id dash-id
+                                :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"
+                                                :values_source_type "card"}
+                                               {:op "update_parameter", :parameter_id "p"
+                                                :values_source_config (:values_source_config (source plain-id))}]}))))
             (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
           (testing "a filter that already takes its values from an uncurated question can still be renamed"
             (t2/update! :model/Dashboard :id dash-id
