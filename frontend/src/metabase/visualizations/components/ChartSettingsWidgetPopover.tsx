@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Box, Space, Tabs } from "metabase/ui";
+import { Box, Space, Tabs, useStickyShiftLimiter } from "metabase/ui";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import type { Widget } from "metabase/viz-core";
 
@@ -43,6 +43,7 @@ export const ChartSettingsWidgetPopover = ({
   }, [anchor, sections]);
 
   const hasMultipleSections = sections.current.length > 1;
+  const shiftLimiter = useStickyShiftLimiter();
 
   const onClose = () => {
     // Unjustified type cast. FIXME
@@ -50,6 +51,7 @@ export const ChartSettingsWidgetPopover = ({
     if (activeElement && scrollContainer?.contains(activeElement)) {
       activeElement.blur();
     }
+    shiftLimiter.reset();
     handleEndShowWidget();
   };
 
@@ -59,11 +61,13 @@ export const ChartSettingsWidgetPopover = ({
       opened={!!anchor && widgets.length > 0}
       onDismiss={onClose}
       closeOnEscape={false}
-      position="right"
-      offset={{ mainAxis: 10, crossAxis: 10 }}
+      position="right-start"
+      offset={10}
       middlewares={{
-        shift: { padding: 16 },
-        flip: { fallbackStrategy: "initialPlacement" },
+        shift: { padding: 16, limiter: shiftLimiter },
+        // Flip only to the other side. Shift handles a bottom overflow, so the
+        // popover never flips to "right-end" and keeps its top near the anchor.
+        flip: { crossAxis: false, fallbackStrategy: "initialPlacement" },
         size: { padding: 5 },
       }}
       styles={{ dropdown: { overflow: "visible" } }}
