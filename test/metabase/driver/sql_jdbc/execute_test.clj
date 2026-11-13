@@ -288,11 +288,11 @@
             data-source (reify com.mchange.v2.c3p0.PooledDataSource
                           (getConnection [_]
                             (throw (java.sql.SQLException. "password authentication failed")))
-                          (getNumConnectionsDefaultUser [_] num-connections))
+                          (getNumConnectionsDefaultUser [_] num-connections)
+                          (getIdentityToken [_] "fake-pool"))
             pool-spec   {:datasource data-source}
-            destroyed   (atom [])
-            pool-cache  @#'sql-jdbc.conn/pool-cache-key->connection-pool]
-        (swap! pool-cache assoc cache-key pool-spec)
+            destroyed   (atom [])]
+        (#'sql-jdbc.conn/swap-pools-state! assoc-in [:pools cache-key] pool-spec)
         (try
           (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                       (fn [_driver _db-or-id-or-spec _options] data-source)
@@ -305,9 +305,9 @@
             (is (= (if destroyed? [[db-id pool-spec]] [])
                    @destroyed))
             (is (= (not destroyed?)
-                   (contains? @pool-cache cache-key))))
+                   (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) cache-key))))
           (finally
-            (swap! pool-cache dissoc cache-key)))))))
+            (#'sql-jdbc.conn/swap-pools-state! update :pools dissoc cache-key)))))))
 
 (deftest failed-checkout-destroys-empty-swapped-pool-test
   (testing "When a checkout fails, do-with-resolved-connection also destroys an empty swapped pool (#84206)"
@@ -320,7 +320,7 @@
                           (getNumConnectionsDefaultUser [_] num-connections))
             pool-spec   {:datasource data-source}
             destroyed   (atom [])
-            cache       ^com.google.common.cache.Cache @#'sql-jdbc.conn/swapped-connection-pools]
+            cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)]
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [_driver _db-or-id-or-spec _options] data-source)
                                     sql-jdbc.conn/destroy-pool!
@@ -347,14 +347,18 @@
                           (throw (java.sql.SQLException. "password authentication failed")))
                         (getNumConnectionsDefaultUser [_] 0))
           newer-spec  {:datasource (reify com.mchange.v2.c3p0.PooledDataSource)}
-          cache       ^com.google.common.cache.Cache @#'sql-jdbc.conn/swapped-connection-pools
+          cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)
           ;; simulate the race: another thread replaces the cache entry after `invalidate-empty-pool!` read it
-          ;; but before it removes it. The `:datasource` lookup runs in that window.
+          ;; but before it removes it. The first `:datasource` lookup runs in that window. Only the first lookup
+          ;; replaces the entry: a second `put` of the newer pool would evict that pool itself.
+          replaced?   (atom false)
           old-spec    (reify clojure.lang.ILookup
                         (valAt [this k] (.valAt this k nil))
                         (valAt [_ k not-found]
                           (if (= k :datasource)
-                            (do (.put cache cache-key newer-spec) data-source)
+                            (do (when (compare-and-set! replaced? false true)
+                                  (.put cache cache-key newer-spec))
+                                data-source)
                             not-found)))
           destroyed   (atom [])]
       (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source

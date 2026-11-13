@@ -49,7 +49,7 @@
                                                                 "def transform():\n"
                                                                 "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
                   (let [swap-latch (CountDownLatch. 1)
-                        original-rename-tables-atomic! transforms-base.u/rename-tables!]
+                        original-rename-tables-atomic! (mt/original-fn #'transforms-base.u/rename-tables!)]
                     (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
                                                                                    (.await swap-latch)
                                                                                    (original-rename-tables-atomic! driver db-id rename-pairs))]

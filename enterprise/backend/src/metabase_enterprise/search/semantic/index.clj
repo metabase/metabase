@@ -19,6 +19,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -141,7 +142,7 @@
     (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
-          direct               (into {} (map (juxt :id :personal_owner_id)) personal)
+          direct               (u/index-by :id :personal_owner_id personal)
           roots                (keep (fn [{:keys [id location]}]
                                        (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
                                          [id root-id]))
@@ -983,6 +984,12 @@
   Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
+;; A Card's after-select transforms normalize its query, metadata and settings, which costs far more than the read
+;; check itself, and the permission filter loads every candidate a semantic search returns.
+(def ^:private read-check-selects
+  "Per model, a select of only the columns its `mi/can-read?` reads, for models too costly to load in full."
+  {:model/Card (into [:model/Card] queries/card-read-check-columns)})
+
 (defn- filter-read-permitted
   "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
@@ -1001,8 +1008,9 @@
         coll-readable? (memoize perms/can-read-via-parent-collection?)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
-                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (semantic-search.db/instances t2-model (map :id docs))]
+                           (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
+                                 :let [modelable (get read-check-selects t2-model t2-model)]
+                                 t2-instance (semantic-search.db/instances modelable ids)]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1023,8 +1031,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (semantic-search.db/collection-locations collection-ids)
-                               (into {} (map (juxt :id identity)))))]
+                          (u/index-by :id (semantic-search.db/collection-locations collection-ids)))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
                  (or (= doc-collection-id collection-id)

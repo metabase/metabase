@@ -51,10 +51,6 @@
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
 
-(def ^:private construct-visualization-schema
-  [:map {:closed true}
-   [:chart_type (into [:enum] shared/chart-types)]])
-
 (def ^:private source-table-description
   "How [[construct-notebook-query-json-schema]] describes a stage's `source-table`."
   (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
@@ -143,7 +139,7 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
-   [:visualization {:optional true} construct-visualization-schema]
+   shared/visualization-arg
    shared/show-chart-arg
    [:title :string]
    [:description :string]])
@@ -1460,13 +1456,6 @@
                 (with-recovery-hint e recovery-hint)
                 e))))))
 
-(defn- chart-type->keyword
-  [chart-type]
-  (cond
-    (keyword? chart-type) chart-type
-    (string? chart-type)  (keyword chart-type)
-    :else                 chart-type))
-
 (defn- query-json->llm-content
   "Render the portable repr-form `query-json` map as the JSON code block embedded inside
   `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
@@ -1541,6 +1530,17 @@
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
 
+(defn- hidden-chart-instructions
+  "What to tell the model about a query it asked not to show the user. Its chart is still made, so the model can add
+  it to a dashboard without another tool call."
+  [chart-id query-id]
+  (te/lines
+   "Your query has been created."
+   ""
+   (instructions/query-hidden-instructions-for query-id)
+   (when (shared/tool-offered? "write_dashboard")
+     (instructions/add-to-dashboard-instruction chart-id))))
+
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
   (declaration [_]
@@ -1550,31 +1550,27 @@
      :args        construct-notebook-query-args-schema})
 
   (handle [_ {:keys [query visualization show_chart title description]} _ctx]
-    (let [chart-type (or (-> visualization
-                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
-                             :chart-type
-                             chart-type->keyword)
-                         :table)
+    (let [chart-type (shared/visualization-chart-type visualization)
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
           ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
           ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
           ;; it can change the delivery.
-          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))
+          ;; A hidden query gets a chart too, which the user isn't shown, so its `chart_id` can go on a dashboard.
+          chart       (create-chart-tools/create-chart
+                       {:query-id      (:query-id structured)
+                        :chart-type    chart-type
+                        :queries-state {(:query-id structured) (:query structured)}})]
       (if-not show-chart?
-        (let [instruction-text (te/lines
-                                "Your query has been created."
-                                ""
-                                (instructions/query-hidden-instructions-for (:query-id structured)))]
-          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                           instruction-text)
-           :structured-output (assoc structured :result-type :query)})
-        (let [chart            (create-chart-tools/create-chart
-                                {:query-id      (:query-id structured)
-                                 :chart-type    chart-type
-                                 :queries-state {(:query-id structured) (:query structured)}})
-              instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
+        {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                         (hidden-chart-instructions (:chart-id chart) (:query-id structured)))
+         :structured-output (assoc structured
+                                   :result-type :query
+                                   :chart-id    (:chart-id chart)
+                                   :chart-type  (:chart-type chart))}
+        (let [instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
           {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
                                            instruction-text)
            :structured-output (assoc structured

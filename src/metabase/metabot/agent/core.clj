@@ -28,6 +28,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -394,12 +395,14 @@
       ;; same turn by the tool itself, see edit-chart-tool) can carry
       ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
       ;; structured-output doesn't know about; a full replace would drop them.
+      ;; The query comes from memory when it holds one under that id: queries are stored before charts, so a SQL
+      ;; edit later in the same response is already there, and the chart must show the edited query.
       (memory/set-chart mem
                         chart-id
                         (merge (get-in mem [:state :charts chart-id])
                                {:chart_id chart-id
                                 :query_id query-id
-                                :queries [query]
+                                :queries [(get-in mem [:state :queries query-id] query)]
                                 :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))
@@ -517,12 +520,12 @@
        acc
        (update acc :charts merge
                (into {}
-                     (map (comp
-                           (juxt :chart_id identity)
-                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
-                           (partial chart-config->chart
+                     (comp
+                      ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                      (map (partial chart-config->chart
                                     (str id)
-                                    (first (extract-query-from-context-item item)))))
+                                    (first (extract-query-from-context-item item))))
+                      (u/index-by :chart_id))
                      chart_configs))))
    state
    (:user_is_viewing context)))
@@ -770,7 +773,7 @@
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 15)
+          max-iter           (:max-iterations profile 20)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
@@ -970,7 +973,11 @@
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
+                      metabot.perms/*cache*                    (atom {})
+                      ;; The tool runtime binds these for each tool call too. Bound for the whole turn, so the
+                      ;; viewing context built outside a tool call follows `use_verified_content` as the tools do.
+                      shared/*metabot*                         (:metabot opts)
+                      shared/*profile-id*                      profile-id]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream

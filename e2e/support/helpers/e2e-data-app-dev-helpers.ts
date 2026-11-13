@@ -5,6 +5,9 @@ import type { DataAppDiagnosticsReport } from "@metabase/embedding-sdk-react/dat
 
 export const DATA_APP_DEV_DIAGNOSTICS_PATH = "/__data-app/diagnostics";
 
+/** The dev server relays this path to the instance's root; see `DATA_APP_DEV_INSTANCE_PING_URL`. */
+export const DATA_APP_DEV_INSTANCE_PING_PATH = "/__data-app/instance";
+
 export const devToolbarRoot = () => cy.get("[data-cy-root]");
 
 export const devToolbarPanel = () => cy.findByTestId("dev-toolbar-panel");

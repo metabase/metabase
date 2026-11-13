@@ -183,7 +183,6 @@ describe("scenarios > admin > settings > API keys", () => {
 
             cy.findByTestId("qb-header-info-button").click();
             H.sidesheet().within(() => {
-              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("Test API Key One created this.");
             });
           });
@@ -196,7 +195,6 @@ describe("scenarios > admin > settings > API keys", () => {
             cy.findByTestId("dashboard-header").findByText("Test Dashboard");
             cy.findByTestId("dashboard-header").icon("info").click();
             H.sidesheet().within(() => {
-              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("Test API Key One created this.");
             });
           });
@@ -219,7 +217,6 @@ describe("scenarios > admin > settings > API keys", () => {
             cy.findByTestId("qb-header").findByText("Edited Question Name");
             cy.findByTestId("qb-header-info-button").click();
             H.sidesheet().within(() => {
-              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("You created this.");
               cy.findByText(
                 'Test API Key One renamed this Card from "Orders" to "Edited Question Name".',
@@ -239,7 +236,6 @@ describe("scenarios > admin > settings > API keys", () => {
             );
             cy.findByTestId("dashboard-header").icon("info").click();
             H.sidesheet().within(() => {
-              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("You created this.");
               cy.findByText(
                 'Test API Key One renamed this Dashboard from "Orders in a dashboard" to "Edited Dashboard Name".',

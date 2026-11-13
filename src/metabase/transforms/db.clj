@@ -8,6 +8,7 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -101,13 +102,6 @@
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform :id transform-id changes))
-
-(mu/defn lock-transform! :- :nil
-  "Lock the row of the Transform with `transform-id` against writes until the current transaction ends."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-pks-vec :model/Transform {:where [:= :id transform-id]
-                                       :for   :update})
-  nil)
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
@@ -925,3 +919,16 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn synced-transform-items :- [:sequential ::transforms.schema/transform]
+  "The Transforms with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/Transform :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-transform-tag-items :- [:sequential ::transforms.schema/transform-tag]
+  "The TransformTags with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TransformTag :id :name] :id [:in ids]))

@@ -25,6 +25,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -50,6 +51,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -576,6 +578,18 @@
                [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
 
+(defmacro with-temp-system-property!
+  "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
+  [[k v] & body]
+  `(let [k# ~k, before# (System/getProperty k#)]
+     (try
+       (System/setProperty k# ~v)
+       ~@body
+       (finally
+         (if before#
+           (System/setProperty k# before#)
+           (System/clearProperty k#))))))
+
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
@@ -839,21 +853,11 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
 (defn round-all-decimals
-  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[metabase.util.match/replace-all]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred (some-fn double? decimal?)
-                 #(u/round-to-decimals decimal-place %)
-                 data))
+  (match/replace-all data
+    (x :guard (or (double? x) (decimal? x))) (u/round-to-decimals decimal-place x)))
 
 ;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
 ;;; context
@@ -888,18 +892,19 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? (task.impl/scheduler) temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
-          (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
-                                                  ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                                                  ;; after it's done, but we need the scheduler for testing
-                                                  qs/shutdown (constantly nil)]
-            (thunk)))
+        (mc/binding (task.impl/scheduler-handle) temp-scheduler
+                    (fn []
+                      ;; keep the scheduler up during the thunk: some custom migrations shut the scheduler down when
+                      ;; they finish, but the test still needs it
+                      (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
+                                                              qs/shutdown   (constantly nil)]
+                        (thunk))))
         (finally
           (qs/shutdown temp-scheduler))))))
 
@@ -909,7 +914,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task.impl/*quartz-scheduler*)
+     (qs/start (task.impl/scheduler))
      (thunk))))
 
 (defmacro with-temp-scheduler!

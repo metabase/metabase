@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.metrics :as metrics]
    [metabase.search.engine :as search.engine]
@@ -47,5 +48,5 @@
               (is (= exact (#'metrics/active-index-size)))))))))
   (testing "returns nil when this instance has no active index to serve from"
     (search.tu/with-temp-index-table
-      (reset! @#'search.index/*indexes* {:active nil :pending nil})
+      (mc/reset! (search.index/indexes-handle) {:active nil :pending nil})
       (is (nil? (#'metrics/active-index-size))))))

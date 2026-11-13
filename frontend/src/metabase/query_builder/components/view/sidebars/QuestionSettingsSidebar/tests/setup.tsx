@@ -8,7 +8,11 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Route } from "metabase/router";
 import type { Card, Settings } from "metabase-types/api";
@@ -91,5 +95,6 @@ export const setup = async ({
     },
   );
 
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
 };

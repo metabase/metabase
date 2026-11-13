@@ -29,11 +29,12 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
@@ -51,17 +52,20 @@
   ;; expects a root certificate file in ~/.postgresql instead. `verify-full` also checks the hostname. Through an SSH
   ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
   ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
-  ;; for CREATE TABLE and INSERT.
+  ;; for CREATE TABLE and INSERT. Single attach mode attaches only the connected database instead of the whole
+  ;; MotherDuck workspace, which avoids a background attach fan-out of every database in the account. See
+  ;; https://motherduck.com/docs/sql-reference/postgres-endpoint/
   ;; The endpoint ignores the user name and the form has no field for it; send the one MotherDuck's docs use.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true, :user "postgres"))
       (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
-             :options    "--compatibility-mode=metabase")))
+             :options    "--compatibility-mode=metabase --attach_mode=single")))
 
 ;;; Resetting the current database at checkout
 ;;;
 ;;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
-;;; lasts for the session. A MotherDuck connection can see every database in the account, and `USE` is idiomatic
+;;; lasts for the session. A MotherDuck connection starts with only its own database attached, but SQL can `ATTACH`
+;;; any database in the account for the rest of the session, and `ATTACH` plus `USE` is idiomatic
 ;;; DuckDB, so analysts will write it in native queries. Metabase qualifies tables with only the schema, so later
 ;;; queries and syncs that reuse the pooled connection would read the other database: queries fail, or silently return
 ;;; another database's data, and sync can deactivate every table.
@@ -155,7 +159,7 @@
    driver database nil
    (fn [^Connection conn]
      (with-open [stmt (.prepareStatement conn "SELECT current_setting('TimeZone')")
-                 rset (.executeQuery stmt)]
+                 ^ResultSet rset (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (when (.next rset)
          (.getString rset 1))))))
 
@@ -241,7 +245,7 @@
   [driver ^Connection conn _metadata inclusion-patterns exclusion-patterns]
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement
                     driver conn "SELECT schema_name FROM duckdb_schemas() WHERE database_name = current_database()" [])
-              rs   (.executeQuery stmt)]
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [schemas (transient [])]
       (if (.next rs)
         (let [schema (.getString rs 1)]
@@ -347,8 +351,8 @@
 
 (defmethod sql-jdbc.describe-table/get-table-pks :motherduck
   [driver ^Connection conn _db-name-or-nil table]
-  (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
-              rs   (.executeQuery stmt)]
+  (with-open [stmt          (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [pks (transient [])]
       (if (.next rs)
         (recur (conj! pks (.getString rs 1)))
@@ -514,6 +518,81 @@
                (sql.qp/compiled (h2x/->pg-timestamp expr)))]
     ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
      driver [tag opts arg (h2x/literal target-timezone) (some-> source-timezone h2x/literal)])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Executing queries                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; A connection plans each query against its snapshot of the account's catalog. When another session changes the
+;;; catalog, by creating or dropping a database, table or view, a query planned on the stale snapshot fails with
+;;; "Catalog Error: Remote catalog has changed. Please rerun query.", and the endpoint refreshes the snapshot for the
+;;; next query on the connection. So the same statement succeeds when it's run again, as the message says to do.
+;;;
+;;; Catalog changes also cause a vaguer error: "IO Error: You've encountered an internal MotherDuck error. ... error
+;;; ID: ...". In CI, `duckdb_constraints()` raised it while another session was loading a database. A connection sees
+;;; every database in the account, and that function reads them all before filtering on `current_database()`. That
+;;; error doesn't say whether a rerun will succeed, but rerunning a read is harmless.
+;;;
+;;; Only the two read-side execute methods retry. Write queries, actions and uploads use `executeUpdate` directly, so
+;;; a retry can never apply a write twice. Sync reads go through `execute-prepared-statement!`, so they retry too,
+;;; except where they read JDBC's `DatabaseMetaData`.
+
+(def ^:private retryable-error-message
+  ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
+  ;; these from the rest.
+  #"Remote catalog has changed|internal MotherDuck error")
+
+(def ^:private max-retries
+  "How many times to rerun a statement that keeps failing with a [[retryable-error-message]]. Each rerun plans against
+  a fresh snapshot, so one is normally enough; the rest cover a catalog that is changing continuously, as it does in
+  CI."
+  2)
+
+(defn- roll-back-aborted-transaction!
+  "Roll back the transaction a retryable error aborted, so that the rerun isn't rejected with \"current transaction is
+  aborted\" instead. With autoCommit on there is no transaction to roll back. Reads turn autoCommit off to stream
+  their results through a cursor: downloads, `:table-rows-sample` and `describe-database-tables` do. Those transactions
+  only read, so rolling one back loses nothing that wasn't lost with the error. Should the rollback itself fail, the
+  original error is thrown, with the rollback's attached."
+  [^Statement stmt ^SQLException e]
+  (try
+    (let [conn (.getConnection stmt)]
+      (when-not (.getAutoCommit conn)
+        (.rollback conn)))
+    (catch Throwable rollback-error
+      (.addSuppressed e rollback-error)
+      (throw e))))
+
+(defn- execute-with-retry
+  "Call `execute!`, a thunk that runs `stmt`, and return its result. If the endpoint rejects the statement with a
+  [[retryable-error-message]], roll back the transaction that aborted, if any, and call `execute!` again, up to
+  [[max-retries]] times. Any other `SQLException`, and the last retryable error, are thrown as they are."
+  [^Statement stmt execute!]
+  (loop [retries-left max-retries]
+    (let [result (try
+                   (execute!)
+                   (catch SQLException e
+                     (if (and (pos? retries-left)
+                              (some->> (ex-message e) (re-find retryable-error-message)))
+                       (do (log/debugf "MotherDuck rejected a statement with a retryable error, rerunning it (%d retries left): %s"
+                                       (dec retries-left)
+                                       (ex-message e))
+                           (roll-back-aborted-transaction! stmt e)
+                           ::retry)
+                       (throw e))))]
+      (if (= result ::retry)
+        (recur (dec retries-left))
+        result))))
+
+(defmethod sql-jdbc.execute/execute-prepared-statement! :motherduck
+  [driver stmt]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-prepared-statement! :postgres)]
+    (execute-with-retry stmt #(postgres-method driver stmt))))
+
+(defmethod sql-jdbc.execute/execute-statement! :motherduck
+  [driver stmt sql]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
+    (execute-with-retry stmt #(postgres-method driver stmt sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |

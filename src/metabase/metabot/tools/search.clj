@@ -258,8 +258,7 @@
         id->document (when (seq document-ids)
                        (->> (metabot.db/documents-in-archived-state document-ids archived?)
                             (filter mi/can-read?)
-                            (map (juxt :id identity))
-                            (into {})))]
+                            (u/index-by :id)))]
     (if (seq document-ids)
       (into []
             (keep (fn [result]
@@ -505,13 +504,10 @@
   (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
         id->card  (when (seq ids)
-                    (into {} (map (juxt :id identity))
-                          (filter mi/can-read?
-                                  (metabot.db/card-search-rows ids))))
+                    (u/index-by :id (filter mi/can-read? (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
-                    (into {} (map (juxt :id identity))
-                          (metabot.db/collection-summaries coll-ids)))
+                    (u/index-by :id (metabot.db/collection-summaries coll-ids)))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
                     (metabot.db/verified-item-ids ids "card"))]
@@ -544,8 +540,7 @@
                           (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
-                    (into {} (map (juxt :id identity))
-                          (metabot.db/table-schema-rows tbl-ids)))]
+                    (u/index-by :id (metabot.db/table-schema-rows tbl-ids)))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}
