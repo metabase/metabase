@@ -7,6 +7,7 @@ import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expressio
 import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import { makeSummaryFormula } from "../../../../../utils/summary-formulas";
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type {
   SummaryBucketOption,
   SummaryDimensionItem,
@@ -15,6 +16,8 @@ import type {
 import { changeDimensionBucket } from "../utils";
 
 import { DimensionBucketMenu } from "./DimensionBucketMenu";
+import { FormulaLabel } from "./FormulaLabel";
+import { useWellFieldRef } from "./SummaryWell";
 import { WellChip, type WellChipRename } from "./WellChip";
 
 type DimensionChipProps = {
@@ -22,6 +25,9 @@ type DimensionChipProps = {
   stageIndex: number;
   item: SummaryDimensionItem;
   generatedExpressions: SummaryGeneratedExpression[];
+  isEditing: boolean;
+  /** Absent when the database can't take formulas in this well. */
+  formulaInput?: SummaryFormulaInput;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
   onRemove: () => void;
 };
@@ -31,9 +37,13 @@ export function DimensionChip({
   stageIndex,
   item,
   generatedExpressions,
+  isEditing,
+  formulaInput,
   onChange,
   onRemove,
 }: DimensionChipProps) {
+  const wellFieldRef = useWellFieldRef();
+
   const handleBucketSelect = (option: SummaryBucketOption) => {
     const nextQuery = changeDimensionBucket(query, stageIndex, item, option);
     if (nextQuery !== query) {
@@ -69,15 +79,29 @@ export function DimensionChip({
     };
   };
 
+  const rename = item.expression && getFormulaRename(item.expression);
+  const handleEdit =
+    rename && formulaInput
+      ? () => formulaInput.edit(item.key, wellFieldRef?.current ?? null)
+      : undefined;
+  const hasBucketMenu = item.bucketOptions.length > 0;
+
   return (
     <WellChip
       drag={{ kind: "dimension", item }}
-      rename={item.expression && getFormulaRename(item.expression)}
+      rename={rename}
+      isSelected={isEditing}
       onRemove={onRemove}
     >
-      {item.bucketOptions.length > 0 ? (
-        <DimensionBucketMenu item={item} onSelect={handleBucketSelect} />
-      ) : (
+      {handleEdit && <FormulaLabel label={item.label} onEdit={handleEdit} />}
+      {hasBucketMenu && (
+        <DimensionBucketMenu
+          item={item}
+          hasLabel={!handleEdit}
+          onSelect={handleBucketSelect}
+        />
+      )}
+      {!hasBucketMenu && !handleEdit && (
         <Ellipsified fw="inherit">{item.label}</Ellipsified>
       )}
     </WellChip>

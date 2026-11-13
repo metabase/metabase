@@ -5,7 +5,7 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { SummaryGeneratedExpression } from "metabase-types/api";
 
-import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import type { SummaryFormula, SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -37,6 +37,8 @@ type SummaryWellsProps = {
   generatedExpressions: SummaryGeneratedExpression[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
+  /** The chip whose formula is open in the formula bar. */
+  editedFormula?: SummaryFormula | null;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
@@ -49,10 +51,13 @@ export function SummaryWells({
   generatedExpressions,
   formulaInputs,
   draftFormula,
+  editedFormula,
   draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const isEditing = (wellId: SummaryWellId, key: string) =>
+    editedFormula?.wellId === wellId && editedFormula.key === key;
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -111,6 +116,8 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
+              isEditing={isEditing("values", item.key)}
+              formulaInput={formulaInputs?.values}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
             />
@@ -145,6 +152,8 @@ export function SummaryWells({
               stageIndex={stageIndex}
               item={item}
               generatedExpressions={generatedExpressions}
+              isEditing={isEditing("columns", item.key)}
+              formulaInput={formulaInputs?.columns}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
             />

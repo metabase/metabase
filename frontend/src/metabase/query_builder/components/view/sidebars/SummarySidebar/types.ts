@@ -7,6 +7,8 @@ export type SummaryWellId = "values" | "columns";
 export type SummaryQueryChangeOptions = {
   createdFormula?: boolean;
   renamedFormula?: { name: string; nextName: string };
+  /** The name of an owned grouping formula whose definition changed. */
+  editedFormula?: string;
 };
 
 export type SummaryField =

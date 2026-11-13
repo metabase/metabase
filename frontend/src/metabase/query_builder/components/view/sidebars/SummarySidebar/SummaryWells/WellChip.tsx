@@ -21,10 +21,18 @@ type WellChipProps = {
   children: ReactNode;
   /** Offered on a double-click, or F2 from a control of the chip, when set. */
   rename?: WellChipRename;
+  /** True while the chip's formula is open in the formula bar. */
+  isSelected?: boolean;
   onRemove: () => void;
 };
 
-export function WellChip({ drag, children, rename, onRemove }: WellChipProps) {
+export function WellChip({
+  drag,
+  children,
+  rename,
+  isSelected = false,
+  onRemove,
+}: WellChipProps) {
   const { label, key } = drag.item;
   const wellFieldRef = useWellFieldRef();
   const [isRenaming, setIsRenaming] = useState(false);
@@ -50,7 +58,10 @@ export function WellChip({ drag, children, rename, onRemove }: WellChipProps) {
   return (
     <Box
       ref={setNodeRef}
-      className={cx(S.chip, { [S.isDragging]: isDragging })}
+      className={cx(S.chip, {
+        [S.isDragging]: isDragging,
+        [S.isSelected]: isSelected || isRenaming,
+      })}
       data-testid="summary-well-item"
       {...listeners}
       onDoubleClick={rename ? () => setIsRenaming(true) : undefined}
