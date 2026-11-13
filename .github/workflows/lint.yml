@@ -6,6 +6,7 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -19,6 +20,7 @@ jobs:
       ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
+      migrations: ${{ steps.changes.outputs.migrations }}
       openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
@@ -69,15 +71,17 @@ jobs:
         run: clojure -Sdescribe > /dev/null
 
       - parallel:
-        # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
-        # path filter says .github changed would reintroduce the failure it exists to catch - and the
-        # filters here cover .github/workflows only, not the actions and scripts it also reads.
+        # Must always run to check Clojure classpaths match what exist in CI cache.
         - name: Check cache-warm pre-resolves every alias combination CI uses
           run: .github/scripts/check-preresolve-aliases.sh
 
         # Lint whitespace, always runs
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
+
+        - name: Lint Liquibase Migrations
+          if: needs.files-changed.outputs.migrations == 'true'
+          run: ./bin/mage lint-migrations
 
         # Lint YAML
         - name: Lint YAML files
@@ -185,3 +189,49 @@ jobs:
         run: ./bin/lint-snowplow-schemas.bb
       - name: Test linter rules
         run: ./bin/lint-snowplow-schemas-test.bb
+
+  # TODO: remove when master is at v67, at that point versioned migrations are no longer allowed.
+  # See https://github.com/metabase/metabase/blob/2a7df44f02718377e08ab10ff27821853a427c02/bin/lint-migrations-file/src/lint_migrations_file.cljc#L390
+  check-migration-versions:
+    needs: files-changed
+    if: github.event_name == 'pull_request' && needs.files-changed.outputs.migrations == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      # The `backport` label backports to every supported release line (see auto-backport.yml),
+      # so migrations on such a PR must sit in the oldest supported line's directory. Resolve
+      # that floor with the same getSupportedMajors the backport workflow uses; skip the
+      # release-script build entirely for PRs without the label.
+      - name: Prepare release scripts
+        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Compute oldest supported backport target
+        id: oldest-supported
+        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          script: | # js
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const targets = await getSupportedMajors();
+            console.log('supported backport targets', targets);
+
+            if (!targets.length || !targets.every(Number.isInteger)) {
+              throw new Error(`getSupportedMajors() returned no usable majors: ${JSON.stringify(targets)}`);
+            }
+
+            return Math.min(...targets);
+      - name: Check migration versions
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          OLDEST_SUPPORTED_VERSION: ${{ steps.oldest-supported.outputs.result }}
+        run: bin/check-migration-versions
