@@ -268,3 +268,19 @@
                           "SELECT orders.total FROM orders"
                           {:tables  {{:table "orders"} "transactions"}
                            :columns {{:table "orders" :column "total"} "amount"}})))))
+
+(deftest ^:parallel column-rename-quotes-names-that-need-it-test
+  (testing "A new column name that is not a plain identifier is quoted whole, as a new table name is"
+    (doseq [[new-name expected] [["my-col" "SELECT \"my-col\" FROM orders"]
+                                 ["x,y"    "SELECT \"x,y\" FROM orders"]
+                                 ["select" "SELECT \"select\" FROM orders"]
+                                 ["a.b"    "SELECT \"a.b\" FROM orders"]
+                                 ["\"Id\"" "SELECT \"Id\" FROM orders"]]]
+      (is (= expected
+             (replace-names :postgres
+                            "SELECT id FROM orders"
+                            {:columns {{:table "orders" :column "id"} new-name}}))
+          new-name)))
+  (testing "A new table name that is not a plain identifier is quoted whole"
+    (is (= "SELECT * FROM \"x,y\""
+           (replace-names :postgres "SELECT * FROM people" {:tables {{:table "people"} "x,y"}})))))

@@ -4,6 +4,7 @@
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
@@ -237,21 +238,136 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/sync-from-restored-db! e))))
 
+(defn- hook-selectors
+  "The `[search-model where-clause]` pairs that `instances` feed, without conditions that can never match.
+  With `always?` false, an instance contributes only to hooks whose indexed fields its changes touch."
+  [instances always?]
+  (into #{}
+        (comp (mapcat #(search.spec/search-models-to-update % always?))
+              (remove (comp search.util/impossible-condition? second)))
+        instances))
+
+(defn- enqueue-hook-selectors!
+  "Queue the [[hook-selectors]] of `instances` for ingestion, when the index is supported."
+  [instances always?]
+  (when (supports-index?)
+    (when-let [updates (seq (hook-selectors instances always?))]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
+  (enqueue-hook-selectors! [instance] always?))
+
+;; Steps run on the committing thread while its connection is still checked out, so each one only queues work.
+;; Without an ingestion worker the queued work runs at once, which is the synchronous DB I/O that
+;; `mdb/do-after-commit` warns against.
+;; There is no worker under `*force-sync*`, nor on a node whose first indexed engine was turned on after startup,
+;; because the worker starts only at boot.
+(defn after-commit!
+  "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
+  A step that throws is logged, naming the work by `description`, and the steps after it still run.
+  An interrupt stops the remaining steps."
+  [description & steps]
+  (mdb/do-after-commit
+   (fn []
+     (reduce (fn [_ step]
+               (try
+                 (step)
+                 nil
+                 ;; Later steps are skipped: on an interrupted thread their queries fail at once and log a second error.
+                 (catch InterruptedException e
+                   (.interrupt (Thread/currentThread))
+                   (log/errorf e "Interrupted; skipping the rest of the search-index handoff: %s" description)
+                   (reduced nil))
+                 (catch Throwable e
+                   (log/errorf e "Failed search-index handoff: %s" description))))
+             nil
+             steps))))
+
+;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
+(defn bulk-update!
+  "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
+  [instances]
+  (enqueue-hook-selectors! instances true))
+
+(defn feeds-documents?
+  "Whether [[bulk-update!]] would enqueue anything for `instances`.
+  A superseded revision or review, for one, feeds no document: every hook it would trigger requires `most_recent`."
+  [instances]
+  (boolean (seq (hook-selectors instances true))))
+
+(defn- cascading-selectors
+  "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
+  [instances]
+  (->> (hook-selectors instances true)
+       (remove (comp search.ingestion/purgeable-selector? second))
+       (u/group-by first second)))
+
+;; Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on another
+;; column, or keyed by a compound id, has to be enumerated while it still exists.
+;; TODO (Chris 2026-11-05) -- collapse same-shape `[:= v col]` selectors into one `[:in col vs]` per column. A wide
+;; delete ORs one selector per row into this query, inside the caller's transaction.
+(defn cascading-documents
+  "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
+  Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits.
+  A search-model whose enumeration fails, or reaches past the enumeration ceiling, is logged and left out."
+  [instances]
   (when (supports-index?)
-    (when-let [updates (->> (search.spec/search-models-to-update instance always?)
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
-      (search.ingestion/ingest-maybe-async! updates))))
+    (not-empty
+     (u/for-map [[search-model selectors] (cascading-selectors instances)
+                 :let  [ids (try
+                              (search.ingestion/doc-ids search-model (into [:or] selectors))
+                              ;; The id query runs in its own nested transaction, so a failure leaves the
+                              ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                              ;; Skipping is ours to decide, but the caller's interrupt is not ours to clear.
+                              (catch InterruptedException e
+                                (.interrupt (Thread/currentThread))
+                                (log/errorf e "Interrupted; skipping cascade enumeration for %s" search-model)
+                                nil)
+                              (catch Exception e
+                                (log/errorf e "Skipping cascade enumeration for %s" search-model)
+                                nil))]
+                 :when (seq ids)]
+       [search-model ids]))))
+
+(defn- document-count
+  [cascading]
+  (transduce (map count) + 0 (vals cascading)))
+
+;; A delete issued in batches, such as a Database's cards, would otherwise hold one ceiling's worth of ids per batch
+;; until it commits.
+(defn add-cascading-documents
+  "Merge what [[cascading-documents]] enumerates for `instances` into `cascading`, an earlier result or nil.
+  Once `cascading` holds [[search.ingestion/max-enumerated-documents]] documents, `instances` are not enumerated, and
+  the documents they cascade to are left to the reindex.
+  The batch that reaches the ceiling is kept whole, so the result can pass it by up to one batch's worth."
+  [cascading instances]
+  (if (<= search.ingestion/max-enumerated-documents (document-count cascading))
+    cascading
+    (let [merged (merge-with into cascading (cascading-documents instances))]
+      (when (<= search.ingestion/max-enumerated-documents (document-count merged))
+        (log/warnf "Cascade enumeration reached %d documents; later batches' cascades are left to the reindex"
+                   search.ingestion/max-enumerated-documents))
+      merged)))
+
+(defn reconcile-cascading-documents!
+  "Queue a check of the documents [[cascading-documents]] enumerated, now that the statement has run.
+  The ingestion worker re-derives the ones that still resolve and removes the rest, one search-model per message;
+  see [[search.ingestion/reconcile]]."
+  [cascading]
+  (when (and (seq cascading) (supports-index?))
+    (search.ingestion/ingest-maybe-async!
+     (for [[search-model ids] cascading]
+       (search.ingestion/reconcile search-model ids)))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages.
+  Runs at once when ingestion is synchronous."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))

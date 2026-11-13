@@ -13,12 +13,12 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
+import { SIDEBAR_WIDTH } from "metabase/common/components/DetailSidebar";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { getTabCount } from "metabase/common/components/PillTabNavigation";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";

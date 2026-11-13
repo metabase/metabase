@@ -94,16 +94,20 @@
           (when (contains? modules oss)
             oss))))))
 
+(defn lineage
+  "The module followed by its ancestors, nearest first."
+  [modules module]
+  (take-while some? (iterate #(parent-module modules %) module)))
+
 (defn descendant-of?
   "Whether `module` is `ancestor` or one of its descendants."
   [modules module ancestor]
-  (boolean (some #{ancestor} (take-while some? (iterate #(parent-module modules %) module)))))
+  (boolean (some #{ancestor} (lineage modules module))))
 
 (defn module-team
   "Team owning `module`: its own `:team`, else its nearest ancestor's."
   [modules module]
-  (some #(get-in modules [% :team])
-        (take-while some? (iterate #(parent-module modules %) module))))
+  (some #(get-in modules [% :team]) (lineage modules module)))
 
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))

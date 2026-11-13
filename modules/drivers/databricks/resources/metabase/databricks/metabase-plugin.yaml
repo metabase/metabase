@@ -36,8 +36,13 @@ driver:
         required: true
         options:
           - {name: "OpenID Connect (JWT)", value: "OIDC"}
-          - {name: "AWS",                  value: "AWS",   hidden-when-hosted: true}
-          - {name: "Azure",                value: "AZURE", hidden-when-hosted: true}
+          - {name: "Google Cloud",         value: "GCP",   hidden-when-hosted: true}
+        visible-if:
+          auth-mode: wif
+      - name: wif-client-id
+        display-name: Service principal client ID
+        placeholder: e26ce240-0a12-454f-934f-4c646603cb61
+        helper-text: The application ID (UUID) of the Databricks service principal whose federation policy will verify the token. Leave blank for account-wide federation.
         visible-if:
           auth-mode: wif
       - merge:
@@ -79,6 +84,12 @@ driver:
         placeholder: "/var/run/secrets/tokens/oidc-token"
         visible-if:
           wif-provider: OIDC
+      - name: wif-audience
+        display-name: Token audience
+        helper-text: The audience configured on the Databricks federation policy.
+        required: true
+        visible-if:
+          wif-provider: GCP
       - merge:
         - multi-level-schema
         - display-name: Enable multiple catalogs

@@ -143,14 +143,18 @@
 (deftest transform-deletion-test
   (search.tu/with-temp-index-table
     (testing "Transform is removed from search index when deleted"
+      ;; Delete capture purges the index only once the delete commits, which never happens inside `with-temp`'s
+      ;; rollback-only transaction, so this test inserts and deletes for real.
       (binding [search.ingestion/*force-sync* true]
-        (mt/with-temp [:model/Transform {transform-id :id} {:name "Transform to delete"}]
-          (ingest! "transform" [:= :this.id transform-id])
-          (is (some? (fetch-one "transform" :model_id (str transform-id)))
-              "Transform should be in the search index after ingestion")
-          (t2/delete! :model/Transform :id transform-id)
-          (is (nil? (fetch-one "transform" :model_id (str transform-id)))
-              "Transform should be removed from the search index after deletion"))))))
+        (mt/with-model-cleanup [:model/Transform]
+          (let [transform-id (t2/insert-returning-pk! :model/Transform (assoc (mt/with-temp-defaults :model/Transform)
+                                                                              :name "Transform to delete"))]
+            (ingest! "transform" [:= :this.id transform-id])
+            (is (some? (fetch-one "transform" :model_id (str transform-id)))
+                "Transform should be in the search index after ingestion")
+            (t2/delete! :model/Transform :id transform-id)
+            (is (nil? (fetch-one "transform" :model_id (str transform-id)))
+                "Transform should be removed from the search index after deletion")))))))
 
 (deftest transform-search-test
   (mt/with-premium-features #{:transforms-basic :hosting}

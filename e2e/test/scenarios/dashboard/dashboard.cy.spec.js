@@ -1224,7 +1224,6 @@ describe("scenarios > dashboard > tracking", () => {
         .click();
 
       H.sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
         cy.wait("@revisionHistory");
         cy.findByTestId("dashboard-history-list").should("be.visible");
         cy.findByTestId("question-revert-button").click();
@@ -1604,8 +1603,6 @@ describe("issue 16559", () => {
 
   it("should always show the most recent revision (metabase#16559)", () => {
     H.openDashboardInfoSidebar().within(() => {
-      cy.contains("button", "History").click();
-      cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
@@ -1628,7 +1625,6 @@ describe("issue 16559", () => {
     H.saveDashboard();
 
     H.openDashboardInfoSidebar().within(() => {
-      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
         .eq(0)
@@ -1642,8 +1638,6 @@ describe("issue 16559", () => {
     cy.wait("@saveDashboard");
 
     H.openDashboardInfoSidebar().within(() => {
-      cy.contains("button", "History").click();
-
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
         .eq(0)
@@ -1653,15 +1647,12 @@ describe("issue 16559", () => {
         .should("be.visible");
 
       cy.log("Add description");
-      cy.findByRole("tab", { name: "Overview" }).click();
 
       cy.findByPlaceholderText("Add description")
         .click()
         .type("16559 description")
         .blur();
       cy.wait("@saveDashboard");
-
-      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
@@ -1679,8 +1670,6 @@ describe("issue 16559", () => {
     H.closeDashboardSettingsSidebar();
 
     H.openDashboardInfoSidebar().within(() => {
-      cy.contains("button", "History").click();
-
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
         .eq(0)
@@ -1699,7 +1688,6 @@ describe("issue 16559", () => {
     });
 
     H.openDashboardInfoSidebar().within(() => {
-      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByTestId("revision-history-event")
         .eq(0)

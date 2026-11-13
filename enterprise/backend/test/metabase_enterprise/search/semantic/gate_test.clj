@@ -2,7 +2,6 @@
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    [metabase-enterprise.search.semantic.gate :as semantic.gate]
@@ -12,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
@@ -77,14 +77,10 @@
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- comparable-gate-row [row]
-  (walk/postwalk
-   (fn [x]
-     (cond
-       (bytes? x) (u/encode-base64-bytes x)
-       (inst? x) (inst-ms x)
-       (instance? PGobject x) (json/decode (.getValue ^PGobject x))
-       :else x))
-   row))
+  (match/replace-all row
+    #'bytes?                          (u/encode-base64-bytes &match)
+    #'inst?                           (inst-ms &match)
+    (x :guard (instance? PGobject x)) (json/decode (.getValue ^PGobject x))))
 
 (defn- pg-clock-timestamp! [pgvector]
   (:ts (jdbc/execute-one! pgvector ["select clock_timestamp() ts"])))

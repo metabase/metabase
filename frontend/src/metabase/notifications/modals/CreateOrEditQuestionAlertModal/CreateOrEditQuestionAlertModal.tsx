@@ -30,6 +30,7 @@ import {
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import { addUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -50,6 +51,7 @@ import type {
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
+  SendNotificationResponse,
   UpdateAlertNotificationRequest,
   UserId,
   VisualizationSettings,
@@ -117,6 +119,20 @@ type CreateOrEditQuestionAlertModalProps = {
       onAlertCreated?: () => void;
     }
 );
+
+function toastForSendResult(result: SendNotificationResponse): Partial<Undo> {
+  return match(result.status)
+    .with("sent", () => ({
+      message: t`Test alert sent.`,
+    }))
+    .with("skipped", () => ({
+      variant: "warning",
+      message: result.skip_reason
+        ? t`No alert to send (${result.skip_reason})`
+        : t`No alert to send.`,
+    }))
+    .exhaustive();
+}
 
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
@@ -250,6 +266,8 @@ export const CreateOrEditQuestionAlertModal = ({
             message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
+      } else if (result.data) {
+        dispatch(addUndo(toastForSendResult(result.data)));
       }
     }
   };
