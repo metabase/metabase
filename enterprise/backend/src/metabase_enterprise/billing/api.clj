@@ -8,6 +8,7 @@
    [metabase-enterprise.billing.db :as billing.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
@@ -65,6 +66,7 @@
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []
+  (perms/check-has-application-permission :setting)
   (let [token    (premium-features/premium-embedding-token)
         email    (billing.db/user-email api/*current-user-id*)
         language (i18n/user-locale-string)]

@@ -3830,6 +3830,7 @@
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
            lib.schema
+           permissions
            premium-features
            store-api
            util}
