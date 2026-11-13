@@ -40,7 +40,7 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
     expect(within(grid).getAllByTestId("dashcard")).toHaveLength(1);
     expect(within(grid).queryByText("Create row")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Powered by/ }),
+      screen.getByRole("link", { name: "Powered by Metabase" }),
     ).toBeInTheDocument();
   });
 });

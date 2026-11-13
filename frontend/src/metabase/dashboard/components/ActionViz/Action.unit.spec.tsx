@@ -829,7 +829,7 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
       ).id;
 
     const modal = screen.getByTestId("action-parameters-input-modal");
-    expect(within(modal).getByLabelText("Timestamp")).toHaveAttribute(
+    expect(await within(modal).findByLabelText("Timestamp")).toHaveAttribute(
       "type",
       "date",
     );
