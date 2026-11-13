@@ -57,6 +57,22 @@ SELECT 'Prospects' as step, * from {% raw %}{{#122-prospects}}{% endraw %}
 
 ![Data for the funnel coming from a SQL union](../images/funnel-as-sql.png)
 
+## Combine number questions into a funnel on a dashboard
+
+If you already have a separate question for each step, and each question returns a single number, you can combine those questions into a funnel on a dashboard card. You don't need to write SQL.
+
+1. **Add a number question to a dashboard.** Add the question for the first step of your funnel. The question should be displayed as a number or a gauge.
+
+2. **Visualize the card as a funnel.** In dashboard edit mode, hover over the card and click **Visualize another way**. Metabase changes the visualization to a funnel chart with one step.
+
+3. **Add the other steps.** In the **Manage data** sidebar, click **Add more data**, then add the other questions that return a single number. Each question becomes a step in the funnel, and Metabase uses the question's name as the step's name.
+
+4. **Reorder the steps.** Drag the step names below the chart to put the steps in the right order.
+
+5. **Save** your changes.
+
+You can also combine number questions into a bar chart. See [Combining number charts](../../dashboards/multiple-series.md#combining-number-charts).
+
 ## How to read a funnel chart
 
 Funnel charts show the value of the metric for each step, and how the metric compares to the value at the _first_ step. The first step's metric is displayed to the left of the chart.
