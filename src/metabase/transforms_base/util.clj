@@ -693,8 +693,9 @@
   would write to, which [[transforms-base.workspace-hooks/workspace-transform-target]] returns.
   A row decides the copy whenever one exists, on a workspace instance or off one, and the hook
   is then not called. With no row, the hook throws a 400 on a workspace instance when the
-  database has no workspace schema. The workspace schema is in `:schema` for schema-based drivers and in `:db` for MySQL;
-  collapse to the single `:schema` slot the driver drop path qualifies on. Off a workspace
+  database has no workspace schema. The workspace schema is in `:schema` for schema-based
+  drivers and in `:db` for MySQL; collapse to the single `:schema` slot the driver drop path
+  qualifies on. Off a workspace
   instance with no row, `target` is returned unchanged."
   [db-id target]
   (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}
