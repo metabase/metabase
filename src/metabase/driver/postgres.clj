@@ -1674,11 +1674,12 @@
     (raise-missing-grant-option! (current-login conn) schema-name missing)))
 
 (defn unmemberable-owners-in-schema
-  "Return distinct roles owning objects in `schema-name` that the current
-   PostgreSQL user is *not* a member of. `ALTER DEFAULT PRIVILEGES` (without
-   `FOR ROLE`) only affects future objects created by the connection user, so
-   tables created by any of these owner roles won't receive the workspace
-   user's default SELECT — even if the statement runs without error.
+  "Return distinct roles owning objects in `schema-name` whose privileges the
+   current PostgreSQL user does not inherit. Grant issues
+   `ALTER DEFAULT PRIVILEGES FOR ROLE <owner>` for each owner, and Postgres
+   refuses that for a role whose privileges the current user lacks: from
+   Postgres 16 a membership `WITH INHERIT FALSE` is not enough, hence `'USAGE'`
+   rather than `'MEMBER'`.
 
    PostgreSQL-only: the query relies on `pg_has_role`'s implicit overload
    resolution (`name, oid, text`), which Redshift's planner rejects."
@@ -1690,22 +1691,42 @@
          "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
          "WHERE n.nspname = ?::text "
          "  AND c.relkind IN ('r','p','v','m','f') "
-         "  AND NOT pg_catalog.pg_has_role(current_user, c.relowner, 'MEMBER') "
+         "  AND NOT pg_catalog.pg_has_role(current_user, c.relowner, 'USAGE') "
          "ORDER BY owner")
     schema-name]))
+
+(defn- other-owners-in-schema
+  "Distinct roles other than the current user that own a relation in `schema-name`: the owners
+  [[unmemberable-owners-in-schema]] checks."
+  [conn schema-name]
+  (map :owner (jdbc/query
+               conn
+               [(str "SELECT DISTINCT pg_catalog.pg_get_userbyid(c.relowner) AS owner "
+                     "FROM pg_catalog.pg_class c "
+                     "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+                     "WHERE n.nspname = ?::text "
+                     "  AND c.relkind IN ('r','p','v','m','f') "
+                     "  AND c.relowner <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user) "
+                     "ORDER BY owner")
+                schema-name])))
+
+(defn- server-version-num [conn]
+  (:v (first (jdbc/query conn ["SELECT pg_catalog.current_setting('server_version_num')::int AS v"]))))
 
 (defn raise-unmemberable-default-priv-owners!
   "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
    naming the owner roles that `login`, the admin connection's login, cannot
    target with `FOR ROLE`. The message names `login` rather than CURRENT_USER,
    which would be whoever runs the fix."
-  [login schema-name owners]
+  [login schema-name owners server-version]
   (let [owner-names   (map :owner owners)
         quoted-schema (quote-schema schema-name)
+        ;; from Postgres 16 a membership may not inherit, and granting it again without the option changes nothing
+        grant-format  (if (<= 160000 server-version) "GRANT %s TO %s WITH INHERIT TRUE;" "GRANT %s TO %s;")
         grants        (str/join " "
-                                (map #(format "GRANT %s TO %s;" (quote-field %) (quote-field login))
+                                (map #(format grant-format (quote-field %) (quote-field login))
                                      owner-names))]
-    (throw (ex-info (format (str "The admin connection's login %s is not a member of %d role(s) owning objects in "
+    (throw (ex-info (format (str "The admin connection's login %s lacks the privileges of %d role(s) owning objects in "
                                  "schema %s: %s. The workspace user would lose access to "
                                  "future tables created by these roles. As a superuser, or a role with ADMIN "
                                  "OPTION on those roles, run `%s` and retry.")
@@ -1715,13 +1736,15 @@
                      :owners      (vec owner-names)}))))
 
 (defn assert-can-alter-default-privileges!
-  "Throws when objects in `schema-name` are owned by roles the current user
-   isn't a member of, since our `ALTER DEFAULT PRIVILEGES IN SCHEMA …` (without
-   `FOR ROLE`) can't extend the workspace user's default SELECT to future
-   objects created by those roles."
+  "Throws when objects in `schema-name` are owned by roles whose privileges the
+   current user does not inherit, since grant's
+   `ALTER DEFAULT PRIVILEGES FOR ROLE <owner> IN SCHEMA …` for each owner would
+   fail. Default privileges cover only tables their target role creates, so a
+   role that owns no relation in the schema at grant time, or a member of an
+   owner role creating a table as itself, is not covered."
   [conn schema-name]
   (when-let [missing (seq (unmemberable-owners-in-schema conn schema-name))]
-    (raise-unmemberable-default-priv-owners! (current-login conn) schema-name missing)))
+    (raise-unmemberable-default-priv-owners! (current-login conn) schema-name missing (server-version-num conn))))
 
 (defn- table-creators
   "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it directly. Their database-wide default
@@ -1892,9 +1915,6 @@
   [conn user password]
   (.alterUserPassword ^PGConnection (.unwrap ^Connection (jdbc/db-connection conn) PGConnection)
                       ^String user (char-array password) "scram-sha-256"))
-
-(defn- server-version-num [conn]
-  (:v (first (jdbc/query conn ["SELECT pg_catalog.current_setting('server_version_num')::int AS v"]))))
 
 (defn- grant-membership-statement
   "Makes this login a member of the workspace user, with its privileges: so that teardown can end the user's sessions
@@ -2340,20 +2360,25 @@
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every
-  table in each schema named in `schemas`. Per source schema we emit three
-  statements: USAGE on the schema, SELECT on all existing tables in the schema,
-  and an ALTER DEFAULT PRIVILEGES covering future tables created by the granting
-  role."
-  [username schemas]
-  (let [quoted-user    (quote-field username)
-        source-schemas (set schemas)]
-    (mapcat (fn [s]
+  table in each schema of `owners-by-schema`, a map of input schema to the roles
+  other than the granting role that own a relation in it. Per schema we emit:
+  USAGE on the schema, SELECT on all existing tables in the schema, and an
+  ALTER DEFAULT PRIVILEGES covering future tables created by the granting role
+  and, with FOR ROLE, by each of those owners. Default privileges apply only to
+  tables their target role creates."
+  [username owners-by-schema]
+  (let [quoted-user (quote-field username)]
+    (mapcat (fn [[s owners]]
               (let [quoted-schema (quote-schema s)]
-                [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
-                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
-                         quoted-schema quoted-user)]))
-            source-schemas)))
+                (concat
+                 [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                  (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
+                  (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+                          quoted-schema quoted-user)]
+                 (for [owner owners]
+                   (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+                           (quote-field owner) quoted-schema quoted-user)))))
+            owners-by-schema)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace schemas]
@@ -2369,7 +2394,8 @@
          (assert-has-usage-grant-option!       conn s)
          (assert-has-grant-option!             conn s)
          (assert-can-alter-default-privileges! conn s))
-       (grant-workspace-read-access-sqls username schemas))
+       (grant-workspace-read-access-sqls username (into {} (map (juxt identity #(other-owners-in-schema conn %)))
+                                                        (set schemas))))
      (constantly nil))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
