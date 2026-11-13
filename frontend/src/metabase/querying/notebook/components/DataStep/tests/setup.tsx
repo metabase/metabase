@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -27,6 +29,10 @@ export interface SetupOpts {
   isEmbeddingSdk?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   searchItems?: SearchResult[];
+  /** Filter search results by the `collection` and `include_dashboard_questions` params */
+  filterSearchByScope?: boolean;
+  /** Re-render the step with each query passed to `updateQuery` */
+  applyQueryUpdates?: boolean;
 }
 export const setup = async ({
   step = createMockNotebookStep(),
@@ -34,6 +40,8 @@ export const setup = async ({
   isEmbeddingSdk = false,
   enterprisePlugins,
   searchItems = [],
+  filterSearchByScope = false,
+  applyQueryUpdates = false,
 }: SetupOpts = {}) => {
   if (enterprisePlugins) {
     enterprisePlugins.forEach((plugin) => {
@@ -58,19 +66,17 @@ export const setup = async ({
       }),
     ]);
   } else {
-    setupSearchEndpoints(searchItems);
+    setupSearchEndpoints(searchItems, undefined, {
+      filterByScope: filterSearchByScope,
+    });
   }
 
   renderWithProviders(
     <NotebookProvider>
-      <DataStep
-        step={step}
-        query={step.query}
-        stageIndex={step.stageIndex}
+      <TestDataStep
+        initialStep={step}
         readOnly={readOnly}
-        color="background_surface-brand-strong"
-        isLastOpened={false}
-        reportTimezone="UTC"
+        applyQueryUpdates={applyQueryUpdates}
         updateQuery={updateQuery}
       />
     </NotebookProvider>,
@@ -99,3 +105,37 @@ export const setup = async ({
 
   return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
 };
+
+function TestDataStep({
+  initialStep,
+  readOnly,
+  applyQueryUpdates,
+  updateQuery,
+}: {
+  initialStep: NotebookStep;
+  readOnly: boolean;
+  applyQueryUpdates: boolean;
+  updateQuery: (query: Lib.Query) => void;
+}) {
+  const [step, setStep] = useState(initialStep);
+
+  const handleUpdateQuery = async (query: Lib.Query) => {
+    updateQuery(query);
+    if (applyQueryUpdates) {
+      setStep((step) => ({ ...step, query }));
+    }
+  };
+
+  return (
+    <DataStep
+      step={step}
+      query={step.query}
+      stageIndex={step.stageIndex}
+      readOnly={readOnly}
+      color="background_surface-brand-strong"
+      isLastOpened={false}
+      reportTimezone="UTC"
+      updateQuery={handleUpdateQuery}
+    />
+  );
+}

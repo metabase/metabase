@@ -27,6 +27,7 @@ import type {
   Collection,
   Dashboard,
   SearchResult,
+  User,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -36,6 +37,23 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import {
+  ADMIN_PERSONAL_COLLECTION,
+  ADMIN_USER,
+  FIRST_COLLECTION,
+  FIRST_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION,
+  NORMAL_USER,
+  ROOT as ROOT_WITH_WRITE_ACCESS,
+  expectSearchResults,
+  findSearchResult,
+  getLastSearchParams,
+  getRootItem,
+  getScopeRadio,
+  getSearchScopeSelector,
+  typeSearchText,
+} from "../tests/search";
 
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
@@ -289,6 +307,7 @@ const setup = async ({
   fetchMock.get(`path:/api/user/recipients`, { data: [] });
 
   const onChangeLocation = jest.fn();
+  const onClose = jest.fn();
 
   renderWithProviders(
     <Route
@@ -297,7 +316,7 @@ const setup = async ({
         <AddToDashSelectDashModal
           card={card}
           onChangeLocation={onChangeLocation}
-          onClose={() => undefined}
+          onClose={onClose}
         />
       }
     />,
@@ -313,7 +332,7 @@ const setup = async ({
     await waitForLoaderToBeRemoved();
   }
 
-  return { onChangeLocation };
+  return { onChangeLocation, onClose };
 };
 
 describe("AddToDashSelectDashModal", () => {
@@ -593,6 +612,29 @@ describe("AddToDashSelectDashModal", () => {
       ).toBeInTheDocument();
     });
 
+    it("should close the create dashboard dialog, then the picker, with the Escape key", async () => {
+      const { onClose } = await setup();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /New dashboard/ }),
+      );
+      expect(
+        await screen.findByRole("dialog", { name: "Create a new dashboard" }),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Create a new dashboard" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it("should show the create dashboard dialog", async () => {
       // Second part of test requires a value to be "selected"
       const { onChangeLocation } = await setup({
@@ -617,6 +659,254 @@ describe("AddToDashSelectDashModal", () => {
 
       expect(onChangeLocation).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("AddToDashSelectDashModal search", () => {
+  const NO_COLLECTION_PERSONAL_COLLECTION = createMockCollection({
+    id: 8,
+    name: "No Collection Tableton's Personal Collection",
+    personal_owner_id: 3,
+    is_personal: true,
+    location: "/",
+    can_write: true,
+  });
+  const QUESTION = createMockCard({
+    id: 50,
+    name: "Orders, Count",
+    collection_id: null,
+  });
+
+  type DashboardFixture = { id: number; name: string; collection: Collection };
+
+  const createDashboardFixtures = (
+    namePrefix: string,
+    collection: Collection,
+    firstId: number,
+  ): DashboardFixture[] =>
+    ["1", "2"].map((suffix, index) => ({
+      id: firstId + index,
+      name: `${namePrefix} ${suffix}`,
+      collection,
+    }));
+
+  const DASHBOARDS = [
+    ...createDashboardFixtures("Root dashboard", ROOT_WITH_WRITE_ACCESS, 100),
+    ...createDashboardFixtures("Regular dashboard", FIRST_COLLECTION, 200),
+    ...createDashboardFixtures(
+      "Normal personal dashboard",
+      NORMAL_PERSONAL_COLLECTION,
+      300,
+    ),
+  ];
+
+  const ADMIN_DASHBOARDS = [
+    ...createDashboardFixtures(
+      "Admin personal dashboard",
+      ADMIN_PERSONAL_COLLECTION,
+      400,
+    ),
+    ...createDashboardFixtures(
+      "Normal personal dashboard",
+      NORMAL_PERSONAL_COLLECTION,
+      300,
+    ),
+    ...createDashboardFixtures(
+      "No collection personal dashboard",
+      NO_COLLECTION_PERSONAL_COLLECTION,
+      500,
+    ),
+  ];
+
+  const toCollectionItem = ({ id, name }: DashboardFixture) =>
+    createMockCollectionItem({ id, name, model: "dashboard", can_write: true });
+
+  type SearchSetupOpts = {
+    currentUser?: User;
+    dashboards?: DashboardFixture[];
+  };
+
+  const setupSearch = async ({
+    currentUser = NORMAL_USER,
+    dashboards = DASHBOARDS,
+  }: SearchSetupOpts = {}) => {
+    process.env.OVERSCAN = "20";
+    mockGetBoundingClientRect();
+    const collections = [
+      ROOT_WITH_WRITE_ACCESS,
+      FIRST_COLLECTION,
+      NORMAL_PERSONAL_COLLECTION,
+      ADMIN_PERSONAL_COLLECTION,
+      NO_COLLECTION_PERSONAL_COLLECTION,
+    ];
+    setupCollectionsEndpoints({
+      collections,
+      rootCollection: ROOT_WITH_WRITE_ACCESS,
+    });
+    setupCollectionByIdEndpoint({ collections });
+    setupRecentViewsAndSelectionsEndpoints([]);
+    setupMostRecentlyViewedDashboard(undefined);
+    setupDatabasesEndpoints([]);
+    collections.forEach((collection) =>
+      setupCollectionItemsEndpoint({
+        collection,
+        collectionItems: [
+          ...(collection.id === ROOT_WITH_WRITE_ACCESS.id
+            ? [
+                createMockCollectionItem({
+                  id: FIRST_COLLECTION_ID,
+                  name: FIRST_COLLECTION.name,
+                  model: "collection",
+                  can_write: true,
+                  here: ["dashboard"],
+                  below: ["dashboard"],
+                }),
+              ]
+            : []),
+          ...dashboards
+            .filter((dashboard) => dashboard.collection.id === collection.id)
+            .map(toCollectionItem),
+        ],
+      }),
+    );
+    setupSearchEndpoints(
+      dashboards.map(({ id, name, collection }) =>
+        createMockSearchResult({
+          id,
+          name,
+          model: "dashboard",
+          can_write: true,
+          collection,
+        }),
+      ),
+      undefined,
+      { filterByScope: true },
+    );
+    fetchMock.get("path:/api/user/recipients", { data: [] });
+
+    const onChangeLocation = jest.fn();
+    renderWithProviders(
+      <Route
+        path="/"
+        element={
+          <AddToDashSelectDashModal
+            card={QUESTION}
+            onChangeLocation={onChangeLocation}
+            onClose={() => undefined}
+          />
+        }
+      />,
+      { withRouter: true, storeInitialState: { currentUser } },
+    );
+    await waitForLoaderToBeRemoved();
+    return { onChangeLocation };
+  };
+
+  const openFirstCollection = async () => {
+    await userEvent.click(await screen.findByText("First collection"));
+    await expectActiveItem("First collection");
+  };
+
+  it("should add the question to a dashboard picked from the search of the current collection", async () => {
+    const { onChangeLocation } = await setupSearch();
+
+    await openFirstCollection();
+    await typeSearchText("dashboard");
+    expect(getScopeRadio("First collection")).toBeChecked();
+    expect(getLastSearchParams().get("collection")).toBe(
+      String(FIRST_COLLECTION_ID),
+    );
+    await expectSearchResults(["Regular dashboard 1", "Regular dashboard 2"]);
+    await userEvent.click(await findSearchResult("Regular dashboard 2"));
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
+
+    expect(onChangeLocation).toHaveBeenCalledTimes(1);
+    expect(onChangeLocation).toHaveBeenCalledWith(
+      `/dashboard/201-regular-dashboard-2#add=${QUESTION.id}&edit`,
+    );
+  });
+
+  it("should add the question to a dashboard picked from the search everywhere", async () => {
+    const { onChangeLocation } = await setupSearch();
+
+    await openFirstCollection();
+    await typeSearchText("dashboard");
+    await userEvent.click(getScopeRadio("Everywhere"));
+    expect(getScopeRadio("Everywhere")).toBeChecked();
+    expect(getLastSearchParams().get("collection")).toBeNull();
+    await userEvent.click(await findSearchResult("Root dashboard 2"));
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
+
+    expect(onChangeLocation).toHaveBeenCalledTimes(1);
+    expect(onChangeLocation).toHaveBeenCalledWith(
+      `/dashboard/101-root-dashboard-2#add=${QUESTION.id}&edit`,
+    );
+  });
+
+  it("should search the current collection for a normal user", async () => {
+    await setupSearch();
+
+    await openFirstCollection();
+    await typeSearchText("dashboard 1");
+    expect(getScopeRadio("First collection")).toBeChecked();
+    expect(getLastSearchParams().getAll("models")).toEqual([
+      "dashboard",
+      "collection",
+    ]);
+    await expectSearchResults(["Regular dashboard 1"]);
+
+    await userEvent.click(getScopeRadio("Everywhere"));
+    expect(getLastSearchParams().get("collection")).toBeNull();
+    await expectSearchResults([
+      "Root dashboard 1",
+      "Regular dashboard 1",
+      "Normal personal dashboard 1",
+    ]);
+
+    await userEvent.click(getScopeRadio("First collection"));
+    expect(getScopeRadio("First collection")).toBeChecked();
+    expect(getLastSearchParams().get("collection")).toBe(
+      String(FIRST_COLLECTION_ID),
+    );
+    await expectSearchResults(["Regular dashboard 1"]);
+
+    await userEvent.click(getRootItem(/Robert Tableton's Personal/));
+    await typeSearchText("personal dashboard 1");
+    expect(getScopeRadio(/Robert Tableton/)).toBeChecked();
+    expect(getLastSearchParams().get("collection")).toBe(
+      String(NORMAL_PERSONAL_COLLECTION.id),
+    );
+    await expectSearchResults(["Normal personal dashboard 1"]);
+  });
+
+  it("should only search everywhere from all personal collections", async () => {
+    await setupSearch({
+      currentUser: ADMIN_USER,
+      dashboards: ADMIN_DASHBOARDS,
+    });
+
+    await userEvent.click(await screen.findByText("All personal collections"));
+    expect(
+      await screen.findByText("Robert Tableton's Personal Collection"),
+    ).toBeInTheDocument();
+    await typeSearchText("personal dashboard");
+    expect(getScopeRadio("Everywhere")).toBeChecked();
+    expect(
+      getSearchScopeSelector().queryByRole("radio", {
+        name: "All personal collections",
+      }),
+    ).not.toBeInTheDocument();
+    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
+
+    await expectSearchResults([
+      "Admin personal dashboard 1",
+      "Admin personal dashboard 2",
+      "Normal personal dashboard 1",
+      "Normal personal dashboard 2",
+      "No collection personal dashboard 1",
+      "No collection personal dashboard 2",
+    ]);
+    expect(getLastSearchParams().get("collection")).toBeNull();
   });
 });
 
