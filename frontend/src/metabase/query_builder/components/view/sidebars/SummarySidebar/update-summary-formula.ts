@@ -31,21 +31,16 @@ export function updateSummaryFormula({
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
     (formula) => {
-      if (formula.stageIndex !== index) {
+      const isRewrite = isNotNull(renamedFormula) || editedFormula === true;
+      if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
-      if (isNotNull(renamedFormula)) {
-        // a rename also rewrites the formulas that refer to the renamed one
-        const name =
-          formula.name === renamedFormula.name
-            ? renamedFormula.nextName
-            : formula.name;
-        return makeSummaryFormula(nextQuery, index, name) ?? formula;
-      }
-      if (formula.name === editedFormula) {
-        return makeSummaryFormula(nextQuery, index, formula.name) ?? formula;
-      }
-      return formula;
+      // a rename or an edit also rewrites the formulas that refer to the changed one
+      const name =
+        formula.name === renamedFormula?.name
+          ? renamedFormula.nextName
+          : formula.name;
+      return makeSummaryFormula(nextQuery, index, name) ?? formula;
     },
   );
   let formulas = owned;

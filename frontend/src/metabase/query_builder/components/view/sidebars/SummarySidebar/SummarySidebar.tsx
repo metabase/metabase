@@ -123,12 +123,9 @@ export function SummarySidebar({
       stageIndex,
       onAdd: (nextQuery, wellId) =>
         handleWellAdd(nextQuery, wellId, wellId === "columns"),
-      onEdit: (nextQuery, formula) => {
+      onEdit: (nextQuery) => {
         if (!areQueriesEqual(query, nextQuery)) {
-          handleQueryChange(nextQuery, {
-            editedFormula:
-              formula.wellId === "columns" ? formula.name : undefined,
-          });
+          handleQueryChange(nextQuery, { editedFormula: true });
         }
       },
     });

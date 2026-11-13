@@ -27,6 +27,7 @@ import type {
 } from "./types";
 import {
   addSummaryFormula,
+  findEditedFormula,
   findSummaryFormula,
   replaceSummaryFormula,
 } from "./utils";
@@ -67,18 +68,13 @@ export function useSummaryFormulaBar({
     slot && databaseId != null ? { id: databaseId } : skipToken,
   );
   const activeDraft = ownership.isActive ? draft : null;
-  const editedFormula = useMemo(() => {
-    if (activeDraft?.kind !== "edit") {
-      return null;
-    }
-    const formula = findSummaryFormula(
-      query,
-      stageIndex,
-      activeDraft.wellId,
-      activeDraft.itemKey,
-    );
-    return formula?.signature === activeDraft.signature ? formula : null;
-  }, [query, stageIndex, activeDraft]);
+  const editedFormula = useMemo(
+    () =>
+      activeDraft?.kind === "edit"
+        ? findEditedFormula(query, stageIndex, activeDraft.formula)
+        : null,
+    [query, stageIndex, activeDraft],
+  );
   const openDraft =
     activeDraft?.kind === "new" || editedFormula ? activeDraft : null;
 
@@ -171,14 +167,7 @@ export function useSummaryFormulaBar({
     inputRef.current = input;
     nextKey.current += 1;
     const key = nextKey.current;
-    setDraft({
-      kind: "edit",
-      key,
-      wellId,
-      itemKey,
-      signature: formula.signature,
-      source: "",
-    });
+    setDraft({ kind: "edit", key, wellId, formula, source: "" });
     ownership.open();
     // the bar holds one line, so the printer must not wrap
     format(formula.clause, { query, stageIndex, printWidth: Infinity })
@@ -218,6 +207,11 @@ export function useSummaryFormulaBar({
         }
       },
       edit: (itemKey, input) => editFormula(wellId, itemKey, input),
+      cancelEdit: (itemKey) => {
+        if (editedFormula?.wellId === wellId && editedFormula.key === itemKey) {
+          close();
+        }
+      },
     };
   };
 
@@ -232,6 +226,7 @@ export function useSummaryFormulaBar({
             stageIndex={stageIndex}
             database={database}
             expressionMode={getExpressionMode(openDraft.wellId)}
+            expressionIndex={editedFormula?.index}
             initialSource={openDraft.source}
             submitLabel={openDraft.kind === "edit" ? t`Update` : t`Add`}
             onEditorCreate={handleEditorCreate}

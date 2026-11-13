@@ -16,12 +16,13 @@ export function getFormulaColumns(
   query: Lib.Query,
   stageIndex: number,
   expressionMode: Lib.ExpressionMode,
+  expressionIndex?: number,
 ) {
   if (expressionMode === "aggregation") {
-    return Lib.aggregableColumns(query, stageIndex);
+    return Lib.aggregableColumns(query, stageIndex, expressionIndex);
   }
   if (expressionMode === "filter") {
     return Lib.filterableColumns(query, stageIndex);
   }
-  return Lib.expressionableColumns(query, stageIndex);
+  return Lib.expressionableColumns(query, stageIndex, expressionIndex);
 }

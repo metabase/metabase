@@ -765,6 +765,105 @@ describe("editing a formula chip", () => {
     await expectFormula("Sum([Total])");
   });
 
+  it("opens the bar at once from the keyboard", async () => {
+    await setupFormulaQuery();
+    getFormulaChip("Sum total").focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(screen.getByTestId("formula-editor")).toBeInTheDocument();
+    await expectFormula("Sum([Total])");
+  });
+
+  it("closes the bar it opened when a slow double-click renames the chip", async () => {
+    const { onQueryChange } = await setupFormulaQuery();
+    const label = getFormulaChip("Sum total");
+    fireEvent.click(label, { detail: 1 });
+    await expectFormula("Sum([Total])");
+
+    fireEvent.click(label, { detail: 2 });
+    fireEvent.dblClick(label);
+    await expectClosed();
+    expect(
+      screen.getByRole("textbox", { name: "Rename Sum total" }),
+    ).toHaveFocus();
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "Sum total",
+      source: "Sum([Total]) * 2",
+      nextName: "Total sum",
+      nextLabel: "Total sum",
+    },
+    {
+      label: "Order date: Year",
+      source: 'datetimeAdd([Created At], 2, "day")',
+      nextName: "Ship date",
+      nextLabel: "Ship date: Year",
+    },
+  ])(
+    "keeps the edited formula of $label open through a rename of its chip",
+    async ({ label, source, nextName, nextLabel }) => {
+      const { onQueryChange } = await setupFormulaQuery();
+      await userEvent.click(getFormulaChip(label));
+      await screen.findByTestId("formula-editor");
+      await waitFor(() =>
+        expect(getEditor()?.state.doc.length).toBeGreaterThan(0),
+      );
+      await changeFormula(source);
+
+      fireEvent.keyDown(getFormulaChip(label), { key: "F2" });
+      const nameInput = screen.getByRole("textbox", {
+        name: `Rename ${label.replace(": Year", "")}`,
+      });
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, `${nextName}{Enter}`);
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+      expect(getEditor()?.state.doc.toString()).toBe(source);
+      expect(
+        screen.getByRole("button", {
+          name: `Edit the formula of ${nextLabel}`,
+        }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+      await expectClosed();
+      expect(onQueryChange).toHaveBeenCalledTimes(2);
+      const [query] = onQueryChange.mock.calls[1];
+      const clause =
+        label === "Sum total"
+          ? Lib.aggregations(query, -1)[0]
+          : Lib.expressions(query, -1)[0];
+      expect(Lib.displayInfo(query, -1, clause).displayName).toBe(nextName);
+      expect(await format(clause, { query, stageIndex: -1 })).toBe(source);
+    },
+  );
+
+  it.each([
+    { label: "Sum total", source: "[Sum total] * 2" },
+    {
+      label: "Order date: Year",
+      source: 'datetimeAdd([Order date], 1, "day")',
+    },
+  ])(
+    "does not let the formula of $label refer to itself",
+    async ({ label, source }) => {
+      const { onQueryChange } = await setupFormulaQuery();
+      await userEvent.click(getFormulaChip(label));
+      await screen.findByTestId("formula-editor");
+      await waitFor(() =>
+        expect(getEditor()?.state.doc.length).toBeGreaterThan(0),
+      );
+      await changeFormula(source);
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      expect(await screen.findByTestId("formula-error")).toBeInTheDocument();
+      expect(screen.getByTestId("formula-editor")).toBeInTheDocument();
+      expect(onQueryChange).not.toHaveBeenCalled();
+    },
+  );
+
   it("renames on a double-click without opening the bar", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

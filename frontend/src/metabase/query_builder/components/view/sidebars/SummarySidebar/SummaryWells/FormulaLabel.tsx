@@ -12,12 +12,21 @@ const DOUBLE_CLICK_MS = 200;
 type FormulaLabelProps = {
   label: string;
   icon?: IconName;
+  isEditing: boolean;
   onEdit: () => void;
+  onCancelEdit: () => void;
 };
 
 /** The label of a formula chip. A click opens the formula in the bar, unless a double-click follows. */
-export function FormulaLabel({ label, icon, onEdit }: FormulaLabelProps) {
+export function FormulaLabel({
+  label,
+  icon,
+  isEditing,
+  onEdit,
+  onCancelEdit,
+}: FormulaLabelProps) {
   const clickTimer = useRef<number | undefined>(undefined);
+  const hasOpenedBar = useRef(false);
   useEffect(() => () => window.clearTimeout(clickTimer.current), []);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -25,7 +34,16 @@ export function FormulaLabel({ label, icon, onEdit }: FormulaLabelProps) {
     if (event.detail === 0) {
       onEdit();
     } else if (event.detail === 1) {
-      clickTimer.current = window.setTimeout(onEdit, DOUBLE_CLICK_MS);
+      const wasEditing = isEditing;
+      hasOpenedBar.current = false;
+      clickTimer.current = window.setTimeout(() => {
+        hasOpenedBar.current = !wasEditing;
+        onEdit();
+      }, DOUBLE_CLICK_MS);
+    } else if (event.detail === 2 && hasOpenedBar.current) {
+      // a slow double-click, still within the system's time, renames instead
+      hasOpenedBar.current = false;
+      onCancelEdit();
     }
   };
 

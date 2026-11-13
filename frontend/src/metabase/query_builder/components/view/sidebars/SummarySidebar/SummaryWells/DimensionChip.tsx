@@ -93,7 +93,14 @@ export function DimensionChip({
       isSelected={isEditing}
       onRemove={onRemove}
     >
-      {handleEdit && <FormulaLabel label={item.label} onEdit={handleEdit} />}
+      {handleEdit && (
+        <FormulaLabel
+          label={item.label}
+          isEditing={isEditing}
+          onEdit={handleEdit}
+          onCancelEdit={() => formulaInput?.cancelEdit(item.key)}
+        />
+      )}
       {hasBucketMenu && (
         <DimensionBucketMenu
           item={item}
