@@ -56,6 +56,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -630,12 +631,39 @@
                                   :schema (normalize-level (:schema workspace-ns))))]
       {:from-spec from-spec :to-spec to-spec})))
 
+(defn- check-copy-not-taken!
+  "Throw a 409 when a remapping from a different source already points at `to-spec`.
+
+   The copy's name is `schema__table` with no escaping, so two sources can share it: `a__b.c` and
+   `a.b__c` both become `a__b__c`. This guards the sequential case only. Two colliding transforms
+   whose first runs overlap both pass, because neither has a row yet; the unique constraint then
+   fails the second run's record, after its write."
+  [db-id from-spec to-spec]
+  (let [table-key #(select-keys (normalize-spec %) [:db :schema :table])
+        from      (table-key from-spec)
+        to        (table-key to-spec)
+        other     (some (fn [[other-from other-to]]
+                          (when (and (= (table-key other-to) to)
+                                     (not= (table-key other-from) from))
+                            (table-key other-from)))
+                        (ws.remapping/remappings-for-db db-id))]
+    (when other
+      (throw (ex-info (tru "Another table''s workspace copy already uses the name {0}." (:table to))
+                      {:status-code 409
+                       :db-id       db-id
+                       :from        from
+                       :to          to
+                       :taken-by    other})))))
+
 (defn transform-target-remapping
   "The to-side [[add-transform-target-mapping!]] would record for `target` on workspaced
    database `db-id`, as a denormalized `{:db :schema :name}` map, without recording it.
-   Throws when the database is not workspaced."
+   Throws when the database is not workspaced, and a 409 when another source table's copy already
+   has that name (see [[check-copy-not-taken!]])."
   [db-id target]
-  (spec->consumer-shape (:to-spec (transform-target-specs db-id target))))
+  (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
+    (check-copy-not-taken! db-id from-spec to-spec)
+    (spec->consumer-shape to-spec)))
 
 (defn add-transform-target-mapping!
   "Register a remapping for a transform target on a workspaced database. The from-side spec
@@ -646,7 +674,7 @@
    Inputs:
    - `db-id` -- the canonical `:model/Database` id.
    - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
-     identifier the transform was configured to write to. Same shape `resolve-transform-target`
+     identifier the transform was configured to write to. Same shape `workspace-transform-target`
      already passes around.
 
    Resolution:
@@ -661,15 +689,11 @@
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
-   can be `assoc`ed onto a transform target without a per-call denormalization shim.
+   storage layer's `\"\"` sentinel never leaks above this boundary.
 
    Throws when the database is not workspaced -- reaching this with a non-workspaced
    db is a programming error; gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
     (add-mapping! db-id from-spec to-spec)
-    ;; Hand callers the denormalized shape so storage's `""` sentinel stays
-    ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
-    ;; `canonical-schema+name`) which also denormalize at the boundary.
     (spec->consumer-shape to-spec)))
