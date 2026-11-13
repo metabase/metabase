@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import { renderWithProviders } from "__support__/ui";
 import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/snowplow";
@@ -408,48 +408,67 @@ describe("DataApp", () => {
     );
   });
 
-  it("reports one component event per data app", () => {
-    const { state } = setupSdkState({
-      settingValues: createMockSettings({ "anon-tracking-enabled": true }),
-      sdkState: createMockSdkState({
-        initStatus: createMockLoginStatusState({ status: "success" }),
-        sdkTrackerReady: true,
-      }),
-    });
+  describe("analytics", () => {
+    const COMPONENT_EVENT = {
+      event: "embedding_sdk_component_rendered",
+      detail: expect.objectContaining({ component: "DataApp", properties: {} }),
+    };
 
-    renderWithProviders(
-      <>
-        <DataApp path="tracked-store/orders" />
-        <DataApp path="tracked-store/customers" />
-        <DataApp path="tracked-crm" />
-      </>,
-      { storeInitialState: state, customReducers: sdkReducers },
-    );
+    const renderTracked = (ui: ReactElement) => {
+      const { state } = setupSdkState({
+        settingValues: createMockSettings({ "anon-tracking-enabled": true }),
+        sdkState: createMockSdkState({
+          initStatus: createMockLoginStatusState({ status: "success" }),
+          sdkTrackerReady: true,
+        }),
+      });
 
-    const components = jest
-      .mocked(trackSdkSimpleEvent)
-      .mock.calls.map(([event]) => {
+      return renderWithProviders(ui, {
+        storeInitialState: state,
+        customReducers: sdkReducers,
+      });
+    };
+
+    const getComponentEvents = () =>
+      jest.mocked(trackSdkSimpleEvent).mock.calls.map(([event]) => {
         const detail: unknown = JSON.parse(event.event_detail ?? "{}");
 
         return { event: event.event, detail };
       });
 
-    // one event for each data app: tracked-store + tracked-crm
-    expect(components).toEqual([
-      {
-        event: "embedding_sdk_component_rendered",
-        detail: expect.objectContaining({
-          component: "DataApp",
-          properties: {},
-        }),
-      },
-      {
-        event: "embedding_sdk_component_rendered",
-        detail: expect.objectContaining({
-          component: "DataApp",
-          properties: {},
-        }),
-      },
-    ]);
+    it("reports one component event per data app", () => {
+      renderTracked(
+        <>
+          <DataApp path="tracked-store/orders" />
+          <DataApp path="tracked-store/customers" />
+          <DataApp path="tracked-crm" />
+        </>,
+      );
+
+      // one event for each data app: tracked-store + tracked-crm
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT, COMPONENT_EVENT]);
+    });
+
+    it("reports the new data app when the path changes to another app", () => {
+      const { rerender } = renderTracked(
+        <DataApp path="switched-from/orders" />,
+      );
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT]);
+
+      rerender(<DataApp path="switched-from/customers" />);
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT]);
+
+      rerender(<DataApp path="switched-to" />);
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT, COMPONENT_EVENT]);
+    });
+
+    it("does not report a data app with an invalid path", () => {
+      renderTracked(<DataApp path="../not-an-app" />);
+
+      expect(
+        screen.getByText("A valid data app path must be provided."),
+      ).toBeInTheDocument();
+      expect(getComponentEvents()).toEqual([]);
+    });
   });
 });

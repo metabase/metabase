@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { isEqual, omit } from "underscore";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/store/auth";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -20,6 +21,7 @@ const DEFAULT_HEIGHT = 600;
 
 interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
   path: string;
+  slug: string;
 
   src: string;
   origin: string;
@@ -31,6 +33,7 @@ interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
 
 export function DataAppFrame({
   path,
+  slug,
   src,
   origin,
   locale,
@@ -46,6 +49,9 @@ export function DataAppFrame({
   const currentAuthRef = useRef({ authConfig, store });
 
   const [error, setError] = useState<string | null>(null);
+
+  // The slug only dedupes events per app. It is not sent to analytics.
+  useTrackSdkComponentMount("DataApp", slug, {});
 
   // make sure auth replies cannot use stale credentials
   useLayoutEffect(() => {
