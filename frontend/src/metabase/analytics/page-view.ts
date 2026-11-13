@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import {
