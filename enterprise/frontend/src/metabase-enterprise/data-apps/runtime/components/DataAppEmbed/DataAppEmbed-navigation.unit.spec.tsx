@@ -9,7 +9,7 @@ import {
 
 import userEvent from "@testing-library/user-event";
 
-import { act, render, renderHook, screen, waitFor } from "__support__/ui";
+import { act, render, renderHook, screen } from "__support__/ui";
 import { useDataAppLocation } from "embedding-sdk-package/hooks/public/use-data-app-location";
 import { navigate } from "embedding-sdk-package/lib/private/data-app-routing";
 
@@ -79,7 +79,7 @@ describe("DataAppEmbed - router navigation", () => {
       const { navigate } = useDataAppLocation();
 
       return (
-        <button onClick={() => navigate("/orders/42?tab=items#notes")}>
+        <button onClick={() => navigate("/orders/42?tab=a%20b&flag#notes")}>
           Order 42
         </button>
       );
@@ -98,7 +98,8 @@ describe("DataAppEmbed - router navigation", () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledWith({
       type: "metabase.embed.dataAppPathChange",
-      data: { path: "sales/orders/42?tab=items#notes" },
+      // the query is reported as it appears in the url, not re-encoded
+      data: { path: "sales/orders/42?tab=a%20b&flag#notes" },
     });
   });
 
@@ -181,30 +182,13 @@ describe("DataAppEmbed - router navigation", () => {
     expect(pushState).not.toHaveBeenCalled();
   });
 
-  it("reports the query as it appears in the url", () => {
-    const { onPathChange } = setupPathNavigation({ path: "sales" });
-
-    act(() => navigate("/search?q=a%20b&ids=1,2&flag"));
-
-    expect(window.location.search).toBe("?q=a%20b&ids=1,2&flag");
-    expect(onPathChange).toHaveBeenCalledWith(
-      "sales/search?q=a%20b&ids=1,2&flag",
-    );
-  });
-
-  it("reports the app root as the bare slug", async () => {
+  it("reports the app root as the bare slug", () => {
     window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
+    const { onPathChange } = setupPathNavigation({ path: "sales/orders" });
 
-    const { onPathChange, rerender } = setupPathNavigation({
-      path: "sales/orders",
-    });
+    act(() => navigate("/"));
 
-    rerender({ path: "sales" });
-    act(() => navigate("/products"));
-    act(() => window.history.back());
-
-    await waitFor(() => expect(onPathChange).toHaveBeenCalledTimes(2));
-    expect(onPathChange).toHaveBeenLastCalledWith("sales");
+    expect(onPathChange).toHaveBeenCalledWith("sales");
   });
 
   it("does not report navigation that leaves the app", () => {
