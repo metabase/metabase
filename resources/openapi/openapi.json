@@ -33349,15 +33349,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36314,15 +36307,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40719,15 +40705,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
