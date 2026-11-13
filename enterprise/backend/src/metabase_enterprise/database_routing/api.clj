@@ -110,7 +110,8 @@
   - turn an existing Database into a Router database
   - change the `user_attribute` used to route for an existing Router database, or
   - turn a Router database into a regular Database
-  depending on the value of `user_attribute`.
+  depending on the value of `user_attribute`. A `null` `user_attribute` turns routing off; leaving it out leaves
+  routing as it is.
 
   `anonymous_access_granted` states that anonymous traffic may query this router database. Sent without
   `user_attribute`, it changes only the grant of an existing Router database."
@@ -130,16 +131,20 @@
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (cond
-    (some? user_attribute)
+    ;; they didn't specify a user attribute at all => set the anonymous access, if specified
+    (not (contains? body :user_attribute))
+    (when (some? anonymous_access_granted)
+      (update-anonymous-access-grant! id anonymous_access_granted))
+
+    ;; they specified a `nil` user attribute => turn routing off
+    (nil? (:user_attribute body))
+    (delete-router! id)
+
+    ;; they specified a non-nil user attribute => change the attribute
+    :else
     (create-or-update-router! id (cond-> {:user_attribute user_attribute}
                                    (some? anonymous_access_granted)
-                                   (assoc :anonymous_access_granted anonymous_access_granted)))
-
-    (and (some? anonymous_access_granted) (not (contains? body :user_attribute)))
-    (update-anonymous-access-grant! id anonymous_access_granted)
-
-    :else
-    (delete-router! id)))
+                                   (assoc :anonymous_access_granted anonymous_access_granted)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"

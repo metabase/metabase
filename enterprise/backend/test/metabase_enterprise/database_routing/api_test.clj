@@ -370,6 +370,20 @@
                           {:anonymous_access_granted true})
     (is (not (t2/exists? :model/DatabaseRouter :database_id db-id)))))
 
+(deftest an-empty-body-changes-nothing-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/user-http-request :crowberto :put (str "ee/database-routing/router-database/" db-id) {})
+    (is (= {:user_attribute "foo" :anonymous_access_granted true}
+           (t2/select-one [:model/DatabaseRouter :user_attribute :anonymous_access_granted] :database_id db-id)))))
+
+(deftest a-null-user-attribute-disables-routing-whatever-the-grant-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                          {:user_attribute nil :anonymous_access_granted true})
+    (is (not (t2/exists? :model/DatabaseRouter :database_id db-id)))))
+
 (deftest disabling-routing-discards-the-anonymous-access-grant-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
