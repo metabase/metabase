@@ -147,91 +147,84 @@
   [results expr]
   (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr))) results))
 
-(defn- find-used-fields
-  "The fields `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT expression)."
-  [expr sources withs]
-  (let [recur-on (fn [e] (find-used-fields e sources withs))]
+(defn- child-expressions
+  "The children of `expr` whose used fields are fields that `expr` uses. The order of the classes matters, because
+  they overlap: an `Is` is a `Binary`, a `Paren` is a `Unary`, and a `Case` is a `Func`."
+  [expr]
+  (condp instance? expr
+    Expressions$Star     nil
+    Expressions$Binary   [(ast/this expr) (ast/arg expr "expression")]
+    ;; sql_tools.py also has branches for Is, Cast and Paren that never run: in sqlglot an Is is a Binary, a Cast is
+    ;; a Func and a Paren is a Unary, and the branches for those come first. They are left out here.
+    Expressions$Unary    [(ast/this expr)]
+    Expressions$Exists   [(ast/this expr)]
+    Expressions$Ordered  [(ast/this expr)]
+    Expressions$Case     (concat [(ast/this expr)]
+                                 (mapcat (fn [ifs] [(ast/this ifs) (ast/arg ifs "true")]) (ast/arg expr "ifs"))
+                                 [(ast/arg expr "default")])
+    Expressions$Between  [(ast/this expr) (ast/arg expr "low") (ast/arg expr "high")]
+    Expressions$In       (cons (ast/this expr) (ast/expressions expr))
+    Expressions$Func     (mapcat (fn [value]
+                                   (cond
+                                     (instance? java.util.List value) value
+                                     (ast/ast-node? value)            [value]))
+                                 (vals (ast/args expr)))
+    Expressions$Window   (concat [(ast/this expr)] (ast/arg expr "partition_by") [(ast/arg expr "order")])
+    Expressions$Order    (map ast/this (ast/expressions expr))
+    Expressions$Group    (ast/expressions expr)
+    Expressions$Literal  nil
+    Expressions$Interval nil
+    Expressions$DataType nil
+    Expressions$Boolean  nil
+    (ast/iter-expressions expr)))
+
+(defn- column-used-fields
+  "The fields that the column `expr` uses. `t.*` uses the fields of the source `t`, but not its all_columns and
+  unknown_columns markers. A qualifier that names no source uses nothing; the error is reported for the returned field."
+  [expr sources]
+  (let [column-name (ast/node-name expr)
+        table-ref   (ast/text expr "table")]
+    (if (and (= column-name "*") (seq table-ref))
+      (into []
+            (comp (remove #(#{"all_columns" "unknown_columns"} (:type %)))
+                  (map (fn [field] {:col field})))
+            (:returned_fields (find-source table-ref sources)))
+      (get-column sources column-name table-ref false))))
+
+(defn- add-used-fields
+  "`acc` with the fields that `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT
+  expression) added in walk order."
+  [acc expr sources withs]
+  (let [walk (fn [acc e] (add-used-fields acc e sources withs))]
     (cond
       (nil? expr)
-      []
+      acc
 
       (instance? Expressions$Column expr)
-      (let [column-name (ast/node-name expr)
-            table-ref   (ast/text expr "table")]
-        (if (and (= column-name "*") (seq table-ref))
-          ;; t.* uses the source's fields, but not its all_columns and unknown_columns markers. A qualifier naming no
-          ;; source uses nothing; the error is reported for the returned field.
-          (if-let [source (find-source table-ref sources)]
-            (vec (for [field (:returned_fields source)
-                       :when (not (#{"all_columns" "unknown_columns"} (:type field)))]
-                   {:col field}))
-            [])
-          (get-column sources column-name table-ref false)))
+      (into acc (column-used-fields expr sources))
 
-      (instance? Expressions$Star expr)
-      []
+      ;; a bare identifier is a column without a table
+      (instance? Expressions$Identifier expr)
+      (into acc (get-column sources (ast/node-name expr) "" false))
 
       (ast/instance-of-any? [Expressions$Subquery Expressions$Select] expr)
-      (mapv (fn [field] {:col field})
+      (into acc
+            (map (fn [field] {:col field}))
             (:used_fields (process-query (cond-> expr (instance? Expressions$Subquery expr) ast/this) sources withs)))
 
       ;; An alias names the column it wraps, but not the columns a computed expression reads.
       (instance? Expressions$Alias expr)
-      (let [results (recur-on (ast/this expr))]
-        (if (instance? Expressions$Column (ast/this expr))
-          (with-alias results expr)
-          results))
-
-      (instance? Expressions$Binary expr)
-      (into (recur-on (ast/this expr)) (recur-on (ast/arg expr "expression")))
-
-      ;; sql_tools.py also has branches for Is, Cast and Paren that never run: in sqlglot an Is is a Binary, a Cast is
-      ;; a Func and a Paren is a Unary, and the branches for those come first. They are left out here.
-      (ast/instance-of-any? [Expressions$Unary Expressions$Exists Expressions$Ordered] expr)
-      (recur-on (ast/this expr))
-
-      (instance? Expressions$Case expr)
-      (-> []
-          (into (when (ast/this expr) (recur-on (ast/this expr))))
-          (into (mapcat (fn [ifs] (concat (recur-on (ast/this ifs)) (recur-on (ast/arg ifs "true")))))
-                (ast/arg expr "ifs"))
-          (into (when (ast/arg expr "default") (recur-on (ast/arg expr "default")))))
-
-      (instance? Expressions$Between expr)
-      (-> (recur-on (ast/this expr))
-          (into (recur-on (ast/arg expr "low")))
-          (into (recur-on (ast/arg expr "high"))))
-
-      (instance? Expressions$In expr)
-      (into (recur-on (ast/this expr)) (mapcat recur-on) (ast/expressions expr))
-
-      (instance? Expressions$Func expr)
-      (into [] (mapcat (fn [value]
-                         (cond
-                           (instance? java.util.List value) (mapcat recur-on value)
-                           (ast/ast-node? value)            (recur-on value))))
-            (vals (ast/args expr)))
-
-      (instance? Expressions$Window expr)
-      (-> (recur-on (ast/this expr))
-          (into (mapcat recur-on) (ast/arg expr "partition_by"))
-          (into (when (ast/arg expr "order") (recur-on (ast/arg expr "order")))))
-
-      (instance? Expressions$Order expr)
-      (into [] (mapcat #(recur-on (ast/this %))) (ast/expressions expr))
-
-      (instance? Expressions$Group expr)
-      (into [] (mapcat recur-on) (ast/expressions expr))
-
-      (some #(instance? % expr) [Expressions$Literal Expressions$Interval Expressions$DataType Expressions$Boolean])
-      []
-
-      ;; a bare identifier is a column without a table
-      (instance? Expressions$Identifier expr)
-      (get-column sources (ast/node-name expr) "" false)
+      (if (instance? Expressions$Column (ast/this expr))
+        (into acc (with-alias (column-used-fields (ast/this expr) sources) expr))
+        (walk acc (ast/this expr)))
 
       :else
-      (into [] (mapcat recur-on) (ast/iter-expressions expr)))))
+      (reduce walk acc (child-expressions expr)))))
+
+(defn- find-used-fields
+  "The fields that `expr` uses."
+  [expr sources withs]
+  (add-used-fields [] expr sources withs))
 
 (defn- find-returned-fields
   "The fields the SELECT expression `expr` returns."
@@ -358,14 +351,16 @@
                                   :used_fields     #{}
                                   :errors          #{}}
         sources-with-select      (into [[select-source] local-sources] outside-sources)
-        used                     (concat
-                                  (mapcat #(find-used-fields % combined-sources local-withs) (ast/expressions select-expr))
-                                  (mapcat #(find-used-fields % sources-with-select local-withs)
-                                          (concat [(ast/arg select-expr "where")]
-                                                  (map #(ast/arg % "on") (ast/arg select-expr "joins"))
-                                                  [(ast/arg select-expr "group")
-                                                   (ast/arg select-expr "order")
-                                                   (ast/arg select-expr "having")])))]
+        clauses                  (concat [(ast/arg select-expr "where")]
+                                         (map #(ast/arg % "on") (ast/arg select-expr "joins"))
+                                         [(ast/arg select-expr "group")
+                                          (ast/arg select-expr "order")
+                                          (ast/arg select-expr "having")])
+        used                     (as-> [] acc
+                                   (reduce #(add-used-fields %1 %2 combined-sources local-withs)
+                                           acc
+                                           (ast/expressions select-expr))
+                                   (reduce #(add-used-fields %1 %2 sources-with-select local-withs) acc clauses))]
     {:used_fields     (-> (set (cols used))
                           (into (mapcat :used_fields) local-sources)
                           (into (mapcat :used_fields) (vals local-withs)))

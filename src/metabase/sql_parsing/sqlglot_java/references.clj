@@ -2,8 +2,7 @@
   "The tables and fields a query reads: `referenced_tables`, `referenced_fields`, and the table helpers they share
   with the rewrites."
   (:require
-   [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Identifier Expressions$Select
                              Expressions$Star Expressions$Table Expressions$With)
@@ -44,14 +43,14 @@
                                (seq (ast/node-alias current))
                                (not (and (instance? Expressions$With declaration)
                                          (ast/arg declaration "recursive"))))
-                          (conj (u/lower-case-en (ast/node-alias current))))
+                          (conj (ast/lower (ast/node-alias current))))
             names       (into names
                               (for [value (vals (ast/args current))
                                     :when (instance? Expressions$With value)
                                     cte   (ast/expressions value)
                                     :let  [cte-alias (ast/node-alias cte)]
                                     :when (seq cte-alias)]
-                                (u/lower-case-en cte-alias)))]
+                                (ast/lower cte-alias)))]
         (recur (ast/parent current) names own)))))
 
 (defn statements
@@ -59,15 +58,20 @@
   [sql dialect]
   (remove nil? (ast/parse sql dialect)))
 
+(defn cte-reference?
+  "Whether the Table node `table` names a CTE: it has no schema or catalog, and a CTE of its name shadows it."
+  [table]
+  (and (empty? (ast/text table "db"))
+       (empty? (ast/text table "catalog"))
+       (contains? (shadowing-cte-names table) (ast/lower (ast/node-name table)))))
+
 (defn table-references
   "Every Table node in the statement `stmt` that names a table: CTE references, derived tables and table functions
   are left out, and the table a statement writes is kept. This is the walk the rewrites replace by."
   [stmt]
   (for [table (ast/find-all stmt Expressions$Table)
         :when (table-parts table)
-        :when (not (and (empty? (ast/text table "db"))
-                        (empty? (ast/text table "catalog"))
-                        (contains? (shadowing-cte-names table) (u/lower-case-en (ast/node-name table)))))]
+        :when (not (cte-reference? table))]
     table))
 
 (defn- sort-key [parts]

@@ -2,8 +2,7 @@
   "`transpile_sql`: a query rewritten from one dialect into another."
   (:require
    [clojure.string :as str]
-   [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Identifier)
    (com.metabase.sqlglot.reference NormalizeIdentifiers)
@@ -55,7 +54,14 @@
 (defn- dialect-name
   "The name of the dialect `dialect` selects, which may carry options (`postgres, normalization_strategy=lowercase`)."
   [dialect]
-  (u/lower-case-en (str/trim (first (str/split dialect #",")))))
+  (ast/lower (str/trim (first (str/split dialect #",")))))
+
+(def ^:private reserved-words
+  "The reserved words of the dialect named `dialect-name`."
+  (memoize
+   (fn [dialect-name]
+     (into (set (.RESERVED_KEYWORDS (SourceSettings/generator dialect-name)))
+           (get dialect-reserved dialect-name)))))
 
 (defn- quote-reserved-identifiers!
   "Quote the identifiers in `expr` that collide with `dialect`'s reserved words. Each is folded first, the way the
@@ -63,13 +69,11 @@
   dialect are touched: a generic list would misfire, e.g. quoting `user` on SQLite, where a quoted nonexistent column
   silently becomes a string literal."
   [expr dialect]
-  (let [dialect-name (dialect-name dialect)
-        reserved     (into (set (.RESERVED_KEYWORDS (SourceSettings/generator dialect-name)))
-                           (get dialect-reserved dialect-name))]
+  (let [reserved (reserved-words (dialect-name dialect))]
     (when (seq reserved)
       (doseq [ident (ast/find-all expr Expressions$Identifier)
               :when (and (not (ast/quoted? ident))
-                         (contains? reserved (u/lower-case-en (ast/node-name ident))))]
+                         (contains? reserved (ast/lower (ast/node-name ident))))]
         (NormalizeIdentifiers/normalizeIdentifiers ^Expr ident ^String dialect false)
         (ast/set-arg! ident "quoted" true)))
     expr))

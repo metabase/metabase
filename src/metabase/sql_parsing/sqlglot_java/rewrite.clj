@@ -188,50 +188,64 @@
   (when (and (not= replacement ::ambiguous) (seq replacement))
     replacement))
 
-(defn- rewrite-statement [stmt {:keys [schemas folded-schemas table-map column-map]} dialect]
+(defn- rename-tables!
+  "Rename, in place, the schemas and tables of the Table nodes in `stmt` that `schemas` and `table-map` name."
+  [stmt {:keys [schemas folded-schemas table-map]} dialect]
+  ;; Mutated in place, not through a transform whose copy detaches a node from its parents: a CTE only shadows a
+  ;; table for the query that declares it, which is a question about ancestors.
+  (doseq [table (vec (ast/find-all stmt Expressions$Table))]
+    (let [db         (not-empty (ast/text table "catalog"))
+          schema     (ast/text table "db")
+          new-schema (when (seq schema)
+                       (or (not-empty (get schemas schema)) (fold-lookup folded-schemas [schema])))]
+      (when (seq new-schema)
+        (set-identifier! table "db" new-schema dialect))
+      ;; A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
+      ;; enclosing query names the CTE and is left alone.
+      (when-not (references/cte-reference? table)
+        ;; The schema is "" when the reference has none, as in sqlglot, so it only matches a key without one
+        ;; through the bare-table shape.
+        (when-let [replacement (usable (find-table-replacement table-map db schema (ast/node-name table)
+                                                               (quoted-parts table "this")))]
+          (replace-table! table replacement "this" dialect))))))
+
+(defn- new-column-name
+  "The new name of a column named `column-name` with the qualifier `table-ref`. A key matches a column qualified by
+  the key's table, or an unqualified column with any table. The first matching key decides."
+  [column-map column-name table-ref]
+  (let [column-name (ast/lower column-name)
+        table-ref   (ast/lower table-ref)]
+    (first (some (fn [[[_ key-table key-column] new-column]]
+                   (when (and (= (ast/lower key-column) column-name)
+                              (or (empty? table-ref)
+                                  (= (ast/lower (or key-table "")) table-ref)))
+                     [new-column]))
+                 column-map))))
+
+(defn- rename-columns!
+  "Rename, in place, the qualifiers and names of the Column nodes in `stmt` that `table-map` and `column-map` name.
+  A qualifier in `aliases` names an alias, not a table."
+  [stmt aliases {:keys [table-map column-map]} dialect]
+  (doseq [column (vec (ast/find-all stmt Expressions$Column))]
+    (let [table-ref (ast/text column "table")
+          column-db (ast/text column "db")]
+      ;; A qualifier naming a replaced table follows the table. One without a schema may name an alias instead,
+      ;; which is left alone.
+      (when (and (seq table-ref) (or (seq column-db) (not (contains? aliases (ast/lower table-ref)))))
+        (when-let [replacement (usable (find-table-replacement table-map (not-empty (ast/text column "catalog"))
+                                                               column-db table-ref
+                                                               (quoted-parts column "table")))]
+          (replace-table! column replacement "table" dialect)))
+      (when-let [new-column (not-empty (new-column-name column-map (ast/node-name column) table-ref))]
+        (set-identifier! column "this" new-column dialect)))))
+
+(defn- rewrite-statement [stmt replacements dialect]
   ;; Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names.
   (let [aliases (into #{}
                       (keep #(ast/lower (not-empty (ast/node-alias %))))
                       (ast/find-all stmt Expressions$Table Expressions$Subquery Expressions$CTE))]
-    ;; Mutated in place, not through a transform whose copy detaches a node from its parents: a CTE only shadows a
-    ;; table for the query that declares it, which is a question about ancestors.
-    (doseq [table (vec (ast/find-all stmt Expressions$Table))]
-      (let [db         (not-empty (ast/text table "catalog"))
-            schema     (ast/text table "db")
-            table-name (ast/node-name table)
-            new-schema (when (seq schema)
-                         (or (not-empty (get schemas schema)) (fold-lookup folded-schemas [schema])))]
-        (when (seq new-schema)
-          (set-identifier! table "db" new-schema dialect))
-        ;; A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
-        ;; enclosing query names the CTE and is left alone.
-        (when-not (and (nil? db) (empty? schema)
-                       (contains? (references/shadowing-cte-names table) (ast/lower table-name)))
-          ;; The schema is "" when the reference has none, as in sqlglot, so it only matches a key without one
-          ;; through the bare-table shape.
-          (when-let [replacement (usable (find-table-replacement table-map db schema table-name
-                                                                 (quoted-parts table "this")))]
-            (replace-table! table replacement "this" dialect)))))
-    (doseq [column (vec (ast/find-all stmt Expressions$Column))]
-      (let [column-name (ast/node-name column)
-            table-ref   (ast/text column "table")
-            column-db   (ast/text column "db")]
-        ;; A qualifier naming a replaced table follows the table. One without a schema may name an alias instead,
-        ;; which is left alone.
-        (when (and (seq table-ref) (or (seq column-db) (not (contains? aliases (ast/lower table-ref)))))
-          (when-let [replacement (usable (find-table-replacement table-map (not-empty (ast/text column "catalog"))
-                                                                 column-db table-ref
-                                                                 (quoted-parts column "table")))]
-            (replace-table! column replacement "table" dialect)))
-        ;; A column key matches a column qualified by the key's table, or an unqualified column with any table. The
-        ;; first matching key decides.
-        (let [[_ new-column] (first (filter (fn [[[_ key-table key-column]]]
-                                              (and (= (ast/lower key-column) (ast/lower column-name))
-                                                   (or (empty? table-ref)
-                                                       (= (ast/lower (or key-table "")) (ast/lower table-ref)))))
-                                            column-map))]
-          (when (seq new-column)
-            (set-identifier! column "this" new-column dialect)))))
+    (rename-tables! stmt replacements dialect)
+    (rename-columns! stmt aliases replacements dialect)
     (ast/sql stmt dialect)))
 
 (defn- required

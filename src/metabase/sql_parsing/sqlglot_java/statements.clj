@@ -136,8 +136,8 @@
   "The lower-case name of the function `node` calls, or nil when it is not a function call."
   [node]
   (cond
-    (instance? Expressions$Anonymous node) (u/lower-case-en (ast/node-name node))
-    (instance? Expressions$Func node)      (u/lower-case-en (ast/sql-name node))))
+    (instance? Expressions$Anonymous node) (ast/lower (ast/node-name node))
+    (instance? Expressions$Func node)      (ast/lower (ast/sql-name node))))
 
 (defn- first-function-in
   "The name of the first function in `stmt` that is in `names`, or nil."
@@ -154,7 +154,7 @@
               ;; counts only under a `system` schema.
               (when (and (instance? Expressions$Dot node)
                          (ast/ast-node? (ast/this node))
-                         (= "system" (u/lower-case-en (ast/node-name (ast/this node))))
+                         (= "system" (ast/lower (ast/node-name (ast/this node))))
                          (= "query" (function-name (ast/arg node "expression"))))
                 "system.query")))
         (ast/walk stmt)))
@@ -183,13 +183,15 @@
   [node]
   (contains? locking-table-hints (u/upper-case-en (ast/node-name node))))
 
-(defn- writes-or-locks? [node]
+(defn- writes-or-locks?
+  "Whether the node `node` writes data, changes the session, or locks a table."
+  [node]
   (cond
     (ast/instance-of-any? not-read-only-classes node)
     true
 
     (instance? Expressions$Anonymous node)
-    (contains? write-functions (u/lower-case-en (ast/node-name node)))
+    (contains? write-functions (ast/lower (ast/node-name node)))
 
     ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
     ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
@@ -201,7 +203,7 @@
 
     (instance? Expressions$Column node)
     (and (seq (ast/text node "table"))
-         (= "nextval" (u/lower-case-en (ast/node-name node))))
+         (= "nextval" (ast/lower (ast/node-name node))))
 
     (instance? Expressions$WithTableHint node)
     (boolean (some locking-hint? (ast/expressions node)))
@@ -224,7 +226,9 @@
 
 ;; Any other function with side effects, a user-defined one included, passes this check: no list of names can be
 ;; complete. Grants on the database credential are what keep such a function from writing.
-(defn- read-only? [stmt]
+(defn- read-only?
+  "Whether no node in the statement `stmt` writes, changes the session, or locks a table."
+  [stmt]
   (not-any? writes-or-locks? (ast/walk stmt)))
 
 (defn- hidden-sql
