@@ -1023,8 +1023,7 @@
              {:writes @writes, :ticks (count @tasks)})))))
 
 (deftest ^:synchronized early-tick-carries-only-the-token-state-test
-  (testing (str "an early tick asked for by a user under a bound state and a bound app DB runs against that state, "
-                "with neither the user's bindings nor that app DB")
+  (testing "an early tick carries the requester's token state, and neither its user nor its app DB binding"
     (let [tasks  (atom [])
           seen   (promise)
           box    (token-check/initial-state)
