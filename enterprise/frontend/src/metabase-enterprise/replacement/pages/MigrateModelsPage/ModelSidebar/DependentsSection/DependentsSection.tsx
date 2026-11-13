@@ -70,6 +70,7 @@ export function DependentsSection({ cardId }: DependentsSectionProps) {
               filterOptions={filterOptions}
               availableGroupTypes={DEPENDENTS_GROUP_TYPES}
               isCompact
+              compactSize="md"
               hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />

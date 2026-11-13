@@ -18,16 +18,22 @@ import type { DependencyFilterOptions } from "../../types";
 import { LocationFilterPicker } from "./LocationFilterPicker";
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
+type CompactSize = Extract<ActionIconSize, "sm" | "md">;
+
 type FilterOptionsPickerProps = {
   filterOptions: DependencyFilterOptions;
   availableGroupTypes?: DependencyGroupType[];
-  isCompact?: boolean;
-  /** Size of the compact icon button; the full button keeps its size. */
-  compactSize?: ActionIconSize;
   isDisabled?: boolean;
   hasDefaultFilterOptions?: boolean;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
-};
+} & (
+  | { isCompact?: false; compactSize?: never }
+  | {
+      isCompact: true;
+      /** Size of the compact icon button; the full button keeps its size. */
+      compactSize: CompactSize;
+    }
+);
 
 export function FilterOptionsPicker({
   filterOptions,
@@ -112,7 +118,7 @@ function FilterOptionsPopover({
 }
 
 // Keeps the dot in the button's corner, clear of the icon, at each button size.
-function getIndicatorOffset(isCompact: boolean, compactSize?: ActionIconSize) {
+function getIndicatorOffset(isCompact: boolean, compactSize?: CompactSize) {
   if (!isCompact) {
     return 9;
   }
