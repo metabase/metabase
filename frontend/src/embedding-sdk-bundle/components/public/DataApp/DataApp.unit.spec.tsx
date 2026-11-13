@@ -231,7 +231,7 @@ describe("DataApp", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
-  it("keeps the iframe and sends the new path when only the route changes", () => {
+  it("keeps the iframe and sends the new path when only the route or query changes", () => {
     const { iframe, postMessage, rerender } = setup();
     const initialSrc = iframe.src;
 
@@ -264,11 +264,16 @@ describe("DataApp", () => {
     );
   });
 
-  it("keeps the same iframe when a leading slash is added", () => {
-    const { iframe, rerender } = setup();
+  it("keeps the same iframe and sends no new settings when a leading slash is added", () => {
+    const { iframe, postMessage, rerender } = setup();
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
     rerender(<DataApp path="/boba-hq" />);
 
     expect(screen.queryByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("replies only to the iframe that requested a session", async () => {
@@ -417,6 +422,30 @@ describe("DataApp", () => {
     );
 
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("loads the iframe again and retries authentication after an error when the route changes", async () => {
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    const { iframe, rerender } = setup({ path: "boba-hq/orders" });
+    message(iframe, "metabase.embed.requestSessionToken");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "SSO is unavailable",
+    );
+
+    rerender(<DataApp path="boba-hq/products" />);
+
+    const nextIframe =
+      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
+
+    message(nextIframe, "metabase.embed.requestSessionToken");
+
+    expect(requestSession).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
+    );
   });
 
   it("shows an error when the provider cannot refresh the session", async () => {

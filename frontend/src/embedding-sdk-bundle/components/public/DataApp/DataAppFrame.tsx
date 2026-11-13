@@ -25,8 +25,9 @@ interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
   /**
    * The URL the iframe first loads.
    *
-   * Later values are ignored so the app does not reload.
-   * When `path` changes, the app navigates to the new page on its own.
+   * Later values are ignored, so a route change does not reload the app.
+   * `DataApp` keys this component by the app slug and instance URL, so it remounts when either changes.
+   * When only the route or query changes, the new `path` is sent to the iframe, which navigates client-side.
    */
   initialSrc: string;
 
@@ -51,13 +52,24 @@ export function DataAppFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const srcRef = useRef(initialSrc);
   const currentAuthRef = useRef({ authConfig, store });
+  const pathRef = useRef(path);
 
-  const [error, setError] = useState<string | null>(null);
+  // An error belongs to the path it happened on, so a route change loads the iframe again.
+  const [failure, setFailure] = useState<{
+    path: string;
+    message: string;
+  } | null>(null);
+
+  const error = failure?.path === path ? failure.message : null;
 
   // make sure auth replies cannot use stale credentials
   useLayoutEffect(() => {
     currentAuthRef.current = { authConfig, store };
   }, [authConfig, store]);
+
+  useLayoutEffect(() => {
+    pathRef.current = path;
+  }, [path]);
 
   useLayoutEffect(() => {
     const iframe = iframeRef.current;
@@ -113,7 +125,13 @@ export function DataAppFrame({
         }
       } catch (error) {
         if (isCurrentAuthRequest()) {
-          setError(getErrorMessage(error, String(error)));
+          // the next iframe sends its own ready message
+          readyRef.current = false;
+
+          setFailure({
+            path: pathRef.current,
+            message: getErrorMessage(error, String(error)),
+          });
         }
       }
     };

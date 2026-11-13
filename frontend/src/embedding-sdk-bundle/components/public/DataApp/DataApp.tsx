@@ -67,8 +67,8 @@ function DataAppInner({ path, ...props }: DataAppProps) {
       url.searchParams.set("embed-js-identifier", `react-data-app-${id}`);
 
       return {
-        // Remount the iframe only when the app slug changes.
-        // Subpath changes triggers client-side routing instead.
+        // Remount the iframe only when the app slug or instance URL changes.
+        // Route and query changes trigger client-side routing instead.
         frameKey: getDataAppEmbedUrl(instanceUrl, slug).href,
 
         initialSrc: url.href,
