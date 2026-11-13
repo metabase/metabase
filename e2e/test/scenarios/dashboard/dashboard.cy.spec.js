@@ -1320,7 +1320,7 @@ describe("scenarios > dashboard > permissions", () => {
     });
   });
 
-  it("should show each user the cards and dashboards they have permission to see", () => {
+  it("should respect user permissions for dashboard content and empty-state prompts", () => {
     cy.log("Admins can see all cards");
     H.visitDashboard(dashboardId);
     H.getDashboardCards()
