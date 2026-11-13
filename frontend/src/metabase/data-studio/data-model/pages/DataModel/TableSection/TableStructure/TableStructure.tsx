@@ -8,7 +8,6 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
   type HistoryBinding,
@@ -29,10 +28,8 @@ import {
 import {
   Box,
   Button,
-  Group,
   Icon,
-  Input,
-  Pill,
+  MultiSelect,
   Select,
   Stack,
   Text,
@@ -40,7 +37,6 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -87,14 +83,11 @@ export function TableStructure({
   readOnly,
   hasTitle = true,
   layout = "table",
-  getFieldUrl,
 }: TableStructureProps & {
   /** Off drops the "Structure" heading, for a page that names the section */
   hasTitle?: boolean;
   /** A details table for the drawer, or labelled form fields for a page */
   layout?: "table" | "form";
-  /** Where a grain column links; Connected data's field page by default */
-  getFieldUrl?: (fieldId: FieldId) => string;
 }) {
   const {
     getTableStructure,
@@ -214,18 +207,18 @@ export function TableStructure({
           />
         }
       />
-      {!isHistoryRole && (
-        <DetailsRow
-          label={t`Grain`}
-          value={
-            <GrainFields
-              table={table}
-              grainFields={structure.grainFields}
-              getFieldUrl={getFieldUrl}
-            />
-          }
-        />
-      )}
+      <DetailsRow
+        label={t`Grain`}
+        fillValue
+        value={
+          <GrainSelect
+            table={table}
+            grainFields={structure.grainFields}
+            disabled={readOnly}
+            layout="table"
+          />
+        }
+      />
       <DetailsRow
         label={t`Row identity`}
         value={getRowIdentityLabel(structure.rowIdentity)}
@@ -289,7 +282,6 @@ export function TableStructure({
             table={table}
             structure={structure}
             readOnly={readOnly}
-            getFieldUrl={getFieldUrl}
           />
         )}
         {layout === "table" && hasTitle && (
@@ -486,8 +478,8 @@ function getRoleInference({
 /** What a history table's key and dates mean, for their info icons */
 function getHistoryFieldInfo() {
   return {
-    matchedOn: t`The column that says which record each row is a version of. With the start date, it's what makes each row unique.`,
-    trueFrom: t`The date this version of the record became true. With the column it's matched on, it's what makes each row unique.`,
+    matchedOn: t`The column that says which record each row is a version of.`,
+    trueFrom: t`The date this version of the record became true.`,
     trueUntil: t`The date this version stopped being true. If it's empty, each version is true until the next one starts.`,
   };
 }
@@ -511,12 +503,10 @@ function StructureForm({
   table,
   structure,
   readOnly,
-  getFieldUrl,
 }: {
   table: Table;
   structure: TableStructureValue;
   readOnly: boolean;
-  getFieldUrl?: (fieldId: FieldId) => string;
 }) {
   const {
     setTableRole,
@@ -604,17 +594,12 @@ function StructureForm({
         disabled={readOnly}
         onCommit={(value) => setGrainDescription(table, value)}
       />
-      {!isHistoryRole && (
-        <Input.Wrapper label={t`Grain`}>
-          <Box mt="xs">
-            <GrainFields
-              table={table}
-              grainFields={structure.grainFields}
-              getFieldUrl={getFieldUrl}
-            />
-          </Box>
-        </Input.Wrapper>
-      )}
+      <GrainSelect
+        table={table}
+        grainFields={structure.grainFields}
+        disabled={readOnly}
+        layout="form"
+      />
       {!isHistoryRole && (
         <Select
           label={t`Main date`}
@@ -690,49 +675,39 @@ function getMainDateInference({
   return isMainDateOverridden ? null : mainDateInference.signal;
 }
 
-function GrainFields({
+function GrainSelect({
   table,
   grainFields,
-  getFieldUrl,
+  disabled,
+  layout,
 }: {
   table: Table;
   grainFields: Field[];
-  getFieldUrl?: (fieldId: FieldId) => string;
+  disabled: boolean;
+  layout: "table" | "form";
 }) {
-  if (grainFields.length === 0) {
-    return (
-      <Text c="text-secondary">
-        {t`No grain columns. Mark them in each field's settings.`}
-      </Text>
-    );
-  }
+  const { setTableGrain } = useTableStructures();
+  const fields = table.fields ?? [];
+
   return (
-    <Group gap="xs">
-      {grainFields.map((field) => {
-        const fieldId = field.id;
-        return (
-          <Link
-            key={fieldId}
-            className={S.grainLink}
-            to={
-              getFieldUrl?.(fieldId) ??
-              Urls.dataStudioData({
-                databaseId: table.db_id,
-                schemaName: table.schema,
-                tableId: table.id,
-                tab: "field",
-                fieldId,
-              })
-            }
-            aria-label={t`Open ${field.display_name}`}
-          >
-            <Pill size="md" className={S.grainPill}>
-              {field.display_name}
-            </Pill>
-          </Link>
-        );
-      })}
-    </Group>
+    <MultiSelect
+      label={layout === "form" ? t`Grain` : undefined}
+      description={
+        layout === "form"
+          ? t`The columns that together make each row unique.`
+          : undefined
+      }
+      aria-label={t`Grain`}
+      classNames={
+        layout === "table" ? DETAILS_CELL_INPUT_CLASS_NAMES : undefined
+      }
+      data={fields.map(toFieldOption)}
+      value={grainFields.map((field) => String(field.id))}
+      placeholder={grainFields.length === 0 ? t`Choose columns` : undefined}
+      searchable
+      disabled={disabled}
+      onChange={(values) => setTableGrain(table, values.map(Number))}
+    />
   );
 }
 

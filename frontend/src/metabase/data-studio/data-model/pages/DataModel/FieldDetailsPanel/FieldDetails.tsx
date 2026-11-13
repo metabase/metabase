@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   DetailsRow,
@@ -198,12 +199,16 @@ export function FieldDetails({
                   }
                 />
               )}
-              {!isHistoryTable && (
-                <DetailsRow
-                  label={t`Grain`}
-                  value={<FieldGrainInput field={field} disabled={readOnly} />}
-                />
-              )}
+              <DetailsRow
+                label={t`Grain`}
+                value={
+                  <FieldGrainInput
+                    field={field}
+                    table={table}
+                    disabled={readOnly}
+                  />
+                }
+              />
               {isHistoryTable && (
                 <DetailsRow
                   label={t`History`}
@@ -287,34 +292,61 @@ export function FieldDetails({
 /** PROTOTYPE: mocked. Whether the field is one of the columns that make a row unique. */
 function FieldGrainInput({
   field,
+  table,
   disabled,
 }: {
   field: Field;
+  table: Table;
   disabled: boolean;
 }) {
-  const { isGrainField, setFieldGrain } = useTableStructures();
-  const isPrimaryKey = isPK(field);
+  const { getTableStructure, setTableGrain } = useTableStructures();
+  const { grainFields, defaultGrainFieldIds } = getTableStructure(table);
+  const isHistoryTable = useIsHistoryTable(table);
+  const isGrain = grainFields.some((grainField) => grainField.id === field.id);
+  const isDefault = defaultGrainFieldIds.includes(field.id);
+  const grainFieldIds = grainFields.map((grainField) => grainField.id);
 
   return (
     <Stack gap="xs" py="xs">
       <Switch
         label={t`This field is part of what makes a row unique`}
-        checked={isGrainField(field)}
+        checked={isGrain}
         disabled={disabled}
-        onChange={(event) => {
-          const isGrain = event.target.checked;
-          // Matching the default (primary keys are the grain) clears the override
-          setFieldGrain(field, isGrain === isPrimaryKey ? null : isGrain);
-        }}
+        onChange={(event) =>
+          setTableGrain(
+            table,
+            event.target.checked
+              ? [...grainFieldIds, field.id]
+              : _.without(grainFieldIds, field.id),
+          )
+        }
         data-testid="field-grain-switch"
       />
       <Text size="sm" c="text-secondary">
-        {isPrimaryKey
-          ? t`On by default: this is a primary key column.`
-          : t`Off by default: only primary key columns start as grain.`}
+        <GrainDefaultHint
+          isDefault={isDefault}
+          isHistoryTable={isHistoryTable}
+        />
       </Text>
     </Stack>
   );
+}
+
+function GrainDefaultHint({
+  isDefault,
+  isHistoryTable,
+}: {
+  isDefault: boolean;
+  isHistoryTable: boolean;
+}) {
+  if (isHistoryTable) {
+    return isDefault
+      ? t`On by default: it's the column this history table is matched on, or its start date.`
+      : t`Off by default: a history table's grain starts as its matched-on column and start date.`;
+  }
+  return isDefault
+    ? t`On by default: this is a primary key column.`
+    : t`Off by default: only primary key columns start as grain.`;
 }
 
 function FieldCastingInput({

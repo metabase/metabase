@@ -57,6 +57,7 @@ export type TableStructure = {
   isRoleOverridden: boolean;
   needsReview: boolean;
   grainFields: Field[];
+  defaultGrainFieldIds: FieldId[];
   grainDescription: string;
   rowIdentity: RowIdentity;
   periodGranularity: PeriodGranularity;
@@ -194,12 +195,6 @@ function withOverrides<T extends object>(
 export function useTableStructures() {
   const [state, updateState] = usePrototypeStorage(STORAGE_KEY, parseState);
 
-  const isGrainField = useCallback(
-    (field: Field): boolean =>
-      state.grainByField[getFieldKey(field)] ?? isPK(field),
-    [state],
-  );
-
   const getTableStructure = useCallback(
     (table: Pick<Table, "db_id" | "id" | "name"> & { fields?: Field[] }) => {
       const fields = table.fields ?? [];
@@ -213,6 +208,9 @@ export function useTableStructures() {
         overrides.history,
       );
       const isHistory = role != null && isRoleA(role, "role/HistoryDimension");
+      const defaultGrainFieldIds = isHistory
+        ? getHistoryGrainFieldIds(history)
+        : fields.filter(isPK).map((field) => field.id);
       const structure: TableStructure = {
         role,
         inference,
@@ -222,12 +220,15 @@ export function useTableStructures() {
           overrides.role == null &&
           inference.role != null &&
           inference.confidence === "low",
-        grainFields: isHistory
-          ? getHistoryGrainFields(fields, history)
-          : _.sortBy(
-              fields.filter((field) => isGrainField(field)),
-              (field) => field.position,
-            ),
+        grainFields: _.sortBy(
+          fields.filter(
+            (field) =>
+              state.grainByField[getFieldKey(field)] ??
+              defaultGrainFieldIds.includes(field.id),
+          ),
+          (field) => field.position,
+        ),
+        defaultGrainFieldIds,
         grainDescription: overrides.grainDescription ?? "",
         rowIdentity: inferRowIdentity(fields),
         periodGranularity:
@@ -247,7 +248,7 @@ export function useTableStructures() {
       };
       return structure;
     },
-    [state, isGrainField],
+    [state],
   );
 
   const updateOverrides = useCallback(
@@ -344,24 +345,36 @@ export function useTableStructures() {
     [updateOverrides],
   );
 
-  /** `null` goes back to the default: grain fields are the primary key */
-  const setFieldGrain = useCallback(
-    (field: Field, isGrain: boolean | null) => {
-      const fieldKey = getFieldKey(field);
-      updateState((current) => ({
-        ...current,
-        grainByField:
-          isGrain == null
-            ? _.omit(current.grainByField, fieldKey)
-            : { ...current.grainByField, [fieldKey]: isGrain },
-      }));
+  const setTableGrain = useCallback(
+    (
+      table: Pick<Table, "db_id" | "id" | "name"> & { fields?: Field[] },
+      grainFieldIds: FieldId[],
+    ) => {
+      const fields = table.fields ?? [];
+      const { defaultGrainFieldIds } = getTableStructure(table);
+      updateState((current) => {
+        const otherFields = _.omit(
+          current.grainByField,
+          fields.map(getFieldKey),
+        );
+        const overrides = Object.fromEntries(
+          fields
+            .map((field) => ({
+              key: getFieldKey(field),
+              isGrain: grainFieldIds.includes(field.id),
+              isDefault: defaultGrainFieldIds.includes(field.id),
+            }))
+            .filter(({ isGrain, isDefault }) => isGrain !== isDefault)
+            .map(({ key, isGrain }) => [key, isGrain]),
+        );
+        return { ...current, grainByField: { ...otherFields, ...overrides } };
+      });
     },
-    [updateState],
+    [getTableStructure, updateState],
   );
 
   return {
     getTableStructure,
-    isGrainField,
     setTableRole,
     setGrainDescription,
     setPeriodGranularity,
@@ -370,17 +383,15 @@ export function useTableStructures() {
     setScdDetails,
     setEavBinding,
     setMainDate,
-    setFieldGrain,
+    setTableGrain,
   };
 }
 
-function getHistoryGrainFields(
-  fields: Field[],
-  { durableKeyFieldId, validFromFieldId }: HistoryBinding,
-): Field[] {
-  return [durableKeyFieldId, validFromFieldId]
-    .map((fieldId) => fields.find((field) => field.id === fieldId))
-    .filter(isNotNull);
+function getHistoryGrainFieldIds({
+  durableKeyFieldId,
+  validFromFieldId,
+}: HistoryBinding): FieldId[] {
+  return [durableKeyFieldId, validFromFieldId].filter(isNotNull);
 }
 
 function resolveMainDate(

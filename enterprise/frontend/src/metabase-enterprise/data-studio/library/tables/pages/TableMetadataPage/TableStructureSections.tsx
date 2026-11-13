@@ -44,9 +44,6 @@ export function TableStructureSections({ table }: { table: Table }) {
             readOnly={!table.can_write}
             hasTitle={false}
             layout="form"
-            getFieldUrl={(fieldId) =>
-              Urls.dataStudioTableFields(table.id, fieldId)
-            }
           />
         </Stack>
       </DatabaseInfoSection>

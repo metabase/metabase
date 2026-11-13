@@ -1,21 +1,3 @@
-.grainLink {
-  display: inline-flex;
-  border-radius: 999px;
-}
-
-.grainPill {
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
-
-  .grainLink:hover &,
-  .grainLink:focus-visible & {
-    color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background_surface-hover);
-  }
-}
-
 .structureSection {
   scroll-margin-top: var(--mantine-spacing-xl);
 }
