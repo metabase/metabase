@@ -70,11 +70,6 @@ export const setupConfigWatcher = () => {
         updateAllEmbeds({ [prop]: newValue });
         return true;
       },
-      deleteProperty(metabaseConfig, prop) {
-        const isDeleted = Reflect.deleteProperty(metabaseConfig, prop);
-        updateAllEmbeds({ [prop]: undefined });
-        return isDeleted;
-      },
     });
 
   // Unjustified type cast. FIXME
@@ -184,7 +179,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
   // Used to track if the data app path prop has changed or not
   private _dataAppPath: string | null = null;
-  private _dataAppApiKey: string | undefined;
 
   ["custom-context"]: unknown;
 
@@ -284,7 +278,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...settings,
     } as SdkIframeEmbedElementSettings;
 
-    if (this._handleDataAppSettingsChange(settings, newValues)) {
+    if (this._handleDataAppPathPropChange(settings, newValues)) {
       return;
     }
 
@@ -428,14 +422,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   private _setupDataAppIframe({
     instanceUrl,
     path,
-    apiKey,
   }: {
     instanceUrl: string;
     path: string;
-    apiKey?: string;
   }) {
     this._dataAppPath = path;
-    this._dataAppApiKey = apiKey;
 
     const element = this;
     const iframe = this._createIframe(getDataAppEmbedUrl(instanceUrl, path));
@@ -825,38 +816,31 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   /**
-   * Data app paths and API keys can change after the embed is created.
+   * Data app path property can be changed after the embed is created.
    *
-   * Switching apps or credentials remounts the iframe; route changes use client-side routing.
+   * Switching app name re-mounts the iframe. Otherwise, only do client-side routing.
    */
-  private _handleDataAppSettingsChange(
+  private _handleDataAppPathPropChange(
     settings: Partial<SdkIframeEmbedElementSettings>,
     nextValues: SdkIframeEmbedElementSettings,
   ): boolean {
-    if (nextValues.componentName !== "metabase-data-app") {
-      return false;
-    }
-
     const hasDataAppPathChanged =
+      nextValues.componentName === "metabase-data-app" &&
       "path" in settings &&
       normalizeDataAppPath(nextValues.path) !==
         normalizeDataAppPath(this._dataAppPath ?? "");
 
-    const hasDataAppApiKeyChanged =
-      "apiKey" in settings && nextValues.apiKey !== this._dataAppApiKey;
-
-    if (!hasDataAppPathChanged && !hasDataAppApiKeyChanged) {
+    if (!hasDataAppPathChanged) {
       return false;
     }
 
     this._validateEmbedSettings(nextValues);
 
-    // Keep the current app mounted unless its credentials change.
+    // Do not remount when the app slug remains the same.
     // `useDataAppPathNavigation` hook will do client-side routing.
     if (
-      !hasDataAppApiKeyChanged &&
       getEmbeddedAppSlugFromPath(nextValues.path) ===
-        getEmbeddedAppSlugFromPath(this._dataAppPath ?? "")
+      getEmbeddedAppSlugFromPath(this._dataAppPath ?? "")
     ) {
       return false;
     }

@@ -29,7 +29,7 @@ export interface DataAppProps {
   height?: CSSProperties["height"];
 }
 
-/** Embed a data app using provider SSO, or a local API key for development. */
+/** Embed an existing data app by iframe. */
 export const DataApp = (props: DataAppProps) => (
   <PublicComponentWrapper height={props.height} width={props.width}>
     <DataAppInner {...props} />
@@ -91,7 +91,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
   return (
     <DataAppFrame
       // TODO(DAT-74): apply client-side routing when slug does not change
-      key={`${route.src}:${authConfig.apiKey ?? "sso"}`}
+      key={route.src}
       {...props}
       {...route}
       authConfig={authConfig}

@@ -5,7 +5,6 @@ import { isEqual, omit } from "underscore";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/store/auth";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { listenForIframeMessages } from "embedding-sdk-shared/lib/listen-for-iframe-messages";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -84,7 +83,6 @@ export function DataAppFrame({
           instanceUrl: authConfig.metabaseInstanceUrl,
           locale,
           ...(authConfig.apiKey && { apiKey: authConfig.apiKey }),
-          _isLocalhost: getIsLocalhost(),
           _embedReferrer: window.location.href,
         },
       });

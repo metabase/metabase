@@ -38,7 +38,9 @@ export function DataAppEmbed() {
   const [metabaseProviderProps, setMetabaseProviderProps] =
     useState<DataAppMetabaseProviderProps>({});
 
-  // The host supplies SSO sessions; local keys authenticate through this provider.
+  // Auth is done on the modular embedding host app, not here.
+  // DataAppEmbed does not do SSO, so we don't need the full auth config.
+  // API keys gets forwarded to the Metabase provider.
   const authConfig = useMemo<MetabaseAuthConfig>(() => {
     const metabaseInstanceUrl = getCurrentMetabaseInstanceUrl();
 
