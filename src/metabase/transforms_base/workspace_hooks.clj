@@ -27,3 +27,12 @@
   metabase-enterprise.workspaces.transform-hooks
   [_db-id target]
   target)
+
+(defenterprise record-workspace-target-remapping!
+  "Record the `TableRemapping` from the canonical `target` on `db-id` to the workspace copy
+  [[workspace-transform-target]] resolves it to. Idempotent.
+
+  OSS / no-workspace fallback: no-op."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id _target]
+  nil)
