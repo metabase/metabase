@@ -6,6 +6,7 @@ import {
   getComputedSettingsForSeries,
   getVisualizationTransformed,
 } from "metabase/viz-core";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
@@ -18,6 +19,8 @@ import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
 import { TreemapChart } from "../TreemapChart";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
+
+import { CustomStaticVisualization } from "./CustomStaticVisualization";
 
 registerStaticVisualizations();
 
@@ -73,6 +76,17 @@ export const StaticVisualization = ({
       return <TreemapChart {...props} />;
     case "progress":
       return <ProgressBar {...props} />;
+  }
+
+  if (isCustomVizDisplay(display)) {
+    return (
+      <CustomStaticVisualization
+        rawSeries={rawSeries}
+        renderingContext={renderingContext}
+        width={width}
+        height={height}
+      />
+    );
   }
 
   throw new Error(`Unsupported display type: ${display}`);

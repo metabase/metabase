@@ -122,16 +122,17 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                                                     |
-| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getName()`              | `() => string`                      | Optional. Display name shown in the chart type picker. Defaults to `name` from `metabase-plugin.json`.                                                          |
-| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                                                    |
-| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                                                    |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                                                                   |
-| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                                                    |
-| `checkRenderable`        | `(series, settings) => void`        | Optional. Throw here to signal the viz cannot render with the current data or settings; Metabase shows the error message to the user. Omit it to always render. |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                                                        |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                                                               |
+| Property                       | Type                                | Description                                                                                                                                                     |
+| ------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getName()`                    | `() => string`                      | Optional. Display name shown in the chart type picker. Defaults to `name` from `metabase-plugin.json`.                                                          |
+| `minSize`                      | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                                                    |
+| `defaultSize`                  | `{ width, height }`                 | Default dashboard grid size.                                                                                                                                    |
+| `noHeader`                     | `boolean`                           | When `true`, hides the default card title/description header.                                                                                                   |
+| `canSavePng`                   | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                                                    |
+| `checkRenderable`              | `(series, settings) => void`        | Optional. Throw here to signal the viz cannot render with the current data or settings; Metabase shows the error message to the user. Omit it to always render. |
+| `settings`                     | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                                                        |
+| `VisualizationComponent`       | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                                                               |
+| `StaticVisualizationComponent` | `React.ComponentType`               | Optional. Component used for email, Slack, and PDF rendering (see below).                                                                                       |
 
 ### VisualizationComponent props
 
@@ -155,6 +156,10 @@ Host-provided helpers, so measurements and colors match what Metabase renders.
 | `measureText` | `(text, style) => { width, height }` | Measures the rendered size of a text string in pixels. `style.family` defaults to the instance font. |
 | `fontFamily`  | `string`                             | The font family Metabase is rendering with — use it to style your own markup.                        |
 | `colorScheme` | `"light" \| "dark"`                  | The color scheme the visualization is rendered with. `getColor` already resolves against it.         |
+
+### Sandbox limitations
+
+`VisualizationComponent` runs in an isolated sandbox and only sees the `series` and `settings` it is given. The sandbox blocks network access (`fetch`, `XMLHttpRequest`, `WebSocket`), browser storage and cookies, device and credential APIs, browser UI such as `window.open` and dialogs, and any DOM outside the visualization's own container. See [Custom visualization limitations](https://www.metabase.com/docs/latest/developers-guide/custom-visualizations#custom-visualization-limitations) for the full list.
 
 ## Visualization Settings
 
@@ -273,6 +278,82 @@ Keep the icon **simple and monochromatic** — avoid gradients and multiple colo
 
 ---
 
-## Static Visualizations (Email / Slack)
+## Static Visualizations (Email / Slack / PDF)
 
-Custom visualizations are not rendered in emails or Slack messages. In those contexts rendering falls back to a default visualization for the underlying query.
+Provide a `StaticVisualizationComponent` to enable rendering in non-interactive contexts: email attachments, Slack previews, and PDF attachments.
+
+```tsx
+import type {
+  CreateCustomVisualization,
+  CustomStaticVisualizationProps,
+} from "@metabase/custom-viz";
+
+const createVisualization: CreateCustomVisualization<Settings> = ({
+  defineSetting,
+}) => {
+  // ...
+
+  const StaticVisualizationComponent = ({
+    series,
+    settings,
+    renderingContext,
+    width,
+    height,
+  }: CustomStaticVisualizationProps<Settings>) => {
+    const { getColor, fontFamily } = renderingContext;
+
+    const finalWidth = width ?? 540;
+    const finalHeight = height ?? 360;
+
+    return (
+      <svg
+        width={finalWidth}
+        height={finalHeight}
+        viewBox={`0 0 ${finalWidth} ${finalHeight}`}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Pure rendering — no event handlers */}
+      </svg>
+    );
+  };
+
+  return {
+    // ...
+    VisualizationComponent,
+    StaticVisualizationComponent,
+  };
+};
+```
+
+### Props
+
+| Property           | Type                  | Description                                                                                                                             |
+| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `series`           | `Series`              | The query result(s) to render.                                                                                                          |
+| `settings`         | settings object       | The resolved values of your declared settings.                                                                                          |
+| `renderingContext` | `RenderingContext`    | Host helpers for colors and text measurement (see below).                                                                               |
+| `width`            | `number \| undefined` | Pixel width of the box to render into (e.g. a dashboard grid cell in a PDF export). Undefined for natural-size rendering (email/Slack). |
+| `height`           | `number \| undefined` | Pixel height of the box to render into. Undefined for natural-size rendering.                                                           |
+
+### `renderingContext`
+
+Same shape as the interactive [`renderingContext`](#renderingcontext) above; `colorScheme` is always `"light"` for static exports (email, Slack, and PDF render on a light background).
+
+### GraalJS limitations
+
+Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine**. The following are unavailable:
+
+- Browser globals: `window`, `document`, `navigator`, `localStorage`
+- Network: `fetch`, `XMLHttpRequest`
+- Timers: `setTimeout`, `setInterval`
+- Dynamic imports: `import()`
+- CSS layout in non-SVG output: HTML markup is rasterized with a limited renderer for Slack and PDF
+  (no flexbox or grid, limited fonts).
+
+**Guidelines:**
+
+- Prefer the `width`/`height` props when provided so the chart fills its box (e.g. a dashboard grid
+  cell in a PDF export), and fall back to fixed dimensions when they are undefined (email/Slack).
+- Avoid external dependencies that rely on browser APIs.
+- Inline images as base64 `data:` URLs or inline `<svg>` (see [Using Images](#using-images) above).
+- `StaticVisualization` should be a pure component.

@@ -387,6 +387,7 @@ const elements = [
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
+    "frontend/src/metabase/app-static-viz-custom.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/AppComponent.unit.spec.tsx",
     "frontend/src/metabase/App.styled.tsx",
@@ -407,6 +408,8 @@ const elements = [
     "frontend/src/metabase/ScrollToTop.tsx",
     "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index-custom.tsx",
+    "frontend/src/metabase/static-viz/lib/entrypoint.ts",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
