@@ -166,6 +166,16 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
+  it("never offers Archive for a transforms folder, and Delete only with onDelete", async () => {
+    setup({ collection: { namespace: "transforms" } });
+
+    await openMenu();
+
+    expect(getMenuItem(/Edit collection details/)).toBeInTheDocument();
+    expect(queryMenuItem(/Archive/)).not.toBeInTheDocument();
+    expect(queryMenuItem(/Delete/)).not.toBeInTheDocument();
+  });
+
   it("renders the permissions option for data actions folders", async () => {
     setup({ collection: { namespace: "data-actions" } });
 

@@ -11,9 +11,11 @@ import {
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
+import type { TreeNode } from "./types";
 import {
   buildTreeData,
   getDescendantCollectionIds,
+  getFolderTransforms,
   getIncrementalWarning,
   getRemoteSyncChangesTarget,
 } from "./utils";
@@ -313,5 +315,39 @@ describe("getIncrementalWarning", () => {
     expect(
       getIncrementalWarning(transform, getMetadataProvider),
     ).toBeUndefined();
+  });
+});
+
+describe("getFolderTransforms", () => {
+  const folderNode = (id: number, children: TreeNode[] = []): TreeNode => ({
+    id: `collection-${id}`,
+    name: `Folder ${id}`,
+    nodeType: "folder",
+    icon: "folder",
+    collection: createMockCollection({ id, namespace: "transforms" }),
+    children,
+  });
+
+  it("returns the transforms of the folder and its subfolders, by name", () => {
+    const folder = folderNode(1, [folderNode(2)]);
+    const transforms = [
+      createMockTransform({ id: 1, name: "Zebra", collection_id: 1 }),
+      createMockTransform({ id: 2, name: "Nested", collection_id: 2 }),
+      createMockTransform({ id: 3, name: "Elsewhere", collection_id: 3 }),
+      createMockTransform({ id: 4, name: "Root", collection_id: null }),
+      createMockTransform({ id: 5, name: "Apple", collection_id: 1 }),
+    ];
+
+    expect(getFolderTransforms(folder, transforms).map((t) => t.id)).toEqual([
+      5, 2, 1,
+    ]);
+  });
+
+  it("returns an empty list for a folder without transforms", () => {
+    expect(
+      getFolderTransforms(folderNode(1), [
+        createMockTransform({ id: 1, collection_id: 2 }),
+      ]),
+    ).toEqual([]);
   });
 });

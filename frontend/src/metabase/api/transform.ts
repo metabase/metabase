@@ -4,6 +4,7 @@ import type {
   CreateTransformRequest,
   DagTransform,
   Dataset,
+  DeleteTransformsFolderRequest,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
@@ -302,6 +303,26 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    deleteTransformsFolder: builder.mutation<
+      void,
+      DeleteTransformsFolderRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "DELETE",
+        url: `/api/transform/collection/${id}`,
+        params,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("transform"),
+          listTag("collection"),
+          idTag("collection", id),
+          listTag("transform-run"),
+          listTag("transform-dag-run"),
+          listTag("table"),
+          listTag("content-diagnostics-finding"),
+        ]),
+    }),
     resetCheckpoint: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
@@ -358,6 +379,7 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useDeleteTransformsFolderMutation,
   useResetCheckpointMutation,
   useRunInspectorQueryQuery,
 } = transformApi;

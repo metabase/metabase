@@ -297,6 +297,11 @@ export type UpdateTransformRequest = {
   owner_email?: string | null;
 };
 
+export type DeleteTransformsFolderRequest = {
+  id: CollectionId;
+  "delete-tables"?: boolean;
+};
+
 export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;

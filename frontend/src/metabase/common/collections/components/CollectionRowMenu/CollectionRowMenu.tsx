@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { isRootCollection } from "metabase/common/collections/utils";
+import {
+  isRootCollection,
+  isTransformsCollection,
+} from "metabase/common/collections/utils";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_LIBRARY,
@@ -26,12 +29,15 @@ type CollectionRowMenuProps = {
   collection: Collection;
   onOpenModal: (modal: CollectionRowModalState) => void;
   customArchiveMessage?: string;
+  /** Offers a "Delete" item when the caller lets the user delete this collection. */
+  onDelete?: (collection: Collection) => void;
 };
 
 export function CollectionRowMenu({
   collection,
   onOpenModal,
   customArchiveMessage,
+  onDelete,
 }: CollectionRowMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(
@@ -47,6 +53,8 @@ export function CollectionRowMenu({
 
   const isRoot = isRootCollection(collection);
   const canEdit = collection.can_write && !remoteSyncReadOnly;
+  // a transforms folder is deleted, never archived: the API refuses to archive it
+  const canArchive = !isTransformsCollection(collection);
 
   if (collection.archived) {
     return canEdit ? (
@@ -98,7 +106,16 @@ export function CollectionRowMenu({
               {t`Change permissions`}
             </Menu.Item>
           )}
-          {showEditOptions && (
+          {showEditOptions && onDelete != null && (
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={() => onDelete(collection)}
+              c="feedback-negative"
+            >
+              {t`Delete`}
+            </Menu.Item>
+          )}
+          {showEditOptions && canArchive && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={() =>

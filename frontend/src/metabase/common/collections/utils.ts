@@ -137,6 +137,12 @@ export function isDataAppCollection(
   return collection.namespace === "data-apps";
 }
 
+export function isTransformsCollection(
+  collection: Pick<Collection, "namespace">,
+): boolean {
+  return collection.namespace === "transforms";
+}
+
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }

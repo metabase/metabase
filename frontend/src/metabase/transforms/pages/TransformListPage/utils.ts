@@ -159,6 +159,21 @@ export function buildTreeData(
   return [...rootFolders, ...rootTransforms];
 }
 
+/** The transforms in a folder node and its subfolders, by name. */
+export function getFolderTransforms(
+  node: TreeNode,
+  transforms: Transform[],
+): Transform[] {
+  const collectionIds = getDescendantCollectionIds(node);
+  return transforms
+    .filter(
+      (transform) =>
+        typeof transform.collection_id === "number" &&
+        collectionIds.has(transform.collection_id),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function getDefaultExpandedIds(
   targetCollectionId: number | null,
   targetCollection: Collection | undefined,
