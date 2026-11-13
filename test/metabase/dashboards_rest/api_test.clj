@@ -2785,6 +2785,27 @@
                 :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-cards-empty-card-title-test
+  (testing "PUT /api/dashboard/:id keeps an empty card.title, so a cleared title stays cleared (metabase#12013, metabase#36788)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:name "Orders"}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [card-id])
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                              {:dashcards [{:id                     dashcard-id
+                                            :size_x                 4
+                                            :size_y                 4
+                                            :col                    0
+                                            :row                    0
+                                            :visualization_settings {:card.title ""}}]
+                               :tabs      []})
+        (is (= {:card.title ""}
+               (-> (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+                   :dashcards
+                   first
+                   :visualization_settings)))))))
+
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
