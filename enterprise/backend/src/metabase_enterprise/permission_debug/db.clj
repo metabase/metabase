@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -399,3 +400,59 @@
   "Whether the Dashboard with `dashboard-id` exists."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id dashboard-id))
+
+;;; ------------------------------------------------ Preview sessions ------------------------------------------------
+;; Written straight to the table, past the Session model's hooks: its insert hook records a login for the user, and
+;; its update hook allows only the ending columns.
+
+(mu/defn insert-preview-session!
+  "Insert a `core_session` row for the User with `user-id`: `key-hashed` (a preview-only derivation of its key, so no
+  ordinary session lookup matches it), `token` in `anti_csrf_token` (nil on the preview host), and `expires-at`."
+  [session-id :- :string
+   user-id    :- ::lib.schema.id/user
+   key-hashed :- :string
+   token      :- [:maybe :string]
+   expires-at :- some?]
+  (t2/query-one {:insert-into (t2/table-name :model/Session)
+                 :values      [{:id              session-id
+                                :user_id         user-id
+                                :key_hashed      key-hashed
+                                :anti_csrf_token token
+                                :created_at      :%now
+                                :expires_at      expires-at}]}))
+
+(mu/defn preview-session
+  "The `:id`, `:user_id`, `:anti_csrf_token`, `:expires_at` and `:ended_at` of the Session whose `key_hashed` is
+  `key-hashed`, or nil."
+  [key-hashed :- :string]
+  (t2/select-one [:model/Session :id :user_id :anti_csrf_token :expires_at :ended_at]
+                 {:where [:= :key_hashed [:auto/param key-hashed]]}))
+
+(mu/defn renew-preview-session!
+  "Set the `expires_at` of the Session with `session-id` to `expires-at`."
+  [session-id :- :string
+   expires-at :- some?]
+  (t2/query-one {:update (t2/table-name :model/Session)
+                 :set    {:expires_at expires-at}
+                 :where  [:= :id [:auto/param session-id]]}))
+
+(mu/defn delete-preview-sessions!
+  "Delete the Sessions with `session-ids`."
+  [session-ids :- [:sequential :string]]
+  (when (seq session-ids)
+    (t2/delete! :model/Session :id [:in session-ids])))
+
+(mu/defn live-superuser-session?
+  "Whether the Session whose `key_hashed` is `key-hashed` is live, an ordinary browser session (no anti-CSRF token),
+  and belongs to the superuser with `user-id`."
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user]
+  (some? (t2/query-one (merge session/session-from-and-joins
+                              {:select [:session.id]
+                               :where  (into [:and
+                                              [:= :session.key_hashed [:auto/param key-hashed]]
+                                              [:= :session.anti_csrf_token nil]
+                                              [:= :session.user_id [:auto/param user-id]]
+                                              [:= :user.is_superuser true]]
+                                             (session/live-session-conditions (session/liveness-params)))
+                               :limit  [:inline 1]}))))

@@ -287,9 +287,11 @@
   [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
-   (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
-     (current-user-info-for-oauth-token oauth-bearer request)
-     (credentials options request))
+   (cond
+     ;; resolved in [[bind-current-user]] (EE), and nothing else on the request counts
+     (:metabase/preview-session request)            nil
+     (bearer-only-path? (:bearer-only-paths oauth-bearer) uri) (current-user-info-for-oauth-token oauth-bearer request)
+     :else                                          (credentials options request))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
@@ -335,6 +337,14 @@
   [_request]
   {:response {:status 403 :body "Previewing as another user isn't available."}})
 
+(defenterprise preview-session-request
+  "Called only for a request carrying a preview session (`:metabase/preview-session`). Returns `{:request request
+  :admin-id admin-id}` with the request bound to the previewed user, or `{:response response}` to refuse it. OSS:
+  refused, since there is nothing to preview with."
+  metabase-enterprise.permission-debug.preview-session
+  [_request]
+  {:response {:status 403 :body "Previewing as another user isn't available."}})
+
 (defn wrap-preview-grant
   "Middleware that runs a request carrying `X-Metabase-Preview-Grant` as the user the grant previews, with
   [[metabase.api.common/*previewing-admin-id*]] bound to the admin, or refuses it. Must run after
@@ -363,7 +373,9 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (let [{request :request, response :response, admin-id :admin-id} (preview-as-request request)]
+    (let [{request :request, response :response, admin-id :admin-id} (if (:metabase/preview-session request)
+                                                                       (preview-session-request request)
+                                                                       (preview-as-request request))]
       (if response
         (respond response)
         (let [handle (fn []

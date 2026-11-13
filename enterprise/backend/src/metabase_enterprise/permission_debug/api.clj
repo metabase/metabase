@@ -4,6 +4,7 @@
    [metabase-enterprise.permission-debug.explain :as permission-debug.explain]
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
    [metabase-enterprise.permission-debug.preview-grant :as preview-grant]
+   [metabase-enterprise.permission-debug.preview-session :as preview-session]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -109,25 +110,55 @@
                                          :principal-id   principal_id
                                          :attributes     attributes}))
 
-(api.macros/defendpoint :post "/preview/end" :- [:map [:ok :boolean]]
-  "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`) returned, recording it in the audit
-  log with the caller as the actor and `user_id` as the target. Takes the start's principal and attribute values, so
-  the end row reads on its own."
+(api.macros/defendpoint :post "/preview/end" :- :map
+  "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`, or `/preview/code`) returned,
+  recording it in the audit log with the caller as the actor and `user_id` as the target. Takes the start's principal
+  and attribute values, so the end row reads on its own. With `session_id`, also deletes that preview session.
+
+  Returns `{\"ok\": true}`."
   [_route-params
    _query-params
-   {:keys [preview_id user_id principal_type principal_id attributes]}
+   {:keys [preview_id user_id principal_type principal_id attributes session_id]}
    :- [:map {:closed true}
        [:preview_id ms/NonBlankString]
        [:user_id ms/PositiveInt]
        [:principal_type permission-debug.impl/PrincipalType]
        [:principal_id ms/PositiveInt]
-       [:attributes {:optional true} [:maybe [:map-of :string :string]]]]]
+       [:attributes {:optional true} [:maybe [:map-of :string :string]]]
+       [:session_id {:optional true} ms/NonBlankString]]]
   (permission-debug.impl/end-preview! {:preview-id     preview_id
                                        :user-id        user_id
                                        :principal-type principal_type
                                        :principal-id   principal_id
                                        :attributes     attributes})
+  (when session_id
+    (preview-session/end-session! api/*current-user-id* session_id))
   {:ok true})
+
+(api.macros/defendpoint :post "/preview/code" :- [:map
+                                                  [:code :string]
+                                                  [:code_expires_at :int]
+                                                  [:user_id ms/PositiveInt]
+                                                  [:preview_id :string]]
+  "Start previewing a user, group or tenant in a frame signed in as them. Takes the same body as `POST
+  /preview/start`, records the start in the audit log, and returns what it does plus a one-time `code`, valid until
+  `code_expires_at` (epoch seconds, 60 seconds from now), that starts a preview session bound to this browser session.
+
+  Only a superuser's own browser session (the `metabase.SESSION` cookie) can get a code."
+  [_route-params
+   _query-params
+   {:keys [principal_type principal_id attributes]} :- [:map {:closed true}
+                                                        [:principal_type permission-debug.impl/PrincipalType]
+                                                        [:principal_id ms/PositiveInt]
+                                                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]]
+   {session-key-hash :metabase/authed-session-key-hash, session-type :metabase-session-type}]
+  (api/check (and session-key-hash (= :normal session-type))
+             [403 "Previewing in a frame needs a browser session."])
+  (let [{:keys [user_id] :as preview} (permission-debug.impl/start-preview! {:principal-type principal_type
+                                                                             :principal-id   principal_id
+                                                                             :attributes     attributes})
+        {:keys [code expires-at]}     (preview-session/mint-code! api/*current-user-id* session-key-hash user_id)]
+    (assoc preview :code code :code_expires_at expires-at)))
 
 (api.macros/defendpoint :post "/preview/grant" :- [:map
                                                    [:grant :string]

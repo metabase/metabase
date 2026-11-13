@@ -129,7 +129,7 @@
        (nil? (:mcp-ui-credential request))
        (not= "jwt" (:embedding/auth-method request))))
 
-(defn- target-refusal
+(defn target-refusal
   "Why the preview can't run as `target` today, as a refusal, or nil. Checks what a live session of theirs would need,
   since there is no session of theirs to check: active (a hidden preview user never is, and is let through), their
   tenant active, and tenants on if they belong to one."
@@ -155,7 +155,8 @@
   they are loaded for the previewed user."
   [:metabase-user-id :is-superuser? :is-data-analyst? :is-group-manager? :permissions-set :user-locale :settings])
 
-(defn- as-target
+(defn as-target
+  "`request` rebound to `target` (from `permission-debug.db/preview-target`)."
   [request {:keys [id is_data_analyst locale group_manager]}]
   (merge (apply dissoc request user-info-keys)
          {:metabase-user-id  id
@@ -165,7 +166,8 @@
           :is-group-manager? (boolean (and (premium-features/enable-advanced-permissions?) group_manager))
           :user-locale       locale}))
 
-(defn- record-query!
+(defn record-query!
+  "Record a query that `admin-id` ran while previewing `user-id` in the audit log."
   [admin-id user-id {:keys [uri]}]
   (try
     (events/publish-event! :event/permissions-preview
