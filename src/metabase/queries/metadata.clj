@@ -1,7 +1,7 @@
 (ns metabase.queries.metadata
   (:require
-   [clojure.edn :as edn]
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -47,11 +47,11 @@
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
           (queries.db/databases ids))))
 
-(defn- field-ids->table-ids
+(defn- field-id->table-id
   [field-ids]
   (if (seq field-ids)
-    (queries.db/field-table-ids field-ids)
-    #{}))
+    (queries.db/field-id->table-id field-ids)
+    {}))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
@@ -83,17 +83,18 @@
          :when   (:template_tags snippet)
          tag     (vals (:template_tags snippet))
          :when   (#{:dimension :temporal-unit} (:type tag))
-         :let    [dimension (:dimension tag)
-                  ;; Handle both keyword and string field references
-                  [dim-type field-id] (cond
-                                        (vector? dimension) dimension
-                                        (string? dimension) (try
-                                                              (edn/read-string dimension)
-                                                              (catch Exception _ nil))
-                                        :else               nil)]
-         :when   (and (#{:field "field"} dim-type)
-                      (integer? field-id))]
+         :let    [field-id (:field-id tag)]
+         :when   (some? field-id)]
      field-id)))
+
+(mu/defn- get-cards :- [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]
+  [ids :- [:maybe [:or
+                   [:sequential ::lib.schema.id/card]
+                   [:set ::lib.schema.id/card]]]]
+  (when (seq ids)
+    (let [cards (into [] (filter mi/can-read?)
+                      (queries.db/cards ids))]
+      (t2/hydrate cards :can_write))))
 
 (mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries.
@@ -108,14 +109,18 @@
         source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
-                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                      {:include-database? false}))
-        fk-target-field-ids    (into #{} (comp (mapcat :fields)
-                                               (keep :fk_target_field_id))
-                                     source-tables)
-        fk-target-table-ids    (into #{} (remove source-table-ids)
-                                     (field-ids->table-ids fk-target-field-ids))
+        source-cards           (get-cards source-card-ids)
+        card-columns           (mapcat :result_metadata source-cards)
+        card-table-ids         (field-id->table-id (into #{}
+                                                         (comp (mapcat (juxt :id :fk_target_field_id))
+                                                               (filter pos-int?))
+                                                         card-columns))
+        source-table-ids       (into source-table-ids (keep (comp card-table-ids :id)) card-columns)
+        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
+        fk-target-table-ids    (into #{}
+                                     (remove source-table-ids)
+                                     (concat (keep (comp :table_id :target) (mapcat :fields source-tables))
+                                             (keep (comp card-table-ids :fk_target_field_id) card-columns)))
         fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
@@ -123,24 +128,18 @@
         snippets               (collect-recursive-snippets direct-snippet-ids)
         snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
-        all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
+        all-field-ids          (into (set/union template-tag-field-ids snippet-field-ids)
+                                     (comp (mapcat (juxt :fk_field_id :lib/original-fk-field-id)) (filter pos-int?))
+                                     card-columns)
         query-database-ids     (into #{} (keep :database) queries)
-        database-ids           (into query-database-ids
-                                     (keep :db_id)
-                                     tables)]
+        database-ids           (-> query-database-ids
+                                   (into (keep :db_id) tables)
+                                   (into (keep :database_id) source-cards))]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
-     ;; apparently some of these tables come back with normal integer IDs and some come back with string IDs... not sure
-     ;; what the hecc is going on but I guess maybe some of them in 2024 are still using that old `card__<id>` hack or
-     ;; something. Idk. Anyways let's just sort the ones with numeric IDs first and the ones with string IDs last. We're
-     ;; sorting these in a sane order because lots of tests expect them to be sorted by numeric ID and break if you sort
-     ;; by something like `(str (:id %))`. -- Cam
-     :tables    (sort-by (fn [{:keys [id]}]
-                           (if (integer? id)
-                             [id ""]
-                             [Integer/MAX_VALUE (str id)]))
-                         tables)
+     :tables    (sort-by :id tables)
+     :cards     (sort-by :id source-cards)
      :fields    (sort-by :id (schema.field/get-fields all-field-ids))
      ;; Add snippets to the response
      :snippets  (sort-by :id snippets)}))
@@ -187,15 +186,6 @@
       {:type link-type
        :id   targetId})))
 
-(mu/defn- get-cards :- [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]
-  [ids :- [:maybe [:or
-                   [:sequential ::lib.schema.id/card]
-                   [:set ::lib.schema.id/card]]]]
-  (when (seq ids)
-    (let [cards (into [] (filter mi/can-read?)
-                      (queries.db/cards ids))]
-      (t2/hydrate cards :can_write))))
-
 (defn- dashcard->click-behaviors [dashcard]
   (let [viz-settings        (:visualization_settings dashcard)
         top-click-behavior  (:click_behavior viz-settings)
@@ -234,11 +224,13 @@
                         card all]
                     card)
         card-ids  (into #{} (map :id) cards)
-        links     (batch-fetch-dashboard-links dashcards)]
-    (merge
-     (->> (remove (comp card-ids :id) (:cards links))
-          (concat cards)
-          (filter some?)
-          batch-fetch-card-metadata)
-     {:cards      (or (:cards links)      [])
-      :dashboards (or (:dashboards links) [])})))
+        links     (batch-fetch-dashboard-links dashcards)
+        metadata  (->> (remove (comp card-ids :id) (:cards links))
+                       (concat cards)
+                       (filter some?)
+                       batch-fetch-card-metadata)]
+    (assoc metadata
+           :cards      (->> (concat (:cards metadata) (:cards links))
+                            (m/distinct-by :id)
+                            (sort-by :id))
+           :dashboards (or (:dashboards links) []))))

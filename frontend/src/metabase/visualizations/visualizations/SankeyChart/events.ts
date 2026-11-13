@@ -15,9 +15,8 @@ import {
   type SankeyNode,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { RawSeries, RowValue, SeriesCard } from "metabase-types/api";
+import type { RawSeries, RowValue } from "metabase-types/api";
 
 const getSankeyClickData = (
   [
@@ -43,11 +42,6 @@ const isSankeyEdgeEvent = (
 const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
-
-const isNativeQuery = (card: SeriesCard) => {
-  const question = new Question(card);
-  return question.isNative();
-};
 
 export const createSankeyClickData = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
@@ -77,7 +71,7 @@ export const createSankeyClickData = (
     });
   } else if (isSankeyEdgeEvent(event)) {
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
-    if (!isNativeQuery(rawSeries[0].card)) {
+    if (!rawSeries[0].data.cols.some((col) => col.source === "native")) {
       clickData.dimensions = [
         {
           column: sankeyColumns.source.column,

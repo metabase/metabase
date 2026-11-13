@@ -2,8 +2,8 @@
   "Notebook query construction tool wrappers."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.error :as me]
-   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -26,6 +26,7 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -50,9 +51,10 @@
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
 
-(def ^:private construct-visualization-schema
-  [:map {:closed true}
-   [:chart_type (into [:enum] shared/chart-types)]])
+(def ^:private source-table-description
+  "How [[construct-notebook-query-json-schema]] describes a stage's `source-table`."
+  (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
+       "Use `null` as the schema only in a database without schemas."))
 
 (def ^:private construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
@@ -64,7 +66,8 @@
   {:type        "object"
    :description (str "An MBQL 5 query as a JSON **object** (never a quoted string) matching "
                      "`metabase.lib.schema/external-query`. The FIRST stage MUST contain exactly one of `source-table` "
-                     "(a portable FK `[\"<db-name>\", \"<schema-or-null>\", \"<table-name>\"]`) or `source-card` "
+                     "(a portable FK `[\"<db-name>\", \"<schema>\", \"<table-name>\"]`, with `null` as the schema "
+                     "only in a database without schemas) or `source-card` "
                      "(an entity_id string) — the target database is inferred from it; there is no top-level "
                      "`database` field. Every clause is `[\"<op>\", {<options>}, ...args]` with a mandatory "
                      "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
@@ -91,7 +94,7 @@
                                                            :minItems    3
                                                            :maxItems    3
                                                            :items       {}
-                                                           :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
+                                                           :description source-table-description}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
                                            ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
@@ -136,20 +139,10 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
-   [:visualization {:optional true} construct-visualization-schema]
-   [:show_chart {:optional true
-                 :description (str "Pass false for a query you build only to read its values with run_query: "
-                                   "the user is then shown no chart. Defaults to true.")}
-    [:maybe :boolean]]
+   shared/visualization-arg
+   shared/show-chart-arg
    [:title :string]
    [:description :string]])
-
-(defn without-show-chart
-  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
-   model is not told about the argument."
-  [tool]
-  (update tool :schema (fn [[arrow [cat args-schema] output]]
-                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -274,6 +267,12 @@
         (or (numeric-scoped-content-ref model (nth node 2 nil))
             (numeric-scoped-content-ref model (nth node 1 nil)))))))
 
+(defn- field-ref?
+  [x]
+  (and (vector? x)
+       (not (map-entry? x))
+       (= "field" (nth x 0 nil))))
+
 (defn- node-table-fks
   [node]
   (cond
@@ -286,9 +285,7 @@
     (node-scoped-content-ref node)
     [(node-scoped-content-ref node)]
 
-    (and (vector? node)
-         (not (map-entry? node))
-         (= "field" (nth node 0 nil)))
+    (field-ref? node)
     ;; Both slots, for both forms. Repair inserts the options map later, so an LLM-authored
     ;; `["field", 42]` still carries its target in slot 1 when this pass runs — checking the
     ;; numeric form in slot 2 only (as this did) let that shape through uncollected, and so
@@ -305,6 +302,106 @@
   (into []
         (comp (mapcat node-table-fks) (distinct))
         (tree-seq coll? seq parsed-query)))
+
+(defn- fk-slots
+  "The keys or indexes of `node` that can hold a portable table or field FK: `source-table` and `source-field` in a
+  map, and slots 1 and 2 of a field ref."
+  [node]
+  (cond
+    (map? node)       (filter #(contains? node %) ["source-table" "source-field"])
+    ;; Repair inserts the options map later, so an LLM-authored ref can still carry its FK in slot 1.
+    (field-ref? node) (filter #(< % (count node)) [1 2])
+    :else             nil))
+
+(defn- fk-slot-values
+  "Every value in an FK slot of `parsed-query`, as [[fk-slots]] defines them."
+  [parsed-query]
+  (for [node (tree-seq coll? seq parsed-query)
+        k    (fk-slots node)]
+    (get node k)))
+
+(defn- fk-schema-and-table
+  "The `[schema table-name]` of `x` when it is a portable table or field FK into the database named `db-name`, or nil.
+  Surrounding double quotes on each segment are ignored."
+  [db-name x]
+  (when (vector? x)
+    ;; Repair strips these quotes from field targets later, after the permission sweep this has to run before.
+    (let [[db schema table-name & more] (mapv repr.repair/dequote-identifier x)]
+      (when (and (= db-name db)
+                 (or (nil? schema) (string? schema))
+                 (string? table-name)
+                 (every? string? more))
+        [schema table-name]))))
+
+(defn- inferred-schema
+  "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
+
+  A lone table decides it, and among several the one in `default-schema` does.
+  The schemas the query gives that name elsewhere, `named`, can only overrule the pick: when one names another table,
+  the reference could mean either, so the null stays.
+  When a table without a schema is among them, the null already matches it exactly, so the null stays."
+  [named default-schema tables]
+  (let [schemas (map :schema tables)
+        pick    (if (next schemas)
+                  ;; An unqualified name in SQL resolves to the default schema too.
+                  (some #{default-schema} schemas)
+                  (first schemas))]
+    (when (and (every? some? schemas)
+               (every? #{pick} named))
+      pick)))
+
+(defn- inferred-schemas
+  "A map from table name to the schema [[inferred-schema]] picks for it, for each table name that `refs` give a null
+  schema.
+  The `refs` are `[schema table-name]` pairs naming tables in the database with `database-id`, and the candidates are
+  the tables there that the current user can query. Under [[shared/curated-only?]], a name with a curated candidate
+  resolves among its curated candidates only."
+  [database-id default-schema refs]
+  (let [table-names (into #{} (keep (fn [[schema table-name]] (when (nil? schema) table-name))) refs)
+        named       (reduce (fn [m [schema table-name]]
+                              (cond-> m schema (update table-name (fnil conj #{}) schema)))
+                            {}
+                            refs)
+        tables      (when (seq table-names)
+                      (->> (metabot.db/active-visible-tables-named database-id (vec table-names))
+                           ;; A MySQL app DB compares names without case.
+                           (filter #(contains? table-names (:name %)))))
+        ;; Only tables the user can query count, so a filled-in schema never names a table the permission sweep would
+        ;; reject, and whether a name gets one says nothing about tables the user cannot use.
+        queryable   (when (seq tables)
+                      (metabot.perms/queryable-table-ids (map :id tables)))
+        tables      (filter #(contains? queryable (:id %)) tables)
+        ;; A curated-only Metabot refuses an uncurated source, so a name with a curated table resolves among those.
+        ;; A name without one keeps every candidate: a table can be usable through curated content that covers it.
+        curated     (when (and (seq tables) (shared/curated-only?))
+                      (into #{}
+                            (map second)
+                            (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))))]
+    (u/for-map [[table-name same-name] (group-by :name tables)
+                :let  [same-name (or (not-empty (filter #(contains? curated (:id %)) same-name))
+                                     same-name)
+                       schema    (inferred-schema (get named table-name) default-schema same-name)]
+                :when schema]
+      [table-name schema])))
+
+(defn- fill-in-null-schemas
+  "`parsed-query` with a schema in place of the null in each portable table or field FK that [[inferred-schemas]]
+  picks one for."
+  [metadata-provider parsed-query]
+  (let [{database-id :id, db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
+        refs    (keep #(fk-schema-and-table db-name %) (fk-slot-values parsed-query))
+        schemas (inferred-schemas database-id default-schema refs)
+        fill-in (fn [x]
+                  (if-let [schema (when-let [[current table-name] (fk-schema-and-table db-name x)]
+                                    (when (nil? current)
+                                      (get schemas table-name)))]
+                    (assoc x 1 schema)
+                    x))]
+    (if (empty? schemas)
+      parsed-query
+      (walk/postwalk (fn [node]
+                       (reduce #(update %1 %2 fill-in) node (fk-slots node)))
+                     parsed-query))))
 
 (def ^:private unresolved-table-fk-errors
   #{:unknown-table :ambiguous-table :unknown-database :cross-database-table})
@@ -1227,6 +1324,7 @@
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
+        parsed      (fill-in-null-schemas mp parsed)
         ;; Numeric ids are LLM-authored integers rather than resolved names, so establish that
         ;; each one actually denotes something this query may reference before the permission
         ;; sweep runs against it. No-op on the portable-only surface.
@@ -1358,13 +1456,6 @@
                 (with-recovery-hint e recovery-hint)
                 e))))))
 
-(defn- chart-type->keyword
-  [chart-type]
-  (cond
-    (keyword? chart-type) chart-type
-    (string? chart-type)  (keyword chart-type)
-    :else                 chart-type))
-
 (defn- query-json->llm-content
   "Render the portable repr-form `query-json` map as the JSON code block embedded inside
   `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
@@ -1439,15 +1530,16 @@
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
 
-(defn- query-instructions
-  "What to tell the model to do with a query built without a chart."
-  [query-id]
+(defn- hidden-chart-instructions
+  "What to tell the model about a query it asked not to show the user. Its chart is still made, so the model can add
+  it to a dashboard without another tool call."
+  [chart-id query-id]
   (te/lines
-   "Your query has been created. The user has not been shown it."
+   "Your query has been created."
    ""
-   (str "- To read its values, call `run_query` with `query_id` `" query-id "`.")
-   (str "- To let the user open it, link it using: `" (te/link "Link text" "metabase://query/" query-id) "`")
-   instructions/not-saved-instruction))
+   (instructions/query-hidden-instructions-for query-id)
+   (when (shared/tool-offered? "write_dashboard")
+     (instructions/add-to-dashboard-instruction chart-id))))
 
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
@@ -1458,26 +1550,27 @@
      :args        construct-notebook-query-args-schema})
 
   (handle [_ {:keys [query visualization show_chart title description]} _ctx]
-    (let [chart-type (or (-> visualization
-                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
-                             :chart-type
-                             chart-type->keyword)
-                         :table)
+    (let [chart-type (shared/visualization-chart-type visualization)
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
-          ;; A query built only to be read needs run_query, so without it the chart is the one way
-          ;; the user sees anything and is always shown.
-          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+          ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
+          ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
+          ;; it can change the delivery.
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))
+          ;; A hidden query gets a chart too, which the user isn't shown, so its `chart_id` can go on a dashboard.
+          chart       (create-chart-tools/create-chart
+                       {:query-id      (:query-id structured)
+                        :chart-type    chart-type
+                        :queries-state {(:query-id structured) (:query structured)}})]
       (if-not show-chart?
         {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                         (query-instructions (:query-id structured)))
-         :structured-output (assoc structured :result-type :query)}
-        (let [chart            (create-chart-tools/create-chart
-                                {:query-id      (:query-id structured)
-                                 :chart-type    chart-type
-                                 :queries-state {(:query-id structured) (:query structured)}})
-              instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
+                                         (hidden-chart-instructions (:chart-id chart) (:query-id structured)))
+         :structured-output (assoc structured
+                                   :result-type :query
+                                   :chart-id    (:chart-id chart)
+                                   :chart-type  (:chart-type chart))}
+        (let [instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
           {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
                                            instruction-text)
            :structured-output (assoc structured

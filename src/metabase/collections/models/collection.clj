@@ -15,6 +15,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -142,15 +143,6 @@
       (and (:location collection)
            (str/starts-with? (:location collection) (trash-path)))))
 
-(defn remote-synced-collection?
-  "Is this a remote-synced collection?
-   Returns true if the collection has is_remote_synced=true in the database."
-  [collection-or-id]
-  (cond
-    (nil? collection-or-id) false ;; the root collection is never remote-synced
-    (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
-
 (defn- is-library?
   "Is this the Library collection?"
   [collection]
@@ -170,11 +162,6 @@
   "Is this the Dashboards collection?"
   [collection]
   (= (:type collection) library-dashboards-collection-type))
-
-(defn remote-synced-collection
-  "Get the remote-synced collection if it exists."
-  []
-  (collections.db/root-remote-synced-collection))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
@@ -356,7 +343,7 @@
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
-        (remote-sync/collection-editable? instance)))
+        (remote-sync/can-write? :model/Collection (:id instance))))
   ([_model pk]
    (mi/can-write? (collections.db/collection pk))))
 
@@ -369,8 +356,8 @@
        (mi/can-read? (collections.db/collection pk)))))
 
 (def AuthorityLevel
-  "Malli Schema for valid collection authority levels."
-  [:enum "official"])
+  "Malli Schema for valid collection authority levels, normalized from their names."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :official])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Slug Validation                                                   |
@@ -428,7 +415,7 @@
 (def ^:private CollectionInstance
   "Schema for a Collection as it flows through this namespace: a raw `:model/Collection` Toucan instance, one
   hydrated with any of the computed keys this namespace or [[metabase.collections.children]] adds, or a
-  null-padded row from the collection-items union query. Every key is optional because different call sites
+  null-padded row from the synced-collection-items union query. Every key is optional because different call sites
   select or hydrate different subsets."
   [:map {:closed true}
    [:id                    {:optional true} ms/PositiveInt]
@@ -1354,82 +1341,11 @@
 
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
-(defn check-non-remote-synced-dependencies
-  "Returns `model`, throwing a 400 when remote sync exports it, or for a Collection what it holds, and it depends on
-  content remote sync does not export."
-  [model]
-  (when-let [pairs (seq (remote-sync/dangling-dependencies {:from {(name (t2/model model)) [(:id model)]}}))]
-    (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
-                    {:status-code              400
-                     :error-code               "non-remote-synced-dependencies"
-                     :non-remote-synced-models (into #{} (map (comp second second)) pairs)
-                     :response/keys            #{:non-remote-synced-models}})))
-  model)
-
-(defn check-remote-synced-dependents
-  "Returns `model`, throwing a 400 when content remote sync exports depends on it, or for a Collection on what it
-  holds, though remote sync no longer exports it."
-  [model]
-  (when-let [pairs (seq (remote-sync/dangling-dependencies {:to {(name (t2/model model)) [(:id model)]}}))]
-    (throw (ex-info (str (deferred-tru "Used by remote synced content."))
-                    {:status-code          400
-                     :error-code           "remote-synced-dependents"
-                     :remote-synced-models (vec (distinct (map (fn [[[model-name id]]] {model-name id}) pairs)))
-                     :response/keys        #{:remote-synced-models}})))
-  model)
-
-(defn moving-into-remote-synced?
-  "Tests if a move means the object is moving into a remote-synced collection from outside.
-
-  Returns true only when moving from a non-remote-synced collection into a remote-synced collection.
-  Moving between remote-synced collections (even with different roots) returns false.
-
-  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
-  collection the object is being moved to)."
-  [old-collection-id new-collection-id]
-  (boolean
-   (and (some? new-collection-id)
-        (collections.db/remote-synced-collection-exists? new-collection-id)
-        (or (nil? old-collection-id)
-            (not (collections.db/remote-synced-collection-exists? old-collection-id))))))
-
-(defn moving-from-remote-synced?
-  "Tests if a move means the object is leaving remote-synced collections entirely.
-
-  Returns true only when moving from a remote-synced collection to a non-remote-synced collection.
-  Moving between remote-synced collections (even with different roots) returns false.
-
-  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
-  collection the object is being moved to)."
-  [old-collection-id new-collection-id]
-  (boolean
-   (and (some? old-collection-id)
-        (collections.db/remote-synced-collection-exists? old-collection-id)
-        (or (nil? new-collection-id)
-            (not (collections.db/remote-synced-collection-exists? new-collection-id))))))
-
-(defn check-for-remote-sync-update
-  "Checks collection items for remote-sync integrity during an update transaction.
-
-  Verifies remote-sync integrity after the app database has been updated but before the transaction is committed.
-
-  Takes model-before-update (model being checked before changes have been applied, containing the updates map of
-  changes that have been applied to the database).
-
-  Returns the model with the changes applied.
-
-  Throws an ex-info object if remote-sync integrity is violated."
-  [{id :id collection-before-update :collection_id :as model-before-update}]
-  (u/prog1 (collections.db/instance-by-id (t2/model model-before-update) id)
-    (let [{collection-after-update :collection_id :as model-after-update} <>]
-      (when (remote-synced-collection? collection-after-update)
-        (check-non-remote-synced-dependencies model-after-update)
-        (when (and (api/column-will-change? (:archived model-before-update) (get model-after-update :archived ::api/not-provided))
-                   (:archived model-after-update))
-          (check-remote-synced-dependents model-after-update)))
-      (when (and (api/column-will-change? (:collection_id model-before-update) (get model-after-update :collection_id ::api/not-provided))
-                 (moving-from-remote-synced? collection-before-update collection-after-update))
-        (check-remote-synced-dependents model-after-update)))))
+(defn set-remote-synced!
+  "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
+  [collection remote-synced?]
+  (binding [*clearing-remote-sync* true]
+    (collections.db/set-subtree-remote-synced-flags! (:id collection) (children-location collection) remote-synced?)))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -1438,6 +1354,16 @@
                                    #(into {}
                                           (map (juxt :id :is_remote_synced)
                                                items))
+                                   :id
+                                   {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
+  "Batch hydration for whether an item is in a remote-synced Collection."
+  [model k items]
+  (mi/instances-with-hydrated-data items k
+                                   #(into {}
+                                          (map (juxt :id (comp api/bit->boolean :is_remote_synced)))
+                                          (collections.db/collection-remote-synced-by-item-id model (map :id items)))
                                    :id
                                    {:default false}))
 
@@ -1601,10 +1527,7 @@
         (when (seq library-data-ids)
           (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
             (collections.db/unpublish-tables-in-collections! library-data-ids)
-            (unpublish-downstream-fk-tables! published-table-ids)))))
-    (let [updated-collection (collections.db/collection (:id collection))]
-      (when (:is_remote_synced updated-collection)
-        (check-remote-synced-dependents updated-collection)))))
+            (unpublish-downstream-fk-tables! published-table-ids)))))))
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
@@ -1660,9 +1583,7 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
-      (when (:is_remote_synced collection)
-        (check-non-remote-synced-dependencies collection)))))
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false))))
 
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
@@ -1679,8 +1600,7 @@
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
   [collection :- CollectionWithLocationAndIDOrRoot
-   new-location :- LocationPath
-   & [into-remote-synced?] :- [:* :boolean]]
+   new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
@@ -1702,13 +1622,9 @@
                                          {:location         new-location
                                           :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
-      (u/prog1 (collections.db/move-descendant-collections! orig-children-location
-                                                            new-children-location
-                                                            (boolean will-be-in-remote-synced?))
-        (when into-remote-synced?
-          (check-non-remote-synced-dependencies collection))
-        (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
-          (check-remote-synced-dependents collection))))))
+      (collections.db/move-descendant-collections! orig-children-location
+                                                   new-children-location
+                                                   (boolean will-be-in-remote-synced?)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -2371,3 +2287,9 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
+
+(defmethod remote-sync/spec :model/Collection
+  [_model]
+  {:synced-items         collections.db/synced-collection-items
+   :synced-filter-clause (partial collections.db/synced-collections-clause
+                                  [data-apps-ns transforms-ns snippets-ns data-actions-ns])})

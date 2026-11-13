@@ -1,0 +1,34 @@
+import type { ReactNode } from "react";
+
+import type { StackProps } from "metabase/ui";
+
+export type SidebarSectionProps = {
+  title: string;
+  titleAside?: ReactNode;
+  children: ReactNode;
+  gap?: StackProps["gap"];
+};
+
+export type DetailsRowProps =
+  | {
+      label: ReactNode;
+      value: ReactNode;
+      bold?: boolean;
+      spanLabel?: false;
+    }
+  | {
+      /** A full-width note row, such as an empty state */
+      label: ReactNode;
+      value?: never;
+      bold?: never;
+      spanLabel: true;
+    };
+
+export type SidebarNavDirection = "previous" | "next";
+
+export type SidebarNavButtonProps = {
+  direction: SidebarNavDirection;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+};

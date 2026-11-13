@@ -4,18 +4,31 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
+
+(mu/defn synced-cards-clause :- [:fn vector?]
+  "The clause over the Card table aliased `alias` selecting the Cards remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -227,10 +240,10 @@
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
-(mu/defn field-table-ids
-  "The set of Table IDs of the Fields with `field-ids`."
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "Map of the ID of each Field with `field-ids` to its Table ID."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
+  (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
@@ -540,3 +553,11 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn synced-card-items :- [:sequential ::queries.schema/card]
+  "The Cards with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Card :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

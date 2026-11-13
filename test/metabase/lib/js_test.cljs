@@ -155,27 +155,26 @@
 
 (defn- add-undefined-params
   "This simulates the FE setting some parameters to js/undefined."
-  [template-tags param-name]
-  (doto (gobject/get template-tags param-name)
-    (gobject/add "options" js/undefined)
-    (gobject/add "default" js/undefined))
+  [template-tags]
+  (doseq [tag template-tags]
+    (doto tag
+      (gobject/add "options" js/undefined)
+      (gobject/add "default" js/undefined)))
   template-tags)
 
 (deftest ^:parallel template-tags-test
   (testing "Snippets in template tags round trip correctly (#33546)"
-    (let [db meta/database
-          snippet-name "snippet: my snippet"
-          snippets {snippet-name
-                    {:type :snippet
-                     :name "snippet: my snippet"
-                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+    (let [db       meta/database
+          snippets [{:type         :snippet
+                     :name         "snippet: my snippet"
+                     :id           "fd5e96f7-08f8-486b-9919-b2ab72857db4"
                      :display-name "Snippet: My Snippet"
                      :snippet-name "my snippet"
-                     :snippet-id 1}}
-          query (lib.js/with-template-tags
-                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
-                  (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= (vals snippets)
+                     :snippet-id   1}]
+          query    (lib.js/with-template-tags
+                     (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                     (add-undefined-params (clj->js snippets)))]
+      (is (= snippets
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
@@ -205,10 +204,10 @@
              (mapv :name roundtripped-tags))))))
 
 (deftest ^:parallel template-tags-js->cljs-test
-  (testing "Should use map key as :name"
-    (is (= [{:name "tag", :display-name "Tag", :type :number}]
+  (testing "Should convert tag keys and types to keywords"
+    (is (= [{:name "tag", :display-name "Tag", :type :number, :widget-type :number/=}]
            (#'lib.js/template-tags-js->cljs
-            #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
+            #js [#js {"name" "tag", "display-name" "Tag", "type" "number", "widget-type" "number/="}])))))
 
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
@@ -767,3 +766,50 @@
               (js->clj (lib.js/xray-cell-query query))))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel parameter-field-info-test
+  (let [mp (lib.tu/merged-mock-metadata-provider
+            meta/metadata-provider
+            {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})]
+    (testing "FK searched by name Field of its target"
+      (is (= {:id                     (meta/id :venues :category-id)
+              :displayName            "Category ID"
+              :searchFieldDisplayName "Name"
+              :isString               false
+              :isBoolean              false
+              :isDate                 false
+              :isNumeric              true
+              :settings               nil
+              :hasFieldValues         "none"
+              :hasRemappedValues      true}
+             (js->clj (lib.js/parameter-field-info mp (lib.metadata/field mp (meta/id :venues :category-id)))
+                      :keywordize-keys true))))
+    (testing "column without Field"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2)))
+            expr  (m/find-first #(= "double price" (:name %)) (lib/visible-columns query))]
+        (is (nil? (lib.js/parameter-field-info query expr)))))))
+
+(deftest ^:parallel picker-info-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (testing "table returns its ID"
+      (is (= {:id (meta/id :orders)}
+             (js->clj (lib.js/picker-info query (meta/table-metadata :orders)) :keywordize-keys true))))
+    (testing "card returns its ID"
+      (let [card (:orders (lib.tu/mock-cards))]
+        (is (= {:id (:id card)}
+               (js->clj (lib.js/picker-info query card) :keywordize-keys true)))))))
+
+(deftest ^:parallel picker-info-column-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "double total" (lib/* (meta/field-metadata :orders :total) 2)))
+        cols  (lib/visible-columns query)
+        total (m/find-first #(= "TOTAL" (:name %)) cols)
+        expr  (m/find-first #(= "double total" (:name %)) cols)]
+    (testing "column backed by Field returns its ID and table ID"
+      (is (= {:id      (meta/id :orders :total)
+              :tableId (meta/id :orders)}
+             (js->clj (lib.js/picker-info query total) :keywordize-keys true))))
+    (testing "expression column returns nil IDs"
+      (is (= {:id nil, :tableId nil}
+             (js->clj (lib.js/picker-info query expr) :keywordize-keys true))))))

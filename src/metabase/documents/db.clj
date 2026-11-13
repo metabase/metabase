@@ -5,12 +5,26 @@
    [java-time.api :as t]
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-documents-clause :- [:fn vector?]
+  "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   [:= (u/qualified-key alias :exploration_id) nil]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn document
   "The Document with `id`, or nil."
@@ -136,3 +150,11 @@
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))
+
+(mu/defn synced-document-items :- [:sequential ::documents.schema/document]
+  "The Documents with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";

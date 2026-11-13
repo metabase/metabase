@@ -8,7 +8,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -27,7 +26,8 @@
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -160,23 +160,20 @@
       ast
       (let [rows   (smart-link-rows links)
             stored (some-> previous-ast stored-smart-link-attrs)]
-        (walk/postwalk
-         (fn [node]
-           (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:strs [entityId model]} (:attrs node)
-                   k                        [model entityId]]
-               (if-let [row (get rows k)]
-                 (update node :attrs assoc
-                         "label" (smart-link-label row)
-                         "href" (smart-link-href model row))
-                 (if-let [prior (get stored k)]
-                   (update node :attrs assoc "label" (get prior "label") "href" (get prior "href"))
-                   (do
-                     (when (prose-mirror/smart-link-model->db-model model)
-                       (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                     node))))
-             node))
-         ast)))))
+        (match/replace-all ast
+          {:type "smartLink"}
+          (let [{:strs [entityId model]} (:attrs &match)
+                k                        [model entityId]]
+            (if-let [row (get rows k)]
+              (update &match :attrs assoc
+                      "label" (smart-link-label row)
+                      "href" (smart-link-href model row))
+              (if-let [prior (get stored k)]
+                (update &match :attrs assoc "label" (get prior "label") "href" (get prior "href"))
+                (do
+                  (when (prose-mirror/smart-link-model->db-model model)
+                    (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                  &match)))))))))
 
 (defn- ast-id-set
   [ast]

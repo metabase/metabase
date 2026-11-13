@@ -12,6 +12,7 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import {
   ActionIcon,
   Button,
@@ -23,7 +24,6 @@ import {
 } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import { VisualizationPreview } from "../NotebookStep/NotebookStepPreview";
@@ -130,6 +130,7 @@ export function ExpressionPreview({
   );
 
   // The sample, as a result for the normal table visualization.
+  const buildQuestion = useQuestionFromOptsBuilder();
   const sampleSeries = useMemo(() => {
     if (data?.data == null || sample == null || preview == null) {
       return null;
@@ -140,7 +141,7 @@ export function ExpressionPreview({
       rows: sample.rows,
       results_metadata: { columns: sample.cols },
     };
-    const card = Question.create({
+    const card = buildQuestion({
       dataset_query: Lib.toJsQuery(preview.query),
     })
       .setDisplay("table")
@@ -150,7 +151,7 @@ export function ExpressionPreview({
       rawSeries: [{ card, data: sampleData }],
       result: { ...data, data: sampleData },
     };
-  }, [data, sample, preview]);
+  }, [data, sample, preview, buildQuestion]);
 
   // The table is as wide as its columns, so that the debug buttons are next
   // to the rows, not at the far right.

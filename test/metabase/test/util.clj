@@ -50,6 +50,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -182,8 +183,8 @@
 
    :model/DataApp
    (fn [_] {:entity_id    (u/generate-nano-id)
-            :name         (u/lower-case-en (u.random/random-name))
-            :display_name (u.random/random-name)
+            :slug         (u/lower-case-en (u.random/random-name))
+            :name         (u.random/random-name)
             :bundle_path  "dist/index.js"
             :bundle       (.getBytes "" "UTF-8")})
 
@@ -422,9 +423,18 @@
        :inputs       []
        :expectations []}))
 
-   :model/TransformTestRun
+   :model/CardTest
    (fn [_]
-     {:status         "started"
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Card Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/DataTestRun
+   (fn [_]
+     {:test_type      :transform
+      :status         "started"
       :start_time     (t/instant)
       :last_heartbeat (t/instant)})
 
@@ -566,6 +576,18 @@
     (fn [] ~@(if (seq more)
                [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
+
+(defmacro with-temp-system-property!
+  "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
+  [[k v] & body]
+  `(let [k# ~k, before# (System/getProperty k#)]
+     (try
+       (System/setProperty k# ~v)
+       ~@body
+       (finally
+         (if before#
+           (System/setProperty k# before#)
+           (System/clearProperty k#))))))
 
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
@@ -830,21 +852,11 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
 (defn round-all-decimals
-  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[metabase.util.match/replace-all]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred (some-fn double? decimal?)
-                 #(u/round-to-decimals decimal-place %)
-                 data))
+  (match/replace-all data
+    (x :guard (or (double? x) (decimal? x))) (u/round-to-decimals decimal-place x)))
 
 ;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
 ;;; context

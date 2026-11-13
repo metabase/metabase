@@ -358,12 +358,14 @@
    :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
               ["./bin/mage modules-tree --nested-only" "Print only roots with nested modules"]
               ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]
-              ["./bin/mage modules-tree --html --output modules.html" "Write the interactive explorer"]]
+              ["./bin/mage modules-tree --html --output modules.html" "Write the interactive explorer"]
+              ["./bin/mage modules-tree --json --output modules.json" "Write the explorer's data, for the module-explorer site"]]
    :options [["-n" "--nested-only" "Only print modules that have nested children"]
              ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]
              ["-H" "--html" "Emit the interactive HTML explorer instead of the text tree"]
-             ["-o" "--output FILE" "With --html, write to FILE instead of stdout"]
-             ["-S" "--no-stats" "With --html, skip the slower per-module source metrics"]]
+             ["-j" "--json" "Emit the data the explorer shows, as JSON, instead of the text tree"]
+             ["-o" "--output FILE" "With --html or --json, write to FILE instead of stdout"]
+             ["-S" "--no-stats" "With --html or --json, skip the slower per-module source metrics"]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 
@@ -427,7 +429,7 @@
    :doc "Validate the kondo and module ratchet files against the source tree (about half a minute, most of it a kondo run over the files with a discouraged-var or discouraged-namespace ignore)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}
+   :task (task! (dev.kondo-ratchet/check (mage.kondo-ratchet/ratchet-options)))}
 
   kondo-ratchets-shrink
   {:group "Ratchets"
@@ -438,9 +440,7 @@
               ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var" "Set every discouraged-var symbol's budget to its current count"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it); :discouraged-var/SYMBOL seeds one discouraged symbol, a bare :discouraged-var/:discouraged-namespace all of them"]]
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed)
-                                               :attribute mage.kondo-ratchet/attribute-occurrences!
-                                               :aliases   mage.kondo-ratchet/alias-keys!)))}
+   :task (task! (dev.kondo-ratchet/fix! (merge (:options parsed) (mage.kondo-ratchet/ratchet-options))))}
 
   kondo-ratchets-history
   {:group "Ratchets"

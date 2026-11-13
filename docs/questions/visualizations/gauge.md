@@ -50,7 +50,7 @@ Format options will apply to both the result of the query and the range boundari
 
 In particular, the gauge chart will apply the "Multiply by a number" option to the range boundaries. So if you want to show a range from 2000 to 4000 on the chart, you can set "Multiply by a number: 1000", then set the underlying range to be from 2 to 4.
 
-Selecting “Style: Percent” in format options will only change how Metabase formats the results. For example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the _total_ range of the chart, you’ll need to calculate that percentage in your query. Another example: to display the count of orders as a percentage of 20, use custom expressions to return “Count of orders divided by 20”, and format the result as a percentage.
+Setting **Format** to percent (`123%`) in format options will only change how Metabase formats the results. For example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the _total_ range of the chart, you’ll need to calculate that percentage in your query. Another example: to display the count of orders as a percentage of 20, use custom expressions to return “Count of orders divided by 20”, and format the result as a percentage.
 
 ## Limitations and alternatives
 

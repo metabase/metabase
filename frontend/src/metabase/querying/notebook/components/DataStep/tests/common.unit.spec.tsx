@@ -97,6 +97,7 @@ async function setup(opts: SetupOpts = {}) {
 
 const setupEmptyQuery = async () => {
   const question = Question.create({
+    metadata: createMockMetadata(),
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
   const query = question.query();
@@ -200,6 +201,7 @@ describe("DataStep", () => {
       createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
     );
     const emptyQuery = Question.create({
+      metadata: createMockMetadata(),
       DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
     }).query();
     const { getNextQuery } = await setup({
@@ -343,6 +345,39 @@ describe("DataStep", () => {
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
       expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
+
+    it("should keep a custom column when de-selecting a table column (metabase#20229)", async () => {
+      const baseQuery = Lib.createTestQuery(
+        SAMPLE_PROVIDER,
+        DEFAULT_TEST_QUERY,
+      );
+      const total = columnFinder(
+        baseQuery,
+        Lib.expressionableColumns(baseQuery, 0),
+      )("ORDERS", "TOTAL");
+      const query = Lib.expression(
+        baseQuery,
+        0,
+        "Adjective",
+        Lib.expressionClause("case", [
+          Lib.expressionClause(">", [total, 100]),
+          "expensive",
+          "cheap",
+        ]),
+      );
+      const step = createMockNotebookStep({ query });
+      const { getNextQuery } = await setup({ step });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
+
+      const nextQuery = getNextQuery();
+      const returnedColumnNames = Lib.returnedColumns(nextQuery, 0).map(
+        (column) => Lib.displayInfo(nextQuery, 0, column).name,
+      );
+      expect(returnedColumnNames).toContain("Adjective");
+      expect(returnedColumnNames).not.toContain("TAX");
     });
 
     it("should allow selecting all columns", async () => {

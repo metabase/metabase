@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 export const safeJsonParse = (value: string | null | undefined) => {
   if (!value) {
     return null;

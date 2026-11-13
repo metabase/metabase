@@ -270,7 +270,7 @@ describe("issue 12581", () => {
           name: "filter",
           "display-name": "Filter",
           type: "dimension",
-          dimension: ["field", ORDERS.CREATED_AT, null],
+          "field-id": ORDERS.CREATED_AT,
           "widget-type": "date/month-year",
           default: null,
         },
@@ -307,20 +307,17 @@ describe("issue 12581", () => {
 
     cy.findByTestId("revision-history-button").click();
     H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       // Make sure sidebar opened and the history loaded
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
     });
 
-    // Reverting reloads the question, which re-runs its query and resets the
-    // info sidesheet to the Overview tab. Wait for that reload to settle before
-    // re-reading the History tab, otherwise the tab switch races the reset.
+    // Reverting reloads the question, which re-runs its query. Wait for that
+    // reload to settle before re-reading the history.
     cy.wait("@cardQuery");
 
     H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
     });
 
@@ -357,7 +354,7 @@ describe("issue 12581", () => {
             name: "cat",
             "display-name": "Cat",
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
             "widget-type": "category",
             default: null,
           },
@@ -468,7 +465,7 @@ function createQuestion() {
           "display-name": "Internal",
           type: "dimension",
           "widget-type": "number/=",
-          dimension: ["field", ORDERS.QUANTITY, null],
+          "field-id": ORDERS.QUANTITY,
         },
         product_id_fk: {
           id: "product_id_fk",
@@ -476,7 +473,7 @@ function createQuestion() {
           "display-name": "FK",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
         user_id_pk: {
           id: "user_id_pk",
@@ -484,7 +481,7 @@ function createQuestion() {
           "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", PEOPLE.ID, null],
+          "field-id": PEOPLE.ID,
         },
       },
     },

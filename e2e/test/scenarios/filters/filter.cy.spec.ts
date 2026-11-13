@@ -964,7 +964,7 @@ describe("scenarios > filters > field filters without create-queries permission"
               name: "category",
               "display-name": "CATEGORY",
               type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "field-id": PRODUCTS.CATEGORY,
               "widget-type": "string/=",
             },
             vendor: {
@@ -972,7 +972,7 @@ describe("scenarios > filters > field filters without create-queries permission"
               name: "vendor",
               "display-name": "VENDOR",
               type: "dimension",
-              dimension: ["field", PRODUCTS.VENDOR, null],
+              "field-id": PRODUCTS.VENDOR,
               "widget-type": "string/=",
             },
           },

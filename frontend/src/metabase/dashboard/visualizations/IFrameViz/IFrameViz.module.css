@@ -1,0 +1,5 @@
+/* the dashcard turns pointer events off while the layout is being edited */
+.interactive,
+.interactive * {
+  pointer-events: all;
+}

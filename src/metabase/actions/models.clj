@@ -209,12 +209,23 @@
     (assoc query-action :database_id database-id)
     query-action))
 
+(defn- check-query
+  "Throws a 400 unless the query of `query-action` is empty or native."
+  [{query :dataset_query}]
+  (when (and (map? query)
+             (seq query)
+             (not (lib/native-only-query? (lib-be/normalize-query query))))
+    (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400}))))
+
 (t2/define-before-insert :model/QueryAction
   [query-action]
+  (check-query query-action)
   (set-query-database query-action))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
+  (when (contains? (t2/changes query-action) :dataset_query)
+    (check-query query-action))
   (set-query-database query-action))
 
 (defn- check-implicit-action-table
@@ -288,7 +299,10 @@
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
 
     (and (= read-or-write :write)
-         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
+         (nil? collection-id)
+         (not (if-let [id (:id action)]
+                (remote-sync/can-write? :model/Action id)
+                (not (remote-sync/read-only?)))))
     #{"___no-remote-sync-access"}
 
     (nil? collection-id)
@@ -378,7 +392,7 @@
                                     (not= (:collection_id updates) (:collection_id existing-action))
                                     (:collection_id updates))]
         (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
-      (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
+      (actions.db/action id))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -689,10 +703,9 @@
 
 (defmethod serialization/spec :model/Action [_]
   {:schema    ::actions.schema/external-action
-   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
+   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid :type]
    :skip      [:public_uuid_prefix]
-   :transform {:type                   serialization/keyword-transform
-               :creator_id             serialization/user-transform
+   :transform {:creator_id             serialization/user-transform
                :made_public_by_id      serialization/user-transform
                :collection_id          (serialization/fk-transform :model/Collection)
                :model_id               (serialization/fk-transform :model/Card)
@@ -740,7 +753,7 @@
                          [[:model/Collection collection-id]])
                        (when-let [model-id (:model_id action)]
                          [[:model/Card model-id]])
-                       (when (= (:type action) "query")
+                       (when (= (keyword (:type action)) :query)
                          (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
         entities))
 
@@ -759,3 +772,16 @@
 
 (defmethod serialization/before-load :model/Action [_ items]
   (filterv #(not= "http" (some-> % :entity :type name)) items))
+
+(defmethod remote-sync/spec :model/Action
+  [_model]
+  {:synced-items         actions.db/synced-action-items
+   :synced-filter-clause actions.db/synced-actions-clause})
+
+(defmethod remote-sync/spec :model/QueryAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})
+
+(defmethod remote-sync/spec :model/ImplicitAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})

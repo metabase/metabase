@@ -1,5 +1,8 @@
+import {
+  getVariableTemplateTags,
+  setTemplateTag,
+} from "metabase/querying/native";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   Card,
@@ -7,7 +10,6 @@ import type {
   InputSettingType,
   Parameter,
   ParameterType,
-  TemplateTag,
   TemplateTagType,
   VisualizationSettings,
   WritebackQueryAction,
@@ -54,24 +56,16 @@ export const setTemplateTagTypesFromFieldSettings = (
   settings: ActionFormSettings,
 ): Question => {
   const fields = settings.fields || {};
-  // Unjustified type cast. FIXME
-  const query = question.legacyNativeQuery() as NativeQuery;
-  let tempQuestion = question.clone();
-
-  query.variableTemplateTags().forEach((tag: TemplateTag) => {
-    // Unjustified type cast. FIXME
-    const currentQuery = tempQuestion.legacyNativeQuery() as NativeQuery;
+  const query = question.query();
+  const newQuery = getVariableTemplateTags(query).reduce((query, tag) => {
     const fieldType = fields[tag.id]?.fieldType ?? "string";
-    const nextTag = {
+    return setTemplateTag(query, {
       ...tag,
       type: getTagTypeFromFieldSettings(fieldType),
-    };
-    tempQuestion = tempQuestion.setLegacyQuery(
-      currentQuery.setTemplateTag(tag.name, nextTag),
-    );
-  });
+    });
+  }, query);
 
-  return tempQuestion;
+  return question.setQuery(newQuery);
 };
 
 export const setParameterTypesFromFieldSettings = (

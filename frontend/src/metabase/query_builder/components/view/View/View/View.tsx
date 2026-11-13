@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import cx from "classnames";
 import { type ComponentProps, forwardRef } from "react";
 import { match } from "ts-pattern";

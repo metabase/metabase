@@ -25,6 +25,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -34,6 +35,15 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(defn- init!
+  "[[driver/init-workspace-isolation!]]. Postgres init refuses a cluster where PUBLIC can create objects in any
+  database, the default in a cluster created before Postgres 15 or upgraded from one, and the shared test cluster is
+  not these tests' to change: metabase.driver.postgres.workspace-test covers that check against a database of its
+  own."
+  [driver database workspace]
+  (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+    (driver/init-workspace-isolation! driver database workspace)))
 
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
@@ -357,7 +367,7 @@
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out-schema      (:schema workspace)
                 out             (qualify driver out-schema out-name)]
@@ -528,8 +538,8 @@
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-b src-b-name)
                                           " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database ws-a)
-          (driver/init-workspace-isolation! driver database ws-b)
+          (init! driver database ws-a)
+          (init! driver database ws-b)
           (let [user-a-spec  (workspace-user-spec driver details ws-a)
                 user-b-spec  (workspace-user-spec driver details ws-b)
                 out-a-schema (:schema ws-a)
@@ -645,7 +655,7 @@
           ;; Pre-create the output namespace at exactly the name init will target,
           ;; before init runs.
           (maybe-create-input-namespace! admin-spec driver database out-schema)
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database workspace
@@ -709,7 +719,7 @@
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! driver database workspace
@@ -821,7 +831,7 @@
           (reset! second-db-created? true)
           (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
             (jdbc/execute! admin-spec [sql]))
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
@@ -912,7 +922,7 @@
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (driver/grant-workspace-read-access! driver database workspace
                                                [in-schema])
           (testing "no leakage to default principal after init+grant"
@@ -1008,7 +1018,7 @@
             ;; with even if init never ran or only partially succeeded.
             ws-a       (with-isolation-details driver database ws-a)]
         (try
-          (driver/init-workspace-isolation! driver database ws-a)
+          (init! driver database ws-a)
           ;; MySQL: the workspace user's JDBC handshake needs access to the
           ;; bound DB (see [[reuse-bound-db-as-input?]]), which comes from a
           ;; read grant.
@@ -1041,9 +1051,11 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             (driver/init-workspace-isolation!
-                              driver low-priv-db
-                              (with-isolation-details driver low-priv-db ws-b))
+                             ;; past Postgres's CREATEROLE precondition, so that CREATE USER itself runs and fails
+                             (mt/with-dynamic-fn-redefs [postgres/check-admin-login-privileges! (constantly nil)]
+                               (init!
+                                driver low-priv-db
+                                (with-isolation-details driver low-priv-db ws-b)))
                              nil
                              (catch Throwable t t)))]
               (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
@@ -1096,15 +1108,13 @@
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
                               driver)))))))))
 
-(deftest ^:synchronized reprovision-resets-workspace-password-test
-  ;; A workspace user can survive a failed teardown (the row is kept and later
-  ;; re-provisioned). Identifiers are deterministic but the password is random
-  ;; per provisioning attempt, so init must reset the surviving user's password
-  ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
-  ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (mt/normal-drivers-with-feature :workspace))
-    (testing "re-running init for the same workspace id resets the user's password"
+(deftest ^:synchronized reinit-refuses-the-surviving-user-test
+  ;; Identifiers are deterministic, so a second init for the same workspace id finds the user the first one made. That
+  ;; user may belong to another parent restored from the same backup, so init refuses it with a 409 that tells the
+  ;; caller not to clean up, and leaves it as it was. A user that survived a failed teardown is removed by running
+  ;; destroy again, not by re-provisioning over it.
+  (mt/test-drivers (filter #{:postgres} (mt/normal-drivers-with-feature :workspace))
+    (testing "re-running init for the same workspace id refuses the existing user and leaves it unchanged"
       (let [driver    driver/*driver*
             database  (mt/db)
             details   (:details database)
@@ -1115,21 +1125,18 @@
             first-ws  (with-isolation-details driver database workspace)
             second-ws (with-isolation-details driver database workspace)]
         (try
-          (driver/init-workspace-isolation! driver database first-ws)
-          (driver/init-workspace-isolation! driver database second-ws)
-          ;; MySQL: the workspace user's JDBC handshake needs access to the
-          ;; bound DB (see [[reuse-bound-db-as-input?]]).
-          (when (reuse-bound-db-as-input? driver)
-            (driver/grant-workspace-read-access! driver database second-ws
-                                                 [(-> database :details :db)]))
-          (testing "the credentials persisted by the second init authenticate"
+          (init! driver database first-ws)
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (init! driver database second-ws)))]
+            (is (= {:status-code 409, :workspace/cleanup? false}
+                   (select-keys (ex-data e) [:status-code :workspace/cleanup?]))))
+          (testing "the credentials persisted by the first init still authenticate"
             (is (= [{:one 1}]
-                   (jdbc/query (workspace-user-spec driver details second-ws)
+                   (jdbc/query (workspace-user-spec driver details first-ws)
                                ["SELECT 1 AS one"]))))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database second-ws)
+            (try (driver/destroy-workspace-isolation! driver database first-ws)
                  (catch Throwable t
-                   (log/warnf t "destroy-workspace-isolation! failed for %s during password-reset test cleanup"
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during re-init test cleanup"
                               driver)))))))))
 
 (deftest ^:synchronized grant-failure-is-not-a-batch-envelope-test

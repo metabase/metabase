@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 
@@ -26,8 +27,11 @@ const mockOriginalCard = createMockCard({
   type: "question",
 });
 
-const mockQuestion = new Question(mockCard);
-const mockOriginalQuestion = new Question(mockOriginalCard);
+const mockQuestion = new Question(mockCard, createMockMetadata());
+const mockOriginalQuestion = new Question(
+  mockOriginalCard,
+  createMockMetadata(),
+);
 
 describe("SaveQuestionForm utils", () => {
   describe("createQuestion", () => {
@@ -206,6 +210,7 @@ describe("SaveQuestionForm utils", () => {
     it("should keep the question's own collection over a suggested dashboard (#51851)", () => {
       const question = new Question(
         createMockCard({ collection_id: 7, dashboard_id: undefined }),
+        createMockMetadata(),
       );
 
       const result = getInitialValues(null, question, 42, 10);
@@ -217,6 +222,7 @@ describe("SaveQuestionForm utils", () => {
     it("should suggest a dashboard when the question's collection id is null", () => {
       const question = new Question(
         createMockCard({ collection_id: null, dashboard_id: undefined }),
+        createMockMetadata(),
       );
 
       const result = getInitialValues(null, question, 42, 10);

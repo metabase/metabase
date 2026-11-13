@@ -7,6 +7,79 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
+  instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
+  **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
+
+- The setting `agent-api-enabled?`, which turned the Agent API on and off, no longer has an effect, with no
+  deprecation period. Its value does not carry over: an instance that had the Agent API on has it off after the
+  upgrade. To turn the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+  The old setting stays defined as a stub, so that a client, a config file or a serialization export that still
+  holds it does not fail.
+  - `GET /api/session/properties` and `GET /api/setting` no longer return `agent-api-enabled?`.
+  - `PUT /api/setting/:key` with the key `agent-api-enabled?`, and `PUT /api/setting` with that key, still answer
+    an admin with `204 No Content`. They store nothing, and the server log says to use
+    `deprecated-agent-api-enabled?`.
+  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `410 Gone` and the
+    removal message, and any other user with `403 Forbidden`.
+  - The environment variable `MB_AGENT_API_ENABLED` is ignored. An `agent-api-enabled?` key in a config file stores
+    nothing and logs the same message. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false`
+    holds it off with `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence
+    over the value that an admin sets.
+  - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
+    imports; the key has no effect.
+
+- `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
+  run it with `POST /api/ee/transform-test/:id/run`.
+
+- `POST /api/ee/remote-sync/create-branch` has been removed. `POST /api/ee/remote-sync/stash` creates the branch
+  `new_branch` at the version of the last sync, pushes the synced content of the instance to it and syncs with it.
+
+- The items of `GET /api/ee/remote-sync/dirty` are closed maps with `id`, `name`, `model` and `sync_status`, and, when
+  they apply, `collection` (the collection the change is in, with its `effective_ancestors`) and `parent` (the entity the
+  change shows within, such as the table of a segment). They no longer have `collection_id`, `created_at`, `updated_at`,
+  `authority_level`, `display`, `query_type`, `description`, `table_id`, `table_name` or `card_id`.
+
+- `POST /api/revision/revert` with `entity` `transform-test` needs the Transforms Testing premium feature, as the
+  `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
+  `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
+
+- Data apps name their slug and their display name as their `data_app.yaml` does: `slug` holds the slug that
+  `name` held, and `name` holds the display name that `display_name` held. The `/api/ee/apps` endpoints return `slug` and
+  `name`, and a data app node of the dependency endpoints has `slug` and `name`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
+  `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test whose output has two columns of one name with the
+  `error-code` `transform-test.duplicate-output-columns` in place of `transform-test.query-failed`. The status stays
+  `422`. On a database that ignores case in column names (MySQL, MariaDB, SQL Server, Redshift), two names that differ
+  only in case are one name.
+
+- `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
+  `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
+  `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
+  every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. Deleting
+  a test through Metabase sets `test_id` to `null` on its runs. A delete outside Metabase (raw SQL, a database cascade)
+  leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
+  the run started, so such a run is never listed or returned as `last_run`.
+
+- `POST /api/ee/transform-test/:id/run` needs native query access to the transform's source database, as well as
+  read access to the test and its transform. Users without native query access get `403 Forbidden`.
+
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
+
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
   `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,
@@ -48,6 +121,9 @@ summary: Breaking changes to the Metabase API, listed by release.
     - `POST /api/card/:id/query`
   - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
     breakouts, as it does without the flag, instead of returning a single aggregated value.
+
+- The sandbox host used by custom visualizations and data apps is now at
+  `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
 
 ## Metabase 0.65.0
 

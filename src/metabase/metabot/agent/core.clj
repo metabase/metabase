@@ -28,6 +28,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -394,12 +395,14 @@
       ;; same turn by the tool itself, see edit-chart-tool) can carry
       ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
       ;; structured-output doesn't know about; a full replace would drop them.
+      ;; The query comes from memory when it holds one under that id: queries are stored before charts, so a SQL
+      ;; edit later in the same response is already there, and the chart must show the edited query.
       (memory/set-chart mem
                         chart-id
                         (merge (get-in mem [:state :charts chart-id])
                                {:chart_id chart-id
                                 :query_id query-id
-                                :queries [query]
+                                :queries [(get-in mem [:state :queries query-id] query)]
                                 :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))
@@ -517,12 +520,12 @@
        acc
        (update acc :charts merge
                (into {}
-                     (map (comp
-                           (juxt :chart_id identity)
-                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
-                           (partial chart-config->chart
+                     (comp
+                      ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                      (map (partial chart-config->chart
                                     (str id)
-                                    (first (extract-query-from-context-item item)))))
+                                    (first (extract-query-from-context-item item))))
+                      (u/index-by :chart_id))
                      chart_configs))))
    state
    (:user_is_viewing context)))
@@ -602,13 +605,20 @@
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
         ;;
-        ;; The show_chart argument only does anything alongside run_query, so a turn without
-        ;; run_query declares construct_notebook_query as it was before the argument existed.
-        ;; `without-show-chart` edits the entry's `:schema`, which `->entries` synthesises in the
-        ;; same `[:=> [:cat args] out]` shape it read off the var before.
-        tools        (update-vals (cond-> (tools/->entries (vals base-tools) memory-atom metabot profile-id)
-                                    (not (contains? base-tools "run_query"))
-                                    (m/update-existing "construct_notebook_query" tools/without-show-chart))
+        ;; The show_chart argument does nothing unless run_query can read the query's results, so a turn where it
+        ;; can't declares the query tools without it. The notebook builder needs run_query; the SQL tools also need
+        ;; SQL execution.
+        ;; Removing it edits the `[:=> [:cat args] out]` `:schema` that `->entries` synthesises.
+        run-query?   (contains? base-tools "run_query")
+        no-chart-arg (cond-> #{}
+                       (not run-query?)
+                       (conj "construct_notebook_query")
+
+                       (not (and run-query? (scope/sql-execution-allowed?)))
+                       (into tools/sql-query-tool-names))
+        tools        (update-vals (reduce #(m/update-existing %1 %2 tools/without-show-chart)
+                                          (tools/->entries (vals base-tools) memory-atom metabot profile-id)
+                                          no-chart-arg)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
@@ -763,7 +773,7 @@
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 15)
+          max-iter           (:max-iterations profile 20)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
@@ -963,7 +973,11 @@
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
+                      metabot.perms/*cache*                    (atom {})
+                      ;; The tool runtime binds these for each tool call too. Bound for the whole turn, so the
+                      ;; viewing context built outside a tool call follows `use_verified_content` as the tools do.
+                      shared/*metabot*                         (:metabot opts)
+                      shared/*profile-id*                      profile-id]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream

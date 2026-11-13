@@ -79,15 +79,17 @@ export function useGenerateExpression({
       // status, so that the AI uses real values.
       const columnValues = Object.fromEntries(
         await Promise.all(
-          availableColumns.map(async (column, index) => {
-            const values = hasTextValues(column)
-              ? await getColumnValues(column, "", MAX_COLUMN_VALUES + 1)
-              : [];
-            return [
-              columns[index],
-              values.length <= MAX_COLUMN_VALUES ? values : [],
-            ];
-          }),
+          availableColumns.map(
+            async (column, index): Promise<[string, string[]]> => {
+              const values = hasTextValues(column)
+                ? await getColumnValues(column, "", MAX_COLUMN_VALUES + 1)
+                : [];
+              return [
+                columns[index],
+                values.length <= MAX_COLUMN_VALUES ? values : [],
+              ];
+            },
+          ),
         ),
       );
       const previousAttempts: { expression: string; error: string }[] = [];

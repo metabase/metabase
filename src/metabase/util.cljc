@@ -19,13 +19,13 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -179,11 +179,8 @@
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
-  (walk/postwalk
-   #(if (map? %)
-      (m/map-keys f %)
-      %)
-   m))
+  (match/replace-all m
+    #'map? (m/map-keys f &match)))
 
 (defn trimmed-string
   "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
@@ -598,8 +595,18 @@
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 (def ^java.util.regex.Pattern uuid-regex
-  "A regular expression for matching canonical string representations of UUIDs."
+  "A regular expression for matching canonical lowercase string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+(defn uuid-string?
+  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
+  [s]
+  ;; On the JVM, `parse-uuid` and `UUID/fromString` accept any five dash-separated groups of hex digits.
+  ;; Case is ignored because some callers check values that users type, such as ClickHouse filter values.
+  ;; Checking the length first avoids lower-casing long input.
+  (boolean (and (string? s)
+                (= 36 (count s))
+                (re-matches uuid-regex (lower-case-en s)))))
 
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
@@ -663,9 +670,13 @@
      (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
      ;; -> {:a 100}"
   [m ks]
-  (into {} (for [k     ks
-                 :when (some? (get m k))]
-             {k (get m k)})))
+  (persistent!
+   (reduce (fn [acc k]
+             (let [v (get m k)]
+               (cond-> acc
+                 (some? v) (assoc! k v))))
+           (transient {})
+           ks)))
 
 (defn select-keys-when
   "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`

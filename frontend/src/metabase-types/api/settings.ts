@@ -50,6 +50,7 @@ export const engineKeys = [
   "druid-jdbc",
   "druid",
   "mongo",
+  "motherduck",
   "mysql",
   "oracle",
   "postgres",
@@ -594,10 +595,14 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  /** Origin, on a host name of its own, that data apps are served from (MB_ISOLATED_ORIGIN); null when unset (same-origin) or unusable (data apps are refused). */
+  "isolated-origin": string | null;
+  /** True when MB_ISOLATED_ORIGIN is set to a value that can't be used, which turns data apps off. */
+  "isolated-origin-misconfigured?": boolean;
   "csp-img-allowed-hosts": string;
   "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
-  "agent-api-enabled?": boolean;
+  "deprecated-agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "metaplow-tracking-enabled": boolean;
@@ -816,7 +821,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-branch"?: string | null;
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
-  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
