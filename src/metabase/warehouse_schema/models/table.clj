@@ -370,16 +370,18 @@
   read-only instance syncs it."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (remote-sync/can-write? :model/TableUserSettings (:id instance))
+  (and (collection/remote-sync-writable-table? instance)
        (mi/superuser?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
   "Whether the current user can change the metadata of each of `tables`."
   [_model k tables]
-  (for [table tables]
-    (when table
-      (check-permission-keys table)
-      (assoc table k (boolean (current-user-can-write-table? table))))))
+  (let [publication (when (remote-sync/read-only?)
+                      (warehouse-schema.db/table-publication-columns (into [] (comp (keep :id) (distinct)) tables)))]
+    (for [table tables]
+      (when table
+        (check-permission-keys table)
+        (assoc table k (boolean (current-user-can-write-table? (merge table (get publication (:id table))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.

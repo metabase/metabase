@@ -144,16 +144,16 @@
         (vary-meta snippet assoc :can_read (contains? readable (:id snippet)))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
-  "Whether the current user can write each of `snippets`, which remote sync has to let be written, answered together."
+  "Whether the current user can write each of `snippets`, none on an instance remote sync keeps read-only, answered
+  together."
   [_model _k snippets]
   (run! #(when % (check-permission-keys %)) snippets)
-  (let [rows          (remove nil? snippets)
-        writable      (snippet.perms/permitted-snippet-ids rows :write)
-        sync-writable (native-query-snippets.db/writable-snippet-ids (mapv :id rows))]
+  (let [writable (if (remote-sync/read-only?)
+                   #{}
+                   (snippet.perms/permitted-snippet-ids (remove nil? snippets) :write))]
     (for [snippet snippets]
       (when snippet
-        (assoc snippet :can_write (and (contains? writable (:id snippet))
-                                       (contains? sync-writable (:id snippet))))))))
+        (assoc snippet :can_write (contains? writable (:id snippet)))))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
   [model snippet]
@@ -164,7 +164,7 @@
   [snippet changes]
   (and (snippet.perms/can-update? snippet changes)
        (or (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes))
-           (remote-sync/can-write? :model/NativeQuerySnippet (:id snippet)))))
+           (not (remote-sync/read-only?)))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 

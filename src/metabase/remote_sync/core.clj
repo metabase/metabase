@@ -14,9 +14,6 @@
  [remote-sync.spec
   spec]
  [remote-sync.synced
-  can-write-filter-clause
-  can-write?
-  do-with-read-only-pks-cache
   read-only?
   synced-changes?
   synced-models

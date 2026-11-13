@@ -134,7 +134,7 @@
   (assoc app k
          (boolean
           (and api/*is-superuser?*
-               (remote-sync/can-write? :model/DataApp (:id app))))))
+               (not (remote-sync/read-only?))))))
 
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
@@ -145,7 +145,7 @@
   [app changes]
   (and api/*is-superuser?*
        (or (not (remote-sync/synced-changes? :model/DataApp app changes))
-           (remote-sync/can-write? :model/DataApp (:id app)))))
+           (not (remote-sync/read-only?)))))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.

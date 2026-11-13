@@ -81,7 +81,7 @@
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
+         (collection/remote-sync-writable-table? table))))
 
 ;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
@@ -92,7 +92,7 @@
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
+         (collection/remote-sync-writable-table? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
   "Batched hydration for :can_write on measures, hydrating their tables first."

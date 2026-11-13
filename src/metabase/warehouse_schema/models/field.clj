@@ -4,11 +4,11 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -219,7 +219,7 @@
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
+    (and (collection/remote-sync-writable-table? table)
          (mi/superuser?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]

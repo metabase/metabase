@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -61,7 +62,7 @@
                    :model/Card       card   {:collection_id (:id synced)}]
       (testing "without remote sync, every row can be written"
         (is (false? (remote-sync/read-only?)))
-        (is (true? (remote-sync/can-write? :model/Card (:id card))))))))
+        (is (true? (mt/with-test-user :crowberto (mi/can-write? (t2/hydrate card :can_write)))))))))
 
 (deftest synced-name-test
   (testing "exported entities are named by their name, and glossary entries by their term"
