@@ -1914,6 +1914,151 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     });
   });
 
+  it("records no selection when a new question is saved while the timelines fail to load", async () => {
+    fetchMock.get("path:/api/timeline", {
+      status: 500,
+      body: { message: "Timelines are unavailable" },
+    });
+    setupCardCreateEndpoint();
+    fetchMock.get(
+      /\/api\/card\/\d+\/query_metadata/,
+      createMockCardQueryMetadata(),
+    );
+    await setup({
+      card: createMockUnsavedCard({
+        dataset_query: createCountByCreatedAtCard("month").dataset_query,
+        display: "line",
+      }),
+      dataset: MONTHLY_DATASET,
+    });
+
+    await saveQuestion();
+
+    await waitFor(() => {
+      expect(getRequestBodies("POST", "/api/card")).toHaveLength(1);
+    });
+    const [{ visualization_settings }] = getRequestBodies("POST", "/api/card");
+    expect(visualization_settings).not.toHaveProperty([
+      "timeline.selected_timeline_ids",
+    ]);
+    expect(visualization_settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
+    expect(
+      fetchMock.callHistory.called("path:/api/timeline", { method: "GET" }),
+    ).toBe(true);
+  });
+
+  it("keeps a timeline added later off a question saved with no timelines, until the user turns it on", async () => {
+    const migration = createTimeline({ name: "Migration seasons" }, [
+      { name: "Swallows return", timestamp: "2027-04-20T00:00:00Z" },
+      { name: "Swifts return", timestamp: "2028-08-20T00:00:00Z" },
+    ]);
+    setupTimelineBackend([migration]);
+    const card = createCountByCreatedAtCard("year", {
+      visualization_settings: { "timeline.selected_timeline_ids": [] },
+    });
+    setupCardUpdateEndpoint(card);
+    await setup({ card, dataset: YEARLY_DATASET });
+
+    const sidebar = await openEventsPanel();
+    await within(sidebar).findByText("Migration seasons");
+    expect(getTimelineCheckbox("Migration seasons")).not.toBeChecked();
+    expect(queryEventChip("Swallows return")).not.toBeInTheDocument();
+    expect(queryEventChip("Swifts return")).not.toBeInTheDocument();
+
+    await userEvent.click(getTimelineCheckbox("Migration seasons"));
+
+    expect(await findEventChip("Swallows return")).toBeInTheDocument();
+    expect(await findEventChip("Swifts return")).toBeInTheDocument();
+    await saveQuestion();
+    expect(getRequestBodies("PUT", "/api/card/7")).toEqual([
+      expect.objectContaining({
+        visualization_settings: expect.objectContaining({
+          "timeline.selected_timeline_ids": [migration.id],
+          "timeline.excluded_timeline_event_ids": [],
+        }),
+      }),
+    ]);
+  });
+
+  it("discards unsaved event choices when the saved question is opened again", async () => {
+    const migration = createTimeline({ name: "Migration seasons" }, [
+      { name: "Swallows return", timestamp: "2027-04-20T00:00:00Z" },
+      { name: "Swifts return", timestamp: "2028-08-20T00:00:00Z" },
+    ]);
+    setupTimelineBackend([migration]);
+    const card = createCountByCreatedAtCard("year", {
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [migration.id],
+      },
+    });
+    setupCardUpdateEndpoint(card);
+    const { router } = await setup({ card, dataset: YEARLY_DATASET });
+    expect(await findEventChip("Swallows return")).toBeInTheDocument();
+
+    await openEventsPanel();
+    await userEvent.click(getTimelineCheckbox("Migration seasons"));
+    await waitFor(() => {
+      expect(queryEventChip("Swallows return")).not.toBeInTheDocument();
+    });
+    expect(queryEventChip("Swifts return")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("qb-header")).getByRole("button", {
+        name: "Save",
+      }),
+    ).toBeInTheDocument();
+
+    // reopen the question in the same app, without saving
+    act(() => {
+      router.navigate("/redirect");
+    });
+    expect(screen.queryByTestId("query-builder-root")).not.toBeInTheDocument();
+    act(() => {
+      router.navigate(`/question/${card.id}`);
+    });
+
+    expect(await findEventChip("Swallows return")).toBeInTheDocument();
+    expect(await findEventChip("Swifts return")).toBeInTheDocument();
+    expect(getRequestBodies("PUT", "/api/card/7")).toEqual([]);
+  });
+
+  it("does not record the collection's timelines when saving an unrelated chart change", async () => {
+    setupTimelineBackend([
+      createTimeline({ name: "Migration seasons" }, [
+        { name: "Swallows return", timestamp: "2027-04-20T00:00:00Z" },
+        { name: "Swifts return", timestamp: "2028-08-20T00:00:00Z" },
+      ]),
+    ]);
+    const card = createCountByCreatedAtCard("year");
+    setupCardUpdateEndpoint(card);
+    await setup({ card, dataset: YEARLY_DATASET });
+
+    const sidebar = await openEventsPanel();
+    await within(sidebar).findByText("Migration seasons");
+    expect(getTimelineCheckbox("Migration seasons")).not.toBeChecked();
+    expect(queryEventChip("Swallows return")).not.toBeInTheDocument();
+    expect(queryEventChip("Swifts return")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("viz-settings-button"));
+    const settingsSidebar = await screen.findByTestId("chartsettings-sidebar");
+    await userEvent.click(within(settingsSidebar).getByText("Display"));
+    await userEvent.click(
+      within(settingsSidebar).getByText("Show values on data points"),
+    );
+    await saveQuestion();
+
+    const [{ visualization_settings }] = getRequestBodies("PUT", "/api/card/7");
+    expect(visualization_settings).toMatchObject({ "graph.show_values": true });
+    expect(visualization_settings).not.toHaveProperty([
+      "timeline.selected_timeline_ids",
+    ]);
+    expect(visualization_settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
+    expect(queryEventChip("Swallows return")).not.toBeInTheDocument();
+  });
+
   it("renders markdown in an event description", async () => {
     setupTimelineBackend([
       createTimeline({ name: "Releases" }, [

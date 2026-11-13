@@ -282,11 +282,37 @@ describe("DashCard", () => {
 
   describe("timeline event availability", () => {
     it.each([
-      { name: "a supported chart", display: "line", eventsVisible: true },
-      { name: "an unsupported chart", display: "table", eventsVisible: false },
+      {
+        name: "a supported chart",
+        display: "line",
+        selection: { "timeline.selected_timeline_ids": [10] },
+        eventsVisible: true,
+        menuVisible: true,
+      },
+      {
+        name: "an unsupported chart",
+        display: "table",
+        selection: { "timeline.selected_timeline_ids": [10] },
+        eventsVisible: false,
+        menuVisible: false,
+      },
+      {
+        name: "a supported chart whose question never recorded events",
+        display: "line",
+        selection: {},
+        eventsVisible: false,
+        menuVisible: true,
+      },
+      {
+        name: "a supported chart whose question was saved with no timelines",
+        display: "line",
+        selection: { "timeline.selected_timeline_ids": [] },
+        eventsVisible: false,
+        menuVisible: true,
+      },
     ] as const)(
       "shows the appropriate event controls for $name",
-      async ({ display, eventsVisible }) => {
+      async ({ display, selection, eventsVisible, menuVisible }) => {
         const user = userEvent.setup({
           advanceTimers: jest.advanceTimersByTime,
         });
@@ -301,7 +327,7 @@ describe("DashCard", () => {
         const card = createMockCard({
           name: "Bird sightings",
           display,
-          visualization_settings: { "timeline.selected_timeline_ids": [10] },
+          visualization_settings: selection,
         });
         const dashcard = createMockDashboardCard({ card });
         setup({
@@ -343,7 +369,7 @@ describe("DashCard", () => {
             }).length,
             eventBands: screen.queryAllByTestId("timeline-events-band").length,
           }).toEqual({
-            eventMenuItems: eventsVisible ? 1 : 0,
+            eventMenuItems: menuVisible ? 1 : 0,
             eventBands: eventsVisible ? 1 : 0,
           }),
         );
