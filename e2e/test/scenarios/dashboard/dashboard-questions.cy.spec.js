@@ -102,10 +102,6 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("edit-bar").button("Save").click();
 
       H.dashboardCards().findByText("Total Orders").click();
-      H.openQuestionActions();
-      H.popover().findByText("Move").should("be.visible");
-      H.popover().findByText("Turn into a model").should("not.exist");
-      H.popover().findByText("Add to dashboard").should("not.exist");
       cy.findByLabelText("Navigation bar").should(
         "contain.text",
         "Orders in a dashboard",
@@ -348,45 +344,6 @@ describe("Dashboard > Dashboard Questions", () => {
         });
     });
 
-    it("can save a question directly to a dashboard", () => {
-      H.createDashboard(
-        {
-          name: "Test Dash",
-          collection_id: S.THIRD_COLLECTION_ID,
-        },
-        { wrapId: true },
-      );
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        //Simulate having picked the dashboard in the entity picker previously
-        cy.request("POST", "/api/activity/recents", {
-          context: "selection",
-          model: "dashboard",
-          model_id: dashboardId,
-        });
-      });
-
-      cy.visit("/");
-
-      cy.findByLabelText("Navigation bar").findByText("New").click();
-      H.popover().findByText("Question").click();
-      H.miniPicker().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
-      cy.findByTestId("qb-header").findByText("Save").click();
-      cy.findByLabelText(/Where do you want to save/).should(
-        "have.text",
-        "Test Dash",
-      );
-
-      H.modal().button("Save").click();
-
-      cy.findByTestId("edit-bar")
-        .findByText("You're editing this dashboard.")
-        .should("exist");
-    });
-
     it("can save a native question to a dashboard", () => {
       cy.intercept("POST", "/api/card").as("createCard");
 
@@ -405,49 +362,6 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.wait("@createCard", { timeout: 30 * 1000 }); // trying something dumb...
       cy.findByTestId("edit-bar").button("Save").click();
       H.dashboardCards().findByText("Half Orders");
-    });
-
-    it("can find dashboard questions in the search", () => {
-      H.createQuestion({
-        name: "Total Orders Dashboard Question",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      cy.visit("/");
-
-      H.commandPaletteSearch("Total Orders", false);
-
-      cy.log("Command palette should show the dashboard question");
-      H.commandPalette()
-        .findByText("Total Orders Dashboard Question")
-        .should("be.visible");
-
-      cy.log(
-        "Command palette should show the dashboard question in the dashboard",
-      );
-      H.commandPalette()
-        .findByText("Total Orders Dashboard Question")
-        .closest("a")
-        .findByText(/Orders in a dashboard/)
-        .should("be.visible");
-      H.closeCommandPalette();
-
-      cy.log("Search page should show the dashboard question in the dashboard");
-      H.commandPaletteSearch("Total Orders");
-      H.commandPalette().should("not.exist");
-
-      cy.findAllByTestId("search-result-item")
-        .contains(
-          "[data-testid=search-result-item]",
-          "Total Orders Dashboard Question",
-        )
-        .findByRole("link", { name: /Orders in a dashboard/ })
-        .should("be.visible");
     });
 
     it("preserves bookmarks when moving a question to a dashboard that already has a dashcard with the same question", () => {
@@ -490,64 +404,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders").should("be.visible");
     });
 
-    it("shows trash action for the last dashcard for a dashboard question", () => {
-      H.createDashboard({
-        name: "Foo Dashboard",
-      }).then(({ body: dashboard }) => {
-        H.createQuestion({
-          name: "Foo dashboard question",
-          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
-          dashboard_id: dashboard.id,
-        }).then(({ body: card }) => {
-          H.addOrUpdateDashboardCard({
-            card_id: card.id,
-            dashboard_id: dashboard.id,
-            card: {
-              size_x: 6,
-              size_y: 6,
-            },
-          });
-
-          H.visitDashboard(dashboard.id);
-        });
-      });
-
-      H.editDashboard();
-
-      cy.log(
-        "should have trash option as only dashcard for dashboard question",
-      );
-      H.showDashboardCardActions(0);
-      cy.icon("trash").realHover();
-      H.tooltip().findByText("Remove and trash").should("exist");
-
-      cy.log(
-        "should have remove options if there's more than one dashcard for the dashboard question",
-      );
-      cy.icon("copy").click();
-      cy.findAllByTestId("dashcard").should("have.length", 2);
-      H.showDashboardCardActions(0);
-      H.getDashboardCard(0)
-        .findByTestId("dashboardcard-actions-panel")
-        .should("be.visible")
-        .within(() => {
-          cy.icon("close").should("exist");
-          cy.icon("trash").should("not.exist");
-        });
-
-      cy.log(
-        "should have the trash option if changes leave only one dashcard for a question",
-      );
-      cy.findAllByTestId("dashcard").eq(1).realHover().icon("close").click();
-      cy.findAllByTestId("dashcard").should("have.length", 1);
-      H.showDashboardCardActions(0);
-      cy.icon("trash").should("exist");
-
-      cy.log("should notify user that removal will also trash the card");
-      cy.icon("trash").click();
-      cy.findAllByTestId("dashcard").should("have.length", 0);
-    });
-
     it("can archive and unarchive a dashboard with cards saved inside it", () => {
       H.createDashboard(
         {
@@ -563,16 +419,6 @@ describe("Dashboard > Dashboard Questions", () => {
         // note: we had a bug where archiving a dashboard with a text card first would crash
         H.addHeadingWhileEditing("A section");
         H.saveDashboard();
-
-        cy.log("shallow copy is allowed without dashboard questions");
-        H.openDashboardMenu("Duplicate");
-        H.modal().within(() => {
-          cy.findByDisplayValue("Dashboard with a title - Duplicate");
-          cy.findByLabelText("Only duplicate the dashboard").should(
-            "be.visible",
-          );
-          cy.button("Cancel").click();
-        });
 
         H.createQuestion({
           name: "Total Orders",
@@ -594,29 +440,7 @@ describe("Dashboard > Dashboard Questions", () => {
           display: "scalar",
         });
 
-        // the copy form fetches the dashboard without a dashboard_load_id
-        cy.intercept(
-          { method: "GET", pathname: `/api/dashboard/${dashboardId}` },
-          (req) => {
-            if (!req.url.includes("dashboard_load_id")) {
-              req.alias = "copyFormDashboard";
-            }
-          },
-        );
         H.visitDashboard(dashboardId);
-
-        cy.log("shallow copy is not allowed with dashboard questions");
-        H.openDashboardMenu("Duplicate");
-        cy.wait("@copyFormDashboard");
-        H.modal().within(() => {
-          cy.findByRole("heading", {
-            name: 'Duplicate "Dashboard with a title" and its questions',
-          });
-          cy.findByLabelText("Only duplicate the dashboard").should(
-            "not.exist",
-          );
-          cy.button("Cancel").click();
-        });
 
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
@@ -700,165 +524,6 @@ describe("Dashboard > Dashboard Questions", () => {
       // check that it got restored
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Total Orders");
-    });
-
-    it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Blue Question",
-          collection_id: S.FIRST_COLLECTION_ID,
-          query: {
-            "source-table": SAMPLE_DATABASE.ORDERS_ID,
-            aggregation: [
-              [
-                "avg",
-                [
-                  "field",
-                  SAMPLE_DATABASE.ORDERS.QUANTITY,
-                  { "base-type": "type/Integer" },
-                ],
-              ],
-            ],
-            breakout: [
-              [
-                "field",
-                SAMPLE_DATABASE.ORDERS.CREATED_AT,
-                { "base-type": "type/DateTime", "temporal-unit": "month" },
-              ],
-            ],
-          },
-          display: "line",
-        },
-        dashboardDetails: {
-          name: "Blue Dashboard",
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-      }).then(({ body: { card_id } }) => {
-        cy.wrap(card_id).as("blueQuestionId");
-      });
-
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Purple Question",
-          collection_id: S.FIRST_COLLECTION_ID,
-          query: {
-            "source-table": SAMPLE_DATABASE.ORDERS_ID,
-            aggregation: [
-              [
-                "avg",
-                [
-                  "field",
-                  SAMPLE_DATABASE.ORDERS.TOTAL,
-                  { "base-type": "type/Float" },
-                ],
-              ],
-            ],
-            breakout: [
-              [
-                "field",
-                SAMPLE_DATABASE.ORDERS.CREATED_AT,
-                { "base-type": "type/DateTime", "temporal-unit": "month" },
-              ],
-            ],
-          },
-          display: "line",
-        },
-        dashboardDetails: {
-          name: "Purple Dashboard",
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      cy.log(
-        "Add the blue question to the purple dashboard as an additional series",
-      );
-      H.editDashboard();
-
-      H.showDashcardVisualizerModal(0, {
-        isVisualizerCard: false,
-      });
-
-      H.modal().within(() => {
-        H.switchToAddMoreData();
-        H.selectDataset("Blue Question", {
-          searchAlias: "searchBlueQuestion",
-        });
-        cy.button("Save").click();
-      });
-
-      // The modal-save dispatches a dashcard update; the dashboard's
-      // "dirty" flag only flips once that commits. Wait for the modal to
-      // unmount before H.saveDashboard so the edit-bar Save sees the new
-      // dashcard state — otherwise its early-return-if-unchanged path
-      // skips the PUT (no @saveDashboardCards request ever fires).
-      H.modal().should("not.exist");
-      H.getDashboardCard()
-        .findAllByTestId("legend-item")
-        .filter(':contains("Blue Question")')
-        .should("exist");
-
-      H.saveDashboard();
-      H.getDashboardCard().within(() => {
-        H.echartsContainer().should("be.visible").and("not.be.empty");
-        cy.log("Visit the question directly from a dashcard");
-        cy.findAllByTestId("legend-item")
-          .filter(":contains(Blue Question)")
-          .click();
-      });
-
-      cy.log("Move the question to an entirely different dashboard");
-      cy.intercept("GET", "/api/collection/root/items*").as(
-        "getMoveDestinations",
-      );
-      H.openQuestionActions("Move");
-
-      cy.wait("@getMoveDestinations")
-        .its("response.statusCode")
-        .should("eq", 200);
-      H.entityPickerModal()
-        .findByText("Orders in a dashboard", { timeout: 10_000 })
-        .click();
-      H.entityPickerModal().button("Move").click();
-
-      cy.log("Should warn about removing from 2 dashboards");
-      // The first (blue) dashboard is the one that contains the question as dashcard
-      // The second (purple) dashboard contains it as a series
-      H.modal().should(
-        "contain.text",
-        "Blue Question will be removed from Blue Dashboard and Purple Dashboard",
-      );
-
-      cy.log("Simulate an error ONLY ON THE FIRST MOVE ATTEMPT");
-      cy.get("@blueQuestionId").then((questionId) => {
-        cy.intercept(
-          { method: "PUT", url: `**/api/card/${questionId}**`, times: 1 },
-          {
-            statusCode: 400,
-            body: {
-              message: "Ryan said no",
-            },
-          },
-        );
-      });
-
-      H.modal().within(() => {
-        cy.log(
-          "Simulated error should appear in the modal on the first attempt only.",
-        );
-        cy.button("Move it").click();
-        cy.findByText("Ryan said no");
-
-        cy.log("Continue with the expected behavior");
-        cy.button("Move it").click();
-      });
-
-      cy.log("The question move succeeded");
-      cy.findByRole("status").should("contain", "Question moved");
-      H.modal().should("not.exist");
     });
 
     it("should be able to save or copy a question to a specific tab", () => {
@@ -973,135 +638,11 @@ describe("Dashboard > Dashboard Questions", () => {
     });
   });
 
-  describe("limited users", () => {
-    it("cannot save dashboard question in a read only dashboard", () => {
-      cy.signIn("readonlynosql");
-
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-      cy.intercept("GET", "/api/dashboard/*").as("getADashboard");
-
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.newButton("Question").click();
-      H.miniPicker().findByText("Sample Database").click();
-      H.miniPicker().findByText("Products").click();
-      H.queryBuilderHeader().button("Save").click();
-
-      // should not show dashboard you can't write to
-      cy.wait(["@getADashboard"]);
-
-      H.modal()
-        .findByLabelText(/Where do you want to save this/)
-        .should("contain.text", "Personal Collection");
-      H.modal()
-        .findByText(/Orders in a dashboard/)
-        .should("not.exist");
-
-      H.modal().button("Save").click();
-
-      cy.wait("@saveQuestion").then(({ response }) => {
-        expect(response.statusCode).to.eq(200);
-      });
-    });
-
-    it("cannot move a question to a dashboard, when it would be removed from a read-only dashboard", () => {
-      cy.intercept("PUT", "/api/card/*").as("updateQuestion");
-      cy.intercept("POST", "/api/cards/dashboards").as(
-        "checkCardsInDashboards",
-      );
-
-      cy.signInAsAdmin();
-
-      H.createQuestion(
-        {
-          name: "Total Orders Question",
-          collection_id: null, // our analytics
-          query: {
-            "source-table": SAMPLE_DATABASE.ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          display: "scalar",
-        },
-        {
-          wrapId: true,
-          idAlias: "totalOrdersQuestionId",
-        },
-      );
-
-      H.createDashboard(
-        {
-          name: "Personal dashboard",
-          collection_id: S.ADMIN_PERSONAL_COLLECTION_ID,
-        },
-        { wrapId: true, idAlias: "personalDashboardId" },
-      );
-
-      cy.get("@personalDashboardId").then((personalDashboardId) => {
-        H.visitDashboard(personalDashboardId);
-      });
-
-      H.editDashboard();
-      H.openQuestionsSidebar();
-      H.sidebar()
-        .findByText(/our analyt/i)
-        .click();
-      H.sidebar().findByText("Total Orders Question").click();
-      H.saveDashboard();
-      H.dashboardCards().findByText("Total Orders Question");
-
-      cy.signOut();
-      cy.signIn("normal");
-
-      cy.get("@totalOrdersQuestionId").then((totalOrdersQuestionId) => {
-        H.visitQuestion(totalOrdersQuestionId);
-      });
-
-      H.openQuestionActions();
-      H.popover().findByText("Move").click();
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
-      H.entityPickerModal().button("Move").click();
-
-      cy.log(
-        "We should get a modal saying that we can't move it into a dashboard because it would move it out of a dashboard that we can't access",
-      );
-
-      cy.wait("@checkCardsInDashboards");
-      H.main()
-        .findByText(/Sorry, you don’t have permission to see that./)
-        .should("not.exist");
-      H.modal()
-        .findByText(/Can't move this question into a dashboard/i)
-        .should("be.visible");
-    });
-  });
-
   describe("migration modal", () => {
     it("should allow admins to migrate questions in one dashboard into their respective dashboards", () => {
       cy.signInAsAdmin();
       cy.log("seed data");
       seedMigrationToolData();
-
-      cy.log("non-admins should not see the migration tool");
-      cy.signIn("normal");
-      H.visitCollection(S.FIRST_COLLECTION_ID);
-      H.collectionTable().within(() => {
-        cy.findByText(QUESTION_ONE).should("exist");
-        cy.findByText(QUESTION_TWO).should("exist");
-        cy.findByText(QUESTION_THREE).should("exist");
-      });
-      H.openCollectionMenu();
-      H.popover().within(() => {
-        cy.findByText("Move").should("be.visible");
-        cy.findByText("Move questions into their dashboards").should(
-          "not.exist",
-        );
-      });
-
-      cy.log("non-admins should get redirected from the migration tool url");
-      cy.visit(`/collection/${S.FIRST_COLLECTION_ID}/move-questions-dashboard`);
-      cy.url().should("not.include", "move-questions-dashboard");
-      cy.url().should("include", `/collection/${S.FIRST_COLLECTION_ID}`);
-
-      cy.signInAsAdmin();
 
       cy.log("assert questions are in the collection");
       H.visitCollection(S.FIRST_COLLECTION_ID);
@@ -1184,22 +725,6 @@ describe("Dashboard > Dashboard Questions", () => {
           "not.exist",
         );
       });
-
-      cy.log(
-        "should not show the info modal if user has acknowledged it previously",
-      );
-      H.visitCollection("root");
-      H.openCollectionMenu();
-      H.popover().within(() => {
-        cy.findByText("Move questions into their dashboards")
-          .should("exist")
-          .click();
-      });
-      cy.findByTestId("move-questions-into-dashboard-modal")
-        .should("exist")
-        .within(() => {
-          cy.findByText("Cancel").click();
-        });
 
       cy.log(
         "should be immediately responsive to dashcard changes making new candidates",

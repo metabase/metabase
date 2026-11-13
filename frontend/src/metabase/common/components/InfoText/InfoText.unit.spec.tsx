@@ -113,6 +113,24 @@ describe("InfoText", () => {
       );
     });
 
+    it("shows a link to the dashboard for a dashboard question", async () => {
+      await setup({
+        model: "card",
+        resultProps: {
+          dashboard: {
+            id: 5,
+            name: "Orders in a dashboard",
+            moderation_status: null,
+          },
+        },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /Orders in a dashboard/ }),
+      ).toHaveAttribute("href", "/dashboard/5-orders-in-a-dashboard");
+      expect(screen.queryByText("Collection Name")).not.toBeInTheDocument();
+    });
+
     it("shows collection info for a collection", async () => {
       await setup({
         model: "collection",
