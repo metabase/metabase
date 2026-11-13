@@ -312,10 +312,9 @@
 (defn- call-outside-transaction
   "Call `thunk` with every transaction-scoped binding cleared, and return its result."
   [thunk]
-  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
-  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
-  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
-  ;; immediately rather than enqueue into this now-drained accumulator.
+  ;; A callback may start async work, such as a `future`, and that work must not inherit this transaction.
+  ;; It needs its own connection, because this one goes back to the pool when the callback returns.
+  ;; A do-after-commit it registers must run at once, because this accumulator has already been drained.
   ;; A thunk registered late runs on a thread that still has every binding of the finished transaction, so clear
   ;; the rest too: its before-commit callbacks have also run, and its state must not be mistaken for a live one.
   (binding [t2.conn/*current-connectable* nil

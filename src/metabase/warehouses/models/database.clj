@@ -427,8 +427,7 @@
           (recur))))))
 
 (def ^:private tombstone-chunk-size
-  "How many card ids share one [[metabase.search.core/after-commit!]] step when tombstoning a deleted
-  database's cards. Each step is caught and logged on its own, so a failed chunk costs only the ids in it."
+  "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
   1000)
 
 (t2/define-before-delete :model/Database
@@ -471,8 +470,9 @@
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))
       (apply search/after-commit! "database delete"
-             ;; after-commit! catches and logs each step on its own and still runs the rest, so chunking the
-             ;; tombstones into their own steps keeps a failed chunk from costing the ones after it.
+             ;; Each chunk is its own step, and after-commit! catches each step's failure separately.
+             ;; Without an ingestion worker a step deletes at once, so a failed chunk costs only its own ids.
+             ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
              (concat (for [chunk (partition-all tombstone-chunk-size gone)]
                        (fn [] (search/delete! :model/Card chunk)))
                      [(fn [] (search/reconcile-cascading-documents! cascading))]))))
