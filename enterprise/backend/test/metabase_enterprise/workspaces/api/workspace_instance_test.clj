@@ -173,12 +173,14 @@
 (deftest contract-version-header-every-route-test
   (testing "every workspace-instance route sends X-Metabase-Workspaces-Version: 2 on its success status, and on the 401"
     (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
-      (testing "POST /current 200"
-        (is (= "2" (version (mt/user-http-request-full-response
-                             :crowberto :post 200 "ee/workspace-instance/current"
-                             {:databases [{:database_id (mt/id) :schema "ws_hdr"}]})))))
-      (testing "DELETE /current 204"
-        (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204 "ee/workspace-instance/current")))))
+      ;; DELETE /current keeps each database's schema, so restore the test database's settings.
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+        (testing "POST /current 200"
+          (is (= "2" (version (mt/user-http-request-full-response
+                               :crowberto :post 200 "ee/workspace-instance/current"
+                               {:databases [{:database_id (mt/id) :schema "ws_hdr"}]})))))
+        (testing "DELETE /current 204"
+          (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204 "ee/workspace-instance/current"))))))
       (testing "GET /table-remappings 200"
         (is (= "2" (version (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-instance/table-remappings")))))
       (testing "401 from the auth wrapper"
