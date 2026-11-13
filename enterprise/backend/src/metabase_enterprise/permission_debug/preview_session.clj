@@ -29,8 +29,7 @@
    [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [ring.util.codec :as codec])
+   [metabase.util.log :as log])
   (:import
    (java.security MessageDigest)))
 
@@ -41,8 +40,6 @@
   "X-Metabase-Preview-Token")
 
 (def ^:private cookie-prefix "metabase.PREVIEW_SESSION.")
-
-(def ^:private host-cookie "metabase.PREVIEW_HOST_SESSION")
 
 (def ^:private code-lifetime-ms (* 60 1000))
 
@@ -170,47 +167,6 @@
   (end-sessions! admin-id [session-id])
   {(cookie-name session-id) cleared-cookie})
 
-(defn- safe-path?
-  "Whether `to` is a path on this host: a single leading slash, no backslash, no control character."
-  [to]
-  (boolean (and (string? to)
-                (re-matches #"/(?![/\\])[^\\\p{Cntrl}]*" to))))
-
-(defn- plain-refusal
-  [status message]
-  {:status  status
-   :headers {"Content-Type" "text/plain; charset=utf-8" "Cache-Control" "no-store"}
-   :body    message})
-
-(defenterprise preview-host-exchange
-  "EE implementation: the preview host's `GET /preview-session?code=…&to=<path>`. Redeems `code`, checks that the admin
-  session it was minted on is still live, sets the host-only preview cookie and redirects to `to`. Ends the session of
-  the preview cookie the request already carried, if the same admin started it."
-  :feature :advanced-permissions
-  [{:keys [query-string cookies]}]
-  (let [params                                            (some-> query-string codec/form-decode)
-        {:strs [code to]}                                 (when (map? params) params)
-        {:keys [admin-id admin-key-hash] :as entry}       (redeem-code! code)]
-    (cond
-      (not (safe-path? to))
-      (plain-refusal 400 "`to` must be a path on this host.")
-
-      (not (and entry (permission-debug.db/live-superuser-session? admin-key-hash admin-id)))
-      (plain-refusal 403 "This preview code is used, expired or unknown, or its admin signed out.")
-
-      :else
-      (let [older (some->> (get-in cookies [host-cookie :value]) not-empty (key-hash :host)
-                           permission-debug.db/preview-session :id)
-            _     (when older (end-sessions! admin-id [older]))
-            {:keys [session-key]} (create-session! :host entry)]
-        {:status  302
-         :headers {"Location" to "Cache-Control" "no-store"}
-         :cookies {host-cookie {:value     session-key
-                                :path      "/"
-                                :http-only true
-                                :same-site :lax}}
-         :body    ""}))))
-
 ;;; ------------------------------------------------ Requests ------------------------------------------------
 
 (defn- refusal
@@ -235,9 +191,8 @@
 
 (defenterprise preview-session-request
   "EE implementation: run a request that carries a preview session as its user, read-only, with the admin who started
-  it bound for the audit log, or refuse it (403, with an `error_code`). Never falls back to the admin: on the main
-  host the strategy picks the preview session only when the request carries a token. On the preview host, a page or
-  asset request without a preview cookie goes through signed out."
+  it bound for the audit log, or refuse it (403, with an `error_code`). Never falls back to the admin: the strategy
+  picks the preview session only when the request carries a token."
   :feature :advanced-permissions
   [{:keys [uri request-method] :as request}]
   (let [{:keys [session-key token host?]} (:metabase/preview-session request)
@@ -245,9 +200,6 @@
         row                               (some->> session-key (key-hash mode) permission-debug.db/preview-session)
         {:keys [admin-id admin-key-hash] :as owner} (some->> row :id (get @session-admins))]
     (cond
-      (and host? (nil? session-key) (not (str/starts-with? uri "/api/")))
-      {:request request}
-
       (or (nil? row) (nil? owner) (not= mode (:mode owner))
           (and (= :cookie mode) (not (matching-token? token (:anti_csrf_token row)))))
       (refusal "preview-session-invalid" "This preview session doesn't exist, or this isn't its token.")

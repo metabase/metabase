@@ -158,17 +158,6 @@ x.com")
   :export?    false
   :doc        false)
 
-;; TODO (proof of concept): no validation like [[isolated-origin]]'s; assumes a bare origin on another host name of the
-;; same site, such as http://preview.example.localhost:3001. Settable in the app DB too, so a running instance can
-;; take it without a restart.
-(defsetting permission-preview-origin
-  (deferred-tru "The address the permission troubleshooting page frames the app on, signed in as the previewed person only. On its host the session middleware reads only the preview cookie.")
-  :type       :string
-  :encryption :no
-  :visibility :admin
-  :export?    false
-  :doc        false)
-
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
   :encryption :when-encryption-key-set

@@ -12,7 +12,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -672,10 +671,6 @@
   data-app iframe: `'self'` when same-origin, the site URL when served from the isolated origin."
   [request]
   (cond
-    ;; the troubleshooting page (EE) on the site URL frames the preview host, and nothing else may
-    (mw.session/permission-preview-host-request? request)
-    :main-app
-
     ;; Both before the broader `embed?`, which `/embed/...` also matches.
     (request/embedded-data-app? request)
     :any
