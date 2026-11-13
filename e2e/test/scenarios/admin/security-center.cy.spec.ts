@@ -109,6 +109,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findAllByTestId("advisory-card")
         .first()
         .findByText("Critical RCE vulnerability")
+        .scrollIntoView()
         .should("be.visible");
 
       cy.log("Filter by severity");
