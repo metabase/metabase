@@ -31339,6 +31339,14 @@
         "required" : [ "status", "row_count" ],
         "type" : "object"
       },
+      "metabase.query-processor.streaming.json-export-rows" : {
+        "description" : "The body of a `json` export: one object per row, keyed by column title.",
+        "items" : {
+          "additionalProperties" : { },
+          "type" : "object"
+        },
+        "type" : "array"
+      },
       "metabase.security-center.schema.advisory-id" : {
         "minLength" : 1,
         "type" : "string"
@@ -36494,7 +36502,29 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40559,7 +40589,29 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43851,11 +43903,26 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
                 }
               }
             },
-            "description" : "Successful response"
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44365,7 +44432,29 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -58100,7 +58189,30 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "properties" : { },
+                    "type" : "object"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -58240,7 +58352,30 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "properties" : { },
+                    "type" : "object"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -68820,7 +68955,30 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "properties" : { },
+                    "type" : "object"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -69024,7 +69182,30 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "properties" : { },
+                    "type" : "object"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -69443,7 +69624,30 @@
         },
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
+                  }, {
+                    "properties" : { },
+                    "type" : "object"
+                  } ]
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Query results in the requested export format"
           },
           "4XX" : {
             "description" : "Client error response"
