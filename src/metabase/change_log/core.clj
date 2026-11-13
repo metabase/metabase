@@ -23,6 +23,7 @@
   dev and test. In production it goes ahead, and Metabase logs a warning instead of an entry.
 
   A write that skips the model (raw SQL, `t2/query`, `t2/update!` on the table name) logs its rows with [[log-rows!]].
+  The `:metabase/change-log-raw-write` lint reports such a write when the call names the table.
 
   Not logged:
 

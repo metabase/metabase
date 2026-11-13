@@ -657,20 +657,19 @@
 
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
-  Table with `table-id`. Returns the number of Fields cleared. The update bypasses the model, so it logs the rows to
-  the change log by hand."
+  Table with `table-id`. Returns the number of Fields cleared."
   [table-id :- ::lib.schema.id/table]
   (let [where [:and [:= :table_id table-id] (classifier-data-sensitivity-clause)]]
     (t2/with-transaction [_conn]
       (change-log/log-rows! :model/Field :update {:where where})
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
       (t2/query-one {:update (t2/table-name :model/Field)
                      :set    {:data_sensitivity nil}
                      :where  where}))))
 
 (mu/defn reset-classifier-data-sensitivity-for-database!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
-  Table of the Database with `database-id`. Returns the number of Fields cleared. The update bypasses the model, so it
-  logs the rows to the change log by hand."
+  Table of the Database with `database-id`. Returns the number of Fields cleared."
   [database-id :- ::lib.schema.id/database]
   (let [where [:and
                [:in :table_id ^:allow-subquery {:select [:id]
@@ -679,6 +678,7 @@
                (classifier-data-sensitivity-clause)]]
     (t2/with-transaction [_conn]
       (change-log/log-rows! :model/Field :update {:where where})
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
       (t2/query-one {:update (t2/table-name :model/Field)
                      :set    {:data_sensitivity nil}
                      :where  where}))))

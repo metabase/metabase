@@ -83,6 +83,8 @@
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
@@ -91,6 +93,8 @@
 (mu/defn delete-cards-for-database-returning-ids-reducible
   "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
   [database-id :- ::lib.schema.id/database]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (t2/reducible-query {:delete-from (t2/table-name :model/Card)
                        :where       [:= :database_id database-id]
                        :returning   [:id]}))
@@ -117,6 +121,8 @@
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (t2/query {:delete-from (t2/table-name :model/Card)
              :where       [:= :database_id database-id]}))
 

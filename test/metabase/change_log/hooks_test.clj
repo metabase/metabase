@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
@@ -438,6 +439,13 @@
              (set (filter #(isa? % :hook/change-log) models)))))
     (testing "both name only models"
       (is (empty? (remove models.resolution/model->namespace (concat logged-models unlogged-models)))))))
+
+(deftest lint-tables-test
+  (testing "the `:metabase/change-log-raw-write` lint knows each logged model and its table"
+    (is (= logged-models (set (keys toucan.db-ns/change-log-tables))))
+    (doseq [model (load-models!)
+            :when (logged-models model)]
+      (is (= (t2/table-name model) (toucan.db-ns/change-log-tables model))))))
 
 (deftest cascade-test
   (when config/ee-available?

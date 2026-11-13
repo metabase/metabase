@@ -394,11 +394,12 @@
 
 (mu/defn delete-pulse-channel-recipients-raw!
   "Delete the PulseChannelRecipients of the Users with `user-ids` on the PulseChannel with `channel-id`, without
-  running model hooks. It logs the deleted rows to the change log by hand."
+  running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
   (t2/with-transaction [_conn]
     (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
     (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!

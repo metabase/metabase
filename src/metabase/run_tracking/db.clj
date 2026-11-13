@@ -50,6 +50,7 @@
    active           :- ActivePredicate
    heartbeat-column :- :keyword
    ids              :- [:sequential ms/PositiveInt]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log covers no model that tracks runs
   (t2/query {:update (t2/table-name model)
              :set    {heartbeat-column :%now}
              :where  [:and (active-clause active) [:in :id ids]]}))
@@ -84,6 +85,7 @@
                 [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log covers no model that tracks runs
   (t2/query {:update (t2/table-name model)
              :set    terminal
              :where  [:and (active-clause active) [:in :id ids]]}))

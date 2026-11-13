@@ -43,6 +43,7 @@
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
   [card-id->timestamp :- [:map-of ::lib.schema.id/card Temporal]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
   (t2/query {:update [(t2/table-name :model/Card)]
              :where  [:in :id (keys card-id->timestamp)]
              :set    {:last_used_at (into [:case]

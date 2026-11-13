@@ -901,13 +901,13 @@
              {:order-by [[:id :asc]]}))
 
 (mu/defn link-card-to-conversation!
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`.
-  The update bypasses the model, so it logs the row to the change log by hand."
+  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`."
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
   (t2/with-transaction [_conn]
     (change-log/log-rows! :model/Card :update :id card-id)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
     (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
                                                          :metabot_chart_id        chart-id})))
 

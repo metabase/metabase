@@ -727,10 +727,11 @@
   (t2/update! :model/User :tenant_id [:not= nil] :is_active true {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn deactivate-all-tenants!
-  "Mark every tenant row inactive. The update bypasses the model, so it logs the rows to the change log by hand."
+  "Mark every tenant row inactive."
   []
   (t2/with-transaction [_conn]
     (change-log/log-rows! :model/Tenant :update)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
     (t2/query {:update :tenant
                :set    {:is_active false}})))
 
