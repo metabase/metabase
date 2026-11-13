@@ -299,13 +299,9 @@
   (is (= "1 PM" (format-unit 13 :hour-of-day)))
   (is (= "12 AM" (format-unit 0 :hour-of-day)))
   (is (= "1" (format-unit 1 :week-of-year)))
-  (testing "week-of-year respects start-of-week"
-    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-01" :week-of-year)))
-    (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2023-01-01" :week-of-year)))))
+  (is (= "53" (format-unit 53 :week-of-year))))
 
 (deftest ^:parallel week-of-year-numbering-test
-  (testing "a week number formats as itself, including week 53"
-    (is (= "53" (format-unit 53 :week-of-year))))
   (testing "the locale does not change the number"
     (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2021-01-01" :week-of-year {:locale "de"}))))
   ;; Weeks are numbered by the day of year they start on, as the query processor buckets `:week-of-year`.
@@ -313,6 +309,7 @@
   (testing "weeks around the year boundary"
     (are [start-of-week date week]
          (= (str week) (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year))
+      ;; Sunday starts, the default
       :sunday    "2018-12-30" 52
       :sunday    "2019-01-01" 52
       :sunday    "2019-12-28" 51
@@ -321,6 +318,8 @@
       :sunday    "2020-01-05" 1
       :sunday    "2020-12-31" 52
       :sunday    "2021-01-03" 1
+      :sunday    "2023-01-01" 1
+      ;; Monday starts
       :monday    "2018-12-31" 53
       :monday    "2019-01-01" 53
       :monday    "2019-12-29" 51
@@ -329,6 +328,8 @@
       :monday    "2020-01-06" 1
       :monday    "2021-01-03" 52
       :monday    "2021-01-04" 1
+      :monday    "2023-01-01" 52
+      ;; Mid-week starts
       :wednesday "2018-12-26" 52
       :wednesday "2019-01-01" 52
       :wednesday "2019-01-02" 1
@@ -336,6 +337,7 @@
       :thursday  "2020-01-02" 1
       :friday    "2016-12-30" 53
       :friday    "2017-01-06" 1
+      ;; Saturday starts
       :saturday  "2016-12-31" 53
       :saturday  "2019-12-28" 52
       :saturday  "2020-01-01" 52
@@ -344,7 +346,7 @@
       :saturday  "2021-01-02" 1)))
 
 (defn- consecutive-dates
-  "Each date from `start` up to `end` as `[yyyy-MM-dd day-of-week]`, where Sunday is day 0."
+  "Each date from `start` until the day before `end`, as `[yyyy-MM-dd day-of-week]`, where Sunday is day 0."
   [start end]
   #?(:clj  (for [date (iterate #(.plusDays ^java.time.LocalDate % 1) (t/local-date start))
                  :while (.isBefore ^java.time.LocalDate date (t/local-date end))]
@@ -372,12 +374,13 @@
                        :week        (week-of date)})]
         (is (= []
                (for [[previous {:keys [date day-of-week week]}] (partition 2 1 days)
-                     :let  [expected (cond
-                                       ;; A week keeps its number until the next one starts.
-                                       (not= start-index day-of-week) (:week previous)
-                                       ;; Week 1 is the first week that starts in the new year.
-                                       (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
-                                       :else (inc (:week previous)))]
+                     :let  [first-seven-days? (<= (compare date (str (subs date 0 4) "-01-07")) 0)
+                            expected          (cond
+                                                ;; A week keeps its number until the next one starts.
+                                                (not= start-index day-of-week) (:week previous)
+                                                ;; Week 1 is the first week that starts in the new year.
+                                                first-seven-days?              1
+                                                :else                          (inc (:week previous)))]
                      :when (not= expected week)]
                  [date week expected])))))))
 
