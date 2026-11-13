@@ -27,13 +27,27 @@ export type PreviewState = {
   returnPath: string;
 };
 
-/** Marks the app loaded in the troubleshooting page's frame. */
+/**
+ * Marks the app loaded in the troubleshooting page's frame: `1` stamps the preview header on each
+ * request, `cookie` trades `preview_code` for a preview session cookie and its token.
+ */
 const FRAME_PARAM = "permission-preview-frame";
+const FRAME_CODE_PARAM = "preview_code";
+const COOKIE_FRAME_MODE = "cookie";
 
 // The frame's own window name survives a reload inside the frame, and nothing else shares it.
 const FRAME_NAME_PREFIX = "metabase-permission-preview:";
+const COOKIE_FRAME_NAME_PREFIX = "metabase-permission-preview-cookie:";
+
+const SESSION_EXCHANGE_PATH = "/api/ee/permission_debug/preview/session";
+const PREVIEW_TOKEN_HEADER = "X-Metabase-Preview-Token";
+// Sent once the token is gone (after a reload in the frame): the backend refuses it rather than
+// running the request as the admin.
+const LOST_PREVIEW_TOKEN = "lost";
 
 let framePreviewState: PreviewState | null = null;
+let framePreviewToken: Promise<string> | null = null;
+let framePreviewTokenValue: string | null = null;
 
 /**
  * Reads the preview this tab switched into (from the URL on the first load, then from this tab's
@@ -63,8 +77,34 @@ export function readFramePreviewState(): PreviewState | null {
     return null;
   }
   const params = new URLSearchParams(window.location.search);
-  const urlState =
-    params.get(FRAME_PARAM) === "1" ? parseUrlState(params) : null;
+  const frameMode = params.get(FRAME_PARAM);
+  const code = params.get(FRAME_CODE_PARAM);
+
+  if (frameMode === COOKIE_FRAME_MODE && code != null) {
+    const cookieUrlState = parseUrlState(params);
+    if (cookieUrlState != null) {
+      window.name = `${COOKIE_FRAME_NAME_PREFIX}${JSON.stringify(cookieUrlState)}`;
+      removeParams(params, [
+        ...Object.values(URL_PARAMS),
+        FRAME_PARAM,
+        FRAME_CODE_PARAM,
+      ]);
+      framePreviewToken = exchangeCodeForToken(code);
+      framePreviewState = cookieUrlState;
+      return framePreviewState;
+    }
+  }
+  if (window.name.startsWith(COOKIE_FRAME_NAME_PREFIX)) {
+    // the token lived in memory only, so a reload in the frame loses it
+    framePreviewToken = Promise.resolve(LOST_PREVIEW_TOKEN);
+    framePreviewTokenValue = LOST_PREVIEW_TOKEN;
+    framePreviewState = parseStoredState(
+      window.name.slice(COOKIE_FRAME_NAME_PREFIX.length),
+    );
+    return framePreviewState;
+  }
+
+  const urlState = frameMode === "1" ? parseUrlState(params) : null;
 
   if (urlState != null) {
     window.name = `${FRAME_NAME_PREFIX}${JSON.stringify(urlState)}`;
@@ -84,11 +124,41 @@ export function readFramePreviewState(): PreviewState | null {
  */
 export function getActivePreviewUserId(): number | null {
   if (window.self !== window.top) {
-    return framePreviewState?.userId ?? null;
+    return framePreviewToken == null
+      ? (framePreviewState?.userId ?? null)
+      : null;
   }
   return (
     parseStoredState(window.sessionStorage.getItem(STORAGE_KEY))?.userId ?? null
   );
+}
+
+/**
+ * The token of the frame's preview session, for requests made without the API client (map tiles);
+ * null outside a frame signed in by cookie, or while the exchange hasn't answered.
+ */
+export function getActivePreviewToken(): string | null {
+  return framePreviewTokenValue;
+}
+
+/** Whether the app runs in a frame signed in by a preview session cookie rather than the header. */
+export function isCookieFramePreview(): boolean {
+  return framePreviewToken != null;
+}
+
+/**
+ * The address of the app in the troubleshooting page's frame at `path` as `state`, signed in by a
+ * preview session cookie: `code` comes from `POST /api/ee/permission_debug/preview/code`.
+ */
+export function getCookieFramePreviewUrl(
+  path: string,
+  state: PreviewState,
+  code: string,
+) {
+  const url = new URL(getPreviewUrl(path, state));
+  url.searchParams.set(FRAME_PARAM, COOKIE_FRAME_MODE);
+  url.searchParams.set(FRAME_CODE_PARAM, code);
+  return url.toString();
 }
 
 /** The address of the app in the troubleshooting page's frame, at `path`, as `state`. */
@@ -214,6 +284,33 @@ export function getPreviewUrl(path: string, state: PreviewState) {
   url.searchParams.set(URL_PARAMS.attributes, JSON.stringify(state.attributes));
   url.searchParams.set(URL_PARAMS.returnPath, state.returnPath);
   return url.toString();
+}
+
+export function getPreviewTokenHandler(): OnBeforeRequestHandler {
+  return async () => ({
+    headers: {
+      [PREVIEW_TOKEN_HEADER]: (await framePreviewToken) ?? LOST_PREVIEW_TOKEN,
+    },
+  });
+}
+
+// Before the API client is set up, so no request runs before the token is known.
+async function exchangeCodeForToken(code: string): Promise<string> {
+  try {
+    const response = await fetch(SESSION_EXCHANGE_PATH, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const token = response.ok
+      ? response.headers.get(PREVIEW_TOKEN_HEADER)
+      : null;
+    framePreviewTokenValue = token ?? LOST_PREVIEW_TOKEN;
+  } catch {
+    framePreviewTokenValue = LOST_PREVIEW_TOKEN;
+  }
+  return framePreviewTokenValue;
 }
 
 export function getPreviewAsHeaderHandler(

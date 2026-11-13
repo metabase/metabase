@@ -11,8 +11,11 @@ import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
 import { ViewAsButton } from "./ViewAsButton";
 import {
+  getActivePreviewToken,
   getActivePreviewUserId,
   getPreviewAsHeaderHandler,
+  getPreviewTokenHandler,
+  isCookieFramePreview,
   readFramePreviewState,
   readPreviewState,
 } from "./preview-state";
@@ -28,12 +31,15 @@ export function initializePlugin() {
   }
 
   PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId = getActivePreviewUserId;
+  PLUGIN_PERMISSION_PREVIEW.getActivePreviewToken = getActivePreviewToken;
 
   // The host page around the frame shows who is previewed, so the frame has no banner.
   const framePreviewState = readFramePreviewState();
   if (framePreviewState != null) {
     PLUGIN_API.onBeforeRequestHandlers.setPreviewAsHeader =
-      getPreviewAsHeaderHandler(framePreviewState);
+      isCookieFramePreview()
+        ? getPreviewTokenHandler()
+        : getPreviewAsHeaderHandler(framePreviewState);
     return;
   }
 

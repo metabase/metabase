@@ -113,7 +113,8 @@
 (api.macros/defendpoint :post "/preview/end" :- :map
   "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`, or `/preview/code`) returned,
   recording it in the audit log with the caller as the actor and `user_id` as the target. Takes the start's principal
-  and attribute values, so the end row reads on its own. With `session_id`, also deletes that preview session.
+  and attribute values, so the end row reads on its own. With `session_id` (from `POST /preview/session`), also
+  deletes that preview session and clears its cookie.
 
   Returns `{\"ok\": true}`."
   [_route-params
@@ -131,9 +132,11 @@
                                        :principal-type principal_type
                                        :principal-id   principal_id
                                        :attributes     attributes})
-  (when session_id
-    (preview-session/end-session! api/*current-user-id* session_id))
-  {:ok true})
+  (if session_id
+    {:status  200
+     :cookies (preview-session/end-session! api/*current-user-id* session_id)
+     :body    {:ok true}}
+    {:ok true}))
 
 (api.macros/defendpoint :post "/preview/code" :- [:map
                                                   [:code :string]
@@ -142,7 +145,9 @@
                                                   [:preview_id :string]]
   "Start previewing a user, group or tenant in a frame signed in as them. Takes the same body as `POST
   /preview/start`, records the start in the audit log, and returns what it does plus a one-time `code`, valid until
-  `code_expires_at` (epoch seconds, 60 seconds from now), that starts a preview session bound to this browser session.
+  `code_expires_at` (epoch seconds, 60 seconds from now), that starts a preview session bound to this browser session:
+
+  - same origin: the framed app sends it to `POST /preview/session`;
 
   Only a superuser's own browser session (the `metabase.SESSION` cookie) can get a code."
   [_route-params
@@ -159,6 +164,21 @@
                                                                              :attributes     attributes})
         {:keys [code expires-at]}     (preview-session/mint-code! api/*current-user-id* session-key-hash user_id)]
     (assoc preview :code code :code_expires_at expires-at)))
+
+(api.macros/defendpoint :post "/preview/session" :- :map
+  "Trade a `code` from `POST /preview/code` for a same-origin preview session, on the browser session the code was
+  minted on. Sets the HttpOnly cookie `metabase.PREVIEW_SESSION.<session_id>` and returns its token in the
+  `X-Metabase-Preview-Token` response header. A request then runs as the previewed user, read-only, only when it
+  sends that token (in the same header, or `?preview_token=` on a map tile); without it, it runs as the caller. Clears
+  the caller's older preview cookies.
+
+  Returns `{\"session_id\": …, \"user_id\": …}`."
+  [_route-params
+   _query-params
+   {:keys [code]} :- [:map {:closed true}
+                      [:code ms/NonBlankString]]
+   request]
+  (preview-session/exchange-for-cookie! request code))
 
 (api.macros/defendpoint :post "/preview/grant" :- [:map
                                                    [:grant :string]

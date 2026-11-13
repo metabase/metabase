@@ -19,6 +19,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase-enterprise.permission-debug.preview :as preview]
@@ -33,6 +34,12 @@
    (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
+
+(def token-header
+  "The response header the same-origin exchange returns the token in."
+  "X-Metabase-Preview-Token")
+
+(def ^:private cookie-prefix "metabase.PREVIEW_SESSION.")
 
 (def ^:private code-lifetime-ms (* 60 1000))
 
@@ -56,6 +63,13 @@
   mode's cookie matches it."
   [mode session-key]
   (session/hash-session-key (str "permission-preview." (name mode) "." session-key)))
+
+(defn- cookie-name
+  [session-id]
+  (str cookie-prefix session-id))
+
+(def ^:private cleared-cookie
+  {:value "" :path "/" :max-age 0 :expires "Thu, 1 Jan 1970 00:00:00 GMT"})
 
 ;;; ------------------------------------------------ Codes ------------------------------------------------
 
@@ -114,11 +128,44 @@
     (swap! session-admins #(apply dissoc % owned))
     owned))
 
+(defn- preview-cookie-session-ids
+  "The session ids of the same-origin preview cookies `cookies` carries."
+  [cookies]
+  (keep (fn [[cookie-name _]]
+          (when (str/starts-with? cookie-name cookie-prefix)
+            (subs cookie-name (count cookie-prefix))))
+        cookies))
+
+(defn exchange-for-cookie!
+  "The same-origin exchange: redeem `code` on the admin's own browser session (the one it was minted on), and answer
+  with the preview session's HttpOnly cookie and, in [[token-header]], its token. Clears the admin's older preview
+  cookies and ends their sessions."
+  [{:keys [cookies] :as request} code]
+  (let [{:keys [admin-id admin-key-hash user-id] :as entry} (redeem-code! code)]
+    (api/check (and entry
+                    (= admin-id api/*current-user-id*)
+                    (= admin-key-hash (:metabase/authed-session-key-hash request)))
+               [403 "This preview code isn't valid for this session."])
+    (let [older                                  (preview-cookie-session-ids cookies)
+          _                                      (end-sessions! admin-id older)
+          {:keys [session-id session-key token]} (create-session! :cookie entry)]
+      {:status  200
+       :headers {token-header token}
+       :cookies (into {(cookie-name session-id) {:value     session-key
+                                                 :path      "/"
+                                                 :http-only true
+                                                 :same-site :lax}}
+                      (map (fn [old-id] [(cookie-name old-id) cleared-cookie]))
+                      older)
+       :body    {:session_id session-id
+                 :user_id    user-id}})))
+
 (defn end-session!
-  "End the preview session `session-id` of `admin-id`: delete its row."
+  "End the preview session `session-id` of `admin-id`: delete its row, and clear its same-origin cookie. A preview
+  host cookie can't be cleared from the main host; with its row gone it no longer works."
   [admin-id session-id]
   (end-sessions! admin-id [session-id])
-  nil)
+  {(cookie-name session-id) cleared-cookie})
 
 ;;; ------------------------------------------------ Requests ------------------------------------------------
 
