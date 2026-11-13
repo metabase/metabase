@@ -207,7 +207,7 @@
   ;; and data-grid entry point comes through here; data-grid editing never reaches
   ;; [[metabase.actions.execution/execute-action!]]. Saved query actions never come through here: the check in
   ;; `execute-action!` is their only gate, so do not remove it as a duplicate of this one.
-  (workspaces/check-not-in-workspace-mode! "Actions")
+  (workspaces/check-not-in-workspace-mode! "Editing table data")
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
       (let [invocation-id  (u/generate-nano-id)

@@ -418,10 +418,10 @@
 (deftest ^:synchronized editing-refused-in-workspace-mode-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-      (testing "a workspace instance refuses data-grid edits: they would write past the workspace's table remapping"
+      (testing "a workspace instance refuses data-grid edits: they skip the workspace's table remapping, so they would write to production tables"
         (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
           (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
-            (is (= "Actions is not supported on a workspace instance."
+            (is (= "Editing table data is not supported on a workspace instance."
                    (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
           (is (= [] (table-rows table-id))))))))
 
