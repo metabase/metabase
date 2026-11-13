@@ -233,6 +233,19 @@ async function changeFormula(source: string, from = 0) {
   }
 }
 
+async function addFormula(wellId: SummaryWellId, source: string) {
+  fireEvent.change(getInput(wellId), { target: { value: `=${source}` } });
+  await screen.findByRole("textbox", { name: "Formula" });
+  await userEvent.click(screen.getByRole("button", { name: "Add" }));
+  await expectClosed();
+}
+
+async function openFormula(label: string) {
+  await userEvent.click(getFormulaChip(label));
+  await screen.findByTestId("formula-editor");
+  await waitFor(() => expect(getEditor()?.state.doc.length).toBeGreaterThan(0));
+}
+
 describe("summary formula handoff", () => {
   afterEach(() => {
     jest.useRealTimers();
@@ -712,6 +725,79 @@ describe("editing a formula chip", () => {
       "Order date",
     ]);
     expect(getFormulaChip("Order date")).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      wellId: "columns",
+      source: "[Total]*2",
+      label: "Total*2",
+      nextSource: "[Total] * 3",
+      nextLabel: "Total * 3",
+    },
+    {
+      wellId: "values",
+      source: "Sum([Total])*2",
+      label: "Sum(Total)*2",
+      nextSource: "Sum([Total]) * 3",
+      nextLabel: "Sum(Total) * 3",
+    },
+  ] satisfies {
+    wellId: SummaryWellId;
+    source: string;
+    label: string;
+    nextSource: string;
+    nextLabel: string;
+  }[])(
+    "names an edited formula of $wellId after its new source when its name came from the source",
+    async ({ wellId, source, label, nextSource, nextLabel }) => {
+      const { onQueryChange } = await setup();
+      await addFormula(wellId, source);
+
+      await openFormula(label);
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+      await expectClosed();
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+
+      await openFormula(label);
+      await changeFormula(nextSource);
+      await userEvent.keyboard("{Enter}");
+      await expectClosed();
+      expect(onQueryChange).toHaveBeenCalledTimes(2);
+      expect(getFormulaChip(nextLabel)).toBeInTheDocument();
+      const [query] = onQueryChange.mock.calls[1];
+      const clauses =
+        wellId === "values"
+          ? Lib.aggregations(query, -1)
+          : Lib.expressions(query, -1);
+      expect(clauses).toHaveLength(1);
+      expect(Lib.displayInfo(query, -1, clauses[0]).displayName).toBe(
+        nextLabel,
+      );
+    },
+  );
+
+  it("keeps a name given on the chip while the formula is open", async () => {
+    const { onQueryChange } = await setup();
+    await addFormula("columns", "[Total]*2");
+    await openFormula("Total*2");
+    await changeFormula("[Total] * 3");
+
+    fireEvent.keyDown(getFormulaChip("Total*2"), { key: "F2" });
+    const nameInput = screen.getByRole("textbox", { name: "Rename Total*2" });
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Doubled{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
+    await expectClosed();
+
+    expect(getFormulaChip("Doubled")).toBeInTheDocument();
+    expect(onQueryChange).toHaveBeenCalledTimes(3);
+    const [query] = onQueryChange.mock.calls[2];
+    const [expression] = Lib.expressions(query, -1);
+    expect(Lib.displayInfo(query, -1, expression).displayName).toBe("Doubled");
+    expect(await format(expression, { query, stageIndex: -1 })).toBe(
+      "[Total] * 3",
+    );
   });
 
   it("leaves the query alone when a formula is updated without changes", async () => {

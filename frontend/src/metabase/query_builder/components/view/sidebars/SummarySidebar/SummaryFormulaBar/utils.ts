@@ -1,4 +1,7 @@
-import type { NamedExpression } from "metabase/querying/components/FormulaEditor";
+import {
+  type NamedExpression,
+  isDefaultFormulaName,
+} from "metabase/querying/components/FormulaEditor";
 import { stableStringify } from "metabase/utils/objects";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -8,7 +11,7 @@ import {
   getLegacyStage,
   makeSummaryFormula,
 } from "../../../../../utils/summary-formulas";
-import type { SummaryWellId } from "../types";
+import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 import { getDimensionItems, getValueItems, isFormulaValue } from "../utils";
 
 import type { SummaryFormula, SummaryFormulaEdit } from "./types";
@@ -236,31 +239,40 @@ function withPreviousBucket(
   return Lib.withDefaultBucket(query, stageIndex, column);
 }
 
-/** The formula keeps its name: renaming happens on its chip. */
-export function replaceSummaryFormula(
+/**
+ * A name given on the chip stays through an edit. A name generated from the formula follows
+ * the new formula, unless it still describes it.
+ */
+function getEditedFormulaName(
   query: Lib.Query,
   stageIndex: number,
   formula: SummaryFormula,
-  { name, clause }: NamedExpression,
-): Lib.Query {
-  const formulaName = formula.name ?? name;
-  const nextQuery = Lib.replaceClause(
-    query,
-    stageIndex,
-    formula.clause,
-    Lib.withExpressionName(clause, formulaName),
-  );
-  if (formula.wellId === "values") {
-    return nextQuery;
+  sourceName: string,
+  hasGeneratedName: boolean,
+): string {
+  const { name } = formula;
+  if (name == null) {
+    return sourceName;
   }
+  if (!hasGeneratedName || isDefaultFormulaName(name, sourceName)) {
+    return name;
+  }
+  return formula.wellId === "columns"
+    ? getUniqueExpressionName(query, stageIndex, sourceName)
+    : sourceName;
+}
+
+function rebucketFormulaBreakouts(
+  query: Lib.Query,
+  nextQuery: Lib.Query,
+  stageIndex: number,
+  name: string,
+  nextName: string,
+): Lib.Query {
   // Lib keeps a grouping's bucket through a rename only. A changed formula leaves bare
   // references, and groupings that became duplicates of each other are dropped.
-  const previousBreakouts = getFormulaBreakouts(query, stageIndex, formulaName);
-  const currentBreakouts = getFormulaBreakouts(
-    nextQuery,
-    stageIndex,
-    formulaName,
-  );
+  const previousBreakouts = getFormulaBreakouts(query, stageIndex, name);
+  const currentBreakouts = getFormulaBreakouts(nextQuery, stageIndex, nextName);
   const rebucketedQuery = currentBreakouts.reduce(
     (currentQuery, breakout, index) => {
       const column = Lib.breakoutColumn(currentQuery, stageIndex, breakout);
@@ -284,7 +296,7 @@ export function replaceSummaryFormula(
   return previousBreakouts
     .slice(currentBreakouts.length)
     .reduce((currentQuery, previousBreakout) => {
-      const column = findFormulaColumn(currentQuery, stageIndex, formulaName);
+      const column = findFormulaColumn(currentQuery, stageIndex, nextName);
       if (!column) {
         return currentQuery;
       }
@@ -294,4 +306,41 @@ export function replaceSummaryFormula(
         withPreviousBucket(currentQuery, stageIndex, column, previousBreakout),
       );
     }, rebucketedQuery);
+}
+
+export function editSummaryFormula(
+  query: Lib.Query,
+  stageIndex: number,
+  formula: SummaryFormula,
+  { name: sourceName, clause }: NamedExpression,
+  hasGeneratedName: boolean,
+): { query: Lib.Query; options: SummaryQueryChangeOptions } {
+  const nextName = getEditedFormulaName(
+    query,
+    stageIndex,
+    formula,
+    sourceName,
+    hasGeneratedName,
+  );
+  const nextQuery = Lib.replaceClause(
+    query,
+    stageIndex,
+    formula.clause,
+    Lib.withExpressionName(clause, nextName),
+  );
+  if (formula.wellId === "values" || formula.name == null) {
+    return { query: nextQuery, options: { editedFormula: true } };
+  }
+  const renamedFormula =
+    nextName === formula.name ? undefined : { name: formula.name, nextName };
+  return {
+    query: rebucketFormulaBreakouts(
+      query,
+      nextQuery,
+      stageIndex,
+      formula.name,
+      nextName,
+    ),
+    options: { editedFormula: true, renamedFormula },
+  };
 }

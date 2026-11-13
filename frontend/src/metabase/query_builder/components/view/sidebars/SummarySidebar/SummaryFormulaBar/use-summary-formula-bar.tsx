@@ -9,6 +9,7 @@ import { hasFeature } from "metabase/databases";
 import {
   FormulaEditor,
   type NamedExpression,
+  isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
 import { format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
@@ -27,9 +28,9 @@ import type {
 } from "./types";
 import {
   addSummaryFormula,
+  editSummaryFormula,
   findEditedFormula,
   findSummaryFormula,
-  replaceSummaryFormula,
 } from "./utils";
 
 /** Text for the editor once its view exists, as the view mounts after the bar opens. */
@@ -120,11 +121,19 @@ export function useSummaryFormulaBar({
         addSummaryFormula(query, stageIndex, activeDraft.wellId, expression),
         activeDraft.wellId,
       );
-    } else if (editedFormula) {
-      onEdit(
-        replaceSummaryFormula(query, stageIndex, editedFormula, expression),
+    } else if (activeDraft?.kind === "edit" && editedFormula) {
+      // a rename on the chip while the bar is open makes the name a given one
+      const hasGeneratedName =
+        editedFormula.name != null &&
+        editedFormula.name === activeDraft.generatedName;
+      const result = editSummaryFormula(
+        query,
+        stageIndex,
         editedFormula,
+        expression,
+        hasGeneratedName,
       );
+      onEdit(result.query, result.options);
     }
     close();
   };
@@ -140,7 +149,14 @@ export function useSummaryFormulaBar({
 
   // The bar opens at once and the printed formula lands in it, so a double-click's rename
   // keeps its focus. Text typed before the formula arrives stands.
-  const showEditedSource = (source: string) => {
+  const showEditedSource = (key: number, source: string, name?: string) => {
+    if (name != null && isDefaultFormulaName(name, source)) {
+      setDraft((draft) =>
+        draft?.kind === "edit" && draft.key === key
+          ? { ...draft, generatedName: name }
+          : draft,
+      );
+    }
     const view = viewRef.current;
     if (view == null) {
       pendingSource.current = { kind: "edit", source };
@@ -175,7 +191,7 @@ export function useSummaryFormulaBar({
       .then((source) => {
         // a formula opened since, new or edited, has taken the bar
         if (source != null && nextKey.current === key) {
-          showEditedSource(source);
+          showEditedSource(key, source, formula.name);
         }
       });
   };

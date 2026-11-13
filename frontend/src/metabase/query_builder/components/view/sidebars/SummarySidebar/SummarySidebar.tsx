@@ -123,9 +123,9 @@ export function SummarySidebar({
       stageIndex,
       onAdd: (nextQuery, wellId) =>
         handleWellAdd(nextQuery, wellId, wellId === "columns"),
-      onEdit: (nextQuery) => {
+      onEdit: (nextQuery, options) => {
         if (!areQueriesEqual(query, nextQuery)) {
-          handleQueryChange(nextQuery, { editedFormula: true });
+          handleQueryChange(nextQuery, options);
         }
       },
     });
