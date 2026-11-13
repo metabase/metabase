@@ -112,7 +112,7 @@
                                                             :tunnel-host                   "bastion.example"
                                                             :tunnel-user                   "tunnel"
                                                             :tunnel-auth-option            "ssh-key"
-                                                            :tunnel-pass                   "PARENT-TUNNEL-PASS"
+                                                            :tunnel-pass                   "PARENT-TUNNEL-PASSWORD"
                                                             :tunnel-private-key            "PARENT-TUNNEL-PRIVATE-KEY"
                                                             :tunnel-private-key-passphrase "PARENT-TUNNEL-PASSPHRASE"}}
                      :model/Workspace {ws-id :id} {:name       "tunnel"
@@ -134,7 +134,7 @@
               config-body                (fn [k]
                                            (str (client/client :get 200 (str "ee/workspace-manager/" ws-id "/config")
                                                                (as-key k))))
-              secrets                    ["PARENT-TUNNEL-PASS" "PARENT-TUNNEL-PRIVATE-KEY" "PARENT-TUNNEL-PASSPHRASE"]]
+              secrets                    ["PARENT-TUNNEL-PASSWORD" "PARENT-TUNNEL-PRIVATE-KEY" "PARENT-TUNNEL-PASSPHRASE"]]
           (testing "the scoped key cannot read the database"
             (is (= "unsupported_scope"
                    (:error (client/client :get 403 (str "database/" db-id) (as-key scoped-key))))))
@@ -145,8 +145,9 @@
               (doseq [secret secrets]
                 (testing secret
                   (is (not (str/includes? body secret)))))))
-          (testing "an unscoped admin key's config download still carries the tunnel secrets the sidecar connects with"
+          (testing "an unscoped admin key's config download carries the private key and its passphrase"
             (let [body (config-body full-key)]
-              (doseq [secret secrets]
-                (testing secret
-                  (is (str/includes? body secret)))))))))))
+              (is (str/includes? body "PARENT-TUNNEL-PRIVATE-KEY"))
+              (is (str/includes? body "PARENT-TUNNEL-PASSPHRASE"))
+              (testing "and not the tunnel password, which the `ssh-key` auth option does not use"
+                (is (not (str/includes? body "PARENT-TUNNEL-PASSWORD")))))))))))
