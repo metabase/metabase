@@ -454,6 +454,48 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("passes percentile aggregations on top of a saved question source", async () => {
+    const amount = TEST_SCHEMA.questions.ordersQuestion.columns[1];
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      filters: [
+        filter(TEST_SCHEMA.questions.ordersQuestion.columns[0], "=", "paid"),
+      ],
+      aggregations: [
+        aggregations.percentile(amount, 0.5, { name: "p50" }),
+        aggregations.percentile(amount, 0.95, { name: "p95" }),
+      ],
+      breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+    });
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      "source-card": 41,
+      filters: [
+        [
+          "=",
+          expect.anything(),
+          ["field", expect.anything(), "STATUS"],
+          "paid",
+        ],
+      ],
+      aggregation: [
+        [
+          "percentile",
+          expect.objectContaining({ name: "p50" }),
+          ["field", expect.anything(), "AMOUNT"],
+          0.5,
+        ],
+        [
+          "percentile",
+          expect.objectContaining({ name: "p95" }),
+          ["field", expect.anything(), "AMOUNT"],
+          0.95,
+        ],
+      ],
+    });
+  });
+
   // A card stage resolves dimensions by name, so a breakout and an orderBy may
   // name the same column through different references.
   it.each([

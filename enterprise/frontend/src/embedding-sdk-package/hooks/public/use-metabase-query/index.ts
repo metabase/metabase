@@ -8,6 +8,7 @@ export {
   median,
   metric,
   min,
+  percentile,
   sum,
 } from "./aggregation-helpers";
 export { breakout, filter, orderBy } from "./query-helpers";
