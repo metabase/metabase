@@ -16,7 +16,7 @@
   nil)
 
 (defenterprise do-with-anonymous-router-access
-  "Enterprise version. Calls `thunk` with no current user, letting it reach a router itself."
+  "Enterprise version. Calls `thunk` with no current user, always hitting the router database."
   :feature :none
   [thunk]
   (binding [api/*current-user-id*     nil
