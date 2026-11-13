@@ -206,9 +206,19 @@
       (with-each-engine
         #(is (= {} (found-data-apps :crowberto :models "data-app")))))))
 
+;; Delete capture purges the index only once the delete commits, which never happens inside `with-temp`'s
+;; rollback-only transaction, so this test inserts and deletes for real.
+;; Search results alone can't show a stale document: deleting the app deletes its resource collection, and the
+;; permission check then hides the hit. So the test also reads the index row, when there is an index.
 (deftest deleting-a-data-app-removes-it-from-the-index-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}]
-      (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
-      (t2/delete! :model/DataApp :id app-id)
-      (is (= {} (found-data-apps :crowberto :models "data-app"))))))
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [app-id   (t2/insert-returning-pk! :model/DataApp (assoc (mt/with-temp-defaults :model/DataApp)
+                                                                    :slug "sandpiper-sightings"
+                                                                    :name "Shorebirds"))
+            indexed? #(when-let [table (search.index/active-table)]
+                        (t2/exists? table :model "data-app" :model_id (str app-id)))]
+        (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
+        (t2/delete! :model/DataApp :id app-id)
+        (is (= {} (found-data-apps :crowberto :models "data-app")))
+        (is (not (indexed?)))))))
