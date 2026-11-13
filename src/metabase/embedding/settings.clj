@@ -121,8 +121,8 @@
   :doc        (str "Use these variables instead: `MB_ENABLE_EMBEDDING_MODULAR` for modular embedding and guest "
                    "embeds, `MB_ENABLE_EMBEDDING_SDK` for the modular embedding React SDK, and "
                    "`MB_ENABLE_EMBEDDING_INTERACTIVE` for full-app embedding. If only `MB_ENABLE_EMBEDDING` is "
-                   "set, Metabase copies its value at startup to the `enable-embedding-sdk`, "
-                   "`enable-embedding-interactive`, and `enable-embedding-static` settings. This also controls "
+                   "set, Metabase copies its value at every startup to the `enable-embedding-sdk`, "
+                   "`enable-embedding-interactive`, and `enable-embedding-static` settings. This also turns on "
                    "modular embedding and guest embeds, unless you set `MB_ENABLE_EMBEDDING_MODULAR` or change it "
                    "in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of these variables, "
                    "Metabase stops at startup with an error.")
@@ -134,6 +134,12 @@
   ;; This value is usually gated by [[enable-embedding]]
   :feature    :embedding
   :deprecated "0.51.0"
+  :doc        (str "Use `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE` for the origins that can embed the full Metabase app, "
+                   "and `MB_EMBEDDING_APP_ORIGINS_SDK` for the origins that can use modular embedding and the "
+                   "modular embedding React SDK. If only `MB_EMBEDDING_APP_ORIGIN` is set, Metabase copies its value "
+                   "at every startup to the `embedding-app-origins-interactive` and `embedding-app-origins-sdk` "
+                   "settings, if your plan includes that kind of embedding. If you set `MB_EMBEDDING_APP_ORIGIN` "
+                   "together with either of these variables, Metabase stops at startup with an error.")
   :type       :string
   :export?    false
   :visibility :public
@@ -351,7 +357,7 @@
         supported-origins-env-vars-set (select-keys env
                                                     [:mb-embedding-app-origins-sdk :mb-embedding-app-origins-interactive])]
     (when (and deprecated-origin-env-var-set? (seq supported-origins-env-vars-set))
-      (throw (ex-info "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING."
+      (throw (ex-info "Both deprecated and new embedding app origin env vars are set, please remove MB_EMBEDDING_APP_ORIGIN."
                       {:deprecated-enable-env-vars-set deprecated-origin-env-var-set?
                        :current-enable-env-vars-set    supported-origins-env-vars-set})))))
 
@@ -362,8 +368,8 @@
   (when-let [[_ app-origin-from-env] (find env :mb-embedding-app-origin)]
     (log/warn (str/join "\n"
                         ["Setting MB_EMBEDDING_APP_ORIGIN is deprecated as of Metabase 0.51.0 and will be removed in a future version."
-                         (str "Setting MB_EMBEDDING_APP_ORIGINS_SDK, MB_EMBEDDING_APP_ORIGINS_INTERACTIVE "
-                              " to match MB_ENABLE_EMBEDDING, which is "
+                         (str "Setting MB_EMBEDDING_APP_ORIGINS_SDK and MB_EMBEDDING_APP_ORIGINS_INTERACTIVE "
+                              "to match MB_EMBEDDING_APP_ORIGIN, which is "
                               (pr-str app-origin-from-env) ".")]))
     (when (premium-features/has-feature? :embedding-sdk)
       (embedding-app-origins-sdk! app-origin-from-env))
