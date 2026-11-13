@@ -23,8 +23,8 @@
   "Runs the refresh with the privilege rows of each database taken from `user->privileges`, keyed by the `:user` of
   its connection details. A function as the value is called. Returns the results of the databases named in `names`."
   [user->privileges names]
-  (mt/with-dynamic-fn-redefs [sql-jdbc/current-user-table-privileges-with-details
-                              (fn [_driver {:keys [user]}]
+  (mt/with-dynamic-fn-redefs [sql-jdbc/current-user-table-privileges-on-new-connection
+                              (fn [{{:keys [user]} :details}]
                                 (let [rows (get user->privileges user)]
                                   (if (fn? rows) (rows) rows)))]
     (filterv (comp (set names) :name) (:databases (read-only-connections/refresh)))))
@@ -166,8 +166,8 @@
           (deliver stuck "read-only")))))
   (testing "a refresh writes one line with the number of databases, the duration and the results"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
-      (mt/with-dynamic-fn-redefs [sql-jdbc/current-user-table-privileges-with-details (fn [_driver _details]
-                                                                                        (privileges))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/current-user-table-privileges-on-new-connection (fn [_database]
+                                                                                             (privileges))]
         (let [database-count (count (:databases (read-only-connections/refresh)))]
           (is (=? [{:message (re-pattern (str ".*checked " database-count " databases in \\d+ ms: \\{.+\\}"))}]
                   (filter #(= :info (:level %)) (messages)))))))))

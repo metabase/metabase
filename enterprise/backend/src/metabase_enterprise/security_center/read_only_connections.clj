@@ -46,10 +46,10 @@
   10)
 
 (defn- privileges-result
-  [{:keys [engine details]}]
+  [database]
   ;; ends a read that the database never answers, so the thread and the connection are free again
   (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
-               (sql-jdbc/current-user-table-privileges-with-details engine details))]
+               (sql-jdbc/current-user-table-privileges-on-new-connection database))]
     (cond
       ;; no rows says nothing about the user: the database has no tables, or the driver could not read the
       ;; privileges, as for MariaDB

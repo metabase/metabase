@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -459,17 +460,35 @@
           (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
           (is (= [1 true 2 false] params)))))))
 
-(deftest current-user-table-privileges-with-details-test
+(deftest current-user-table-privileges-on-new-connection-test
   ;; the drivers with a method of their own: a driver that only inherits one, as Redshift does, may not support it
   (mt/test-drivers (set (keys (methods sql-jdbc.sync/current-user-table-privileges)))
-    (testing "a connection opened from the details returns the rows that a pooled connection returns"
+    (testing "a new connection opened from the details returns the rows that a pooled connection returns"
       (is (= (set (sql-jdbc.execute/do-with-connection-with-options
                    driver/*driver*
                    (mt/id)
                    nil
                    (fn [conn]
                      (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))))
-             (set (driver.sql-jdbc/current-user-table-privileges-with-details driver/*driver* (:details (mt/db)))))))))
+             (set (driver.sql-jdbc/current-user-table-privileges-on-new-connection (mt/db))))))))
+
+(deftest current-user-table-privileges-on-new-connection-checks-hosts-first-test
+  (testing "the host check runs on the details before a connection is opened, and its refusal is thrown"
+    (let [checked (atom nil)
+          opened  (atom 0)
+          details {:db "mem:birds"}]
+      (mt/with-dynamic-fn-redefs [driver.u/validate-connection-hosts!
+                                  (fn [driver details]
+                                    (reset! checked [driver details])
+                                    (throw (ex-info "Cannot connect to a private or internal network address." {})))
+                                  sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+                                  (fn [& _] (swap! opened inc) [])]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network"
+                              (driver.sql-jdbc/current-user-table-privileges-on-new-connection
+                               {:engine :h2, :details details})))
+        (is (= [:h2 details] @checked))
+        (is (zero? @opened))))))
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
