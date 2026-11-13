@@ -118,7 +118,7 @@
   "Warnings for a plugin. Dev-only plugins get no version warnings, nor do error plugins: they have no manifest to
    derive them from."
   [plugin]
-  (cond-> (if (or (dev-only-plugin? plugin) (= :error (keyword (:status plugin))))
+  (cond-> (if (or (dev-only-plugin? plugin) (= :error (:status plugin)))
             []
             (manifest/warnings plugin))
     ;; a legacy pre-validation identifier; /list skips such plugins entirely
