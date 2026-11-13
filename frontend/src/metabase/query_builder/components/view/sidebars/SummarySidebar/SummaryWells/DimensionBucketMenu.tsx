@@ -8,7 +8,8 @@ import type { SummaryBucketOption, SummaryDimensionItem } from "../types";
 
 type DimensionBucketMenuProps = {
   item: SummaryDimensionItem;
-  children: ReactNode;
+  /** The label beside the chevron. A chip that shows its label on its own leaves it out. */
+  children?: ReactNode;
   onSelect: (option: SummaryBucketOption) => void;
 };
 

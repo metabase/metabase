@@ -165,6 +165,11 @@
   opacity: 0.4;
 }
 
+.isSelected {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
 .chipButton {
   display: inline-flex;
   align-items: center;
