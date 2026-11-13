@@ -74,6 +74,7 @@ const init = async () => {
 
     const getEmbedUserId = () => getUserId(store.getState());
     createSnowplowTracker(getEmbedUserId);
+
     // The document URL carries the app slug, subpath
     // and query string, which must not reach analytics.
     setSnowplowPageUrl(window.location.pathname);
