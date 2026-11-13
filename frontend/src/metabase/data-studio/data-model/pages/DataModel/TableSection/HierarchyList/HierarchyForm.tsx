@@ -266,7 +266,7 @@ export function HierarchyOptionsFields({
           // Fixed shows a gap as "(None)"; ragged skips over it. A member with
           // no child is a gap at the bottom, so this decides that case too.
           <Radio.Group
-            label={t`When a row is missing a level`}
+            label={t`What to do when a row is missing a level`}
             description={t`Applies to drill-down, expandable tables and dashboard filters.`}
             value={draft.kind}
             onChange={(value) =>
@@ -274,8 +274,11 @@ export function HierarchyOptionsFields({
             }
           >
             <Stack gap="sm" mt="sm">
-              <Radio value="ragged" label={t`Skip to the next level it has`} />
-              <Radio value="fixed" label={t`Show it as "(None)"`} />
+              <Radio value="ragged" label={t`Skip the missing level`} />
+              <Radio
+                value="fixed"
+                label={t`Show "(None)" in place of the missing level`}
+              />
             </Stack>
           </Radio.Group>
         )}
