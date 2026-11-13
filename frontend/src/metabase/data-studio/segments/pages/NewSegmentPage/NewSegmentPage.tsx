@@ -8,13 +8,15 @@ import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
+import { PROPOSAL_SEARCH_PARAM } from "metabase/data-studio/data-model/pages/DataModel/TableSection/ListSection";
+import { useCohortProposal } from "metabase/data-studio/data-model/pages/DataModel/TableSection/SegmentList/CohortProposals";
 import {
   type MetadataSelectorOpts,
   useMetadataProvider,
   useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
-import { useNavigate } from "metabase/router";
-import { Button } from "metabase/ui";
+import { useNavigate, useSearchParams } from "metabase/router";
+import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
@@ -28,16 +30,22 @@ import { NewSegmentHeader } from "./NewSegmentHeader";
 // literal each render would defeat it.
 const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
 
+/** What the page started from, to tell whether anything changed since */
+type Draft = { name: string; description: string; definition: DatasetQuery };
+
 type NewSegmentPageProps = {
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
+  /** Where Cancel goes; without it there's no Cancel */
+  cancelUrl?: string;
 };
 
 export function NewSegmentPage({
   table,
   breadcrumbs,
   getSuccessUrl,
+  cancelUrl,
 }: NewSegmentPageProps) {
   const navigate = useNavigate();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -46,11 +54,20 @@ export function NewSegmentPage({
     WITH_HIDDEN_TABLES,
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  // PROTOTYPE: opened from a proposed segment, the page starts as that
+  // segment; saving it retires the proposal, cancelling leaves it proposed
+  const [searchParams] = useSearchParams();
+  const proposal = useCohortProposal(
+    table,
+    searchParams.get(PROPOSAL_SEARCH_PARAM),
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
+  const [proposalDraft, setProposalDraft] = useState<Draft | null>(null);
   const [savedSegment, setSavedSegment] = useState<Segment | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const isInitialized = useRef(false);
 
@@ -61,11 +78,32 @@ export function NewSegmentPage({
     }
   }, [table, metadataProvider]);
 
+  // The proposal can resolve after the first render (its values load), so it
+  // fills the page in once it's there
+  const { proposal: proposedSegment, definition: proposedDefinition } =
+    proposal;
+  useEffect(() => {
+    if (proposedSegment && proposedDefinition && proposalDraft == null) {
+      const draft = {
+        name: proposedSegment.name,
+        description: proposedSegment.signal,
+        definition: proposedDefinition,
+      };
+      setProposalDraft(draft);
+      setName(draft.name);
+      setDescription(draft.description);
+      setDefinition(draft.definition);
+    }
+  }, [proposedSegment, proposedDefinition, proposalDraft]);
+
   const { query, filters } = useSegmentQuery(definition);
 
-  const isDirty =
-    !savedSegment &&
-    (name.trim().length > 0 || description.length > 0 || filters.length > 0);
+  const isChanged = proposalDraft
+    ? name.trim() !== proposalDraft.name ||
+      description !== proposalDraft.description ||
+      JSON.stringify(definition) !== JSON.stringify(proposalDraft.definition)
+    : name.trim().length > 0 || description.length > 0 || filters.length > 0;
+  const isDirty = !savedSegment && isChanged;
   const isValid = filters.length > 0;
   const previewUrl =
     filters.length > 0
@@ -94,6 +132,9 @@ export function NewSegmentPage({
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
       trackSegmentCreated("success", "data_studio_segments", segment.id);
+      if (proposalDraft) {
+        proposal.resolve();
+      }
       setSavedSegment(segment);
       sendSuccessToast(t`Segment created`);
     }
@@ -103,6 +144,8 @@ export function NewSegmentPage({
     name,
     description,
     isValid,
+    proposal,
+    proposalDraft,
     createSegment,
     sendSuccessToast,
     sendErrorToast,
@@ -114,22 +157,44 @@ export function NewSegmentPage({
     }
   }, [savedSegment, getSuccessUrl, navigate]);
 
+  // Cancel goes once the leave guard is off
+  useEffect(() => {
+    if (isCancelling && cancelUrl) {
+      navigate(cancelUrl);
+    }
+  }, [isCancelling, cancelUrl, navigate]);
+
+  // A proposal can be saved as it is; a blank segment needs a change first
+  const canSave = isDirty || (proposalDraft != null && !savedSegment);
+
   return (
     <PageContainer data-testid="new-segment-page" gap="xxl">
       <NewSegmentHeader
+        // Fresh input once the proposal's name fills it in
+        key={proposalDraft ? "proposal" : "blank"}
+        initialName={proposalDraft?.name ?? ""}
         previewUrl={previewUrl}
         onNameChange={setName}
         breadcrumbs={breadcrumbs}
         actions={
-          isDirty && (
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              loading={isSaving}
-              onClick={handleSave}
-            >
-              {t`Save`}
-            </Button>
+          (cancelUrl || canSave) && (
+            <Group gap="sm" wrap="nowrap">
+              {cancelUrl && (
+                <Button onClick={() => setIsCancelling(true)}>
+                  {t`Cancel`}
+                </Button>
+              )}
+              {canSave && (
+                <Button
+                  variant="filled"
+                  disabled={!isValid}
+                  loading={isSaving}
+                  onClick={handleSave}
+                >
+                  {t`Save`}
+                </Button>
+              )}
+            </Group>
           )
         }
       />
@@ -139,7 +204,9 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal
+        isEnabled={isDirty && !isSaving && !isCancelling}
+      />
     </PageContainer>
   );
 }

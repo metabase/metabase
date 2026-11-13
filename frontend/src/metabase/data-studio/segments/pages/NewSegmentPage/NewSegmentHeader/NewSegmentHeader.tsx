@@ -13,6 +13,8 @@ const SEGMENT_NAME_MAX_LENGTH = 254;
 type NewSegmentHeaderProps = {
   breadcrumbs: ReactNode;
   previewUrl?: string;
+  /** The name it starts with, e.g. a proposal's */
+  initialName?: string;
   onNameChange: (name: string) => void;
   actions?: ReactNode;
 };
@@ -20,6 +22,7 @@ type NewSegmentHeaderProps = {
 export function NewSegmentHeader({
   breadcrumbs,
   previewUrl,
+  initialName = "",
   onNameChange,
   actions,
 }: NewSegmentHeaderProps) {
@@ -28,7 +31,7 @@ export function NewSegmentHeader({
       data-testid="segment-pane-header"
       title={
         <PaneHeaderInput
-          initialValue=""
+          initialValue={initialName}
           isOptional
           maxLength={SEGMENT_NAME_MAX_LENGTH}
           onContentChange={onNameChange}

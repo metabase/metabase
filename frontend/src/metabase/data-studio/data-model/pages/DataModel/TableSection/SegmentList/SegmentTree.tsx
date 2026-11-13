@@ -31,7 +31,7 @@ import {
   type TreeNode,
   nestGroups,
 } from "../GroupedItemTree";
-import { ProposalActions } from "../ListSection";
+import { ProposalActions, getProposalHref } from "../ListSection";
 import {
   applyConditions,
   getFilterNames,
@@ -195,6 +195,10 @@ export function SegmentTree({
       name: proposal.name,
       icon: "segment",
       isMuted: true,
+      // Opens the new-segment page filled in, to review before saving
+      href: canCreateSegment
+        ? getProposalHref(urls.newSegment, proposal.key)
+        : undefined,
       definition: model.baseQuery && (
         <SegmentDefinition
           clauses={getFilterNames(
@@ -336,7 +340,7 @@ export function SegmentTree({
       )}
       {proposalNodes.length > 0 && (
         <Stack gap="md">
-          <Title order={4}>{t`Proposed segments`}</Title>
+          <Title order={4}>{t`Proposed segments and groups`}</Title>
           <GroupedItemTree
             nodes={proposalNodes}
             emptyMessage={t`No proposed segments`}

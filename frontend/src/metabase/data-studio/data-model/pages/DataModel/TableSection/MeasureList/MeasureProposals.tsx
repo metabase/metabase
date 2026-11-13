@@ -12,6 +12,7 @@ import * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
 
 import { ProposalActions } from "../ListSection";
+import { useTableQuery } from "../table-segments";
 
 const STAGE_INDEX = -1;
 
@@ -92,6 +93,29 @@ export function useMeasureProposals(
     resolveProposal(table, proposal.key);
 
   return { proposals, accept, dismiss };
+}
+
+/**
+ * PROTOTYPE: the proposed measure a new-measure page was opened from, with
+ * its definition on the table, and a way to retire it once it's saved
+ */
+export function useMeasureProposal(table: Table, key: string | null) {
+  const { query: baseQuery } = useTableQuery(table);
+  const { proposals } = useMeasureProposals(table, baseQuery);
+  const { resolveProposal } = useMeasureGroups();
+  const proposal =
+    key != null ? proposals.find((proposal) => proposal.key === key) : null;
+  const query = proposal && baseQuery && buildMeasureQuery(baseQuery, proposal);
+  const resolve = () => {
+    if (key != null) {
+      resolveProposal(table, key);
+    }
+  };
+  return {
+    proposal,
+    definition: query ? Lib.toJsQuery(query) : null,
+    resolve,
+  };
 }
 
 export function MeasureProposalItem({

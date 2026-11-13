@@ -20,7 +20,11 @@ import type { Table } from "metabase-types/api";
 
 import { ClausePills } from "../ClausePills";
 import { ProposalActions } from "../ListSection";
-import { applyConditions, getFilterNames } from "../table-segments";
+import {
+  applyConditions,
+  getFilterNames,
+  useTableQuery,
+} from "../table-segments";
 
 /**
  * PROTOTYPE: mocked. Cohorts sync would propose from a status column's
@@ -87,6 +91,28 @@ export function useCohortProposalActions(
     resolveCohort(table, proposal.key);
 
   return { accept, dismiss };
+}
+
+/**
+ * PROTOTYPE: the proposed segment a new-segment page was opened from, with
+ * its definition on the table, and a way to retire it once it's saved
+ */
+export function useCohortProposal(table: Table, key: string | null) {
+  const proposals = useCohortProposals(table);
+  const { query: baseQuery } = useTableQuery(table);
+  const { resolveCohort } = useTableSegments();
+  const proposal =
+    key != null ? proposals.find((proposal) => proposal.key === key) : null;
+  const definition =
+    proposal && baseQuery
+      ? Lib.toJsQuery(applyConditions(baseQuery, [proposal.condition]))
+      : null;
+  const resolve = () => {
+    if (key != null) {
+      resolveCohort(table, key);
+    }
+  };
+  return { proposal, definition, resolve };
 }
 
 export function CohortProposalItem({

@@ -1,3 +1,7 @@
 export { ListEmptyItem } from "./ListEmptyItem";
 export { ListSection } from "./ListSection";
-export { ProposalActions } from "./ProposalActions";
+export {
+  PROPOSAL_SEARCH_PARAM,
+  ProposalActions,
+  getProposalHref,
+} from "./ProposalActions";

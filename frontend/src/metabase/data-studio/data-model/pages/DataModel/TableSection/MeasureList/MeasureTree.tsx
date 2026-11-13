@@ -29,7 +29,7 @@ import {
   type TreeNode,
   nestGroups,
 } from "../GroupedItemTree";
-import { ProposalActions } from "../ListSection";
+import { ProposalActions, getProposalHref } from "../ListSection";
 import { useTableQuery } from "../table-segments";
 
 import { getMemberNames, useMeasureGroupProposals } from "./MeasureGroups";
@@ -147,6 +147,10 @@ export function MeasureTree({
         name: proposal.name,
         icon: "ruler",
         isMuted: true,
+        // Opens the new-measure page filled in, to review before saving
+        href: canWriteMeasures
+          ? getProposalHref(urls.newMeasure, proposal.key)
+          : undefined,
         definition: clauses.length > 0 && <ClausePills clauses={clauses} />,
         actions: (
           <ProposalActions

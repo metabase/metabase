@@ -11,6 +11,8 @@ const MEASURE_NAME_MAX_LENGTH = 254;
 type NewMeasureHeaderProps = {
   breadcrumbs: ReactNode;
   previewUrl?: string;
+  /** The name it starts with, e.g. a proposal's */
+  initialName?: string;
   onNameChange: (name: string) => void;
   actions?: ReactNode;
 };
@@ -18,6 +20,7 @@ type NewMeasureHeaderProps = {
 export function NewMeasureHeader({
   breadcrumbs,
   previewUrl,
+  initialName = "",
   onNameChange,
   actions,
 }: NewMeasureHeaderProps) {
@@ -26,7 +29,7 @@ export function NewMeasureHeader({
       data-testid="measure-pane-header"
       title={
         <EditableText
-          initialValue=""
+          initialValue={initialName}
           placeholder={t`New measure`}
           maxLength={MEASURE_NAME_MAX_LENGTH}
           p={0}
