@@ -1,0 +1,115 @@
+## sql_parsing_shadow_difference keeps the inputs on which the two SQL parser backends of a shadow backend
+## (MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-shadow or sqlglot-java-shadow) did not agree, with what each parser returned.
+
+databaseChangeLog:
+  - changeSet:
+      id: gx5nc8
+      author: rileythomp
+      comment: Add sql_parsing_shadow_difference
+      changes:
+        - createTable:
+            tableName: sql_parsing_shadow_difference
+            remarks: An input on which the primary and shadow SQL parsers did not agree
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: input_hash
+                  type: varchar(64)
+                  remarks: SHA-256 of the method, dialect, backends, SQL and arguments, to count repeats of one input
+                  constraints:
+                    nullable: false
+              - column:
+                  name: method
+                  type: varchar(64)
+                  remarks: The parser method, for example referenced-tables
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dialect
+                  type: varchar(64)
+                  remarks: The SQLGlot dialect, or null for the default dialect
+                  constraints:
+                    nullable: true
+              - column:
+                  name: primary_backend
+                  type: varchar(32)
+                  remarks: The parser backend that answered the caller
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shadow_backend
+                  type: varchar(32)
+                  remarks: The parser backend that ran in the background
+                  constraints:
+                    nullable: false
+              - column:
+                  name: outcome
+                  type: varchar(32)
+                  remarks: How the parsers did not agree, for example mismatch or shadow-only-error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sql
+                  type: ${text.type}
+                  remarks: The SQL, truncated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: arguments
+                  type: ${text.type}
+                  remarks: The other arguments of the method as JSON, truncated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: primary_result
+                  type: ${text.type}
+                  remarks: What the primary parser returned or threw, as JSON, truncated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: shadow_result
+                  type: ${text.type}
+                  remarks: What the shadow parser returned or threw, as JSON, truncated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: seen_count
+                  type: int
+                  remarks: How many times the parsers did not agree on this input
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_seen_at
+                  type: ${timestamp_type}
+                  remarks: When the parsers first did not agree on this input
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: ${timestamp_type}
+                  remarks: When the parsers last did not agree on this input
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: ryscr2
+      author: rileythomp
+      comment: Add a unique index on sql_parsing_shadow_difference.input_hash
+      changes:
+        - createIndex:
+            tableName: sql_parsing_shadow_difference
+            indexName: idx_sql_parsing_shadow_difference_input_hash
+            unique: true
+            columns:
+              - column:
+                  name: input_hash

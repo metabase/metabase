@@ -26,10 +26,11 @@
     (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))))
 
 (defn- shadow-parser
-  [primary shadow & {:keys [sample? log-difference!] :or {sample? (constantly true), log-difference! (fn [_])}}]
+  [primary shadow & {:keys [sample? log-difference! record-difference!]
+                     :or   {sample? (constantly true), log-difference! (fn [_]), record-difference! (fn [_])}}]
   (shadow/parser {:primary-backend :sqlglot, :primary primary
                   :shadow-backend :sqlglot-java, :shadow shadow
-                  :sample? sample?, :log-difference! log-difference!}))
+                  :sample? sample?, :log-difference! log-difference!, :record-difference! record-difference!}))
 
 (defn- comparisons
   [system method outcome]
@@ -150,6 +151,59 @@
                      "caller thread " (.getName (Thread/currentThread)))]
                @messages))
         (is (not-any? #(re-find #"secret" %) @messages))))))
+
+(deftest difference-is-recorded-with-its-input-test
+  (testing "each difference, and no match, goes to record-difference! with the SQL, the arguments and both results"
+    (mt/with-prometheus-system! [_ system]
+      (let [records (atom [])
+            error   (protocol/call-failed-ex "ParseError: Invalid expression")
+            parser  (shadow-parser (stub-parser (fn [method _]
+                                                  (case method
+                                                    :referenced-tables [[nil nil "a"]]
+                                                    :add-into-clause   "SELECT 1"
+                                                    :simple-query      {:is_simple true})))
+                                   (stub-parser (fn [method _]
+                                                  (case method
+                                                    :referenced-tables [[nil nil "b"]]
+                                                    :add-into-clause   (throw error)
+                                                    :simple-query      {:is_simple true})))
+                                   :record-difference! #(swap! records conj %))]
+        (dotimes [_ 2]
+          (protocol/referenced-tables parser "postgres" "SELECT * FROM a"))
+        (protocol/add-into-clause parser "postgres" "SELECT 1" "t")
+        (protocol/simple-query parser "postgres" "SELECT 1")
+        (wait-for-comparisons system "referenced-tables" 2)
+        (wait-for-comparisons system "add-into-clause" 1)
+        (wait-for-comparisons system "simple-query" 1)
+        (is (= (cons {:method          :add-into-clause
+                      :dialect         "postgres"
+                      :outcome         :shadow-only-error
+                      :primary-backend :sqlglot
+                      :shadow-backend  :sqlglot-java
+                      :sql             "SELECT 1"
+                      :args            ["t"]
+                      :primary         {:value "SELECT 1"}
+                      :shadow          {:error "ParseError", :message (ex-message error)}}
+                     (repeat 2 {:method          :referenced-tables
+                                :dialect         "postgres"
+                                :outcome         :mismatch
+                                :primary-backend :sqlglot
+                                :shadow-backend  :sqlglot-java
+                                :sql             "SELECT * FROM a"
+                                :args            []
+                                :primary         {:value [[nil nil "a"]]}
+                                :shadow          {:value [[nil nil "b"]]}}))
+               (sort-by (comp name :method) @records)))))))
+
+(deftest record-failure-answers-with-the-primary-test
+  (testing "a record that throws does not change what the caller gets, and the comparison still counts"
+    (mt/with-prometheus-system! [_ system]
+      (let [parser (shadow-parser (stub-parser (fn [_ _] [[nil nil "a"]]))
+                                  (stub-parser (fn [_ _] [[nil nil "b"]]))
+                                  :record-difference! (fn [_] (throw (RuntimeException. "app DB is down"))))]
+        (is (= [[nil nil "a"]] (protocol/referenced-tables parser "postgres" "sql")))
+        (wait-for-comparisons system "referenced-tables" 1)
+        (is (== 1 (comparisons system "referenced-tables" "mismatch")))))))
 
 (defn- outcome [value] {:value value})
 (defn- thrown [error] {:thrown (protocol/call-failed-ex error)})
