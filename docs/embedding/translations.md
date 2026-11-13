@@ -1,47 +1,19 @@
 ---
-title: Translate embedded components
-summary: Upload a translation dictionary to translate the UI and content of embedded components like questions and dashboards into different languages.
+title: Translate your embeds
+summary: "Upload a translation dictionary to translate the UI and content of embedded components like questions and dashboards into different languages."
 ---
 
-# Translate embedded components
+# Translate your embeds
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embedding=true %}
 
 On every plan, you can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. On Pro and Enterprise plans, you can also upload a translation dictionary so that Metabase translates content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
 
-## Set a locale to translate UI, and upload a dictionary to translate content
+## Translate the UI
 
-To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus) automatically. You don't need to add translations for them to your dictionary.
+To translate Metabase's UI, like menus and filter widgets, set a `locale` in your embed configuration. Metabase translates UI elements automatically, so you don't need to add them to your dictionary. See [Set the language](./config.md#set-the-language).
 
-For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
-
-```html
-<script>
-  window.metabaseConfig = {
-    isGuest: true,
-    instanceUrl: "YOUR_METABASE_URL",
-    // Translates UI elements to the locale's language.
-    // If you've uploaded a translation dictionary,
-    // Metabase will also translate content strings
-    // to this locale from that dictionary.
-    locale: "es",
-  };
-</script>
-
-<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
-```
-
-If you also want to translate content (like item titles, headings, filter labels, or data), you'll need to add a translation dictionary.
-
-### SDK translations
-
-For the SDK, set the `locale` prop on the `MetabaseProvider` component:
-
-```tsx
-<MetabaseProvider authConfig={authConfig} locale="es"></MetabaseProvider>
-```
-
-If you've uploaded a translation dictionary, the SDK will also translate content strings (like dashboard names and filter labels) to this locale from that dictionary.
+To translate content you create, like dashboard names and filter labels, [add a translation dictionary](#add-a-translation-dictionary).
 
 ## Add a translation dictionary
 
@@ -51,16 +23,16 @@ The dictionary must be a CSV with these columns:
 - **String** with the string to be translated
 - **Translation**
 
-> Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
+> Don't put any sensitive data in the dictionary. Anyone can see the dictionary, including viewers of public links.
 
 To add a translation dictionary:
 
-1. Go to **Embedding hub > Localization**.
+1. Go to **Embedding hub** > **Localization**.
 2. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
 
 For a starting point, click **Get translation dictionary template**. You'll get a CSV with the right columns, filled with your current dictionary if you've uploaded one, or a few sample rows if you haven't.
 
-Uploading a new dictionary will replace the existing dictionary.
+Uploading a new dictionary replaces the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
 
@@ -77,19 +49,23 @@ Metabase uses these dictionaries to translate user-generated content, like dashb
 | pt-BR    | Vendor      | Vendedor     |
 | IT       | Examples    | Esempi       |
 
-Prefer hyphens in your `pt-BR` translation dictionary. Underscores are also acceptable (if you download the dictionary _after_ uploading it, Metabase will transform `pt-BR` to `pt_BR`), but since the `locale` parameter in modular embeds only accepts locales with hyphens (like `pt-BR`), we recommend using hyphens for consistency.
+Use hyphens in locale codes, like `pt-BR`. Underscores also work, but the `locale` setting in modular embeds only accepts hyphens, so hyphens keep your dictionary and your config consistent. If you download the dictionary after uploading it, Metabase converts `pt-BR` to `pt_BR`.
 
 [See a list of supported locales](../configuring-metabase/localization.md#supported-languages).
 
-## Use full phrases in translation dictionaries
+## Dictionary rules
 
-Currently, Metabase doesn't tokenize strings for translations, so you should include exact phrases in your translation dictionary.
+Metabase matches each string in your content against the dictionary exactly, so how you write the strings matters.
 
-For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
+### Use full phrases
 
-Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") in the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
+Metabase doesn't tokenize strings for translation, so include exact phrases in your dictionary.
 
-## Translations are case-insensitive
+For example, if you have a dashboard called "Monthly Sales", translations of "Monthly" and "Sales" aren't enough. You also need "Monthly Sales" as a full string.
+
+Exact matching also applies to punctuation and special characters. For example, if a question is titled "How many Widgets did we sell this week?", include that exact string, with the question mark, in the dictionary. Metabase treats "How many Widgets did we sell this week" as a different string.
+
+### Translations are case-insensitive
 
 Translations are case-insensitive. For example, if your translation dictionary has a translation:
 
@@ -97,11 +73,11 @@ Translations are case-insensitive. For example, if your translation dictionary h
 | -------- | -------- | ----------- |
 | pt-BR    | Examples | Exemplos    |
 
-`Examples`, `examples`, `EXAMPLES` would all be translated as `Exemplos`. That is, Metabase won't preserve the original case; it will output the exact translation string in the dictionary.
+`Examples`, `examples`, and `EXAMPLES` are all translated as `Exemplos`. Metabase doesn't preserve the original case. It outputs the exact translation string from the dictionary.
 
-## Include markdown formatting in translation dictionaries
+### Include Markdown formatting
 
-If the strings you want to translate include markdown formatting, you'll need to include the formatting in the dictionary. For example:
+If the strings you want to translate include Markdown formatting, include the formatting in the dictionary. For example:
 
 | Language | String         | Translation    |
 | -------- | -------------- | -------------- |
@@ -117,3 +93,4 @@ One exception is that Metabase won't translate the text in the [AI chat componen
 
 - [Modular embedding](./modular-embedding.md)
 - [Guest embedding](./guest-embedding.md)
+- [Configure your embeds](./config.md)
