@@ -35,7 +35,9 @@
     "The lock for a read-check-write of this thread's slot whose check cannot go in a [[swap!]] function, such as I/O.
      Every write to the slot holds it too, so no write lands inside such a section.
      A [[binding]] has its own lock, shared with the threads that inherit it; the root has one lock per component.
-     Use [[with-slot-lock]] rather than calling this directly."))
+     Use [[with-slot-lock]] rather than calling this directly.")
+  (component-key [handle]
+    "The namespace-qualified keyword the component is stored under."))
 
 ;; Protocol methods can't take varargs, so these give callers the usual atom signatures over [[swap-vals!*]].
 ;; Unlike an atom, a component with no root and no binding has no value, so each of them throws for one.
