@@ -17,6 +17,7 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getIsLocalhostOrigin } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
 import { type OnBeforeRequestHandler, PLUGIN_API } from "metabase/api/client";
@@ -38,9 +39,9 @@ import { resolveAllowedCustomVisualizations } from "../utils/validate-allowed-cu
 import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
 import { QuestionParametersBridge } from "./QuestionParametersBridge";
-import { SdkIframeApiKeyGuard } from "./SdkIframeApiKeyGuard";
 import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
+  SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
@@ -116,6 +117,11 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeInvalidLicenseError />;
   }
 
+  // Using API keys in production is not allowed. SSO is required.
+  if (embedSettings.apiKey && !getIsLocalhostOrigin(parentOrigin)) {
+    return <SdkIframeApiKeyInProductionError />;
+  }
+
   // Using the existing user's session in production is not allowed. SSO is required.
   if (isProduction && embedSettings.useExistingUserSession) {
     return <SdkIframeExistingUserSessionInProductionError />;
@@ -130,30 +136,25 @@ export const SdkIframeEmbedRoute = () => {
   } as MetabaseAuthConfig;
 
   return (
-    <SdkIframeApiKeyGuard
-      apiKey={embedSettings.apiKey}
-      parentOrigin={parentOrigin}
+    <ComponentProvider
+      authConfig={authConfig}
+      theme={adjustedTheme}
+      locale={locale}
+      reduxStore={store}
+      isLocalHost={embedSettings._isLocalhost}
     >
-      <ComponentProvider
-        authConfig={authConfig}
-        theme={adjustedTheme}
-        locale={locale}
-        reduxStore={store}
-        isLocalHost={embedSettings._isLocalhost}
+      <Stack
+        h="100vh"
+        className={SdkIframeEmbedRouteS.Container}
+        style={{
+          backgroundColor: adjustedTheme?.colors?.background,
+        }}
       >
-        <Stack
-          h="100vh"
-          className={SdkIframeEmbedRouteS.Container}
-          style={{
-            backgroundColor: adjustedTheme?.colors?.background,
-          }}
-        >
-          <SdkIframeEmbedView settings={embedSettings} />
+        <SdkIframeEmbedView settings={embedSettings} />
 
-          {isGuest && <EmbedBrandingFooter />}
-        </Stack>
-      </ComponentProvider>
-    </SdkIframeApiKeyGuard>
+        {isGuest && <EmbedBrandingFooter />}
+      </Stack>
+    </ComponentProvider>
   );
 };
 

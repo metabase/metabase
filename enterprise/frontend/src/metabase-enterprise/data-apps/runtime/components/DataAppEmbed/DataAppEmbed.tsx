@@ -10,8 +10,10 @@ import { getIsLocalhostOrigin } from "embedding-sdk-shared/lib/get-is-localhost"
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { PLUGIN_API } from "metabase/api/client";
-import { SdkIframeApiKeyGuard } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeApiKeyGuard";
-import { SdkIframeError } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
+import {
+  SdkIframeApiKeyInProductionError,
+  SdkIframeError,
+} from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
 import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
@@ -70,6 +72,10 @@ export function DataAppEmbed() {
 
   const isParentLocalhost = getIsLocalhostOrigin(parentOrigin);
 
+  if (embedSettings.apiKey && !isParentLocalhost) {
+    return <SdkIframeApiKeyInProductionError />;
+  }
+
   if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() && !embedSettings.apiKey) {
     return (
       <SdkIframeError message="A valid license is required for embedding." />
@@ -105,25 +111,20 @@ export function DataAppEmbed() {
   }
 
   return (
-    <SdkIframeApiKeyGuard
-      apiKey={embedSettings.apiKey}
-      parentOrigin={parentOrigin}
+    <ComponentProvider
+      {...metabaseProviderProps}
+      authConfig={authConfig}
+      locale={embedSettings.locale}
+      reduxStore={store}
+      isLocalHost={isParentLocalhost}
     >
-      <ComponentProvider
-        {...metabaseProviderProps}
-        authConfig={authConfig}
-        locale={embedSettings.locale}
-        reduxStore={store}
-        isLocalHost={isParentLocalhost}
-      >
-        <DataAppEmbedContent
-          slug={slug}
-          path={embedSettings.path}
-          navigationRequest={dataAppPathNavigationRequest}
-          onProviderPropsLoaded={setMetabaseProviderProps}
-        />
-      </ComponentProvider>
-    </SdkIframeApiKeyGuard>
+      <DataAppEmbedContent
+        slug={slug}
+        path={embedSettings.path}
+        navigationRequest={dataAppPathNavigationRequest}
+        onProviderPropsLoaded={setMetabaseProviderProps}
+      />
+    </ComponentProvider>
   );
 }
 
