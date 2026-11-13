@@ -4,7 +4,6 @@
    [clj-http.core :as http.core]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.db :as premium-features.db]
@@ -660,7 +659,7 @@
     (is (= (t2/count :model/User :is_active true :type :personal)
            (premium-features/active-users-count))))
   (testing "Default to 0 if db is not setup yet"
-    (binding [mdb.connection/*application-db* {:status (atom nil)}]
+    (mdb/with-application-db {:status (atom nil)}
       (is (zero? (premium-features/active-users-count))))))
 
 (deftest RemoteCheckedToken-regexp

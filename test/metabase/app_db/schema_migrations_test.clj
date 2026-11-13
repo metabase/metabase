@@ -1119,7 +1119,7 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                   (mdb/with-application-db (mdb.connection/application-db original-app-db-type data-source)
                      (load-from-h2/load-from-h2! h2-filename)
                      (testing "The defective field should still exist after loading from H2"
                        (is (= #{defective-field-id}
@@ -3066,7 +3066,9 @@
                   "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
-                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+                 (:exectype (liquibase/changelog-by-id
+                             (mdb.connection/current-application-db)
+                             id)))))))))
 
 ;;;
 ;;; 62 tests
@@ -4751,7 +4753,7 @@
         (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
             "065 dropped the column")
         (migrate!)
-        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4"))))
         (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
             "existing rows get a null admin_details")
         (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
@@ -4760,7 +4762,7 @@
     (impl/test-migrations ["h8xlm4"] [migrate!]
       (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
       (migrate!)
-      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4")))))))
 
 (deftest drop-report-card-collection-preview-test
   (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"

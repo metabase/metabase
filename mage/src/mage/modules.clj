@@ -144,6 +144,9 @@
      formatter
      funnysql
      geojson
+     ;; Holds the app-DB handle and nothing driver-specific. Every backend test reaches the app DB through it, so the
+     ;; driver suites would add little coverage for their cost. Revisit if a driver-facing component moves onto it.
+     global-system
      indexed-entities
      interestingness
      lib.types
