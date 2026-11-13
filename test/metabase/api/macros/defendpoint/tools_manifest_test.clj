@@ -92,6 +92,32 @@
       (is (= "Internal ID"
              (get-in jss [:properties :id :description]))))))
 
+(deftest ^:parallel maybe-publishes-nullable-type-test
+  (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client validator fails for false, 0 and \"\""
+    (is (= {:type                 "object"
+            :properties           {:flag   {:type ["boolean" "null"] :description "A flag."}
+                                   :limit  {:type ["integer" "null"] :minimum 1}
+                                   :mode   {:type ["string" "null"] :enum ["a" "b" nil]}
+                                   :filter {:type                 ["object" "null"]
+                                            :properties           {:x {:type "string"}}
+                                            :required             [:x]
+                                            :additionalProperties false}
+                                   :either {:anyOf       [{:anyOf [{:type "string"} {:type "integer"}]}
+                                                          {:type "null"}]
+                                            :description "A string or an id."}
+                                   :value  {:anyOf [{} {:type "null"}]}}
+            :required             [:flag :limit :mode :filter :either :value]
+            :additionalProperties false}
+           (tools-manifest/strict-tool-input-schema
+            (tools-manifest/malli->json-schema
+             [:map
+              [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
+              [:limit {:optional true} [:maybe [:int {:min 1}]]]
+              [:mode {:optional true} [:maybe [:enum "a" "b"]]]
+              [:filter {:optional true} [:maybe [:map [:x :string]]]]
+              [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
+              [:value {:optional true} [:maybe :any]]]))))))
+
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
 
@@ -495,9 +521,8 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:oneOf [{:type        "integer"
-                                                         :description "Maximum number of results to return"}
-                                                        {:type "null"}]}}
+                                        :limit {:type        ["integer" "null"]
+                                                :description "Maximum number of results to return"}}
                            :required   [:q :limit]
                            :additionalProperties false}
           :outputSchema {:type       "object"
@@ -532,7 +557,7 @@
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id      {:type "integer"}
-                                        :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
+                                        :dry-run {:type ["boolean" "null"]}
                                         :name    {:type "string"}}
                            :required   [:id :dry-run :name]
                            :additionalProperties false}}
