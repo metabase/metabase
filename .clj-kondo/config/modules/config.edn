@@ -2569,6 +2569,7 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
+                    :model/SegmentTest
                     :model/Transform
                     :model/TransformTest}}
 
@@ -4063,7 +4064,8 @@
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
           metabase-enterprise.data-testing.run-api
-          metabase-enterprise.data-testing.schema}
+          metabase-enterprise.data-testing.schema
+          metabase-enterprise.data-testing.segment-api}
    :uses #{api
            audit-app
            collections
@@ -4071,6 +4073,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            model-persistence
            models
@@ -4082,6 +4085,7 @@
            request
            revisions
            run-tracking
+           segments.schema
            serialization
            sql-tools
            sql-tools.parsing
@@ -4089,12 +4093,13 @@
            transforms.base
            transforms.schema
            util}
-   :model-exports #{:model/CardTest :model/TransformTest}
+   :model-exports #{:model/CardTest :model/SegmentTest :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
                     :model/Document
+                    :model/Segment
                     :model/Transform
                     :model/User}}
 

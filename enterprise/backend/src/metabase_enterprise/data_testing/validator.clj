@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- table-match? :- :boolean
+(mu/defn table-match? :- :boolean
   "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by name, with schema
   equal, or the reference bare (nil schema) against a declared table in `default-schema` — the one-directional
   defaulting `table-replacements` uses when it rewrites (a bare read resolves to the default schema; a bare

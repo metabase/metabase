@@ -27,6 +27,7 @@ import type {
   RemoteSyncPulledOutcome,
   RemoteSyncPythonLibraryData,
   RemoteSyncSegmentData,
+  RemoteSyncSegmentTestData,
   RemoteSyncTableUserSettingsData,
   RemoteSyncTask,
   RemoteSyncTimelineData,
@@ -128,6 +129,12 @@ export function createMockRemoteSyncSegmentData(
   opts?: Partial<RemoteSyncSegmentData>,
 ): RemoteSyncSegmentData {
   return { id: 1, name: "Segment", table_id: 1, ...opts };
+}
+
+export function createMockRemoteSyncSegmentTestData(
+  opts?: Partial<RemoteSyncSegmentTestData>,
+): RemoteSyncSegmentTestData {
+  return { id: 1, name: "Segment test", segment_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncTableUserSettingsData(

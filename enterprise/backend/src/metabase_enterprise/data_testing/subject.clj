@@ -9,7 +9,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.segments.schema :as segments.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -19,7 +23,7 @@
 
 (mr/def ::subject-type
   "The kinds of entity a test can run."
-  [:enum :transform :card])
+  [:enum :transform :card :segment])
 
 (mr/def ::card
   "A saved Card a test can run, with its MBQL 5 query."
@@ -30,9 +34,17 @@
     [:name          :string]
     [:dataset_query ::lib.schema/query]]])
 
+(mr/def ::segment
+  "A saved Segment a test can run, with its MBQL 5 definition."
+  [:merge
+   ::segments.schema/segment
+   [:map {:closed true}
+    [:name       :string]
+    [:definition ::lib.schema/query]]])
+
 (mr/def ::subject
   "An entity a test can run, of one of the [[::subject-type]]s."
-  [:or ::transforms.schema/transform ::card])
+  [:or ::transforms.schema/transform ::card ::segment])
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
@@ -46,10 +58,30 @@
    [:output-label  :string]])
 
 (defmulti subject-plan
-  "The [[::subject-plan]] of `subject`, a `subject-type`. Throws a typed refusal when `subject` cannot be tested."
-  {:arglists '([subject-type subject])}
-  (fn [subject-type _subject]
+  "The [[::subject-plan]] of `subject`, a `subject-type`, for a test with `inputs`. Throws a typed refusal when
+  `subject` cannot be tested."
+  {:arglists '([subject-type subject inputs])}
+  (fn [subject-type _subject _inputs]
     subject-type))
+
+(def output-token
+  "The token expectation SQL writes for the output of a subject that has no table of its own."
+  "{{output}}")
+
+(mu/defn compile-query :- ::data-testing.compile/compiled-query
+  "`query` compiled to SQL as a test runs it. Throws `::data-testing.errors/uncompilable-subject` with the message
+  `(failure-message e)` when compiling throws `e`."
+  [query           :- ::lib.schema/query
+   failure-message :- ifn?]
+  (try
+    ;; The same preparation a transform's query gets: remaps would add joins to tables the test does not declare, and
+    ;; the default row limit would cut the result set. A persisted model in the query stays its query: its cache
+    ;; table is not a table the test can declare, and the test is of the query.
+    (let [{sql :query params :params} (model-persistence/with-persisted-substituion-disabled
+                                        (qp.compile/compile (transforms-base.u/massage-sql-query query)))]
+      {:query sql :params params})
+    (catch Exception e
+      (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject (failure-message e) {} e)))))
 
 (mu/defn testable-database :- ::lib.schema.metadata/database
   "The Database with `database-id`, if its driver can run a test. 404 when there is no such Database."

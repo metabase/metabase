@@ -94,6 +94,12 @@
 (defmethod where :model/Segment [_ {:keys [table-ids]}]
   (when table-ids (in-ids :table_id table-ids)))
 
+(declare ^:private where-clause)
+
+(defmethod where :model/SegmentTest [_ opts]
+  ;; The tests of the Segments that an export with the same options takes.
+  [:in :segment_id ^:allow-subquery {:select [:id] :from [:segment] :where (where-clause :model/Segment opts)}])
+
 (defmethod where :model/Measure [_ {:keys [table-ids]}]
   (when table-ids (in-ids :table_id table-ids)))
 
@@ -119,7 +125,7 @@
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the
   primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids` or `:card-ids`
-  given, and unarchived ones with `:skip-archived`."
+  given, and unarchived ones with `:skip-archived`. SegmentTests follow the Segments the same options pick."
   [model opts]
   (if (= model :model/Setting)
     (setting/exportable-settings)

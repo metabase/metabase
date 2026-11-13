@@ -23,6 +23,12 @@
    opts  :- ::remote-sync.schema/synced-filter-opts]
   (remote-sync/synced-fk-clause alias :card_id :model/Card opts))
 
+(mu/defn synced-segment-tests-clause :- [:fn vector?]
+  "The clause over the SegmentTest table aliased `alias` selecting the tests of the segments remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :segment_id :model/Segment opts))
+
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
   [{:keys [transform-id]} :- [:map {:closed true}
@@ -56,7 +62,8 @@
 
 (def ^:private test-type->table
   {:transform :transform_test
-   :card      :card_test})
+   :card      :card_test
+   :segment   :segment_test})
 
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
@@ -209,6 +216,47 @@
   [card-id :- ::lib.schema.id/card]
   (t2/delete! :model/CardTest :card_id card-id))
 
+(mu/defn segment
+  "The Segment with `segment-id`, or nil."
+  [segment-id :- ::lib.schema.id/segment]
+  (t2/select-one :model/Segment :id segment-id))
+
+(mu/defn segment-test :- [:maybe ::data-testing.schema/segment-test]
+  "The SegmentTest with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/SegmentTest :id id))
+
+(mu/defn segment-tests :- [:sequential ::data-testing.schema/segment-test]
+  "The SegmentTests in name order, only those of the Segment with `:segment-id` when it is given."
+  [{:keys [segment-id]} :- [:map {:closed true}
+                            [:segment-id {:optional true} [:maybe ::lib.schema.id/segment]]]]
+  (t2/select :model/SegmentTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
+                                  segment-id (assoc :where [:= :segment_id segment-id]))))
+
+(mu/defn insert-segment-test! :- ::data-testing.schema/segment-test
+  "Insert the SegmentTest `segment-test` and return the inserted instance."
+  [segment-test :- [:merge
+                    ::data-testing.schema/segment-test.create
+                    [:map {:closed true}
+                     [:creator_id ::lib.schema.id/user]]]]
+  (t2/insert-returning-instance! :model/SegmentTest segment-test))
+
+(mu/defn update-segment-test!
+  "Apply `updates` to the SegmentTest with `id`."
+  [id      :- ms/PositiveInt
+   updates :- ::data-testing.schema/segment-test.update]
+  (t2/update! :model/SegmentTest :id id updates))
+
+(mu/defn delete-segment-test!
+  "Delete the SegmentTest with `id`."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/SegmentTest :id id))
+
+(mu/defn delete-segment-tests!
+  "Delete the SegmentTests of the Segment with `segment-id`."
+  [segment-id :- ::lib.schema.id/segment]
+  (t2/delete! :model/SegmentTest :segment_id segment-id))
+
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
@@ -246,3 +294,16 @@
     (-> (t2/select [:model/CardTest :id :name :card_id] :id [:in ids])
         (t2/hydrate [:card [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :card #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-segment-test-items :- [:sequential ::data-testing.schema/segment-test]
+  "The SegmentTests with `ids`, with their Segment, its Table, and the Table's Collection and ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/SegmentTest :id :name :segment_id] :id [:in ids])
+        (t2/hydrate [:segment [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [row]
+                     (update row :segment
+                             (fn [segment]
+                               (some-> segment
+                                       (update :table #(some-> % (collection.root/hydrate-root-collection root))))))))))))

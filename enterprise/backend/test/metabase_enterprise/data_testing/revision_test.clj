@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -473,3 +474,107 @@
         (is (=? [{:is_creation false :user_id (mt/user->id :crowberto) :object {:name "Renamed"}}
                  {:is_creation true}]
                 (revisions/revisions :model/CardTest card-test-id)))))))
+
+;;; ---------------------------------------------- Revision descriptions ----------------------------------------------
+
+(def ^:private one-input
+  [{:table {:schema "PUBLIC" :name "PEOPLE"} :format :rows :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{"ID" 1}]}])
+
+(def ^:private one-expectation
+  [{:type :empty :name "none" :sql "SELECT 1 WHERE 1 = 0"}])
+
+(deftest test-revisions-describe-changes-to-inputs-expectations-and-subject-test
+  ;; A transform is readable, so named, only with transforms enabled.
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Transform {transform-1 :id} {:name "Orders summary"}
+                       :model/Transform {transform-2 :id} {:name "People summary"}
+                       :model/Card      {card-1 :id}      {:name "Revenue"}
+                       :model/Card      {card-2 :id}      {:name "Refunds"}
+                       :model/Segment   {segment-1 :id}   {:name "From Google" :table_id (mt/id :people)}
+                       :model/Segment   {segment-2 :id}   {:name "From Twitter" :table_id (mt/id :people)}]
+          (doseq [[model subject-key [from from-name] [to to-name]]
+                  [["TransformTest" :transform_id [transform-1 "Orders summary"] [transform-2 "People summary"]]
+                   ["CardTest"      :card_id      [card-1 "Revenue"]               [card-2 "Refunds"]]
+                   ["SegmentTest"   :segment_id   [segment-1 "From Google"]        [segment-2 "From Twitter"]]]
+                  :let [before  {subject-key from :name "t" :description nil :inputs [] :expectations []}
+                        strings #(mapv str (revision.diff/diff-strings* model before (merge before %)))]]
+            (testing model
+              (testing "a change of the inputs"
+                (is (= ["changed the inputs"] (strings {:inputs one-input}))))
+              (testing "a change of the expectations"
+                (is (= ["changed the expectations"] (strings {:expectations one-expectation}))))
+              (testing "a change of the subject names both subjects"
+                (is (= [(str "moved this " (#'revision.diff/model-str->i18n-str model) " from " from-name " to " to-name)]
+                       (strings {subject-key to}))))
+              (testing "control: a rename is described as before"
+                (is (= [(str "renamed this " (#'revision.diff/model-str->i18n-str model) " from \"t\" to \"u\"")]
+                       (strings {:name "u"})))))))))))
+
+;;; ------------------------------------------------ Segment tests ------------------------------------------------
+
+(deftest segment-test-revision-serialization-test
+  (is (= {:segment_id 2 :name "No nulls" :description "Checks the output" :inputs [] :expectations []}
+         (revisions/serialize-instance :model/SegmentTest 1
+                                       (t2/instance :model/SegmentTest
+                                                    {:id           1
+                                                     :entity_id    "test-entity-id"
+                                                     :segment_id   2
+                                                     :creator_id   3
+                                                     :name         "No nulls"
+                                                     :description  "Checks the output"
+                                                     :inputs       []
+                                                     :expectations []
+                                                     :created_at   :not-revisioned
+                                                     :updated_at   :not-revisioned})))))
+
+(deftest segment-test-create-update-and-revert-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Segment     {segment-id :id}      {:table_id (mt/id :people)}
+                     :model/SegmentTest {segment-test-id :id} {:segment_id segment-id
+                                                               :creator_id (mt/user->id :crowberto)
+                                                               :name       "Original"}]
+        (testing "creation records the initial revision"
+          (is (=? [{:is_creation true :user_id (mt/user->id :crowberto) :object {:segment_id segment-id :name "Original"}}]
+                  (revisions/revisions :model/SegmentTest segment-test-id))))
+        (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+        (testing "an update records the changed fields, and both history endpoints describe it"
+          (is (=? [{:is_creation false :object {:name "Renamed"}} {:is_creation true}]
+                  (revisions/revisions :model/SegmentTest segment-test-id)))
+          (let [expected [{:is_creation false :description "renamed this Segment test from \"Original\" to \"Renamed\"."}
+                          {:is_creation true :description "created this."}]]
+            (is (=? expected (mt/user-http-request :crowberto :get 200 "revision"
+                                                   :entity "segment-test" :id segment-test-id)))
+            (is (=? expected (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" segment-test-id))))))
+        (testing "a revert restores the saved test"
+          (let [creation (last (revisions/revisions :model/SegmentTest segment-test-id))]
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "segment-test" :id segment-test-id :revision_id (:id creation)})
+            (is (= "Original" (t2/select-one-fn :name :model/SegmentTest :id segment-test-id)))))))))
+
+(deftest segment-test-revert-requires-feature-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Segment     {segment-id :id}      {:table_id (mt/id :people)}
+                   :model/SegmentTest {segment-test-id :id} {:segment_id segment-id :name "Original"}]
+      (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+      (check-revert-requires-the-feature :model/SegmentTest "segment-test" segment-test-id #{} #{:transforms-testing}))))
+
+(deftest segment-test-revision-history-after-the-old-segment-is-deleted-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "After a segment test moves to another segment and the old one is deleted, the history loads and hides the
+              revision about the deleted segment from a non-admin"
+      (mt/with-temp [:model/Segment {old-segment :id} {:table_id (mt/id :people)}
+                     :model/Segment {new-segment :id} {:table_id (mt/id :people)}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/SegmentTest {segment-test-id :id} {:segment_id old-segment :name "On the old segment"}]
+            (t2/update! :model/SegmentTest :id segment-test-id {:segment_id new-segment :name "On the new segment"})
+            (t2/delete! :model/Segment :id old-segment)
+            (testing "premise: the old segment is gone and the test remains"
+              (is (not (t2/exists? :model/Segment :id old-segment)))
+              (is (t2/exists? :model/SegmentTest :id segment-test-id)))
+            (let [history (mt/user-http-request :rasta :get 200 (str "revision/segment-test/" segment-test-id))]
+              (is (=? [{:is_creation false}] history))
+              (is (= 1 (count history)))
+              (is (not (re-find #"On the old segment" (pr-str history)))))))))))

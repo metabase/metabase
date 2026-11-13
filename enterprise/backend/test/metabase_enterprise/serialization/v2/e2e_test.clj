@@ -1684,3 +1684,87 @@
                                   @published))))
               (testing "no CardTest audit row is written"
                 (is (= audit-rows (t2/count :model/AuditLog :model "CardTest")))))))))))
+
+;;; ------------------------------------------------ Segment tests ------------------------------------------------
+
+(def ^:private segment-test-expectations
+  [{:type :empty :name "no adults" :sql "SELECT * FROM {{output}} WHERE AGE >= 18"}])
+
+(defn- create-segment-with-test!
+  "Create, in the current app DB, the Database `my-db` with the table `customers`, a segment \"Minors\" on it with
+  `segment-props`, and a test of the segment named `test-name` by the User `creator`. Returns the Segment."
+  [creator test-name & {:as segment-props}]
+  (let [db      (ts/create! :model/Database :name "my-db")
+        table   (ts/create! :model/Table :name "customers" :db_id (:id db))
+        field   (ts/create! :model/Field :name "AGE" :table_id (:id table))
+        mp      (lib-be/application-database-metadata-provider (:id db))
+        segment (ts/create! :model/Segment
+                            (merge {:table_id   (:id table)
+                                    :name       "Minors"
+                                    :creator_id (:id creator)
+                                    :definition (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                    (lib/filter (lib/< (lib.metadata/field mp (:id field)) 18)))}
+                                   segment-props))]
+    (ts/create! :model/SegmentTest
+                :segment_id   (:id segment)
+                :creator_id   (:id creator)
+                :name         test-name
+                :description  "Checks the segment"
+                :inputs       [{:table   {:name "customers"}
+                                :format  :rows
+                                :columns [{:name "AGE" :cast_type "INTEGER"}]
+                                :rows    [{"AGE" 12}]}]
+                :expectations segment-test-expectations)
+    segment))
+
+(deftest segment-test-round-trip-test
+  (testing "A segment test is exported next to its segment, and imported with it"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [[segment-eid test-eid]
+              (ts/with-db source-db
+                (let [creator (ts/create! :model/User :email "creator@example.com")
+                      segment (create-segment-with-test! creator "Minors are under 18")]
+                  (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))
+                  [(:entity_id segment) (t2/select-one-fn :entity_id :model/SegmentTest :segment_id (:id segment))]))
+              segment-dir (io/file dump-dir "databases" "my_db" "tables" "customers" "segments")]
+          (testing "the segment's file, and the test's file in the directory named like it"
+            (is (.isFile (io/file segment-dir "minors.yaml")))
+            (is (=? {:entity_id    test-eid
+                     :segment_id   segment-eid
+                     :creator_id   "creator@example.com"
+                     :expectations [{:type "empty"}]
+                     :serdes/meta  [{:model "SegmentTest"}]}
+                    (yaml/parse-string (slurp (io/file segment-dir "minors" "minors_are_under_18.yaml"))))))
+          (ts/with-db dest-db
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (when (#{:event/segment-test-create :event/segment-test-update} topic)
+                                                    (throw (ex-info "an import published a segment-test event"
+                                                                    {:topic topic})))
+                                                  event)]
+              (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+            (is (=? {:name         "Minors are under 18"
+                     :description  "Checks the segment"
+                     :entity_id    test-eid
+                     :segment_id   (t2/select-one-pk :model/Segment :entity_id segment-eid)
+                     :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")
+                     :expectations segment-test-expectations}
+                    (t2/select-one :model/SegmentTest :entity_id test-eid)))))))))
+
+(deftest export-takes-the-tests-of-the-segments-it-takes-test
+  (testing "An export takes the tests of the segments it exports, and no others"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [creator (ts/create! :model/User :email "creator@example.com")
+              segment (create-segment-with-test! creator "Minors are under 18" :archived true)
+              tested  (fn [opts]
+                        (into #{}
+                              (comp (filter #(= "SegmentTest" (-> % :serdes/meta last :model)))
+                                    (map :segment_id))
+                              (extract/extract (assoc opts :include-h2? true))))]
+          (testing "control: an export of the data model takes the segment's test"
+            (is (= #{(:entity_id segment)} (tested {}))))
+          (testing "an export without the data model takes no segment test"
+            (is (= #{} (tested {:no-data-model true}))))
+          (testing "an export that skips archived content takes no test of an archived segment"
+            (is (= #{} (tested {:skip-archived true})))))))))
