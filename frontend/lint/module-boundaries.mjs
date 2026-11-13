@@ -362,6 +362,7 @@ const elements = [
   }),
   createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
+  createElement({ type: "feature", name: "prototypes" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
   createElement({
