@@ -146,6 +146,28 @@ export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
 }
 
+/** PROTOTYPE: a table's hierarchies, as their own tab */
+export function dataStudioTableHierarchies(tableId: TableId) {
+  return `${dataStudioLibrary()}/tables/${tableId}/hierarchies`;
+}
+
+/** PROTOTYPE: a table's hierarchies, as a sub-tab of Fields */
+export function dataStudioTableFieldsHierarchies(tableId: TableId) {
+  return `${dataStudioTableFields(tableId)}?view=hierarchies`;
+}
+
+/** PROTOTYPE: one hierarchy's page, in the list-and-page placement */
+export function dataStudioTableHierarchy(
+  tableId: TableId,
+  hierarchyId: string,
+) {
+  return `${dataStudioTableHierarchies(tableId)}/${hierarchyId}`;
+}
+
+export function dataStudioTableHierarchyNew(tableId: TableId) {
+  return `${dataStudioTableHierarchies(tableId)}/new`;
+}
+
 export function dataStudioTableHistory(tableId: TableId) {
   return `${dataStudioTable(tableId)}/history`;
 }

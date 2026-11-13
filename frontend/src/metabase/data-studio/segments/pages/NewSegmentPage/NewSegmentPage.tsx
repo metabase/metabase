@@ -66,7 +66,7 @@ export function NewSegmentPage({
   const isDirty =
     !savedSegment &&
     (name.trim().length > 0 || description.length > 0 || filters.length > 0);
-  const isValid = name.trim().length > 0 && filters.length > 0;
+  const isValid = filters.length > 0;
   const previewUrl =
     filters.length > 0
       ? getDatasetQueryPreviewUrl(definition, buildQuestion)
@@ -83,7 +83,8 @@ export function NewSegmentPage({
       return;
     }
     const { data: segment, error } = await createSegment({
-      name: name.trim(),
+      // PROTOTYPE: an unnamed segment takes the placeholder's name
+      name: name.trim() || t`New segment`,
       definition: definition,
       description: description.trim() || undefined,
     });

@@ -30,6 +30,7 @@ import { DetailsEditableText } from "../DetailPanel";
 
 import { CustomFieldSection } from "./CustomFieldSection";
 import S from "./FieldDetails.module.css";
+import { FieldHierarchyRow } from "./FieldHierarchyRow";
 import {
   FieldCorrectionInput,
   FieldHistoryRoleInput,
@@ -62,13 +63,20 @@ interface FieldDetailsProps {
    * a scrolling panel
    */
   header?: ReactNode;
+  /** Where the field's hierarchies are listed; without it they don't link */
+  hierarchiesHref?: string;
 }
 
 /**
  * A field's settings in the drawer, in tabs: its details and metadata, how
  * its values relate and group, and the shared behavior and formatting.
  */
-export function FieldDetails({ field, table, header }: FieldDetailsProps) {
+export function FieldDetails({
+  field,
+  table,
+  header,
+  hierarchiesHref,
+}: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
@@ -216,6 +224,11 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
                   }
                 />
               )}
+              <FieldHierarchyRow
+                field={field}
+                table={table}
+                hierarchiesHref={hierarchiesHref}
+              />
             </DetailsTable>
           </SidebarSection>
           <CustomFieldSection field={field} table={table} />

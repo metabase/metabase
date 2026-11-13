@@ -68,7 +68,7 @@ export function NewMeasurePage({
     (name.trim().length > 0 ||
       description.length > 0 ||
       aggregations.length > 0);
-  const isValid = name.trim().length > 0 && aggregations.length === 1;
+  const isValid = aggregations.length === 1;
   const previewUrl =
     aggregations.length === 1
       ? getDatasetQueryPreviewUrl(definition, buildQuestion)
@@ -85,7 +85,8 @@ export function NewMeasurePage({
       return;
     }
     const { data: measure, error } = await createMeasure({
-      name: name.trim(),
+      // PROTOTYPE: an unnamed measure takes the placeholder's name
+      name: name.trim() || t`New measure`,
       definition: definition,
       description: description.trim() || undefined,
     });

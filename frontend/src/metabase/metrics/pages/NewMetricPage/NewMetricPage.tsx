@@ -135,6 +135,7 @@ export function NewMetricPage({
               maxLength={NAME_MAX_LENGTH}
               isOptional
               onChange={setName}
+              autoFocus
             />
           }
           icon="metric"

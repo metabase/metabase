@@ -45,6 +45,16 @@ const tableHistoryPage = () =>
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableHistoryPage"
   ).then(({ TableHistoryPage }) => ({ Component: TableHistoryPage }));
 
+const tableHierarchiesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableHierarchiesPage"
+  ).then(({ TableHierarchiesPage }) => ({ Component: TableHierarchiesPage }));
+
+const tableHierarchyPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableHierarchyPage"
+  ).then(({ TableHierarchyPage }) => ({ Component: TableHierarchyPage }));
+
 const tableSegmentsPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableSegmentsPage"
@@ -146,6 +156,14 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/metadata" lazy={tableMetadataPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />
+      <Route path=":tableId/hierarchies" lazy={tableHierarchiesPage} />
+      <Route path=":tableId/hierarchies/new" element={<IsAdmin />}>
+        <Route index lazy={tableHierarchyPage} />
+      </Route>
+      <Route
+        path=":tableId/hierarchies/:hierarchyId"
+        lazy={tableHierarchyPage}
+      />
       <Route path=":tableId/history" lazy={tableHistoryPage} />
       <Route path=":tableId/segments" lazy={tableSegmentsPage} />
       <Route path=":tableId/segments/new" element={<IsAdmin />}>

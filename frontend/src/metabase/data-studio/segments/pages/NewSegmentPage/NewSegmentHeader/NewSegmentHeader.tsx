@@ -33,6 +33,7 @@ export function NewSegmentHeader({
           maxLength={SEGMENT_NAME_MAX_LENGTH}
           onContentChange={onNameChange}
           placeholder={t`New segment`}
+          autoFocus
         />
       }
       menu={previewUrl && <SegmentMoreMenu previewUrl={previewUrl} />}

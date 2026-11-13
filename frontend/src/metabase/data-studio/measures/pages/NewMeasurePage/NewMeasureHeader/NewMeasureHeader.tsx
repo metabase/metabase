@@ -34,6 +34,7 @@ export function NewMeasureHeader({
           fz="h3"
           lh="h3"
           onContentChange={onNameChange}
+          autoFocus
         />
       }
       menu={previewUrl && <MeasureMoreMenu previewUrl={previewUrl} />}

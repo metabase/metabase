@@ -1,0 +1,9 @@
+/* Where a dragged level would land, under this row */
+.tree [data-drop-over="true"] {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  box-shadow: inset 0 -2px 0 0 var(--mb-color-core-brand);
+}
+
+.tree [draggable="true"] {
+  cursor: grab;
+}
