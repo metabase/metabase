@@ -268,4 +268,20 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
     expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
+
+  it("drops the ranges bounded by a withheld goal", async () => {
+    setup({
+      height: LABELED_GAUGE_SIZE,
+      referencedEntities: createMockFailedReferencedEntitiesResults({
+        error_type: "withheld",
+      }),
+      segments: SEGMENTS,
+      width: LABELED_GAUGE_SIZE,
+    });
+
+    expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("gauge-arc-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("100")).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
 });

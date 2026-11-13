@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -1009,12 +1010,17 @@
     ;; a measure's value is its table's data, while reading a Table only takes metadata access
     (when (= "measure" entity-type)
       (api/check (query-perms/can-query-table? (get-in entity [:definition :database]) (:table_id entity))
-                 [403 (tru "You must have data permissions to use this measure as a goal.")]))))
+                 [403 (tru "You must have data permissions to use this measure as a goal.")]))
+    ;; a goal runs its source with no parameter values, so it'd get each one's default or none
+    (when (= "card" entity-type)
+      (api/check-400
+       (not (qp.template-tags/reads-parameters? entity))
+       (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal.")))))
 
 (defn check-new-goal-references!
   "Throws if a goal in `viz-settings` reads a column no `previous-viz-settings` reads, and the card or measure that
-  column belongs to is malformed, missing, or unreadable by the current user. A measure also needs query access to its
-  table. Does nothing when no user is bound."
+  column belongs to is malformed, missing, or unreadable by the current user, or is a card whose query reads parameters.
+  A measure also needs query access to its table. Does nothing when no user is bound."
   [viz-settings & previous-viz-settings]
   ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
   ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write

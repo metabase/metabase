@@ -174,6 +174,20 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
 
+    it("draws no goal line when the goal is withheld", async () => {
+      await setup({
+        display,
+        referencedEntities: createMockFailedReferencedEntitiesResults({
+          error_type: "withheld",
+        }),
+      });
+
+      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    });
+
     it("reports a goal warning when the reference cannot be resolved", async () => {
       const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 

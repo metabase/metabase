@@ -166,6 +166,36 @@ describe("resolveGoalValue", () => {
     ).toBe("source-not-found");
   });
 
+  it("errors with has-parameters when the referenced question uses variables", () => {
+    const data = {
+      cols: [],
+      rows: [],
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        error: "Referenced card 9 uses variables, so it can't run on its own.",
+        error_type: "has-parameters",
+      }),
+    };
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error
+        ?.reason,
+    ).toBe("has-parameters");
+  });
+
+  it("treats a withheld goal as a failed query", () => {
+    const data = {
+      cols: [],
+      rows: [],
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        error_type: "withheld",
+      }),
+    };
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }),
+    ).toMatchObject({ value: null, error: { reason: "query-failed" } });
+  });
+
   it("errors when the referenced query returned no rows", () => {
     const data = {
       cols: [],
@@ -643,6 +673,27 @@ describe("getGoalErrorMessage", () => {
         message: "Not found.",
       }),
     ).toBe("This source no longer exists");
+  });
+
+  it("explains that a source with variables can't be a goal, whatever the server says", () => {
+    const error: GoalRefError = {
+      ...REF,
+      reason: "has-parameters",
+      message: "Referenced card 9 uses variables, so it can't run on its own.",
+    };
+
+    expect(getGoalErrorMessage(error, "question")).toBe(
+      "This question uses variables, directly or through a question it's built on. A goal runs on its own and can't fill them in, so pick a question without variables.",
+    );
+    expect(getGoalErrorMessage(error, "model")).toBe(
+      "This model is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.",
+    );
+    expect(getGoalErrorMessage(error, "metric")).toBe(
+      "This metric is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.",
+    );
+    expect(getGoalErrorMessage(error)).toBe(
+      "This source uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.",
+    );
   });
 
   it("explains a missing column regardless of the server message", () => {
