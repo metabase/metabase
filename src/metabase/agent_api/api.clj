@@ -118,10 +118,8 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
-   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
-   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
-   ;; `updated_at` in search results.
+   ;; TemporalInstant publishes as a `date-time` string, so clients see `{type: [string, null], format: date-time}`
+   ;; where `[:maybe :any]` would tell them nothing. Collections can omit `updated_at` in search results.
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
