@@ -73,10 +73,8 @@
      {:name "name" :cast_type text-type}]))
 
 (defn- orders-rows
-  "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers.
-
-  Rows rather than SQL: two rows of SQL need a `UNION`, and SQL Server cannot create a temp table from one. The columns
-  are named as the warehouse names the fields, since the card's SQL quotes those names."
+  "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers. The columns are
+  named as the warehouse names the fields, since the card's SQL quotes those names."
   [field-keys rows]
   (let [[int-type] (data-testing.test-util/cast-types)
         mp         (mt/metadata-provider)

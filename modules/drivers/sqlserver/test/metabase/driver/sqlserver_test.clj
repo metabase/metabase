@@ -1273,7 +1273,11 @@
                (compile! "SELECT id FROM products UNION ALL SELECT id FROM orders"))))
       (testing "a statement that is not a query is still refused"
         (is (thrown-with-msg? Exception #"must be a SELECT statement"
-                              (compile! "UPDATE t SET a = 1")))))))
+                              (compile! "UPDATE t SET a = 1"))))
+      (testing "a transform whose query is a set operation compiles the same way"
+        (is (= ["SELECT 1 AS id INTO [t] UNION ALL SELECT 2 AS id" nil]
+               (driver/compile-transform :sqlserver {:query        {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id"}
+                                                     :output-table "t"})))))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver

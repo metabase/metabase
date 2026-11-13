@@ -104,7 +104,7 @@
    (case form
      :rows (tru "Expectation {0} compares column {1}, which the output of the query under test does not have. It has: {2}"
                 (pr-str expectation-name) (pr-str column-name) (str/join ", " output-columns))
-     :sql  (tru "The query of expectation {0} returns column {1}, which the output of the query under test does not have. It has: {2}. Name each column the query computes with AS."
+     :sql  (tru "The query of expectation {0} returns column {1}, which the output of the query under test does not have. It has: {2}. If the query computes this column, name it with AS."
                 (pr-str expectation-name) (pr-str column-name) (str/join ", " output-columns)))
    {:expectation expectation-name
     :column      column-name
