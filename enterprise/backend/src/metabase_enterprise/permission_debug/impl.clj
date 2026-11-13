@@ -489,7 +489,8 @@
                             [:user_id ::lib.schema.id/user]
                             [:user_name :string]
                             [:principal_name :string]
-                            [:attributes Attributes]]
+                            [:attributes Attributes]
+                            [:preview_id :string]]
   "Resolve the principal an admin wants to preview to the user the request binds to, and record the start of the
   preview in the audit log. A user previews as themselves. A group or tenant previews as its hidden preview user,
   because permission checks look the user's groups up again by id, so the binding needs a user row; a real member
@@ -517,7 +518,12 @@
                                          (when-not (str/blank? value)
                                            [attribute value]))))
                                (preview-attributes principal-id))
-                         {})]
+                         ;; recorded in the audit log: the values the rules on their groups read
+                         (into {}
+                               (keep (fn [{:keys [attribute value]}] (when value [attribute value])))
+                               (affecting-attributes {:principal-type principal-type
+                                                      :principal-id   principal-id})))
+        preview-id     (str (random-uuid))]
     (api/check (permission-debug.db/previewable-user-info user-id)
                [400 (tru "This user can''t be previewed: only active users who aren''t admins can.")])
     ;; TODO (proof of concept): one preview user per group stores the picked values on its own row, so two admins
@@ -528,14 +534,38 @@
                            {:user-id  api/*current-user-id*
                             :model    :model/User
                             :model-id user-id
-                            :details  (cond-> {:action         "start"
-                                               :principal-type principal-type
-                                               :principal-id   principal-id}
-                                        (= "group" principal-type) (assoc :attributes attributes))})
+                            :details  {:action         "start"
+                                       :preview-id     preview-id
+                                       :principal-type principal-type
+                                       :principal-id   principal-id
+                                       :attributes     attributes}})
     {:user_id        user-id
      :user_name      principal-name
      :principal_name principal-name
-     :attributes     attributes}))
+     ;; a user's or tenant's own values are on their row; the preview binds only a group's
+     :attributes     (if (= "group" principal-type) attributes {})
+     :preview_id     preview-id}))
+
+(mu/defn end-preview! :- :nil
+  "Record the end of the preview `preview-id` (from [[start-preview!]]) in the audit log, with the admin as the actor and
+  the previewed user as the target."
+  [{:keys [preview-id user-id principal-type principal-id attributes]}
+   :- [:map {:closed true}
+       [:preview-id :string]
+       [:user-id ::lib.schema.id/user]
+       [:principal-type PrincipalType]
+       [:principal-id pos-int?]
+       [:attributes {:optional true} [:maybe Attributes]]]]
+  (events/publish-event! :event/permissions-preview
+                         {:user-id  api/*current-user-id*
+                          :model    :model/User
+                          :model-id user-id
+                          :details  (cond-> {:action         "end"
+                                             :preview-id     preview-id
+                                             :principal-type principal-type
+                                             :principal-id   principal-id}
+                                      (seq attributes) (assoc :attributes attributes))})
+  nil)
 
 (mu/defn preview-card-query :- :map
   "Run the Card with `card-id` as the User with `user-id` would run it: their permissions, attributes (including tenant

@@ -98,7 +98,7 @@
   resolves to its hidden preview user) and the attribute values it carries, and records the start of the preview in
   the audit log. `attributes` sets a group's attribute values; any it leaves out take the most common member value,
   and an empty string means no value. The browser tab then sends `X-Metabase-Preview-As: <user_id>` on every API
-  call."
+  call. `preview_id` links this start to its `POST /preview/end`."
   [_route-params
    _query-params
    {:keys [principal_type principal_id attributes]} :- [:map {:closed true}
@@ -108,6 +108,26 @@
   (permission-debug.impl/start-preview! {:principal-type principal_type
                                          :principal-id   principal_id
                                          :attributes     attributes}))
+
+(api.macros/defendpoint :post "/preview/end" :- [:map [:ok :boolean]]
+  "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`) returned, recording it in the audit
+  log with the caller as the actor and `user_id` as the target. Takes the start's principal and attribute values, so
+  the end row reads on its own."
+  [_route-params
+   _query-params
+   {:keys [preview_id user_id principal_type principal_id attributes]}
+   :- [:map {:closed true}
+       [:preview_id ms/NonBlankString]
+       [:user_id ms/PositiveInt]
+       [:principal_type permission-debug.impl/PrincipalType]
+       [:principal_id ms/PositiveInt]
+       [:attributes {:optional true} [:maybe [:map-of :string :string]]]]]
+  (permission-debug.impl/end-preview! {:preview-id     preview_id
+                                       :user-id        user_id
+                                       :principal-type principal_type
+                                       :principal-id   principal_id
+                                       :attributes     attributes})
+  {:ok true})
 
 (api.macros/defendpoint :post "/preview/grant" :- [:map
                                                    [:grant :string]
