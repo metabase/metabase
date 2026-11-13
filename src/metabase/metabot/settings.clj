@@ -132,8 +132,8 @@
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
-  "Default model reference used for Metabot when no explicit model is selected."
-  "anthropic/claude-haiku-5-5")
+  "Default model reference for Metabot when no model is selected: the Anthropic provider's default model."
+  (str "anthropic/" (llm.provider/default-model "anthropic")))
 
 (def default-metabase-llm-metabot-provider
   "Default model reference for Metabot on the managed provider."
