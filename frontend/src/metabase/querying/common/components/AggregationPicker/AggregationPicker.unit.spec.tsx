@@ -11,8 +11,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -20,6 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -129,7 +130,7 @@ function createMetadata({
 type SetupOpts = {
   database?: Database;
   state?: State;
-  metadata?: Metadata;
+  metadata?: JsMetadata;
   query?: Lib.Query;
   allowCustomExpressions?: boolean;
 };
@@ -274,6 +275,72 @@ describe("AggregationPicker", () => {
       expect(getRecentClauseInfo()).toMatchObject({
         name: "avg",
         displayName: "Average of Rating",
+      });
+    });
+
+    it("should only list numeric custom columns for Sum (metabase#18069)", async () => {
+      const column = (name: string) => ({ type: "column", name }) as const;
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              { name: "CC_Category", value: column("CATEGORY") },
+              {
+                name: "CC_LowerVendor",
+                value: {
+                  type: "operator",
+                  operator: "lower",
+                  args: [column("VENDOR")],
+                },
+              },
+              {
+                name: "CC_UpperTitle",
+                value: {
+                  type: "operator",
+                  operator: "upper",
+                  args: [column("TITLE")],
+                },
+              },
+              {
+                name: "CC_HalfPrice",
+                value: {
+                  type: "operator",
+                  operator: "/",
+                  args: [column("PRICE"), { type: "literal", value: 2 }],
+                },
+              },
+              {
+                name: "CC_ScaledRating",
+                value: {
+                  type: "operator",
+                  operator: "*",
+                  args: [{ type: "literal", value: 1.5 }, column("RATING")],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const { getRecentClauseInfo } = setup({ query });
+
+      await userEvent.click(screen.getByText("Sum of ..."));
+
+      expect(screen.getByRole("option", { name: "Price" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Rating" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "CC_HalfPrice" }),
+      ).toBeInTheDocument();
+      ["CC_Category", "CC_LowerVendor", "CC_UpperTitle"].forEach((name) => {
+        expect(screen.queryByText(name)).not.toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("CC_ScaledRating"));
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "sum",
+        displayName: "Sum of CC_ScaledRating",
       });
     });
 

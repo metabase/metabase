@@ -73,8 +73,8 @@
                (as-> $ (when (empty? $) (log/error "Linked filters preset is empty"))))}
    {:id :serialization
     :display_name (tru "Serialization troubleshooting")
-    :loggers (doto (->> (cons (logger "metabase.models.serialization")
-                              (loggers-under "metabase-enterprise.serialization"))
+    :loggers (doto (->> (concat (loggers-under "metabase.serialization")
+                                (loggers-under "metabase-enterprise.serialization"))
                         (filter map?)
                         (map #(assoc % :level :debug))
                         (sort-by :name)

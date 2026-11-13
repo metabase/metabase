@@ -1,5 +1,6 @@
 (ns metabase.geojson.rest.api
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.geojson.core :as geojson]
    [metabase.geojson.settings :as geojson.settings]
@@ -29,6 +30,7 @@
 (api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the [[metabase.geojson.settings/custom-geojson]] setting. (This just acts
   as a simple proxy for the file specified for `key`)."
+  {:scope api-scope/data-app}
   [{k :key, :as _route-params} :- [:map {:closed true}
                                    [:key ms/NonBlankString]]
    _query-params

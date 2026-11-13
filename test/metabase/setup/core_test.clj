@@ -16,9 +16,9 @@
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -164,13 +164,13 @@
             (t2/delete! :setting :key "encryption-check")
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
             (t2/delete! :setting :key "encryption-check")
             (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -181,7 +181,7 @@
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
               (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
-                (is (not (string/valid-uuid? setting-value)))))))))))
+                (is (not (u/uuid-string? setting-value)))))))))))
 
 (defn- set-encryption-check-raw! [value]
   (t2/delete! :setting :key "encryption-check")

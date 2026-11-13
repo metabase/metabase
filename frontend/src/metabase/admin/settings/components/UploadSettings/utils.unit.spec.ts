@@ -1,5 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import type { Database, Schema } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
@@ -10,17 +8,7 @@ interface SetupOpts {
   schemas: Schema[];
 }
 
-const setup = ({ databases, schemas }: SetupOpts) => {
-  const metadata = createMockMetadata({ databases, schemas });
-
-  return {
-    // Unjustified type cast. FIXME
-    databases: databases.map(({ id }) =>
-      checkNotNull(metadata.database(id)),
-    ) as Database[],
-    schemas: schemas.map(({ id }) => checkNotNull(metadata.schema(id))),
-  };
-};
+const setup = ({ databases, schemas }: SetupOpts) => ({ databases, schemas });
 
 describe("Admin > UploadSettings > utils", () => {
   const { databases, schemas } = setup({

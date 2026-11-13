@@ -96,8 +96,9 @@ describe("PythonTransformTopBar", () => {
   });
 
   describe("edit mode", () => {
-    it("should not render edit button in edit mode", () => {
+    it("should not render edit button in edit mode", async () => {
       setup({ isEditMode: true, transform: mockPythonTransform });
+      expect(await screen.findByText("Test Database")).toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),
       ).not.toBeInTheDocument();
@@ -106,9 +107,11 @@ describe("PythonTransformTopBar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render database selector in edit mode", () => {
+    it("should render database selector in edit mode", async () => {
       setup({ isEditMode: true });
-      expect(screen.getByTestId("selected-database")).toBeInTheDocument();
+      expect(await screen.findByTestId("trigger")).toHaveTextContent(
+        "Test Database",
+      );
     });
   });
 });

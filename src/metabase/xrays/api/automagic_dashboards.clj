@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -198,12 +199,12 @@
     :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
-  (let [entity-types [:adhoc :segment :table]]
+  (let [entity-types [:adhoc :question :segment :table]]
     (mu/with-api-error-message
      (into [:enum
             {:api/regex (u.regex/re-or (map name entity-types))}]
            entity-types)
-     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""))))
+     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""))))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
@@ -235,9 +236,10 @@
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]

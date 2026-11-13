@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 const INTEGER_REGEX = /^[+-]?\d+$/;
 
 export type NumberValue = number | bigint;

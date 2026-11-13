@@ -461,6 +461,24 @@
   []
   (model-hooks* (methods spec*)))
 
+(defn- collect-updated-columns
+  "The `:updated`-qualified columns `expr` references, without their table qualifier."
+  [expr]
+  (into #{}
+        (comp (filter #(and (keyword? %) (has-table? :updated %)))
+              (map #(remove-table :updated %)))
+        (tree-seq coll? seq expr)))
+
+(defn hook-where-fields
+  "The columns of `model` whose row values parameterize the where-clauses of the search hooks it feeds.
+  A capture layer must snapshot (at least) these for [[search-models-to-update]] to work on a row that no
+  longer exists, e.g. the pre-image of a deleted row."
+  [model]
+  (not-empty
+   (into #{}
+         (mapcat (comp collect-updated-columns :where))
+         (get (model-hooks) model))))
+
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]

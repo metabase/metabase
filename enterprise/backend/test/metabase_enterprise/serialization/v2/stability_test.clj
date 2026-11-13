@@ -10,8 +10,8 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
-   [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -28,17 +28,15 @@
   (.toFile (Files/createTempDirectory "serdes_stability" (make-array FileAttribute 0))))
 
 (defn- load-dir! [^File dir]
-  (serdes/with-cache
-    (load/load-metabase! (ingest/ingest-yaml dir) :reindex? false)))
+  (load/load-metabase! (ingest/ingest-yaml dir) :reindex? false))
 
 (defn- exported-yaml!
-  "The YAML of every exported entity, by its `:serdes/meta`; the export is also stored into `dir` when given."
+  "The YAML of every exported entity, by its key; the export is also stored into `dir` when given."
   ([] (exported-yaml! nil))
   ([dir]
-   (serdes/with-cache
-     (let [entities (into [] (extract/extract extract-opts))]
-       (some->> dir storage.files/file-writer (storage/store! entities))
-       (into {} (map (juxt :serdes/meta storage.util/entity-yaml)) entities)))))
+   (let [entities (into [] (extract/extract extract-opts))]
+     (some->> dir storage.files/file-writer (storage/store! entities))
+     (into {} (map (juxt serialization/key-of storage.util/entity-yaml)) entities))))
 
 (defn- shift-local-ids!
   "Make every identity column of the H2 app DB start at a different number past its seeded rows and `start`, so loaded

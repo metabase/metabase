@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import type {
   CreateGlossaryRequest,
-  GlossaryItem,
   UpdateGlossaryRequest,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -20,7 +19,7 @@ import {
   Stack,
   TextInput,
 } from "metabase/ui";
-import type { SortDirection } from "metabase-types/api";
+import type { GlossaryItem, SortDirection } from "metabase-types/api";
 
 import { EmptyState } from "../EmptyState";
 

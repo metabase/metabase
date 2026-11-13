@@ -1,4 +1,5 @@
 import { useNativeQueryEditorContext } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
+import { setTemplateTagIndex } from "metabase/querying/native";
 import type { ParameterId } from "metabase-types/api";
 
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
@@ -8,7 +9,7 @@ import { ResponsiveParametersList } from "./ResponsiveParametersList";
  * when the editor context has no `setParameterValue`.
  */
 export function NativeQueryParametersList() {
-  const { question, query, setDatasetQuery, setParameterValue } =
+  const { question, query, setQuery, setParameterValue } =
     useNativeQueryEditorContext();
 
   if (!setParameterValue) {
@@ -19,7 +20,7 @@ export function NativeQueryParametersList() {
     parameterId: ParameterId,
     parameterIndex: number,
   ) => {
-    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
+    setQuery(setTemplateTagIndex(query, parameterId, parameterIndex));
   };
 
   return (

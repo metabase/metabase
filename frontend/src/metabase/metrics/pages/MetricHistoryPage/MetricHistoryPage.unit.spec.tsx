@@ -16,6 +16,8 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -54,11 +56,14 @@ function setup() {
     name: "Count of Orders",
     database_id: SAMPLE_DB_ID,
     table_id: ORDERS_ID,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    }),
   });
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);

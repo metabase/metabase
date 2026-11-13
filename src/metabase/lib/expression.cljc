@@ -363,8 +363,6 @@
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
-;; Kondo gets confused
-#_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
 (lib.common/defop ^{:style/indent [:form]} case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])

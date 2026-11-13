@@ -1,40 +1,16 @@
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
-  createMockField,
-  createMockFieldDimension,
-} from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  PRODUCTS,
-  createSampleDatabase,
+  createOrdersTotalField,
+  createProductsCategoryField,
+  createProductsTitleField,
 } from "metabase-types/api/mocks/presets";
 
 import { formatParameterValue } from "./formatting";
 
-const REMAPPED_FIELD_ID = 100;
-
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-  fields: [
-    createMockField({
-      id: REMAPPED_FIELD_ID,
-      base_type: "type/Integer",
-      remappings: [[123456789, "A"]],
-      dimensions: [
-        createMockFieldDimension({
-          type: "internal",
-        }),
-      ],
-    }),
-  ],
-});
-
-const numberField = checkNotNull(metadata.field(ORDERS.TOTAL));
-const textField = checkNotNull(metadata.field(PRODUCTS.TITLE));
-const categoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
-const remappedField = checkNotNull(metadata.field(REMAPPED_FIELD_ID));
+const numberField = getParameterFieldInfo(createOrdersTotalField());
+const textField = getParameterFieldInfo(createProductsTitleField());
+const categoryField = getParameterFieldInfo(createProductsCategoryField());
 
 describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue without settings", () => {
@@ -184,22 +160,6 @@ describe("metabase/parameters/utils/formatting", () => {
         expect(formatParameterValue(value, parameter)).toEqual(expected);
       },
     );
-
-    it("should not remap a field filter parameter connected to more than one field", () => {
-      const parameter = createMockUiParameter({
-        type: "number/=",
-        fields: [remappedField, numberField],
-      });
-      expect(formatParameterValue(123456789, parameter)).toEqual("123,456,789");
-    });
-
-    it("should remap a field filter parameter value with a target field that is remapped", () => {
-      const parameter = createMockUiParameter({
-        type: "number/=",
-        fields: [remappedField],
-      });
-      expect(formatParameterValue(123456789, parameter)).toEqual("A");
-    });
   });
 
   describe("formatParameterValue with settings", () => {

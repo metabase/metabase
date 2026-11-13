@@ -1,22 +1,22 @@
 import { cardApi } from "metabase/api";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
+import * as Lib from "metabase-lib";
 import {
-  createMockCard,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+  DEFAULT_TEST_QUERY,
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import {
   maybeUsePivotEndpoint,
   shouldUsePivotEndpoint,
 } from "./query-endpoints";
 
-const structuredQuery = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: { "source-table": ORDERS_ID },
-});
+const structuredQuery = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 const buildQuestion = (card: Parameters<typeof createMockCard>[0]) =>
   new Question(createMockCard(card), SAMPLE_METADATA);
@@ -45,9 +45,8 @@ describe("shouldUsePivotEndpoint", () => {
   it("is false for a native card without resolving its database", () => {
     const question = buildQuestion({
       display: "pivot",
-      dataset_query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: { query: "select 1" },
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select 1",
       }),
     });
 

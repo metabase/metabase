@@ -67,6 +67,7 @@
   :metabase/defsetting-namespace                             {:level :warning}
   :metabase/discourage-dynamic-vars                          {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
+  :metabase/dynamic-redefs-captured-proxy                    {:level :warning}
   :metabase/mbql-query-first-arg                             {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
@@ -285,6 +286,7 @@
               :googleanalytics
               :hive-like
               :mongo
+              :motherduck
               :oracle
               :presto-jdbc
               :redshift
@@ -336,12 +338,12 @@
   {metabase-enterprise.search.entity-retrieval.core/search-unfiltered        {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.core/search-unfiltered                   {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.mirror/search-unfiltered                 {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
-   metabase-enterprise.transform-testing.expectations.equals/->EqualsRows    {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/map->EqualsRows {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/->EqualsSql     {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/map->EqualsSql  {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.empty/->Empty          {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.empty/map->Empty       {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/->EqualsRows         {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/map->EqualsRows      {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/->EqualsSql          {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/map->EqualsSql       {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.empty/->Empty               {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.empty/map->Empty            {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
    clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
@@ -629,6 +631,7 @@
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
+   clojure.core/let                                                                                                          hooks.clojure.core.let/lint-let
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -644,7 +647,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
-   metabase-enterprise.remote-sync.metric-dimension-api-test/with-synced-metric                                              hooks.common/with-one-binding
+   metabase-enterprise.remote-sync.test-util/with-repository                                                                 hooks.common/with-one-binding
    metabase-enterprise.search.semantic.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -896,7 +899,8 @@
    potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
- {:linters {:unresolved-symbol {:level :off}}}
+ {:linters {:unresolved-symbol {:level :off}
+            :metabase/modules  {:level :off}}}
 
  ;;
  ;; TEST CONFIG

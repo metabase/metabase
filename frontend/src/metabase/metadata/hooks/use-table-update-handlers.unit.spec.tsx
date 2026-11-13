@@ -8,7 +8,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   createOrdersIdField,
   createOrdersQuantityField,
@@ -46,7 +45,7 @@ describe("useTableUpdateHandlers", () => {
 
     await act(() =>
       result.current.handleCustomFieldOrderChange(
-        (ORDERS_TABLE.fields ?? []).map(getRawTableFieldId).reverse(),
+        (ORDERS_TABLE.fields ?? []).map((field) => field.id).reverse(),
       ),
     );
 

@@ -19,6 +19,7 @@ import { CollectionHeader } from "metabase/collections/components/CollectionHead
 import { PinnedItemsGrid } from "metabase/collections/components/PinnedItemsGrid";
 import {
   trackCollectionBookmarked,
+  trackCollectionItemsFiltered,
   trackCollectionSelectModeEntered,
 } from "metabase/common/collections/analytics";
 import { getComposedDragProps } from "metabase/common/collections/dropzone";
@@ -45,6 +46,7 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   Database,
 } from "metabase-types/api";
 
@@ -106,6 +108,30 @@ export const CollectionContentView = ({
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
   const previousSelectedCount = usePrevious(selected.length);
+  // Owned here so the info panel's Contents counts can filter the items table.
+  // Keyed by collection, so a selection made in another collection never applies.
+  const [typeFilterSelection, setTypeFilterSelection] = useState<{
+    collectionId: CollectionId;
+    models: CollectionItemModel[] | null;
+  }>({ collectionId, models: null });
+  const typeFilter =
+    typeFilterSelection.collectionId === collectionId
+      ? typeFilterSelection.models
+      : null;
+  const handleTypeFilterChange = useCallback(
+    (models: CollectionItemModel[] | null) =>
+      setTypeFilterSelection({ collectionId, models }),
+    [collectionId],
+  );
+  // The toolbar tracks its own filtering; a count in the info panel is one
+  // filter action each time it is clicked.
+  const handleFilterByTypeFromInfo = useCallback(
+    (model: CollectionItemModel) => {
+      trackCollectionItemsFiltered({ collectionId, filter: "type" });
+      handleTypeFilterChange([model]);
+    },
+    [collectionId, handleTypeFilterChange],
+  );
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
@@ -287,6 +313,7 @@ export const CollectionContentView = ({
             canUpload={canCreateUpload}
             uploadsEnabled={uploadsEnabled}
             onSaveFile={saveFile}
+            onFilterByType={handleFilterByTypeFromInfo}
           />
         </ErrorBoundary>
 
@@ -321,6 +348,8 @@ export const CollectionContentView = ({
             clear={clear}
             handleMove={handleMove}
             handleCopy={handleCopy}
+            typeFilter={typeFilter}
+            onTypeFilterChange={handleTypeFilterChange}
           />
           <CollectionBulkActions
             collection={collection}

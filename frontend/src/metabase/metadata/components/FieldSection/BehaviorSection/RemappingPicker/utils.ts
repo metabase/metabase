@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { is403Error } from "metabase/utils/errors";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
@@ -16,7 +15,7 @@ export function getFkTargetTableEntityNameOrNull(
 ): FieldId | undefined {
   const fields = getTableFields(targetTable);
   const nameField = fields.find((field) => isEntityName(field));
-  return nameField ? getRawTableFieldId(nameField) : undefined;
+  return nameField ? nameField.id : undefined;
 }
 
 export function getOptions(

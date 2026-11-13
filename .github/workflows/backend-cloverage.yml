@@ -16,6 +16,11 @@ on:
   #   - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
 
 jobs:
+  static-viz:
+    uses: ./.github/workflows/static-viz.yml
+    with:
+      editions: '["ee"]'
+
   setup-oss:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -29,7 +34,7 @@ jobs:
           echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage:
-    needs: setup-oss
+    needs: [setup-oss, static-viz]
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -40,15 +45,13 @@ jobs:
         modules: ${{ fromJson(needs.setup-oss.outputs.modules) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Build static viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
+      - name: Download static viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ee
       - name: Collect the test coverage
         run: |
           clojure -X:dev:ci:ee:ee-dev:test:cloverage \
@@ -77,7 +80,7 @@ jobs:
           echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage-enterprise:
-    needs: setup-ee
+    needs: [setup-ee, static-viz]
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -88,15 +91,13 @@ jobs:
         modules: ${{ fromJson(needs.setup-ee.outputs.modules) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Build static viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
+      - name: Download static viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ee
       - name: Collect the test coverage
         run: |
           clojure -X:dev:ci:ee:ee-dev:test:cloverage \

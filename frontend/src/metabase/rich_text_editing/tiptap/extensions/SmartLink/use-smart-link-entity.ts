@@ -12,7 +12,6 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import {
   entityToUrlableModel,
@@ -131,9 +130,7 @@ const getEntityHref = (
 ): string | undefined =>
   match(data)
     .with({ model: "table", entity: P.nonNullable }, ({ entity }) =>
-      isConcreteTableId(entity.id)
-        ? Urls.table({ id: entity.id, name: entity.display_name })
-        : Urls.modelToUrl(entityToUrlableModel(entity, "table")),
+      Urls.table({ id: entity.id, name: entity.display_name }),
     )
     .with({ model: "measure", entity: P.nonNullable }, ({ entity }) =>
       Urls.dataStudioPublishedTableMeasure(entity.table_id, entity.id),

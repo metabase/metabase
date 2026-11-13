@@ -8,13 +8,13 @@ import {
 import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashboardCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import {
@@ -32,6 +32,14 @@ import {
   setParameterMapping,
   setParameterType,
 } from "./parameters";
+
+const NATIVE_QUERY = Lib.toJsQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+);
+
+const STRUCTURED_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 function setup(initialState: State) {
   return getMainStore(initialState);
@@ -65,20 +73,20 @@ describe("setParameterType", () => {
           card_id: 1,
           card: createMockCard({
             id: 1,
-            dataset_query: createMockNativeDatasetQuery(),
+            dataset_query: NATIVE_QUERY,
           }),
           series: [
             createMockCard({
               id: 2,
-              dataset_query: createMockNativeDatasetQuery(),
+              dataset_query: NATIVE_QUERY,
             }),
             createMockCard({
               id: 3,
-              dataset_query: createMockStructuredDatasetQuery(),
+              dataset_query: STRUCTURED_QUERY,
             }),
             createMockCard({
               id: 4,
-              dataset_query: createMockNativeDatasetQuery(),
+              dataset_query: NATIVE_QUERY,
             }),
           ],
           parameter_mappings: [
@@ -302,7 +310,7 @@ describe("setParameterMapping", () => {
               card_id: 1,
               card: createMockCard({
                 id: 1,
-                dataset_query: createMockStructuredDatasetQuery(),
+                dataset_query: STRUCTURED_QUERY,
               }),
             }),
           },
@@ -403,7 +411,7 @@ describe("setParameterMapping", () => {
               card_id: 1,
               card: createMockCard({
                 id: 1,
-                dataset_query: createMockStructuredDatasetQuery(),
+                dataset_query: STRUCTURED_QUERY,
               }),
             }),
           },

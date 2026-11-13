@@ -12,7 +12,6 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -225,7 +224,7 @@
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
-                                           (transforms-base.u/target-table-exists? new)))
+                                           (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
                     (transforms.db/update-transform! id (dissoc body :tag_ids))
@@ -254,9 +253,7 @@
    delete-tables? :- :boolean]
   (api/check-400 (= collections/transforms-ns (:namespace collection))
                  (deferred-tru "Only a transforms folder can be deleted this way."))
-  (api/check-403 (remote-sync/transforms-editable?))
   (let [collection-ids (cons (:id collection) (collections/descendant-ids collection))
-        folders        (transforms.db/collections-by-ids collection-ids)
         transforms     (transforms.db/transforms-in-collections collection-ids)]
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
@@ -270,8 +267,5 @@
       ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
       ;; deletes the subfolders.
       (run! delete-transform! transforms)
-      ;; Remote sync reads the folder row when it handles the event, so publish before the folder rows go.
-      (doseq [folder folders]
-        (events/publish-event! :event/collection-delete {:object folder :user-id api/*current-user-id*}))
       (transforms.db/delete-collection! (:id collection)))
     nil))

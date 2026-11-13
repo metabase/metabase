@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 import {
   createOrdersProductIdField,
@@ -119,7 +118,7 @@ describe("SemanticTypeAndTargetPicker", () => {
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        fk_target_field_id: getRawTableFieldId(createProductsIdField()),
+        fk_target_field_id: createProductsIdField().id,
       }),
     );
   });

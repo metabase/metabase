@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
@@ -345,7 +345,8 @@ export const canBrush = (
   return (
     !!onChangeCardAndRun &&
     !hasCombinedCards &&
-    (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
+    (!series[0].data.cols.some((col) => col.source === "native") ||
+      isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );

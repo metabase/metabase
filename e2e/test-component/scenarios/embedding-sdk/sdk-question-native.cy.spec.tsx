@@ -42,7 +42,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
                 name: "ID",
                 "display-name": "ID",
                 type: "dimension",
-                dimension: ["field", ORDERS.ID, null],
+                "field-id": ORDERS.ID,
                 "widget-type": "category",
                 default: null,
               },
@@ -333,7 +333,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         "display-name": "Category",
         type: "dimension",
         "widget-type": "number/=",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
       },
     };
 

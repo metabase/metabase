@@ -550,7 +550,7 @@ describe("issue 27643", { tags: "@external" }, () => {
         "template-tags": {
           [TEMPLATE_TAG_NAME]: {
             id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-            dimension: ["field", fieldId, null],
+            "field-id": fieldId,
             name: TEMPLATE_TAG_NAME,
             "display-name": "Expected Invoice",
             type: "dimension",

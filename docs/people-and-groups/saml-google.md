@@ -1,5 +1,6 @@
 ---
 title: SAML with Google
+summary: Step-by-step setup for SAML single sign-on between Google Workspace and Metabase, including attribute and group mapping.
 redirect_from:
   - /docs/latest/enterprise-guide/saml-google
 ---

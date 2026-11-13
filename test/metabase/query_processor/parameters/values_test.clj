@@ -176,7 +176,7 @@
              {:name         "checkin_date"
               :display-name "Checkin Date"
               :type         :dimension
-              :dimension    [:field (meta/id :checkins :date) nil]
+              :field-id     (meta/id :checkins :date)
               :widget-type  :date/all-options}
              [{:type   :date/range
                :target [:dimension [:template-tag "checkin_date"]]
@@ -197,7 +197,7 @@
               :id           test-uuid
               :display-name "Checkin Date"
               :type         :dimension
-              :dimension    [:field (meta/id :checkins :date) nil]
+              :field-id     (meta/id :checkins :date)
               :widget-type  :date/all-options}
              [{:type   :date/range
                :target [:dimension [:template-tag {:id test-uuid}]]
@@ -226,7 +226,7 @@
                {:name         "timestamp"
                 :display-name "Sighting Timestamp"
                 :type         :dimension
-                :dimension    [:field (meta/id :checkins :date) nil]
+                :field-id     (meta/id :checkins :date)
                 :widget-type  :date/range}
                [{:type   :date/range
                  :target [:dimension [:template-tag "timestamp"]]
@@ -246,7 +246,7 @@
               :display-name "Checkin Date"
               :type         :dimension
               :widget-type  :date/all-options
-              :dimension    [:field (meta/id :checkins :date) nil]}
+              :field-id     (meta/id :checkins :date)}
              nil)))))
 
 (deftest ^:parallel field-filter-id-requiring-parsing-test
@@ -264,7 +264,7 @@
               :display-name "ID"
               :type         :dimension
               :widget-type  :number
-              :dimension    [:field (meta/id :checkins :id) nil]}
+              :field-id     (meta/id :checkins :id)}
              [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
 
 (deftest ^:parallel field-filter-with-required-but-no-value-test
@@ -278,8 +278,23 @@
            :type         :dimension
            :widget-type  :date/all-options
            :required     true
-           :dimension    [:field (meta/id :checkins :date) nil]}
+           :field-id     (meta/id :checkins :date)}
           nil)))))
+
+(deftest ^:parallel temporal-unit-with-required-but-no-value-test
+  (let [tag {:name         "unit"
+             :display-name "Unit updated"
+             :type         :temporal-unit
+             :required     true
+             :field-id     (meta/id :orders :created-at)}]
+    (testing "required but unspecified"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"\QYou'll need to pick a value for 'Unit updated' before this query can run.\E"
+           (value-for-tag tag nil))))
+    (testing "required with a default"
+      (is (=? {:value "year"}
+              (value-for-tag (assoc tag :default "year") nil))))))
 
 (deftest ^:parallel field-filter-with-required-and-default-test
   (testing "required and default specified"
@@ -298,7 +313,7 @@
               :widget-type  :date/range
               :required     true
               :default      "2015-04-01~2015-05-01"
-              :dimension    [:field (meta/id :checkins :date) nil]}
+              :field-id     (meta/id :checkins :date)}
              nil)))))
 
 (deftest ^:parallel field-filter-multiple-values-for-same-tag-test
@@ -318,7 +333,7 @@
               :display-name "Checkin Date"
               :type         :dimension
               :widget-type  :date/all-options
-              :dimension    [:field (meta/id :checkins :date) nil]}
+              :field-id     (meta/id :checkins :date)}
              [{:type   :date/range
                :target [:dimension [:template-tag "checkin_date"]]
                :value  "2015-01-01~2016-09-01"}
@@ -341,7 +356,7 @@
                {:name         "checkin_date"
                 :display-name "Checkin Date"
                 :type         :dimension
-                :dimension    [:field (meta/id :checkins :date) nil]
+                :field-id     (meta/id :checkins :date)
                 :default      "past5days"
                 :widget-type  :date/all-options}
                nil))))))
@@ -360,7 +375,7 @@
                {:name         "checkin_date"
                 :display-name "Checkin Date"
                 :type         :dimension
-                :dimension    [:field (meta/id :checkins :date) nil]
+                :field-id     (meta/id :checkins :date)
                 :widget-type  :date/all-options}
                nil))))))
 
@@ -379,7 +394,7 @@
                          :template-tags {"x" {:name         "x"
                                               :display-name "X"
                                               :type         :dimension
-                                              :dimension    [:field Integer/MAX_VALUE nil]}})]
+                                              :field-id     Integer/MAX_VALUE}})]
         (is (thrown?
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
@@ -843,7 +858,7 @@
                                    :name         "filter"
                                    :display-name "Filter"
                                    :type         :dimension
-                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :field-id     (meta/id :products :category)
                                    :widget-type  :category
                                    :default      ["Gizmo" "Gadget"]
                                    :required     true}}
@@ -882,7 +897,7 @@
                                    :name         "filter"
                                    :display-name "Filter"
                                    :type         :dimension
-                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :field-id     (meta/id :products :category)
                                    :widget-type  :category
                                    :default      ["Gizmo" "Gadget"]}}
                   :parameters    [{:type    :string/=
@@ -917,7 +932,7 @@
                                               :display-name "Checkin Date"
                                               :type         :dimension
                                               :widget-type  :date/all-options
-                                              :dimension    [:field (meta/id :checkins :date) nil]}}
+                                              :field-id     (meta/id :checkins :date)}}
               :parameters    [{:type   :date/range
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-01-01~2016-09-01"}
@@ -937,7 +952,7 @@
                                    :name         "filter"
                                    :display-name "Filter"
                                    :type         :dimension
-                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :field-id     (meta/id :products :category)
                                    :widget-type  :category}}
                   :parameters    [{:type    :string/=
                                    :id      "abc123"
@@ -999,7 +1014,7 @@
 (deftest ^:parallel handle-dashboard-parameters-without-values-test
   (testing "dash params for a template tag may have no :value or :default (#38012)"
     (let [template-tags {"createdAt" {:type         :dimension
-                                      :dimension    [:field (meta/id :orders :created-at) nil]
+                                      :field-id     (meta/id :orders :created-at)
                                       :name         "createdAt"
                                       :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                       :display-name "CreatedAt"

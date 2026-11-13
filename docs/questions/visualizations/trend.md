@@ -1,5 +1,6 @@
 ---
 title: Trend
+summary: Show a single number alongside how it compares to the previous period, a goal, or another column.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/trend
 ---

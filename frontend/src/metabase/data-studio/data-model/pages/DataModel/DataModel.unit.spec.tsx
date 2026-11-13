@@ -25,7 +25,6 @@ import {
   within,
 } from "__support__/ui";
 import { Link } from "metabase/common/components/Link";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -95,10 +94,6 @@ const ORDERS_QUANTITY_FIELD = createOrdersQuantityField({
       name: "Quantity",
     }),
   ],
-  remappings: [
-    [1, "1 remapped"],
-    [2, "2 remapped"],
-  ],
 });
 
 const ORDERS_TABLE = createOrdersTable({
@@ -166,7 +161,7 @@ const JSON_FIELD_NESTED = createMockField({
   id: 2,
   name: "version",
   display_name: "Version",
-  parent_id: getRawTableFieldId(JSON_FIELD_ROOT),
+  parent_id: JSON_FIELD_ROOT.id,
   nfc_path: ["JSON", "version"],
 });
 
@@ -240,7 +235,7 @@ async function setup({
   waitForDatabase = true,
   waitForTable = true,
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
+  setupDatabasesEndpoints(databases);
   setupCardDataset();
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);
@@ -256,9 +251,7 @@ async function setup({
 
   if (unauthorizedField) {
     setupUnauthorizedFieldEndpoint(unauthorizedField);
-    setupUnauthorizedFieldValuesEndpoints(
-      getRawTableFieldId(unauthorizedField),
-    );
+    setupUnauthorizedFieldValuesEndpoints(unauthorizedField.id);
   }
 
   const { router } = renderWithProviders(
@@ -880,7 +873,7 @@ describe("DataModel", () => {
           schemaName: JSON_TABLE.schema,
           tableId: JSON_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(JSON_FIELD_ROOT),
+          fieldId: JSON_FIELD_ROOT.id,
         },
       });
 
@@ -894,7 +887,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+          fieldId: ORDERS_DISCOUNT_FIELD.id,
         },
       });
 
@@ -908,7 +901,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          fieldId: ORDERS_ID_FIELD.id,
         },
       });
 
@@ -928,7 +921,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+          fieldId: ORDERS_DISCOUNT_FIELD.id,
         },
       });
 
@@ -957,7 +950,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
+          fieldId: ORDERS_PRODUCT_ID_FIELD.id,
         },
         unauthorizedField: PRODUCTS_ID_FIELD,
       });
@@ -972,7 +965,7 @@ describe("DataModel", () => {
       await setup({
         fieldValues: [
           createMockFieldValues({
-            field_id: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+            field_id: ORDERS_QUANTITY_FIELD.id,
             values: [
               [1, "1 remapped"],
               [2, "2 remapped"],
@@ -984,7 +977,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+          fieldId: ORDERS_QUANTITY_FIELD.id,
         },
       });
 
@@ -1011,7 +1004,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+          fieldId: ORDERS_QUANTITY_FIELD.id,
         },
         hasFieldValuesAccess: false,
         unauthorizedField: ORDERS_QUANTITY_FIELD,
@@ -1035,7 +1028,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          fieldId: ORDERS_ID_FIELD.id,
         },
       });
 
@@ -1061,7 +1054,7 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           tab: "field",
-          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          fieldId: ORDERS_ID_FIELD.id,
         },
       });
 

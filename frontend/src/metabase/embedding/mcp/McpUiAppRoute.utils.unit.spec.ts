@@ -1,6 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { utf8_to_b64 } from "metabase/utils/encoding";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -37,9 +39,12 @@ const BOUND_PARAMETERS = [
   },
 ];
 
+const createDatasetQuery = () =>
+  Lib.toJsQuery(Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY));
+
 describe("getMcpDeserializedQuery", () => {
   it("hides axis labels for MCP App ad-hoc charts", () => {
-    const datasetQuery = { database: 1, type: "query", query: {} };
+    const datasetQuery = createDatasetQuery();
     const query = utf8_to_b64(JSON.stringify(datasetQuery));
 
     expect(getMcpDeserializedQuery(query)?.card).toEqual(
@@ -85,7 +90,7 @@ describe("getMcpDeserializedQuery", () => {
   });
 
   it("returns no template-tag values for a query that carries none", () => {
-    const datasetQuery = { database: 1, type: "query", query: {} };
+    const datasetQuery = createDatasetQuery();
     const query = utf8_to_b64(JSON.stringify(datasetQuery));
 
     expect(getMcpDeserializedQuery(query)?.initialSqlParameters).toEqual({});

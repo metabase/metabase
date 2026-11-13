@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { P, match } from "ts-pattern";
 
 import type { EngineKey } from "metabase-types/api/settings";
@@ -30,6 +31,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params, ["UID", "PWD"]),
     ],
   ]);
+
+  if (parsedValues.protocol === "redshift:iam") {
+    fieldsMap.set("details.auth-mode", "iam-instance-profile");
+  }
 
   if (fieldsMap.get("details.additional-options")) {
     fieldsMap.set("details.advanced-options", true);
@@ -149,6 +154,19 @@ function mapOracleValues(parsedValues: RegexFields) {
     ["details.service-name", parsedValues.database],
     ["details.user", parsedValues.username],
     ["details.password", parsedValues.password],
+  ]);
+
+  return fieldsMap;
+}
+
+// The string names no host, since that depends on the account's region. Other params configure DuckDB's own
+// client, so they would break the Postgres connection if copied into the additional options.
+function mapMotherDuckValues(parsedValues: RegexFields) {
+  const database = parsedValues.database || undefined;
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.dbname", database],
+    ["name", database],
+    ["details.password", parsedValues.params?.motherduck_token],
   ]);
 
   return fieldsMap;
@@ -341,6 +359,7 @@ export function mapDatabaseValues(
       mapAthenaValues(parsedValues),
     )
     .with(["redshift", "redshift"], () => mapRedshiftValues(parsedValues))
+    .with(["redshift:iam", "redshift"], () => mapRedshiftValues(parsedValues))
     .with(["bigquery", "bigquery-cloud-sdk"], () =>
       mapBigQueryValues(parsedValues),
     )
@@ -349,6 +368,7 @@ export function mapDatabaseValues(
     .with([P.union("druid", "avatica"), P.union("druid", "druid-jdbc")], () =>
       mapDruidValues(parsedValues),
     )
+    .with(["md", "motherduck"], () => mapMotherDuckValues(parsedValues))
     .with(["mysql", "mysql"], () => mapMysqlValues(parsedValues))
     .with(["oracle", "oracle"], () => mapOracleValues(parsedValues))
     .with([P.union("postgres", "postgresql"), "postgres"], () =>
