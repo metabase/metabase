@@ -48,7 +48,7 @@ export function SecurityCenterBanner() {
       c="inherit"
       td="underline"
     >
-      {t`Security center`}
+      {t`Security Center`}
     </Anchor>
   );
 
@@ -59,7 +59,7 @@ export function SecurityCenterBanner() {
     <Banner
       contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
-      bg="feedback-negative"
+      bg="background_surface-warning"
       body={<Text lh="inherit">{body}</Text>}
       py="lg"
     />

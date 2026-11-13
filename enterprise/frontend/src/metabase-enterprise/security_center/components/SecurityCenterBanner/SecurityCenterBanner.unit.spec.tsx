@@ -111,7 +111,7 @@ describe("SecurityCenterBanner", () => {
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    const link = await screen.findByText("Security center");
+    const link = await screen.findByText("Security Center");
     expect(link).toHaveAttribute(
       "href",
       "/admin/security-center?open=notifications",
