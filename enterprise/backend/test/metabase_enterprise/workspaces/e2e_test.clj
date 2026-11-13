@@ -872,7 +872,7 @@
                 (try
                   (add-database! ws-id (:id ws-db)
                                  [(workspace-input-schema admin-driver admin-details main-schema)])
-                  (advanced-config.file/initialize!
+                  (load-sidecar-config!
                    (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id))))
                   (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                     (mt/with-db ws-db
