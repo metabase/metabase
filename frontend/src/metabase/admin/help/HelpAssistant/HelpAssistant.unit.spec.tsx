@@ -3,6 +3,8 @@ import fetchMock from "fetch-mock";
 
 import {
   HELP_ASSISTANT_ROUTES,
+  type HelpAssistantChatMockResponse,
+  createHelpAssistantEventStream,
   setupBugReportingDetailsEndpoint,
   setupHelpAssistantChatEndpoint,
   setupHelpAssistantConversationsEndpoints,
@@ -74,7 +76,7 @@ const setup = ({
 }: {
   isAdmin?: boolean;
   isConfigured?: boolean;
-  chatResponse?: HelpAssistantChatResponse | number;
+  chatResponse?: HelpAssistantChatMockResponse;
   chatDelay?: number;
   conversations?: Record<string, HelpAssistantConversation>;
   initialRoute?: string;
@@ -82,7 +84,9 @@ const setup = ({
 } = {}) => {
   setupBugReportingDetailsEndpoint();
   setupUserMetabotPermissionsEndpoint();
-  setupHelpAssistantChatEndpoint(chatResponse, { delay: chatDelay });
+  const chat = setupHelpAssistantChatEndpoint(chatResponse, {
+    delay: chatDelay,
+  });
   setupHelpAssistantFeedbackEndpoint();
   setupHelpAssistantSettingsEndpoint({ flagsEnabled });
   setupHelpAssistantFlagEndpoint();
@@ -114,7 +118,7 @@ const setup = ({
     },
   );
 
-  return { router: checkNotNull(router) };
+  return { router: checkNotNull(router), chat };
 };
 
 const getLastRequestBody = async (routeName: string): Promise<unknown> =>
@@ -156,7 +160,7 @@ describe("HelpAssistant", () => {
   });
 
   it("sends a suggested prompt with the diagnostic info and shows the reply", async () => {
-    setup();
+    const { chat } = setup();
 
     await userEvent.click(
       screen.getByRole("button", {
@@ -171,7 +175,7 @@ describe("HelpAssistant", () => {
         name: "Troubleshooting database connections",
       }),
     ).toBeInTheDocument();
-    expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual({
+    expect(chat.lastRequestBody()).toEqual({
       messages: [
         { role: "user", content: "My database connection stopped working" },
       ],
@@ -180,7 +184,7 @@ describe("HelpAssistant", () => {
   });
 
   it("leaves out the diagnostic info when it's turned off", async () => {
-    setup();
+    const { chat } = setup();
 
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Include diagnostic info/ }),
@@ -188,7 +192,7 @@ describe("HelpAssistant", () => {
     await ask("Why is sync slow?");
 
     await screen.findByText("connection string");
-    expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual({
+    expect(chat.lastRequestBody()).toEqual({
       messages: [{ role: "user", content: "Why is sync slow?" }],
     });
   });
@@ -214,14 +218,14 @@ describe("HelpAssistant", () => {
   });
 
   it("sends back the skills loaded earlier in the conversation", async () => {
-    setup();
+    const { chat } = setup();
 
     await ask("Why is sync slow?");
     await screen.findByText("connection string");
     await ask("Still slow");
 
-    await waitFor(async () =>
-      expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual(
+    await waitFor(() =>
+      expect(chat.lastRequestBody()).toEqual(
         expect.objectContaining({
           loaded_skills: ["troubleshoot-db-connection"],
         }),
@@ -331,21 +335,125 @@ describe("HelpAssistant", () => {
   });
 
   it("shows an error and asks the same question again on retry", async () => {
-    setup({ chatResponse: 500 });
+    const { chat } = setup({ chatResponse: 500 });
 
     await ask("Why is sync slow?");
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(
+      screen.getByText("The assistant didn't respond."),
+    ).toBeInTheDocument();
 
-    fetchMock.modifyRoute(HELP_ASSISTANT_ROUTES.chat, { response: REPLY });
+    chat.setResponse(REPLY);
     await userEvent.click(screen.getByRole("button", { name: /Try again/ }));
 
     expect(await screen.findByText("connection string")).toBeInTheDocument();
     expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
-    expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual(
+    expect(chat.requestCount()).toBe(2);
+    expect(chat.lastRequestBody()).toEqual(
       expect.objectContaining({
         messages: [{ role: "user", content: "Why is sync slow?" }],
       }),
     );
+  });
+
+  it("shows the error the assistant streams", async () => {
+    const events = createHelpAssistantEventStream();
+    setup({ chatResponse: events.stream });
+
+    await ask("Why is sync slow?");
+    events.send({ type: "step", step: SKILL_STEP });
+    events.send({
+      type: "error",
+      message: "The AI provider returned an error: Overloaded",
+      status_code: 502,
+    });
+    events.finish();
+
+    expect(
+      await screen.findByText("The AI provider returned an error: Overloaded"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Try again/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Working on it…")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loaded the skill “Database connection failures”"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows each step while it works, then the answer", async () => {
+    const events = createHelpAssistantEventStream();
+    setup({ chatResponse: events.stream });
+
+    await ask("Why is sync slow?");
+    expect(await screen.findByText("Working on it…")).toBeInTheDocument();
+
+    events.send({ type: "step", step: SKILL_STEP });
+    const progress = await screen.findByRole("list", {
+      name: "What the assistant has done so far",
+    });
+    expect(
+      within(progress).getByText(
+        "Loaded the skill “Database connection failures”",
+      ),
+    ).toBeInTheDocument();
+
+    events.send({
+      type: "step",
+      step: { type: "search", label: "connection string" },
+    });
+    expect(
+      await within(progress).findByText(
+        "Searched the docs for “connection string”",
+      ),
+    ).toBeInTheDocument();
+    expect(within(progress).getAllByRole("listitem")).toHaveLength(2);
+
+    events.send({ type: "answer", ...REPLY });
+    events.finish();
+
+    expect(await screen.findByText("connection string")).toBeInTheDocument();
+    expect(screen.queryByText("Working on it…")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", {
+        name: "What the assistant has done so far",
+      }),
+    ).not.toBeInTheDocument();
+    // The answer keeps all its steps under "How I got this".
+    await userEvent.click(
+      screen.getByRole("button", { name: /How I got this/ }),
+    );
+    expect(
+      await screen.findByText(
+        "Loaded the skill “Database connection failures”",
+      ),
+    ).toBeVisible();
+  });
+
+  it("stops while it works, clears the steps and puts the question back", async () => {
+    const events = createHelpAssistantEventStream();
+    const { chat } = setup({ chatResponse: events.stream });
+
+    await ask("Why is sync slow?");
+    events.send({ type: "step", step: SKILL_STEP });
+    expect(
+      await screen.findByText(
+        "Loaded the skill “Database connection failures”",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+
+    expect(screen.queryByText("Working on it…")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loaded the skill “Database connection failures”"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Ask the help assistant")).toHaveValue(
+      "Why is sync slow?",
+    );
+
+    expect(chat.requestCount()).toBe(1);
   });
 
   it("keeps the input enabled while waiting, and puts the question back when stopped", async () => {
@@ -653,32 +761,30 @@ describe("HelpAssistant", () => {
   });
 
   it("doesn't send a question while an input method editor composes a word", async () => {
-    setup();
+    const { chat } = setup();
 
     const input = screen.getByLabelText("Ask the help assistant");
     await userEvent.type(input, "nihongo");
     fireEvent.keyDown(input, { key: "Enter", isComposing: true });
 
     expect(input).toHaveValue("nihongo");
-    expect(
-      fetchMock.callHistory.called(HELP_ASSISTANT_ROUTES.chat),
-    ).toBeFalsy();
+    expect(chat.requestCount()).toBe(0);
   });
 
   it("keeps a rating given while the next answer loads", async () => {
-    setup();
+    const { chat } = setup();
 
     await ask("Why is sync slow?");
     await screen.findByText("connection string");
 
     let sendSecondReply = () => {};
-    fetchMock.modifyRoute(HELP_ASSISTANT_ROUTES.chat, {
-      response: () =>
+    chat.setResponse(
+      () =>
         new Promise((resolve) => {
           sendSecondReply = () =>
-            resolve({ reply: "Turn on **SSL**.", sources: [] });
+            resolve({ reply: "Turn on **SSL**.", sources: [], steps: [] });
         }),
-    });
+    );
     await ask("Still slow");
     await screen.findByText("Working on it…");
     await userEvent.click(screen.getByRole("button", { name: "Helpful" }));
@@ -697,7 +803,12 @@ describe("HelpAssistant", () => {
           { role: "user", content: "Why is sync slow?" },
           expect.objectContaining({ feedback: { positive: true } }),
           { role: "user", content: "Still slow" },
-          { role: "assistant", content: "Turn on **SSL**.", sources: [] },
+          {
+            role: "assistant",
+            content: "Turn on **SSL**.",
+            sources: [],
+            steps: [],
+          },
         ],
       }),
     });

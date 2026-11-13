@@ -10,16 +10,17 @@ import type {
   HelpAssistantConversation,
   HelpAssistantConversationId,
   HelpAssistantFeedback,
+  HelpAssistantStep,
 } from "metabase-types/api";
 
 import {
+  streamHelpAssistantChat,
   useDeleteHelpAssistantConversationMutation,
   useFlagHelpAssistantAnswerMutation,
   useGetHelpAssistantSettingsQuery,
   useListHelpAssistantConversationsQuery,
   useSaveHelpAssistantConversationMutation,
   useSendHelpAssistantFeedbackMutation,
-  useSendHelpAssistantMessageMutation,
 } from "./api";
 import {
   getConversationTitle,
@@ -30,10 +31,6 @@ import {
 } from "./utils";
 
 export const MAX_SAVED_CONVERSATIONS = 10;
-
-type ChatRequest = ReturnType<
-  ReturnType<typeof useSendHelpAssistantMessageMutation>[0]
->;
 
 export type HelpAssistantChat = ReturnType<typeof useHelpAssistantChat>;
 
@@ -51,10 +48,12 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
   }, []);
   const [draft, setDraft] = useState("");
   const [includeDiagnosticInfo, setIncludeDiagnosticInfo] = useState(true);
-  const pendingRequestRef = useRef<ChatRequest | null>(null);
+  const pendingRequestRef = useRef<AbortController | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<unknown>();
+  /** What the assistant has done so far for the answer it's working on. */
+  const [pendingSteps, setPendingSteps] = useState<HelpAssistantStep[]>([]);
 
-  const [sendMessage, { isLoading, error, reset }] =
-    useSendHelpAssistantMessageMutation();
   const [sendFeedback] = useSendHelpAssistantFeedbackMutation();
   const [saveConversation] = useSaveHelpAssistantConversationMutation();
   const [deleteConversation] = useDeleteHelpAssistantConversationMutation();
@@ -103,9 +102,11 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
   );
 
   const abortPendingRequest = useCallback(() => {
-    const request = pendingRequestRef.current;
+    const controller = pendingRequestRef.current;
     pendingRequestRef.current = null;
-    request?.abort();
+    controller?.abort();
+    setIsLoading(false);
+    setPendingSteps([]);
   }, []);
 
   const request = useCallback(
@@ -113,46 +114,58 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       id: HelpAssistantConversationId,
       nextEntries: HelpAssistantChatEntry[],
     ) => {
-      reset();
+      const controller = new AbortController();
+      pendingRequestRef.current = controller;
+      // Stopped, or another conversation was opened while waiting: its answer,
+      // steps and errors no longer belong on screen.
+      const isCurrent = () => pendingRequestRef.current === controller;
+      setError(undefined);
+      setIsLoading(true);
+      setPendingSteps([]);
       // Skills loaded earlier are sent back in full, so the assistant doesn't
       // spend a step loading them again on every turn.
       const loadedSkills = getLoadedSkillIds(nextEntries);
-      const pendingRequest = sendMessage({
-        messages: nextEntries.map(({ role, content }) => ({ role, content })),
-        diagnostic_info: includeDiagnosticInfo ? diagnosticInfo : undefined,
-        loaded_skills: loadedSkills.length > 0 ? loadedSkills : undefined,
-      });
-      pendingRequestRef.current = pendingRequest;
 
-      const result = await pendingRequest;
-      if (pendingRequestRef.current !== pendingRequest) {
-        // Stopped, or another conversation was opened while waiting. Clear the
-        // abort error unless a newer request is already running.
-        if (pendingRequestRef.current == null) {
-          reset();
+      try {
+        const { reply, sources, steps } = await streamHelpAssistantChat(
+          {
+            messages: nextEntries.map(({ role, content }) => ({
+              role,
+              content,
+            })),
+            diagnostic_info: includeDiagnosticInfo ? diagnosticInfo : undefined,
+            loaded_skills: loadedSkills.length > 0 ? loadedSkills : undefined,
+          },
+          {
+            signal: controller.signal,
+            onStep: (step) => {
+              if (isCurrent()) {
+                setPendingSteps((current) => [...current, step]);
+              }
+            },
+          },
+        );
+        if (isCurrent()) {
+          const answeredEntries: HelpAssistantChatEntry[] = [
+            ...entriesRef.current,
+            { role: "assistant", content: reply, sources, steps },
+          ];
+          setEntries(answeredEntries);
+          save(id, answeredEntries);
         }
-        return;
-      }
-      pendingRequestRef.current = null;
-
-      if (result.data) {
-        const { reply, sources, steps } = result.data;
-        const answeredEntries: HelpAssistantChatEntry[] = [
-          ...entriesRef.current,
-          { role: "assistant", content: reply, sources, steps },
-        ];
-        setEntries(answeredEntries);
-        save(id, answeredEntries);
+      } catch (requestError) {
+        if (isCurrent() && !isAbortError(requestError)) {
+          setError(requestError);
+        }
+      } finally {
+        if (isCurrent()) {
+          pendingRequestRef.current = null;
+          setIsLoading(false);
+          setPendingSteps([]);
+        }
       }
     },
-    [
-      diagnosticInfo,
-      includeDiagnosticInfo,
-      reset,
-      save,
-      sendMessage,
-      setEntries,
-    ],
+    [diagnosticInfo, includeDiagnosticInfo, save, setEntries],
   );
 
   const send = useCallback(
@@ -195,8 +208,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     setConversationId(null);
     setEntries([]);
     setDraft("");
-    reset();
-  }, [abortPendingRequest, reset, setEntries]);
+    setError(undefined);
+  }, [abortPendingRequest, setEntries]);
 
   // Keeps a chat that has no answer yet: it is the new chat.
   const openNewChat = useCallback(() => {
@@ -220,9 +233,9 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       setConversationId(id);
       setEntries(conversation.messages);
       setDraft("");
-      reset();
+      setError(undefined);
     },
-    [abortPendingRequest, reset, savedConversations, setEntries],
+    [abortPendingRequest, savedConversations, setEntries],
   );
 
   /** Returns the deleted conversation, so that it can be restored. */
@@ -310,7 +323,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       includeDiagnosticInfo,
       setIncludeDiagnosticInfo,
       isLoading,
-      error: isAbortError(error) ? undefined : error,
+      error,
+      pendingSteps,
       send,
       retry,
       stop,
@@ -334,6 +348,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       includeDiagnosticInfo,
       isLoading,
       error,
+      pendingSteps,
       send,
       retry,
       stop,

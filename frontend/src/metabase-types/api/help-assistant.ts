@@ -54,6 +54,15 @@ export type HelpAssistantChatResponse = {
   steps: HelpAssistantStep[];
 };
 
+/**
+ * One Server-Sent Event from `POST /api/help-assistant/chat/stream`: each step
+ * as it happens, then the answer or an error.
+ */
+export type HelpAssistantStreamEvent =
+  | { type: "step"; step: HelpAssistantStep }
+  | ({ type: "answer" } & HelpAssistantChatResponse)
+  | { type: "error"; message: string; status_code: number };
+
 /** Optional features, set on the server. */
 export type HelpAssistantSettings = {
   /** Whether admins can flag answers for review (`MB_HELP_ASSISTANT_FLAGS_DIR` is set). */

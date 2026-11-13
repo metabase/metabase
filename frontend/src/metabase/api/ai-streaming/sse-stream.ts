@@ -3,15 +3,15 @@ import { EventSourceParserStream } from "eventsource-parser/stream";
 import type { SSEEvent } from "./sse-types";
 
 /**
- * Parse a Server-Sent Events stream into typed SSE events.
- * Yields parsed JSON event objects and terminates on the `[DONE]` sentinel.
+ * Parse a Server-Sent Events stream of JSON `data:` lines. Yields each parsed
+ * value, unchecked, and terminates on the `[DONE]` sentinel.
  *
  * A line that fails to parse is logged and skipped rather than thrown, so a
  * single malformed event can't tear down an otherwise-healthy live stream.
  */
-export async function* parseSSEStream(
+export async function* parseSSEJson(
   stream: ReadableStream<Uint8Array>,
-): AsyncGenerator<SSEEvent> {
+): AsyncGenerator<unknown> {
   const eventStream = stream
     .pipeThrough(
       // TypeScript v5.9 issue - cast works around TS Uint8Array generic variance issue: https://github.com/microsoft/TypeScript/issues/62240
@@ -33,8 +33,7 @@ export async function* parseSSEStream(
       }
 
       try {
-        // Unjustified type cast. FIXME
-        yield JSON.parse(value.data) as SSEEvent;
+        yield JSON.parse(value.data);
       } catch {
         console.warn("Skipping unparseable SSE event:", value.data);
       }
@@ -42,5 +41,16 @@ export async function* parseSSEStream(
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();
+  }
+}
+
+/** Parse a Server-Sent Events stream of AI SDK events into typed SSE events. */
+export async function* parseSSEStream(
+  stream: ReadableStream<Uint8Array>,
+): AsyncGenerator<SSEEvent> {
+  for await (const event of parseSSEJson(stream)) {
+    // The Metabot backend checks every event against its AI SDK chunk schema
+    // (`check-ui-message-chunk`) before writing it.
+    yield event as SSEEvent;
   }
 }

@@ -1,4 +1,6 @@
 import { Api } from "metabase/api";
+import { parseSSEJson } from "metabase/api/ai-streaming";
+import { api } from "metabase/api/client";
 import type {
   HelpAssistantChatRequest,
   HelpAssistantChatResponse,
@@ -8,10 +10,66 @@ import type {
   HelpAssistantFlagRequest,
   HelpAssistantFlagResponse,
   HelpAssistantSettings,
+  HelpAssistantStep,
 } from "metabase-types/api";
+import { isHelpAssistantStreamEvent } from "metabase-types/guards";
 
 // Saved conversations live in the per-user key-value store, one key per conversation.
 const CONVERSATIONS_URL = "/api/user-key-value/namespace/help_assistant";
+
+const CHAT_STREAM_URL = "/api/help-assistant/chat/stream";
+
+/**
+ * Asks the assistant and calls `onStep` with each step as it works. Resolves
+ * with the answer. Rejects like other API requests, with `{ status, data }`,
+ * so errors show the same way.
+ */
+export async function streamHelpAssistantChat(
+  request: HelpAssistantChatRequest,
+  {
+    signal,
+    onStep,
+  }: { signal: AbortSignal; onStep: (step: HelpAssistantStep) => void },
+): Promise<HelpAssistantChatResponse> {
+  const response = await api.fetch({
+    method: "POST",
+    url: CHAT_STREAM_URL,
+    body: request,
+    headers: { Accept: "text/event-stream" },
+    signal,
+  });
+
+  if (!response.ok) {
+    // ensure we reach the global 401 handler, so the user can sign in if session is expired
+    if (response.status === 401) {
+      api.emit(401, CHAT_STREAM_URL);
+    }
+    const data: unknown = await response.json().catch(() => undefined);
+    throw { status: response.status, data };
+  }
+  if (!response.body) {
+    throw { status: response.status };
+  }
+
+  for await (const event of parseSSEJson(response.body)) {
+    if (!isHelpAssistantStreamEvent(event)) {
+      continue;
+    }
+    switch (event.type) {
+      case "step":
+        onStep(event.step);
+        break;
+      case "answer": {
+        const { reply, sources, steps } = event;
+        return { reply, sources, steps };
+      }
+      case "error":
+        throw { status: event.status_code, data: { message: event.message } };
+    }
+  }
+  // The stream ended without an answer, so there's no message to show.
+  throw { status: response.status };
+}
 
 type HelpAssistantConversations = Record<
   HelpAssistantConversationId,
@@ -25,16 +83,6 @@ type SaveConversationRequest = {
 
 const helpAssistantApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    sendHelpAssistantMessage: builder.mutation<
-      HelpAssistantChatResponse,
-      HelpAssistantChatRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/help-assistant/chat",
-        body,
-      }),
-    }),
     sendHelpAssistantFeedback: builder.mutation<
       void,
       HelpAssistantFeedbackRequest
@@ -114,7 +162,6 @@ const helpAssistantApi = Api.injectEndpoints({
 });
 
 export const {
-  useSendHelpAssistantMessageMutation,
   useSendHelpAssistantFeedbackMutation,
   useGetHelpAssistantSettingsQuery,
   useFlagHelpAssistantAnswerMutation,

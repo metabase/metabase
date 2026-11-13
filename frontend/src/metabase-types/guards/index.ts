@@ -2,6 +2,7 @@ export * from "./card";
 export * from "./click-behavior";
 export * from "./common";
 export * from "./dom";
+export * from "./help-assistant";
 export * from "./parameters";
 export * from "./remote-sync";
 export * from "./settings";

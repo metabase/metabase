@@ -182,6 +182,60 @@
                    (first steps)))
             (is (= 3 (count steps)))))))))
 
+(deftest chat-on-step-test
+  (with-test-docs
+    (mt/with-dynamic-fn-redefs [help-assistant/load-skills (constantly test-skills)]
+      (let [streamed (atom [])
+            {:keys [result]} (do-with-stubbed-llm
+                              (fn [n _system tools]
+                                (if (= 1 n)
+                                  (do ((get-in tools ["search_docs" :fn]) {:query "timezone"})
+                                      ;; the same search again isn't a new step
+                                      ((get-in tools ["search_docs" :fn]) {:query "timezone"})
+                                      (tool-call n))
+                                  [{:type :text, :id "final", :text "Check the report timezone."}]))
+                              #(help-assistant/chat {:messages      question
+                                                     :loaded-skills ["troubleshoot-timezones"]
+                                                     :on-step       (fn [step] (swap! streamed conj step))}))]
+        (testing "on-step gets each new step as it happens, starting with skills loaded earlier"
+          (is (= [{:type "skill", :label "Timezones", :skill_id "troubleshoot-timezones", :earlier true}
+                  {:type "search", :label "timezone"}]
+                 @streamed)))
+        (testing "and they are the same steps the answer has"
+          (is (= @streamed (:steps result))))))))
+
+(deftest chat-canceled-test
+  (testing "once canceled? is true, the model isn't called again and chat returns nil"
+    (let [canceled? (atom false)
+          {:keys [result calls]} (do-with-stubbed-llm
+                                  (fn [n _system _tools]
+                                    (reset! canceled? true)
+                                    (tool-call n))
+                                  #(help-assistant/chat {:messages  question
+                                                         :canceled? (fn [] @canceled?)}))]
+      (is (nil? result))
+      (is (= 1 calls))))
+  (testing "the call in progress is cut off: the model's response isn't read past the cancel"
+    (let [canceled? (atom false)
+          read      (atom 0)
+          ;; three parts, and the admin clicks Stop while the second one arrives
+          parts     (eduction (map-indexed (fn [i part]
+                                             (swap! read inc)
+                                             (when (= i 1) (reset! canceled? true))
+                                             part))
+                              (tool-call 1))
+          {:keys [result]} (do-with-stubbed-llm (constantly parts)
+                                                #(help-assistant/chat {:messages  question
+                                                                       :canceled? (fn [] @canceled?)}))]
+      (is (nil? result))
+      (is (= 2 @read))))
+  (testing "canceled before it starts: the model is never called"
+    (let [{:keys [result calls]} (do-with-stubbed-llm (fn [n _ _] (tool-call n))
+                                                      #(help-assistant/chat {:messages  question
+                                                                             :canceled? (constantly true)}))]
+      (is (nil? result))
+      (is (zero? calls)))))
+
 (deftest chat-unavailable-test
   (doseq [[reason status-code] {:no-llm 503, :metabot-disabled 503, :permission-denied 403}]
     (testing reason

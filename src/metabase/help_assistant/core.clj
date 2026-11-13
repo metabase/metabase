@@ -185,17 +185,19 @@
 ;;; ----------------------------------------------------- Tools ---------------------------------------------------
 
 (defn- record-step!
-  "Add `step` to the `steps` atom, unless the same step is already there."
-  [steps step]
-  (let [same? (fn [s] (= (dissoc s :earlier) (dissoc step :earlier)))]
-    (swap! steps (fn [existing] (if (some same? existing) existing (conj existing step))))))
+  "Add `step` to the `steps` atom, unless the same step is already there. When it's new, calls `on-step` with it."
+  [steps on-step step]
+  (let [same?          (fn [s] (= (dissoc s :earlier) (dissoc step :earlier)))
+        [before after] (swap-vals! steps (fn [existing] (if (some same? existing) existing (conj existing step))))]
+    (when (not= before after)
+      (on-step step))))
 
 (declare skill->prompt)
 
 (defn- make-tools
   "The tools the model can call. `sources` is an atom collecting the pages it read, to show under the answer, and
-  `steps` an atom collecting what it did, to show how it got the answer."
-  [{:keys [sources steps skills]}]
+  `steps` an atom collecting what it did, to show how it got the answer. `on-step` is called with each new step."
+  [{:keys [sources steps on-step skills]}]
   {"load_skill"
    {:tool-name "load_skill"
     :doc       (str "Load the full instructions of one skill from the skill list. Pass the skill's id exactly as listed. "
@@ -205,7 +207,7 @@
                 :any]
     :fn        (fn [{:keys [id]}]
                  (if-let [skill (find-skill skills id)]
-                   (do (record-step! steps {:type "skill", :label (str (:title skill)), :skill_id (skill-id skill)})
+                   (do (record-step! steps on-step {:type "skill", :label (str (:title skill)), :skill_id (skill-id skill)})
                        {:output (skill->prompt skill)})
                    {:output (str "No skill with id \"" id "\". Use an id from the skill list.")}))}
 
@@ -218,7 +220,7 @@
                            [:query [:string {:description "A few keywords to search for"}]]]]
                 :any]
     :fn        (fn [{:keys [query]}]
-                 (record-step! steps {:type "search", :label (str query)})
+                 (record-step! steps on-step {:type "search", :label (str query)})
                  (let [results (search-docs query)]
                    {:output (if (empty? results)
                               (if (empty? @docs)
@@ -239,7 +241,7 @@
                  (if-let [{:keys [path title content]} (find-doc path)]
                    (let [url (doc-url path)]
                      (swap! sources assoc path {:title title, :url url})
-                     (record-step! steps {:type "read", :label title, :url url})
+                     (record-step! steps on-step {:type "read", :label title, :url url})
                      {:output (str "URL to cite: " url "\n\n" (u/truncate content 40000))})
                    {:output (str "No page at \"" path "\". Use a path returned by search_docs.")}))}})
 
@@ -450,43 +452,57 @@
   "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}], :steps [...]}`, where
   `:steps` says how the answer was made: skills loaded (`skill`), searches (`search`), pages read (`read`), and
   `limit` when it ran out of steps. `loaded-skills` are the ids of skills loaded earlier in the conversation. Throws a
-  403 or 503 when the AI connection can't be used, and a 502 when the AI provider returns an error."
-  [{:keys [messages diagnostic-info loaded-skills]}]
+  403 or 503 when the AI connection can't be used, and a 502 when the AI provider returns an error.
+
+  Optional, for showing progress while it works:
+  - `on-step` is called with each step as it happens, starting with the skills loaded earlier.
+  - `canceled?` is a no-arg fn. Once it returns true, the model isn't called again, the call in progress is cut off, and
+    `chat` returns nil."
+  [{:keys [messages diagnostic-info loaded-skills on-step canceled?]
+    :or   {on-step (constantly nil), canceled? (constantly false)}}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason :permission/metabot-other-tools)]
     (throw (unavailable-error reason)))
   (let [skills  (load-skills)
         earlier (vec (keep #(find-skill skills %) (distinct loaded-skills)))
         sources (atom {})
-        steps   (atom (mapv (fn [skill] {:type     "skill"
-                                         :label    (str (:title skill))
-                                         :skill_id (skill-id skill)
-                                         :earlier  true})
-                            earlier))
-        tools   (make-tools {:sources sources, :steps steps, :skills skills})
+        steps   (atom [])
+        tools   (make-tools {:sources sources, :steps steps, :on-step on-step, :skills skills})
         model   (metabot.settings/llm-metabot-provider)
         system  (system-prompt diagnostic-info skills earlier)
         finish  (fn [iteration result]
                   (when (= iteration max-iterations)
-                    (record-step! steps {:type "limit", :label (str max-iterations)}))
+                    (record-step! steps on-step {:type "limit", :label (str max-iterations)}))
                   (log-steps! iteration @steps)
                   (assoc result :steps @steps))]
+    (doseq [skill earlier]
+      (record-step! steps on-step {:type     "skill"
+                                   :label    (str (:title skill))
+                                   :skill_id (skill-id skill)
+                                   :earlier  true}))
     (log/infof "Help assistant: calling %s with %d messages" model (count messages))
     (loop [history   (messages->parts messages)
            iteration 1]
       (let [last-step?  (= iteration max-iterations)
-            parts       (-> (into [] (metabot.self/call-llm model
-                                                            (cond-> system last-step? (str last-step-instruction))
-                                                            history
-                                                            tools
-                                                            tracking-opts))
-                            merge-streamed-text
-                            metabot.self.core/merge-reasoning-parts)
+            ;; Tools run while the parts are reduced, so stopping the reduction also stops any further tool calls.
+            parts       (when-not (canceled?)
+                          (-> (into []
+                                    (take-while (fn [_] (not (canceled?))))
+                                    (metabot.self/call-llm model
+                                                           (cond-> system last-step? (str last-step-instruction))
+                                                           history
+                                                           tools
+                                                           tracking-opts))
+                              merge-streamed-text
+                              metabot.self.core/merge-reasoning-parts))
             error       (some #(when (= :error (:type %)) %) parts)
             text        (->> parts
                              (keep #(when (= :text (:type %)) (not-empty (str/trim (:text %)))))
                              (str/join "\n\n"))
             tool-calls? (some #(= :tool-input (:type %)) parts)]
         (cond
+          (canceled?)
+          (log/infof "Help assistant: stopped at step %d, the request was canceled" iteration)
+
           error
           (throw (ex-info (str "The AI provider returned an error: "
                                (or (get-in error [:error :message]) "unknown error"))

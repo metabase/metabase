@@ -99,7 +99,7 @@ function AnswerSteps({ steps }: { steps: HelpAssistantStep[] }) {
   );
 }
 
-function AnswerStep({ step }: { step: HelpAssistantStep }) {
+export function AnswerStep({ step }: { step: HelpAssistantStep }) {
   const { label } = step;
   switch (step.type) {
     case "skill":

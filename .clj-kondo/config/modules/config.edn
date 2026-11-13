@@ -1106,6 +1106,7 @@
    :api  #{metabase.help-assistant.api}
    :uses #{api
            metabot
+           server
            util
            util.config}}
 

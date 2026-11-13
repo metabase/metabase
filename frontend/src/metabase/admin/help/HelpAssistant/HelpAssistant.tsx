@@ -38,13 +38,14 @@ import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   HelpAssistantChatEntry,
   HelpAssistantFeedback,
+  HelpAssistantStep,
 } from "metabase-types/api";
 
 import { useDiagnosticInfo } from "../use-diagnostic-info";
 import { getHelpUrl } from "../utils";
 
 import S from "./HelpAssistant.module.css";
-import { HelpAssistantAnswer } from "./HelpAssistantAnswer";
+import { AnswerStep, HelpAssistantAnswer } from "./HelpAssistantAnswer";
 import { useHelpAssistantChatContext } from "./HelpAssistantChatContext";
 import type { HelpAssistantChat } from "./use-help-assistant-chat";
 import { getConversationMarkdown } from "./utils";
@@ -141,6 +142,7 @@ function HelpAssistantChatPage() {
             key={chat.conversationId}
             entries={chat.entries}
             isLoading={chat.isLoading}
+            pendingSteps={chat.pendingSteps}
             error={chat.error}
             onRetry={chat.retry}
             onRate={chat.rateAnswer}
@@ -533,6 +535,8 @@ function HelpAssistantFooter({
 interface ConversationHistoryProps {
   entries: HelpAssistantChatEntry[];
   isLoading: boolean;
+  /** What the assistant has done so far for the answer it's working on. */
+  pendingSteps: HelpAssistantStep[];
   error: unknown;
   onRetry: () => void;
   onRate: (answerIndex: number, feedback: HelpAssistantFeedback) => void;
@@ -543,6 +547,7 @@ interface ConversationHistoryProps {
 function ConversationHistory({
   entries,
   isLoading,
+  pendingSteps,
   error,
   onRetry,
   onRate,
@@ -570,7 +575,7 @@ function ConversationHistory({
     } else {
       history.scrollTop = history.scrollHeight;
     }
-  }, [entries.length, lastRole, isLoading, error]);
+  }, [entries.length, lastRole, isLoading, pendingSteps.length, error]);
 
   return (
     <Box
@@ -602,10 +607,26 @@ function ConversationHistory({
         )}
 
         {isLoading && (
-          <Group gap="sm">
-            <Loader size="sm" />
-            <Text c="text-secondary">{t`Working on it…`}</Text>
-          </Group>
+          <Stack gap="xs">
+            <Group gap="sm">
+              <Loader size="sm" />
+              <Text c="text-secondary">{t`Working on it…`}</Text>
+            </Group>
+            {pendingSteps.length > 0 && (
+              <Stack
+                gap="xxs"
+                pl="lg"
+                role="list"
+                aria-label={t`What the assistant has done so far`}
+              >
+                {pendingSteps.map((step, index) => (
+                  <Box key={index} role="listitem">
+                    <AnswerStep step={step} />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Stack>
         )}
 
         {error != null && (

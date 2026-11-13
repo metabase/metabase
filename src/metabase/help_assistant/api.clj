@@ -1,9 +1,15 @@
 (ns metabase.help-assistant.api
   "`/api/help-assistant` endpoints for the prototype Help page assistant."
   (:require
+   [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.help-assistant.core :as help-assistant]))
+   [metabase.help-assistant.core :as help-assistant]
+   [metabase.server.streaming-response :as sr]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
+  (:import
+   (java.io IOException OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -22,23 +28,82 @@
    [:url {:optional true} :string]
    [:earlier {:optional true} :boolean]])
 
-(api.macros/defendpoint :post "/chat" :- [:map {:closed true}
-                                          [:reply :string]
-                                          [:sources [:sequential Source]]
-                                          [:steps [:sequential Step]]]
+(def ^:private ChatRequest
+  [:map {:closed true}
+   [:messages [:sequential [:map {:closed true}
+                            [:role [:enum "user" "assistant"]]
+                            [:content :string]]]]
+   [:diagnostic_info {:optional true} [:maybe :string]]
+   [:loaded_skills {:optional true} [:maybe [:sequential :string]]]])
+
+(def ^:private ChatResponse
+  [:map {:closed true}
+   [:reply :string]
+   [:sources [:sequential Source]]
+   [:steps [:sequential Step]]])
+
+(defn- chat-request [body]
+  {:messages        (:messages body)
+   :diagnostic-info (:diagnostic_info body)
+   :loaded-skills   (:loaded_skills body)})
+
+(api.macros/defendpoint :post "/chat" :- ChatResponse
   "Send the conversation so far to the Help page assistant and get its reply. Admins only."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
-            [:messages [:sequential [:map {:closed true}
-                                     [:role [:enum "user" "assistant"]]
-                                     [:content :string]]]]
-            [:diagnostic_info {:optional true} [:maybe :string]]
-            [:loaded_skills {:optional true} [:maybe [:sequential :string]]]]]
+   body :- ChatRequest]
   (api/check-superuser)
-  (help-assistant/chat {:messages        (:messages body)
-                        :diagnostic-info (:diagnostic_info body)
-                        :loaded-skills   (:loaded_skills body)}))
+  (help-assistant/chat (chat-request body)))
+
+(def ^:private ChatEvent
+  [:multi {:dispatch :type}
+   ["step" [:map [:type [:= "step"]] [:step Step]]]
+   ["answer" [:map
+              [:type [:= "answer"]]
+              [:reply :string]
+              [:sources [:sequential Source]]
+              [:steps [:sequential Step]]]]
+   ["error" [:map
+             [:type [:= "error"]]
+             [:message :string]
+             [:status_code :int]]]])
+
+(defn- sse-line [payload]
+  (str "data: " (if (string? payload) payload (json/encode payload)) "\n\n"))
+
+(api.macros/defendpoint :post "/chat/stream" :- (sr/streaming-response-schema ChatEvent)
+  "Like `POST /chat`, but streams Server-Sent Events while the assistant works: a `step` event for each step as it
+  happens, then an `answer` event with the reply, sources and steps, or an `error` event. The stream ends with
+  `[DONE]`. When the client disconnects, the assistant stops. Admins only."
+  [_route-params
+   _query-params
+   body :- ChatRequest]
+  (api/check-superuser)
+  (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+    (let [disconnected? (volatile! false)
+          canceled?     #(or @disconnected? (some? (a/poll! canceled-chan)))
+          write!        (fn [payload]
+                          ;; steps are written from tool calls, which may run on other threads
+                          (locking os
+                            (when-not (canceled?)
+                              (try
+                                (.write os (.getBytes (sse-line payload) "UTF-8"))
+                                (.flush os)
+                                (catch IOException _
+                                  (vreset! disconnected? true))))))]
+      (try
+        (when-let [result (help-assistant/chat (assoc (chat-request body)
+                                                      :on-step   #(write! {:type "step", :step %})
+                                                      :canceled? canceled?))]
+          (write! (assoc result :type "answer")))
+        (catch Exception e
+          (let [status-code (or (:status-code (ex-data e)) 500)]
+            (when (>= status-code 500)
+              (log/error e "Help assistant: chat failed"))
+            (write! {:type        "error"
+                     :message     (or (ex-message e) "The assistant didn't respond.")
+                     :status_code status-code}))))
+      (write! "[DONE]"))))
 
 (api.macros/defendpoint :post "/feedback" :- :nil
   "Rate one of the Help page assistant's answers. Admins only."
