@@ -30,6 +30,7 @@ export {
   type MemoryTestRouterHolder,
 } from "./create-router";
 export { queryToSearch, toFacadeLocation } from "./location";
+export { RESET_SCROLL_ON_NAVIGATE } from "./scroll-restoration";
 export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
   getCanGoBack,

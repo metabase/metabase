@@ -28,7 +28,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import { Outlet, useLocation } from "metabase/router";
+import { Outlet, RESET_SCROLL_ON_NAVIGATE, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
@@ -37,7 +37,6 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -112,39 +111,35 @@ export function App() {
 
   return (
     <ErrorBoundary onError={onError}>
-      <ScrollToTop>
-        <AppKBarProvider>
-          <KeyboardTriggeredErrorModal />
-          <AppContainer className={CS.spread}>
-            <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
-            <AppContentContainer isAdminApp={isAdminApp}>
-              {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                </ContentViewportContext.Provider>
-              </AppContent>
-              <UndoListing />
-              <StatusListing />
-              <NewModals />
-              <EmbedSetupModals />
-              <Metabot
-                hide={
-                  isAdminApp ||
-                  isDataStudioApp ||
-                  isMonitorApp ||
-                  isEmbeddingHubApp ||
-                  isDataApp
-                }
-              />
-            </AppContentContainer>
-          </AppContainer>
-          <Palette />
-        </AppKBarProvider>
-      </ScrollToTop>
+      <AppKBarProvider>
+        <KeyboardTriggeredErrorModal />
+        <AppContainer className={CS.spread}>
+          <AppBanner />
+          {isAppBarVisible && <AppBarContainer />}
+          <AppContentContainer isAdminApp={isAdminApp}>
+            {isNavBarEnabled && <Navbar />}
+            <AppContent ref={setViewportElement} {...RESET_SCROLL_ON_NAVIGATE}>
+              <ContentViewportContext.Provider value={viewportElement ?? null}>
+                {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+              </ContentViewportContext.Provider>
+            </AppContent>
+            <UndoListing />
+            <StatusListing />
+            <NewModals />
+            <EmbedSetupModals />
+            <Metabot
+              hide={
+                isAdminApp ||
+                isDataStudioApp ||
+                isMonitorApp ||
+                isEmbeddingHubApp ||
+                isDataApp
+              }
+            />
+          </AppContentContainer>
+        </AppContainer>
+        <Palette />
+      </AppKBarProvider>
     </ErrorBoundary>
   );
 }

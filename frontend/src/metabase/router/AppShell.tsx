@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from "react-router";
 
 import { setRouterNavigate } from "./navigator";
 import { RouteLeaveGuards } from "./route-leave-guards";
+import { useScrollRestoration } from "./use-scroll-restoration";
 
 /**
  * The element of the host's pathless layout route.
@@ -14,10 +15,12 @@ import { RouteLeaveGuards } from "./route-leave-guards";
  * path and so resolves from the root. That hatch carries no route context of its
  * own, so the root is the only sensible base.
  *
- * It also owns the router's single blocker, which the route-leave guards share.
+ * It also owns the router's single blocker, which the route-leave guards share,
+ * and scroll restoration across navigations.
  */
 export function AppShell(): JSX.Element {
   const navigate = useNavigate();
+  useScrollRestoration();
 
   useEffect(() => {
     setRouterNavigate(navigate);
