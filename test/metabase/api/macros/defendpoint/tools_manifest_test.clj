@@ -135,14 +135,20 @@
 
 (deftest ^:parallel hand-written-one-of-test
   (testing "a `oneOf` under any subschema keyword of a hand-written `:json-schema` publishes as `anyOf`"
-    (is (= {:else          {:anyOf [{:type "integer"} {:type "boolean"}]}
-            :contains      {:anyOf [{:type "integer"} {:type "boolean"}]}
-            :contentSchema {:anyOf [{:type "integer"} {:type "boolean"}]}}
-           (get-in (tools-manifest/malli->json-schema
-                    [:map [:k [:any {:json-schema {:else          {:oneOf [{:type "integer"} {:type "boolean"}]}
-                                                   :contains      {:oneOf [{:type "integer"} {:type "boolean"}]}
-                                                   :contentSchema {:oneOf [{:type "integer"} {:type "boolean"}]}}}]]])
-                   [:properties :k])))))
+    (let [branches [{:type "integer"} {:type "boolean"}]]
+      (is (= {:else          {:anyOf branches}
+              :contains      {:anyOf branches}
+              :contentSchema {:anyOf branches}
+              ;; draft-07 `dependencies` mixes schemas with lists of property names, which stay as they are
+              :dependencies  {:a {:anyOf branches}
+                              :b ["c"]}}
+             (get-in (tools-manifest/malli->json-schema
+                      [:map [:k [:any {:json-schema {:else          {:oneOf branches}
+                                                     :contains      {:oneOf branches}
+                                                     :contentSchema {:oneOf branches}
+                                                     :dependencies  {:a {:oneOf branches}
+                                                                     :b ["c"]}}}]]])
+                     [:properties :k]))))))
 
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
