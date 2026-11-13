@@ -303,24 +303,25 @@
   "Destroy every pool in the pools state `state`, as the global system halts.
   The swapped pools go first, through their cache's removal listener, which logs a failed close and goes on.
   A canonical pool that fails to close does not stop the rest.
-  Once all have been tried, throws an ex-info whose `:failures` holds each database id with its exception."
+  Once all have been tried, throws an ex-info whose `:failures` holds each database id with its exception, and whose
+  cause is the first failure, with the others attached to it as suppressed exceptions."
   [{:keys [pools ^Cache swapped]}]
   ;; [[system/stop!]] calls this without the slot lock, which the removal listener takes as it closes each pool
   (when swapped
     (.invalidateAll swapped)
     (.cleanUp swapped))
-  (let [failures (into []
-                       (keep (fn [[[database-id _connection-type] pool-spec]]
-                               (try
-                                 (destroy-pool! database-id pool-spec)
-                                 nil
-                                 (catch Throwable e
-                                   [database-id e]))))
-                       pools)]
+  (let [failures (u/run-each! (for [[[database-id _connection-type] pool-spec] pools]
+                                [database-id #(destroy-pool! database-id pool-spec)]))]
     (when (seq failures)
-      (throw (ex-info "Some connection pools failed to close"
-                      {:failures failures}
-                      (second (first failures)))))))
+      (let [cause (second (first failures))]
+        ;; so a log of the one exception shows every failure's stack trace; the cause itself is skipped, since two
+        ;; closes can throw the same exception and an exception cannot suppress itself
+        (doseq [[_ e] (rest failures)
+                :when (not (identical? e cause))]
+          (.addSuppressed ^Throwable cause e))
+        (throw (ex-info "Some connection pools failed to close"
+                        {:failures failures}
+                        cause))))))
 
 (defn- pools-state
   "The current pools state, starting an empty one on first use."
