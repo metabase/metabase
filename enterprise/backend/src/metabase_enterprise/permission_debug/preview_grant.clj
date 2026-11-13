@@ -83,7 +83,7 @@
 (def ^:private readable-paths
   "`GET` endpoints the SDK's `CollectionBrowser`, `InteractiveDashboard` and `InteractiveQuestion` read, by prefix: the
   previewed user's own reads, so their permissions decide what comes back."
-  #"^/api/(user/current|session/properties|collection|dashboard|card|dataset|table|field|database|search|segment|measure|timeline|native-query-snippet|bookmark|activity/recents|tiles|geojson|user-key-value|model-index|action|ee/content-translation|ee/library|ee/custom-viz-plugin)(/.*)?$")
+  #"^/api/(user/current|session/properties|collection|dashboard|card|dataset|table|field|database|search|segment|measure|timeline|native-query-snippet|bookmark|activity/recents|tiles|geojson|user-key-value|model-index|action|pulse/form_input|ee/content-translation|ee/library|ee/custom-viz-plugin)(/.*)?$")
 
 (def ^:private query-posts
   "`POST` endpoints that only read: running a query, a saved question or a dashboard card, loading parameter values, or

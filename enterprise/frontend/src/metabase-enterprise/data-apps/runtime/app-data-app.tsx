@@ -17,6 +17,7 @@ import {
   installDataAppRouteReporter,
 } from "../broker/iframe-broker";
 
+import { isPermissionPreviewPath } from "./lib/is-permission-preview-path";
 import { readSlugFromUrl } from "./lib/read-slug-from-url";
 
 /**
@@ -58,7 +59,12 @@ const init = async () => {
 
   const isEmbedded = isEmbeddedDataAppPath(window.location.pathname);
 
-  if (isEmbedded) {
+  if (isPermissionPreviewPath(window.location.pathname)) {
+    const { PermissionPreviewApp } =
+      await import("./components/PermissionPreviewApp/PermissionPreviewApp");
+
+    createRoot(rootElement).render(<PermissionPreviewApp />);
+  } else if (isEmbedded) {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
     EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
     EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
