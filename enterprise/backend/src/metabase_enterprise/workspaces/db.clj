@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::status
-  [:enum :unprovisioned :provisioning :provisioned :deprovisioning])
+  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
 
 (mr/def ::workspace-database.insert
   [:map {:closed true}
@@ -195,6 +195,16 @@
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/WorkspaceDatabase :workspace_id workspace-id :status [:not= :unprovisioned]))
+
+(mu/defn workspace-has-in-flight-databases?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:provisioning` or `:deprovisioning` and
+  was last updated after `since`."
+  [workspace-id :- ms/PositiveInt
+   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/exists? :model/WorkspaceDatabase
+              :workspace_id workspace-id
+              :status       [:in [:provisioning :deprovisioning]]
+              :updated_at   [:> since]))
 
 (mu/defn workspace-has-unfinished-databases-since?
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:unprovisioned`, `:provisioning` or

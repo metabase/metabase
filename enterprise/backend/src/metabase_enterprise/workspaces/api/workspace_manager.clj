@@ -19,7 +19,7 @@
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
@@ -111,7 +111,10 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking).
+   for workspaces) and provision it (blocking). A failed provisioning is an error,
+   never a 200: the database's status code, or 500, with `message` and
+   `cleanup_required`, true when the workspace was kept and must be deleted to
+   finish the teardown.
 
    Send an `Idempotency-Key` header to make the request safe to retry. The key must be
    1 to 255 characters, not blank, with no leading or trailing whitespace; otherwise
@@ -119,10 +122,11 @@
    already has a workspace with that key, nothing is provisioned. The response is
    that workspace (200); 409 with error code `workspace_busy` while that workspace's
    create is still running; or 500 with `workspace_id` and `cleanup_required` when
-   that create failed and kept the workspace, which must be deleted. A create that
-   failed and deleted its workspace frees its key. The body of a retry is not
-   compared with the original, so send a key again only to retry the same intended
-   workspace."
+   that workspace has no databases or one that is not `provisioned`: its create
+   failed or stopped, or a later delete failed. Delete the workspace, then create
+   again with a new key. A create that failed and deleted its workspace frees its
+   key. The body of a retry is not compared with the original, so send a key again
+   only to retry the same intended workspace."
   [_route-params _query-params params :- CreateWorkspaceParams request]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -142,13 +146,25 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Tears down every database's warehouse isolation first
-  (blocking, any state). Each database is either fully torn down (its row is
-  deleted) or kept; when any teardown fails the workspace is kept too — with the
-  failed rows, so the delete can be retried — and the combined failure is
-  returned as the error. 204 on success, no response body."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  "Delete a Workspace: tear down each database's warehouse isolation (blocking),
+  then delete the workspace. 409 (error code `workspace_busy`, nothing changed)
+  while a create or deprovision is running on any of its databases, meaning a row
+  that is `:provisioning` or `:deprovisioning` and was last updated within the
+  last 15 minutes. An older such row is treated as left by a crashed instance and
+  is torn down. A row whose teardown succeeds is deleted. A row whose teardown
+  fails is kept as `teardown_failed`, the workspace is kept with it, and the
+  combined failure is the error, so the delete can be retried. 204 on success, no
+  response body.
+
+  `force=true` deletes `teardown_failed` rows without a warehouse teardown and
+  logs at WARN the identifiers of what may remain. It does so after the busy
+  check, so a 409 deletes nothing. Use it only when the warehouse is gone for
+  good. Other rows are torn down as without `force`."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)
+  (when force
+    (ws/abandon-teardown-failed-databases! id))
   (ws/delete-workspace! id)
   nil)
 
@@ -160,7 +176,9 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`; retry later. 422 if a
+  of the workspace's databases is not `:provisioned`. The body does not say which
+  status; read `GET /:id`. Retry while a database is `provisioning`. In any other
+  status, waiting does not clear the 409; delete the workspace. 422 if a
   database's connection settings need an admin to fix them; retrying does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
