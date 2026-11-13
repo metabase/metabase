@@ -454,11 +454,10 @@
   "Throws unless the user can save a dashboard to the collection with `collection-id`, nil for the root collection.
   A collection in the trash is refused. `creating?` says whether the dashboard is new, which changes the advice."
   [collection-id creating?]
-  (when collection-id
-    (let [collection (tools/with-entity {:kind :collection, :id collection-id}
-                       (governing-collection/check-read-governing-collection nil collection-id))]
-      (when (:archived collection)
-        (collection-trashed! {:collection-id collection-id}))))
+  (let [collection (tools/with-entity {:kind :collection, :id collection-id}
+                     (governing-collection/check-read-governing-collection nil collection-id))]
+    (when (:archived collection)
+      (collection-trashed! {:collection-id collection-id})))
   (try
     (api/create-check :model/Dashboard {:collection_id collection-id})
     (catch clojure.lang.ExceptionInfo e
