@@ -27,36 +27,97 @@ export type PreviewState = {
   returnPath: string;
 };
 
+/** Marks the app loaded in the troubleshooting page's frame. */
+const FRAME_PARAM = "permission-preview-frame";
+
+// The frame's own window name survives a reload inside the frame, and nothing else shares it.
+const FRAME_NAME_PREFIX = "metabase-permission-preview:";
+
+let framePreviewState: PreviewState | null = null;
+
 /**
  * Reads the preview this tab switched into (from the URL on the first load, then from this tab's
  * sessionStorage), so every request of this tab, and only this tab, previews the same user.
  */
 export function readPreviewState(): PreviewState | null {
   const params = new URLSearchParams(window.location.search);
-  const userIdParam = params.get(URL_PARAMS.userId);
+  const state = parseUrlState(params);
 
-  if (userIdParam != null && /^\d+$/.test(userIdParam)) {
-    const state: PreviewState = {
-      userId: Number(userIdParam),
-      userName: params.get(URL_PARAMS.userName) ?? "",
-      principalType: parsePrincipalType(params.get(URL_PARAMS.principalType)),
-      principalId: Number(params.get(URL_PARAMS.principalId) ?? userIdParam),
-      principalName: params.get(URL_PARAMS.principalName) ?? "",
-      attributes: parseAttributes(params.get(URL_PARAMS.attributes)),
-      returnPath: getSafeReturnPath(params.get(URL_PARAMS.returnPath)),
-    };
+  if (state != null) {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    Object.values(URL_PARAMS).forEach((param) => params.delete(param));
-    const search = params.toString();
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
-    );
+    removeParams(params, Object.values(URL_PARAMS));
     return state;
   }
 
   return parseStoredState(window.sessionStorage.getItem(STORAGE_KEY));
+}
+
+/**
+ * Reads the preview of the app loaded in the troubleshooting page's frame, from the URL on the
+ * first load and from the frame's window name on a reload. The frame shares the admin tab's
+ * sessionStorage, so it never writes there: the admin page around it keeps running as the admin.
+ * Returns null outside such a frame.
+ */
+export function readFramePreviewState(): PreviewState | null {
+  if (window.self === window.top) {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const urlState =
+    params.get(FRAME_PARAM) === "1" ? parseUrlState(params) : null;
+
+  if (urlState != null) {
+    window.name = `${FRAME_NAME_PREFIX}${JSON.stringify(urlState)}`;
+    removeParams(params, [...Object.values(URL_PARAMS), FRAME_PARAM]);
+    framePreviewState = urlState;
+  } else if (window.name.startsWith(FRAME_NAME_PREFIX)) {
+    framePreviewState = parseStoredState(
+      window.name.slice(FRAME_NAME_PREFIX.length),
+    );
+  }
+  return framePreviewState;
+}
+
+/** The user the app's requests run as: the frame's preview, else this tab's, else null for no preview. */
+export function getActivePreviewUserId(): number | null {
+  return (
+    framePreviewState?.userId ??
+    parseStoredState(window.sessionStorage.getItem(STORAGE_KEY))?.userId ??
+    null
+  );
+}
+
+/** The address of the app in the troubleshooting page's frame, at `path`, as `state`. */
+export function getFramePreviewUrl(path: string, state: PreviewState) {
+  const url = new URL(getPreviewUrl(path, state));
+  url.searchParams.set(FRAME_PARAM, "1");
+  return url.toString();
+}
+
+function parseUrlState(params: URLSearchParams): PreviewState | null {
+  const userIdParam = params.get(URL_PARAMS.userId);
+  if (userIdParam == null || !/^\d+$/.test(userIdParam)) {
+    return null;
+  }
+  return {
+    userId: Number(userIdParam),
+    userName: params.get(URL_PARAMS.userName) ?? "",
+    principalType: parsePrincipalType(params.get(URL_PARAMS.principalType)),
+    principalId: Number(params.get(URL_PARAMS.principalId) ?? userIdParam),
+    principalName: params.get(URL_PARAMS.principalName) ?? "",
+    attributes: parseAttributes(params.get(URL_PARAMS.attributes)),
+    returnPath: getSafeReturnPath(params.get(URL_PARAMS.returnPath)),
+  };
+}
+
+function removeParams(params: URLSearchParams, names: string[]) {
+  names.forEach((name) => params.delete(name));
+  const search = params.toString();
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+  );
 }
 
 function parsePrincipalType(value: unknown): PrincipalType {

@@ -5,7 +5,11 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
 import { ViewAsButton } from "./ViewAsButton";
-import { getPreviewAsHeaderHandler, readPreviewState } from "./preview-state";
+import {
+  getPreviewAsHeaderHandler,
+  readFramePreviewState,
+  readPreviewState,
+} from "./preview-state";
 import { TableUsersPreview } from "./preview/TableUsersPreview";
 import { getDataRoutes, getTabRoutes } from "./preview/routes";
 
@@ -14,6 +18,14 @@ import { getDataRoutes, getTabRoutes } from "./preview/routes";
  */
 export function initializePlugin() {
   if (!hasPremiumFeature("advanced_permissions")) {
+    return;
+  }
+
+  // The host page around the frame shows who is previewed, so the frame has no banner.
+  const framePreviewState = readFramePreviewState();
+  if (framePreviewState != null) {
+    PLUGIN_API.onBeforeRequestHandlers.setPreviewAsHeader =
+      getPreviewAsHeaderHandler(framePreviewState);
     return;
   }
 
