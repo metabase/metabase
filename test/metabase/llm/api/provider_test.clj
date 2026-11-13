@@ -308,8 +308,11 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model nil]
+          ;; Metabot runs on another model, so the mini model below is the recorded one.
           (mt/user-http-request :crowberto :post 200 "llm/providers"
-                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+                                {:type   "anthropic"
+                                 :model  "claude-sonnet-4-6"
+                                 :config {:api-key "sk-ant-valid"}})
           (is (= {:api-key "sk-ant-valid" :mini-model "claude-haiku-5-5"} (stored-config "anthropic")))
           (is (= "anthropic/claude-haiku-5-5" (metabot.settings/llm-mini-model)))))))
   (testing "one whose listing leaves it out runs them on the Metabot model, not on a guess the account cannot serve"
