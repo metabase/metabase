@@ -47,7 +47,8 @@
 
    On a non-workspace instance the canonical target passes through unchanged. On a
    workspace instance, throws a 400 when the database has no `database-workspace-schema`,
-   so that no transform writes to a production table.
+   so that no transform writes to a production table, checks one for existence, or drops
+   one.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is

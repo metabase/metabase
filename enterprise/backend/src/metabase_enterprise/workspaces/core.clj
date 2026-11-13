@@ -178,8 +178,8 @@
    since that value wins over the stored one."
   []
   (ws.settings/workspaces-enabled! false)
-  ;; The setting's setter deletes them only when the value changes; delete them
-  ;; here too so stale rows from an earlier run go regardless.
+  ;; The setting's setter deletes the remap rows only when the value changes. Delete
+  ;; them here too, so that rows left while the setting was already off also go.
   (ws.db/delete-all-table-remappings!)
   nil)
 

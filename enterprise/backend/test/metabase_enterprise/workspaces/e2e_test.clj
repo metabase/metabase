@@ -417,7 +417,7 @@
                           (load-sidecar-config! (yaml/parse-string yaml-str))
                           ;; Diagnostic: the loader should have turned on workspace mode and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
-                              "loader did not put the instance into workspace-mode (atom not populated)")
+                              "loader did not put the instance into workspace-mode (workspaces-enabled is off)")
                           ;; The Database row's `:details` was just rewritten by the loader. Re-read
                           ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
                           (let [ws-db (t2/select-one :model/Database :id (:id ws-db))

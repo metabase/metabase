@@ -79,7 +79,7 @@
         (is (s/valid? spec v)
             (str "must accept " (pr-str v)))))))
 
-(deftest apply-workspace-section-populates-atom-test
+(deftest apply-workspace-section-sets-the-settings-test
   (testing "applying the :workspace section turns workspaces-enabled on and sets the database's database-workspace-schema"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
@@ -91,8 +91,8 @@
             (is (= {:databases {db-id "mb__isolation_44490_1933"}}
                    (ws/instance-workspace)))))))))
 
-(deftest re-apply-replaces-atom-test
-  (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
+(deftest re-apply-replaces-the-settings-test
+  (testing "re-applying with a different config replaces the settings — no mismatch detection, file is the truth"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database _               {:name "ws-test-db" :engine :postgres}
                      :model/Database {db-2-id :id}  {:name "ws-test-db-2" :engine :postgres}]
