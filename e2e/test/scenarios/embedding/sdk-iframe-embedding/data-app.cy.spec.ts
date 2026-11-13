@@ -105,14 +105,12 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
       .findByLabelText("Order count", { timeout: 30_000 })
       .should("have.text", "18760");
 
-    cy.log("the event omits the app slug, route and query string");
-    cy.log("the referrer keeps only the host page's origin");
+    cy.log("the event omits the app slug, route, query string and host page");
     H.expectSnowplowEvent({
       event: {
         page_urlpath: "/embed/embedded-apps",
         page_urlquery: (query: string | null) => !query,
-        refr_urlhost: "different-than-metabase-instance.com",
-        refr_urlquery: (query: string | null) => !query,
+        refr_urlhost: (host: string | null) => !host,
         unstruct_event: {
           data: {
             data: {
