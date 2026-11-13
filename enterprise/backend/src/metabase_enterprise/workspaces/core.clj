@@ -352,7 +352,7 @@
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
-  "Tear down every database's warehouse isolation (any state, blocking), then
+  "Tear down every database's warehouse isolation (blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
   either fully torn down (warehouse footprint confirmed gone, row deleted) or
   kept. Every database gets its teardown attempt even when earlier ones fail; if
