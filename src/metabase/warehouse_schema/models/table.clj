@@ -15,7 +15,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -417,18 +416,6 @@
                  {:email (:owner_email table)}))))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
-
-(mu/defmethod mi/visible-filter-clause :model/Table
-  [_                  :- :keyword
-   column-or-exp      :- :any
-   user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection? active-only?]}]]
-  (perms/visible-table-filter-with-cte
-   column-or-exp user-info permission-mapping
-   (cond-> {}
-     (some? active-only?) (assoc :active-only? active-only?)
-     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

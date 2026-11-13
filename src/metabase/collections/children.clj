@@ -793,16 +793,12 @@
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
             (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
-            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
-            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
-            (perms/visible-table-filter-subquery-clause
+            (perms/visible-tables-filter-clause
              :t.id
              {:user-id       api/*current-user-id*
               :is-superuser? api/*is-superuser?*}
              {:perms/view-data      :unrestricted
-              :perms/create-queries :query-builder}
-             {:include-published-via-collection? true})
+              :perms/create-queries :query-builder})
             [:= :t.collection_id (:id collection)]
             (if archived?
               [:!= :t.archived_at nil]

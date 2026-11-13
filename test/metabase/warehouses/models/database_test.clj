@@ -949,23 +949,21 @@
              :tables
              (#(map :name %))))))
 
-;;; ---------------------------------------- visible-filter-clause tests ----------------------------------------
+;;; ------------------------------------- visible-databases-filter-clause tests -------------------------------------
 
 (defn- fetch-visible-db-ids
-  "Helper to fetch visible database IDs using visible-filter-clause.
-   Handles the :with/:clause return value format."
+  "Helper to fetch visible database IDs using `perms/visible-databases-filter-clause`."
   [db-ids user-info permission-mapping column-field]
-  (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
-    (t2/select-pks-set :model/Database
-                       {:where [:and
-                                clause
-                                [:in :id db-ids]]})))
+  (t2/select-pks-set :model/Database
+                     {:where [:and
+                              (perms/visible-databases-filter-clause column-field user-info permission-mapping)
+                              [:in :id db-ids]]}))
 
 (def ^:private default-permission-mapping
   {:perms/view-data :unrestricted
    :perms/create-queries :query-builder})
 
-(deftest visible-filter-clause-superuser-test
+(deftest visible-databases-filter-clause-superuser-test
   (testing "Superuser should see all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -991,7 +989,7 @@
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-non-superuser-test
+(deftest visible-databases-filter-clause-non-superuser-test
   (testing "Non-superuser should only see databases they have permissions for"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1017,7 +1015,7 @@
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-qualified-column-test
+(deftest visible-databases-filter-clause-qualified-column-test
   (testing "Should work with qualified column names"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1043,7 +1041,7 @@
                                      default-permission-mapping
                                      :metabase_database.id)))))))
 
-(deftest visible-filter-clause-column-expression-test
+(deftest visible-databases-filter-clause-column-expression-test
   (testing "Should work with column expressions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1069,7 +1067,7 @@
                                      default-permission-mapping
                                      [:coalesce :id :metabase_database.id])))))))
 
-(deftest visible-filter-clause-view-data-only-test
+(deftest visible-databases-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1096,7 +1094,7 @@
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-blocked-level-test
+(deftest visible-databases-filter-clause-blocked-level-test
   (testing "Requiring blocked level permissions (most permissive) should include all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1123,7 +1121,7 @@
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-no-permissions-test
+(deftest visible-databases-filter-clause-no-permissions-test
   (testing "User with no group memberships should see no databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1153,7 +1151,7 @@
                                           default-permission-mapping
                                           :id)))))))
 
-(deftest visible-filter-clause-table-level-permissions-test
+(deftest visible-databases-filter-clause-table-level-permissions-test
   (testing "Database should be visible when user has access to at least one table"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}

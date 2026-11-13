@@ -6,9 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise user-published-table-permission
   "Returns :query-builder permission if table is published and user has collection access.
@@ -38,26 +36,17 @@
   (when (:is_published table)
     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection (:collection_id table) :read))))
 
-(defenterprise published-table-perm-grant-rows
-  "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are
-  published into a collection the user can read. The grant supplies `:perms/create-queries
-  :query-builder`; `:perms/view-data` is intentionally not synthesized — view-data must come from
-  real `data_permissions` entries.
-
-  Returns nil when the caller's permission mapping does not include `:perms/create-queries`."
+(defenterprise published-table-clause
+  "A HoneySQL clause holding when the Table aliased `table-alias` is published into a Collection the user of
+  `user-info` can read, which grants `:perms/create-queries :query-builder`. It reads the probed Table's own columns,
+  so each Table is checked on its own."
   :feature :library
-  [{:keys [user-id is-superuser?]} perm-types active-only?]
-  (when (contains? (set perm-types) :perms/create-queries)
-    ^:allow-subquery
-    {:select [[:mt.id :id]
-              [(h2x/literal :perms/create-queries) :perm_type]
-              [(h2x/literal :query-builder) :perm_value]]
-     :from   [[(t2/table-name :model/Table) :mt]]
-     :where  (cond-> [:and
-                      [:= :mt.is_published true]
-                      (collection/visible-collection-filter-clause
-                       :mt.collection_id
-                       {}
-                       {:current-user-id user-id
-                        :is-superuser?   is-superuser?})]
-               active-only? (conj [:= :mt.active true]))}))
+  [{:keys [user-id is-superuser?]} table-alias]
+  (let [column (fn [c] (keyword (str (name table-alias) "." c)))]
+    [:and
+     [:= (column "is_published") true]
+     (collection/visible-collection-filter-clause
+      (column "collection_id")
+      {}
+      {:current-user-id user-id
+       :is-superuser?   is-superuser?})]))

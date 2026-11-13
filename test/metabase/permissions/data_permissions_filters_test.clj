@@ -1,8 +1,7 @@
-(ns metabase.permissions.data-permissions.sql-test
+(ns metabase.permissions.data-permissions-filters-test
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.data-permissions.sql :as sql]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -16,7 +15,7 @@
                    :model/User user {}]
       (let [user-info {:user-id (:id user) :is-superuser? true}
             permission-mapping {:perms/view-data :unrestricted}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (seq results) "Superuser should get results")
         (is (every? #(contains? % :id) results) "Results should contain table IDs")
@@ -37,7 +36,7 @@
                                              :perm_value :unrestricted}]
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (seq results) "User with permissions should get results")
         (is (some #(= (:id %) (:id table1)) results) "Should include table with permissions")
@@ -56,7 +55,7 @@
       (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (seq results) "User with database-level permissions should get results")
         (is (some #(= (:id %) (:id table1)) results) "Should include table1 from database permission")
@@ -73,33 +72,14 @@
       (perms/set-table-permission! group table1 :perms/view-data :blocked)
       (perms/set-table-permission! group table1 :perms/create-queries :no)
       (let [user-info {:user-id (:id user) :is-superuser? false}
-            permission-mapping {:perms/view-data [:blocked :most]
-                                :perms/create-queries [:no :most]}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            permission-mapping {:perms/view-data      :blocked
+                                :perms/create-queries :no}
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (seq results) "User with multiple permissions should get results")
         (is (some #(= (:id %) (:id table1)) results) "Should include both permissions")
         (is (every? #(contains? #{"perms/view-data" "perms/create-queries"}  (:perm_type %)) results) "Should include the requested permission types")
         (is (every? #(contains? #{(:id group) (u/the-id (perms/all-users-group))}  (:group_id %)) results) "Should include user's group")))))
-
-(deftest permission-level-with-most-least-directive-test
-  (testing "permission level with most/least directive"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table table1 {:db_id (:id db)}
-                   :model/PermissionsGroup group {}
-                   :model/User user {}
-                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
-                   :model/DataPermissions _ {:db_id (:id db)
-                                             :table_id (:id table1)
-                                             :group_id (:id group)
-                                             :perm_type :perms/view-data
-                                             :perm_value :unrestricted}]
-      (let [user-info {:user-id (:id user) :is-superuser? false}
-            permission-mapping {:perms/view-data [:unrestricted :most]}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
-            results (t2/query query)]
-        (is (seq results) "User with most/least directive should get results")
-        (is (some #(= (:id %) (:id table1)) results) "Should include table with permissions")))))
 
 (deftest user-with-no-group-membership-test
   (testing "user with no group membership"
@@ -113,7 +93,7 @@
         (t2/delete! :model/DataPermissions :group_id (u/the-id (perms/all-users-group)))
         (let [user-info {:user-id (:id user) :is-superuser? false}
               permission-mapping {:perms/view-data :unrestricted}
-              query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+              query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
               results (t2/query query)]
           (is (empty? results) "User with no group membership should get no results"))))))
 
@@ -129,7 +109,7 @@
         (perms/set-table-permission! group table1 :perms/view-data :blocked)
         (let [user-info {:user-id (:id user) :is-superuser? false}
               permission-mapping {:perms/view-data :unrestricted}
-              query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+              query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
               results (t2/query query)]
           (is (not (some #(= (:id table1) (:id %)) results)) "User with non-matching permissions should get no results"))))))
 
@@ -142,7 +122,7 @@
                    :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (empty? results) "Empty permission mapping should not return results")))))
 
@@ -168,7 +148,7 @@
                                              :perm_value :unrestricted}]
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted}
-            query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
             results (t2/query query)]
         (is (seq results) "User in multiple groups should get results")
         (is (some #(and (= (:id %) (:id table1)) (= (:group_id %) (:id group1))) results)
@@ -176,70 +156,35 @@
         (is (some #(and (= (:id %) (:id table2)) (= (:group_id %) (:id group2))) results)
             "Should include table2 from group2")))))
 
-(deftest visible-table-filter-with-cte-include-inactive-test
-  (testing "visible-table-filter-with-cte respects active-only? option"
+(deftest visible-tables-filter-clause-test
+  (testing "Database-level rows count for every table, table-level rows for active tables only"
     (mt/with-temp [:model/Database db {}
-                   :model/Table active-table {:db_id (:id db) :active true}
-                   :model/Table inactive-table {:db_id (:id db) :active false}
-                   :model/PermissionsGroup group {}
-                   :model/User user {}
-                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
-      ;; set (rather than insert) the db-level perms: the group's default rows already cover this DB,
-      ;; and data_permissions has a unique constraint per scope
-      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
-      (perms/set-database-permission! (:id group) (:id db) :perms/create-queries :query-builder)
-      (let [user-info {:user-id (:id user) :is-superuser? false}
-            permission-mapping {:perms/view-data :unrestricted
-                                :perms/create-queries :query-builder}]
-        (testing "default (active-only? false) includes inactive tables"
-          (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping)
-                results (t2/query {:with with :select [:id] :from [[:metabase_table]] :where clause})]
-            (is (some #(= (:id %) (:id active-table)) results))
-            (is (some #(= (:id %) (:id inactive-table)) results))))
-        (testing "active-only? true excludes inactive tables"
-          (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping
-                                                                         {:active-only? true})
-                results (t2/query {:with with :select [:id] :from [[:metabase_table]] :where clause})]
-            (is (some #(= (:id %) (:id active-table)) results))
-            (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
-
-(deftest visible-table-filter-subquery-clause-test
-  (testing "visible-table-filter-subquery-clause selects the same tables as visible-table-filter-with-cte"
-    (mt/with-temp [:model/Database db {}
+                   :model/Database other-db {}
                    :model/Table granted-table {:db_id (:id db) :active true}
                    :model/Table inactive-table {:db_id (:id db) :active false}
                    :model/Table ungranted-table {:db_id (:id db) :active true}
+                   :model/Table other-db-table {:db_id (:id other-db) :active false}
                    :model/PermissionsGroup group {}
                    :model/User user {}
                    :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
       ;; drop the default grants every group, All Users included, gets on a new database: only `group` grants anything
-      (t2/delete! :model/DataPermissions :db_id (:id db))
+      (t2/delete! :model/DataPermissions :db_id [:in [(:id db) (:id other-db)]])
       (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
       (perms/set-database-permission! (:id group) (:id db) :perms/create-queries :no)
       (perms/set-table-permission! (:id group) granted-table :perms/create-queries :query-builder)
       (perms/set-table-permission! (:id group) inactive-table :perms/create-queries :query-builder)
+      (perms/set-database-permission! (:id group) (:id other-db) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (:id group) (:id other-db) :perms/create-queries :query-builder)
       (let [user-info          {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data      :unrestricted
                                 :perms/create-queries :query-builder}
-            db-tables          (fn [query]
+            visible            (fn [query]
                                  (t2/select-pks-set :model/Table
-                                                    (update query :where (fn [w] [:and [:= :db_id (:id db)] w]))))
-            cte-tables         (fn [& opts]
-                                 (let [{:keys [with clause]} (apply sql/visible-table-filter-with-cte
-                                                                    :id user-info permission-mapping opts)]
-                                   (db-tables {:with with :where clause})))
-            subquery-tables    (fn [& opts]
-                                 (db-tables {:where (apply sql/visible-table-filter-subquery-clause
-                                                           :id user-info permission-mapping opts)}))]
-        (testing "with the default options"
-          (is (= #{(:id granted-table) (:id inactive-table)}
-                 (cte-tables)
-                 (subquery-tables))))
-        (testing "with active-only?"
-          (is (= #{(:id granted-table)}
-                 (cte-tables {:active-only? true})
-                 (subquery-tables {:active-only? true}))))
-        (testing "from inside a derived table, where a CTE cannot go"
+                                                    (update query :where (fn [w] [:and [:in :db_id [(:id db) (:id other-db)]] w]))))]
+        (testing "an inactive table's own grant doesn't count, a Database-level grant does"
+          (is (= #{(:id granted-table) (:id other-db-table)}
+                 (visible {:where (perms/visible-tables-filter-clause :id user-info permission-mapping)}))))
+        (testing "from inside a derived table"
           (is (= #{(:id granted-table)}
                  (t2/select-pks-set :model/Table
                                     {:select [:x.id]
@@ -248,34 +193,37 @@
                                                 :from   [:metabase_table]
                                                 :where  [:and
                                                          [:= :db_id (:id db)]
-                                                         [:= :active true]
-                                                         (sql/visible-table-filter-subquery-clause
+                                                         (perms/visible-tables-filter-clause
                                                           :id user-info permission-mapping)]}
                                                :x]]}))))
         (testing "a superuser gets a clause that keeps every table"
-          (is (= #{(:id granted-table) (:id inactive-table) (:id ungranted-table)}
-                 (db-tables {:where (sql/visible-table-filter-subquery-clause
-                                     :id (assoc user-info :is-superuser? true) permission-mapping)}))))))))
+          (is (= #{(:id granted-table) (:id inactive-table) (:id ungranted-table) (:id other-db-table)}
+                 (visible {:where (perms/visible-tables-filter-clause
+                                   :id (assoc user-info :is-superuser? true) permission-mapping)}))))))))
 
-(deftest visible-table-filter-select-include-inactive-test
-  (testing "visible-table-filter-select respects active-only? option"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table active-table {:db_id (:id db) :active true}
-                   :model/Table inactive-table {:db_id (:id db) :active false}
+(deftest visible-databases-filter-clause-test
+  (testing "a Database is visible through its own row or through an active table's row"
+    (mt/with-temp [:model/Database db-grant {}
+                   :model/Database table-grant {}
+                   :model/Database inactive-grant {}
+                   :model/Database none {}
+                   :model/Table _ {:db_id (:id table-grant) :active true}
+                   :model/Table inactive {:db_id (:id inactive-grant) :active false}
+                   :model/Table active {:db_id (:id table-grant) :active true}
                    :model/PermissionsGroup group {}
                    :model/User user {}
                    :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
-      ;; set (rather than insert) the db-level perm: the group's default rows already cover this DB,
-      ;; and data_permissions has a unique constraint per scope
-      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
-      (let [user-info {:user-id (:id user) :is-superuser? false}
-            permission-mapping {:perms/view-data :unrestricted}]
-        (testing "default includes inactive tables"
-          (let [results (t2/query (sql/visible-table-filter-select :id user-info permission-mapping))]
-            (is (some #(= (:id %) (:id active-table)) results))
-            (is (some #(= (:id %) (:id inactive-table)) results))))
-        (testing "active-only? true excludes inactive tables"
-          (let [results (t2/query (sql/visible-table-filter-select :id user-info permission-mapping
-                                                                   {:active-only? true}))]
-            (is (some #(= (:id %) (:id active-table)) results))
-            (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
+      (let [db-ids [(:id db-grant) (:id table-grant) (:id inactive-grant) (:id none)]]
+        (t2/delete! :model/DataPermissions :db_id [:in db-ids])
+        (doseq [db-id db-ids]
+          (perms/set-database-permission! (:id group) db-id :perms/view-data :unrestricted)
+          (perms/set-database-permission! (:id group) db-id :perms/create-queries :no))
+        (perms/set-database-permission! (:id group) (:id db-grant) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (:id group) active :perms/create-queries :query-builder)
+        (perms/set-table-permission! (:id group) inactive :perms/create-queries :query-builder)
+        (is (= #{(:id db-grant) (:id table-grant)}
+               (t2/select-pks-set :model/Database
+                                  {:where [:and [:in :id db-ids]
+                                           (perms/visible-databases-filter-clause
+                                            :id {:user-id (:id user) :is-superuser? false}
+                                            {:perms/create-queries :query-builder})]})))))))

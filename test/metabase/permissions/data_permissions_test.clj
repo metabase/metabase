@@ -1612,6 +1612,71 @@
                                  (is (= (+ 2 (* 2 (count table-level-values))) (call-count))
                                      "one query per getter and permission type answers both Databases"))))))))))))))))
 
+(deftest sql-filters-match-getters-test
+  (testing "the SQL filters select exactly the Tables and Databases the getters grant"
+    (mt/with-temp [:model/PermissionsGroup           {group-1 :id}  {}
+                   :model/PermissionsGroup           {group-2 :id}  {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-1}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-2}
+                   :model/Database                   {db-1 :id}     {}
+                   :model/Database                   {db-2 :id}     {}
+                   :model/Table                      {table-1 :id}  {:db_id db-1}
+                   :model/Table                      {table-2 :id}  {:db_id db-1}
+                   :model/Table                      {inactive :id} {:db_id db-1 :active false}
+                   :model/Table                      {table-3 :id}  {:db_id db-2}]
+      (let [db-ids    [db-1 db-2]
+            table-ids {table-1 db-1, table-2 db-1, inactive db-1, table-3 db-2}
+            user-info {:user-id user-id :is-superuser? false}
+            ;; every value but the least permissive, which a user without rows also has
+            check     (fn []
+                        (doseq [[perm-type db-values] table-level-values
+                                level                 (butlast (first db-values))]
+                          (testing (str perm-type " " level)
+                            (is (= (into #{} (filter #(data-perms/user-has-permission-for-table?
+                                                       user-id perm-type level (table-ids %) %))
+                                         (keys table-ids))
+                                   (set (t2/select-pks-set :model/Table
+                                                           {:where [:and [:in :id (keys table-ids)]
+                                                                    (data-perms/visible-tables-filter-clause
+                                                                     :id user-info {perm-type level})]})))
+                                "Tables")
+                            (is (= (into #{} (filter #(data-perms/at-least-as-permissive?
+                                                       perm-type
+                                                       (data-perms/some-table-in-database-permission-for-user
+                                                        user-id perm-type %)
+                                                       level))
+                                         db-ids)
+                                   (set (t2/select-pks-set :model/Database
+                                                           {:where [:and [:in :id db-ids]
+                                                                    (data-perms/visible-databases-filter-clause
+                                                                     :id user-info {perm-type level})]})))
+                                "Databases")))
+                        (doseq [perm-type [:perms/manage-database :perms/transforms]]
+                          (is (= (into #{} (filter #(data-perms/user-has-permission-for-database? user-id perm-type :yes %))
+                                       db-ids)
+                                 (set (t2/select-pks-set :model/Database
+                                                         {:where [:and [:in :id db-ids]
+                                                                  (data-perms/visible-databases-filter-clause
+                                                                   :id user-info {perm-type :yes})]})))
+                              (str perm-type))))]
+        (doseq [[[g1 g2] [g1' g2']] (map vector permission-setups (rest (cycle permission-setups)))
+                table-id            [table-1 inactive]]
+          (testing (str "groups " [g1 g2] " overriding table " table-id ", and " [g1' g2'] " on the other Database")
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-group! group-1
+                (mt/with-restored-data-perms-for-group! group-2
+                  (set-permissions! group-1 db-1 table-id g1)
+                  (set-permissions! group-2 db-1 table-id g2)
+                  (set-permissions! group-1 db-2 table-3 g1')
+                  (set-permissions! group-2 db-2 table-3 g2')
+                  (data-perms/set-database-permission! group-1 db-1 :perms/manage-database :yes)
+                  (data-perms/set-database-permission! group-2 db-2 :perms/transforms :yes)
+                  (binding [api/*current-user-id* user-id
+                            api/*is-superuser?*   false]
+                    (data-perms/disable-perms-cache
+                     (check))))))))))))
+
 (deftest table-permission-with-other-database-test
   (testing "a table checked with a Database that isn't its own counts only that Database's rows, before or after its own"
     (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
