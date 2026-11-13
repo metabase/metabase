@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
@@ -370,5 +370,5 @@
                            (vals (perms/collection-based-visibility-search-models)))]
       (is (seq registered))
       (doseq [t2-model registered]
-        (is (nil? (governing-collection/root-namespace t2-model))
+        (is (nil? (collections/root-namespace t2-model))
             (str t2-model))))))

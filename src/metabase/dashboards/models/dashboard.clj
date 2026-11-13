@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -53,7 +53,7 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod governing-collection/root-namespace :model/Dashboard [_model] nil)
+(defmethod collections/root-namespace :model/Dashboard [_model] nil)
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]

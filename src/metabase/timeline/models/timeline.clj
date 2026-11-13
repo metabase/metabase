@@ -1,6 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
-   [metabase.collections.governing-collection :as governing-collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.remote-sync.core :as remote-sync]
@@ -19,7 +19,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod governing-collection/root-namespace :model/Timeline [_model] nil)
+(defmethod collections/root-namespace :model/Timeline [_model] nil)
 
 ;;;; transforms
 
