@@ -135,6 +135,37 @@
       (is (= "failed" (:status goal)))
       (is (= "not-found" (:error_type goal))))))
 
+(deftest dataset-endpoint-source-of-source-missing-test
+  (testing "a source whose own query reads a deleted card still exists, so this is a query failure"
+    (mt/with-temp [:model/Card {inner-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card {goal-id :id}  {:dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (str "card__" inner-id)}}}]
+      (t2/delete! :model/Card :id inner-id)
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_entities [{:type "card" :id goal-id}]))
+            goal     (ref-entity response :card goal-id)]
+        (is (= "failed" (:status goal)))
+        (is (nil? (:error_type goal)))))))
+
+(deftest dataset-endpoint-archived-source-test
+  (testing "archiving a goal's source doesn't break the goal: unlike a deleted source, it still resolves"
+    (mt/with-temp [:model/Card    {card-id :id}    {:archived      true
+                                                    :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Measure {measure-id :id} {:archived   true
+                                                    :name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_entities [{:type "card" :id card-id}
+                                                   {:type "measure" :id measure-id}]))]
+        (is (= [[100]] (get-in (ref-entity response :card card-id) [:data :rows])))
+        (is (= [[100]] (get-in (ref-entity response :measure measure-id) [:data :rows])))))))
+
 (deftest dataset-endpoint-unreadable-card-test
   (testing "a referenced card the caller can't read fails softly without failing the main query"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -235,7 +266,13 @@
       (is (nil? (referenced-entities/viz-settings->goal-specs
                  :gauge
                  {:gauge.segments [{:min 0 :max 50}
-                                   {:min "self_col" :max 100}]})))))
+                                   {:min "self_col" :max 100}]}))))
+    (testing "a GoalSource whose type names no runnable entity is dropped"
+      (is (= [{:type "card" :id 1 :columns ["total"]}]
+             (referenced-entities/viz-settings->goal-specs
+              :gauge
+              {:gauge.segments [{:min {:id 2 :type "segment" :column "total"}
+                                 :max {:id 1 :type "card" :column "total"}}]})))))
   (testing "only the goal settings the display draws run"
     (let [viz {:graph.show_goal  true
                :graph.goal_value {:id 1 :type "card" :column "a"}
@@ -465,6 +502,22 @@
                                      [:card goal-id :status])))
           (is (nil? (dashcard-query-referenced-entities dash-id dashcard-id series-id))))))))
 
+(deftest hidden-goal-line-does-not-run-test
+  (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :checkins)}]
+    (testing "a saved line chart that hides its goal line doesn't run the goal's source"
+      (mt/with-temp [:model/Card {chart-id :id} (chart-card :line {:graph.show_goal  false
+                                                                   :graph.goal_value (goal-ref goal-id)})]
+        (is (nil? (card-query-referenced-entities chart-id)))))
+    (testing "a dashcard that hides the goal line its card shows doesn't run the goal's source"
+      (mt/with-temp [:model/Card      {chart-id :id} (chart-card :line {:graph.show_goal  true
+                                                                        :graph.goal_value (goal-ref goal-id)})
+                     :model/Dashboard {dash-id :id}  {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                             :card_id                chart-id
+                                                             :visualization_settings {:graph.show_goal false}}]
+        (is (= "completed" (get-in (card-query-referenced-entities chart-id) [:card goal-id :status])))
+        (is (nil? (dashcard-query-referenced-entities dash-id dashcard-id chart-id)))))))
+
 (deftest public-card-endpoint-referenced-entities-test
   (testing "GET /api/public/card/:uuid/query injects referenced_entities (survives the public result whitelist)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -484,6 +537,50 @@
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
 
+(deftest public-endpoints-measure-goal-test
+  (testing "public card and dashcard endpoints resolve a measure goal source"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Measure       {measure-id :id}                     {:name       "Venue count"
+                                                                                :table_id   (mt/id :venues)
+                                                                                :definition (venues-count-measure)}
+                     :model/Card          {chart-id :id, card-uuid :public_uuid} {:dataset_query (count-query :checkins)
+                                                                                  :display       :scalar
+                                                                                  :public_uuid   (str (random-uuid))
+                                                                                  :visualization_settings
+                                                                                  {:scalar.segments
+                                                                                   [{:min   {:id measure-id :type "measure" :column "count"}
+                                                                                     :max   nil
+                                                                                     :color "red"}]}}
+                     :model/Dashboard     {dash-id :id, dash-uuid :public_uuid}  {:public_uuid (str (random-uuid))}
+                     :model/DashboardCard {dashcard-id :id}                    {:dashboard_id dash-id
+                                                                                :card_id      chart-id}]
+        (testing "on the public card endpoint"
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (ref-entity (client/client :get 202 (str "public/card/" card-uuid "/query"))
+                              :measure measure-id))))
+        (testing "on the public dashcard endpoint"
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (ref-entity (client/client :get 202 (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                                              dash-uuid dashcard-id chart-id))
+                              :measure measure-id))))))))
+
+(deftest public-card-endpoint-keeps-referenced-entity-error-type-test
+  (testing "GET /api/public/card/:uuid/query keeps the error type of a referenced card that doesn't exist"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {deleted-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card {uuid :public_uuid} {:dataset_query           (mt/mbql-query venues {:aggregation [[:count]]})
+                                                      :display                 :scalar
+                                                      :public_uuid             (str (random-uuid))
+                                                      :visualization_settings  {:scalar.segments
+                                                                                [{:min   (goal-ref deleted-id)
+                                                                                  :max   nil
+                                                                                  :color "red"}]}}]
+        (t2/delete! :model/Card :id deleted-id)
+        (let [response (client/client :get 202 (str "public/card/" uuid "/query"))
+              goal     (ref-entity response :card deleted-id)]
+          (is (= "failed" (:status goal)))
+          (is (= "not-found" (:error_type goal))))))))
+
 (deftest cross-database-referenced-entity-test
   (testing "a referenced card on a different database than the main query still runs"
     ;; no store is bound on the /api/dataset path, so this covers the plain case. the card endpoint, which does
@@ -501,7 +598,34 @@
             (testing "referenced card ran against the other database"
               (is (nil? (:error goal)))
               (is (= "completed" (:status goal)))
-              (is (= [[3]] (get-in goal [:data :rows]))))))))))
+              (is (= [[3]] (get-in goal [:data :rows])))))
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (mt/with-temp [:model/Card      {chart-id :id, card-uuid :public_uuid} {:dataset_query main-query
+                                                                                    :display       :scalar
+                                                                                    :public_uuid   (str (random-uuid))}
+                           :model/Dashboard {dash-id :id, dash-uuid :public_uuid}  {:public_uuid (str (random-uuid))}
+                           :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                                   :card_id                chart-id
+                                                                   :visualization_settings {:scalar.segments
+                                                                                            [{:min   (goal-ref goal-id)
+                                                                                              :max   nil
+                                                                                              :color "red"}]}}]
+              (testing "a dashcard reads the reference from its viz settings"
+                (is (= [[3]] (get-in (dashcard-query-referenced-entities dash-id dashcard-id chart-id)
+                                     [:card goal-id :data :rows]))))
+              (testing "a public dashcard reads it too"
+                (is (= [[3]] (-> (client/client :get 202 (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                                                 dash-uuid dashcard-id chart-id))
+                                 (ref-entity :card goal-id)
+                                 (get-in [:data :rows])))))
+              (testing "a public card reads it from its own viz settings"
+                (t2/update! :model/Card :id chart-id {:visualization_settings {:scalar.segments
+                                                                               [{:min   (goal-ref goal-id)
+                                                                                 :max   nil
+                                                                                 :color "red"}]}})
+                (is (= [[3]] (-> (client/client :get 202 (str "public/card/" card-uuid "/query"))
+                                 (ref-entity :card goal-id)
+                                 (get-in [:data :rows]))))))))))))
 
 (deftest cross-database-referenced-entity-card-endpoint-test
   (testing "a goal on another database resolves through the card endpoint"
@@ -543,6 +667,39 @@
         (is (= "completed" (:status response)))
         (is (= "completed" (:status goal)))
         (is (= [[100]] (get-in goal [:data :rows])))))))
+
+(deftest card-endpoint-archived-source-test
+  (testing "a saved chart's goal still resolves after its source card or measure goes to the trash"
+    (mt/with-temp [:model/Card    {goal-id :id}    {:archived      true
+                                                    :dataset_query (count-query :checkins)}
+                   :model/Measure {measure-id :id} {:archived   true
+                                                    :name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {chart-id :id}   (chart-card :scalar {:scalar.segments
+                                                                        [{:min (goal-ref goal-id) :max nil :color "red"}
+                                                                         {:min   {:id measure-id :type "measure" :column "count"}
+                                                                          :max   nil
+                                                                          :color "blue"}]})]
+      (let [referenced-entities (card-query-referenced-entities chart-id)]
+        (is (=? {:status "completed" :data {:rows [[1000]]}}
+                (get-in referenced-entities [:card goal-id])))
+        (is (=? {:status "completed" :data {:rows [[100]]}}
+                (get-in referenced-entities [:measure measure-id])))))))
+
+(deftest card-endpoint-model-source-test
+  ;; pins current behavior: per the decision log models aren't goal sources, and GDGT-3466 will make these fail
+  (testing "a model source is run like a plain question, so only a model that returns one row resolves"
+    (mt/with-temp [:model/Card {one-row-id :id}   {:type :model :dataset_query (count-query :checkins)}
+                   :model/Card {many-rows-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Card {chart-id :id}     (chart-card :scalar {:scalar.segments
+                                                                       [{:min (goal-ref one-row-id) :max nil :color "red"}
+                                                                        {:min (goal-ref many-rows-id) :max nil :color "blue"}]})]
+      (let [referenced-entities (card-query-referenced-entities chart-id)]
+        (is (=? {:status "completed" :data {:rows [[1000]]}}
+                (get-in referenced-entities [:card one-row-id])))
+        (is (=? {:status "failed" :error_type "too-many-rows"}
+                (get-in referenced-entities [:card many-rows-id])))))))
 
 (defn- goal-chart
   "A line chart whose goal line points at `entity-type` `goal-id`'s `count` column."
@@ -756,6 +913,131 @@
         (is (= "failed" (:status result)))
         (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
+
+(deftest card-and-dashcard-endpoints-metric-and-measure-sources-test
+  (testing "saved charts resolve a metric grouped for display, and a measure, to their single value"
+    (mt/with-temp [:model/Card    {metric-id :id}  (metric-card true)
+                   :model/Card    {plain-id :id}   (metric-card false)
+                   :model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}]
+      (let [metric-goal  {:id metric-id :type "card" :column "sum"}
+            measure-goal {:id measure-id :type "measure" :column "count"}
+            total        (get-in (reference-card plain-id ["sum"]) [:data :rows])]
+        (testing "on the card endpoint"
+          (mt/with-temp [:model/Card {chart-id :id} (chart-card :line {:graph.show_goal  true
+                                                                       :graph.goal_value metric-goal})]
+            (is (=? {:status "completed" :data {:rows total}}
+                    (get-in (card-query-referenced-entities chart-id) [:card metric-id])))))
+        (testing "on the dashcard endpoint"
+          (mt/with-temp [:model/Card      {chart-id :id} (chart-card :gauge {})
+                         :model/Dashboard {dash-id :id}  {}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                                 :card_id                chart-id
+                                                                 :visualization_settings {:gauge.segments
+                                                                                          [{:min measure-goal
+                                                                                            :max metric-goal}]}}]
+            (let [referenced-entities (dashcard-query-referenced-entities dash-id dashcard-id chart-id)]
+              (is (=? {:status "completed" :data {:rows total}}
+                      (get-in referenced-entities [:card metric-id])))
+              (is (=? {:status "completed" :data {:rows [[100]]}}
+                      (get-in referenced-entities [:measure measure-id]))))))))))
+
+(deftest dataset-endpoint-spec-limit-test
+  (testing "POST /api/dataset caps how many entities one request can fan out to"
+    (let [query (fn [n]
+                  (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                         :referenced_entities (mapv (fn [id] {:type "card" :id id}) (range 1 (inc n)))))]
+      (testing "20 is allowed"
+        (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset" (query 20))))))
+      (testing "21 is refused"
+        (mt/user-http-request :crowberto :post 400 "dataset" (query 21))))))
+
+(deftest referenced-entities-are-one-level-deep-test
+  (testing "a source's own dynamic goals don't run"
+    (let [ran (atom [])]
+      (mt/with-temp [:model/Card {deep-id :id}   {:dataset_query (count-query :checkins)}
+                     :model/Card {source-id :id} (chart-card :scalar {:scalar.segments [{:min   (goal-ref deep-id)
+                                                                                         :max   nil
+                                                                                         :color "red"}]})
+                     :model/Card {chart-id :id}  (chart-card :scalar {:scalar.segments [{:min   (goal-ref source-id)
+                                                                                         :max   nil
+                                                                                         :color "red"}]})]
+        (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity
+                                    (let [run-referenced-entity (mt/original-fn #'referenced-entities/run-referenced-entity)]
+                                      (fn [spec max-rows run-opts]
+                                        (swap! ran conj (:id spec))
+                                        (run-referenced-entity spec max-rows run-opts)))]
+          (is (= "completed" (get-in (card-query-referenced-entities chart-id) [:card source-id :status])))
+          (is (= [source-id] @ran))))))
+  (testing "a card whose goal is its own value runs its query once more, without looping"
+    (mt/with-temp [:model/Card {chart-id :id} (chart-card :scalar {})]
+      (t2/update! :model/Card :id chart-id {:visualization_settings {:scalar.segments [{:min   (goal-ref chart-id)
+                                                                                        :max   nil
+                                                                                        :color "red"}]}})
+      (is (= [[100]] (get-in (card-query-referenced-entities chart-id) [:card chart-id :data :rows]))))))
+
+(deftest canceled-request-runs-no-more-referenced-entities-test
+  (testing "once the client hung up, no more referenced entities run"
+    (let [ran (atom [])]
+      (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity (fn [spec _max-rows _run-opts]
+                                                                              (swap! ran conj (:id spec))
+                                                                              {:status "completed"})]
+        (binding [qp.pipeline/*canceled-chan* (doto (a/promise-chan) (a/>!! ::cancel))]
+          (is (nil? (#'referenced-entities/referenced-entities-result [{:type "card" :id 1}
+                                                                       {:type "card" :id 2}]
+                                                                      1
+                                                                      nil
+                                                                      nil)))
+          (is (= [] @ran)))))))
+
+(deftest dataset-endpoint-duplicate-specs-test
+  (testing "specs naming the same entity run it once"
+    (let [ran (atom [])]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:fields   [$name $price]
+                                                                                      :order-by [[:asc $id]]
+                                                                                      :limit    2})}]
+        (letfn [(goal [specs]
+                  (reset! ran [])
+                  (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity
+                                              (let [run-referenced-entity (mt/original-fn #'referenced-entities/run-referenced-entity)]
+                                                (fn [spec max-rows run-opts]
+                                                  (swap! ran conj (:id spec))
+                                                  (run-referenced-entity spec max-rows run-opts)))]
+                    (-> (mt/user-http-request :crowberto :post 202 "dataset"
+                                              (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                                     :referenced_entities (mapv #(assoc % :type "card" :id goal-id) specs)))
+                        (ref-entity :card goal-id))))]
+          (testing "and answer the columns all of them asked for"
+            (is (= ["NAME" "PRICE"]
+                   (map :name (get-in (goal [{:columns ["NAME"] :max_rows 2} {:columns ["PRICE"] :max_rows 2}])
+                                      [:data :cols]))))
+            (is (= [goal-id] @ran)))
+          (testing "a spec asking for every column wins over one that narrows them"
+            (is (= 2 (count (get-in (goal [{:columns ["NAME"] :max_rows 2} {:max_rows 2}]) [:data :cols])))))
+          (testing "the largest row limit wins"
+            (is (= "completed" (:status (goal [{:max_rows 1} {:max_rows 2}]))))
+            (is (= "failed" (:status (goal [{:max_rows 1} {:max_rows 1}]))))))))))
+
+(deftest card-endpoint-measure-goal-needs-query-permissions-test
+  (testing "a viewer who can run saved questions, but not build queries, gets no measure goal value"
+    ;; a source card runs as a saved question, so only a measure, which has no such check, needs query perms
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {chart-id :id}   (chart-card :scalar {:scalar.segments
+                                                                        [{:min   {:id measure-id :type "measure" :column "count"}
+                                                                          :max   nil
+                                                                          :color "blue"}]})]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-perm-for-group! (perms/all-users-group) :perms/view-data :unrestricted
+          (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" chart-id))]
+            (testing "the main card runs"
+              (is (= "completed" (:status response))))
+            (testing "the source measure fails with a permission error"
+              (is (= {:status "failed"
+                      :error  "You don't have permissions to do that."}
+                     (ref-entity response :measure measure-id))))))))))
 
 (defn- native-card
   "With-temp attributes of a native card running `sql`; `tag` is merged into a `tenant` variable when given."
@@ -989,20 +1271,3 @@
             (testing "refreshing the chart refreshes its goal too"
               (view! true)
               (is (= 2 (count (filter (comp false? :cache_hit) (goal-executions! :card_id goal-id))))))))))))
-
-(deftest public-card-endpoint-keeps-referenced-entity-error-type-test
-  (testing "GET /api/public/card/:uuid/query keeps the error type of a referenced card that doesn't exist"
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Card {deleted-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                     :model/Card {uuid :public_uuid} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
-                                                      :display                :scalar
-                                                      :public_uuid            (str (random-uuid))
-                                                      :visualization_settings {:scalar.segments
-                                                                               [{:min   (goal-ref deleted-id)
-                                                                                 :max   nil
-                                                                                 :color "red"}]}}]
-        (t2/delete! :model/Card :id deleted-id)
-        (let [response (client/client :get 202 (str "public/card/" uuid "/query"))
-              goal     (ref-entity response :card deleted-id)]
-          (is (= "failed" (:status goal)))
-          (is (= "not-found" (:error_type goal))))))))

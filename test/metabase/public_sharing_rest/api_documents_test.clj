@@ -140,6 +140,24 @@
             (is (some? result))
             (is (= "completed" (:status result)))))))))
 
+(deftest public-document-card-referenced-entities-test
+  (testing "GET /api/public/document/:uuid/card/:card-id resolves the dynamic goal in the card's viz settings"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Document document (document-with-public-link {})
+                     :model/Card card {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                       :display                :scalar
+                                       :document_id            (:id document)
+                                       :visualization_settings
+                                       {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                           :max   nil
+                                                           :color "red"}]}}]
+        (t2/update! :model/Document :id (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
+        (is (= [[1000]]
+               (-> (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))
+                   (get-in [:data :referenced_entities :card goal-id :data :rows]))))))))
+
 (deftest public-document-card-validates-association-test
   (testing "GET /api/public/document/:uuid/card/:card-id validates card is associated with document"
     (mt/with-temporary-setting-values [enable-public-sharing true]

@@ -142,6 +142,38 @@
                (card/with-copy-source-card source
                  (is (= 403 (save-card-status (assoc copy-props :document_id document-id)))))))))))))
 
+(deftest public-document-card-copy-goal-reference-test
+  (testing "PUT /api/document/:id re-checks the goals of a card it copies into a public document"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (do-with-unreadable-card!
+       (fn [goal-id]
+         (mt/with-temp [:model/Card {source-id :id :as source} {:dataset_query          (count-query)
+                                                                :display                :gauge
+                                                                :visualization_settings (gauge-viz (card-goal goal-id))}]
+           (letfn [(copied-card-count [document-props expected]
+                     (mt/with-temp [:model/Document {document-id :id} (merge {:name     "Document with a dynamic goal"
+                                                                              :document (documents.test-util/text->prose-mirror-ast "x")}
+                                                                             document-props)]
+                       (mt/with-model-cleanup [:model/Card]
+                         (testing "embedding a card the document doesn't own clones it"
+                           (mt/user-http-request :rasta :put expected (format "document/%d" document-id)
+                                                 {:document (documents.test-util/cards->prose-mirror-ast [source-id])}))
+                         (testing "a new card saved from source_card_id"
+                           (mt/user-http-request :rasta :put expected (format "document/%d" document-id)
+                                                 {:document (documents.test-util/cards->prose-mirror-ast [-1])
+                                                  :cards    {-1 {:name                   "Gauge"
+                                                                 :dataset_query          (count-query)
+                                                                 :display                "gauge"
+                                                                 :visualization_settings (:visualization_settings source)
+                                                                 :source_card_id         source-id}}}))
+                         (t2/count :model/Card :document_id document-id))))]
+             (testing "a public document refuses both copies"
+               (is (= 0 (copied-card-count {:public_uuid       (str (random-uuid))
+                                            :made_public_by_id (mt/user->id :crowberto)}
+                                           403))))
+             (testing "a private document keeps both copies"
+               (is (= 2 (copied-card-count {} 200)))))))))))
+
 (deftest internal-write-goal-reference-test
   (testing "writes with no user bound (serdes, migrations, tasks) aren't checked"
     (do-with-unreadable-card!
@@ -238,6 +270,46 @@
            (let [serialized (snapshot)]
              (t2/delete! :model/DashboardCard :dashboard_id dash-id)
              (is (= 403 (revert-status serialized))))))))))
+
+(deftest reverted-card-goal-reference-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
+       (let [snapshot      #(revisions/serialize-instance :model/Card card-id
+                                                          (t2/select-one :model/Card :id card-id))
+             revert-status (fn [serialized]
+                             (mt/with-test-user :rasta
+                               (status-of #(revisions/revert-to-revision! :model/Card card-id
+                                                                          (mt/user->id :rasta) serialized))))]
+         ;; writes with no user bound aren't checked, so these set up revisions the user couldn't save
+         (t2/update! :model/Card :id card-id {:visualization_settings (gauge-viz (card-goal goal-id))})
+         (let [serialized (snapshot)]
+           (testing "restoring a goal the card still carries succeeds, since it isn't new"
+             (is (= :no-error (revert-status serialized))))
+           (testing "restoring a goal the user can't read, which the card no longer carries, is refused"
+             (t2/update! :model/Card :id card-id {:visualization_settings {}})
+             (is (= 403 (revert-status serialized))))))))))
+
+(deftest document-card-goal-reference-permissions-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (mt/with-model-cleanup [:model/Document :model/Card]
+       (mt/with-temp [:model/Card {readable-id :id} {:dataset_query (count-query)}]
+         (letfn [(save-document [status goal]
+                   (mt/user-http-request :rasta :post status "document/"
+                                         {:name     "Document with a dynamic goal"
+                                          :document {:type    "doc"
+                                                     :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                          :cards    {-1 {:name                   "Gauge"
+                                                         :type                   :question
+                                                         :dataset_query          (count-query)
+                                                         :display                :gauge
+                                                         :visualization_settings (gauge-viz goal)}}}))]
+           (testing "saving a document card whose goal reads a card the user can't read is refused"
+             (save-document 403 (card-goal goal-id))
+             (is (not (t2/exists? :model/Document :name "Document with a dynamic goal"))))
+           (testing "a goal reading a readable card saves"
+             (save-document 200 (card-goal readable-id)))))))))
 
 (deftest public-card-goal-reference-save-test
   (testing "an editor can't make a public card return a card they can't read"

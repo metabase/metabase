@@ -223,3 +223,14 @@
   (testing "and import back to numeric ids"
     (is (= (in-visualizer goal-viz-settings)
            (goals-of (import-one goal-stubs (in-visualizer exported-goal-viz-settings)))))))
+
+(deftest ^:parallel dynamic-goals-unknown-type-test
+  (let [unknown-goals (fn [id]
+                        {:graph.goal_value {:id id :type "segment" :column "total"}
+                         :gauge.segments   [{:min 0 :max {:id id :type "segment" :column "total"}}]})
+        no-goals      {:graph.goal_value nil
+                       :gauge.segments   [{:min 0 :max nil}]}]
+    (testing "a goal whose type names no entity model exports as no goal rather than a raw id"
+      (is (= no-goals (goals-of (export-one goal-stubs (unknown-goals 1))))))
+    (testing "and imports as no goal rather than an id from another instance"
+      (is (= no-goals (goals-of (import-one goal-stubs (unknown-goals card-eid))))))))
