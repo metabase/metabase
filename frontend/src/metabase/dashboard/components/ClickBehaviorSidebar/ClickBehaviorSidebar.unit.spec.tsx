@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupDashboardEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -96,6 +98,26 @@ describe("ClickBehaviorSidebar", () => {
         await screen.findByText("The selected tab is no longer available"),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("should allow saving after the user picks a new tab for a removed one", async () => {
+      const { getStoredClickBehavior } = setup({ tabId: REMOVED_TAB_ID });
+
+      expect(
+        await screen.findByText("The selected tab is no longer available"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+
+      await userEvent.click(screen.getByLabelText("Select a dashboard tab"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: SECOND_TAB.name }),
+      );
+
+      expect(
+        screen.queryByText("The selected tab is no longer available"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      expect(getStoredClickBehavior()).toMatchObject({ tabId: SECOND_TAB.id });
     });
 
     it("should allow saving when the selected tab has been removed and one tab is left", async () => {
