@@ -25,7 +25,6 @@ export type ChannelSpec = {
   type: ChannelType;
   name: string;
   schedules: ScheduleType[];
-  schedule_type: any;
   allows_recipients: boolean;
   configured: boolean;
   fields?: ChannelField[];

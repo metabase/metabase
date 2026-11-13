@@ -22,7 +22,6 @@ const CHANNEL_SPEC: ChannelSpec = {
   type: "slack",
   name: "Slack",
   schedules: ["hourly"],
-  schedule_type: null,
   allows_recipients: false,
   configured: true,
   fields: [
