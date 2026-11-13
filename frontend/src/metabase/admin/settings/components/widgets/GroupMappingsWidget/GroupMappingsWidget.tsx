@@ -4,18 +4,22 @@ import { updateSetting } from "metabase/admin/settings/settings";
 import Group from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import type { Settings } from "metabase-types/api/settings";
+import type { SettingDefinition, Settings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const mapStateToProps = (
   state: State,
-  props: { mappingSetting: keyof Settings },
+  props: {
+    mappingSetting: keyof Settings;
+    setting: Pick<SettingDefinition, "key">;
+  },
 ) => {
   return {
     allGroups: Group.selectors.getList(state),
     mappings: getSetting(state, props.mappingSetting) || {},
+    groupSyncEnabled: Boolean(getSetting(state, props.setting.key)),
   };
 };
 
