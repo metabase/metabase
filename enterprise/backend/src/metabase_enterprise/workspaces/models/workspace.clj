@@ -110,9 +110,9 @@
 (defn delete-workspace!
   "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows is in
   a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, `:deprovisioning`, or
-  `:teardown_failed`)
-  — those point at live warehouse resources and must be unprovisioned explicitly
-  first. Cascade-deletes `:unprovisioned` children via the FK."
+  `:teardown_failed`).
+  Those rows point at live warehouse resources and must be torn down first.
+  Cascade-deletes `:unprovisioned` children via the FK."
   [id]
   (when (ws.db/workspace-has-active-databases? id)
     (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"

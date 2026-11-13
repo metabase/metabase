@@ -123,7 +123,7 @@
   failed rows, so the delete can be retried — and the combined failure is
   returned as the error. 204 on success, no response body.
 
-  With `force=true`, databases in `teardown_failed` are first deleted WITHOUT a
+  With `force=true`, databases in `teardown_failed` are first deleted without a
   warehouse teardown, and the identifiers of what may remain are logged at WARN for
   manual cleanup. Use it only when the warehouse is gone for good. The other
   databases are torn down as usual."
@@ -143,7 +143,9 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`; retry later. 422 if a
+  of the workspace's databases is not `:provisioned`. The body does not say which
+  status; read `GET /:id`. Retry while a database is `provisioning`. In any other
+  status, waiting does not clear the 409; delete the workspace. 422 if a
   database's connection settings need an admin to fix them; retrying does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)

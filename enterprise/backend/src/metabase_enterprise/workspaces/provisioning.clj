@@ -310,9 +310,9 @@
         nil))))
 
 (defn abandon-teardown-failed-workspace-database!
-  "Delete the WorkspaceDatabase `wsd` WITHOUT a warehouse teardown, when it is
-  `:teardown_failed`. This is the escape hatch for a warehouse that is gone for good:
-  its objects may remain, so the identifiers are logged at WARN for manual cleanup.
+  "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
+  `:teardown_failed`. Use it only when the warehouse is gone for good. Its objects
+  may remain, so the identifiers are logged at WARN for manual cleanup.
   Rows in any other state are left alone. The failed teardown already cleared the
   `TableRemapping` rows. Returns nil."
   [wsd]

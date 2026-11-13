@@ -31,7 +31,7 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned
 
-   Deleting a workspace tears down each database from any state. A teardown that
+   Deleting a workspace tears down each of its databases. A teardown that
    fails leaves the row `teardown_failed`: warehouse objects may remain, the row
    keeps blocking deletion of its Database, and a retried delete tears it down
    again."
@@ -333,15 +333,14 @@
 
 (defn abandon-teardown-failed-databases!
   "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a
-  warehouse teardown, logging the identifiers of what may remain (see
-  [[provisioning/abandon-teardown-failed-workspace-database!]]). Use it when the
+  warehouse teardown, logging the identifiers of what may remain. Use it when the
   warehouse is gone for good and the teardown can never succeed. Returns nil."
   [id]
   (assert-workspace-exists id)
   (run! provisioning/abandon-teardown-failed-workspace-database! (ws.db/workspace-databases id)))
 
 (defn delete-workspace!
-  "Tear down every database's warehouse isolation (any state, blocking), then
+  "Tear down every database's warehouse isolation (blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
   either fully torn down (warehouse footprint confirmed gone, row deleted) or
   kept. Every database gets its teardown attempt even when earlier ones fail; if
