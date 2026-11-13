@@ -247,6 +247,7 @@ const SearchInput = ({
         value.length ? (
           <ActionIcon
             variant="subtle"
+            size="sm"
             onClick={() => {
               setLocalValue("");
               onChange("");

@@ -167,7 +167,7 @@ const EventForm = ({
                   />
                   <ActionIcon
                     size="sm"
-                    mb="sm"
+                    mb="xxs"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"

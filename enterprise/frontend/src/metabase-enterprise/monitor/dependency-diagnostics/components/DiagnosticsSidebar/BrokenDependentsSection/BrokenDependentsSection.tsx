@@ -92,6 +92,7 @@ export function BrokenDependentsSection({
               filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
               isCompact
+              compactSize="md"
               hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />

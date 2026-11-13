@@ -33,6 +33,7 @@ export function SearchModelPicker({
       <Popover.Target>
         <ActionIcon
           variant="subtle"
+          size="sm"
           className={S.button}
           aria-label={t`Filter`}
           onClick={toggle}
