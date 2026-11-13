@@ -44,7 +44,9 @@
 (defn component-bound-fn
   "Wrap `f` to run under the component bindings this thread has now, for handing to another thread.
    Unlike [[bound-fn]], the wrapper carries no other bindings, so the thread that runs it keeps its own.
-   That thread shares the component bindings, so its writes are seen here too."
+   That thread shares the component bindings, so its writes are seen here too.
+   The wrapper carries every component bound here, not only the one the caller means to pass on.
+   One made inside an app DB binding runs `f` against that app DB."
   [f]
   (let [boxes *bound-boxes*]
     (fn [& args]
@@ -95,6 +97,10 @@
     (clojure.core/binding [*bound-boxes* (assoc *bound-boxes* k (atom new-value))]
       (thunk)))
   ;; Every write holds its slot's lock, so a [[mc/with-slot-lock]] read-check-write is never interleaved with one.
+  ;; The lock keeps out writers of this slot only.
+  ;; A write to another component's root makes the swap on `roots` retry, so `f` can run again even under the lock.
+  ;; TODO (Chris 2026-11-13) -- Call `f` once, before the swap on `roots`, and retry only the `assoc`.
+  ;; No other thread can write this slot while its lock is held, so the value `f` saw stays the current one.
   (swap-vals!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
       (locking box

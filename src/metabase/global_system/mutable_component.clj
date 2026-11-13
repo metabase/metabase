@@ -14,7 +14,9 @@
     "Atomically sets the value in the slot this thread reads to `(apply f old args)`, and returns `[old new]`.
      Inside a [[binding]] that slot is the bound value; otherwise it is the root, which every unbound thread sees.
      Outside a [[binding]], throws if the component has no root; use [[alter-root]] to install one.
-     The function `f` can run more than once, so it must have no side effects.
+     Unlike an atom's `swap!`, it waits for the [[slot-lock]], so it blocks while another thread holds it.
+     No write skips the lock, so where threads race to claim work with a swap, the losers wait for it too.
+     The function `f` can run more than once, even under [[with-slot-lock]], so it must have no side effects.
      Prefer [[swap!]] or [[reset!]].")
   (alter-root [handle new-value]
     "Installs `new-value` as the root value and returns the value it replaced.
