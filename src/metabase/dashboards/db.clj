@@ -45,6 +45,12 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
+(mu/defn dashboard-collection-rows
+  "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
+  read."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
+
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
@@ -147,6 +153,11 @@
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (queries/card-query-info card-id))
+
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "A map of Card id to the id of its Collection, nil for the root, for the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pk->fn :collection_id :model/Card :id [:in card-ids]))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."

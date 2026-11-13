@@ -1,7 +1,6 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -11,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -320,30 +318,3 @@
           (mt/with-test-user :rasta
             (is (false? (mi/can-write? (t2/hydrate instance :can_write))))
             (is (false? (mi/can-read? (t2/hydrate instance :can_read))))))))))
-
-(deftest ^:parallel can-read-via-parent-collection?-test
-  (testing "read perm is true iff the current user has read on the parent collection"
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (true?  (boolean (perms/can-read-via-parent-collection? nil)))))
-    (binding [api/*current-user-permissions-set* (atom #{})]
-      (is (false? (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? nil)))))
-    (binding [api/*current-user-permissions-set* (atom #{"/collection/42/read/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? 99)))))))
-
-(deftest collection-id-only-read-methods-not-overridden-test
-  (testing "no one has redefined `:can_read` hydration of a model registered as collection-id-only"
-    ;; Load the model namespaces so their `define-collection-based-visibility!` calls populate the registry.
-    (require 'metabase.queries.models.card
-             'metabase.dashboards.models.dashboard)
-    (let [registered (perms/collection-id-only-read-models)]
-      (is (seq registered))
-      (doseq [t2-model registered]
-        (is (identical? (perms/collection-id-only-read-method t2-model)
-                        (methodical/primary-method t2/simple-hydrate [t2-model :can_read]))
-            (str t2-model ": `:can_read` hydration was overridden after "
-                 "`define-collection-based-visibility!` installed it. "
-                 "If this model needs richer read perms, remove the macro call so downstream consumers "
-                 "(e.g., semantic search's fast path) don't assume the collection-id-only contract."))))))

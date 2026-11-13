@@ -260,7 +260,7 @@
                     :col                    0
                     :size_x                 4
                     :size_y                 4
-                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll"})
+                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll" :collection_id nil})
                     :visualization_settings {:card.title          "Executive Payroll by Employee"
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
@@ -301,7 +301,7 @@
 (deftest unreadable-series-card-loses-its-settings-and-mappings-test
   ;; Mappings to a series card carry its field ids. Why each settings key goes is on `series-describing-viz-keys`.
   (testing "BOT-2561: an unreadable series card takes the series settings and its filter mappings with it"
-    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name}))
+    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name :collection_id nil}))
           dashcard {:id                     1
                     :card_id                12
                     :card                   (card 12 "Open")

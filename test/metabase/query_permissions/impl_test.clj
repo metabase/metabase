@@ -3,10 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -24,50 +26,40 @@
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
 
-(deftest ^:parallel card-in-collection-test
-  (mt/with-temp [:model/Collection collection]
-    (testing "Shouldn't be able to read a Card not in Collection without permissions"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{})]
-          (is (not (mi/can-read? (t2/hydrate card :can_read))))))
-      (testing "...or one in a Collection either!"
-        (mt/with-temp [:model/Card card (card-in-collection collection)]
-          (binding [*current-user-permissions-set* (delay #{})]
-            (is (not (mi/can-read? (t2/hydrate card :can_read))))))))
-    (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-          (is (mi/can-read? (t2/hydrate card :can_read))))
-        (testing "...but not if you have perms for some other Collection"
-          (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
-            (is (not (mi/can-read? (t2/hydrate card :can_read))))))))
-    (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-          (is (mi/can-read? (t2/hydrate card :can_read))))
-        (testing "...but not if you only have Root Collection perms"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-read? (t2/hydrate card :can_read))))))))
-    (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-          (is (mi/can-write? (t2/hydrate card :can_write))))
-        (testing "...root Collection Read Perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-write? (t2/hydrate card :can_write)))))
-          (testing "...nor should write perms for another collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
-              (is (not (mi/can-write? (t2/hydrate card :can_write)))))))))
-    (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
-          (is (mi/can-write? (t2/hydrate card :can_write))))
-        (testing "...Collection read perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-            (is (not (mi/can-write? (t2/hydrate card :can_write)))))
-          (testing "...nor should write perms for the Root Collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-              (is (not (mi/can-write? (t2/hydrate card :can_write)))))))))))
+(deftest card-in-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Collection other      {}
+                   :model/Card       root-card  (card)
+                   :model/Card       card       (card-in-collection collection)]
+      (letfn [(can-read? [card]  (mi/can-read? (t2/hydrate card :can_read)))
+              (can-write? [card] (mi/can-write? (t2/hydrate card :can_write)))]
+        (mt/with-test-user :rasta
+          (testing "without permissions, neither Card is readable"
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card))))
+          (testing "permissions for other Collection give nothing"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) other)
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "root Collection read permissions make root Card readable, not writable, and not Card in Collection"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-read? root-card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-read? card))))
+          (testing "root Collection write permissions make root Card writable, and not Card in Collection"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "Collection read permissions make its Card readable, not writable"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (is (true? (can-read? card)))
+            (is (false? (can-write? card))))
+          (testing "Collection write permissions make its Card writable"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+            (is (true? (can-write? card)))))))))
 
 (defn- native [query]
   {:database 1

@@ -83,6 +83,12 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
 
+(mu/defn collection-sync-columns
+  "The id, type, namespace and `is_remote_synced` of the Collections with `collection-ids`, which tell whether remote
+  sync syncs each."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :type :namespace :is_remote_synced] :id [:in collection-ids]))
+
 (mu/defn collection-remote-synced?
   "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
   ::collections.schema/collection) or the ::collections.schema/collection does not exist."

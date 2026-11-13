@@ -142,6 +142,14 @@
   more information about the Metabase permissions system."
   (atom #{}))
 
+(defn current-user-info
+  "The current user as the permission functions take one: their id, nil without a user, and whether they are a
+  superuser and a data analyst."
+  []
+  {:user-id          *current-user-id*
+   :is-superuser?    (boolean *is-superuser?*)
+   :is-data-analyst? (boolean *is-data-analyst?*)})
+
 (defn current-user-attributes
   "Returns the attributes that can be used for DB routing, sandboxing, impersonation, etc."
   []
@@ -459,7 +467,7 @@
   {:added "0.36.0"}
   [instance changes]
   (try
-    (check-403 (mi/can-update? instance changes))
+    (check-403 (mi/can-update? (t2/hydrate instance :can_write) changes))
     (catch clojure.lang.ExceptionInfo e
       (events/publish-event! :event/update-permission-failure {:user-id *current-user-id*
                                                                :object instance})
