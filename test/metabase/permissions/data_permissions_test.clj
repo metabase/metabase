@@ -9,7 +9,6 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.cache :as perms.cache]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.data-permissions.sql :as data-perms.sql]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -1639,7 +1638,7 @@
                                          (keys table-ids))
                                    (set (t2/select-pks-set :model/Table
                                                            {:where [:and [:in :id (keys table-ids)]
-                                                                    (data-perms.sql/visible-tables-filter-clause
+                                                                    (data-perms/visible-tables-filter-clause
                                                                      :id user-info {perm-type level})]})))
                                 "Tables")
                             (is (= (into #{} (filter #(data-perms/at-least-as-permissive?
@@ -1650,7 +1649,7 @@
                                          db-ids)
                                    (set (t2/select-pks-set :model/Database
                                                            {:where [:and [:in :id db-ids]
-                                                                    (data-perms.sql/visible-databases-filter-clause
+                                                                    (data-perms/visible-databases-filter-clause
                                                                      :id user-info {perm-type level})]})))
                                 "Databases")))
                         (doseq [perm-type [:perms/manage-database :perms/transforms]]
@@ -1658,7 +1657,7 @@
                                        db-ids)
                                  (set (t2/select-pks-set :model/Database
                                                          {:where [:and [:in :id db-ids]
-                                                                  (data-perms.sql/visible-databases-filter-clause
+                                                                  (data-perms/visible-databases-filter-clause
                                                                    :id user-info {perm-type :yes})]})))
                               (str perm-type))))]
         (doseq [[[g1 g2] [g1' g2']] (map vector permission-setups (rest (cycle permission-setups)))

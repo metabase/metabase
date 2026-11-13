@@ -241,3 +241,15 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::data-user-info
+  "The user a data permission where-clause answers for: their id, superuser status and, when known, data analyst
+  status."
+  [:map {:closed true}
+   [:user-id          pos-int?]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? {:optional true} :boolean]])
+
+(mr/def ::permission-mapping
+  "Map of permission type to the permission value the user needs, or a more permissive one."
+  [:map-of ::data-permission-type ::data-permission-value])

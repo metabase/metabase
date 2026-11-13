@@ -4,7 +4,6 @@
    [metabase.permissions.collection-permissions]
    [metabase.permissions.data-access-token]
    [metabase.permissions.data-permissions]
-   [metabase.permissions.data-permissions.sql]
    [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
@@ -27,7 +26,6 @@
   metabase.permissions.models.collection.graph/keep-me
   metabase.permissions.collection-permissions/keep-me
   metabase.permissions.data-permissions/keep-me
-  metabase.permissions.data-permissions.sql/keep-me
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
@@ -47,7 +45,8 @@
   user-has-permission-for-collection?]
  [metabase.permissions.db
   group-tenant-flags
-  groups-by-ids]
+  groups-by-ids
+  select-tables-and-groups-granting-perm]
  [metabase.permissions.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
@@ -86,11 +85,7 @@
   set-default-table-permissions!
   set-default-table-permissions-bulk!
   with-global-permissions-lock
-  with-db-scoped-permissions-lock]
- [metabase.permissions.data-permissions.sql
-  UserInfo
-  PermissionMapping
-  select-tables-and-groups-granting-perm
+  with-db-scoped-permissions-lock
   visible-databases-filter-clause
   visible-tables-filter-clause]
  [metabase.permissions.models.permissions

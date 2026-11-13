@@ -1373,3 +1373,26 @@
   "Whether the User with `user-id` has the transforms permission on some Database."
   [user-id]
   (user-has-highest-permission-anywhere? user-id :perms/transforms))
+
+(mu/defn visible-tables-filter-clause :- [:fn vector?]
+  "A HoneySQL where-clause holding when `column-or-exp` is a Table on which the user of `user-info` has, for each type
+  of `permission-mapping`, the required value or a more permissive one; on EE, a Table published into a Collection
+  they can read grants `:perms/create-queries :query-builder`."
+  [column-or-exp      :- [:or :keyword vector?]
+   user-info          :- ::permissions.schema/data-user-info
+   permission-mapping :- ::permissions.schema/permission-mapping]
+  (permissions.db/visible-tables-filter-clause
+   column-or-exp
+   user-info
+   permission-mapping
+   (when (contains? permission-mapping :perms/create-queries)
+     (published-tables/published-table-clause user-info :mt))))
+
+(mu/defn visible-databases-filter-clause :- [:fn vector?]
+  "A HoneySQL where-clause holding when `column-or-exp` is a Database on which the user of `user-info` has, for each
+  type of `permission-mapping`, the required value or a more permissive one on some row: the Database's own, or one of
+  an active Table of it."
+  [column-or-exp      :- [:or :keyword vector?]
+   user-info          :- ::permissions.schema/data-user-info
+   permission-mapping :- ::permissions.schema/permission-mapping]
+  (permissions.db/visible-databases-filter-clause column-or-exp user-info permission-mapping))
