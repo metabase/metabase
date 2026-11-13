@@ -734,6 +734,13 @@
       (is (=? [[:> {} [:field {:effective-type :type/Integer} "CREATED_AT"] 3]]
               (lib/filters (replace-stage-0-unit query :day-of-week) 1))))))
 
+(deftest ^:parallel replace-breakout-unit-drops-finer-later-stage-unit-test
+  (testing "changing Day -> Quarter drops the later stage's Month unit, which is finer than the stage 0 unit"
+    (let [query (as-> (created-at-query :day) $q
+                  (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :month)))]
+      (is (=? [[:field #(and (unbucketed? %) (= :quarter (:inherited-temporal-unit %))) "CREATED_AT"]]
+              (lib/breakouts (replace-stage-0-unit query :quarter) 1))))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"
