@@ -163,3 +163,34 @@
                                          :to_table_name   "orders"})
       (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/table-remappings")]
         (is (some #(= "orders" (:from_table_name %)) result))))))
+
+(deftest contract-version-header-test
+  (testing "GET /api/ee/workspace-instance/current 200 carries X-Metabase-Workspaces-Version: 2"
+    (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly nil)]
+      (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-instance/current")
+                         [:headers "X-Metabase-Workspaces-Version"]))))))
+
+(deftest contract-version-header-every-route-test
+  (testing "every workspace-instance route sends X-Metabase-Workspaces-Version: 2 on its success status, and on the 401"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
+      ;; DELETE /current keeps each database's schema, so restore the test database's settings.
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+        (testing "POST /current 200"
+          (is (= "2" (version (mt/user-http-request-full-response
+                               :crowberto :post 200 "ee/workspace-instance/current"
+                               {:databases [{:database_id (mt/id) :schema "ws_hdr"}]})))))
+        (testing "DELETE /current 204"
+          (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204 "ee/workspace-instance/current"))))))
+      (testing "GET /table-remappings 200"
+        (is (= "2" (version (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-instance/table-remappings")))))
+      (testing "401 from the auth wrapper"
+        (is (= "2" (version (mt/client-full-response :get 401 "ee/workspace-instance/current"))))))))
+
+(deftest contract-version-header-absent-on-thrown-errors-test
+  (testing "characterization: errors an endpoint throws are built by the server's exception middleware and have no header"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
+      (testing "403"
+        (is (nil? (version (mt/user-http-request-full-response :rasta :get 403 "ee/workspace-instance/current")))))
+      (testing "400 from request validation"
+        (is (nil? (version (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-instance/current"
+                                                               {:name 1}))))))))
