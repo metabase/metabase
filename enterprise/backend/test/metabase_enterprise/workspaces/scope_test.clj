@@ -67,7 +67,7 @@
                                                            {:group_id (:id (perms-group/admin))
                                                             :name     "full admin"})]
         (reaches-only-workspace-routes {:headers {"x-api-key" admin-key}})
-        (testing "the scope narrows an admin key and never widens a non-admin one"
+        (testing "the scope does not widen a non-admin key"
           (is (= "You don't have permissions to do that."
                  (client/client :get 403 "ee/workspace-manager/" {:request-options {:headers {"x-api-key" member-key}}}))))
         (testing "an unscoped admin key is unaffected"

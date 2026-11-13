@@ -42,8 +42,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID. With `scope`
-  `workspace-manager`, the key authenticates only on the workspace manager endpoints, which also need its group to be
-  Administrators."
+  `workspace-manager`, the key is accepted only on the workspace manager endpoints (403 elsewhere), which also need its
+  group to be Administrators."
   [_route-params
    _query-params
    {group-id :group_id, key-name :name, scope :scope, :as _body}

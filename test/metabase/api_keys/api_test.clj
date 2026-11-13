@@ -180,7 +180,7 @@
                   (client/client :get 403 "setting" {:request-options {:headers {"x-api-key" api-key}}})))
           (is (=? {:error "unsupported_scope"}
                   (client/client :get 403 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))))
-        (testing "an unscoped admin key still reaches them"
+        (testing "an unscoped admin key reaches an endpoint that has no scope tag"
           (let [{unscoped :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
                                                                {:group_id (:id (perms-group/admin))
                                                                 :name     "full admin"})]

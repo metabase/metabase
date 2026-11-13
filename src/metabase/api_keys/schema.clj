@@ -82,8 +82,8 @@
   [:string {:min 1, :max 254}]) ; min/max are from the app DB being varchar(254)
 
 (mr/def ::scope
-  "What a scoped key is for. A `:scim` key authenticates only the SCIM API; a `:workspace-manager` key authenticates
-  as its user only on endpoints tagged with the `mb:workspace-manager` scope."
+  "What a scoped key is for. A `:scim` key authenticates only the SCIM API; a `:workspace-manager` key is
+  accepted only on endpoints tagged with the `mb:workspace-manager` scope (403 elsewhere)."
   [:enum :scim :workspace-manager])
 
 (mr/def ::timestamp

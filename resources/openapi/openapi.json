@@ -34492,7 +34492,7 @@
         "tags" : [ "/api/api-key" ]
       },
       "post" : {
-        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID. With `scope`\n  `workspace-manager`, the key authenticates only on the workspace manager endpoints, which also need its group to be\n  Administrators.",
+        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID. With `scope`\n  `workspace-manager`, the key is accepted only on the workspace manager endpoints (403 elsewhere), which also need its\n  group to be Administrators.",
         "operationId" : "post-api-api-key",
         "parameters" : [ ],
         "requestBody" : {

@@ -147,8 +147,9 @@
    "workspace-manager" #{api-scope.workspace-manager/workspace-manager}})
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for an API Key with `api-key-id`. A `workspace-manager` key also sets
-  `:token-scopes`, so it reaches only the endpoints tagged with that scope."
+  "Return User ID and superuser status for the raw key `api-key`. A `workspace-manager` key also sets
+  `:token-scopes`, so it reaches only the endpoints tagged with that scope. Return nil for a key whose scope is
+  neither nil nor `workspace-manager`."
   [api-key :- [:maybe :string]]
   (when (and api-key
              (init-status/complete?))
