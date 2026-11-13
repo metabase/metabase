@@ -9,6 +9,7 @@ const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
 const ENTITY_NAME_SUFFIX = /(\/\d+)-[^/]+$/;
+
 // `EMBEDDED_DATA_APP_PREFIX` from embedding-sdk-shared, which lib modules may not import.
 const EMBEDDED_DATA_APP_PATH = /(\/embed\/embedded-apps)\/.*$/;
 

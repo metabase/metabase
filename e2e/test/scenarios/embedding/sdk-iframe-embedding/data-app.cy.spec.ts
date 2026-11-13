@@ -96,7 +96,7 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
     H.resetSnowplow();
     H.enableTracking();
 
-    cy.visit("http://localhost:4000");
+    cy.visit("/");
     loadDataApp("/orders?customer=42", {
       origin: "http://different-than-metabase-instance.com",
     });
