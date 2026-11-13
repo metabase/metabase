@@ -488,8 +488,8 @@
                 (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
-    ;; swapped pools live in their own cache; its removal listener destroys the pool. Removing the entry only if it
-    ;; still holds this pool leaves a newer pool that another thread put in the cache alone.
+    ;; swapped pools live in their own cache; its removal listener destroys the pool. Remove the entry only if it
+    ;; still holds this pool, so that a newer pool that another thread put in the cache stays there.
     (doseq [[cache-key pool-spec] (.asMap ^Cache swapped-connection-pools)
             :when (identical? (:datasource pool-spec) data-source)]
       (log/warnf "Could not acquire a connection for database %d; closing its empty swapped connection pool"
