@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
@@ -114,17 +115,23 @@
 (deftest ^:parallel perms-objects-set-for-parent-collection-test
   (are [input expected] (= expected
                            (apply perms/perms-objects-set-for-parent-collection input))
-    [1337 :read]  #{"/collection/1337/read/"}
-    [1337 :write] #{"/collection/1337/"}
-    [nil :read]   #{"/collection/root/read/"}
-    [nil :write]  #{"/collection/root/"})
+    [nil 1337 :read]         #{"/collection/1337/read/"}
+    [nil 1337 :write]        #{"/collection/1337/"}
+    [nil nil :read]          #{"/collection/root/read/"}
+    [nil nil :write]         #{"/collection/root/"}
+    ["snippets" 1337 :read]  #{"/collection/1337/read/"}
+    ["snippets" nil :read]   #{"/collection/namespace/snippets/root/read/"}
+    ["snippets" nil :write]  #{"/collection/namespace/snippets/root/"})
   (testing "invalid input"
     (doseq [[reason inputs] {"must be a positive int or nil"
-                             [[-1 :read]
-                              ["100" :read]]
+                             [[nil -1 :read]
+                              [nil "100" :read]]
 
                              "read-or-write must be `:read` or `:write`"
-                             [[nil :readwrite]]}
+                             [[nil nil :readwrite]]
+
+                             "there is no arity without a collection namespace"
+                             [[nil :read]]}
             input inputs]
       (testing reason
         (testing (pr-str (cons 'perms-objects-set-for-parent-collection input))
@@ -323,14 +330,21 @@
 (deftest ^:parallel can-read-via-parent-collection?-test
   (testing "read perm is true iff the current user has read on the parent collection"
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (true?  (boolean (perms/can-read-via-parent-collection? nil)))))
+      (is (true?  (boolean (perms/can-read-via-parent-collection? nil 42))))
+      (is (true?  (boolean (perms/can-read-via-parent-collection? nil nil)))))
     (binding [api/*current-user-permissions-set* (atom #{})]
-      (is (false? (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? nil)))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? nil 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? nil nil)))))
     (binding [api/*current-user-permissions-set* (atom #{"/collection/42/read/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? 99)))))))
+      (is (true?  (boolean (perms/can-read-via-parent-collection? nil 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? nil 99)))))
+    (testing "a nil collection id means the root collection of the given namespace"
+      (binding [api/*current-user-permissions-set* (atom #{"/collection/namespace/snippets/root/read/"})]
+        (is (true?  (boolean (perms/can-read-via-parent-collection? "snippets" nil))))
+        (is (false? (boolean (perms/can-read-via-parent-collection? nil nil)))))
+      (binding [api/*current-user-permissions-set* (atom #{"/collection/root/read/"})]
+        (is (true?  (boolean (perms/can-read-via-parent-collection? nil nil))))
+        (is (false? (boolean (perms/can-read-via-parent-collection? "snippets" nil))))))))
 
 (deftest collection-id-only-read-methods-not-overridden-test
   (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"
@@ -346,3 +360,15 @@
                  "`define-collection-based-visibility!` installed it. "
                  "If this model needs richer read perms, remove the macro call so downstream consumers "
                  "(e.g., semantic search's fast path) don't assume the collection-id-only contract."))))))
+
+(deftest collection-id-only-read-models-use-the-default-root-namespace-test
+  (testing "semantic search's fast path checks the default namespace's root for every registered model"
+    (require 'metabase.queries.models.card
+             'metabase.dashboards.models.dashboard
+             'metabase.indexed-entities.models.model-index)
+    (let [registered (into (perms/collection-id-only-read-models)
+                           (vals (perms/collection-based-visibility-search-models)))]
+      (is (seq registered))
+      (doseq [t2-model registered]
+        (is (nil? (collections/root-namespace t2-model))
+            (str t2-model))))))

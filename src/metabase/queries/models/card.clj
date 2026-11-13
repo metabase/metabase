@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -139,6 +140,8 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(defmethod collections/root-namespace :model/Card [_model] nil)
+
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
   nor a primary key to resolve it from.
@@ -208,7 +211,7 @@
 ;; this method starts reading another one.
 (defmethod mi/can-read? :model/Card
   ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+   (and (perms/can-read-via-parent-collection? nil (:collection_id instance))
         (parent-document-permits? instance :read)))
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))

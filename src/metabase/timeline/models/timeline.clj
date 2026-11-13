@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.remote-sync.core :as remote-sync]
@@ -17,6 +18,8 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod collections/root-namespace :model/Timeline [_model] nil)
 
 ;;;; transforms
 

@@ -265,6 +265,10 @@
         (mt/with-temp [:model/Collection collection {}]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (stale-url collection)))))))
+    (testing "GET /api/ee/stale/root read-checks the root collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "ee/stale/root")))))
     (testing "is_recursive traversal excludes descendants the user cannot write to"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection parent {}

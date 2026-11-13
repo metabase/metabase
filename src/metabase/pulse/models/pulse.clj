@@ -21,6 +21,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -51,6 +52,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set))
+
+(defmethod collections/root-namespace :model/Pulse [_model] nil)
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -149,7 +152,7 @@
   [notification read-or-write]
   (if (is-alert? notification)
     (mi/perms-objects-set (alert->card notification) read-or-write)
-    (perms/perms-objects-set-for-parent-collection (:collection_id notification) read-or-write)))
+    (perms/perms-objects-set-for-parent-collection nil (:collection_id notification) read-or-write)))
 
 (defn- current-user-is-creator?
   [notification]
@@ -198,10 +201,8 @@
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
    ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
-   (cond
-     (some? collection-id) (mi/can-write? :model/Collection collection-id)
-     (some? dashboard-id)  true
-     :else                 (mi/can-write? collection/root-collection))
+   (or (and (nil? collection-id) (some? dashboard-id))
+       (collections/can-write-governing-collection? nil collection-id))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 

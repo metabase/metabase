@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -51,6 +52,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
+
+(defmethod collections/root-namespace :model/Document [_model] nil)
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -157,14 +160,10 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (if old-collection-id
-    (api/write-check :model/Collection old-collection-id)
-    (api/write-check collection/root-collection))
-  (if new-collection-id
-    (do
-      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-      (api/write-check :model/Collection new-collection-id))
-    (api/write-check collection/root-collection)))
+  (collections/check-write-governing-collection nil old-collection-id)
+  (when new-collection-id
+    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id)))
+  (collections/check-write-governing-collection nil new-collection-id))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 

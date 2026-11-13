@@ -644,6 +644,7 @@
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
+           metabase.collections.governing-collection
            metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
@@ -740,6 +741,7 @@
   {:team "UX West"
    :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
    :uses #{app-db
+           collections
            lib.schema
            models
            users.schema
@@ -2239,7 +2241,6 @@
                     :model/PulseChannelRecipient}
    :model-imports #{:model/Card
                     :model/Channel
-                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Notification
@@ -2344,7 +2345,6 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/CardBookmark
-                    :model/Collection
                     :model/Dashboard
                     :model/Database
                     :model/StoredResult
