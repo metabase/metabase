@@ -9,7 +9,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { SdkUsageProblemDisplay } from "embedding-sdk-bundle/components/private/SdkUsageProblem";
-import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {
@@ -23,6 +22,7 @@ import {
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import * as IsLocalhostModule from "embedding-sdk-shared/lib/get-is-localhost";
 import {
   createMockSettings,
   createMockTokenFeatures,

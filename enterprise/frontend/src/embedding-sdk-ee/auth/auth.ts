@@ -8,7 +8,6 @@ import {
   recordSdkPageMark,
   recordSdkSsoLogin,
 } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
-import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
   refreshTokenAsync as refreshTokenAsyncAction,
@@ -23,6 +22,7 @@ import type {
 } from "embedding-sdk-bundle/store/types";
 import * as MetabaseError from "embedding-sdk-shared/errors";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
