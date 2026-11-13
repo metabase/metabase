@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
@@ -49,6 +48,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -3022,11 +3022,7 @@
   tests that return byte arrays (such as things that work with query hashes), since identical arrays are not
   considered equal."
   [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (codec/base64-encode form)
-                     form))
-                 x))
+  (match/replace-all x #'bytes? (codec/base64-encode &match)))
 
 (defn- fake-query [x]
   (lib/native-query (lib.tu/mock-metadata-provider {:database (assoc meta/database :id 55001)})

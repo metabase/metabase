@@ -257,7 +257,6 @@
   metric-value
   obj->json->obj
   ordered-subset?
-  postwalk-pred
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
