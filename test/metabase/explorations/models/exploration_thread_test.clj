@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-thread-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -78,3 +79,11 @@
     (let [id (thread-with-transcript! transcript-with-full-plan-item)]
       (is (= transcript-with-full-plan-item
              (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:exploration_id 1}]
+                                          [:write mi/can-write? {:exploration_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for an ExplorationThread"))
+                            (can? (t2/instance :model/ExplorationThread (dissoc full-instance k))))))))

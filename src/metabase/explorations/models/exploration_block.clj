@@ -9,6 +9,7 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
@@ -85,8 +86,14 @@
   {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
+(defn- check-read-keys
+  "Throws unless `instance` has the columns its read and write checks read."
+  [instance]
+  (api/check-500 (contains? instance :exploration_thread_id) "No :exploration_thread_id is set for an ExplorationBlock."))
+
 (defmethod mi/can-read? :model/ExplorationBlock
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
    (when-let [g (explorations.db/block-thread-id-row pk)]
@@ -94,6 +101,7 @@
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
+   (check-read-keys instance)
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
    (when-let [g (explorations.db/block-thread-id-row pk)]

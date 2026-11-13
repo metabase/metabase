@@ -183,3 +183,11 @@
               (testing "but not for a second app"
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
                                       (app! "second" root-id)))))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:id 1}]
+                                          [:write mi/can-write? {:id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a DataApp"))
+                            (can? (t2/instance :model/DataApp (dissoc full-instance k))))))))

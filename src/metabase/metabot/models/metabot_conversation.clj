@@ -19,11 +19,18 @@
   (when (and conversation-id user-id)
     (metabot.db/participant? conversation-id user-id)))
 
+(defn- check-read-keys
+  "Throws unless `conversation` has the columns its read check reads."
+  [conversation]
+  (api/check-500 (some? (:id conversation)) "No :id is set for a MetabotConversation.")
+  (api/check-500 (contains? conversation :user_id) "No :user_id is set for a MetabotConversation."))
+
 (defmethod mi/can-read? :model/MetabotConversation
   ;; Access: superuser, or originator (first-writer, set on insert and never
   ;; overwritten), or participant. Originator covers the rare case of a row
   ;; existing without the originator's first message yet persisted.
-  ([{conversation-id :id originator-id :user_id}]
+  ([{conversation-id :id originator-id :user_id :as conversation}]
+   (check-read-keys conversation)
    (let [user-id api/*current-user-id*]
      (or api/*is-superuser?*
          (and conversation-id

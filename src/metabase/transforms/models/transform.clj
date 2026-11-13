@@ -95,8 +95,21 @@
    (and (remote-sync/can-write? :model/Transform (:id instance))
         (transform-writable? instance models-cache))))
 
+(defn- check-read-keys
+  "Throws unless `transform` has the columns its read check reads."
+  [transform]
+  (api/check-500 (contains? transform :source) "No :source is set for a Transform."))
+
+(defn- check-write-keys
+  "Throws unless `transform` is saved and has the columns its write check reads."
+  [transform]
+  (check-read-keys transform)
+  (api/check-500 (contains? transform :target) "No :target is set for a Transform.")
+  (api/check-500 (some? (:id transform)) "No :id is set for a Transform."))
+
 (defmethod mi/can-read? :model/Transform
   ([instance]
+   (check-read-keys instance)
    (transform-readable? instance))
   ([_model pk]
    (when-let [transform (transforms.db/transform pk)]
@@ -104,6 +117,7 @@
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
+   (check-write-keys instance)
    (transform-deletable? instance))
   ([_model pk]
    (when-let [transform (transforms.db/transform pk)]

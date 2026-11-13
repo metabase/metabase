@@ -122,8 +122,13 @@
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
+(defn- check-read-keys
+  "Throws unless `app` has the columns its read and write checks read."
+  [app]
+  (api/check-500 (some? (:id app)) "No :id is set for a DataApp."))
+
 (defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([app] (check-read-keys app) (mi/can-read? :model/DataApp (:id app)))
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
@@ -131,7 +136,7 @@
                  (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
 
 (defmethod mi/can-write? :model/DataApp
-  ([app]       (mi/can-write? :model/DataApp (:id app)))
+  ([app]       (check-read-keys app) (mi/can-write? :model/DataApp (:id app)))
   ([_model pk] (and api/*is-superuser?*
                     (remote-sync/can-write? :model/DataApp pk))))
 

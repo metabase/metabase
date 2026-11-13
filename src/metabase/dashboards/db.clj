@@ -335,6 +335,12 @@
    "dataset"    [:id :name :description :collection_id :display]
    "collection" [:id :name :description]})
 
+(def ^:private link-card-read-columns-for-model
+  "The columns the read check of a link-card model reads beyond [[link-card-columns-for-model]], for the models
+  whose check reads any."
+  {"table"      [:db_id :is_published :collection_id]
+   "collection" [:type :namespace]})
+
 (defn- ->column-alias
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
@@ -381,11 +387,12 @@
 
 (mu/defn link-card-entity
   "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, projected the same way as
-  [[link-card-info-rows]], or nil. A Collection also carries the columns its read check reads."
+  [[link-card-info-rows]], or nil. It also carries the columns the read check of `model` reads."
   [model :- :string
    id    :- [:or :int :string]]
-  (if (= model "collection")
-    (some-> (t2/select-one [:model/Collection :id :name :description :type :namespace]
+  (if-let [read-columns (link-card-read-columns-for-model model)]
+    (some-> (t2/select-one (into [(serialization/link-card-model->toucan-model model)]
+                                 (distinct (concat (link-card-columns-for-model model) read-columns)))
                            :id (ensure-integer-link-card-id id))
             (assoc :model model))
     (t2/select-one (serialization/link-card-model->toucan-model model)
@@ -399,11 +406,15 @@
      :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
 
-(mu/defn collection-read-columns
-  "The id, `:type`, and `:namespace` of the Collections with `collection-ids`, the columns their read check reads that
-  [[link-card-info-rows]] does not carry."
-  [collection-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Collection :id :type :namespace] :id [:in collection-ids]))
+(mu/defn link-card-read-columns :- [:map-of ms/PositiveInt :map]
+  "The columns the read check of the link-card `model` reads that [[link-card-info-rows]] does not carry, for its rows
+  with `ids`, keyed by id."
+  [model :- :string
+   ids   :- [:sequential [:or :int :string]]]
+  (if-let [read-columns (link-card-read-columns-for-model model)]
+    (m/index-by :id (t2/select (into [(serialization/link-card-model->toucan-model model) :id] read-columns)
+                               :id [:in (mapv ensure-integer-link-card-id ids)]))
+    {}))
 
 (mu/defn link-card-info-rows
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`

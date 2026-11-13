@@ -237,9 +237,10 @@
   (t2/hydrate card [:moderation_reviews :moderator_details]))
 
 (defn notification-by-payload-type
-  "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
+  "The Notification with `id` whose `payload_type` is `payload-type`, with its payload, or nil."
   [id payload-type]
-  (t2/select-one :model/Notification :id id :payload_type payload-type))
+  (some-> (t2/select-one :model/Notification :id id :payload_type payload-type)
+          (t2/hydrate :payload)))
 
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."

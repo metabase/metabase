@@ -131,7 +131,8 @@
 (defn- check-read-keys
   "Throws unless `document` has the columns its read check reads."
   [document]
-  (api/check-500 (contains? document :collection_id) "No :collection_id is set for a Document."))
+  (api/check-500 (contains? document :collection_id) "No :collection_id is set for a Document.")
+  (api/check-500 (or (contains? document :exploration_id) (some? (:id document))) "No :id is set for a Document."))
 
 (defn- check-write-keys
   "Throws unless `document` is saved and has the columns its write check reads."

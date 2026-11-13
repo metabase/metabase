@@ -720,3 +720,11 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:id 1 :db_id 1 :is_published false :collection_id nil}]
+                                          [:write mi/can-write? {:id 1 :db_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a Table"))
+                            (can? (t2/instance :model/Table (dissoc full-instance k))))))))

@@ -344,19 +344,14 @@
                 (models.cache/register-loaded! (serialization/link-card-model->toucan-model model) id))
             ;; query all entities in 1 db call
             ;; {[:table 3] {:name ...}}
-            collection-read-columns
-            (some->> (get (into {} model-and-ids) "collection")
-                     seq
-                     vec
-                     (dashboards.db/collection-read-columns)
-                     (m/index-by :id))
+            read-columns
+            (into {} (for [[model ids] model-and-ids]
+                       [model (dashboards.db/link-card-read-columns model (vec ids))]))
             model-and-id->info
             (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
                 (update-vals (fn [{model :model :as instance}]
                                (if (mi/can-read? (t2/instance (serialization/link-card-model->toucan-model model)
-                                                              (cond-> instance
-                                                                (= model "collection")
-                                                                (merge (get collection-read-columns (:id instance))))))
+                                                              (merge instance (get-in read-columns [model (:id instance)]))))
                                  instance
                                  {:restricted true}))))]
         (map (fn [card]

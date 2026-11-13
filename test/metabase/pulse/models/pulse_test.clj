@@ -600,3 +600,16 @@
                (is (= [{:id internal-id} {:email "ext@example.com"}]
                       (-> (models.pulse/maybe-filter-pulses-recipients pulses)
                           first :channels first :recipients)))))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:id 1 :creator_id 1}]
+                                          [:write mi/can-write? {:collection_id nil :creator_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a Pulse"))
+                            (can? (t2/instance :model/Pulse (dissoc full-instance k)))))))
+  (testing "Alert without :id"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :id is set for a Pulse"
+                          (mi/can-read? (t2/instance :model/Pulse {:alert_condition "rows"}))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :id is set for a Pulse"
+                          (mi/can-write? (t2/instance :model/Pulse {:alert_condition "rows"}))))))

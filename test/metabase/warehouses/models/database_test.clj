@@ -1258,3 +1258,11 @@
     (mt/with-temp [:model/Database {router-id :id} {}
                    :model/Database {dest-id :id} {:router_database_id router-id}]
       (is (t2/update! :model/Database :id dest-id {:name "renamed-destination"})))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:id 1}]
+                                          [:write mi/can-write? {:id 1 :is_attached_dwh false}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a Database"))
+                            (can? (t2/instance :model/Database (dissoc full-instance k))))))))

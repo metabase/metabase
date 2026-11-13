@@ -38,7 +38,7 @@
   "The recently viewed Tables with `ids`, with their Database names and sync status."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Table
-              :id :name :db_id :active
+              :id :name :db_id :active :is_published :collection_id
               :display_name [:metabase_database.initial_sync_status :initial-sync-status]
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
@@ -281,6 +281,7 @@
   (t2/select :model/Table
              {:select [:t.id :t.name :t.description
                        :t.display_name :t.active :t.visibility_type :t.schema
+                       :t.is_published :t.collection_id
                        [:db.name :database-name]
                        [:db.id :db_id]
                        [:db.initial_sync_status :initial-sync-status]]

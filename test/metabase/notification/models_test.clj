@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -422,3 +423,11 @@
                                    (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
            (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
              (is (= schedule-type (get-schedule-type))))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:transform_id 1}]
+                                          [:write mi/can-write? {:transform_id 1 :id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a TransformTest"))
+                            (can? (t2/instance :model/TransformTest (dissoc full-instance k))))))))

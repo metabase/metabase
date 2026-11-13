@@ -106,6 +106,17 @@
    (fn [db-id]
      (warehouses.db/router-database-id db-id))))
 
+(defn- check-read-keys
+  "Throws unless `database` has the columns its read check reads."
+  [database]
+  (api/check-500 (some? (:id database)) "No :id is set for a Database."))
+
+(defn- check-write-keys
+  "Throws unless `database` has the columns its write check reads."
+  [database]
+  (check-read-keys database)
+  (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database."))
+
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
   ;; True if user has:
@@ -113,6 +124,7 @@
   ;; - Metadata management permissions (manage-table-metadata or manage-database), OR
   ;; - Access to a published table in this database (EE feature)
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model database-id]
    (cond
@@ -184,6 +196,7 @@
   ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
   ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
   ([{:keys [is_attached_dwh] :as instance}]
+   (check-write-keys instance)
    (and (can-write? (u/the-id instance))
         (not is_attached_dwh)))
   ([_model pk]
@@ -637,7 +650,7 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db (if (not (mi/can-write? db))
+     (let [db (if (not (mi/can-write? (cond-> db (not (contains? db :is_attached_dwh)) (assoc :is_attached_dwh false))))
                 (do (log/debug "Fully redacting database details during json encoding.")
                     (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")

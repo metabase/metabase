@@ -34,3 +34,11 @@
       (mt/with-current-user (:id owner)
         (is (true? (mi/can-read?  :model/ExplorationBlock (:id g))))
         (is (true? (mi/can-write? :model/ExplorationBlock (:id g))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:exploration_thread_id 1}]
+                                          [:write mi/can-write? {:exploration_thread_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for an ExplorationBlock"))
+                            (can? (t2/instance :model/ExplorationBlock (dissoc full-instance k))))))))

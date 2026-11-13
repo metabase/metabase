@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -56,8 +57,15 @@
     (mi/current-user-has-full-permissions?
      (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
 
+(defn- check-read-keys
+  "Throws unless `cache-config` has the columns its read and write checks read."
+  [cache-config]
+  (api/check-500 (contains? cache-config :model) "No :model is set for a CacheConfig.")
+  (api/check-500 (contains? cache-config :model_id) "No :model_id is set for a CacheConfig."))
+
 (defmethod mi/can-write? :model/CacheConfig
   ([instance]
+   (check-read-keys instance)
    (can-write-config? instance
                       (target-collection-id instance)
                       (when (= "database" (:model instance))
@@ -87,6 +95,7 @@
 
 (defmethod mi/can-read? :model/CacheConfig
   ([instance]
+   (check-read-keys instance)
    (case (:model instance)
      "root"      (mi/superuser?)
      "database"  (mi/can-read? :model/Database (:model_id instance))

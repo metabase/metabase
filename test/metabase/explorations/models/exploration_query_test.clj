@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -41,3 +42,11 @@
         (is (= [{:id (:id q-seg)  :segment_id (:id s) :segment_name "my-seg"}
                 {:id (:id q-bare) :segment_id nil     :segment_name nil}]
                (mapv #(select-keys % [:id :segment_id :segment_name]) hyd)))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:exploration_thread_id 1}]
+                                          [:write mi/can-write? {:exploration_thread_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for an ExplorationQuery"))
+                            (can? (t2/instance :model/ExplorationQuery (dissoc full-instance k))))))))

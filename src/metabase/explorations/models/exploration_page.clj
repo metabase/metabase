@@ -2,6 +2,7 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
+   [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -15,8 +16,14 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defn- check-read-keys
+  "Throws unless `instance` has the columns its read and write checks read."
+  [instance]
+  (api/check-500 (contains? instance :exploration_block_id) "No :exploration_block_id is set for an ExplorationPage."))
+
 (defmethod mi/can-read? :model/ExplorationPage
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/ExplorationBlock (:exploration_block_id instance)))
   ([_model pk]
    (when-let [p (explorations.db/page-block-id-row pk)]
@@ -24,6 +31,7 @@
 
 (defmethod mi/can-write? :model/ExplorationPage
   ([instance]
+   (check-read-keys instance)
    (mi/can-write? :model/ExplorationBlock (:exploration_block_id instance)))
   ([_model pk]
    (when-let [p (explorations.db/page-block-id-row pk)]

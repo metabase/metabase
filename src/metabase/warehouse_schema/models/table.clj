@@ -318,12 +318,27 @@
   (u/prog1 table
     (set-new-table-permissions! table)))
 
+(defn- check-read-keys
+  "Throws unless `table` has the columns its read check reads."
+  [table]
+  (api/check-500 (some? (:id table)) "No :id is set for a Table.")
+  (api/check-500 (contains? table :db_id) "No :db_id is set for a Table.")
+  (api/check-500 (contains? table :is_published) "No :is_published is set for a Table.")
+  (api/check-500 (contains? table :collection_id) "No :collection_id is set for a Table."))
+
+(defn- check-write-keys
+  "Throws unless `table` has the columns its write check reads."
+  [table]
+  (api/check-500 (some? (:id table)) "No :id is set for a Table.")
+  (api/check-500 (contains? table :db_id) "No :db_id is set for a Table."))
+
 (defmethod mi/can-read? :model/Table
   ;; Check if user can see this table's metadata.
   ;; True if user has:
   ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
   ;; - Metadata management permission (manage-table-metadata :yes), OR
   ([instance]
+   (check-read-keys instance)
    (or
     ;; Has data access permissions
     (and (perms/user-has-permission-for-table?
@@ -388,6 +403,7 @@
   ;; Check if user can modify this table's metadata.
   ;; Requires the manage-table-metadata permission
   ([instance]
+   (check-write-keys instance)
    (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (warehouse-schema.db/table pk))))

@@ -34,8 +34,14 @@
   ([_model _pk]
    (api/entitled-data-analyst?)))
 
+(defn- check-write-keys
+  "Throws unless `job` has the columns its write check reads."
+  [job]
+  (api/check-500 (or (contains? job :transforms) (contains? job :tag_ids)) "No :tag_ids is set for a TransformJob."))
+
 (defmethod mi/can-write? :model/TransformJob
   ([instance]
+   (check-write-keys instance)
    (or api/*is-superuser?*
        (and (api/entitled-data-analyst?)
             (let [transforms (or (:transforms instance)
@@ -46,7 +52,7 @@
                 true)))))
   ([_model pk]
    (when-let [job (transforms.db/job pk)]
-     (mi/can-write? job))))
+     (mi/can-write? (t2/hydrate job :tag_ids)))))
 
 (defmethod mi/can-create? :model/TransformJob
   [_model instance]
