@@ -10,6 +10,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -253,7 +254,10 @@
                      (:user-id params) (assoc :user/id (:user-id params))
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
       (let [{:keys [user-id model-name model-id details unqualified-topic]}
-            (construct-event topic params api/*current-user-id*)]
+            (cond-> (construct-event topic params api/*current-user-id*)
+              ;; an admin previewing as the current user is who acted
+              (request/previewing-admin-id) (assoc :user-id (request/previewing-admin-id))
+              (request/previewing-admin-id) (update :details assoc "previewed_user_id" api/*current-user-id*))]
         (audit-app.db/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
 
 (t2/define-before-insert :model/AuditLog

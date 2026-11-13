@@ -11,6 +11,13 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [buddy.sign.jwt :as jwt]
+   [metabase-enterprise.permission-debug.db :as permission-debug.db]
+   [metabase-enterprise.permission-debug.preview :as preview]
+   [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.session.core :as session]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.security MessageDigest)
@@ -71,3 +78,105 @@
         {:error "preview-grant-expired"}
         (do (log/debug e "Refused a preview grant")
             {:error "preview-grant-invalid"})))))
+
+;;; ------------------------------------------------ The swap ------------------------------------------------
+
+(defn- refusal
+  [error-code message]
+  {:response {:status  403
+              :headers {"Content-Type" "application/json; charset=utf-8"}
+              :body    (json/encode {:error_code error-code :message message})}})
+
+(defn- admin-browser-session?
+  "Whether `request` was authenticated by a superuser's own `metabase.SESSION` cookie, the only credential a grant is
+  accepted on. A data-app-scoped request is refused too: preview requests must not carry `X-Metabase-Client:
+  data-app`, whose per-app checks would confine them to one app."
+  [{:keys [is-superuser? metabase-session-type token-scopes] :as request}]
+  (and is-superuser?
+       (some? (:metabase/authed-session-key-hash request))
+       (= :normal metabase-session-type)
+       (nil? token-scopes)
+       (nil? (:mcp-ui-credential request))
+       (not= "jwt" (:embedding/auth-method request))))
+
+(defn- target-refusal
+  "Why the preview can't run as `target` today, as a refusal, or nil. Checks what a live session of theirs would need,
+  since there is no session of theirs to check: active (a hidden preview user never is, and is let through), their
+  tenant active, and tenants on if they belong to one."
+  [{:keys [is_superuser is_active type tenant_id tenant_active] :as target}]
+  (cond
+    (nil? target)
+    (refusal "preview-target-not-found" "The previewed user doesn't exist.")
+
+    is_superuser
+    (refusal "preview-target-not-previewable" "Admins can't be previewed: they see everything.")
+
+    (not (or is_active (= "permission-preview" (some-> type name))))
+    (refusal "preview-target-inactive" "The previewed user is deactivated, so they can't sign in.")
+
+    (and tenant_id (not (:enable-tenants? (session/liveness-params))))
+    (refusal "preview-target-tenants-off" "The previewed user belongs to a tenant, and tenants are turned off.")
+
+    (and tenant_id (not tenant_active))
+    (refusal "preview-target-tenant-inactive" "The previewed user's tenant is deactivated.")))
+
+(def ^:private user-info-keys
+  "The keys of a request's current-user info. `:permissions-set` and `:settings` are dropped rather than replaced, so
+  they are loaded for the previewed user."
+  [:metabase-user-id :is-superuser? :is-data-analyst? :is-group-manager? :permissions-set :user-locale :settings])
+
+(defn- as-target
+  [request {:keys [id is_data_analyst locale group_manager]}]
+  (merge (apply dissoc request user-info-keys)
+         {:metabase-user-id  id
+          :is-superuser?     false
+          :is-data-analyst?  (boolean is_data_analyst)
+          ;; as the session lookup computes it: only with advanced permissions
+          :is-group-manager? (boolean (and (premium-features/enable-advanced-permissions?) group_manager))
+          :user-locale       locale}))
+
+(defn- record-query!
+  [admin-id user-id {:keys [uri]}]
+  (try
+    (events/publish-event! :event/permissions-preview
+                           {:user-id  admin-id
+                            :model    :model/User
+                            :model-id user-id
+                            :details  {:action "query" :uri uri}})
+    (catch Exception e
+      (log/warn e "Error recording a permissions preview in the audit log"))))
+
+(defenterprise preview-grant-request
+  "EE implementation: check the request's preview grant against the admin's session and the previewed user, and
+  rebind the request to that user, read-only. Refuses (403, with an `error_code`) rather than ignoring a grant that
+  doesn't hold, so the admin never sees their own view in the preview frame."
+  :feature :advanced-permissions
+  [request]
+  (if-not (admin-browser-session? request)
+    (refusal "preview-session-required" "A preview grant is accepted only on an admin's browser session.")
+    (let [{:keys [error admin-id user-id]} (verify (get-in request [:headers grant-header])
+                                                   (:metabase/authed-session-key-hash request))]
+      (cond
+        error
+        (refusal error "This preview grant isn't valid for this session.")
+
+        (not= admin-id (:metabase-user-id request))
+        (refusal "preview-grant-session-mismatch" "This preview grant isn't valid for this session.")
+
+        :else
+        (let [target (permission-debug.db/preview-target user-id)]
+          (cond
+            (target-refusal target)
+            (target-refusal target)
+
+            (not (preview/read-only-request? request))
+            (do (log/infof "Refused %s %s while admin %d previews user %d"
+                           (u/upper-case-en (name (:request-method request))) (:uri request) admin-id user-id)
+                (refusal "preview-read-only" "You're previewing another user, so changes aren't allowed."))
+
+            :else
+            (do
+              (when (= :post (:request-method request))
+                (record-query! admin-id user-id request))
+              {:request  (as-target request target)
+               :admin-id admin-id})))))))

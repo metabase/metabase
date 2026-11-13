@@ -412,6 +412,7 @@
            lib.schema
            models
            premium-features
+           request
            settings
            task
            task.history
@@ -4360,6 +4361,7 @@
            premium-features
            query-processor
            request
+           session
            users.tenants
            util}
    :model-imports #{:model/Card

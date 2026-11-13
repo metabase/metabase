@@ -326,6 +326,28 @@
   [request]
   {:request request})
 
+(defenterprise preview-grant-request
+  "Called only for a request carrying `X-Metabase-Preview-Grant`. Returns `{:request request :admin-id admin-id}` with
+  the request rebound to the previewed user, or `{:response response}` to refuse it. OSS: refused, since there is
+  nothing to preview with."
+  metabase-enterprise.permission-debug.preview-grant
+  [_request]
+  {:response {:status 403 :body "Previewing as another user isn't available."}})
+
+(defn wrap-preview-grant
+  "Middleware that runs a request carrying `X-Metabase-Preview-Grant` as the user the grant previews, with
+  [[metabase.request.core/previewing-admin-id]] bound to the admin, or refuses it. Must run after
+  `wrap-data-app-scope` and before [[bind-current-user]]."
+  [handler]
+  (fn [request respond raise]
+    (if-not (get-in request [:headers "x-metabase-preview-grant"])
+      (handler request respond raise)
+      (let [{request :request, response :response, admin-id :admin-id} (preview-grant-request request)]
+        (if response
+          (respond response)
+          (request/do-with-previewing-admin-id admin-id
+                                               (fn [] (handler request respond raise))))))))
+
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
   [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].

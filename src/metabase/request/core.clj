@@ -34,10 +34,12 @@
   set-session-timeout-cookie]
  [metabase.request.current
   current-request
+  do-with-previewing-admin-id
   ip-address
   limit
   offset
   paged?
+  previewing-admin-id
   with-current-request
   with-limit-and-offset]
  [metabase.request.session

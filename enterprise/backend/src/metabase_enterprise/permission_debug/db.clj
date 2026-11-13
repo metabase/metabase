@@ -34,6 +34,22 @@
                                    [:or [:= :is_active true] [:= :type "permission-preview"]]]})
            (into {})))
 
+(mu/defn preview-target
+  "The User with `user-id` with what a preview needs to decide whether it can run as them: `:is_superuser`,
+  `:is_active`, `:type`, `:is_data_analyst`, `:locale`, `:tenant_id`, `:tenant_active` (nil without a tenant) and
+  `:group_manager` (whether they manage any group), or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/query-one {:select    [:user.id :user.is_superuser :user.is_active :user.type :user.is_data_analyst :user.locale
+                             :user.tenant_id [:tenant.is_active :tenant_active] [:pgm.is_group_manager :group_manager]]
+                 :from      [[:core_user :user]]
+                 :left-join [[:tenant :tenant] [:= :tenant.id :user.tenant_id]
+                             ;; as the session lookup joins it: one row per managed group, any of them will do
+                             [:permissions_group_membership :pgm] [:and
+                                                                   [:= :pgm.user_id :user.id]
+                                                                   [:is :pgm.is_group_manager true]]]
+                 :where     [:= :user.id [:auto/param user-id]]
+                 :limit     [:inline 1]}))
+
 (mu/defn user-summary
   "The `:id`, names and `:email` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
