@@ -1,12 +1,15 @@
 const { H } = cy;
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 /**
  * Smoke tests for official collections and content verification. They write
  * through the real backend and check the result after a reload.
  *
  * The UI-only checks (token gating, admin-only menu items, badges in search,
- * breadcrumbs and dashboard cards, dashboard verification) live in Jest:
+ * breadcrumbs and dashboard cards) live in Jest:
  * - frontend/src/metabase/collections/components/CollectionMenu/tests/
  * - frontend/src/metabase/common/collections/components/CreateCollectionForm/tests/
  * - frontend/src/metabase/app/nav/AppBar.unit.spec.tsx
@@ -71,30 +74,74 @@ describe("scenarios > premium > content moderation", () => {
   });
 
   it("admin can verify and unverify a question", () => {
-    cy.intercept("POST", "/api/moderation-review").as("moderationReview");
-
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    assertVerificationRoundTrip({
+      itemId: ORDERS_COUNT_QUESTION_ID,
+      itemType: "card",
+      itemName: "Orders, Count",
+      headerTestId: "qb-header",
+      verifyLabel: "Verify this question",
+      openMenu: () => H.openQuestionActions(),
+    });
+  });
 
-    cy.log("Verify the question");
-    H.openQuestionActions();
-    cy.findByTextEnsureVisible("Verify this question").click();
-    cy.wait("@moderationReview").its("response.statusCode").should("eq", 200);
-    cy.findByTestId("qb-header").icon("verified").should("be.visible");
-
-    cy.reload();
-    cy.findByTestId("qb-header").icon("verified").should("be.visible");
-
-    cy.log("Remove verification");
-    H.openQuestionActions();
-    cy.findByTextEnsureVisible("Remove verification").click();
-    cy.wait("@moderationReview").its("response.statusCode").should("eq", 200);
-    cy.findByTestId("qb-header").icon("verified").should("not.exist");
-
-    cy.reload();
-    cy.findByTestId("qb-header").should("contain", "Orders, Count");
-    cy.findByTestId("qb-header").icon("verified").should("not.exist");
+  it("admin can verify and unverify a dashboard", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    assertVerificationRoundTrip({
+      itemId: ORDERS_DASHBOARD_ID,
+      itemType: "dashboard",
+      itemName: "Orders in a dashboard",
+      headerTestId: "dashboard-header",
+      verifyLabel: "Verify this dashboard",
+      openMenu: () => H.openDashboardMenu(),
+    });
   });
 });
+
+function assertVerificationRoundTrip({
+  itemId,
+  itemType,
+  itemName,
+  headerTestId,
+  verifyLabel,
+  openMenu,
+}: {
+  itemId: number;
+  itemType: "card" | "dashboard";
+  itemName: string;
+  headerTestId: string;
+  verifyLabel: string;
+  openMenu: () => void;
+}) {
+  cy.intercept("POST", "/api/moderation-review").as("moderationReview");
+
+  cy.log("Verify the item");
+  openMenu();
+  cy.findByTextEnsureVisible(verifyLabel).click();
+  cy.wait("@moderationReview").its("request.body").should("deep.equal", {
+    moderated_item_id: itemId,
+    moderated_item_type: itemType,
+    status: "verified",
+  });
+  cy.findByTestId(headerTestId).icon("verified").should("be.visible");
+
+  cy.reload();
+  cy.findByTestId(headerTestId).icon("verified").should("be.visible");
+
+  cy.log("Remove verification");
+  openMenu();
+  cy.findByTextEnsureVisible("Remove verification").click();
+  cy.wait("@moderationReview").its("request.body").should("deep.equal", {
+    moderated_item_id: itemId,
+    moderated_item_type: itemType,
+    status: null,
+  });
+  cy.findByTestId(headerTestId).icon("verified").should("not.exist");
+
+  cy.reload();
+  cy.findByTestId(headerTestId).should("contain", itemName);
+  cy.findByTestId(headerTestId).icon("verified").should("not.exist");
+}
 
 function changeCollectionTypeTo(type: "official" | "regular") {
   H.openCollectionMenu();
