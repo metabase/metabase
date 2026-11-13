@@ -950,10 +950,12 @@ const createEventFromPanel = async (name: string, date: string) => {
 };
 
 const openEventMenu = async (eventName: string) => {
-  const card = checkNotNull(
-    within(getSidebar())
-      .getAllByLabelText("Timeline event card")
-      .find((card) => within(card).queryByText(eventName) != null),
+  const card = await waitFor(() =>
+    checkNotNull(
+      within(getSidebar())
+        .getAllByLabelText("Timeline event card")
+        .find((card) => within(card).queryByText(eventName) != null),
+    ),
   );
   await userEvent.click(within(card).getByLabelText("Event menu"));
   return screen.findByRole("menu");
@@ -994,8 +996,9 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(getRequestBodies("POST", "/api/timeline-event")).toHaveLength(1);
     });
+    expect(getRequestBodies("POST", "/api/timeline")).toEqual([]);
     expect(getRequestBodies("POST", "/api/timeline-event")).toEqual([
       expect.objectContaining({
         name: "RC2",
@@ -1003,7 +1006,9 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
         timestamp: expect.stringMatching(/^2027-10-30/),
       }),
     ]);
-    expect(getRequestBodies("POST", "/api/timeline")).toEqual([]);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
     expect(await within(getSidebar()).findByText("RC2")).toBeInTheDocument();
     expect(within(getSidebar()).getByText("Releases")).toBeInTheDocument();
     expect(within(getSidebar()).getByText("RC1")).toBeInTheDocument();
@@ -1061,15 +1066,17 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+    expect(getRequestBodies("PUT", /\/api\/timeline-event\/31$/)).toEqual([]);
     expect(getRequestBodies("PUT", /\/api\/timeline-event\/32$/)).toEqual([
       expect.objectContaining({
         name: "RC2",
         timestamp: "2027-10-20T00:00:00Z",
       }),
     ]);
-    expect(getRequestBodies("PUT", /\/api\/timeline-event\/31$/)).toEqual([]);
-    expect(await within(getSidebar()).findByText("RC2")).toBeInTheDocument();
-    expect(within(getSidebar()).queryByText("RC1")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(getSidebar()).queryByText("RC1")).not.toBeInTheDocument();
+    });
+    expect(within(getSidebar()).getByText("RC2")).toBeInTheDocument();
     expect(within(getSidebar()).getByText("RC0")).toBeInTheDocument();
     expect(within(getSidebar()).getByText("Releases")).toBeInTheDocument();
   });
@@ -1568,10 +1575,10 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     expect(queryEventChip("RC1")).toHaveAttribute("data-selected", "true");
     expect(queryEventChip("RC0")).toHaveAttribute("data-selected", "false");
     expect(await within(getSidebar()).findByText("RC1")).toBeInTheDocument();
-    expect(within(getSidebar()).getByText("RC0")).toBeInTheDocument();
     expect(
       screen.queryByTestId("timeline-sidebar-show-all"),
     ).not.toBeInTheDocument();
+    expect(within(getSidebar()).getByText("RC0")).toBeInTheDocument();
   });
 
   it("hides and shows single events and whole timelines, including new ones", async () => {
