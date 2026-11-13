@@ -4209,7 +4209,7 @@
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
 
 (deftest db-router-anonymous-access-granted-backfill-test
-  (testing "6m7im9: routers with published guest embeds are granted anonymous access"
+  (testing "migration 6m7im9: routers with published guest embeds are granted anonymous access"
     (impl/test-migrations ["3i2jpz" "6m7im9"] [migrate!]
       (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Router"
                                                           :last_name   "Owner"
