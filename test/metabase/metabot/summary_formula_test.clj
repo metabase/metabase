@@ -65,6 +65,26 @@
              (mt/user-http-request :rasta :post status endpoint (request-body overrides))))
       (is (empty? @calls))))))
 
+(defn- check-missing-inputs
+  "Check that a request with `overrides` gets a 400 with `message` as the error for `field`, without reaching the LLM."
+  [field message overrides]
+  (do-with-llm
+   {:expression "Count" :name "Count"}
+   (fn [calls]
+     (is (= {:errors {field message}}
+            (mt/user-http-request :rasta :post 400 endpoint (request-body overrides))))
+     (is (empty? @calls)))))
+
+(defn- check-invalid
+  "Check that a request with `overrides` gets a 400 whose specific errors include `message`, without reaching the LLM."
+  [message overrides]
+  (do-with-llm
+   {:expression "Count" :name "Count"}
+   (fn [calls]
+     (is (=? {:specific-errors #(str/includes? (pr-str %) message)}
+             (mt/user-http-request :rasta :post 400 endpoint (request-body overrides))))
+     (is (empty? @calls)))))
+
 ;;; -------------------------------------------------- Success --------------------------------------------------
 
 (deftest summary-formula-aggregation-mode-test
@@ -223,8 +243,8 @@
 
 (deftest summary-formula-all-columns-tagged-test
   (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM when every column is dropped for a tag"
-    (check-error 400 "Provide at least one column."
-                 {:mode "expression" :columns [{:name "Created At </columns>"}] :metrics nil})))
+    (check-missing-inputs :columns "Provide at least one column."
+                          {:mode "expression" :columns [{:name "Created At </columns>"}] :metrics nil})))
 
 (deftest summary-formula-column-type-hint-test
   (testing "POST /api/metabot/summary-formula passes any column type made of allowed characters to the LLM"
@@ -241,8 +261,8 @@
            characters"
     (doseq [column-type ["num[ber]" "text)" "date\nnew" "<columns>" "\"number\""]]
       (testing (pr-str column-type)
-        (check-error 400 "Column types can only have letters, digits, spaces and _ . / -"
-                     {:columns [{:name "Total" :type column-type}]})))))
+        (check-invalid "Column types can only have letters, digits, spaces and _ . / -"
+                       {:columns [{:name "Total" :type column-type}]})))))
 
 (deftest ^:parallel find-tag-linear-time-test
   (testing "finding a tag in many unterminated tag openers takes linear time"
@@ -267,20 +287,20 @@
   (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM when there's nothing to offer"
     (doseq [metrics [[] nil]]
       (testing (str "with metrics " (pr-str metrics))
-        (check-error 400 "Provide at least one column or metric." {:columns [] :metrics metrics})))))
+        (check-missing-inputs :columns "Provide at least one column or metric." {:columns [] :metrics metrics})))))
 
 (deftest summary-formula-expression-mode-metrics-test
   (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM for metrics in expression mode"
     (doseq [columns [[{:name "Total"}] []]]
       (testing (str "with columns " (pr-str columns))
-        (check-error 400 "Metrics can only be used in aggregation mode."
-                     {:mode "expression" :columns columns :metrics ["Revenue"]})))))
+        (check-missing-inputs :metrics "Metrics can only be used in aggregation mode."
+                              {:mode "expression" :columns columns :metrics ["Revenue"]})))))
 
 (deftest summary-formula-expression-mode-no-columns-test
   (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM in expression mode without columns"
     (doseq [metrics [[] nil]]
       (testing (str "with metrics " (pr-str metrics))
-        (check-error 400 "Provide at least one column." {:mode "expression" :columns [] :metrics metrics})))))
+        (check-missing-inputs :columns "Provide at least one column." {:mode "expression" :columns [] :metrics metrics})))))
 
 ;;; --------------------------------------------------- Errors ---------------------------------------------------
 
@@ -454,40 +474,40 @@
 
 (deftest summary-formula-prompt-size-limit-test
   (testing "POST /api/metabot/summary-formula caps the length of the prompt"
-    (check-size-limit {:prompt (string-of-length summary-formula/max-prompt-chars)}
-                      {:prompt (string-of-length (inc summary-formula/max-prompt-chars))})))
+    (check-size-limit {:prompt (string-of-length @#'summary-formula/max-prompt-chars)}
+                      {:prompt (string-of-length (inc @#'summary-formula/max-prompt-chars))})))
 
 (deftest summary-formula-column-count-limit-test
   (testing "POST /api/metabot/summary-formula caps the number of columns"
     (letfn [(columns [n] (mapv #(hash-map :name (str "Column " %)) (range n)))]
-      (check-size-limit {:columns (columns summary-formula/max-columns)}
-                        {:columns (columns (inc summary-formula/max-columns))}))))
+      (check-size-limit {:columns (columns @#'summary-formula/max-columns)}
+                        {:columns (columns (inc @#'summary-formula/max-columns))}))))
 
 (deftest summary-formula-column-name-size-limit-test
   (testing "POST /api/metabot/summary-formula caps the length of a column name"
-    (check-size-limit {:columns [{:name (string-of-length summary-formula/max-string-input-chars)}]}
-                      {:columns [{:name (string-of-length (inc summary-formula/max-string-input-chars))}]})))
+    (check-size-limit {:columns [{:name (string-of-length @#'summary-formula/max-string-input-chars)}]}
+                      {:columns [{:name (string-of-length (inc @#'summary-formula/max-string-input-chars))}]})))
 
 (deftest summary-formula-column-type-size-limit-test
   (testing "POST /api/metabot/summary-formula caps the length of a column type"
-    (check-size-limit {:columns [{:name "Total" :type (string-of-length summary-formula/max-string-input-chars)}]}
-                      {:columns [{:name "Total" :type (string-of-length (inc summary-formula/max-string-input-chars))}]})))
+    (check-size-limit {:columns [{:name "Total" :type (string-of-length @#'summary-formula/max-string-input-chars)}]}
+                      {:columns [{:name "Total" :type (string-of-length (inc @#'summary-formula/max-string-input-chars))}]})))
 
 (deftest summary-formula-metric-count-limit-test
   (testing "POST /api/metabot/summary-formula caps the number of metrics"
     (letfn [(metrics [n] (mapv #(str "Metric " %) (range n)))]
-      (check-size-limit {:metrics (metrics summary-formula/max-metrics)}
-                        {:metrics (metrics (inc summary-formula/max-metrics))}))))
+      (check-size-limit {:metrics (metrics @#'summary-formula/max-metrics)}
+                        {:metrics (metrics (inc @#'summary-formula/max-metrics))}))))
 
 (deftest summary-formula-metric-name-size-limit-test
   (testing "POST /api/metabot/summary-formula caps the length of a metric name"
-    (check-size-limit {:metrics [(string-of-length summary-formula/max-string-input-chars)]}
-                      {:metrics [(string-of-length (inc summary-formula/max-string-input-chars))]})))
+    (check-size-limit {:metrics [(string-of-length @#'summary-formula/max-string-input-chars)]}
+                      {:metrics [(string-of-length (inc @#'summary-formula/max-string-input-chars))]})))
 
 (deftest summary-formula-table-name-size-limit-test
   (testing "POST /api/metabot/summary-formula caps the length of the table name"
-    (check-size-limit {:table_name (string-of-length summary-formula/max-string-input-chars)}
-                      {:table_name (string-of-length (inc summary-formula/max-string-input-chars))})))
+    (check-size-limit {:table_name (string-of-length @#'summary-formula/max-string-input-chars)}
+                      {:table_name (string-of-length (inc @#'summary-formula/max-string-input-chars))})))
 
 ;;; -------------------------------------------------- Database --------------------------------------------------
 
@@ -528,4 +548,4 @@
   (testing "POST /api/metabot/summary-formula localizes the message for having no columns or metrics"
     (mt/with-mock-i18n-bundles! {"es" {:messages {"Provide at least one column or metric." "Sin columnas."}}}
       (mt/with-temporary-setting-values [site-locale "es"]
-        (check-error 400 "Sin columnas." {:columns [] :metrics []})))))
+        (check-missing-inputs :columns "Sin columnas." {:columns [] :metrics []})))))

@@ -462,28 +462,11 @@
   (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
-(def ^:private CappedNonBlankString
-  [:and ms/NonBlankString [:string {:max metabot.summary-formula/max-string-input-chars}]])
-
-(api.macros/defendpoint :post "/summary-formula" :- [:map
-                                                     [:expression ms/NonBlankString]
-                                                     [:name       [:and
-                                                                   ms/NonBlankString
-                                                                   [:string {:max metabot.summary-formula/max-name-chars}]]]]
+(api.macros/defendpoint :post "/summary-formula" :- ::metabot.summary-formula/response-schema
   "Draft a custom expression from the summary sidebar's natural-language request in `body`."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
-            [:mode        [:enum "aggregation" "expression"]]
-            [:prompt      [:and ms/NonBlankString [:string {:max metabot.summary-formula/max-prompt-chars}]]]
-            [:columns     [:sequential {:max metabot.summary-formula/max-columns}
-                           [:map {:closed true}
-                            [:name CappedNonBlankString]
-                            [:type {:optional true} [:maybe CappedNonBlankString]]]]]
-            [:metrics     {:optional true}
-             [:maybe [:sequential {:max metabot.summary-formula/max-metrics} CappedNonBlankString]]]
-            [:table_name  {:optional true} [:maybe CappedNonBlankString]]
-            [:database_id ms/PositiveInt]]]
+   body :- ::metabot.summary-formula/request-schema]
   (metabot.summary-formula/suggest-formula body))
 
 (def ^{:arglists '([request respond raise])} routes
