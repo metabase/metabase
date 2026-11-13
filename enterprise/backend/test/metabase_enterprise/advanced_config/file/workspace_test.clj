@@ -200,7 +200,7 @@
 
 (deftest mysql-cardinality-upgrade-section-test
   (testing "MySQL workspace: `db-workspace-namespace` has only the `:db` slot (no schema layer)"
-    (testing "loader stores MySQL output namespace in the :db slot"
+    (testing "after the loader runs, `db-workspace-namespace` has the MySQL output namespace in its `:db` slot"
       (mt/with-empty-h2-app-db!
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
           (advanced-config.file.workspace/apply-workspace-section!
@@ -293,14 +293,14 @@
           ;; db-workspace-namespace expands the stored schema through the driver, so this
           ;; part needs the driver on the classpath.
           (when (workspaces.tu/driver-loadable? (:engine expectations))
-            (testing "round-trips through apply-workspace-section! into the settings"
+            (testing "after apply-workspace-section!, `db-workspace-namespace` returns the fixture's output namespace"
               (mt/with-empty-h2-app-db!
                 (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
                                                             :engine  (:engine expectations)
                                                             :details (:details expectations)}]
                   (advanced-config.file.workspace/apply-workspace-section! section)
                   (is (= (:output expectations) (ws/db-workspace-namespace db-id))
-                      (str driver " setting output matches fixture")))))))))))
+                      (str driver " db-workspace-namespace matches fixture")))))))))))
 
 ;;; ----------------------------------------- settings form ----------------------------------------
 ;;;
