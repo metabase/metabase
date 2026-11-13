@@ -12,7 +12,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { RemoteSyncEntity, TokenFeatures } from "metabase-types/api";
+import type { RemoteSyncDirtyItem, TokenFeatures } from "metabase-types/api";
 import {
   createMockLibraryCollection,
   createMockSettings,
@@ -25,7 +25,7 @@ import { DataStudioLayout } from "../DataStudioLayout";
 
 interface SetupOpts {
   remoteSyncBranch?: string | null;
-  dirty?: RemoteSyncEntity[];
+  dirty?: RemoteSyncDirtyItem[];
   isAdmin?: boolean;
   canAccessTransforms?: boolean;
   isNavbarOpened?: boolean;
@@ -72,7 +72,7 @@ export const setup = ({
     key: "isNavbarOpened",
     value: isNavbarOpened,
   });
-  setupLibraryEndpoints(false);
+  setupLibraryEndpoints({ hasLibrary: false });
   setupRemoteSyncEndpoints({ dirty });
 
   const state = createMockState({

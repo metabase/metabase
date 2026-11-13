@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 // This is conditionally aliased in the webpack config.

@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -79,15 +80,21 @@
   (mt/with-temp [:model/Card     {card-id :id}  {}
                  :model/CardTest {test-id :id}  {:card_id card-id}
                  :model/CardTest {other-id :id} {:card_id card-id}]
-    (let [run-ids (mapv #(:id (data-testing.run-tracking/start-run! :card %)) [test-id other-id])]
+    (let [run-ids   (mapv #(:id (data-testing.run-tracking/start-run! :card %)) [test-id other-id])
+          published (atom [])]
       (try
         (doseq [run-id run-ids]
           (data-testing.run-tracking/finish-run! run-id :passed))
-        (t2/delete! :model/Card :id card-id)
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/card-test-delete topic)
+                                                (swap! published conj (:id (:object event)))))]
+          (t2/delete! :model/Card :id card-id))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
         (testing "each test was deleted through its own hook, so its runs stay with no test id"
           (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
+        (testing "each test published one delete event"
+          (is (= [test-id other-id] (sort @published))))
         (finally
           (t2/delete! :model/DataTestRun :id [:in run-ids]))))))
 

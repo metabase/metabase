@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 // Matches RGBA color strings with integers, decimals, and scientific notation
 // Handles: rgba(136, 191, 77, 0.75), rgba(136.7, 191.3, 77.2, 0.75), rgba(136, 191, 77, 7.5e-7)
 const NUMBER_PATTERN = String.raw`-?\d+(?:\.\d+)?(?:e[+-]?\d+)?`;

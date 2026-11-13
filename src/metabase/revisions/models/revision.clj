@@ -86,6 +86,16 @@
   [_model _object]
   true)
 
+(defmulti check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
+  throws nothing."
+  {:arglists '([model])}
+  mi/dispatch-on-model)
+
+(defmethod check-revert-available :default
+  [_model]
+  nil)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)

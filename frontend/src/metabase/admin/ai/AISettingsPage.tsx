@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useListMetabotsQuery } from "metabase/metabot";
@@ -13,7 +14,11 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import {
+  useAdminSetting,
+  useSetting,
+  useSettingSwitch,
+} from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -118,35 +123,28 @@ export function McpSettingsPage() {
 }
 
 function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
-  const {
-    value: agentApiEnabledValue,
-    updateSetting: updateAgentApiSetting,
-    isLoading: isUpdatingAgentApi,
-  } = useAdminSetting("agent-api-enabled?");
-  const isAgentApiEnabled = agentApiEnabledValue !== false;
-
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "deprecated-agent-api-enabled?",
+  );
   const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
-
-  const handleAgentApiChange = async (checked: boolean) => {
-    await updateAgentApiSetting({
-      key: "agent-api-enabled?",
-      value: checked,
-    });
-  };
+  const isSetByEnv = envName != null;
 
   return (
     <ToggleSettingsSection
-      checked={isAgentApiEnabled}
-      description={jt`Enable external access to the Agent API. ${(
+      checked={checked}
+      description={jt`The Agent API is deprecated and will be removed in Metabase 67. Use the MCP server for your agents instead. Until then the Agent API is opt-in: turn it on to keep using it. ${(
         <ExternalLink key="docs" href={agentApiDocsUrl}>
           {t`Learn more`}
         </ExternalLink>
       )}`}
-      disabled={disabled || isUpdatingAgentApi}
+      busy={isBusy}
+      disabled={disabled || isSetByEnv}
       id={AGENT_API_SECTION_ID}
-      onChange={handleAgentApiChange}
-      title={t`Agent API`}
-    />
+      onChange={onChange}
+      title={t`Agent API (deprecated)`}
+    >
+      {isSetByEnv && <SetByEnvVar varName={envName} />}
+    </ToggleSettingsSection>
   );
 }
 
@@ -212,14 +210,18 @@ function MetabotSettingsSection({
 }
 
 function ToggleSettingsSection({
+  busy = false,
   checked,
+  children,
   description,
   disabled,
   id,
   onChange,
   title,
 }: {
+  busy?: boolean;
   checked: boolean;
+  children?: ReactNode;
   description: ReactNode;
   disabled: boolean;
   id: string;
@@ -236,14 +238,21 @@ function ToggleSettingsSection({
             aria-label={title}
             checked={checked}
             disabled={disabled}
-            onChange={(event) => onChange(event.target.checked)}
+            // aria-disabled, not disabled, so focus stays on the switch during a write
+            aria-disabled={busy || undefined}
+            onChange={(event) => {
+              if (!busy) {
+                onChange(event.target.checked);
+              }
+            }}
             w="auto"
           />
         </Flex>
       }
       description={description}
     >
-      <></>
+      {/* SettingsSection renders nothing for a falsy child; the title row is the content here */}
+      {children || <></>}
     </SettingsSection>
   );
 }

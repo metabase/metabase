@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockRemoteSyncEntity } from "metabase-types/api/mocks";
+import { createMockRemoteSyncDirtyItem } from "metabase-types/api/mocks";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -48,15 +48,15 @@ describe("DataStudioLayout", () => {
 
     it.each([
       {
-        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+        entity: createMockRemoteSyncDirtyItem({ model: "nativequerysnippet" }),
         tab: "SQL snippets",
       },
       {
-        entity: createMockRemoteSyncEntity({ model: "action" }),
+        entity: createMockRemoteSyncDirtyItem({ model: "action" }),
         tab: "Data actions",
       },
       {
-        entity: createMockRemoteSyncEntity({ model: "glossary" }),
+        entity: createMockRemoteSyncDirtyItem({ model: "glossary" }),
         tab: "Glossary",
       },
     ])("marks only $tab tab for its changes", async ({ entity, tab }) => {

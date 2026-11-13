@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   DetailsTable,
   SidebarSection,
-} from "metabase/monitor/components/DetailSidebar";
+} from "metabase/common/components/DetailSidebar";
 import { summarizeChannels } from "metabase/monitor/tools/notifications/utils";
 import { Flex, Stack, Text } from "metabase/ui";
 

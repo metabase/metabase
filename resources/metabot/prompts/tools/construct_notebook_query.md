@@ -45,7 +45,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ## Field references
 
 ```json
-["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
+["field", {}, ["<db-name>", "<schema>", "<table-name>", "<field-name>"]]
 ```
 
 The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.

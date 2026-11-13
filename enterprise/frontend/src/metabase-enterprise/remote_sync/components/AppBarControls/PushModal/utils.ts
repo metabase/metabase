@@ -1,4 +1,5 @@
 import { t } from "ttag";
 
-export const getDefaultCommitMessage = (applicationName: string) =>
-  t`Exported from ${applicationName}`;
+export function getDefaultCommitMessage(applicationName: string) {
+  return t`Exported from ${applicationName}`;
+}

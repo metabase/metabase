@@ -60,7 +60,7 @@ describe(
       });
 
       cy.log("run the test from its runs");
-      H.main().findByRole("link", { name: "Runs" }).click();
+      H.main().findByRole("tab", { name: "Runs" }).click();
       H.main()
         .findAllByRole("row", { name: /Passed/ })
         .should("have.length", 2);

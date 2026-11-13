@@ -33,8 +33,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
-   [metabase.util.performance :as perf]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,7 +59,8 @@
   so the post-decode shape matches the all-strings invariant the repair pipeline relies on. FK
   path segments and option values that already arrive as strings pass through unchanged."
   [x]
-  (perf/postwalk #(if (keyword? %) (keyword->repr-string %) %) x))
+  (match/replace-all x
+    #'keyword? (keyword->repr-string &match)))
 
 ;;; ============================================================
 ;;; Up-front validation against ::lib.schema/external-query
@@ -168,10 +168,12 @@
 
 (def ^:private registry
   {::table-fk [:and vector?
-               [:fn {:error/message "table FK must be [db-name, schema-or-null, table-name]"}
+               [:fn {:error/message (str "table FK must be [db-name, schema, table-name], "
+                                         "with null as the schema only in a database without schemas")}
                 table-fk?]]
    ::field-fk [:and vector?
-               [:fn {:error/message "field FK must be [db-name, schema-or-null, table-name, field-name, …]"}
+               [:fn {:error/message (str "field FK must be [db-name, schema, table-name, field-name, …], "
+                                         "with null as the schema only in a database without schemas")}
                 field-fk?]]
    ::options  [:and map?
                [:fn {:error/message "options must always be a map (use `{}` if empty)"}

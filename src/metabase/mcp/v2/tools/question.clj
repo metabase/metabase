@@ -88,11 +88,10 @@
   [query template_tags]
   (if (empty? template_tags)
     query
-    (let [extracted (get-in query [:stages 0 :template-tags])
-          present (into #{} (map :name) extracted)
-          existing-by-name (into {} (map (juxt :name identity)) extracted)]
+    (let [extracted        (get-in query [:stages 0 :template-tags])
+          existing-by-name (u/index-by :name extracted)]
       (doseq [tag-name (keys template_tags)]
-        (when-not (contains? present (name tag-name))
+        (when-not (contains? existing-by-name (name tag-name))
           (common/throw-teaching-error
            (message/msg ["Template tag %s does not appear in the SQL — add %s to the query or drop the tag."]
                         (name tag-name) (str "{{" (name tag-name) "}}")))))
@@ -265,14 +264,14 @@
    through untouched. Every `column_metadata` name must match a computed column, or a
    teaching error names the offending one."
   [computed-columns column_metadata]
-  (let [by-name (into {} (map (juxt :name identity)) computed-columns)]
+  (let [by-name (u/index-by :name computed-columns)]
     (doseq [{col-name :name} column_metadata]
       (when-not (contains? by-name col-name)
         (common/throw-teaching-error
          (message/msg [(str "Column %s is not in the query results — column_metadata "
                             "names must match the query's output columns.")]
                       col-name))))
-    (let [overrides (into {} (map (juxt :name identity)) column_metadata)]
+    (let [overrides (u/index-by :name column_metadata)]
       (mapv (fn [col]
               (if-let [override (get overrides (:name col))]
                 (apply-column-override col override)

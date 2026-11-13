@@ -7,7 +7,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
@@ -25,6 +24,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter Writer)
@@ -346,7 +346,7 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [{:keys [dispatch-method-fn capabilities instructions endpoint-paths default-path]} user-id request]
-  (let [body            (walk/keywordize-keys (:body request))
+  (let [body            (perf/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
         batch?          (sequential? body)

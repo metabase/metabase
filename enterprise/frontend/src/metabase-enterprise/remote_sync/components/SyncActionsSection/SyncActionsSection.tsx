@@ -17,7 +17,7 @@ import type { RemoteSyncTaskId } from "metabase-types/api";
 import { trackPullChanges, trackRemoteSyncDeactivated } from "../../analytics";
 import { SyncTaskModal } from "../SyncTaskModal";
 
-export const SyncActionsSection = () => {
+export function SyncActionsSection() {
   const isEnabled = useSetting("remote-sync-enabled");
   const syncType = useSetting("remote-sync-type");
 
@@ -44,7 +44,7 @@ export const SyncActionsSection = () => {
       />
     </SettingsSection>
   );
-};
+}
 
 type ActionRowProps = {
   title: string;
@@ -52,19 +52,21 @@ type ActionRowProps = {
   action: ReactNode;
 };
 
-const ActionRow = ({ title, description, action }: ActionRowProps) => (
-  <Group justify="space-between" wrap="nowrap" gap="lg">
-    <Stack gap="xs">
-      <Text fw="bold">{title}</Text>
-      <Text c="text-secondary" size="sm">
-        {description}
-      </Text>
-    </Stack>
-    {action}
-  </Group>
-);
+function ActionRow({ title, description, action }: ActionRowProps) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="lg">
+      <Stack gap="xs">
+        <Text fw="bold">{title}</Text>
+        <Text c="text-secondary" size="sm">
+          {description}
+        </Text>
+      </Stack>
+      {action}
+    </Group>
+  );
+}
 
-const PullButton = () => {
+function PullButton() {
   const [importChanges, { isLoading }] = useImportChangesMutation();
   const [taskId, setTaskId] = useState<RemoteSyncTaskId | null>(null);
   const [sendToast] = useToast();
@@ -96,9 +98,9 @@ const PullButton = () => {
       />
     </>
   );
-};
+}
 
-const DisableButton = () => {
+function DisableButton() {
   const [updateSettings, { isLoading }] = useUpdateRemoteSyncSettingsMutation();
   const { show: showConfirmation, modalContent } = useConfirmation();
 
@@ -121,4 +123,4 @@ const DisableButton = () => {
       {modalContent}
     </>
   );
-};
+}

@@ -208,6 +208,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            api
+           api-scope
            api.eid-translation
            app-db
            appearance
@@ -379,6 +380,7 @@
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
+           metabase.app-db.dml-capture
            metabase.app-db.init
            metabase.app-db.quartz
            metabase.app-db.setting
@@ -388,6 +390,7 @@
    :uses #{auth-provider
            connection-pool
            funnysql
+           global-system
            task.secure-delegate
            util
            util.classloader
@@ -650,6 +653,7 @@
            app-db
            audit-app
            events
+           lib
            lib.be
            lib.schema
            models
@@ -997,6 +1001,7 @@
            auth-provider
            database-routing
            events
+           global-system
            lib
            lib.be
            lib.metadata
@@ -1109,7 +1114,8 @@
 
   explorations
   {:team "UX West"
-   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
+   :module-exports #{explorations.schema}
+   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init}
    :uses #{analytics
            analytics.interface
            api
@@ -1120,6 +1126,7 @@
            documents
            events
            explorations.contextual-interestingness
+           explorations.schema
            interestingness
            lib
            lib.be
@@ -1160,10 +1167,20 @@
            query-processor
            util}}
 
+  explorations.schema
+  {:team "UX West"
+   :api  #{metabase.explorations.schema}
+   :uses #{interestingness
+           lib.schema
+           metrics
+           query-permissions
+           util}}
+
   formatter
   {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
+           lib.schema
            lib.types
            models
            query-processor
@@ -1191,13 +1208,23 @@
   {:team "UX West"
    :api  #{metabase.geojson.rest.api}
    :uses #{api
+           api-scope
            geojson
            permissions
            util}}
 
+  global-system
+  {:team "Metabot"
+   :api #{metabase.global-system.mutable-component
+          metabase.global-system.system}
+   :uses #{util}}
+
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api metabase.glossary.core metabase.glossary.init}
+   :api  #{metabase.glossary.api
+           metabase.glossary.core
+           metabase.glossary.init
+           metabase.glossary.schema}
    :uses #{api
            events
            lib.schema
@@ -1383,7 +1410,8 @@
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
-          metabase.lib.schema.validate}
+          metabase.lib.schema.validate
+          metabase.lib.schema.visualization-settings}
    :uses #{lib lib.types util}}
 
   lib.source-swap
@@ -1520,14 +1548,15 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api metabase.measures.init metabase.measures.schema}
+   :module-exports #{measures.schema}
+   :api  #{metabase.measures.api metabase.measures.init}
    :uses #{api
            collections
            events
            lib
            lib.be
-           lib.metric
            lib.schema
+           measures.schema
            metrics
            models
            permissions
@@ -1535,11 +1564,21 @@
            remote-sync
            search
            serialization
-           users.schema
-           util
-           warehouses.schema}
+           util}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
+
+  measures.schema
+  {:team "Graphy"
+   :api  #{metabase.measures.schema}
+   :uses #{lib
+           lib.be
+           lib.metric
+           lib.schema
+           models
+           users.schema
+           util
+           warehouses.schema}}
 
   metabot
   {:team    "Metabot"
@@ -1587,6 +1626,7 @@
               lib.schema
               metabot.llm
               metabot.slackbot
+              metabot.toolkit
               metrics
               models
               native-query-snippets
@@ -1600,6 +1640,7 @@
               query-permissions
               query-processor
               request
+              revisions
               search
               search.entity-retrieval
               serialization
@@ -2087,6 +2128,7 @@
            analytics.internal-stats
            app-db
            dependencies
+           global-system
            settings
            task
            tracing
@@ -2459,7 +2501,7 @@
   remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase.remote-sync.core}
+   :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
    :uses #{premium-features serialization util}}
 
   request
@@ -2500,22 +2542,23 @@
            collections
            dashboards
            events
-           explorations
+           explorations.schema
            lib
            lib.be
            lib.schema
-           measures
+           measures.schema
            models
            parameters
            queries
            query-permissions
            revisions.schema
-           segments
-           transforms
+           segments.schema
+           transforms.schema
            util
            util.config}
    :model-exports #{:model/Revision}
    :model-imports #{:model/Card
+                    :model/CardTest
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
@@ -2582,6 +2625,7 @@
            collections
            data-apps
            events
+           global-system
            health-inspector
            lib
            lib.be
@@ -2625,8 +2669,9 @@
 
   segments
   {:team "Graphy"
-   :module-exports #{segments.rest}
-   :api  #{metabase.segments.init metabase.segments.schema}
+   :module-exports #{segments.rest
+                     segments.schema}
+   :api  #{metabase.segments.init}
    :uses #{api
            collections
            lib
@@ -2637,10 +2682,9 @@
            premium-features
            remote-sync
            search
+           segments.schema
            serialization
-           users.schema
-           util
-           warehouses.schema}
+           util}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
@@ -2654,9 +2698,21 @@
            models
            permissions
            segments
+           segments.schema
            util
            xrays}
    :model-imports #{:model/Segment}}
+
+  segments.schema
+  {:team "Graphy"
+   :api  #{metabase.segments.schema}
+   :uses #{lib
+           lib.be
+           lib.schema
+           models
+           users.schema
+           util
+           warehouses.schema}}
 
   serialization
   {:team "Data Apps"
@@ -2668,6 +2724,7 @@
            lib.metadata
            lib.schema
            models
+           parameters.schema
            util
            util.config}
    :model-imports #{:model/Card
@@ -2718,6 +2775,7 @@
            data-apps
            driver
            embedding
+           global-system
            lib.be
            lib.schema
            metabot.agent-api.usage
@@ -2938,6 +2996,7 @@
            driver
            events
            interestingness
+           lib
            lib.metadata
            lib.schema
            models
@@ -2983,6 +3042,7 @@
    :module-exports #{task.history task.secure-delegate}
    :api  #{metabase.task.core}
    :uses #{app-db
+           global-system
            tracing
            util
            util.classloader}}
@@ -3033,6 +3093,7 @@
            search
            security-center
            session
+           settings
            util
            util.config}
    :model-imports #{:model/AiUsageLog
@@ -3054,6 +3115,7 @@
            metabase.tiles.init
            metabase.tiles.settings}
    :uses #{api
+           api-scope
            lib
            lib.be
            lib.legacy-mbql
@@ -3087,6 +3149,7 @@
            metabase.tracing.init}
    :uses #{app-db
            events
+           global-system
            settings
            task
            util
@@ -3097,12 +3160,12 @@
    :module-exports #{transforms.base
                      transforms.feature-gating
                      transforms.indexes
-                     transforms.inspector}
+                     transforms.inspector
+                     transforms.schema}
    :api  #{metabase.transforms.core
            metabase.transforms.init
            metabase.transforms.instrumentation
            metabase.transforms.interface
-           metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics.interface
            api
@@ -3133,6 +3196,7 @@
            transforms.base
            transforms.feature-gating
            transforms.indexes
+           transforms.schema
            util}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
@@ -3231,6 +3295,7 @@
            request
            transforms
            transforms.base
+           transforms.schema
            util}
    :model-imports #{:model/Transform
                     :model/TransformDagRun
@@ -3239,6 +3304,17 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
+
+  transforms.schema
+  {:team "Graphy"
+   :api  #{metabase.transforms.schema}
+   :uses #{lib.be
+           lib.schema
+           models
+           transforms.base
+           transforms.indexes
+           util}
+   :model-imports #{:model/TransformDagRun :model/TransformJobRun}}
 
   upload
   {:team "Graphy"
@@ -3591,7 +3667,7 @@
            queries
            query-permissions
            query-processor
-           segments
+           segments.schema
            settings
            sync.analyze
            util
@@ -3759,6 +3835,11 @@
            util}
    :model-imports #{:model/User}}
 
+  enterprise/browser-sandboxing
+  {:team "Gadget"
+   :api #{metabase-enterprise.browser-sandboxing.api}
+   :uses #{api}}
+
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
@@ -3898,7 +3979,7 @@
 
   enterprise/custom-viz-plugin
   {:team "Gadget"
-   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.api.sandbox-host metabase-enterprise.custom-viz-plugin.init}
+   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            api-scope
            events
@@ -3936,6 +4017,7 @@
            remote-sync
            search
            serialization
+           server
            settings
            system
            util
@@ -3949,6 +4031,9 @@
                     :model/Database
                     :model/Field
                     :model/Measure
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Table
                     :model/User}
    :model-exports #{:model/DataApp}}
@@ -3977,9 +4062,11 @@
    :api #{metabase-enterprise.data-testing.api
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
-          metabase-enterprise.data-testing.run-api}
+          metabase-enterprise.data-testing.run-api
+          metabase-enterprise.data-testing.schema}
    :uses #{api
            audit-app
+           collections
            driver
            events
            lib
@@ -3999,13 +4086,15 @@
            sql-tools
            sql-tools.parsing
            task
-           transforms
            transforms.base
+           transforms.schema
            util}
-   :model-exports #{:model/TransformTest}
+   :model-exports #{:model/CardTest :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/Database
+                    :model/Document
                     :model/Transform
                     :model/User}}
 
@@ -4049,7 +4138,7 @@
            lib.metric
            lib.schema
            lib.types
-           measures
+           measures.schema
            models
            native-query-snippets
            permissions
@@ -4058,12 +4147,13 @@
            query-processor
            request
            revisions
-           segments
+           segments.schema
            settings
            sql-tools
            task
            transforms
            transforms.base
+           transforms.schema
            util
            util.graph
            enterprise/permissions.sandbox}
@@ -4104,14 +4194,15 @@
            lib.metadata
            lib.schema
            lib.source-swap
-           measures
+           measures.schema
            model-persistence
            models
            parameters.schema
            queries
-           segments
+           segments.schema
            task
            transforms
+           transforms.schema
            util
            warehouses.schema
            enterprise/dependencies}
@@ -4146,6 +4237,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.library.api}
    :uses #{api
+           api-scope
            collections
            lib.schema
            premium-features
@@ -4413,20 +4505,34 @@
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
            collections
+           dashboards
+           data-apps
+           documents
            events
+           glossary
            lib.schema
+           measures.schema
            models
+           native-query-snippets
            premium-features
+           queries
            remote-sync
+           segments.schema
            serialization
            settings
            startup
            task
+           timeline
+           transforms.schema
            util
-           enterprise/serialization}
+           warehouses.schema
+           enterprise/data-testing
+           enterprise/serialization
+           enterprise/transforms.python}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -4708,11 +4814,11 @@
            lib.metadata
            lib.schema
            query-processor
-           server
            sql-tools
            tracing
            transforms
            transforms.base
+           transforms.schema
            util}
    :model-imports #{:model/Database
                     :model/Field
@@ -4722,7 +4828,7 @@
   enterprise/transforms.python
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.transforms-python"
-   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init}
+   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init metabase-enterprise.transforms-python.schema}
    :uses #{analytics.interface
            api
            app-db
@@ -4794,6 +4900,7 @@
            settings
            sql-tools
            util
+           warehouses.secrets
            workspaces}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database

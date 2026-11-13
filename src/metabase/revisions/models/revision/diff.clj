@@ -153,7 +153,8 @@
     "Document"      (deferred-tru "Document")
     "Exploration"   (deferred-tru "Exploration")
     "Transform"     (deferred-tru "Transform")
-    "TransformTest" (deferred-tru "Transform test")))
+    "TransformTest" (deferred-tru "Transform test")
+    "CardTest"      (deferred-tru "Card test")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.

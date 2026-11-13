@@ -125,7 +125,7 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: can-read? and has-db-transforms-permission?
+  ;; can-write? requires: not a read-only remote sync instance, can-read? and has-db-transforms-permission?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (not (remote-sync/read-only?))
        (transforms.u/check-feature-enabled (transforms.u/->definition instance))
@@ -368,15 +368,12 @@
   [_transform-id]
   nil)
 
+;; The search index drops a deleted transform after the delete commits, through delete capture (see
+;; [[metabase.search.models]]), so this transaction never writes a search-index row.
 (t2/define-before-delete :model/Transform [transform]
-  ;; An update writes the transform row, then its search-index row when search indexes synchronously, in one
-  ;; transaction. Locking the transform row before the search-index delete below takes the rows in the same order, so
-  ;; a delete and an update cannot deadlock.
-  (transforms.db/lock-transform! (:id transform))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))
-  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (mu/defn update-transform-tags! :- :nil
@@ -629,4 +626,4 @@
 
 (defmethod remote-sync/spec :model/Transform
   [_model]
-  {})
+  {:synced-items transforms.db/synced-transform-items})

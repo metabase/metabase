@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.global-system.system :as system]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
    [metabase.util.log :as log]
@@ -56,13 +57,14 @@
                      #(not (str/includes? % "password"))
                      jetty-config))))
 
-(defonce ^:private instance*
-  (atom nil))
+;; The running Jetty server, or nil. Started by [[start-web-server!]] and stopped with the global system.
+(def ^:private server-component
+  (system/mutable-component-handle ::server (constantly nil)))
 
 (defn instance
   "*THE* instance of our Jetty web server, if there currently is one."
   ^Server []
-  @instance*)
+  @server-component)
 
 (defn server-port
   "Return the actual port the running Jetty server is listening on. Useful when the server was started with port 0
@@ -147,22 +149,33 @@
           handler       (metabase.server.core/make-handler server-routes #'metabase.mcp.http-handler/options)]
         (metabase.server.core/start-web-server! handler))"
   [handler :- ::api.macros/handler]
-  (when-not (instance)
-    ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-    (let [config     (jetty-config)
-          new-server (create-server handler config)]
-      (log-config config)
-      ;; Only start the server if the newly created server becomes the official new server
-      ;; Don't JOIN yet -- we're doing other init in the background; we can join later
-      (when (compare-and-set! instance* nil new-server)
-        (.start new-server)
-        :started))))
+  (let [[_server started?]
+        (system/start!
+         server-component
+         (fn []
+           ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the
+           ;; background. Don't JOIN yet -- we're doing other init in the background; we can join later
+           (let [config     (jetty-config)
+                 new-server (create-server handler config)]
+             (log-config config)
+             (try
+               (.start new-server)
+               (catch Throwable e
+                 ;; not yet the instance, so nothing else would stop what part of it started
+                 (try
+                   (.stop new-server)
+                   (catch Throwable stop-e
+                     (.addSuppressed e stop-e)))
+                 (throw e)))
+             new-server))
+         (fn [^Server server]
+           (log/info "Shutting Down Embedded Jetty Webserver")
+           (.stop server)))]
+    (when started?
+      :started)))
 
 (defn stop-web-server!
   "Stop the embedded Jetty web server. Returns `:stopped` if a server was stopped, `nil` if there was nothing to stop."
   []
-  (let [[^Server old-server] (reset-vals! instance* nil)]
-    (when old-server
-      (log/info "Shutting Down Embedded Jetty Webserver")
-      (.stop old-server)
-      :stopped)))
+  (when (system/stop! server-component)
+    :stopped))
