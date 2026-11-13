@@ -163,6 +163,12 @@ const queryMappingRow = (name: string) =>
 
 const getMappingRow = (name: string) => checkNotNull(queryMappingRow(name));
 
+const expandAccountLinking = async () => {
+  await userEvent.click(
+    screen.getByRole("button", { name: "Account linking" }),
+  );
+};
+
 const expandAttributes = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Attributes" }));
 };
@@ -338,6 +344,7 @@ describe("SettingsOIDCForm", () => {
         "Server settings",
         "User provisioning",
         "Attributes",
+        "Account linking",
         "Group mapping",
       ]);
     });
@@ -936,6 +943,52 @@ describe("SettingsOIDCForm", () => {
         expect.objectContaining({ "group-mappings": { devs: [4, 3] } }),
         expect.objectContaining({ "group-mappings": { devs: [3] } }),
       ]);
+    });
+  });
+});
+
+describe("SettingsOIDCForm - Account linking", () => {
+  // the switch's wrapping <label> also contains the description text, so exact match can't work
+  const getAutoLinkSwitch = () =>
+    screen.getByLabelText(/Automatically link accounts with a verified email/);
+
+  it("populates account linking fields from existing provider config", async () => {
+    await setup({
+      providers: [
+        {
+          ...EXISTING_PROVIDER,
+          "auto-link-verified-email": false,
+          "trusted-email-domains": ["mycompany.com", "example.org"],
+        },
+      ],
+    });
+
+    await expandAccountLinking();
+    expect(getAutoLinkSwitch()).not.toBeChecked();
+    expect(screen.getByLabelText("Trusted email domains")).toHaveValue(
+      "mycompany.com, example.org",
+    );
+  });
+
+  it("includes account linking settings in form submission", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+    expect(getAutoLinkSwitch()).toBeChecked();
+    await userEvent.click(getAutoLinkSwitch());
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "mycompany.com, example.org",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      expect(await getOidcPutCalls()).not.toHaveLength(0);
+    });
+    const puts = await getOidcPutCalls();
+    expect(puts[puts.length - 1].body).toMatchObject({
+      "auto-link-verified-email": false,
+      "trusted-email-domains": ["mycompany.com", "example.org"],
     });
   });
 });

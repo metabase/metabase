@@ -17,6 +17,7 @@ import {
   LdapGroupMembershipFilter,
   LdapUserProvisioning,
 } from "./components/Ldap";
+import { OidcAccountLinkingPanel } from "./components/OidcAccountLinkingPanel";
 import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
 import { SsoButton } from "./components/SsoButton";
 
@@ -63,6 +64,7 @@ export function initializePlugin() {
 
   if (hasPremiumFeature("sso_oidc")) {
     PLUGIN_AUTH_PROVIDERS.settingsOIDCForm = settingsOIDCForm;
+    PLUGIN_AUTH_PROVIDERS.AccountLinkingPanel = OidcAccountLinkingPanel;
   }
 
   // Add provider function that handles SSO and password login

@@ -16,6 +16,11 @@
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
+(def ^:private trusted-email-domains-schema
+  "\"*\" or email domains; only \"*\" is a wildcard, so reject \"*.mycompany.com\", which would never match."
+  [:sequential [:fn {:error/message "must be an email domain such as mycompany.com, or *"}
+                #(and (string? %) (let [s (-> % str/trim (str/replace #"^@" ""))] (or (= s "*") (u/domain? s))))]])
+
 (def ^:private oidc-provider-create-schema
   [:map {:closed true}
    [:key :string]
@@ -26,6 +31,8 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
@@ -40,6 +47,8 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
@@ -55,6 +64,8 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]

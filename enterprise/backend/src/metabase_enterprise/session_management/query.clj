@@ -25,8 +25,12 @@
   [:coalesce :session.last_active_at :session.created_at])
 
 (def provider-expr
-  "The provider as callers see it: a session with no auth identity row reads as `unknown` rather than null."
-  [:coalesce :auth_identity.provider (h2x/literal "unknown")])
+  "The provider as callers see it: a session with no auth identity row reads as `unknown` rather than null, and one
+  with a per-IdP custom OIDC identity (`oidc-<key>`) as `custom-oidc`."
+  [:case
+   [:= :auth_identity.provider nil] (h2x/literal "unknown")
+   [:like :auth_identity.provider (h2x/literal "oidc-%")] (h2x/literal "custom-oidc")
+   :else :auth_identity.provider])
 
 (def type-expr
   "The session type as callers see it. Derived from whether the row carries an anti-CSRF token, so that
@@ -42,7 +46,8 @@
   (let [named (remove #{"unknown"} providers)
         terms (cond-> []
                 (some #{"unknown"} providers) (conj [:= :auth_identity.provider nil])
-                (seq named)                   (conj [:in :auth_identity.provider named]))]
+                (seq named)                   (conj [:in :auth_identity.provider named])
+                (some #{"custom-oidc"} providers) (conj [:like :auth_identity.provider (h2x/literal "oidc-%")]))]
     (case (count terms)
       0 [:inline false]
       1 (first terms)

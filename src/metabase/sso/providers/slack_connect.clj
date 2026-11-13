@@ -5,6 +5,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
+   [metabase.sso.providers.oidc :as oidc]
    [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
@@ -66,6 +67,9 @@
      :client-secret (sso-settings/unobfuscated-slack-connect-client-secret)
      :issuer-uri slack-issuer-uri
      :scopes ["openid" "profile" "email"]
+     ;; Slack verifies account emails itself and may omit the email_verified claim; without this,
+     ;; existing accounts could never auto-link (Slack has no linking-policy settings)
+     :assume-email-verified true
      :redirect-uri (get request :redirect-uri)}))
 
 ;;; -------------------------------------------------- Utilities --------------------------------------------------
@@ -122,16 +126,18 @@
 
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
-(defn- create-auth-identity-for-link!
-  "Create an AuthIdentity record linking an authenticated user to their Slack identity.
-   Used in link-only mode where we don't create users or sessions."
-  [user-id provider-id]
-  (when (and user-id provider-id)
-    (when-not (sso.db/auth-identity-exists? user-id provider-name)
-      (sso.db/insert-auth-identity! user-id provider-name provider-id))))
+(defn- link-slack-identity!
+  "Link (or relink) the authenticated user's Slack identity to the token's (iss, sub). Used in link-only mode,
+   where the user is already signed in and linking is their explicit action."
+  [provider user-id claims]
+  (if-not user-id
+    {:success? false
+     :error :authentication-required
+     :message "Account linking requires an authenticated session"}
+    (oidc/link-identity! provider user-id (sso.db/auth-identity user-id provider-name) (str (:sub claims)) (:iss claims))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
-  [provider {:keys [user authenticated-user user-data] :as request}]
+  [provider {:keys [user authenticated-user claims] :as request}]
   (condp = (sso-settings/slack-connect-authentication-mode)
     sso-settings/slack-connect-auth-mode-sso
     (do (when-not user
@@ -141,17 +147,23 @@
     sso-settings/slack-connect-auth-mode-link-only
     ;; In link-only mode, create AuthIdentity for the authenticated user
     ;; but don't create a session or new user
-    (do
-      (create-auth-identity-for-link! (:id @authenticated-user) (:provider-id user-data))
-      (assoc request :success? true))))
+    (if-not (true? (:success? request))
+      ;; upstream failures and redirects pass through with their own error intact
+      (next-method provider request)
+      (let [result (link-slack-identity! provider (:id @authenticated-user) claims)]
+        (if (:success? result)
+          (assoc request :success? true)
+          result)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/slack-connect
   [_provider result]
   (when (:success? result)
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
-      (sso.db/set-auth-identity-metadata! user-id provider-name
-                                          {:signing_secret_version (server.settings/slack-connect-signing-secret-version)})))
+      ;; merge into existing metadata so the :iss stored by OIDC identity linking survives
+      (when-let [auth-identity (sso.db/auth-identity user-id provider-name)]
+        (sso.db/update-auth-identity! auth-identity nil
+                                      {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

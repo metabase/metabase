@@ -2918,6 +2918,7 @@
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
+              app-db
               lib.schema
               permissions
               premium-features
