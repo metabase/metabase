@@ -723,8 +723,12 @@
     status))
 
 (defn -set-premium-embedding-token!
-  "Setter for the [[metabase.premium-features.settings/token-status]] setting."
+  "Setter for the [[metabase.premium-features.settings/premium-embedding-token]] setting."
   [new-value]
+  ;; Harbormaster sets this on Cloud deployments independently of the license token.
+  (when (config/config-str :hm-deploy-time)
+    (throw (ex-info (tru "The license token is managed by Metabase Cloud.")
+                    {:status-code 403})))
   (try
     ;; validate the new value if we're not unsetting it
     (let [status (when (seq new-value)
