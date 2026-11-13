@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
 import { isEmbeddedDataAppPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { createSnowplowTracker, setSnowplowPageUrl } from "metabase/analytics";
+import { getUserId } from "metabase/current-user";
 import {
   EMBEDDING_SDK_CONFIG,
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
@@ -9,6 +11,7 @@ import {
 import { setDataApp } from "metabase/embedding/config";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 
 import {
   getDataAppUserLocale,
@@ -66,8 +69,15 @@ const init = async () => {
     setDataApp(readSlugFromUrl() ?? "");
     await import("sdk-iframe-embedding-ee-plugins");
 
-    const { DataAppEmbed } =
+    const { DataAppEmbed, store } =
       await import("./components/DataAppEmbed/DataAppEmbed");
+
+    const getEmbedUserId = () => getUserId(store.getState());
+    createSnowplowTracker(getEmbedUserId);
+    // The document URL carries the app slug, subpath
+    // and query string, which must not reach analytics.
+    setSnowplowPageUrl(window.location.pathname);
+    initMetaplow({ hostUrl: getCollectorHostUrl(), getUserId: getEmbedUserId });
 
     createRoot(rootElement).render(<DataAppEmbed />);
   } else {
