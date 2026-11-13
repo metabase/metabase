@@ -22,5 +22,5 @@
 }
 
 .localeInput:focus-visible + .localeButton {
-  outline: 2px solid var(--mb-color-input-focus);
+  outline: 2px solid var(--mb-color-border-highlight);
 }
