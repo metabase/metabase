@@ -19,13 +19,11 @@
    [toucan2.core :as t2]))
 
 (defn- effective-children-ids
-  "Returns effective children ids for collection."
-  [collection _permissions-set]
-  (into []
-        (comp (map :id)
-              (remove #(= % (collection/trash-collection-id)))
-              (filter #(collection/visible-collection-id? % :write)))
-        (collection/descendants-flat collection false)))
+  "The ids of the unarchived descendants of `collection` the current user writes, answered together."
+  [collection]
+  (let [ids (into [] (comp (map :id) (remove #(= % (collection/trash-collection-id))))
+                  (collection/descendants-flat collection false))]
+    (filterv (collection/visible-collection-ids ids :write) ids)))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
@@ -117,7 +115,7 @@
                          (stale.db/collection id))
         _              (api/read-check collection)
         collection-ids (->> (if is_recursive
-                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                              (conj (effective-children-ids collection)
                                     id)
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))
