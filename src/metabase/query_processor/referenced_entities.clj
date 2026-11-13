@@ -2,7 +2,8 @@
   "Runs the queries a card references and injects their values into the response under `data.referenced_entities`,
   keyed by entity type and then by id.
 
-  An entity that returns more rows than its caller asked for fails that entity, never the main query.
+  An entity that returns more rows than its caller asked for fails that entity, never the main query. So does one whose
+  query reads parameters, since it would run with no values for them.
 
   Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): otherwise a nested run reuses
   the main query's store and can't resolve tables on a different database.
@@ -21,6 +22,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
@@ -128,38 +130,46 @@
     (try
       ;; passes for anything under the public and embed paths' `as-admin`, so there the spec's producer must
       ;; already have checked that the reference is readable
-      (let [entity         (api/read-check model id)
-            query          (referenced-query (runnable-query entity query-key) entity-type id max-rows
-                                             {:parent-info            (perf/select-keys parent-info
-                                                                                        [:dashboard-id :pulse-id])
-                                              :ignore-cached-results? ignore-cached-results?})
-            ;; measures have no cache config of their own. computed on the final query, since its hash (which the
-            ;; strategy's average execution time is looked up by) covers the constraints
-            cache-strategy (when (and card? cache-strategy-fn)
-                             (cache-strategy-fn entity query))
-            result         (run-isolated (cond-> query cache-strategy (assoc :cache-strategy cache-strategy))
-                                         (when card? id))
-            data           (:data result)]
-        (cond
-          ;; a userland run returns its failure instead of throwing it
-          (not= :completed (:status result))
-          {:status "failed"
-           :error  (or (:error result) (tru "Failed to run referenced query"))}
-
-          (> (count (:rows data)) max-rows)
+      (let [entity (api/read-check model id)]
+        ;; it runs with no parameter values, so it'd get each one's default or none at all. a measure has neither
+        ;; parameters nor a `:dataset_query`
+        (if (qp.template-tags/reads-parameters? entity)
           (do
-            (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
+            (log/warnf "Referenced %s %s reads parameters, so it can't run on its own" entity-type id)
             {:status     "failed"
-             :error_type "too-many-rows"
-             :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
-                              entity-type id max-rows)})
+             :error_type "has-parameters"
+             :error      (tru "Referenced {0} {1} uses variables, so it can''t run on its own." entity-type id)})
+          (let [query          (referenced-query (runnable-query entity query-key) entity-type id max-rows
+                                                 {:parent-info            (perf/select-keys parent-info
+                                                                                            [:dashboard-id :pulse-id])
+                                                  :ignore-cached-results? ignore-cached-results?})
+                ;; measures have no cache config of their own. computed on the final query, since its hash (which
+                ;; the strategy's average execution time is looked up by) covers the constraints
+                cache-strategy (when (and card? cache-strategy-fn)
+                                 (cache-strategy-fn entity query))
+                result         (run-isolated (cond-> query cache-strategy (assoc :cache-strategy cache-strategy))
+                                             (when card? id))
+                data           (:data result)]
+            (cond
+              ;; a userland run returns its failure instead of throwing it
+              (not= :completed (:status result))
+              {:status "failed"
+               :error  (or (:error result) (tru "Failed to run referenced query"))}
 
-          :else
-          {:status "completed"
-           :data   (-> data
-                       (perf/select-keys [:cols :rows])
-                       (project-columns columns))}))
-      (catch Exception e
+              (> (count (:rows data)) max-rows)
+              (do
+                (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
+                {:status     "failed"
+                 :error_type "too-many-rows"
+                 :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
+                                  entity-type id max-rows)})
+
+              :else
+              {:status "completed"
+               :data   (-> data
+                           (perf/select-keys [:cols :rows])
+                           (project-columns columns))}))))
+      (catch Throwable e
         (log/warnf e "Failed to run referenced %s %s" entity-type id)
         (cond-> {:status "failed"
                  :error  (or (ex-message e) (tru "Failed to run referenced query"))}
@@ -179,6 +189,17 @@
                             (apply max ms))})
              (group-by (juxt :type :id) specs)))
 
+(defn- specs-result
+  "`(entity-result spec)` for each deduped spec, as `{type-string {id-string result}}`; nil when there are none."
+  [specs entity-result]
+  (perf/not-empty
+   (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+             ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+             (assoc-in acc [entity-type (str id)] (entity-result spec)))
+           {}
+           ;; don't start the next one if the client already hung up
+           (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))
+
 (defn- refused-entity
   [entity-type id message]
   (log/warnf "Refused referenced %s %s: %s" entity-type id message)
@@ -186,12 +207,12 @@
    :error  message})
 
 (defn- refusals
-  "`check-entities`'s refusals for `specs`. If the check throws an exception, every spec is refused: an unchecked
+  "`check-entities`'s refusals for `specs`. If the check throws, every spec is refused: an unchecked
   reference must not run, and a failed check must not fail the main query."
   [check-entities specs]
   (try
     (check-entities specs)
-    (catch Exception e
+    (catch Throwable e
       (log/error e "Failed to check referenced entities; refusing them all")
       (let [message (tru "Could not check whether this reference may be used.")]
         (into {} (map (fn [{entity-type :type, :keys [id]}] [[entity-type id] message])) specs)))))
@@ -204,16 +225,10 @@
   (when (seq specs)
     (let [specs   (dedupe-specs specs)
           refused (if check-entities (refusals check-entities specs) {})]
-      (perf/not-empty
-       (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
-                 ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-                 (assoc-in acc [entity-type (str id)]
-                           (if-let [message (get refused [entity-type id])]
-                             (refused-entity entity-type id message)
-                             (run-referenced-entity spec max-rows run-opts))))
-               {}
-               ;; don't start the next one if the client already hung up
-               (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))))
+      (specs-result specs (fn [{entity-type :type, :keys [id] :as spec}]
+                            (if-let [message (get refused [entity-type id])]
+                              (refused-entity entity-type id message)
+                              (run-referenced-entity spec max-rows run-opts)))))))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -221,16 +236,24 @@
    rff
    (fn [response] (assoc-in response [:data :referenced_entities] result))))
 
+(defn- withheld-result
+  "A failed entry per spec, `{type-string {id-string result}}`, running nothing. Failed rather than left out: a client
+  takes a missing entry as unanswered and asks for it again."
+  [specs]
+  (when (seq specs)
+    (specs-result (dedupe-specs specs) (constantly {:status "failed", :error_type "withheld"}))))
+
 (defn- maybe-wrap-qp
-  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`. The specs run
-  when the qp is called, not at wrap time; for a card endpoint that's inside the streaming body."
-  [qp specs max-rows cache-strategy-fn]
+  "Wrap a qp fn `(fn [query rff])` to inject `(result-fn specs run-opts)` under `data.referenced_entities`, with
+  `run-opts` taken from the query (see [[run-referenced-entity]]). It's called when the qp is, not at wrap time; for a
+  card endpoint that's inside the streaming body."
+  [qp specs cache-strategy-fn result-fn]
   (if (seq specs)
     (fn [query rff]
       (let [run-opts {:parent-info            (:info query)
                       :cache-strategy-fn      cache-strategy-fn
                       :ignore-cached-results? (perf/get-in query [:middleware :ignore-cached-results?])}]
-        (if-let [result (referenced-entities-result specs max-rows nil run-opts)]
+        (if-let [result (result-fn specs run-opts)]
           (qp query (inject-referenced-entities rff result))
           (qp query rff))))
     qp))
@@ -289,10 +312,15 @@
 (defn maybe-wrap-qp-for-goals
   "Derive specs from the goals `card` draws on `dashcard` (nil for a card on its own) and wrap `qp` to inject their
   values. Exports skip this: only `:api` responses render goals. `cache-strategy-fn` picks a referenced card's
-  cache strategy (see [[run-referenced-entity]])."
-  [qp card dashcard export-format cache-strategy-fn]
+  cache strategy (see [[run-referenced-entity]]). With `withhold?`, each goal gets a failed `withheld` entry and
+  nothing runs."
+  [qp card dashcard export-format cache-strategy-fn & {:keys [withhold?]}]
   (if-let [{:keys [display viz-settings effective-settings]} (and (= export-format :api)
                                                                   (dynamic-goals/goal-scope card dashcard))]
-    (maybe-wrap-qp qp (viz-settings->goal-specs display viz-settings effective-settings) goal-max-rows
-                   cache-strategy-fn)
+    (maybe-wrap-qp qp
+                   (viz-settings->goal-specs display viz-settings effective-settings)
+                   cache-strategy-fn
+                   (if withhold?
+                     (fn [specs _run-opts] (withheld-result specs))
+                     #(referenced-entities-result %1 goal-max-rows nil %2)))
     qp))

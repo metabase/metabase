@@ -187,7 +187,7 @@
   [:map {:closed true}
    [:status     [:enum "completed" "failed"]]
    [:error      {:optional true} [:maybe :string]]
-   [:error_type {:optional true} [:maybe [:enum "too-many-rows"]]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters"]]]
    [:data       {:optional true} [:maybe [:map {:closed true}
                                           [:cols {:optional true}
                                            [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
