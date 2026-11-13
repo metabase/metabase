@@ -41,6 +41,7 @@ export function useScrollRestoration(): void {
   }, [store]);
 
   useLayoutEffect(() => {
+    const previousEntryKey = entryKeyRef.current;
     entryKeyRef.current = entryKey;
     const isNewPath = pathnameRef.current !== location.pathname;
     pathnameRef.current = location.pathname;
@@ -49,6 +50,10 @@ export function useScrollRestoration(): void {
     // Pages change the search as they load, such as a dashboard replacing it
     // with its filter values, which must not cut short the restore of the entry.
     if (!isNewPath && !isTraversal) {
+      // A replace gives the entry a new key, so its offsets move with it.
+      if (navigationType === NavigationType.Replace) {
+        store.rekey(previousEntryKey, entryKey);
+      }
       return;
     }
 

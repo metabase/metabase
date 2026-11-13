@@ -178,6 +178,17 @@ describe("useScrollRestoration", () => {
     expect(getScrollTop("page-scroller")).toBe(700);
   });
 
+  it("keeps an entry's scroll position when a replace changes only its search", async () => {
+    const { navigate, goBack, replace } = setup();
+    scroll("page-scroller", 700);
+    await replace("/a?filter=1");
+    await navigate("/b");
+
+    await goBack();
+
+    expect(getScrollTop("page-scroller")).toBe(700);
+  });
+
   it("restores each history entry's scroll position on back and forward", async () => {
     const { navigate, goBack, goForward } = setup();
     scroll("page-scroller", 700);

@@ -28,6 +28,8 @@ export type EntryScrollPositions = ReadonlyMap<string, number>;
 export type ScrollPositionStore = {
   get: (entryKey: string) => EntryScrollPositions | undefined;
   record: (entryKey: string, elementKey: string, scrollTop: number) => void;
+  /** Files an entry's offsets under the new key a replace gave it. */
+  rekey: (fromEntryKey: string, toEntryKey: string) => void;
   persist: () => void;
 };
 
@@ -151,6 +153,13 @@ export function createScrollPositionStore(): ScrollPositionStore {
       }
       positions.set(elementKey, scrollTop);
     },
+    rekey: (fromEntryKey, toEntryKey) => {
+      const positions = entries.get(fromEntryKey);
+      if (positions) {
+        entries.delete(fromEntryKey);
+        entries.set(toEntryKey, positions);
+      }
+    },
     persist: () => {
       try {
         sessionStorage.setItem(
@@ -212,13 +221,20 @@ export function restoreScrollPositions(
   };
 
   const applyWhereMoved = () => {
-    positions.forEach((scrollTop, elementKey) => {
-      const element = findElement(elementKey);
-      // Offsets can be fractional on a zoomed page, and may not read back
-      // exactly as they were set.
-      if (element && Math.abs(element.scrollTop - scrollTop) >= 1) {
-        element.scrollTop = scrollTop;
-      }
+    // Read every offset before setting any, so that a write can't make the
+    // browser lay the page out again for the next read.
+    const elementsToMove = Array.from(positions).flatMap(
+      ([elementKey, scrollTop]) => {
+        const element = findElement(elementKey);
+        // Offsets can be fractional on a zoomed page, and may not read back
+        // exactly as they were set.
+        return element && Math.abs(element.scrollTop - scrollTop) >= 1
+          ? [{ element, scrollTop }]
+          : [];
+      },
+    );
+    elementsToMove.forEach(({ element, scrollTop }) => {
+      element.scrollTop = scrollTop;
     });
   };
 

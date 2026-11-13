@@ -404,8 +404,6 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
-    "frontend/src/metabase/ScrollToTop.tsx",
-    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
