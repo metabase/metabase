@@ -37,19 +37,19 @@
     (mt/with-temp [:model/DataApp app {}
                    :model/PermissionsGroup group {}]
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? app))))
+        (is (not (mi/can-read? (t2/hydrate app :can_read)))))
       (group-access/add-groups! app [(:id group)])
       (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
       (mt/with-current-user (mt/user->id :rasta)
-        (is (mi/can-read? app)))
+        (is (mi/can-read? (t2/hydrate app :can_read))))
       (group-access/remove-group! app (:id group))
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? app))))
+        (is (not (mi/can-read? (t2/hydrate app :can_read)))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (mi/can-read? app))
+        (is (mi/can-read? (t2/hydrate app :can_read)))
         (testing "without the data apps feature nobody can read an app, admins included"
           (mt/with-premium-features #{}
-            (is (not (mi/can-read? app)))))))))
+            (is (not (mi/can-read? (t2/hydrate app :can_read))))))))))
 
 (deftest app-list-filters-readable-apps-test
   (mt/with-premium-features #{:data-apps}
@@ -91,7 +91,7 @@
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app))
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app "bundle"))
             (mt/with-current-user user-id
-              (is (= allowed? (boolean (mi/can-read? app)))))
+              (is (= allowed? (boolean (mi/can-read? (t2/hydrate app :can_read))))))
             (is (= allowed? (contains? (t2/select-pks-set :model/DataApp
                                                           {:where [:in :id (data-apps/visible-data-app-filter-select
                                                                             {:user-id user-id :is-superuser? admin?})]})
@@ -139,7 +139,7 @@
                                      :permission_group_ids [(:id ignored-group)]})))
       (is (= #{(:id group)} (access-group-ids app)))
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? app)))))))
+        (is (not (mi/can-read? (t2/hydrate app :can_read))))))))
 
 (deftest group-access-without-collection-test
   (mt/with-premium-features #{:data-apps}
@@ -179,7 +179,7 @@
                                              (perms/collection-readwrite-path collection-id)]])))
         (is (true? (t2/select-one-fn :archived :model/Collection :id collection-id)))
         (mt/with-current-user (mt/user->id :rasta)
-          (is (not (mi/can-read? app))))))))
+          (is (not (mi/can-read? (t2/hydrate app :can_read)))))))))
 
 (deftest add-groups-rolls-back-grant-failure-test
   (mt/with-temp [:model/DataApp app {}
@@ -220,7 +220,7 @@
     (mt/with-temp [:model/DataApp app {}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (mt/with-current-user (mt/user->id :rasta)
-        (is (mi/can-read? app))))))
+        (is (mi/can-read? (t2/hydrate app :can_read)))))))
 
 (deftest disabled-app-access-test
   (mt/with-premium-features #{:data-apps}
@@ -228,10 +228,10 @@
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (testing "a superuser reaches a disabled app"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (mi/can-read? app))))
+          (is (mi/can-read? (t2/hydrate app :can_read)))))
       (testing "a user with group access does not reach it"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (not (mi/can-read? app))))))))
+          (is (not (mi/can-read? (t2/hydrate app :can_read)))))))))
 
 (deftest group-endpoints-require-feature-test
   (mt/with-premium-features #{:data-apps}
@@ -271,7 +271,7 @@
         (mt/user-http-request :crowberto :delete 404 (data-apps.tu/app-url app "groups" admin-id))
         (is (= permissions (t2/select :model/Permissions :group_id admin-id)))
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (mi/can-read? app)))))))
+          (is (mi/can-read? (t2/hydrate app :can_read))))))))
 
 (deftest remove-group-requires-matching-app-and-group-test
   (mt/with-premium-features #{:data-apps}
@@ -306,7 +306,7 @@
                    :model/DataApp app {}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (mt/with-current-user (:id user)
-        (is (not (mi/can-read? app)))))))
+        (is (not (mi/can-read? (t2/hydrate app :can_read))))))))
 
 (deftest sso-membership-controls-app-access-test
   (mt/with-premium-features #{:data-apps}
@@ -316,10 +316,10 @@
       (group-access/add-groups! app [(:id group)])
       (sso/sync-group-memberships! (:id user) [(:id group)])
       (mt/with-current-user (:id user)
-        (is (mi/can-read? app)))
+        (is (mi/can-read? (t2/hydrate app :can_read))))
       (sso/sync-group-memberships! (:id user) [])
       (mt/with-current-user (:id user)
-        (is (not (mi/can-read? app)))))))
+        (is (not (mi/can-read? (t2/hydrate app :can_read))))))))
 
 (deftest tenant-group-assignment-lifecycle-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -346,7 +346,7 @@
             (mt/with-premium-features #{:data-apps}
               (mt/user-http-request (:id user) :get 401 "ee/apps/birds")
               (mt/with-current-user (:id user)
-                (is (not (mi/can-read? app))))
+                (is (not (mi/can-read? (t2/hydrate app :can_read)))))
               (mt/user-http-request :crowberto :delete 204 (str "ee/apps/birds/groups/" (:id group))))
             (is (= data-permissions (t2/select :model/DataPermissions :group_id (:id group))))
             (is (not (t2/exists? :model/Permissions :group_id (:id group)
@@ -385,9 +385,9 @@
                  :values [{:user_id (:id tenant-user) :group_id (:id internal-group)}
                           {:user_id (mt/user->id :rasta) :group_id (:id tenant-group)}]})
       (mt/with-current-user (:id tenant-user)
-        (is (not (mi/can-read? internal-app))))
+        (is (not (mi/can-read? (t2/hydrate internal-app :can_read)))))
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? tenant-app))))
+        (is (not (mi/can-read? (t2/hydrate tenant-app :can_read)))))
       (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
       (mt/with-current-user (:id tenant-user)
-        (is (mi/can-read? tenant-app))))))
+        (is (mi/can-read? (t2/hydrate tenant-app :can_read)))))))

@@ -270,7 +270,7 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
              {:select [:id :name :description :authority_level
-                       :archived :location :type]
+                       :archived :location :type :namespace :is_remote_synced]
               :where [:and
                       [:in :id collection-ids]
                       [:= :archived false]]}))

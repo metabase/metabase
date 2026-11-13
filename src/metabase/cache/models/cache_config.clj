@@ -37,33 +37,16 @@
    :config   mi/transform-json
    :state    mi/transform-json})
 
-(defn- target-collection-id
-  "Get the collection_id for the target entity of a CacheConfig."
-  [{:keys [model model_id]}]
-  (case model
-    "dashboard" (:collection_id (cache.db/dashboard-collection-id model_id))
-    "question"  (:collection_id (cache.db/card-collection-id model_id))
-    nil))
-
 (defn- can-write-config?
   "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it
   targets and the database it targets, each looked up only for the configs that target one."
   [instance target-collection-id target-database]
   (case (:model instance)
     "root"      (mi/superuser?)
-    "database"  (boolean (some-> target-database mi/can-write?))
+    "database"  (boolean (some-> target-database (t2/hydrate :can_write) mi/can-write?))
     ("dashboard" "question")
     (mi/current-user-has-full-permissions?
      (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
-
-(defmethod mi/can-write? :model/CacheConfig
-  ([instance]
-   (can-write-config? instance
-                      (target-collection-id instance)
-                      (when (= "database" (:model instance))
-                        (first (cache.db/databases [(:model_id instance)])))))
-  ([_model pk]
-   (mi/can-write? (cache.db/cache-config pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
   "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
@@ -85,24 +68,24 @@
    :id
    {:default false}))
 
-(defmethod mi/can-read? :model/CacheConfig
-  ([instance]
-   (case (:model instance)
-     "root"      (mi/superuser?)
-     "database"  (mi/can-read? :model/Database (:model_id instance))
-     "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
-     "question"  (mi/can-read? :model/Card (:model_id instance))))
-  ([_model pk]
-   (mi/can-read? (cache.db/cache-config pk))))
+(methodical/defmethod t2/simple-hydrate [:model/CacheConfig :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (case (:model instance)
+                "root"      (mi/superuser?)
+                "database"  (some-> (cache.db/database-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
+                "dashboard" (some-> (cache.db/dashboard-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
+                "question"  (some-> (cache.db/card-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)))))
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
    Uses collection permissions directly, bypassing remote-sync content lock."
   [{model-id :id :as instance}]
-  (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
-                                                             name
-                                                             u/lower-case-en)
-                                                  :model_id model-id})))
+  (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
+                                                                         name
+                                                                         u/lower-case-en)
+                                                              :model_id model-id}) :can_write)))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
   [_model k models]

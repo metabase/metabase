@@ -64,21 +64,25 @@
     [:updated_at  {:optional true} RowTimestamp]]
    ::channel.schema/channel.details-by-type])
 
-(defmethod mi/can-write? :model/Channel
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))
 
-(defmethod mi/can-read? :model/Channel
-  [_channel]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (or (mi/superuser?)
+                  (perms/current-user-has-application-permissions? :setting)))))
 
 (methodical/defmethod mi/to-json :model/Channel
   "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
   API. Encoding at the model boundary keeps every response that returns a Channel consistent."
   [channel json-generator]
-  (next-method (if (mi/can-write? channel)
+  (next-method (if (mi/can-write? (t2/hydrate channel :can_write))
                  channel
                  (dissoc channel :details))
                json-generator))
@@ -186,7 +190,9 @@
 (defmethod analytics.core/known-labels :metabase-notification/template-create [_] template-channel-labels)
 (defmethod analytics.core/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
-(defmethod mi/can-write? :model/ChannelTemplate
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/ChannelTemplate :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))

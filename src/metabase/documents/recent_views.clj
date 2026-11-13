@@ -3,7 +3,8 @@
   (:require
    [metabase.activity-feed.core :as activity-feed]
    [metabase.collections.models.collection.root :as root]
-   [metabase.models.interface :as mi]))
+   [metabase.models.interface :as mi]
+   [toucan2.core :as t2]))
 
 (defn- fill-parent-coll
   "Fill in parent collection information for a document, following the same pattern
@@ -33,13 +34,13 @@
 (defmethod activity-feed/fill-recent-view-info :document
   [{:keys [_model model_id timestamp model_object]}]
   (when-let [document (and
-                       (mi/can-read? model_object)
+                       (mi/can-read? (t2/hydrate model_object :can_read))
                        (parent-collection-valid? model_object)
                        (elide-archived model_object))]
     {:id model_id
      :name (:name document)
      :description ""
      :model :document
-     :can_write (mi/can-write? document)
+     :can_write (mi/can-write? (t2/hydrate document :can_write))
      :timestamp (str timestamp)
      :parent_collection (fill-parent-coll document)}))

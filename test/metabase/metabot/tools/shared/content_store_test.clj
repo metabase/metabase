@@ -36,6 +36,8 @@
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.serialization.resolve :as serialization.resolve]
    [metabase.test :as mt]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
 
 (defn- record-store
@@ -53,9 +55,9 @@
   "Controls the [[mi/can-read?]] answer for [[stub-row]]s below."
   true)
 
-(defmethod mi/can-read? ::stub-model
-  ([_row] *stub-can-read?*)
-  ([_model _pk] *stub-can-read?*))
+(methodical/defmethod t2/simple-hydrate [::stub-model :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean *stub-can-read?*)))
 
 (defn- stub-row
   "Tag `row` so it dispatches to the [[::stub-model]] `can-read?` method above, instead of the
@@ -285,7 +287,7 @@
                          {:database (mt/id)
                           :type     :query
                           :query    {:source-table table-id}})]
-          (is (mi/can-read? :model/Database (mt/id))
+          (is (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read))
               "precondition: query access to one table makes the whole database readable")
           (doseq [audited? [true false]]
             (is (some? (shared.content-store/query-for-export (query-on (mt/id :orders)) audited?)))
@@ -336,14 +338,14 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
-            (is (not (mi/can-query? :model/Database (mt/id)))
+            (is (not (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_query)))
                 "precondition: nothing grants query access to the database")
             (doseq [audited? [true false]]
               (is (some? (shared.content-store/query-for-export query audited?))))))
         (testing "and with no permission on that database at all, since running the card is what authorizes it"
           (mt/with-no-data-perms-for-all-users!
             (mt/with-test-user :rasta
-              (is (not (mi/can-read? :model/Database (mt/id)))
+              (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
                   "precondition: the database is not even readable")
               (doseq [audited? [true false]]
                 (is (some? (shared.content-store/query-for-export query audited?)))))))))))

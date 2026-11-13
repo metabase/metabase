@@ -86,7 +86,7 @@
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (segments.db/table-database-ids table-ids))
                                     :table-ids table-ids})
-    (-> (filterv mi/can-read? segments)
+    (-> (filterv mi/can-read? (t2/hydrate segments :can_read))
         (t2/hydrate :creator :definition_description))))
 
 (defn write-check-and-update-segment!

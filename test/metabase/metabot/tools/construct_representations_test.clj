@@ -1945,6 +1945,9 @@
                 ;; permission-filtered is covered against real tables in entity-details-test.
                 mi/can-read?                             (constantly true)
                 mi/can-query?                            (constantly true)
+                metabot.db/table                         (fn [id]
+                                                           (-> (t2/instance :model/Table {:id id :can_query true})
+                                                               (vary-meta assoc :can_read true)))
                 entity-details/permission-filter-columns (fn [cols & _] cols)
                 entity-details/verified-review?          (constantly false)]
     (f)))

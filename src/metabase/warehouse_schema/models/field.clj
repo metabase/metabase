@@ -185,19 +185,15 @@
   (or (:table instance)
       (warehouse-schema.db/table (:table_id instance))))
 
-(defmethod mi/can-read? :model/Field
+(methodical/defmethod t2/simple-hydrate [:model/Field :can_read]
   ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
-  ([instance]
-   (mi/can-read? (field->table instance)))
-  ([_model pk]
-   (mi/can-read? (warehouse-schema.db/field pk))))
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (mi/can-read? (t2/hydrate (field->table instance) :can_read)))))
 
-(defmethod mi/can-query? :model/Field
+(methodical/defmethod t2/simple-hydrate [:model/Field :can_query]
   ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
-  ([instance]
-   (mi/can-query? (field->table instance)))
-  ([_model pk]
-   (mi/can-query? (warehouse-schema.db/field pk))))
+  [_model k instance]
+  (assoc instance k (boolean (mi/can-query? (t2/hydrate (field->table instance) :can_query)))))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
@@ -209,18 +205,12 @@
     (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (mi/superuser?))))
 
-(defmethod mi/can-write? :model/Field
-  ([instance]
-   (current-user-can-write-field? instance))
-  ([_model pk]
-   (mi/can-write? (warehouse-schema.db/field pk))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
   "Batched hydration for :can_write on fields, hydrating their tables first."
   [_model k fields]
   (mi/instances-with-hydrated-data
    fields k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? fields) :table))
+   #(u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))
    :id
    {:default false}))
 
@@ -341,7 +331,7 @@
     (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                     :table-ids (into #{} (keep :id) tables)})
     (for [field fields
-          :when (mi/can-read? field)]
+          :when (mi/can-read? (t2/hydrate field :can_read))]
       (dissoc field :table))))
 
 (mi/define-batched-hydration-method with-targets

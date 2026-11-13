@@ -241,3 +241,18 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::collection-options
+  "Options of the Collection permission checks taking a nil collection id: `:root-namespace` names the namespace of the
+  root Collection a nil collection id stands for, nil for the default namespace. It is per entity, so the caller
+  checking the entity sets it."
+  [:map {:closed true}
+   [:root-namespace [:maybe [:or :keyword :string]]]])
+
+(mr/def ::collection-user-info
+  "The user a Collection permission question is about: a nil `:user-id` in a context without a user, where only a
+  superuser one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])

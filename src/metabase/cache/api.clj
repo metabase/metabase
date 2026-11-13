@@ -148,7 +148,7 @@
     (api/check-superuser)
     ;; Use CacheConfig's can-write? which checks collection permissions directly,
     ;; bypassing the remote-sync content lock on Dashboards/Cards.
-    (api/check-403 (mi/can-write? (t2/instance :model/CacheConfig {:model model :model_id id})))))
+    (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig {:model model :model_id id}) :can_write)))))
 
 (api.macros/defendpoint :get "/" :- ::cache-config-list-response
   "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,

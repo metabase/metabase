@@ -258,7 +258,7 @@
             (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
             (testing "sanity: rasta can query venues but cannot read the joined card"
               (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                     (mi/can-read? (t2/select-one :model/Card :id joined)))))))
+                                     (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id joined) :can_read)))))))
             (testing "control: the plain query alone is visible"
               (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])]
                 (is (true? (visible? thread :rasta)))))
@@ -393,7 +393,7 @@
 
 (defn- card-readable? [card-id user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (boolean (mi/can-read? (t2/select-one :model/Card :id card-id)))))
+    (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_read)))))
 
 (deftest card-scoped-to-a-gated-document-is-not-readable-test
   (testing "a Card scoped to an exploration Summary document"
@@ -416,7 +416,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (testing "sanity: the owning Summary document is itself gated for this viewer"
           (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                 (mi/can-read? (t2/select-one :model/Document :id doc-id)))))))
+                                 (mi/can-read? (t2/hydrate (t2/select-one :model/Document :id doc-id) :can_read)))))))
         (testing "is not readable by a viewer whose data-access lens is incompatible, even though they can read the collection"
           (is (false? (card-readable? card-id :rasta))))
         (testing "is still readable by a superuser, matching the gate's standing exemption"
@@ -507,7 +507,7 @@
               (try
                 (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
                 (documents/with-content-gate-cache
-                  (is (every? mi/can-read? cards)))
+                  (is (every? mi/can-read? (t2/hydrate cards :can_read))))
                 (is (= 1 @calls) "one verdict should serve every card")
                 (finally
                   (reset! gate orig))))))))))

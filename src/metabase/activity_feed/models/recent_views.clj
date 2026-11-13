@@ -286,7 +286,7 @@
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
-                   (mi/can-read? model_object)
+                   (mi/can-read? (t2/hydrate model_object :can_read))
                    ;; The parent collection exists:
                    (parent-collection-valid? model_object)
                    (ellide-archived model_object))]
@@ -303,14 +303,14 @@
      :entity_id (:entity_id card)
      :visualization_settings (:visualization_settings card)
      :model :card
-     :can_write (mi/can-write? card)
+     :can_write (mi/can-write? (t2/hydrate card :can_write))
      :timestamp (str timestamp)
      :moderated_status (:moderated-status card)
      :parent_collection (fill-parent-coll card)}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
   (when-let [dataset (and
-                      (mi/can-read? model_object)
+                      (mi/can-read? (t2/hydrate model_object :can_read))
                       ;; If the parent collection no longer exists, there won't be a name.
                       (parent-collection-valid? model_object)
                       (ellide-archived model_object))]
@@ -320,7 +320,7 @@
      :description (:description dataset)
      :model :dataset
      :result_metadata (:result_metadata dataset)
-     :can_write (mi/can-write? dataset)
+     :can_write (mi/can-write? (t2/hydrate dataset :can_write))
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (:moderated-status dataset)
@@ -328,7 +328,7 @@
 
 (defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
   (when-let [metric (and
-                     (mi/can-read? model_object)
+                     (mi/can-read? (t2/hydrate model_object :can_read))
                      (parent-collection-valid? model_object)
                      (ellide-archived model_object))]
     {:id model_id
@@ -337,7 +337,7 @@
      :display (some-> metric :display name)
      :model :metric
      :result_metadata (:result_metadata metric)
-     :can_write (mi/can-write? metric)
+     :can_write (mi/can-write? (t2/hydrate metric :can_write))
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
      :parent_collection (fill-parent-coll metric)}))
@@ -352,14 +352,14 @@
     (activity-feed.db/dashboards-for-recent-views dashboard-ids)))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
-  (when-let [dashboard (and (mi/can-read? model_object)
+  (when-let [dashboard (and (mi/can-read? (t2/hydrate model_object :can_read))
                             (parent-collection-valid? model_object)
                             (ellide-archived model_object))]
     {:id model_id
      :name (:name dashboard)
      :description (:description dashboard)
      :model :dashboard
-     :can_write (mi/can-write? dashboard)
+     :can_write (mi/can-write? (t2/hydrate dashboard :can_write))
      :timestamp (str timestamp)
      :moderated_status (:moderated-status dashboard)
      :parent_collection (fill-parent-coll dashboard)}))
@@ -373,18 +373,18 @@
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
-      (->> (t2/hydrate collections :effective_parent)
+      (->> (t2/hydrate collections :effective_parent :can_read :can_write)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
-                         (mi/can-read? model_object)
+                         (mi/can-read? (t2/hydrate model_object :can_read))
                          (ellide-archived model_object))]
     {:id model_id
      :name (:name collection)
      :description (:description collection)
      :model :collection
-     :can_write (mi/can-write? collection)
+     :can_write (mi/can-write? (t2/hydrate collection :can_write))
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
      :collection_type (some-> (:type collection) name)
@@ -405,13 +405,13 @@
     (when (and (not= "hidden" (:visibility_type table))
                (:database-name table)
                (:active table)
-               (mi/can-read? table))
+               (mi/can-read? (t2/hydrate table :can_read)))
       {:id model_id
        :name (:name table)
        :description (:description table)
        :model :table
        :display_name (:display_name table)
-       :can_write (mi/can-write? table)
+       :can_write (mi/can-write? (t2/hydrate table :can_write))
        :timestamp (str timestamp)
        :table_schema (:schema table)
        :database {:id (:db_id table)
@@ -476,11 +476,12 @@
         tables (table-recents table-ids)]
     (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                     :table-ids (into #{} (keep :id) tables)})
-    {:card       (m/index-by :id (card-recents card-ids))
-     :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
-     :collection (m/index-by :id (collection-recents collection-ids))
-     :table      (m/index-by :id tables)
-     :document   (m/index-by :id (document-recents document-ids))}))
+    (update-vals {:card       (card-recents card-ids)
+                  :dashboard  (dashboard-recents dashboard-ids)
+                  :collection (collection-recents collection-ids)
+                  :table      tables
+                  :document   (document-recents document-ids)}
+                 #(m/index-by :id (t2/hydrate % :can_read :can_write)))))
 
 (def ^:private ItemValidator (mr/validator Item))
 

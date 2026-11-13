@@ -14,18 +14,14 @@
 (defenterprise can-read?
   "Can the current User read this `snippet`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
-  ([_]
-   (has-any-native-permissions?))
-  ([_ _]
-   (has-any-native-permissions?)))
+  [_snippet]
+  (has-any-native-permissions?))
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
-  ([_]
-   (has-any-native-permissions?))
-  ([_ _]
-   (has-any-native-permissions?)))
+  [_snippet]
+  (has-any-native-permissions?))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"

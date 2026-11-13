@@ -50,6 +50,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
@@ -1886,11 +1887,9 @@
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
 
-(defmethod mi/can-read? ::dispatches-on-dynamic
-  ([fake-model]
-   (contains? *readable-card-ids* (:id fake-model)))
-  ([_fake-model id]
-   (contains? *readable-card-ids* id)))
+(methodical/defmethod t2/simple-hydrate [::dispatches-on-dynamic :can_read]
+  [_model k fake-model]
+  (vary-meta fake-model assoc k (boolean (contains? *readable-card-ids* (:id fake-model)))))
 
 (defn- card-model
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
@@ -5252,13 +5251,11 @@
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Dashboard dash {}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
+    (mt/with-temp [:model/Dashboard dash {}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash)))))))))
 
 (deftest dashboard-field-params-field-names-test
   (mt/with-temp

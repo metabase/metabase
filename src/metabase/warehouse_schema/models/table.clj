@@ -315,63 +315,63 @@
   (u/prog1 table
     (set-new-table-permissions! table)))
 
-(defmethod mi/can-read? :model/Table
+(methodical/defmethod t2/simple-hydrate [:model/Table :can_read]
   ;; Check if user can see this table's metadata.
   ;; True if user has:
   ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
   ;; - Metadata management permission (manage-table-metadata :yes), OR
-  ([instance]
-   (or
-    ;; Has data access permissions
-    (and (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/view-data
-          :unrestricted
-          (:db_id instance)
-          (:id instance))
-         (or
-          (perms/user-has-permission-for-table?
-           api/*current-user-id*
-           :perms/create-queries
-           :query-builder
-           (:db_id instance)
-           (:id instance))
-          ;; Can access via published collection (EE feature)
-          (perms/can-access-via-collection? instance)))
-    ;; Has manage-table-metadata permission (allows viewing metadata without data access)
-    (perms/user-has-permission-for-table?
-     api/*current-user-id*
-     :perms/manage-table-metadata
-     :yes
-     (:db_id instance)
-     (:id instance))))
-  ([_ pk]
-   (mi/can-read? (warehouse-schema.db/table pk))))
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (or
+               ;; Has data access permissions
+               (and (perms/user-has-permission-for-table?
+                     api/*current-user-id*
+                     :perms/view-data
+                     :unrestricted
+                     (:db_id instance)
+                     (:id instance))
+                    (or
+                     (perms/user-has-permission-for-table?
+                      api/*current-user-id*
+                      :perms/create-queries
+                      :query-builder
+                      (:db_id instance)
+                      (:id instance))
+                     ;; Can access via published collection (EE feature)
+                     (perms/can-access-via-collection? instance)))
+               ;; Has manage-table-metadata permission (allows viewing metadata without data access)
+               (perms/user-has-permission-for-table?
+                api/*current-user-id*
+                :perms/manage-table-metadata
+                :yes
+                (:db_id instance)
+                (:id instance))))))
 
-(defmethod mi/can-query? :model/Table
+(methodical/defmethod t2/simple-hydrate [:model/Table :can_query]
   ;; Check if user can execute queries against this table.
   ;; True if user has:
   ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
-  ([instance]
-   (boolean
-    ;; Has both view-data and create-queries permissions
-    (and (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/view-data
-          :unrestricted
-          (:db_id instance)
-          (:id instance))
-         (or
-          (perms/user-has-permission-for-table?
-           api/*current-user-id*
-           :perms/create-queries
-           :query-builder
-           (:db_id instance)
-           (:id instance))
-          ;; Can access via published collection (EE feature)
-          (perms/can-access-via-collection? instance)))))
-  ([_ pk]
-   (mi/can-query? (warehouse-schema.db/table pk))))
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (boolean
+           ;; Has both view-data and create-queries permissions
+           (and (perms/user-has-permission-for-table?
+                 api/*current-user-id*
+                 :perms/view-data
+                 :unrestricted
+                 (:db_id instance)
+                 (:id instance))
+                (or
+                 (perms/user-has-permission-for-table?
+                  api/*current-user-id*
+                  :perms/create-queries
+                  :query-builder
+                  (:db_id instance)
+                  (:id instance))
+                 ;; Can access via published collection (EE feature)
+                 (perms/can-access-via-collection? instance)))))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
@@ -381,18 +381,10 @@
   (and (remote-sync/can-write? :model/TableUserSettings (:id instance))
        (mi/superuser?)))
 
-(defmethod mi/can-write? :model/Table
-  ;; Check if user can modify this table's metadata.
-  ;; Requires the manage-table-metadata permission
-  ([instance]
-   (current-user-can-write-table? instance))
-  ([_ pk]
-   (mi/can-write? (warehouse-schema.db/table pk))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
   "Batched hydration for :can_write on tables."
   [_model k tables]
-  (mi/instances-with-hydrated-data tables k #(u/index-by :id mi/can-write? tables) :id {:default false}))
+  (mi/instances-with-hydrated-data tables k #(u/index-by :id (comp boolean current-user-can-write-table?) tables) :id {:default false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.
@@ -518,6 +510,7 @@
     (fn [table-ids]
       (->> (binding [card-schema/*skip-dimension-backfill?* true]
              (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
+           (#(t2/hydrate % :can_read))
            (filter mi/can-read?)))
     tables))
 

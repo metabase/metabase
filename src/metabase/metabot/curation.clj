@@ -21,7 +21,8 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -229,9 +230,13 @@
   uncurated metric is judged by its definition only when they may: otherwise the verdict would tell them whether a
   Table they cannot see is curated, so the metric fails closed instead."
   [definition]
-  (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])]
-    (and (every? #(mi/can-query? :model/Table %) table)
-         (every? #(mi/can-read? :model/Card %) card))))
+  (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])
+        tables               (t2/hydrate (metabot.db/tables-with-ids (vec table)) :can_query)
+        cards                (t2/hydrate (metabot.db/cards-with-ids (vec card)) :can_read)]
+    (and (= (count tables) (count table))
+         (every? mi/can-query? tables)
+         (= (count cards) (count card))
+         (every? mi/can-read? cards))))
 
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when unusable), may be used: it's curated,
@@ -443,7 +448,7 @@
               ("card" "metric") (metabot.db/card id)
               "dashboard"       (metabot.db/dashboard id)
               nil)]
-    (when (some-> row mi/can-read?)
+    (when (some-> row (t2/hydrate :can_read) mi/can-read?)
       (check-curated-subject! label subject))))
 
 (defn- without-native-refs

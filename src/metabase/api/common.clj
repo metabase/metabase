@@ -92,7 +92,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (declare check-403 check-404)
 
@@ -337,9 +338,11 @@
   [500 (deferred-tru "Internal server error.")])
 
 (defn check-500
-  "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-500))
+  "Throw a `500`, with `msg` when given, if `arg` is `false` or `nil`, otherwise return as-is."
+  ([arg]
+   (check arg generic-500))
+  ([arg msg]
+   (check arg [500 msg])))
 
 ;;; TODO -- why does this live here but other 'generic' responses live in [[metabase.request.util]]. We should move this
 ;;; so it lives with its friends
@@ -375,12 +378,12 @@
 
 (defn read-check
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
-  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
-  `obj` if the check is successful."
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, hydrates its
+  `:can_read`, and returns `obj` if the check is successful."
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-read? obj))
+     (check-403 (mi/can-read? (t2/hydrate obj :can_read)))
      (catch clojure.lang.ExceptionInfo e
        (log/errorf "Read permissions failure: %s" (ex-message e))
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
@@ -397,12 +400,12 @@
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
-  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
-  `obj` if the check is successful."
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, hydrates its
+  `:can_write`, and returns `obj` if the check is successful."
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-write? obj))
+     (check-403 (mi/can-write? (t2/hydrate obj :can_write)))
      (catch clojure.lang.ExceptionInfo e
        (events/publish-event! :event/write-permission-failure {:user-id *current-user-id*
                                                                :object obj})
@@ -421,7 +424,7 @@
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-query? obj))
+     (check-403 (mi/can-query? (t2/hydrate obj :can_query)))
      (catch clojure.lang.ExceptionInfo e
        (events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
                                                               :object  obj})

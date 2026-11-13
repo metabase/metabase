@@ -329,7 +329,7 @@
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
         dash     (users-rest.db/dashboard id)
-        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
+        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? (t2/hydrate dash :can_read)))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 

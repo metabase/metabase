@@ -184,10 +184,10 @@
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :crowberto
         (mt/with-premium-features #{:advanced-permissions}
-          (is (true? (mi/can-write? segment))))
+          (is (true? (mi/can-write? (t2/hydrate segment :can_write)))))
         (testing "including without the advanced-permissions feature"
           (mt/with-premium-features #{}
-            (is (true? (mi/can-write? segment)))))))))
+            (is (true? (mi/can-write? (t2/hydrate segment :can_write))))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write segments"
@@ -203,10 +203,10 @@
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
-             (is (mi/can-write? segment))))
+             (is (mi/can-write? (t2/hydrate segment :can_write)))))
           (testing "but not once the advanced-permissions feature is gone"
             (mt/with-premium-features #{}
-              (is (not (mi/can-write? segment))))))))))
+              (is (not (mi/can-write? (t2/hydrate segment :can_write)))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write segments"
@@ -217,7 +217,7 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
         (session/with-current-user analyst-id
-          (is (false? (mi/can-write? segment))))))))
+          (is (false? (mi/can-write? (t2/hydrate segment :can_write)))))))))
 
 (deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write segments"
@@ -226,7 +226,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? segment)))))))
+        (is (false? (mi/can-write? (t2/hydrate segment :can_write))))))))
 
 (deftest can-create?-superuser-test
   (testing "Superusers can create segments"

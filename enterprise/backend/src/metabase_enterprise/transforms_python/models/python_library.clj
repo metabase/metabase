@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -37,17 +36,13 @@
     (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
     (:path library)                          (update :path normalize-path)))
 
-(defmethod mi/can-read? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (perms/has-any-transforms-permission? api/*current-user-id*))))
 
-(defmethod mi/can-write? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (perms/has-any-transforms-permission? api/*current-user-id*))))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."

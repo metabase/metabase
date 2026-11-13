@@ -54,4 +54,4 @@
                     (is (= (and (contains? features :library)
                                 collection-readable?
                                 table-is-published?)
-                           (mi/can-read? :model/Database (mt/id))))))))))))))
+                           (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read))))))))))))))

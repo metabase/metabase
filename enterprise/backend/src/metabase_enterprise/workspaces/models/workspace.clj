@@ -20,17 +20,17 @@
 ;;;
 ;;; Workspaces are superuser-only: read, write, and create all require admin.
 
-(defmethod mi/can-read? :model/Workspace
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/Workspace :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/Workspace
   [_model _instance]
   api/*is-superuser?*)
 
-(defmethod mi/can-write? :model/Workspace
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/Workspace :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Workspace :databases]
   [_model k workspaces]

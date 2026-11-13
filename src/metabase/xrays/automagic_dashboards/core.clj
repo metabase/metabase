@@ -401,9 +401,12 @@
   (let [fields (field/with-targets
                  (xrays.db/active-fk-fields-for-table (u/the-id table)))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
-    (for [{:keys [id target]} fields
-          :when (some-> target mi/can-read?)]
-      (-> target field/table (assoc :link id)))))
+    (let [readable (into #{}
+                         (comp (filter mi/can-read?) (map :id))
+                         (t2/hydrate (into [] (keep :target) fields) :can_read))]
+      (for [{:keys [id target]} fields
+            :when (contains? readable (:id target))]
+        (-> target field/table (assoc :link id))))))
 
 (defn- source->db [source]
   (let [db-id (or ((some-fn :db_id :database_id) source)
@@ -545,6 +548,7 @@
     (->> available-dimensions
          vals
          (mapcat :matches)
+         (#(t2/hydrate % :can_read))
          (filter mi/can-read?)
          filters/interesting-fields
          (map ->related-entity)
@@ -941,6 +945,7 @@
      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                      :table-ids (into #{} (map :id) tables)})
      (->> tables
+          (#(t2/hydrate % :can_read))
           (filter mi/can-read?)
           (map (fn [table]
                  (let [root      (->root table)

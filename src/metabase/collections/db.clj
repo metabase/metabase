@@ -102,7 +102,7 @@
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id]
-  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+  (t2/select-one [:model/Collection :location :id :type :namespace :is_remote_synced] :id collection-id))
 
 (mu/defn root-collection-type-by-id
   "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."

@@ -1010,11 +1010,12 @@
         slow-t2-instances (vec
                            (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
                                  :let [modelable (get read-check-selects t2-model t2-model)]
-                                 t2-instance (semantic-search.db/instances modelable ids)]
+                                 t2-instance (t2/hydrate (semantic-search.db/instances modelable ids) :can_read)]
                              t2-instance))
-        doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
-                      (juxt :id doc->t2-model))
-        slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
+        slow-readable (into #{}
+                            (comp (filter mi/can-read?) (map (juxt :id t2/model)))
+                            slow-t2-instances)
+        slow-filtered (filterv #(contains? slow-readable [(:id %) (doc->t2-model %)]) slow-docs)
         result (into fast-filtered slow-filtered)
         time-ms (u/since-ms timer)]
     (log/debug "Permission filtering" {:before-count (count docs)

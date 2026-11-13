@@ -59,7 +59,7 @@
 (defn- permissions-response
   "The policy of every group, defaults filled in for groups without a row, with the tool catalog and the mode."
   []
-  (let [by-group (u/index-by :group_id (filter mi/can-read? (mcp.db/all-group-permissions)))
+  (let [by-group (u/index-by :group_id (filter mi/can-read? (t2/hydrate (mcp.db/all-group-permissions) :can_read)))
         renamed  (mcp.v2.api/renamed-tool-names)]
     {:advanced    (mcp.db/advanced-mode?)
      :tools       (mcp.v2.api/tool-catalog)

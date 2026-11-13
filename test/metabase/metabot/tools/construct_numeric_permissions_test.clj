@@ -399,7 +399,7 @@
                 "implementation (OSS `can-access-via-collection?` is a constant `false`).")
     (mt/with-premium-features #{}
       (let [seen (atom nil)]
-        (with-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
           (metabot.db/readable-active-table-database-id (mt/id :venues)))
         (is (some? @seen) "can-read? should have been called")
         (doseq [k [:id :db_id :is_published :collection_id]]

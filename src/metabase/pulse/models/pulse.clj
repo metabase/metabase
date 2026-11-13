@@ -164,23 +164,27 @@
     (boolean
      (some #{api/*current-user-id*} recipient-ids))))
 
-(defmethod mi/can-read? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :read notification)
-    (or api/*is-superuser?*
-        (current-user-is-creator? notification)
-        (current-user-is-recipient? notification))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_read]
+  [_model k notification]
+  (vary-meta notification assoc k
+             (boolean
+              (if (is-alert? notification)
+                (mi/current-user-has-full-permissions? :read notification)
+                (or api/*is-superuser?*
+                    (current-user-is-creator? notification)
+                    (current-user-is-recipient? notification))))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
-(defmethod mi/can-write? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :write notification)
-    (or api/*is-superuser?*
-        (and (mi/current-user-has-full-permissions? :read notification)
-             (current-user-is-creator? notification)))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_write]
+  [_model k notification]
+  (assoc notification k
+         (boolean
+          (if (is-alert? notification)
+            (mi/current-user-has-full-permissions? :write notification)
+            (or api/*is-superuser?*
+                (and (mi/current-user-has-full-permissions? :read notification)
+                     (current-user-is-creator? notification)))))))
 
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
@@ -194,16 +198,18 @@
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
   (and
    ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-   (every? #(and
-             (mi/can-read? :model/Card (u/the-id %))
-             (can-read-attachments? %)) cards)
+   (let [card-ids (into [] (comp (map u/the-id) (distinct)) cards)
+         readable (t2/hydrate (pulse.db/cards card-ids) :can_read)]
+     (and (= (count readable) (count card-ids))
+          (every? mi/can-read? readable)
+          (every? can-read-attachments? cards)))
    ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
    (cond
-     (some? collection-id) (mi/can-write? :model/Collection collection-id)
+     (some? collection-id) (some-> (pulse.db/collection collection-id) (t2/hydrate :can_write) mi/can-write?)
      (some? dashboard-id)  true
-     :else                 (mi/can-write? collection/root-collection))
+     :else                 (mi/can-write? (t2/hydrate collection/root-collection :can_write)))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
-   (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
+   (or (nil? dashboard-id) (some-> (pulse.db/dashboard dashboard-id) (t2/hydrate :can_read) mi/can-read?))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 

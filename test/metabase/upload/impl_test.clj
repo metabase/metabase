@@ -359,7 +359,7 @@
                           (sql.tx/session-schema driver/*driver*))
             group-id    (u/the-id (perms-group/all-users))
             grant?      (and db
-                             (not (mi/can-read? db))
+                             (not (mi/can-read? (t2/hydrate db :can_read)))
                              grant-permission?)]
         (mt/with-restored-data-perms-for-group! group-id
           (when grant?

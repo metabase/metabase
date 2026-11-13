@@ -102,25 +102,25 @@
           card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
       (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-write? dashboard)))
-          (is (true? (mi/can-write? card)))
-          (is (true? (mi/can-write? collection))))))
+          (is (true? (mi/can-write? (t2/hydrate dashboard :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate card :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate collection :can_write)))))))
     (let [sample-db       (t2/select-one :model/Database :is_sample true)
           sample-db-table (t2/select-one :model/Table :db_id (:id sample-db))
           sample-db-field (t2/select-one :model/Field :table_id (:id sample-db-table))]
       (testing "Rasta (as a member of 'All Users') should have read but not write privileges to the sample database"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-read? sample-db)))
-          (is (true? (mi/can-read? sample-db-table)))
-          (is (true? (mi/can-read? sample-db-field)))
-          (is (false? (mi/can-write? sample-db)))
-          (is (false? (mi/can-write? sample-db-table)))
-          (is (false? (mi/can-write? sample-db-field)))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db :can_read))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db-table :can_read))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db-field :can_read))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db :can_write))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db-table :can_write))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db-field :can_write))))))
       (testing "Crowberto (as an admin member of 'All Users') should have write privileges to the sample database"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (true? (mi/can-write? sample-db)))
-          (is (true? (mi/can-write? sample-db-table)))
-          (is (true? (mi/can-write? sample-db-field))))))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db-table :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db-field :can_write)))))))))
 
 (deftest encryption-test
   (mt/test-drivers #{:h2 :mysql :postgres}

@@ -403,7 +403,7 @@
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
               (update-keys u/->snake_case_en)
-              (vary-meta assoc :type :model/Card))
+              (->> (t2/instance :model/Card)))
       ;; In the case of SQL actions, the query being executed might not act on the same database as that
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
@@ -476,7 +476,7 @@
   (qp.store/with-metadata-provider database-id
     (let [card (card database-id card-id)]
       (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-      (when-not (mi/can-read? card)
+      (when-not (mi/can-read? (t2/hydrate card :can_read))
         (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
                                 (mi/perms-objects-set card :read)
                                 {:card-id card-id}))))))

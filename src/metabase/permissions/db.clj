@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -679,6 +680,133 @@
                [[:inline 1] :writable]
                [[:inline 1] :readable]]
       :from   [[:eligible_collections :c]]}]}))
+
+;;; ------------------------------------------- Collection permissions -------------------------------------------
+
+(mr/def ::collection-user
+  "What the Collection clauses read about the user they answer for: a nil `:user-id` in a superuser context without a
+  user, such as `request/as-admin`, the Collections of their tenant, and whether the instance uses tenants."
+  [:map {:closed true}
+   [:user-id               [:maybe ::lib.schema.id/user]]
+   [:is-superuser?         :boolean]
+   [:is-data-analyst?      :boolean]
+   [:tenant-collection-ids [:sequential ms/PositiveInt]]
+   [:use-tenants?          :boolean]])
+
+(def ^:private every-row-clause
+  "The clause holding for every row."
+  [:= [:inline 1] [:inline 1]])
+
+(defn- user-groups-query
+  "The ids of the groups of the user with `user-id`."
+  [user-id]
+  ^:allow-subquery {:select [:group_id]
+                    :from   [(t2/table-name :model/PermissionsGroupMembership)]
+                    :where  [:= :user_id user-id]})
+
+(defn- collection-rows-clause
+  "Whether a group of the user with `user-id` holds a permission row of the Collection aliased `perms_collection` for
+  `permission-level`: a `read-and-write` one for write, and also a `read` one for read, looked up by the Collection id
+  the row carries."
+  [user-id permission-level]
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[(t2/table-name :model/Permissions) :perms_row]]
+                             :where  [:and
+                                      [:= :perms_row.collection_id :perms_collection.id]
+                                      [:= :perms_row.perm_type (h2x/literal :perms/collection-access)]
+                                      [:in :perms_row.perm_value (cond-> [(h2x/literal :read-and-write)]
+                                                                   (= permission-level :read) (conj (h2x/literal :read)))]
+                                      [:in :perms_row.group_id (user-groups-query user-id)]]}])
+
+(defn- own-collection-clause
+  "Whether `user` writes the Collection aliased `perms_collection` whatever their groups hold: their personal Collection
+  and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
+  [{:keys [user-id tenant-collection-ids] :as user}]
+  (when user-id
+    [:or
+     [:= :perms_collection.personal_owner_id user-id]
+     [:exists ^:allow-subquery {:select [1]
+                                :from   [[(t2/table-name :model/Collection) :perms_personal]]
+                                :where  [:and
+                                         [:= :perms_personal.personal_owner_id user-id]
+                                         [:like :perms_collection.location [:concat "/" :perms_personal.id "/%"]]]}]
+     (when (seq tenant-collection-ids)
+       [:in :perms_collection.id tenant-collection-ids])
+     (when (:is-data-analyst? user)
+       [:= :perms_collection.namespace "transforms"])]))
+
+(defn- collection-level-clause
+  "A HoneySQL clause holding when `user` has `permission-level` on the Collection aliased `perms_collection`."
+  [{:keys [user-id is-superuser?] :as user} permission-level]
+  (if is-superuser?
+    every-row-clause
+    [:or
+     (own-collection-clause user)
+     (collection-rows-clause user-id permission-level)]))
+
+(defn- collection-rank-case
+  "A HoneySQL CASE giving, for the Collection aliased `perms_collection`, 2 when `user` writes it, 1 when they only read
+  it, and 0 otherwise."
+  [user]
+  [:case
+   (collection-level-clause user :write) [:inline 2]
+   (collection-level-clause user :read)  [:inline 1]
+   :else                                 [:inline 0]])
+
+(defn- listed-collection-clause
+  "Whether the Collection aliased `perms_collection` is listed: not archived, not the trash, and not a shared tenant
+  Collection on an instance without tenants."
+  [{:keys [use-tenants?]}]
+  [:and
+   [:= :perms_collection.archived false]
+   [:or [:= :perms_collection.type nil] [:not= :perms_collection.type "trash"]]
+   (when-not use-tenants?
+     [:or [:= :perms_collection.namespace nil] [:not= :perms_collection.namespace "shared-tenant-collection"]])])
+
+(mu/defn collection-ranks :- [:sequential [:map [:id ms/PositiveInt] [:rank :int]]]
+  "For each of the Collections with `collection-ids`, 2 when `user` writes it, 1 when they only read it, and 0
+  otherwise."
+  [user           :- ::collection-user
+   collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/query {:select [:perms_collection.id [(collection-rank-case user) :rank]]
+             :from   [[(t2/table-name :model/Collection) :perms_collection]]
+             :where  [:in :perms_collection.id collection-ids]}))
+
+(mu/defn some-collection-rank :- :int
+  "2 when `user` writes a listed Collection, 1 when they only read one, and 0 otherwise, stopping at the first match."
+  [user :- ::collection-user]
+  (let [some-collection (fn [permission-level]
+                          [:exists ^:allow-subquery
+                           {:select [1]
+                            :from   [[(t2/table-name :model/Collection) :perms_collection]]
+                            :where  [:and
+                                     (collection-level-clause user permission-level)
+                                     (listed-collection-clause user)]}])]
+    (:rank (t2/query-one {:select [[[:case
+                                     (some-collection :write) [:inline 2]
+                                     (some-collection :read)  [:inline 1]
+                                     :else                    [:inline 0]]
+                                    :rank]]}))))
+
+(mu/defn root-collection-rank :- :int
+  "2 when a group of the user with `user-id` holds the permission row `write-object` of a root Collection, 1 when one
+  holds its `read-object`, and 0 otherwise."
+  [user-id      :- ::lib.schema.id/user
+   write-object :- :string
+   read-object  :- :string]
+  (let [objects (into #{}
+                      (map :object)
+                      (t2/query {:select [:p.object]
+                                 :from   [[(t2/table-name :model/Permissions) :p]]
+                                 :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                          [:= :pgm.group_id :p.group_id]]
+                                 :where  [:and
+                                          [:= :pgm.user_id user-id]
+                                          [:in :p.object [write-object read-object]]]}))]
+    (cond
+      (contains? objects write-object) 2
+      (contains? objects read-object)  1
+      :else                            0)))
 
 ;;; ------------------------------------------------- Users -------------------------------------------------
 

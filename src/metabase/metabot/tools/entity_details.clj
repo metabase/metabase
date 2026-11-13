@@ -154,7 +154,7 @@
   (let [dashcards (metabot.db/dashcards dashboard-id)
         card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
         readable  (if (seq card-ids)
-                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/cards-for-read-check card-ids))
+                    (into #{} (map :id) (filterv mi/can-read? (t2/hydrate (metabot.db/cards-for-read-check card-ids) :can_read)))
                     #{})
         visible   (if (shared/curated-only?)
                     (into #{} (map second) (curation/curated-ids (for [id readable] ["card" id])))
@@ -421,7 +421,7 @@
          source-table-id (when (= :table (:kind required)) (:table-id required))
          source-card-id (when (= :card (:kind required)) (:card-id required))
          source-table (when (and source-table-id
-                                 (mi/can-query? :model/Table source-table-id))
+                                 (some-> (metabot.db/table source-table-id) (t2/hydrate :can_query) mi/can-query?))
                         (lib.metadata/table metadata-provider source-table-id))
          source-card (when (and source-card-id
                                 ;; Reading the metric is collection-based and does not imply permission to read

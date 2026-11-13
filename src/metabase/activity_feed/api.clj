@@ -136,7 +136,7 @@
     (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
-      (if (mi/can-read? dashboard)
+      (if (mi/can-read? (t2/hydrate dashboard :can_read))
         dashboard
         api/generic-204-no-content))
     api/generic-204-no-content))
@@ -205,7 +205,7 @@
                                :let [model-object (-> (get-in model->id->items [model model_id])
                                                       (dissoc :dataset_query))]
                                :when (and model-object
-                                          (mi/can-read? model-object)
+                                          (mi/can-read? (t2/hydrate model-object :can_read))
                                           ;; hidden tables, archived cards/dashboards
                                           (not (or (:archived model-object)
                                                    (= (:visibility_type model-object) :hidden))))

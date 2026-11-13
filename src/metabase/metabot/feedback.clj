@@ -3,7 +3,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.metabot.db :as metabot.db]
-   [metabase.models.interface :as mi]))
+   [metabase.models.interface :as mi]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,7 +18,7 @@
         _            (api/check-404 message)
         conversation (metabot.db/conversation-id-and-user-id (:conversation_id message))
         _            (api/check-404 conversation)
-        _            (api/check-404 (mi/can-read? conversation))]
+        _            (api/check-404 (mi/can-read? (t2/hydrate conversation :can_read)))]
     (assoc message :conversation conversation)))
 
 (defn- upsert-feedback!

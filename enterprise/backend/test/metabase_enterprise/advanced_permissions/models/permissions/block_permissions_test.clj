@@ -268,15 +268,15 @@
               (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
                 (testing "Should not be able to run the parent Card"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? disallowed-collection)))
-                    (is (not (mi/can-read? parent-card))))
+                    (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read)))))
                   (is (= "You don't have permissions to do that."
                          (process-query-for-card parent-card))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? parent-card)))
-                    (is (mi/can-read? allowed-collection))
-                    (is (mi/can-read? child-card)))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                    (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (rasta-view-data-perm= :blocked)
                   (testing "Data perms prohibit running queries"
                     (is (thrown-with-msg?
@@ -320,16 +320,16 @@
               (mt/with-test-user :rasta
                 (rasta-view-data-perm= :blocked)
                 (testing "Should not be able to run the parent Card due to Block permissions"
-                  (is (mi/can-read? parent-card))
+                  (is (mi/can-read? (t2/hydrate parent-card :can_read)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
                        (mt/rows (process-query-for-card child-card)))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
@@ -366,9 +366,9 @@
                 (rasta-view-data-perm= :blocked)
                 (testing "Should STILL not be able to do it even without token"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"

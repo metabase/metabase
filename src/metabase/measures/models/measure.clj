@@ -61,31 +61,30 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Measure :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (let [table (or (:table instance)
+                              (measures.db/table (:table_id instance)))]
+                (mi/can-read? (t2/hydrate table :can_read))))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
-(defmethod mi/can-write? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
-  ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
+(defn- measure-writable?
+  "Whether the current user can write `instance`, a Measure with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (measures.db/table (:table_id instance)))]
+    (and (or api/*is-superuser?*
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
+         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 ;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
@@ -108,7 +107,7 @@
   [_model k measures]
   (mi/instances-with-hydrated-data
    measures k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? measures) :table))
+   #(u/index-by :id (comp boolean measure-writable?) (t2/hydrate (remove nil? measures) :table))
    :id
    {:default false}))
 

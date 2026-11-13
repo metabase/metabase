@@ -67,7 +67,7 @@
                                        (when (= (keyword filter-option) :mine)
                                          api/*current-user-id*)) <>
     (t2/hydrate <> :creator)
-    (filter mi/can-read? <>)))
+    (filterv mi/can-read? (t2/hydrate <> :can_read))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -98,11 +98,14 @@
   [dashboard]
   (m/update-existing dashboard :dashcards
                      (fn [dashcards]
-                       (mapv (fn [dashcard]
-                               (cond-> dashcard
-                                 (and (:action dashcard) (not (mi/can-read? (:action dashcard))))
-                                 (dissoc :action)))
-                             dashcards))))
+                       (let [readable (into #{}
+                                            (comp (filter mi/can-read?) (map :id))
+                                            (t2/hydrate (keep :action dashcards) :can_read))]
+                         (mapv (fn [dashcard]
+                                 (cond-> dashcard
+                                   (and (:action dashcard) (not (contains? readable (:id (:action dashcard)))))
+                                   (dissoc :action)))
+                               dashcards)))))
 
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
@@ -210,7 +213,7 @@
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
   (when card
-    (if (mi/can-read? card)
+    (if (mi/can-read? (t2/hydrate card :can_read))
       card
       (select-keys card [:id]))))
 
@@ -441,7 +444,7 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        readable? (fn [card] (and (mi/model card) (mi/can-read? (t2/hydrate card :can_read))))
         card->decision (fn [parent-card card]
                          (cond
                            (or

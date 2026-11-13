@@ -62,7 +62,7 @@
   ;; A compiled dry run leaves a card as nil or a bare `{:id}` when it has no row for it, as for a card the user
   ;; cannot read that the dashboard references only as a parameter's values source. A bare map is not a model
   ;; instance, so `mi/can-read?` would throw on it.
-  (and (t2/instance-of? :model/Card card) (mi/can-read? card)))
+  (and (t2/instance-of? :model/Card card) (mi/can-read? (t2/hydrate card :can_read))))
 
 (defn- redact-hidden-series
   "The dashcard with the series cards the current user cannot read reduced to their ids.

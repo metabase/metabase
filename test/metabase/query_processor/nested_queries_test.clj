@@ -795,7 +795,7 @@
                   (mt/with-test-user :rasta
                     (testing object-name
                       (is (= false
-                             (mi/can-read? object)))))))
+                             (mi/can-read? (t2/hydrate object :can_read))))))))
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
@@ -804,7 +804,7 @@
                                                 "Card 2"     card-2}]
                     (testing object-name
                       (is (true?
-                           (mi/can-read? object)))))
+                           (mi/can-read? (t2/hydrate object :can_read))))))
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                             [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]

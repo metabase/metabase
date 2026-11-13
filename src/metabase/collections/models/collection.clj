@@ -329,31 +329,138 @@
 
 (doto :model/Collection
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
   (when-not (audit/analytics-dev-mode)
     (= id (:id (audit/default-audit-collection)))))
 
-(defmethod mi/can-write? :model/Collection
-  ([instance]
-   (and (not (default-audit-collection? instance))
-        (not (is-trash-or-descendant? instance))
-        (mi/current-user-has-full-permissions? :write instance)
-        (remote-sync/can-write? :model/Collection (:id instance))))
-  ([_model pk]
-   (mi/can-write? (collections.db/collection pk))))
+(defn- check-can-read-keys
+  "Throws unless `collection` has the columns its `:can_read` hydration reads."
+  [collection]
+  (api/check-500 (some? (:id collection)) "No :id is set for a Collection.")
+  (api/check-500 (contains? collection :type) "No :type is set for a Collection.")
+  (api/check-500 (contains? collection :namespace) "No :namespace is set for a Collection."))
 
-(mu/defmethod mi/can-read? :model/Collection
-  ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection (t2/instance :model/Collection (select-keys instance [:id :namespace])))))
-  ([_model pk :- pos-int?]
-   (or (is-trash? pk)
-       (mi/can-read? (collections.db/collection pk)))))
+(defn- check-can-write-keys
+  "Throws unless `collection` has the columns its `:can_write` hydration reads."
+  [collection]
+  (check-can-read-keys collection)
+  (api/check-500 (contains? collection :location) "No :location is set for a Collection.")
+  (api/check-500 (contains? collection :is_remote_synced) "No :is_remote_synced is set for a Collection."))
+
+(def ^:private remote-synced-namespaces
+  "The namespaces whose Collections remote sync always syncs, whatever their `is_remote_synced`."
+  #{data-apps-ns transforms-ns snippets-ns data-actions-ns})
+
+(defmethod remote-sync/spec :model/Collection
+  [_model]
+  {:synced-items         collections.db/synced-collection-items
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+
+(defn- remote-sync-writable?
+  "Whether remote sync leaves `collection` writable: any Collection unless the instance is read-only, and then one
+  that isn't synced, which one of an always-synced namespace and one flagged `is_remote_synced`, as every
+  Collection under a synced top-level one is, are."
+  [{collection-namespace :namespace, :keys [is_remote_synced]}]
+  (not (and (remote-sync/read-only?)
+            (or (contains? remote-synced-namespaces (some-> collection-namespace keyword))
+                (boolean is_remote_synced)))))
+
+(defn- audit-collection-hidden?
+  "Whether the Collection with `collection-id` is the audit Collection while the audit app is off, which hides it."
+  [collection-id]
+  (and (not (premium-features/enable-audit-app?))
+       (audit/is-collection-id-audit? collection-id)))
+
+(defn- current-user-info
+  "The `::permissions.schema/collection-user-info` of the current user."
+  []
+  {:user-id          api/*current-user-id*
+   :is-superuser?    (boolean api/*is-superuser?*)
+   :is-data-analyst? (boolean api/*is-data-analyst?*)})
+
+(defn- collection-permissions
+  "The current user's permission on each of `collections`, by id."
+  [collections]
+  (perms/collection-permissions-for-user (current-user-info) (mapv :id collections) {:root-namespace nil}))
+
+(defn- root-collection-permission-at-least?
+  "Whether the current user has `permission` or more on `root`, a root Collection, which is open to everyone in the
+  snippets namespace while EE snippet Collections are off."
+  [root permission]
+  (or (collection.root/unrestricted-snippets? root)
+      (perms/collection-permission-at-least?
+       (get (perms/collection-permissions-for-user (current-user-info) [nil] {:root-namespace (:namespace root)}) nil)
+       permission)))
+
+(defn- hydrate-can-read
+  "Keeps in the metadata of each of `collections`, under `:can_read`, whether the current user reads it: the trash,
+  and otherwise a Collection that is not the hidden audit Collection, on which they have read permission or which is
+  open to everyone. A root Collection among them answers for itself."
+  [collections]
+  (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
+        _           (run! check-can-read-keys rows)
+        permissions (collection-permissions rows)]
+    (for [{:keys [id] :as collection} collections]
+      (cond
+        (nil? collection)
+        nil
+
+        (collection.root/is-root-collection? collection)
+        (vary-meta collection assoc :can_read (boolean (root-collection-permission-at-least? collection :read)))
+
+        :else
+        (vary-meta collection assoc :can_read
+                   (boolean
+                    (or (is-trash? collection)
+                        (and (not (audit-collection-hidden? id))
+                             (or (collection.root/unrestricted-snippets? collection)
+                                 (perms/collection-permission-at-least? (get permissions id) :read))))))))))
+
+(defn- hydrate-can-write
+  "Sets `:can_write` on each of `collections` to whether the current user writes it: not the
+  audit Collection, the trash or anything in it, with write permission or open to everyone, and not kept read-only by
+  remote sync. A root Collection among them answers for itself."
+  [collections]
+  (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
+        _           (run! check-can-write-keys rows)
+        permissions (collection-permissions rows)]
+    (for [{:keys [id] :as collection} collections]
+      (cond
+        (nil? collection)
+        nil
+
+        (collection.root/is-root-collection? collection)
+        (assoc collection :can_write (boolean (root-collection-permission-at-least? collection :read-and-write)))
+
+        :else
+        (assoc collection :can_write
+               (boolean
+                (and (not (default-audit-collection? collection))
+                     (not (is-trash-or-descendant? collection))
+                     (or (collection.root/unrestricted-snippets? collection)
+                         (perms/collection-permission-at-least? (get permissions id) :read-and-write))
+                     (remote-sync-writable? collection))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Collection :can_read]
+  [_model _k collections]
+  (hydrate-can-read collections))
+
+(methodical/defmethod t2/batched-hydrate [:model/Collection :can_write]
+  [_model _k collections]
+  (hydrate-can-write collections))
+
+(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
+  "Whether the current user reads `root`, a root Collection."
+  [_model k root]
+  (vary-meta root assoc k (boolean (root-collection-permission-at-least? root :read))))
+
+(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
+  "Whether the current user writes `root`, a root Collection."
+  [_model k root]
+  (assoc root k (boolean (root-collection-permission-at-least? root :read-and-write))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels, normalized from their names."
@@ -1159,20 +1266,22 @@
   [collection]
   (ancestors* collection))
 
-(mu/defn- effective-ancestors*
-  "Given a collection, return the effective ancestors of that collection."
-  [collection :- [:maybe CollectionWithLocationOrRoot]
-   collection-id->collection :- [:map-of :metabase.lib.schema.id/collection ::collections.schema/collection]]
+(defn- effective-ancestors*
+  "Given a collection, return the effective ancestors of that collection, from `collection-id->collection`, whose
+  Collections are hydrated with `:can_read` and `:can_write`, each ancestor keeping its `:can_write`."
+  [collection collection-id->collection]
   (if (or (nil? collection)
           (collection.root/is-root-collection? collection))
     []
     (some->> (effective-location-path collection)
              location-path->ids
-             (map collection-id->collection)
-             (map #(select-keys % [:name :id :personal_owner_id :type]))
-             (map #(t2/instance :model/Collection %))
-             (cons (root-collection-with-ui-details (:namespace collection)))
-             (filter mi/can-read?))))
+             (keep collection-id->collection)
+             (filter mi/can-read?)
+             (map #(t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type :can_write])))
+             (concat (let [root (t2/hydrate (root-collection-with-ui-details (:namespace collection)) :can_read :can_write)]
+                       (when (mi/can-read? root)
+                         [root])))
+             doall)))
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
@@ -1195,7 +1304,8 @@
   [collections]
   (let [all-ids (mapcat #(some-> % effective-location-path location-path->ids) collections)
         collection-id->collection (if (seq all-ids)
-                                    (collections.db/collections-by-id all-ids)
+                                    (u/index-by :id (t2/hydrate (vals (collections.db/collections-by-id all-ids))
+                                                                :can_read :can_write))
                                     {})]
     (map (fn [collection]
            (assoc collection
@@ -1558,7 +1668,7 @@
      (and (some? new-parent) (not (:archived new-parent))))
     (if (contains? updates :parent_id)
       (api/check-403
-       (and (mi/can-write? new-parent)
+       (and (mi/can-write? (t2/hydrate new-parent :can_write))
             (perms/set-has-full-permissions-for-set?
              @api/*current-user-permissions-set*
              (perms-for-unarchiving collection))))
@@ -2178,7 +2288,7 @@
                                                 perm-paths))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
+  (for [[{collection :collection} item] (map vector (t2/hydrate items [:collection :can_write]) items)]
     (assoc item :can_restore (boolean
                               (and
                                ;; the item is archived
@@ -2195,7 +2305,7 @@
                                ;; the collection we'll restore to is not archived
                                (not (:archived collection))
                                ;; we have perms on the collection
-                               (mi/can-write? (or collection root-collection)))))))
+                               (mi/can-write? (or collection (t2/hydrate root-collection :can_write))))))))
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
@@ -2212,13 +2322,18 @@
   "Efficiently hydrate the `:can_delete` of a sequence of items"
   [items]
   (when (seq items)
-    (for [item items]
-      (assoc item :can_delete (boolean (and
-                                        (not (collection.root/is-root-collection? item))
-                                        (or (not (= :model/Collection (t2/model item)))
-                                            api/*is-superuser?*)
-                                        (:archived item)
-                                        (mi/can-write? item)))))))
+    (let [can-write (into {}
+                          (mapcat (fn [[model items]]
+                                    (map (juxt (juxt (constantly model) :id) :can_write)
+                                         (t2/hydrate items :can_write))))
+                          (group-by t2/model (remove collection.root/is-root-collection? items)))]
+      (for [item items]
+        (assoc item :can_delete (boolean (and
+                                          (not (collection.root/is-root-collection? item))
+                                          (or (not (= :model/Collection (t2/model item)))
+                                              api/*is-superuser?*)
+                                          (:archived item)
+                                          (get can-write [(t2/model item) (:id item)]))))))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -2287,9 +2402,3 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
-
-(defmethod remote-sync/spec :model/Collection
-  [_model]
-  {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause
-                                  [data-apps-ns transforms-ns snippets-ns data-actions-ns])})

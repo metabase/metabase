@@ -21,7 +21,7 @@
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
   ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
-  (mi/can-read? field))
+  (mi/can-read? (t2/hydrate field :can_read)))
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.

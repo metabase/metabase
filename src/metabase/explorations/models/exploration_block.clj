@@ -85,19 +85,9 @@
   {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
-(defmethod mi/can-read? :model/ExplorationBlock
-  ([instance]
-   (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
-     (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
-
-(defmethod mi/can-write? :model/ExplorationBlock
-  ([instance]
-   (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
-     (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationBlock :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/thread-exploration-id-row (:exploration_thread_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationBlock :can_write]
   "Add whether the current user can write each ExplorationBlock, which is whether they can write its parent."

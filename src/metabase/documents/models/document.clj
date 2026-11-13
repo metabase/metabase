@@ -126,19 +126,19 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-read? (documents.db/document pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Document :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (and (mi/current-user-has-full-permissions? :read instance)
+                   (content-visible? instance)))))
 
-(defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-write? (documents.db/document pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Document :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (and (mi/current-user-has-full-permissions? :write instance)
+               (content-visible? instance)))))
 
 (def DocumentName
   "Validations for the name of a document"

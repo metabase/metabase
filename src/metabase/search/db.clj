@@ -424,3 +424,9 @@
           (map (juxt :id (comp result-metadata-out :result_metadata)))
           (when (seq card-ids)
             (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+
+(mu/defn collection-permission-rows
+  "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
+  don't carry."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))

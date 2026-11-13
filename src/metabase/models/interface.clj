@@ -659,61 +659,63 @@
   [_instance _read-or-write]
   nil)
 
-(defmulti can-read?
-  "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :read)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement [[perms-objects-set]] to use
-     this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-write?
-  "Return whether [[metabase.api.common/*current-user*]] has *write* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
-      this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-query?
-  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
-  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
-  metadata.
-
-  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
-  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
-
-  The default implementation falls back to [[can-read?]] for backward compatibility."
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmethod can-query? :default
-  ;; Default implementation: fall back to can-read? for backward compatibility
-  ([instance]
-   (can-read? instance))
-  ([model pk]
-   (can-read? model pk)))
-
-;; only reached through the :can_write hydration key, never called by name
-#_{:clj-kondo/ignore [:unused-private-var]}
-(define-simple-hydration-method ^:private hydrate-can-write
-  :can_write
-  "Hydration method for `:can_write`."
+(defn- model-name
+  "The name of the model of `instance`, for a message."
   [instance]
-  (can-write? instance))
+  (let [model (some-> instance t2/model)]
+    (cond
+      (class? model)   (.getSimpleName ^Class model)
+      (keyword? model) (name model)
+      :else            (str model))))
 
-(methodical/defmethod t2/simple-hydrate [:default :can_query]
-  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+(defn- hydrated-answer
+  "The `answer` hydration left under `k` for `instance`, throwing when there is none."
+  [instance k answer]
+  (when (nil? answer)
+    (throw (ex-info (format "No %s is hydrated on a %s." k (model-name instance))
+                    {:status-code 500})))
+  answer)
+
+(defn can-read?
+  "Whether the current user reads `instance`, as its `:can_read` hydration answered in its metadata."
+  [instance]
+  (hydrated-answer instance :can_read (:can_read (meta instance))))
+
+(defn can-write?
+  "Whether the current user writes `instance`, as its `:can_write` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_write (:can_write instance)))
+
+(defn can-query?
+  "Whether the current user runs queries against `instance`, as its `:can_query` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_query (:can_query instance)))
+
+(methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
+  "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
+  the row."
+  [_model _k instance]
+  (nil? (:can_read (meta instance))))
+
+(defn- no-check-hydration
+  "Throws for `instance`, whose model has no hydration of the check `k`."
+  [k instance]
+  (throw (ex-info (format "%s has no %s hydration." (model-name instance) k) {:status-code 500})))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_read]
+  "Throws: a model answers `:can_read` in a hydration of its own."
   [_model k instance]
-  (assoc instance k (can-query? instance)))
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_write]
+  "Throws: a model answers `:can_write` in a hydration of its own."
+  [_model k instance]
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_query]
+  "Sets `:can_query` on `instance` to its `:can_read`, for a model that answers both alike."
+  [_model k instance]
+  (assoc instance k (can-read? (t2/hydrate instance :can_read))))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -808,41 +810,29 @@
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
 
-(defmethod can-read? ::read-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
+(methodical/defmethod t2/simple-hydrate [::read-policy.always-allow :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean true)))
 
-(defmethod can-write? ::write-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
+(methodical/defmethod t2/simple-hydrate [::write-policy.always-allow :can_write]
+  [_model k instance]
+  (assoc instance k (boolean true)))
 
-(defmethod can-read? ::read-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :read instance))
-  ([model pk]
-   (current-user-has-full-permissions? :read model pk)))
+(methodical/defmethod t2/simple-hydrate [::read-policy.full-perms-for-perms-set :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (current-user-has-full-permissions? :read instance))))
 
-(defmethod can-write? ::write-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :write instance))
-  ([model pk]
-   (current-user-has-full-permissions? :write model pk)))
+(methodical/defmethod t2/simple-hydrate [::write-policy.full-perms-for-perms-set :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (current-user-has-full-permissions? :write instance))))
 
-(defmethod can-read? ::read-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
+(methodical/defmethod t2/simple-hydrate [::read-policy.superuser :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (superuser?))))
 
-(defmethod can-write? ::write-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
+(methodical/defmethod t2/simple-hydrate [::write-policy.superuser :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (superuser?))))
 
 (defmethod can-create? ::create-policy.superuser
   [_model _m]

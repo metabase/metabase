@@ -14,7 +14,8 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -74,8 +75,9 @@
         db-ids    (transforms-python.db/table-database-ids table-ids)]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
     (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
-    (doseq [table-id table-ids]
-      (api/check-403 (mi/can-query? :model/Table table-id))))
+    (let [tables (t2/hydrate (transforms-python.db/tables (vec table-ids)) :can_query)]
+      (api/check-403 (= (count tables) (count (distinct table-ids))))
+      (api/check-403 (every? mi/can-query? tables))))
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code

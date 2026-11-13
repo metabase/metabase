@@ -19,20 +19,19 @@
   (when (and conversation-id user-id)
     (metabot.db/participant? conversation-id user-id)))
 
-(defmethod mi/can-read? :model/MetabotConversation
+(methodical/defmethod t2/simple-hydrate [:model/MetabotConversation :can_read]
   ;; Access: superuser, or originator (first-writer, set on insert and never
   ;; overwritten), or participant. Originator covers the rare case of a row
   ;; existing without the originator's first message yet persisted.
-  ([{conversation-id :id originator-id :user_id}]
-   (let [user-id api/*current-user-id*]
-     (or api/*is-superuser?*
-         (and conversation-id
-              user-id
-              (or (= originator-id user-id)
-                  (participant? conversation-id user-id))))))
-  ([_model pk]
-   (when-let [instance (metabot.db/conversation-id-and-user-id pk)]
-     (mi/can-read? instance))))
+  [_model k {conversation-id :id originator-id :user_id :as conversation}]
+  (let [user-id api/*current-user-id*]
+    (vary-meta conversation assoc k
+               (boolean
+                (or api/*is-superuser?*
+                    (and conversation-id
+                         user-id
+                         (or (= originator-id user-id)
+                             (participant? conversation-id user-id))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]
   "Batch-hydrate `:user` (id/email/name only) — semantically the *originator*.
