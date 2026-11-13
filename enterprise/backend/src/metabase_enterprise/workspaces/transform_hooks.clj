@@ -24,15 +24,6 @@
   ;; so we can `assoc` directly without a per-call shim.
   (assoc target :db to-db :schema to-schema :name to-name))
 
-(defn- check-workspace-schema!
-  "On a workspace instance, throws a 400 when database `db-id` has no `database-workspace-schema`, so that no
-   production table is used as a transform's target: written, checked for existence, or dropped."
-  [db-id]
-  (when (and (ws/workspace-mode?) (nil? (ws/db-workspace-namespace db-id)))
-    (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
-                         db-id)
-                    {:status-code 400 :database-id db-id}))))
-
 (defenterprise workspace-transform-target
   "Enterprise impl of the read-only transform-target hook.
 
@@ -55,10 +46,20 @@
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  (check-workspace-schema! db-id)
-  (if (some? (ws/db-workspace-namespace db-id))
-    (retarget target (ws.table-remapping/transform-target-remapping db-id target))
-    target))
+  ;; Read the workspace schema once and decide from that read. A second read could see a schema cleared since the
+  ;; first, and return the canonical target on a workspace instance.
+  (let [workspace-ns (ws/db-workspace-namespace db-id)]
+    (cond
+      (some? workspace-ns)
+      (retarget target (ws.table-remapping/transform-target-remapping db-id target))
+
+      (ws/workspace-mode?)
+      (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
+                           db-id)
+                      {:status-code 400 :database-id db-id}))
+
+      :else
+      target)))
 
 (defenterprise record-workspace-target-remapping!
   "Enterprise impl: record the `TableRemapping` from the canonical transform `target` to its

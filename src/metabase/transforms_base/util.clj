@@ -604,8 +604,8 @@
 
 (mu/defn record-workspace-target-remapping! :- :nil
   "Record the workspace `TableRemapping` for a transform whose target [[resolve-workspace-target]]
-  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] looks the canonical table up
-  through it. A no-op for a transform that wasn't rewritten."
+  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] syncs the canonical table, and
+  reads the workspace copy's metadata through it. A no-op for a transform that wasn't rewritten."
   [transform :- ::transforms-base.schema/transform]
   (when-let [canonical (:workspace-canonical-target transform)]
     (transforms-base.workspace-hooks/record-workspace-target-remapping!
@@ -910,7 +910,9 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
-        table (sync-target! target database)]
+        ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
+        ;; remap row: a schema change may have deleted that row since the run recorded it.
+        table (sync-target! (or (:workspace-canonical-target transform) target) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
