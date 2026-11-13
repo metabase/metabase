@@ -628,7 +628,7 @@
                        :started
                        (catch clojure.lang.ExceptionInfo e
                          (ex-message e))))
-          refusal  #(str "The system has halted, so a component cannot start: " %)
+          refusal  #(str "The system has halted, so a component cannot start until `reopen!` is called: " %)
           wait-for (fn [ready?]
                      (loop [tries 0]
                        (cond

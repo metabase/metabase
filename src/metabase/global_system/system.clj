@@ -189,7 +189,8 @@
          (fn [{:keys [halted? starting] :as state}]
            (cond
              halted?
-             (throw (ex-info (str "The system has halted, so a component cannot start: " k) {:component k}))
+             (throw (ex-info (str "The system has halted, so a component cannot start until `reopen!` is called: " k)
+                             {:component k}))
 
              (= (Thread/currentThread) (get-in starting [k :thread]))
              (throw (ex-info (str "Starting component started itself: " k) {:component k}))
@@ -199,7 +200,8 @@
 
 (defn- run-start
   "Call `start` for the component under `k` and return its value, which must not be nil.
-  It runs with no bindings, so a root is made from roots even when the calling thread binds another component."
+  It runs with no component bindings, so a root is made from roots even when the calling thread binds another
+  component."
   [k start]
   (let [value (clojure.core/binding [*bound-boxes* {}]
                 (start))]
@@ -243,10 +245,16 @@
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
-   Starting calls `start` with no arguments and with no bindings in place, which must return a non-nil value,
+   Starting calls `start` with no arguments and no component bindings in place, which must return a non-nil value,
    installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
+   The calling thread's other dynamic bindings stay in place, such as the current user or an open transaction,
+   so `start` must not depend on them.
+   If `start` throws, nothing is installed, and the next call runs `start` again.
    Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
    So `start` must not wait for another thread that writes this component.
+   It must not block for long either: the threads that need the component wait for it, and so does
+   [[halt!]], with no timeout.
+   It must not exit the JVM: the shutdown hook's halt waits for this start, and the exit waits for the hook.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
    Throws if the component is being stopped, if `start` tries to start the component it is starting, or once
    [[halt!]] has begun, until [[reopen!]].
@@ -261,7 +269,8 @@
    Returns true if there was a running component to stop.
    The stop function runs without the component's lock, so it can wait for threads that use the system.
    Any of them that tries to start this component meanwhile gets an exception.
-   Leaves alone a component [[start!]] did not start, and any binding of the component on this thread."
+   Leaves alone a component [[start!]] did not start, and any binding of the component on this thread.
+   So a call inside a binding still stops the root, which every other thread uses."
   [handle]
   (let [k       (handle-key handle)
         stopped (mc/without-binding
@@ -369,7 +378,8 @@
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
-   It waits for the starts already running, so it stops those too, and holds no lock while it waits.
+   It waits for the starts already running, with no timeout, so it stops those too.
+   It holds no lock while it waits.
    It does not wait for a stop already running on another thread, from [[stop!]] or another halt, so it can stop
    what that component uses before the component's stop function returns.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
