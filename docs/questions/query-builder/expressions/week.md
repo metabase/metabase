@@ -27,7 +27,7 @@ The result will be summarized by week number (as opposed to week _dates_, like w
 
 When you group by Week of year in the query builder, Metabase finds the first week that starts in the new year and calls it “week 1”. Any day before that week is part of the last week of the previous year (week 52 or 53).
 
-Weeks start on the first day of the week set in [localization settings](../../../configuring-metabase/localization.md), which is Sunday by default. For example, if weeks start on Sunday, week 1 begins on the first Sunday of the year. If weeks start on Monday, week 1 begins on the first Monday of the year.
+Weeks start on the first day of the week set in [localization settings](../../../configuring-metabase/localization.md), which is Sunday by default. For example, if weeks start on Sunday, week 1 begins on the first Sunday of the year. If weeks start on Monday, week 1 begins on the first Monday of the year. Druid is an exception: it numbers weeks of the year with its own rules.
 
 ### Using a different first week of the year
 
