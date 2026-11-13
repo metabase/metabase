@@ -31,7 +31,7 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 ## Two-factor authentication
 
-{% include plans-blockquote.html feature="Two-factor authentication" %}
+> Two-factor authentication is available on the Starter plan on Metabase Cloud, and on all Pro and Enterprise plans (both self-hosted and on Metabase Cloud).
 
 If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see an **Authentication** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
