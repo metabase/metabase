@@ -316,6 +316,27 @@
                                                      (:status-code (ex-data (first failures))))
                                                    500)})))))
 
+(defn- teardown-workspace-databases-after-failed-create!
+  "Tear down every WorkspaceDatabase of `workspace-id`, as [[teardown-workspace-databases!]] does. Also sets a row
+  whose teardown fails to `:teardown_failed`, when the failure came before the destroy and so left the row's status
+  as it was. A row left `:provisioned` would make the failed create look like one that succeeded. Throws the
+  combined failures (500) when any teardown failed."
+  [workspace-id]
+  (let [failures (into []
+                       (keep (fn [wsd]
+                               (try
+                                 (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
+                                 nil
+                                 (catch Throwable t
+                                   (try
+                                     (provisioning/mark-workspace-database-teardown-failed! (:id wsd))
+                                     (catch Throwable mark-t
+                                       (.addSuppressed t mark-t)))
+                                   t))))
+                       (ws.db/workspace-databases workspace-id))]
+    (when (seq failures)
+      (throw (combined-exception failures {:status-code 500})))))
+
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
@@ -358,7 +379,7 @@
     (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
       (let [cleanup-error (try
                             (run! delete-never-started-workspace-database! never-started)
-                            (teardown-workspace-databases! (:id ws))
+                            (teardown-workspace-databases-after-failed-create! (:id ws))
                             nil
                             ;; Cleanup failed: the workspace and the failed rows are
                             ;; kept so the teardown can be retried via delete. The

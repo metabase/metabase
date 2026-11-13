@@ -309,6 +309,13 @@
         (ws.db/delete-workspace-database! (:id wsd))
         nil))))
 
+(defn mark-workspace-database-teardown-failed!
+  "Set the WorkspaceDatabase with `workspace-database-id` to `:teardown_failed`, keeping its identifiers. Writes on a
+  fresh autocommit connection, so the write survives the rollback of a surrounding transaction."
+  [workspace-database-id]
+  (binding [t2.connection/*current-connectable* nil]
+    (ws.db/update-workspace-database! workspace-database-id {:status :teardown_failed})))
+
 (defn abandon-teardown-failed-workspace-database!
   "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
   `:teardown_failed`. Use it only when the warehouse is gone for good. Its objects
