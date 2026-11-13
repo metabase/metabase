@@ -138,7 +138,7 @@
    ["stop performance monitoring" #(perf/stop-monitoring!)]
    ["shut down agents"            shutdown-agents]])
 
-;; Every step runs even when one throws, so a failed stop cannot keep the web server up or the migration locks held.
+;; Every step runs even when an earlier one throws, so one failed stop skips neither the web server nor the locks.
 ;; Each failure is logged as it happens, so a later step that outlasts the shutdown time cannot lose it.
 ;;
 ;; No test runs these steps or a real halt, since a halt stops what the test JVM shares, like its web server.
