@@ -252,8 +252,7 @@
    If `start` throws, nothing is installed, and the next call runs `start` again.
    Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
    So `start` must not wait for another thread that writes this component.
-   It must not block for long either: the threads that need the component wait for it, and so does
-   [[halt!]], with no timeout.
+   It must not block for long: the threads that need the component wait for it, and [[halt!]] waits with no timeout.
    It must not exit the JVM: the shutdown hook's halt waits for this start, and the exit waits for the hook.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
    Throws if the component is being stopped, if `start` tries to start the component it is starting, or once
@@ -270,7 +269,7 @@
    The stop function runs without the component's lock, so it can wait for threads that use the system.
    Any of them that tries to start this component meanwhile gets an exception.
    Leaves alone a component [[start!]] did not start, and any binding of the component on this thread.
-   So a call inside a binding still stops the root, which every other thread uses."
+   So a call inside a binding still stops the root, which every thread without its own binding uses."
   [handle]
   (let [k       (handle-key handle)
         stopped (mc/without-binding

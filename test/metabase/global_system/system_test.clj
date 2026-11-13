@@ -500,8 +500,14 @@
         (let [started (system/start! foreign (constantly :running) #(swap! stopped conj %))
               again   (system/ensure-started! foreign (constantly :other) (constantly nil))]
           (#'system/stop-all! (filter #{foreign} (halt-order)))
-          (is (= {:started [:running true], :again :running, :stopped [:running], :value nil}
-                 {:started started, :again again, :stopped @stopped, :value @handle})))
+          (is (= {:started [:running true]
+                  :again   :running
+                  :stopped [:running]
+                  :value   nil}
+                 {:started started
+                  :again   again
+                  :stopped @stopped
+                  :value   @handle})))
         (finally
           (cleanup! [handle]))))))
 
