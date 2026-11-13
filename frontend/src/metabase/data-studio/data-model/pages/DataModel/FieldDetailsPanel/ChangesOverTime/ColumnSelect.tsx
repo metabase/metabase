@@ -11,6 +11,7 @@ type ColumnSelectProps = {
   fields: Field[];
   value: FieldId | null;
   placeholder?: string;
+  clearable?: boolean;
   disabled: boolean;
   onChange: (fieldId: FieldId | null) => void;
 };
@@ -21,6 +22,7 @@ export function ColumnSelect({
   fields,
   value,
   placeholder = t`Choose a column`,
+  clearable = false,
   disabled,
   onChange,
 }: ColumnSelectProps) {
@@ -34,6 +36,7 @@ export function ColumnSelect({
       }))}
       value={findFieldById({ fields }, value) != null ? String(value) : null}
       placeholder={placeholder}
+      clearable={clearable}
       disabled={disabled}
       onChange={(next) => onChange(next != null ? Number(next) : null)}
     />

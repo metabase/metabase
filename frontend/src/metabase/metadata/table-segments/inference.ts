@@ -250,7 +250,7 @@ function inferCurrentRowsFromHistory(
   }
   return {
     conditions: [],
-    signal: t`The current version is the latest row per key, which a segment can't express`,
+    signal: t`With no end date or current flag, each record's current version is its latest row, which a segment can't express`,
     confidence: "high",
   };
 }
