@@ -94,6 +94,7 @@ const getVisibilityTypeOptions = () =>
   );
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
+const METADATA_CHANGE_DEBOUNCE_MS = 500;
 
 const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set([
   "column_title",
@@ -216,25 +217,30 @@ function DatasetFieldMetadataSidebarInner({
       [isLastField, handleFirstFieldFocus],
     );
 
-  const onFieldMetadataChangeDebounced = useMemo(
-    () => _.debounce(onFieldMetadataChange, 500),
+  const onDisplayNameChangeDebounced = useMemo(
+    () => _.debounce(onFieldMetadataChange, METADATA_CHANGE_DEBOUNCE_MS),
+    [onFieldMetadataChange],
+  );
+
+  const onDescriptionChangeDebounced = useMemo(
+    () => _.debounce(onFieldMetadataChange, METADATA_CHANGE_DEBOUNCE_MS),
     [onFieldMetadataChange],
   );
 
   const handleDisplayNameChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) =>
-      onFieldMetadataChangeDebounced({
+      onDisplayNameChangeDebounced({
         display_name: e.target.value,
       }),
-    [onFieldMetadataChangeDebounced],
+    [onDisplayNameChangeDebounced],
   );
 
   const handleDescriptionChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) =>
-      onFieldMetadataChangeDebounced({
+      onDescriptionChangeDebounced({
         description: e.target.value,
       }),
-    [onFieldMetadataChangeDebounced],
+    [onDescriptionChangeDebounced],
   );
 
   const handleSemanticTypeChange = useCallback(
