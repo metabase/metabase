@@ -15,6 +15,7 @@ import {
   hasHour,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
+import { DEFAULT_NUMBER_FORMAT } from "metabase/utils/formatting/number-format";
 import MetabaseSettings from "metabase/utils/settings";
 import {
   displayNameForColumn,
@@ -372,6 +373,22 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         extra?.series?.[0]?.card.display === "table") &&
         settings.currency_in_header === true),
     readDependencies: ["number_style", "currency_style", "currency_in_header"],
+  },
+  number_format: {
+    get title() {
+      return t`Number format`;
+    },
+    widget: "select",
+    getProps: () => ({
+      options: [
+        {
+          name: t`Thousands / millions (1,000,000; k/M/B)`,
+          value: "thousands",
+        },
+        { name: t`Lakhs / crores (10,00,000; L/Cr)`, value: "lakh-crore" },
+      ],
+    }),
+    getDefault: () => DEFAULT_NUMBER_FORMAT,
   },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators

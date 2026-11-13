@@ -215,6 +215,7 @@ const KEYS_TO_COMPARE = new Set([
   "currency_style",
   "currency_position",
   "number_separators",
+  "number_format",
   "decimals",
   "scale",
   "prefix",
