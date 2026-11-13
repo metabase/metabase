@@ -4,15 +4,7 @@ import Settings from "metabase/utils/settings";
 
 type GetUserId = () => number | undefined;
 
-type SnowplowTrackerOptions = {
-  /** Reported as every event's page URL instead of the document's own URL. */
-  pageUrl?: string;
-};
-
-export const createSnowplowTracker = (
-  getUserId: GetUserId,
-  { pageUrl }: SnowplowTrackerOptions = {},
-): void => {
+export const createSnowplowTracker = (getUserId: GetUserId): void => {
   if (!Settings.snowplowEnabled()) {
     return;
   }
@@ -29,10 +21,6 @@ export const createSnowplowTracker = (
     stateStorageStrategy: "none",
     plugins: [createSnowplowPlugin(getUserId)],
   });
-
-  if (pageUrl) {
-    Snowplow.setCustomUrl(pageUrl, ["sp"]);
-  }
 };
 
 const createSnowplowPlugin = (getUserId: GetUserId) => {
