@@ -5,7 +5,8 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures])
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u])
   (:import
    (java.util.concurrent.atomic AtomicBoolean)))
 
@@ -86,13 +87,15 @@
                             waiter (future (search.index/active-table))]
                         (try
                           ;; the second reader starts only once the first has claimed the sync, so it cannot claim it
-                          (let [claimed?    (loop [tries 0]
-                                              (cond
-                                                (.get claiming) true
-                                                (< tries 500)   (do (Thread/sleep 10) (recur (inc tries)))
-                                                :else           false))
+                          (let [claimed?    (boolean (u/poll {:thunk       #(.get claiming)
+                                                              :done?       true?
+                                                              :timeout-ms  5000
+                                                              :interval-ms 10}))
                                 second-read (deref (future (search.index/active-table)) 1000 ::waited)]
-                            (is (= {:first-claimed? true, :first-done? false, :second ::active, :syncs 0}
+                            (is (= {:first-claimed? true
+                                    :first-done?    false
+                                    :second         ::active
+                                    :syncs          0}
                                    {:first-claimed? claimed?
                                     :first-done?    (realized? waiter)
                                     :second         second-read

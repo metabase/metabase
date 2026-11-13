@@ -86,30 +86,41 @@
 (defn- now [] (System/nanoTime))
 
 ;; True while a thread is claiming a sync that has come due.
-;; The claim is a write, so it waits for the slot lock, which a reindex can hold for as long as its database work
-;; takes. Only the thread that sets this flag waits. The others read the state as it is, and a later read syncs it.
+;; The claim is a write, so it waits for the slot lock.
+;; A reindex can hold that lock for as long as its database work takes.
+;; Only the thread that sets this flag waits, and it syncs once it has the lock.
+;; The others read the state as it is.
 ;; The flag is one for the process, so a binding of the index state shares it with the root.
 ;; TODO (Chris 2026-11-13) -- This stands in for a write that gives up when the slot lock is held, which a monitor
 ;; cannot do. If a second component needs one, make the slot locks `ReentrantLock`s and drop this flag.
 (defonce ^:private ^AtomicBoolean claiming-sync? (AtomicBoolean. false))
 
+(defn- stale?
+  "Whether the index state `state` is due a sync at `now-ns`."
+  [now-ns {:keys [next-sync-at]}]
+  (or (nil? next-sync-at) (> now-ns next-sync-at)))
+
+(defn- claim-sync!
+  "Claim the sync that is due at `now-ns`, and return whether this thread claimed it.
+   Returns false at once while another thread is claiming, so only one thread waits for the slot lock.
+   Of the threads that see a stale state, only the one whose swap moves the time on claims it."
+  [now-ns]
+  (and (.compareAndSet claiming-sync? false true)
+       (try
+         (let [[old] (mc/swap-vals! indexes-component
+                                    (fn [state]
+                                      (cond-> state
+                                        (stale? now-ns state) (assoc :next-sync-at (+ now-ns sync-tracking-period)))))]
+           (stale? now-ns old))
+         (finally
+           (.set claiming-sync? false)))))
+
 (defn- sync-tracking-atoms-if-stale! []
   (when-not *mocking-tables*
-    (let [now-ns (now)
-          stale? (fn [{:keys [next-sync-at]}]
-                   (or (nil? next-sync-at) (> now-ns next-sync-at)))
-          ;; A write waits for the slot lock, so a fresh state is read without one. Of the threads that see a stale
-          ;; state, only the one whose swap moves the time on syncs.
-          claimed? #(stale? (first (mc/swap-vals! indexes-component
-                                                  (fn [state]
-                                                    (cond-> state
-                                                      (stale? state) (assoc :next-sync-at (+ now-ns sync-tracking-period)))))))]
-      (when (and (stale? @indexes-component)
-                 (.compareAndSet claiming-sync? false true)
-                 (try
-                   (claimed?)
-                   (finally
-                     (.set claiming-sync? false))))
+    (let [now-ns (now)]
+      ;; A write waits for the slot lock, so a fresh state is read without one.
+      (when (and (stale? now-ns @indexes-component)
+                 (claim-sync! now-ns))
         (sync-tracking-atoms!)))))
 
 (defn active-table
@@ -381,6 +392,10 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (stop-tracking! :pending table))))
 
+  ;; TODO (Chris 2026-11-13) -- An incremental write reads the active and pending tables one after the other.
+  ;; So does `delete!`.
+  ;; An activation between the two reads leaves the entries out of the table it made active, until they change again
+  ;; or the next reindex.
   (let [reindexing? (some? reindex-table)
         do-writes   (fn []
                       (let [entries (map document->entry documents)
@@ -391,10 +406,6 @@
                                       (safe-batch-upsert! :pending (constantly reindex-table) entries)
                                       ;; Incremental / in-place: dual-write so an in-progress rebuild stays
                                       ;; current. Either table may legitimately be absent.
-                                      ;; TODO (Chris 2026-11-13) -- The two tables are read one after the other. An
-                                      ;; activation between the reads leaves these entries out of the table it made
-                                      ;; active, until they change again or the next reindex. Read both from one
-                                      ;; deref of the state, here and in `delete!`.
                                       (let [active-updated  (safe-batch-upsert! :active active-table entries)
                                             pending-updated (safe-batch-upsert! :pending pending-table entries)]
                                         (or active-updated pending-updated)))]
