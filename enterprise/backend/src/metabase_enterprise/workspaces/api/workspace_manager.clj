@@ -121,20 +121,19 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a Workspace: tear down each database's warehouse isolation (blocking),
-  then delete the workspace. 409 (error code `workspace_busy`) while a create or
-  deprovision is running on any of its databases, meaning a row that is
-  `:provisioning` or `:deprovisioning` and was last updated within the last 15
-  minutes. An older such row is treated as left by a crashed instance and is torn
-  down. A row whose teardown succeeds is deleted. A row whose teardown fails is
-  kept as `teardown_failed`, the workspace is kept with it, and the combined
-  failure is the error, so the delete can be retried. 204 on success, no response
-  body.
+  then delete the workspace. 409 (error code `workspace_busy`, nothing changed)
+  while a create or deprovision is running on any of its databases, meaning a row
+  that is `:provisioning` or `:deprovisioning` and was last updated within the
+  last 15 minutes. An older such row is treated as left by a crashed instance and
+  is torn down. A row whose teardown succeeds is deleted. A row whose teardown
+  fails is kept as `teardown_failed`, the workspace is kept with it, and the
+  combined failure is the error, so the delete can be retried. 204 on success, no
+  response body.
 
-  With `force=true`, databases in `teardown_failed` are first deleted without a
-  warehouse teardown, and the identifiers of what may remain are logged at WARN for
-  manual cleanup. Use it only when the warehouse is gone for good. The other
-  databases are torn down as usual. This step runs before the busy check: it can
-  delete `teardown_failed` rows and still answer 409."
+  `force=true` deletes `teardown_failed` rows without a warehouse teardown and
+  logs at WARN the identifiers of what may remain. It does so after the busy
+  check, so a 409 deletes nothing. Use it only when the warehouse is gone for
+  good. Other rows are torn down as without `force`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)

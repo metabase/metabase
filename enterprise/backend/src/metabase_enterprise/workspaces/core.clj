@@ -206,7 +206,7 @@
   [workspace-id]
   (when (ws.db/workspace-has-in-flight-databases? workspace-id
                                                   (t/minus (t/offset-date-time) in-flight-stale-after))
-    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
+    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Nothing was changed. Retry once it finishes."
                     {:status-code  409
                      :error-code   "workspace_busy"
                      :workspace_id workspace-id}))))
@@ -390,9 +390,12 @@
 (defn abandon-teardown-failed-databases!
   "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a
   warehouse teardown, logging the identifiers of what may remain. Use it when the
-  warehouse is gone for good and the teardown can never succeed. Returns nil."
+  warehouse is gone for good and the teardown can never succeed. Refuses with a
+  409 (`workspace_busy`), deleting nothing, while a create or deprovision is
+  running on any of the workspace's databases. Returns nil."
   [id]
   (assert-workspace-exists id)
+  (assert-workspace-not-busy id)
   (run! provisioning/abandon-teardown-failed-workspace-database! (ws.db/workspace-databases id)))
 
 (defn delete-workspace!
