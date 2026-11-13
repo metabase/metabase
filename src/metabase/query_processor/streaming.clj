@@ -324,10 +324,16 @@
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
 
+(defn response-schema
+  "Response schema for an endpoint that returns a [[streaming-response]] whose JSON body matches `content-schema`.
+  OpenAPI documents `content-schema`, but validation only checks that a stream comes back."
+  [content-schema]
+  (streaming-response/streaming-response-schema content-schema))
+
 (mr/def ::query-result-response
   "Response schema for an endpoint that returns a [[streaming-response]] of query results.
   OpenAPI documents the query result the stream carries."
-  (streaming-response/streaming-response-schema ::qp.schema/query-result))
+  (response-schema ::qp.schema/query-result))
 
 (mr/def ::json-export-rows
   "The body of a `json` export: one object per row, keyed by column title."
@@ -339,7 +345,7 @@
   The other formats give CSV, an XLSX workbook, or a JSON array of rows."
   [api-result-schema]
   (mut/update-properties
-   (streaming-response/streaming-response-schema api-result-schema)
+   (response-schema api-result-schema)
    assoc :openapi/response {:description "Query results in the requested export format"
                             :content     {"text/csv"
                                           :string
