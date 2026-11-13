@@ -398,8 +398,9 @@
    Templating is for sections the caller adds."
   [workspace-id config]
   (when-let [locations (seq (template-locations config))]
-    (throw (ex-info (str "Cannot build config: values contain a template form ({{ or [[), which the sidecar would parse at boot: "
-                         (str/join "; " locations))
+    (throw (ex-info (str "Cannot build config: these fields contain {{ or [[, which the sidecar would parse at boot: "
+                         (str/join "; " locations)
+                         ". Remove {{ and [[ from these fields. A retry without that change returns the same error.")
                     {:status-code  422
                      :workspace_id workspace-id
                      :locations    (vec locations)})))
