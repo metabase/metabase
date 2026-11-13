@@ -692,6 +692,8 @@
                              (t2/hydrate [:dashcards :series :card] :tabs)))
           ;; A parallel call may have trashed it since the first read.
           _            (some-> current (check-not-trashed! attrs))
+          ;; Judged against the reread, as a parallel call may have changed a filter this call's ops merge into.
+          _            (check-cards-curated! current ops)
           ;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
           created      (when (and (nil? current) (seq charts))
                          (dashboard-write/write! {:attrs attrs}))
@@ -895,7 +897,6 @@
         (check-collection-writable! (:collection_id attrs) (nil? dashboard)))
       (check-request! args)
       (check-op-sources! dashboard_id ops)
-      (check-cards-curated! dashboard ops)
       (check-cards-not-in-other-dashboards! dashboard ops)
       (let [charts (requested-charts ops)
             {saved :dashboard :keys [before saved-charts]}

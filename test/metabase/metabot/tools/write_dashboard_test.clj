@@ -873,6 +873,24 @@
                                                {:op "update_parameter", :parameter_id "p"
                                                 :values_source_config (:values_source_config (source plain-id))}]}))))
             (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a filter source a parallel call saved is judged with this call's ops"
+            (t2/update! :model/Dashboard :id dash-id
+                        {:parameters [{:id "p", :name "Name", :slug "name", :type "category"}]})
+            ;; The parallel call sets the source question after this call's first read, and this call sets its type.
+            (let [reread (mt/original-fn #'metabot.db/dashboard)]
+              (mt/with-dynamic-fn-redefs [metabot.db/dashboard
+                                          (fn [id]
+                                            (t2/update! :model/Dashboard :id id
+                                                        {:parameters [{:id "p", :name "Name", :slug "name"
+                                                                       :type "category"
+                                                                       :values_source_config
+                                                                       (:values_source_config (source plain-id))}]})
+                                            (reread id))]
+                (is (=? {:code ::write-dashboard/cards-not-curated}
+                        (failure {:dashboard_id dash-id
+                                  :ops          [{:op "update_parameter", :parameter_id "p"
+                                                  :values_source_type "card"}]})))))
+            (t2/update! :model/Dashboard :id dash-id {:parameters []}))
           (testing "a filter that already takes its values from an uncurated question can still be renamed"
             (t2/update! :model/Dashboard :id dash-id
                         {:parameters [(merge {:id "p", :name "Name", :slug "name", :type "category"}
