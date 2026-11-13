@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockPublicLinkRefusal,
+} from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
@@ -89,6 +92,65 @@ describe("QuestionSharingMenu > Enterprise", () => {
   });
 
   describe("admins", () => {
+    const REFUSED = createMockPublicLinkRefusal({
+      id: 10,
+      name: "Tenant warehouse",
+    });
+    const ALLOWED = { refusal: null };
+
+    const routingExplanation =
+      /Tenant warehouse has database routing enabled and does not allow anonymous access/;
+
+    it("disables creating a public link when the server refuses one", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        publicLinkRefusal: REFUSED,
+      });
+      await openMenu();
+
+      expect(await screen.findByText(routingExplanation)).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Create a public link/ }),
+      ).toHaveAttribute("data-disabled", "true");
+      expect(
+        screen.getByRole("link", { name: "Allow anonymous access" }),
+      ).toHaveAttribute("href", "/admin/databases/10");
+
+      await userEvent.click(screen.getByText("Create a public link"));
+      expect(
+        screen.queryByTestId("public-link-popover-content"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers a public link when the server allows one", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        publicLinkRefusal: ALLOWED,
+      });
+      await openMenu();
+
+      expect(screen.getByText("Create a public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    it("leaves an existing public link reachable where a new one would be refused", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        hasPublicLink: true,
+        publicLinkRefusal: REFUSED,
+      });
+      await openMenu();
+
+      expect(screen.getByText("Public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
     it("should not allow sharing instance analytics question", async () => {
       setupQuestionSharingMenu({
         isAdmin: true,

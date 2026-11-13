@@ -11,6 +11,7 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
@@ -238,43 +239,38 @@ export const DocumentHeader = ({
               </Menu.Item>
               {!isNewDocument && (
                 <>
-                  {isAdmin && (
-                    <Menu.Item
-                      leftSection={<Icon name="link" />}
-                      onClick={() => setIsPublicLinkPopoverOpen(true)}
-                      {...(!isPublicSharingEnabled && {
-                        onClick: undefined,
-                        component: "div",
-                        disabled: true,
-                      })}
-                    >
-                      {isPublicSharingEnabled ? (
-                        hasPublicLink ? (
-                          t`Public link`
-                        ) : (
-                          t`Create a public link`
-                        )
-                      ) : (
-                        <>
-                          {t`Public link`}
-                          <Button
-                            component={Link}
-                            to="/admin/settings/public-sharing"
-                            target="_blank"
-                            variant="transparent"
-                            size="compact-md"
-                            h="auto"
-                            lh="inherit"
-                            ml="sm"
-                            bd={0}
-                            className={CS.floatRight}
-                          >
-                            {t`Enable`}
-                          </Button>
-                        </>
-                      )}
-                    </Menu.Item>
-                  )}
+                  {isAdmin &&
+                    (isPublicSharingEnabled ? (
+                      document && (
+                        <PublicLinkMenuItem
+                          hasPublicLink={hasPublicLink}
+                          entity={{ model: "document", id: document.id }}
+                          onClick={() => setIsPublicLinkPopoverOpen(true)}
+                        />
+                      )
+                    ) : (
+                      <Menu.Item
+                        leftSection={<Icon name="globe" aria-hidden />}
+                        component="div"
+                        disabled
+                      >
+                        {t`Public link`}
+                        <Button
+                          component={Link}
+                          to="/admin/settings/public-sharing"
+                          target="_blank"
+                          variant="transparent"
+                          size="compact-md"
+                          h="auto"
+                          lh="inherit"
+                          ml="sm"
+                          bd={0}
+                          className={CS.floatRight}
+                        >
+                          {t`Enable`}
+                        </Button>
+                      </Menu.Item>
+                    ))}
                   {canWrite && (
                     <Menu.Item
                       leftSection={<Icon name="move" />}

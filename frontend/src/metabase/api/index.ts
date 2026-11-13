@@ -30,6 +30,7 @@ export * from "./permission";
 export * from "./persist";
 export * from "./premium-features";
 export * from "./public";
+export * from "./public-link";
 export * from "./pulse";
 export * from "./retry-dropped-refetch";
 export * from "./revision";

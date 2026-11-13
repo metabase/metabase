@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
+import {
+  setupNotificationChannelsEndpoints,
+  setupPublicLinkRefusalEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store/dashboard";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, PublicLinkRefusalResponse } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -96,9 +99,11 @@ export function setupDashboardSharingMenu({
   hasPublicLink = false,
   dashboard: dashboardOverrides = {},
   dashboardState,
+  publicLinkRefusal,
 }: {
   dashboard?: Partial<Dashboard>;
   hasPublicLink?: boolean;
+  publicLinkRefusal?: PublicLinkRefusalResponse;
 } & SettingsProps) {
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
@@ -121,6 +126,11 @@ export function setupDashboardSharingMenu({
     isEnterprise,
     dashboardState,
   });
+
+  setupPublicLinkRefusalEndpoint(
+    { model: "dashboard", id: dashboard.id },
+    publicLinkRefusal,
+  );
 
   if (isEnterprise) {
     setupEnterpriseOnlyPlugin("audit_app");
