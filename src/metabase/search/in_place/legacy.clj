@@ -198,22 +198,18 @@
     query))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+  "Add a `WHERE` clause to the query to only return tables the current user has access to."
   [qry model search-ctx]
-  (let [col (case model "table" :table.id "search-index" :search_index.model_id)
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx col)]
-    (cond-> qry
-      (seq with) (update :with (fnil into []) with)
-      true       (sql.helpers/where
-                  (case model
-                    "table" clause
-                    "search-index" [:or
-                                    [:= :search_index.model nil]
-                                    [:!= :search_index.model "table"]
-                                    [:and
-                                     [:= :search_index.model "table"]
-                                     clause]])))))
+  (let [col    (case model "table" :table.id "search-index" :search_index.model_id)
+        clause (search.permissions/permitted-tables-clause search-ctx col)]
+    (sql.helpers/where qry (case model
+                             "table" clause
+                             "search-index" [:or
+                                             [:= :search_index.model nil]
+                                             [:!= :search_index.model "table"]
+                                             [:and
+                                              [:= :search_index.model "table"]
+                                              clause]]))))
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,

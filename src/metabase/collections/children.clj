@@ -817,13 +817,12 @@
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
             (visible-items-clause :t.collection_id archived? {:root-namespace nil})
-            (perms/visible-table-filter-subquery-clause
+            (perms/visible-tables-filter-clause
              :t.id
-             {:user-id       api/*current-user-id*
-              :is-superuser? api/*is-superuser?*}
+             (api/current-user-info)
              {:perms/view-data      :unrestricted
               :perms/create-queries :query-builder}
-             {:include-published-via-collection? true})
+             {:active-only? false, :include-published-via-collection? true})
             [:= :t.collection_id (:id collection)]
             (if archived?
               [:!= :t.archived_at nil]

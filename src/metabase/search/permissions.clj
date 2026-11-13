@@ -1,7 +1,6 @@
 (ns metabase.search.permissions
   (:require
    [metabase.data-apps.core :as data-apps]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
@@ -34,19 +33,16 @@
    (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
-  "Build the WHERE clause and optional CTEs for table permission filtering.
-   Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
-  (mi/visible-filter-clause
-   :model/Table
+  "The WHERE clause keeping the Tables the user of `search-ctx` can query, by `table-id-col`."
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword vector?]]
+  (perms/visible-tables-filter-clause
    table-id-col
-   {:user-id current-user-id
-    :is-superuser? is-superuser?
+   {:user-id          current-user-id
+    :is-superuser?    is-superuser?
     :is-data-analyst? is-data-analyst?}
-   {:perms/view-data :unrestricted
+   {:perms/view-data      :unrestricted
     :perms/create-queries :query-builder}
-   {:include-published-via-collection? true
-    :active-only? true}))
+   {:active-only? true, :include-published-via-collection? true}))
 
 (mu/defn permitted-data-apps-clause
   "Build the WHERE clause that keeps the data apps the given user can read: none without the data apps feature."

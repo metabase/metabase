@@ -1,5 +1,6 @@
 (ns ^:mb/app-db-migrations-test metabase.permissions.data-permissions-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -1483,6 +1484,80 @@
                   (is (= (t2/with-call-count [call-count] (answers [db-1]) (call-count))
                          (t2/with-call-count [call-count] (answers db-ids) (call-count)))
                       "more Databases cost no more queries"))))))))))
+
+(deftest sql-filters-match-getters-test
+  (testing "the SQL filters select exactly the Tables and Databases the getters grant"
+    (mt/with-temp [:model/PermissionsGroup           {group-1 :id}  {}
+                   :model/PermissionsGroup           {group-2 :id}  {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-1}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-2}
+                   :model/Database                   {db-1 :id}     {}
+                   :model/Database                   {db-2 :id}     {}
+                   :model/Table                      {table-1 :id}  {:db_id db-1}
+                   :model/Table                      {table-2 :id}  {:db_id db-1}
+                   :model/Table                      {inactive :id} {:db_id db-1 :active false}
+                   :model/Table                      {table-3 :id}  {:db_id db-2}]
+      (let [db-ids    [db-1 db-2]
+            table-ids {table-1 db-1, table-2 db-1, inactive db-1, table-3 db-2}
+            user-info {:user-id user-id :is-superuser? false :is-data-analyst? false}
+            ;; every value but the least permissive, which a user without rows also has
+            check     (fn [inactive-override?]
+                        (doseq [[perm-type db-values] table-level-values
+                                level                 (butlast (first db-values))]
+                          (testing (str perm-type " " level)
+                            (is (= (into #{}
+                                         (keep (fn [[table-id value]]
+                                                 (when (data-perms/at-least-as-permissive? perm-type value level)
+                                                   table-id)))
+                                         (data-perms/table-permissions-for-user user-info perm-type
+                                                                                (dissoc table-ids inactive)))
+                                   (set (t2/select-pks-set :model/Table
+                                                           {:where [:and [:in :id (keys table-ids)]
+                                                                    (data-perms/visible-tables-filter-clause
+                                                                     :id user-info {perm-type level}
+                                                                     {:active-only?                      true
+                                                                      :include-published-via-collection? false})]})))
+                                "Tables")
+                            (let [by-getter (into #{}
+                                                  (keep (fn [[db-id value]]
+                                                          (when (data-perms/at-least-as-permissive? perm-type value level)
+                                                            db-id)))
+                                                  (data-perms/some-table-in-database-permissions-for-user
+                                                   user-info perm-type db-ids))
+                                  by-filter (set (t2/select-pks-set :model/Database
+                                                                    {:where [:and [:in :id db-ids]
+                                                                             (data-perms/visible-databases-filter-clause
+                                                                              :id user-info {perm-type level})]}))]
+                              (if inactive-override?
+                                (is (set/subset? by-getter by-filter)
+                                    "Databases: the filter also counts rows of inactive Tables")
+                                (is (= by-getter by-filter)
+                                    "Databases")))))
+                        (doseq [perm-type [:perms/manage-database :perms/transforms]]
+                          (is (= (into #{}
+                                       (keep (fn [[db-id value]] (when (= :yes value) db-id)))
+                                       (data-perms/database-permissions-for-user user-info perm-type db-ids))
+                                 (set (t2/select-pks-set :model/Database
+                                                         {:where [:and [:in :id db-ids]
+                                                                  (data-perms/visible-databases-filter-clause
+                                                                   :id user-info {perm-type :yes})]})))
+                              (str perm-type))))]
+        (doseq [[[g1 g2] [g1' g2']] (map vector permission-setups (rest (cycle permission-setups)))
+                table-id            [table-1 inactive]]
+          (testing (str "groups " [g1 g2] " overriding table " table-id ", and " [g1' g2'] " on the other Database")
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-group! group-1
+                (mt/with-restored-data-perms-for-group! group-2
+                  (set-permissions! group-1 db-1 table-id g1)
+                  (set-permissions! group-2 db-1 table-id g2)
+                  (set-permissions! group-1 db-2 table-3 g1')
+                  (set-permissions! group-2 db-2 table-3 g2')
+                  (data-perms/set-database-permission! group-1 db-1 :perms/manage-database :yes)
+                  (data-perms/set-database-permission! group-2 db-2 :perms/transforms :yes)
+                  (binding [api/*current-user-id* user-id
+                            api/*is-superuser?*   false]
+                    (check (= table-id inactive))))))))))))
 
 (deftest table-permission-with-other-database-test
   (testing "a table checked with a Database that isn't its own counts only that Database's rows, before or after its own"

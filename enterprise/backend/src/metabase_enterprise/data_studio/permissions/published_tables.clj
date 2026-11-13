@@ -5,9 +5,7 @@
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise published-table-permissions
   "The `perm-type` value that publishing grants the user of `user-info` on each of the Tables with `table-ids`, as
@@ -50,27 +48,16 @@
           (:collection_id table))
      :read)))
 
-(defenterprise published-table-perm-grant-rows
-  "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are
-  published into a collection the user can read. The grant supplies `:perms/create-queries
-  :query-builder`; `:perms/view-data` is intentionally not synthesized — view-data must come from
-  real `data_permissions` entries.
-
-  Returns nil when the caller's permission mapping does not include `:perms/create-queries`. The Table has an alias of
-  its own, `published_table`: H2 resolves a qualified column in a subquery against the same alias of an earlier branch
-  of the union this select goes into."
+(defenterprise published-table-clause
+  "A HoneySQL clause holding when the Table aliased `table-alias` is published into a Collection the user of
+  `user-info` can read, which grants `:perms/create-queries :query-builder`. It reads the probed Table's own columns,
+  so each Table is checked on its own."
   :feature :library
-  [{:keys [user-id is-superuser? is-data-analyst?]} perm-types active-only?]
-  (when (contains? (set perm-types) :perms/create-queries)
-    ^:allow-subquery
-    {:select [[:published_table.id :id]
-              [(h2x/literal :perms/create-queries) :perm_type]
-              [(h2x/literal :query-builder) :perm_value]]
-     :from   [[(t2/table-name :model/Table) :published_table]]
-     :where  (cond-> [:and
-                      [:= :published_table.is_published true]
-                      (perms/visible-collections-filter-clause
-                       :published_table.collection_id
-                       {:user-id user-id, :is-superuser? is-superuser?, :is-data-analyst? (boolean is-data-analyst?)}
-                       {:root-namespace nil})]
-               active-only? (conj [:= :published_table.active true]))}))
+  [{:keys [user-id is-superuser? is-data-analyst?]} table-alias]
+  (let [column (fn [c] (keyword (str (name table-alias) "." c)))]
+    [:and
+     [:= (column "is_published") true]
+     (perms/visible-collections-filter-clause
+      (column "collection_id")
+      {:user-id user-id, :is-superuser? (boolean is-superuser?), :is-data-analyst? (boolean is-data-analyst?)}
+      {:root-namespace nil})]))
