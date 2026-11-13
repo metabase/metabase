@@ -1419,9 +1419,9 @@
        (with-open [^Statement stmt (.createStatement conn)]
          ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
          ;; variable names must be unique across the batch entries.
-         ;; Table names come from the warehouse, so QUOTENAME them (it escapes `]`) rather than
-         ;; splicing them into the dynamic SQL between brackets.
-         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+         (doseq [sql [;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                      ;; brackets and escapes any `]` in it.
+                      (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
                                    "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
                                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
                                    "EXEC sp_executesql @drop_tables_sql")
