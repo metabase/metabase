@@ -489,6 +489,73 @@
                (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))))
 
+(defn- lock-that-fails-once
+  "A stand-in for [[provisioning/do-with-workspace-database-lock]]. It throws on the `n`th lock of the row of the
+  Database `db-id`, as a lock timeout does, and takes the real lock every other time."
+  [db-id n]
+  (let [lock! provisioning/do-with-workspace-database-lock
+        locks (atom 0)]
+    (fn [wsd-id thunk]
+      (if (and (= db-id (t2/select-one-fn :database_id :model/WorkspaceDatabase :id wsd-id))
+               (= n (swap! locks inc)))
+        (throw (ex-info "lock timed out" {}))
+        (lock! wsd-id thunk)))))
+
+(deftest create-idempotency-retry-after-cleanup-failed-before-a-destroy-test
+  (testing "a retry of a create whose cleanup failed without a failed destroy answers the 500 that says to delete the workspace, never 200 and never 409"
+    (do-with-eligible-database!
+     (fn [db1-id]
+       (do-with-eligible-database!
+        (fn [db2-id]
+          (letfn [(failing-init [failing-db-id details-calls failing-details-call]
+                    (reify provisioning/Provisioner
+                      (details  [_ _ _ _]
+                        (when (= failing-details-call (swap! details-calls inc))
+                          (throw (ex-info "details failed" {})))
+                        {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                      (init!    [_ _ db _]  (when (= failing-db-id (:id db))
+                                              (throw (ex-info "Connection refused" {}))))
+                      (grant!   [_ _ _ _ _] nil)
+                      (destroy! [_ _ _ _]   nil)))
+                  (create! [idempotency-key]
+                    (mt/user-http-request-full-response
+                     :crowberto :post "ee/workspace-manager/"
+                     {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                     {:name "Half cleaned" :database_ids [db1-id db2-id]}))
+                  (check! [idempotency-key provisioner lock expected-statuses]
+                    (let [{ws-id :workspace_id :as failed}
+                          (with-redefs [provisioning/dispatching-provisioner          provisioner
+                                        provisioning/do-with-workspace-database-lock lock]
+                            (:body (create! idempotency-key)))]
+                      (is (=? {:workspace_id pos-int? :cleanup_required true} failed)
+                          "the first create kept the workspace and says so")
+                      (is (= expected-statuses
+                             (t2/select-fn->fn :database_id :status :model/WorkspaceDatabase :workspace_id ws-id)))
+                      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                        (let [{:keys [status body]} (create! idempotency-key)]
+                          (is (= 500 status) (str "body " (pr-str body)))
+                          (is (=? {:workspace_id ws-id :cleanup_required true} body))
+                          (is (not= "workspace_busy" (:error-code body))))
+                        (testing "a delete is not refused as busy"
+                          (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))))))]
+            (testing "the teardown of a provisioned row fails at its lock"
+              ;; the first lock of the first database's row is its provisioning, the second is its teardown
+              (check! "cleanup-lock-provisioned"
+                      (failing-init db2-id (atom 0) nil)
+                      (lock-that-fails-once db1-id 2)
+                      {db1-id :teardown_failed}))
+            (testing "the delete of a never-started row fails at its lock"
+              (check! "cleanup-lock-never-started"
+                      (failing-init db1-id (atom 0) nil)
+                      (lock-that-fails-once db2-id 1)
+                      {db2-id :teardown_failed}))
+            (testing "the teardown of the row whose provisioning failed cannot compute its identifiers"
+              ;; the first details call is the first database's provisioning, the second is its teardown
+              (check! "cleanup-details"
+                      (failing-init db1-id (atom 0) 2)
+                      provisioning/do-with-workspace-database-lock
+                      {db1-id :teardown_failed})))))))))
+
 (deftest create-without-idempotency-key-test
   (testing "without an Idempotency-Key, two identical creates make two workspaces"
     (do-with-eligible-database!
