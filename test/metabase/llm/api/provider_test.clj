@@ -308,7 +308,9 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model nil]
-          ;; Metabot runs on another model, so the mini model below is the recorded one.
+          ;; Metabot runs on Sonnet here because Haiku 5.5 is now both the default and the mini model. If Metabot also
+          ;; ran on Haiku, the mini-model fallback would give the same answer, and the test couldn't tell whether the
+          ;; mini model was recorded.
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type   "anthropic"
                                  :model  "claude-sonnet-4-6"
