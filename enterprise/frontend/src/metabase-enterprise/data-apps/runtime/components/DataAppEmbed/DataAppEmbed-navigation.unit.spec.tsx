@@ -14,9 +14,9 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import { useDataAppLocation } from "embedding-sdk-package/hooks/public/use-data-app-location";
 
 import { DataAppEmbed } from "./DataAppEmbed";
+import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
 
 const store = getSdkStore();
-import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
 
 describe("DataAppEmbed - router navigation", () => {
   const originalRoot = window.MetabaseRoot;
