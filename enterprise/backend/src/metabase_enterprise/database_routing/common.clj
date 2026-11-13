@@ -23,13 +23,12 @@
             *anonymous-router-access* :always]
     (thunk)))
 
-(defenterprise with-database-routing-off-if-granted-fn
-  "Enterprise version. Calls the function with a router database reachable itself only if an admin has granted it
-  anonymous access; otherwise access to it is an error."
+(defenterprise do-with-database-routing-off-if-granted
+  "Enterprise version. Calls the function, allowing access to the router database only if an admin has granted anonymous access."
   :feature :none
-  [f]
+  [thunk]
   (binding [*anonymous-router-access* :if-granted]
-    (f)))
+    (thunk)))
 
 (defn- user-attribute
   "The user attribute the router `db`, the Lib metadata of a Database, routes on; read from the app DB only when `db` was
