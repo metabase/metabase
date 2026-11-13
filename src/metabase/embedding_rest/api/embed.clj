@@ -128,7 +128,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:token/query/:export-format"
-  :- (qp.streaming/export-response-schema :map)
+  :- (qp.streaming/export-response-schema ::api.public/query-result)
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map {:closed true}
                                      [:token api.embed.common/EncodedToken]
@@ -226,7 +226,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-  :- (qp.streaming/export-response-schema :map)
+  :- (qp.streaming/export-response-schema ::api.public/query-result)
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [{:keys [token dashcard-id card-id export-format]} :- [:map {:closed true}

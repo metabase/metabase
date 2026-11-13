@@ -279,7 +279,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
-  :- (qp.streaming/export-response-schema :map)
+  :- (qp.streaming/export-response-schema ::query-result)
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map {:closed true}
@@ -476,7 +476,7 @@
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
-  :- (qp.streaming/export-response-schema :map)
+  :- (qp.streaming/export-response-schema ::query-result)
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map {:closed true}
@@ -935,7 +935,7 @@
       (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
 
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
-  :- (qp.streaming/export-response-schema :map)
+  :- (qp.streaming/export-response-schema ::query-result)
   "Fetch a Card embedded in a public Document and return query results in the specified format.
   Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid card-id export-format]} :- [:map {:closed true}

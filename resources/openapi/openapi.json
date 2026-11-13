@@ -58448,8 +58448,7 @@
                   "anyOf" : [ {
                     "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
                   }, {
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
                   } ]
                 }
               },
@@ -58618,8 +58617,7 @@
                   "anyOf" : [ {
                     "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
                   }, {
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
                   } ]
                 }
               },
@@ -69270,8 +69268,7 @@
                   "anyOf" : [ {
                     "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
                   }, {
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
                   } ]
                 }
               },
@@ -69504,8 +69501,7 @@
                   "anyOf" : [ {
                     "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
                   }, {
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
                   } ]
                 }
               },
@@ -69953,8 +69949,7 @@
                   "anyOf" : [ {
                     "$ref" : "#/components/schemas/metabase.query-processor.streaming.json-export-rows"
                   }, {
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
                   } ]
                 }
               },
