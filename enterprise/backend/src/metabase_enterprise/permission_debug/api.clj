@@ -148,6 +148,7 @@
   `code_expires_at` (epoch seconds, 60 seconds from now), that starts a preview session bound to this browser session:
 
   - same origin: the framed app sends it to `POST /preview/session`;
+  - preview host: the frame opens `<permission-preview-origin>/preview-session?code=<code>&to=<path>`.
 
   Only a superuser's own browser session (the `metabase.SESSION` cookie) can get a code."
   [_route-params

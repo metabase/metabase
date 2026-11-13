@@ -161,6 +161,22 @@ export function getCookieFramePreviewUrl(
   return url.toString();
 }
 
+/**
+ * The address of the app at `path` on the preview host `previewOrigin` (the
+ * `permission-preview-origin` setting), signed in there by `code` from
+ * `POST /api/ee/permission_debug/preview/code`.
+ */
+export function getPreviewHostFrameUrl(
+  previewOrigin: string,
+  path: string,
+  code: string,
+) {
+  const url = new URL("/preview-session", previewOrigin);
+  url.searchParams.set("code", code);
+  url.searchParams.set("to", path);
+  return url.toString();
+}
+
 /** The address of the app in the troubleshooting page's frame, at `path`, as `state`. */
 export function getFramePreviewUrl(path: string, state: PreviewState) {
   const url = new URL(getPreviewUrl(path, state));

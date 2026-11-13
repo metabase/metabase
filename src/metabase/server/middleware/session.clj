@@ -30,11 +30,14 @@
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.server.db :as server.db]
+   [metabase.server.settings :as server.settings]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,9 +81,21 @@
 
 (def ^:private preview-session-cookie-prefix "metabase.PREVIEW_SESSION.")
 
+(def ^:private preview-host-session-cookie "metabase.PREVIEW_HOST_SESSION")
+
 (def ^:private preview-token-header "x-metabase-preview-token")
 
 (def ^:private preview-token-param "preview_token")
+
+(defn permission-preview-host-request?
+  "Whether `request` came in through the host of [[server.settings/permission-preview-origin]], where an admin's
+  preview (EE) runs signed in as the previewed person only. Either host name counts: a forged `X-Forwarded-Host` only
+  puts a request under that host's stricter rules."
+  [request]
+  (boolean
+   (when-let [preview-host (some-> (server.settings/permission-preview-origin) u.http/host-name)]
+     (and (not= preview-host (some-> (system/site-url) u.http/host-name))
+          (some #{preview-host} (request/host-names request))))))
 
 (defn- preview-token-param-value
   "The `preview_token` of a map tile request, or nil: the browser loads tiles as images, without the API client that
@@ -99,6 +114,13 @@
                                                                      (str/starts-with? % (str preview-token-param "=")))
                                                                 (str/split query-string #"&"))))))
 
+(defmethod wrap-session-key-with-strategy :preview-host
+  [_ {:keys [cookies] :as request}]
+  ;; on the preview host the preview cookie is the only credential, even when there is none
+  (when (permission-preview-host-request? request)
+    (assoc request :metabase/preview-session {:session-key (not-empty (get-in cookies [preview-host-session-cookie :value]))
+                                              :host?       true})))
+
 (defmethod wrap-session-key-with-strategy :preview-cookie
   [_ {:keys [cookies headers] :as request}]
   ;; a token without its cookie still picks the preview session, which then refuses: never the admin's own session
@@ -116,19 +138,29 @@
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:header :embedded-cookie :preview-cookie :normal-cookie]))
+   [:preview-host :header :embedded-cookie :preview-cookie :normal-cookie]))
+
+(defenterprise preview-host-exchange
+  "The preview host's `GET /preview-session?code=…&to=<path>`: trade a preview code for the host's preview cookie and
+  redirect to `to`. OSS: not found, since there is nothing to preview with."
+  metabase-enterprise.permission-debug.preview-session
+  [_request]
+  {:status 404 :headers {"Content-Type" "text/plain; charset=utf-8"} :body "Not found."})
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
   :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
 
-  A preview session (EE) goes under `:metabase/preview-session` instead, when the request carries a preview token."
+  A preview session (EE) goes under `:metabase/preview-session` instead: on the preview host always, elsewhere when
+  the request carries a preview token. It also answers the preview host's `/preview-session` exchange."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-key-with-strategy :best request)
-                      request)]
-      (handler request respond raise))))
+    (if (and (= "/preview-session" (:uri request)) (permission-preview-host-request? request))
+      (respond (preview-host-exchange request))
+      (let [request (or (wrap-session-key-with-strategy :best request)
+                        request)]
+        (handler request respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
