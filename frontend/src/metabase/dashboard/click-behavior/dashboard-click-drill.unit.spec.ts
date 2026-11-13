@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { getTargetsForQuestion } from "metabase/dashboard/utils/click-behavior";
+import { isAlwaysDefaultClickAction } from "metabase/visualizations/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
@@ -380,13 +381,16 @@ describe("DashboardClickAction with a question link", () => {
     });
 
     expect(actions).toHaveLength(1);
-    const url = actions[0].url?.() ?? "";
-    const [pathname, hash] = url.split("#");
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
     const drilledQuery = new Question(
-      deserializeCardFromUrl(hash),
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
       metadata,
     ).query();
-    expect(pathname).toBe("/question");
     expect(
       Lib.filters(drilledQuery, 0).map(
         (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
