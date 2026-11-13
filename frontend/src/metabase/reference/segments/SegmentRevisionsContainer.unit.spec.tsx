@@ -5,8 +5,7 @@ import {
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route } from "metabase/router";
+import { renderRoutes, screen, within } from "__support__/ui";
 import type { Revision } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -16,7 +15,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import SegmentRevisionsContainer from "./SegmentRevisionsContainer";
+import { getReferenceRoutes } from "../routes";
 
 const TABLE = createMockTable({ id: 10, db_id: 1 });
 
@@ -80,17 +79,11 @@ function setup({ revisions = [] }: SetupOpts = {}) {
       : [];
   });
 
-  return renderWithProviders(
-    <Route
-      path="/reference/segments/:segmentId/revisions"
-      element={<SegmentRevisionsContainer />}
-    />,
-    {
-      withRouter: true,
-      initialRoute: `/reference/segments/${SEGMENT.id}/revisions`,
-      storeInitialState: createMockState({ currentUser: ADMIN }),
-    },
-  );
+  // The reference route tree as the app mounts it.
+  return renderRoutes(getReferenceRoutes(), {
+    initialRoute: `/reference/segments/${SEGMENT.id}/revisions`,
+    storeInitialState: createMockState({ currentUser: ADMIN }),
+  });
 }
 
 describe("SegmentRevisionsContainer", () => {

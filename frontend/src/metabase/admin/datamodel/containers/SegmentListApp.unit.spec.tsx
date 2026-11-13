@@ -3,14 +3,22 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCardDataset,
   setupDatabasesEndpoints,
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockState,
+} from "__support__/state";
+import { renderRoutes, screen, within } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
+import { getAdminPaths } from "metabase/admin/app/reducers";
+import { getRoutes } from "metabase/admin/routes";
 import * as Analytics from "metabase/analytics";
-import { Route, useParams } from "metabase/router";
+import { Outlet, toRouteObjects } from "metabase/router";
 import type { EnterpriseSettings, Revision, Segment } from "metabase-types/api";
 import {
   createMockRevision,
@@ -26,9 +34,6 @@ import {
   createPeopleTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-
-import { RevisionHistoryApp } from "./RevisionHistoryApp";
-import { SegmentListApp } from "./SegmentListApp";
 
 const SEGMENTS_URL = "/admin/datamodel/segments";
 
@@ -89,15 +94,6 @@ const ORDERS_SEGMENT_REVISIONS: Revision[] = [
   }),
 ];
 
-function CreatePage() {
-  return <div>New segment page</div>;
-}
-
-function EditPage() {
-  const { id } = useParams<{ id: string }>();
-  return <div>{`Edit page for segment ${id}`}</div>;
-}
-
 interface SetupOpts {
   segments?: Segment[];
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
@@ -120,6 +116,8 @@ function setup({
     }),
   ]);
   setupSegmentsEndpoints(segments);
+  setupCardDataset();
+  fetchMock.get("path:/api/setting/engines", {});
   // Answers only the revisions of the Orders segment.
   fetchMock.get("path:/api/revision", (call) => {
     const params = new URL(call.url).searchParams;
@@ -133,6 +131,9 @@ function setup({
   // have to be in place first.
   const state = createMockState({
     currentUser: ADMIN,
+    admin: createMockAdminState({
+      app: createMockAdminAppState({ paths: getAdminPaths() }),
+    }),
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         remote_sync: !!remoteSyncType,
@@ -145,22 +146,11 @@ function setup({
     setupEnterpriseOnlyPlugin("remote_sync");
   }
 
-  renderWithProviders(
-    <>
-      <Route path={SEGMENTS_URL} element={<SegmentListApp />} />
-      <Route path="/admin/datamodel/segment/create" element={<CreatePage />} />
-      <Route path="/admin/datamodel/segment/:id" element={<EditPage />} />
-      <Route
-        path="/admin/datamodel/segment/:id/revisions"
-        element={<RevisionHistoryApp />}
-      />
-    </>,
-    {
-      withRouter: true,
-      initialRoute,
-      storeInitialState: state,
-    },
-  );
+  // The admin route tree as the app mounts it, with pass-through guards.
+  renderRoutes((store) => toRouteObjects(getRoutes(store, Outlet, Outlet)), {
+    initialRoute,
+    storeInitialState: state,
+  });
 
   return { trackSimpleEvent };
 }
@@ -175,7 +165,10 @@ async function openActionMenu(name: string) {
 }
 
 describe("SegmentListApp", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    // The data model layout keeps loading its table picker after a test has
+    // made its assertions.
+    await waitForRequestsToSettle();
     jest.restoreAllMocks();
   });
 
@@ -218,9 +211,10 @@ describe("SegmentListApp", () => {
       await screen.findByRole("link", { name: /People from Twitter/ }),
     );
 
-    expect(
-      await screen.findByText(`Edit page for segment ${PEOPLE_SEGMENT.id}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Edit Your Segment")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name Your Segment")).toHaveValue(
+      PEOPLE_SEGMENT.name,
+    );
   });
 
   it("tracks the start of a new segment", async () => {
@@ -230,7 +224,7 @@ describe("SegmentListApp", () => {
       await screen.findByRole("button", { name: "New segment" }),
     );
 
-    expect(await screen.findByText("New segment page")).toBeInTheDocument();
+    expect(await screen.findByText("Create Your Segment")).toBeInTheDocument();
     expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "segment_create_started",

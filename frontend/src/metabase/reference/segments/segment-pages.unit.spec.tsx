@@ -29,8 +29,10 @@ const PEOPLE_SEGMENT = createMockSegment({
   table_id: PEOPLE_ID,
 });
 
+// An id that differs from its table id, so a link built from the wrong one
+// opens a different page.
 const ORDERS_SEGMENT = createMockSegment({
-  id: 2,
+  id: 42,
   name: "Orders < 100",
   description: "All orders with a total under $100.",
   table_id: ORDERS_ID,
