@@ -412,9 +412,17 @@ describe("AppBar official collection breadcrumbs", () => {
           "official_collection icon",
         ),
       ).toBeVisible();
+      expect(officialBreadcrumb).toHaveAttribute(
+        "href",
+        "/collection/6-official-collection-test",
+      );
 
       const regularBreadcrumb = await getCollectionBreadcrumb(
         FOO_COLLECTION.name,
+      );
+      expect(regularBreadcrumb).toHaveAttribute(
+        "href",
+        "/collection/3-foo-collection",
       );
       expect(
         within(regularBreadcrumb).getByLabelText("folder icon"),
