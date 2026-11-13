@@ -15,6 +15,8 @@
    [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -277,8 +279,135 @@
   metabase-enterprise.impersonation.driver
   [_driver _conn _database])
 
-(defonce ^:private pool-databases
-  (atom {}))
+(declare destroy-pool!)
+
+;; One value for the three maps that describe the open pools, so a pool, its details hash and its identity token are
+;; added and removed together in one swap:
+;;
+;;   {:pools     {[database-id connection-type] pool-spec}
+;;    :hashes    {[database-id connection-type] details-hash}
+;;    :databases {identity-token [driver database]}
+;;    :swapped   Guava Cache of [database-id details-hash] -> pool-spec}
+;;
+;; `:databases` holds the tokens of swapped pools as well as canonical ones. The swapped pools live in a cache of
+;; their own, made at start, because the cache evicts and closes them by itself after a time without use.
+;;
+;; Pools are keyed by database id alone, so a test that binds another app DB shares pools with the root app DB's
+;; Databases of the same ids.
+(def ^:private pools-component
+  (system/mutable-component-handle ::pools (constantly nil)))
+
+(declare new-swapped-pools-cache)
+
+(defn- close-all-pools!
+  "Destroy every pool in the pools state `state`, as the global system halts.
+  The swapped pools go first, through their cache's removal listener, which logs a failed close and goes on.
+  A canonical pool that fails to close does not stop the rest.
+  Once all have been tried, throws an ex-info whose `:failures` holds each database id with its exception."
+  [{:keys [pools ^Cache swapped]}]
+  ;; [[system/stop!]] calls this without the slot lock, which the removal listener takes as it closes each pool
+  (when swapped
+    (.invalidateAll swapped)
+    (.cleanUp swapped))
+  (let [failures (into []
+                       (keep (fn [[[database-id _connection-type] pool-spec]]
+                               (try
+                                 (destroy-pool! database-id pool-spec)
+                                 nil
+                                 (catch Throwable e
+                                   [database-id e]))))
+                       pools)]
+    (when (seq failures)
+      (throw (ex-info "Some connection pools failed to close"
+                      {:failures failures}
+                      (second (first failures)))))))
+
+(defn- pools-state
+  "The current pools state, starting an empty one on first use."
+  []
+  (system/ensure-started! pools-component
+                          (fn []
+                            {:pools {}, :hashes {}, :databases {}, :swapped (new-swapped-pools-cache)})
+                          close-all-pools!))
+
+(defn- swap-pools-state!
+  "Apply `f` and `args` to the pools state, starting it first if needed, and return `[old new]`.
+  Throws once the global system has halted.
+  It holds the component's slot lock, which [[system/stop!]] also takes, so no write lands between a stop clearing
+  the state and the next start, where it would bring back state the lifecycle no longer tracks."
+  [f & args]
+  (mc/with-slot-lock pools-component
+    (pools-state)
+    (apply mc/swap-vals! pools-component f args)))
+
+(defn- pool-token
+  "The c3p0 identity token of the pool in `pool-spec`, or nil if it is not a c3p0 pool."
+  [pool-spec]
+  (let [data-source (:datasource pool-spec)]
+    (when (instance? PooledDataSource data-source)
+      (.getIdentityToken ^PooledDataSource data-source))))
+
+(defn- without-pool
+  "The pools state `state` with `pool-spec` gone: its identity token always, and its cache entry and details hash
+  only while `pool-spec` is still the pool cached under `cache-key`, so a newer pool another thread cached stays."
+  [state cache-key pool-spec]
+  (let [token (pool-token pool-spec)]
+    (cond-> state
+      (identical? pool-spec (get-in state [:pools cache-key]))
+      (-> (update :pools dissoc cache-key)
+          (update :hashes dissoc cache-key))
+
+      token
+      (update :databases dissoc token))))
+
+(def ^:private swapped-pool-ttl-minutes
+  "Time-to-live in minutes for swapped connection pools.
+  Pools are evicted after this duration of inactivity (no access)."
+  15)
+
+(defn- live-swapped-cache?
+  "Whether `cache` is the swapped-pool cache of the pools state this thread sees, without starting one."
+  [cache]
+  (identical? cache (:swapped @pools-component)))
+
+(defn- new-swapped-pools-cache
+  "A Guava cache of swapped connection pools with TTL-based expiration, keyed by `[database-id details-hash]`.
+  Pools are evicted after inactivity, and the removal listener closes each one it removes.
+  Different swapped details for the same database get separate pools, while identical details share a pool."
+  ^Cache []
+  (let [cache (promise)]
+    (deliver cache
+             (.. (CacheBuilder/newBuilder)
+                 (expireAfterAccess (Duration/ofMinutes swapped-pool-ttl-minutes))
+                 (removalListener
+                  (reify com.google.common.cache.RemovalListener
+                    (^void onRemoval [_ ^RemovalNotification rn]
+                      (let [[database-id _details-hash] (.getKey rn)
+                            pool-spec                   (.getValue rn)]
+                        (log/debugf "Evicting swapped pool for database %d (cause: %s)"
+                                    database-id (.getCause rn))
+                        (try
+                          ;; a plain write, which starts nothing: once a stop has taken this cache out of the state,
+                          ;; its tokens went with it
+                          (mc/swap! pools-component
+                                    (fn [state]
+                                      (cond-> state
+                                        (identical? @cache (:swapped state)) (without-pool nil pool-spec))))
+                          (finally
+                            (destroy-pool! database-id pool-spec)))
+                        nil))))
+                 (build)))
+    @cache))
+
+(defn- swapped-connection-pools
+  "The swapped-pool cache of the current pools state."
+  ^Cache []
+  (:swapped (pools-state)))
+
+(defn- pool-cache-key->connection-pool
+  "The open pools, keyed by `[database-id connection-type]`."
+  []
+  (:pools (pools-state)))
 
 (defonce ^:private ^ThreadLocal checkout-error
   (ThreadLocal.))
@@ -299,7 +428,8 @@
   (onCheckIn [_this _connection _identity-token])
   (onCheckOut [_this connection identity-token]
     (try
-      (let [[driver database] (or (get @pool-databases identity-token)
+      ;; reads the root without starting the state, so a checkout on a pool left over from a halt does not restart it
+      (let [[driver database] (or (get-in @pools-component [:databases identity-token])
                                   (throw (ex-info (tru "This connection pool is closed.") {})))]
         (set-role-if-supported! driver connection (checkout-database database)))
       (catch Throwable e
@@ -346,7 +476,6 @@
         properties          (assoc (data-warehouse-connection-pool-properties driver database)
                                    "connectionCustomizerClassName" (.getName WarehouseConnectionCustomizer))
         pool-spec           (connection-pool-spec spec properties)]
-    (swap! pool-databases assoc (.getIdentityToken ^PooledDataSource (:datasource pool-spec)) [driver database])
     (merge
      pool-spec
      ;; also capture entries related to ssh tunneling for later use
@@ -364,43 +493,7 @@
   ;; closed" (see DEV-2161). Pool destruction is rare and significant enough to warrant INFO in production too.
   (log/info (u/format-color :red "Closing old connection pool for database %s ..." database-id))
   (driver-api/destroy-connection-pool! pool-spec)
-  (when-let [data-source (:datasource pool-spec)]
-    (when (instance? PooledDataSource data-source)
-      (swap! pool-databases dissoc (.getIdentityToken ^PooledDataSource data-source))))
   (ssh/close-tunnel! pool-spec))
-
-(def ^:private swapped-pool-ttl-minutes
-  "Time-to-live in minutes for swapped connection pools.
-  Pools are evicted after this duration of inactivity (no access)."
-  15)
-
-(defonce ^:private ^{:doc "A map of our currently open connection pools for canonical (non-swapped) connections,
-  keyed by pool cache key `[database-id, connection-type]`. Each database+connection-type pair has at most one canonical pool."}
-  pool-cache-key->connection-pool
-  (atom {}))
-
-(defonce ^:private ^Cache ^{:doc "A Guava cache of swapped connection pools with TTL-based expiration,
-  keyed by [database-id, details-hash]. Pools are evicted after inactivity. Different swapped
-  details for the same database get separate pools, while identical details share a pool."}
-  swapped-connection-pools
-  (.. (CacheBuilder/newBuilder)
-      (expireAfterAccess (Duration/ofMinutes swapped-pool-ttl-minutes))
-      (removalListener
-       (reify com.google.common.cache.RemovalListener
-         (^void onRemoval [_ ^RemovalNotification rn]
-           (let [[database-id _details-hash] (.getKey rn)
-                 pool-spec                   (.getValue rn)]
-             (log/debugf "Evicting swapped pool for database %d (cause: %s)"
-                         database-id (.getCause rn))
-             (destroy-pool! database-id pool-spec)
-             nil))))
-      (build)))
-
-(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-swapped) details,
-  keyed by pool cache key `[database-id, connection-type]`.
-  This is used to detect when database details have been updated in the application database."}
-  pool-cache-key->jdbc-spec-hash
-  (atom {}))
 
 (mu/defn- pool-cache-key
   "Returns the cache key for connection pools: `[database-id, connection-type]`.
@@ -420,22 +513,39 @@
 (defn- set-canonical-pool!
   "Atomically update the canonical connection pool for a database and connection type.
 
-  Use this function instead of modifying connection pool atoms directly because it properly closes down old pools in a
+  Use this function instead of writing the pools state directly because it properly closes down old pools in a
   thread-safe way, ensuring no more than one canonical pool is ever open for a specific database and connection type.
 
+  `database` is the database the pool connects to, which [[WarehouseConnectionCustomizer]] reads on each checkout.
+  If the pool cannot be cached, for example because the pools state is being stopped, the pool is destroyed and the
+  error rethrown.
+
   This function is only for canonical (non-swapped) pools. Swapped pools are managed by the Guava cache."
-  [cache-key details-hash pool-spec-or-nil]
-  {:pre [(vector? cache-key) (some? details-hash)]}
+  [cache-key details-hash pool-spec database]
+  {:pre [(vector? cache-key) (some? details-hash) (some? pool-spec)]}
   (let [[database-id _connection-type] cache-key
-        [old-pool-map] (if pool-spec-or-nil
-                         (swap-vals! pool-cache-key->connection-pool assoc cache-key pool-spec-or-nil)
-                         (swap-vals! pool-cache-key->connection-pool dissoc cache-key))]
+        [old-state] (try
+                      (swap-pools-state!
+                       (fn [state]
+                         (let [old-pool-spec (get-in state [:pools cache-key])
+                               replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec)))]
+                           (-> state
+                               (assoc-in [:hashes cache-key] details-hash)
+                               (assoc-in [:pools cache-key] pool-spec)
+                               (cond-> (pool-token pool-spec)
+                                 (assoc-in [:databases (pool-token pool-spec)] [(:engine database) database]))
+                               (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))
+                      ;; only the caching itself: a failure destroying the old pool below must not destroy the new one
+                      (catch Throwable e
+                        (try
+                          (destroy-pool! database-id pool-spec)
+                          (catch Throwable cleanup-error
+                            (.addSuppressed e cleanup-error)))
+                        (throw e)))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
-    (when-let [old-pool-spec (get old-pool-map cache-key)]
-      (when-not (identical? old-pool-spec pool-spec-or-nil)
+    (when-let [old-pool-spec (get-in old-state [:pools cache-key])]
+      (when-not (identical? old-pool-spec pool-spec)
         (destroy-pool! database-id old-pool-spec))))
-  ;; Update canonical hash cache
-  (swap! pool-cache-key->jdbc-spec-hash assoc cache-key details-hash)
   nil)
 
 (mu/defn invalidate-pool-for-db!
@@ -444,24 +554,29 @@
   [db-id :- ::lib.schema.id/database]
   (let [canonical-keys  (mapv (fn [conn-type] [db-id conn-type])
                               driver.conn/connection-types)
-        pool-map        @pool-cache-key->connection-pool
+        pool-map        (pool-cache-key->connection-pool)
         canonical-count (count (filter pool-map canonical-keys))
+        swapped         (swapped-connection-pools)
         ;; Find all swapped pool keys for this database (keys are [db-id, details-hash] tuples)
         swapped-keys    (filter (fn [[cached-db-id _details-hash]]
                                   (= cached-db-id db-id))
-                                (keys (.asMap ^Cache swapped-connection-pools)))]
+                                (keys (.asMap swapped)))]
     (log/infof "Invalidating connection pools for database %d (canonical count: %d, swapped count: %d)"
                db-id canonical-count (count swapped-keys))
     ;; Clear canonical pools for both connection types
     (doseq [cache-key canonical-keys
-            :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)
-                       pool-spec (get old-map cache-key)]
+            :let      [[old-state] (swap-pools-state!
+                                    (fn [state]
+                                      (if-let [pool-spec (get-in state [:pools cache-key])]
+                                        (without-pool state cache-key pool-spec)
+                                        state)))
+                       pool-spec (get-in old-state [:pools cache-key])]
             :when     pool-spec]
-      (destroy-pool! db-id pool-spec)
-      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
-    ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!)
+      (destroy-pool! db-id pool-spec))
+    ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!), outside the slot lock, which the
+    ;; listener takes
     (doseq [cache-key swapped-keys]
-      (.invalidate ^Cache swapped-connection-pools cache-key))))
+      (.invalidate swapped cache-key))))
 
 (defn- empty-pool?
   [data-source]
@@ -478,16 +593,15 @@
    object from the app DB, which could fail or have a race condition across multiple pods."
   [data-source]
   (when (empty-pool? data-source)
-    (doseq [[cache-key pool-spec] @pool-cache-key->connection-pool
+    (doseq [[cache-key pool-spec] (pool-cache-key->connection-pool)
             :when (identical? (:datasource pool-spec) data-source)
-            :let [db-id (first cache-key)]]
+            :let [db-id       (first cache-key)
+                  ;; do not remove a newer pool that another thread put in the cache, or its details hash
+                  [old-state] (swap-pools-state! without-pool cache-key pool-spec)]
+            ;; only the thread whose swap removed the pool closes it
+            :when (identical? pool-spec (get-in old-state [:pools cache-key]))]
       (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
-      ;; do not remove a newer pool that another thread put in the cache
-      (swap! pool-cache-key->connection-pool
-             #(cond-> %
-                (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
-      (destroy-pool! db-id pool-spec)
-      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
+      (destroy-pool! db-id pool-spec))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -549,29 +663,56 @@
   [id (jdbc-spec-hash db)])
 
 (defn- get-swapped-pool
-  "Get or create a swapped connection pool from the Guava cache.
+  "Get or create a swapped connection pool from the Guava cache of the current pools state.
   Validates that existing pools are still valid (password not expired, tunnel open).
   Pools are keyed by [database-id, details-hash] so different swapped details get separate pools.
-  The `db` should already have swapped details applied."
+  The `db` should already have swapped details applied.
+  A pool made in a cache that a stop took out of the state meanwhile is closed, and the lookup runs again on the
+  current state, which throws once the global system has halted."
   [{:keys [id] :as db}]
-  (let [cache-key (swap-cache-key db)
-        existing  (.getIfPresent ^Cache swapped-connection-pools cache-key)]
+  (let [cache     (swapped-connection-pools)
+        cache-key (swap-cache-key db)
+        existing  (.getIfPresent cache cache-key)]
     (cond
       ;; No existing pool - create a new one
       (nil? existing)
-      (.get ^Cache swapped-connection-pools
-            cache-key
-            (reify java.util.concurrent.Callable
-              (call [_]
-                (log/debugf "Creating new swapped connection pool for database %d with spec hash %d"
-                            id (second cache-key))
-                (create-pool! db))))
+      (let [pool-spec (.get cache
+                            cache-key
+                            (reify java.util.concurrent.Callable
+                              (call [_]
+                                (log/debugf "Creating new swapped connection pool for database %d with spec hash %d"
+                                            id (second cache-key))
+                                (let [pool-spec (create-pool! db)
+                                      token     (pool-token pool-spec)]
+                                  ;; checkouts read the database from the pools state, as for a canonical pool. A plain
+                                  ;; write, so a stop meanwhile is not undone by a start; the check below catches it.
+                                  (try
+                                    (when token
+                                      (mc/swap! pools-component
+                                                (fn [state]
+                                                  (cond-> state
+                                                    (identical? cache (:swapped state))
+                                                    (assoc-in [:databases token] [(:engine db) db])))))
+                                    (catch Throwable e
+                                      (try
+                                        (destroy-pool! id pool-spec)
+                                        (catch Throwable cleanup-error
+                                          (.addSuppressed e cleanup-error)))
+                                      (throw e)))
+                                  pool-spec))))]
+        (if (live-swapped-cache? cache)
+          pool-spec
+          (do
+            (log/debugf "Swapped connection pool for database %d was made as the pools stopped, recreating" id)
+            ;; the removal listener closes it
+            (.invalidate cache cache-key)
+            (recur db))))
 
       ;; Existing pool is invalid (password expired, tunnel closed) - invalidate and recreate
       (nil? (get-pool-if-valid existing id true))
       (do
         (log/debugf "Swapped connection pool for database %d is invalid, recreating" id)
-        (.invalidate ^Cache swapped-connection-pools cache-key)
+        (.invalidate cache cache-key)
         (recur db))
 
       ;; Existing pool is valid - use it
@@ -581,12 +722,11 @@
         existing))))
 
 (defn- canonical-pool-hash-changed?
-  "Check if the canonical pool's hash differs from the expected hash.
+  "Check if `curr-hash`, the details hash the canonical pool was made from, differs from the expected hash.
   Handles stale DatabaseInstance by re-fetching from app DB.
   `cache-key` is a `[database-id, connection-type]` tuple."
-  [cache-key expected-hash]
-  (let [database-id (first cache-key)
-        curr-hash   (get @pool-cache-key->jdbc-spec-hash cache-key)]
+  [cache-key curr-hash expected-hash]
+  (let [database-id (first cache-key)]
     (when (and (some? curr-hash) (not= curr-hash expected-hash))
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
@@ -599,14 +739,16 @@
   "Get a canonical pool if it exists and is valid, otherwise return nil.
   `cache-key` is a `[database-id, connection-type]` tuple."
   [cache-key details-hash log-invalidation?]
+  ;; the pool and its hash come from one read of the state, so they belong together
   (let [database-id (first cache-key)
-        pool-spec   (get @pool-cache-key->connection-pool cache-key ::not-found)]
+        state       (pools-state)
+        pool-spec   (get-in state [:pools cache-key] ::not-found)]
     (cond
       (= ::not-found pool-spec)
       nil
 
       ;; Check if the hash has changed (details were updated in DB)
-      (canonical-pool-hash-changed? cache-key details-hash)
+      (canonical-pool-hash-changed? cache-key (get-in state [:hashes cache-key]) details-hash)
       (do
         (when log-invalidation?
           (log-pool-invalidation! database-id :hash-changed))
@@ -624,12 +766,12 @@
 
   When [[metabase.driver/with-swapped-connection-details]] is active for a database, the database details are
   modified before creating the connection pool. Swapped pools are stored in a separate Guava cache with TTL-based
-  eviction (see [[swapped-pool-ttl-minutes]]), while canonical pools are stored in the main atom cache."
+  eviction (see [[swapped-pool-ttl-minutes]]), while canonical pools are stored in the pools state."
   [db :- ::lib.schema.metadata/database]
   (driver-api/check-allowed-access! db)
   (let [db           (driver.conn/connection-database db)
         cache-key    (pool-cache-key db)
-        ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
+        ;; Check for workspace detail swaps (for pool routing: canonical pools state vs Guava TTL cache).
         ;; The actual swap is applied inside effective-details, not here.
         has-swap?    (driver.w/has-connection-swap? (:id db))
         ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
@@ -649,7 +791,7 @@
       has-swap?
       (get-swapped-pool db)
 
-      ;; Canonical pool: use atom cache
+      ;; Canonical pool: use the pools state
       :else
       (or
        ;; we have an existing valid pool for this database, so use it
@@ -663,7 +805,7 @@
           (get-canonical-pool cache-key details-hash false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
-            (set-canonical-pool! cache-key details-hash <>))))))))
+            (set-canonical-pool! cache-key details-hash <> db))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
