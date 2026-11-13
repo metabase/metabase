@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
@@ -87,9 +88,10 @@
            (not (and (api/entitled-data-analyst?) (premium-features/any-transforms-enabled?)))
            (remove #{:transform}))
          (fn [etype coll-col]
-           (cond-> (collection/visible-collection-filter-clause
-                    coll-col
-                    (if (= etype :transform) archived-inclusive-visibility {}))
+           (cond-> (perms/visible-collections-filter-clause coll-col
+                                                            {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*}
+                                                            (assoc (if (= etype :transform) archived-inclusive-visibility {})
+                                                                   :root-namespace (common/entity-root-namespace etype nil)))
              (isa? common/hierarchy etype ::common/collection-item)
              (and-not-archived-clause))))))
 
@@ -257,8 +259,9 @@
   (when (seq coll-ids)
     (let [colls (t2/hydrate (cd.db/collections [:and
                                                 [:in :id (set coll-ids)]
-                                                (collection/visible-collection-filter-clause
-                                                 :id archived-inclusive-visibility)])
+                                                (perms/visible-collections-filter-clause :collection.id
+                                                                                         {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*}
+                                                                                         (assoc archived-inclusive-visibility :root-namespace nil))])
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
@@ -303,14 +306,19 @@
   `opts` carries the two type-dependent parts: `:visibility-config` for the collection clause and
   `:exclude-archived?` for the archived filter. Only the transform hydrator turns them off - a transform
   outlives its folder's archiving and has no `archived` column - so for everything else a trashed peer or
-  culprit drops out of `duplicate_entities`/`slow_entities` at once instead of waiting for the next scan."
-  ([ids exclude-personal?]
-   (readable-entities-where ids exclude-personal? nil))
-  ([ids exclude-personal? {:keys [visibility-config exclude-archived?]
-                           :or   {visibility-config {} exclude-archived? true}}]
+  culprit drops out of `duplicate_entities`/`slow_entities` at once instead of waiting for the next scan. A nil
+  `collection_id` stands for the root Collection of `model`'s namespace."
+  ([model ids exclude-personal?]
+   (readable-entities-where model ids exclude-personal? nil))
+  ([model ids exclude-personal? {:keys [visibility-config exclude-archived?]
+                                 :or   {visibility-config {} exclude-archived? true}}]
    [:and
     [:in :id ids]
-    (collection/visible-collection-filter-clause :collection_id visibility-config)
+    (perms/visible-collections-filter-clause (keyword (str (name (t2/table-name model)) ".collection_id"))
+                                             {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*}
+                                             (assoc visibility-config
+                                                    :root-namespace (common/entity-root-namespace
+                                                                     (common/model->entity-type model) nil)))
     (when exclude-archived? [:= :archived false])
     ;; root-collection entities (nil collection_id) must survive the personal-collection exclusion.
     (when exclude-personal?
@@ -330,7 +338,7 @@
   exactly like a deleted one."
   [card-ids exclude-personal?]
   (when (seq card-ids)
-    (cd.db/card-summaries-by-id (readable-entities-where (set card-ids) exclude-personal?))))
+    (cd.db/card-summaries-by-id (readable-entities-where :model/Card (set card-ids) exclude-personal?))))
 
 (defmulti ^:private read-entity-rows
   "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
@@ -343,9 +351,10 @@
 
 (defmethod read-entity-rows ::common/collection-item
   [entity-type ids exclude-personal?]
-  (cd.db/name-rows (common/entity-type->model entity-type)
-                   (common/peer-select-cols entity-type)
-                   (readable-entities-where ids exclude-personal?)))
+  (let [model (common/entity-type->model entity-type)]
+    (cd.db/name-rows model
+                     (common/peer-select-cols entity-type)
+                     (readable-entities-where model ids exclude-personal?))))
 
 (defmethod read-entity-rows :collection
   [_ ids exclude-personal?]
@@ -355,7 +364,7 @@
   (cd.db/name-rows :model/Collection [:namespace]
                    [:and
                     [:in :id ids]
-                    (collection/visible-collection-filter-clause :id)
+                    (perms/visible-collections-filter-clause :collection.id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:root-namespace nil})
                     (when exclude-personal? [:not (personal-collection-clause :id)])]))
 
 (defmethod read-entity-rows :transform
@@ -365,7 +374,7 @@
   ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
   ;; is cheap.
   (filter mi/can-read? (cd.db/transforms
-                        (readable-entities-where ids exclude-personal?
+                        (readable-entities-where :model/Transform ids exclude-personal?
                                                  {:visibility-config archived-inclusive-visibility
                                                   :exclude-archived? false}))))
 

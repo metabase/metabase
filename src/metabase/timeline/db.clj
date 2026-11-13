@@ -3,9 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
@@ -42,7 +43,7 @@
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         (collection/visible-collection-filter-clause)]
+                         (perms/visible-collections-filter-clause :timeline.collection_id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:root-namespace nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline

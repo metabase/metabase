@@ -2,8 +2,9 @@
   "Application database queries for the metrics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -16,9 +17,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
-                                                                :include-archived-items    :exclude
-                                                                :permission-level          :read})])
+   (perms/visible-collections-filter-clause :report_card.collection_id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:include-trash-collection? false
+                                                                                                                                             :include-archived-items    :exclude
+                                                                                                                                             :permission-level          :read
+                                                                                                                                             :root-namespace            nil})])
 
 (mu/defn visible-metric-card-count
   "The number of unarchived metric Cards the current user can read."

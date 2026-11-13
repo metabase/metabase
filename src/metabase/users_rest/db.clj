@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
@@ -52,24 +53,24 @@
   (t2/select-one-fn :sso_source :model/User :id user-id))
 
 (mu/defn has-visible-card?
-  "Whether an unarchived, non-internal Card that the User with `user-id` can read exists, optionally narrowed to
+  "Whether an unarchived, non-internal Card that the user of `user-info` can read exists, optionally narrowed to
   `card-type` (nil for any type)."
-  [user-id   :- ::lib.schema.id/user
+  [user-info :- ::permissions.schema/collection-user-info
    card-type :- [:maybe :string]]
   (t2/exists? :model/Card
               {:where (into [:and
                              [:= :archived false]
-                             (perms/collection-permission-filter-clause user-id :report_card.collection_id :read {:root-namespace nil})
+                             (perms/visible-collections-filter-clause :report_card.collection_id user-info {:root-namespace nil})
                              (mi/exclude-internal-content-hsql :model/Card)]
                             (when card-type [[:= :type card-type]]))}))
 
 (mu/defn has-visible-dashboard?
-  "Whether an unarchived, non-internal Dashboard that the User with `user-id` can read exists."
-  [user-id :- ::lib.schema.id/user]
+  "Whether an unarchived, non-internal Dashboard that the user of `user-info` can read exists."
+  [user-info :- ::permissions.schema/collection-user-info]
   (t2/exists? :model/Dashboard
               {:where [:and
                        [:= :archived false]
-                       (perms/collection-permission-filter-clause user-id :report_dashboard.collection_id :read {:root-namespace nil})
+                       (perms/visible-collections-filter-clause :report_dashboard.collection_id user-info {:root-namespace nil})
                        (mi/exclude-internal-content-hsql :model/Dashboard)]}))
 
 (mu/defn first-login

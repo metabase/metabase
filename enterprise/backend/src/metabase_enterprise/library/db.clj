@@ -2,8 +2,10 @@
   "Application database queries for the library module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -28,12 +30,11 @@
   (t2/select :model/Collection
              {:where    [:and
                          [:in :type (vec collection/library-collection-types)]
-                         (collection/visible-collection-filter-clause
-                          :id
-                          {:include-archived-items    :exclude
-                           :include-trash-collection? false
-                           :permission-level          :read
-                           :archive-operation-id      nil})]
+                         (perms/visible-collections-filter-clause :collection.id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:include-archived-items    :exclude
+                                                                                                                                                       :include-trash-collection? false
+                                                                                                                                                       :permission-level          :read
+                                                                                                                                                       :archive-operation-id      nil
+                                                                                                                                                       :root-namespace            nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn collection-type

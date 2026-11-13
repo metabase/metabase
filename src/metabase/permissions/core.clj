@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions-revision]
    [metabase.permissions.path]
    [metabase.permissions.published-tables]
+   [metabase.permissions.revisions]
    [metabase.permissions.settings]
    [metabase.permissions.user]
    [metabase.permissions.util]
@@ -34,15 +35,17 @@
   metabase.permissions.path/keep-me
   metabase.permissions.published-tables/keep-me
   metabase.permissions.user/keep-me
+  metabase.permissions.revisions/keep-me
   metabase.permissions.util/keep-me
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
  [metabase.permissions.collection-permissions
-  collection-permission-filter-clause
   collection-permission-for-user
   some-collection-permission-for-user
-  user-has-permission-for-collection?]
+  user-has-permission-for-collection?
+  visible-collections-filter-clause
+  visible-collections-set-filter-clause]
  [metabase.permissions.db
   group-tenant-flags
   groups-by-ids
@@ -138,6 +141,9 @@
   query-creation-capabilities
   user-permissions-set
   user->tenant-collection-and-descendant-ids]
+ [metabase.permissions.revisions
+  increment-implicit-perms-revision!
+  save-perms-revision!]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers
@@ -147,9 +153,7 @@
   routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
-  sandboxed-user-for-db?
-  increment-implicit-perms-revision!
-  save-perms-revision!]
+  sandboxed-user-for-db?]
  [metabase.permissions.validation
   check-advanced-permissions-enabled
   check-group-manager

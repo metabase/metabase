@@ -3,7 +3,6 @@
   Provides query access to published tables via collection permissions."
   (:require
    [metabase-enterprise.data-studio.db :as data-studio.db]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -45,8 +44,6 @@
   (let [column (fn [c] (keyword (str (name table-alias) "." c)))]
     [:and
      [:= (column "is_published") true]
-     (collection/visible-collection-filter-clause
-      (column "collection_id")
-      {}
-      {:current-user-id user-id
-       :is-superuser?   is-superuser?})]))
+     (perms/visible-collections-filter-clause (column "collection_id")
+                                              {:user-id user-id, :is-superuser? is-superuser?}
+                                              {:root-namespace nil})]))

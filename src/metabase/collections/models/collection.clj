@@ -13,7 +13,7 @@
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
-   [metabase.config.core :as config :refer [*request-id*]]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.cache :as models.cache]
@@ -872,184 +872,23 @@
 
 (def ^:private CollectionVisibilityConfig
   [:map {:closed true}
-   [:cte-name {:optional true} [:maybe :keyword]]
    [:include-trash-collection? {:optional true} :boolean]
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]
-   [:root-namespace {:optional true} [:maybe [:or :keyword :string]]]])
-
-(def ^:private UserScope
-  [:map {:closed true}
-   [:current-user-id pos-int?]
-   [:is-superuser?   :boolean]])
+   [:root-namespace [:maybe [:or :keyword :string]]]])
 
 (def ^:private default-visibility-config
-  {:cte-name nil
-   :include-archived-items :exclude
+  {:include-archived-items :exclude
    :include-trash-collection? false
-   :effective-child-of nil
    :archive-operation-id nil
    :permission-level :read
    :root-namespace nil})
 
-(def ^:private ^{:arglists '([user-scope read-or-write root-namespace])} can-access-root-collection?
-  "Cached function to determine whether the current user can access the root collection of `root-namespace`"
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write root-namespace]]
-                         ;; If this is running in the context of a request, cache it for the duration of that request.
-                         ;; Otherwise, don't cache the results at all.)
-                         (if-let [req-id *request-id*]
-                           [req-id current-user-id read-or-write (some-> root-namespace name)]
-                           [(random-uuid) current-user-id read-or-write (some-> root-namespace name)]))}
-   (fn can-access-root-collection?*
-     [{:keys [current-user-id is-superuser?]} read-or-write root-namespace]
-     (or is-superuser?
-         (let [root (assoc root-collection :namespace root-namespace)]
-           (collections.db/user-has-root-collection-permission?
-            current-user-id
-            (cond-> [(perms/collection-readwrite-path root)]
-              (= :read read-or-write) (conj (perms/collection-read-path root)))))))
-   ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
-   :ttl/threshold (* 10 1000)))
-
-(defn should-display-root-collection?
-  "Should this user be shown the root collection, given the `visibility-config` passed?"
-  ([visibility-config]
-   (should-display-root-collection?
-    {:current-user-id api/*current-user-id*
-     :is-superuser?   api/*is-superuser?*}
-    visibility-config))
-  ([user-scope visibility-config]
-   (and
-    ;; we have permission for it.
-    (can-access-root-collection? user-scope (:permission-level visibility-config) (:root-namespace visibility-config))
-    ;; we're not *only* looking for archived items
-    (not= :only (:include-archived-items visibility-config))
-    ;; we're not looking for a particular `archive_operation_id`
-    (not (:archive-operation-id visibility-config)))))
-
-(def ^:private visible-union-columns
-  [:c.id
-   :c.location
-   :c.archived
-   :c.archive_operation_id
-   :c.archived_directly
-   :c.type
-   :c.namespace])
-
-(mu/defn visible-collection-query
-  "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
-  ([visibility-config :- CollectionVisibilityConfig]
-   (visible-collection-query visibility-config
-                             {:current-user-id api/*current-user-id*
-                              :is-superuser?   api/*is-superuser?*}))
-
-  ([visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?]} :- UserScope]
-   ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
-   ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
-   ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
-   ;;
-   ;; - your permissions (we don't show you something you don't have the right to see)
-   ;; - the desired permission level you need (if you're looking for stuff you can WRITE, we don't show you stuff you can READ)
-   ;; - trash (you can show/hide the trash)
-   ;; - archived (you can show/hide archived collections or select *only* archived collections)
-   ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
-   ;;   tree so you can look at it in isolation)
-   ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
-   ^:allow-subquery {:select :id
-                     ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-                     ;; that's all of them. For regular users, it's:
-                     ;; a) the collections they have permission in the DB for,
-                     ;; b) the trash collection, and
-                     ;; c) their personal collection and its descendants
-                     :from [(if is-superuser?
-                              [:collection :c]
-                              [^:allow-subquery {:union-all (keep identity [^:allow-subquery {:select visible-union-columns
-                                                                                              :from   [[:collection :c]]
-                                                                                              :where [:and [:exists ^:allow-subquery {:select [1]
-                                                                                                                                      :from [[:permissions :p]]
-                                                                                                                                      :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
-                                                                                                                                      :where [:and
-                                                                                                                                              [:= :pgm.user_id [:inline current-user-id]]
-                                                                                                                                              [:= :c.id :p.collection_id]
-                                                                                                                                              [:= :p.perm_type (h2x/literal "perms/collection-access")]
-                                                                                                                                              [:or
-                                                                                                                                               [:= :p.perm_value (h2x/literal "read-and-write")]
-                                                                                                                                               (when (= :read (:permission-level visibility-config))
-                                                                                                                                                 [:= :p.perm_value (h2x/literal "read")])]]}]]}
-                                                                            ^:allow-subquery {:select visible-union-columns
-                                                                                              :from   [[:collection :c]]
-                                                                                              :where  [:= :type (h2x/literal trash-collection-type)]}
-                                                                            (when-let [personal-collection-and-descendant-ids
-                                                                                       (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from   [[:collection :c]]
-                                                                                                :where  [:in :id [:inline personal-collection-and-descendant-ids]]})
-                                                                            (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from [[:collection :c]]
-                                                                                                :where [:in :id [:inline tenant-collection-and-descendant-ids]]})
-                                                                            (when (perms/is-data-analyst? current-user-id)
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from [[:collection :c]]
-                                                                                                :where [:= :namespace "transforms"]})])}
-                               :c])]
-                     ;; The `WHERE` clause is where we apply the other criteria we were given:
-                     :where [:and
-                             ;; hiding the trash collection when desired...
-                             (when-not (:include-trash-collection? visibility-config)
-                               [:not= [:inline (trash-collection-id)] :c.id])
-                             ;; hiding archived items when desired...
-                             (when (= :exclude (:include-archived-items visibility-config))
-                               [:= :c.archived false])
-                             ;; (or showing them, if that's what you want)
-                             (when (= :only (:include-archived-items visibility-config))
-                               [:or
-                                [:= :c.archived true]
-                                ;; the trash collection is included when viewing archived-only
-                                [:= :id [:inline (trash-collection-id)]]])
-                             (when-not (perms/use-tenants)
-                               [:not [:exists ^:allow-subquery {:select [1]
-                                                                :from [[:collection :sub_c]]
-                                                                :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
-                             ;; excluding things outside of the `archive_operation_id` you wanted...
-                             (when-let [op-id (:archive-operation-id visibility-config)]
-                               [:or
-                                [:= :c.archive_operation_id op-id]
-                                ;; the trash collection is part of every `archive_operation`
-                                [:= :id (trash-collection-id)]])]}))
-
-(mu/defn visible-collection-filter-clause
-  "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
-  `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
-  based on the results of `visible-collection-query` above."
-  ([]
-   (visible-collection-filter-clause :collection_id))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
-   (visible-collection-filter-clause collection-id-field {}))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
-    visibility-config :- CollectionVisibilityConfig]
-   (visible-collection-filter-clause collection-id-field
-                                     visibility-config
-                                     {:current-user-id api/*current-user-id*
-                                      :is-superuser?   api/*is-superuser?*}))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
-    visibility-config :- CollectionVisibilityConfig
-    user-scope :- UserScope]
-   (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
-     [:or
-      (when (should-display-root-collection? user-scope visibility-config)
-        [:= collection-id-field nil])
-      ;; the non-root collections are here. We're saying "let this row through if..."
-      [:in
-       collection-id-field
-       (if cte-name
-         ^:allow-subquery {:select :id :from cte-name}
-         (visible-collection-query visibility-config user-scope))]])))
+(defn- current-user-info
+  "The `::permissions.schema/collection-user-info` of the current user."
+  []
+  {:user-id api/*current-user-id*, :is-superuser? (boolean api/*is-superuser?*)})
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]
@@ -1058,7 +897,7 @@
                               "."
                               col-name)))]
     [:and
-     (visible-collection-filter-clause (->col "id") visibility-config)
+     (perms/visible-collections-set-filter-clause (->col "id") (current-user-info) visibility-config)
      (if (is-trash? parent-coll)
        [:= (->col "archived_directly") true]
        [:and
@@ -1068,7 +907,8 @@
         [:not [:exists ^:allow-subquery {:select 1
                                          :from [[:collection :c2]]
                                          :where [:and
-                                                 (visible-collection-filter-clause :c2.id visibility-config)
+                                                 (perms/visible-collections-set-filter-clause :c2.id (current-user-info)
+                                                                                              visibility-config)
                                                  [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
                                                  (when-not (collection.root/is-root-collection? parent-coll)
                                                    [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
@@ -1077,13 +917,13 @@
   "Whether the current user can see the Collection with `collection-id`, at `:read` (the default) or `:write` level.
 
   Answered from the current user's permission set rather than by listing every visible Collection, so it costs no
-  query. Note that it answers only the permission question: unlike [[visible-collection-query]] it applies no archival
+  query. Note that it answers only the permission question: unlike `perms/visible-collections-filter-clause` it applies no archival
   filtering, and no `shared-tenant-collection` exclusion for instances with tenants disabled. Callers that need those
   must say so themselves.
 
   That is safe for the ancestors and descendants this is used on, because a collection tree never spans namespaces
   (see `assert-valid-namespace`): they sit in the namespace of a collection the caller already holds, and so were
-  subject to the same filtering when the caller obtained it. Use [[visible-collection-filter-clause]] to filter
+  subject to the same filtering when the caller obtained it. Use `perms/visible-collections-filter-clause` to filter
   *inside* a query."
   ([collection-id]
    (visible-collection-id? collection-id :read))
@@ -1230,7 +1070,7 @@
   have perms for all Collections) -- this is done to keep the Root Collection View for admins from getting crazily
   cluttered with Personal Collections belonging to other users. `archived?`, if given (true or false), restricts
   to Collections with that archived status. `visibility-clause`, if given, is
-  a [[visible-collection-filter-clause]] to restrict the descendants further."
+  a `perms/visible-collections-filter-clause` to restrict the descendants further."
   ([collection :- CollectionWithLocationAndIDOrRoot]
    (descendants-flat collection nil))
   ([collection :- CollectionWithLocationAndIDOrRoot, archived? :- [:maybe :boolean]]
@@ -1333,7 +1173,8 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (set (collections.db/effective-children (effective-children-where-clause collection
                                                                            (t2/table-name :model/Collection)
-                                                                           default-visibility-config))))
+                                                                           (assoc default-visibility-config
+                                                                                  :root-namespace (:namespace collection))))))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children

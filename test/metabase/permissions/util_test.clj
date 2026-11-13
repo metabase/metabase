@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [malli.generator :as mg]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
+   [metabase.permissions.revisions :as perms.revisions]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -232,7 +233,7 @@
     (let [initial-count (t2/count :model/CollectionPermissionGraphRevision)
           remark "Test remark for implicit permission change"]
       (mt/with-current-user (mt/user->id :rasta)
-        (perms.u/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
+        (perms.revisions/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
         (let [final-count (t2/count :model/CollectionPermissionGraphRevision)
               latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})]
           (is (= (inc initial-count) final-count)
@@ -249,7 +250,7 @@
     (let [initial-count (t2/count :model/CollectionPermissionGraphRevision)
           remark "Test remark without user"]
       ;; Call without setting current user (api/*current-user-id* will be nil)
-      (perms.u/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
+      (perms.revisions/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
       (let [final-count (t2/count :model/CollectionPermissionGraphRevision)]
         (is (= initial-count final-count)
             "Should not insert any revision record when no current user is set"))))
@@ -257,7 +258,7 @@
     (let [initial-latest-id (collection-permission-graph-revision/latest-id)
           remark "Test ID increment"]
       (mt/with-current-user (mt/user->id :rasta)
-        (perms.u/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
+        (perms.revisions/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
         (let [latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})]
           (is (= (inc initial-latest-id) (:id latest-revision))
               "Should set ID to incremented value of latest-id"))))))

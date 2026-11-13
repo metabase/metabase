@@ -5,7 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
@@ -221,7 +221,7 @@
                                  "collection"    :collection.id
                                  "action"        :action.collection_id
                                  "search-index"  :search_index.collection_id
-                                 :collection_id)
+                                 (search.config/column-with-model-alias model :collection_id))
         permitted-clause       (if (= model "table")
                                  ;; Tables have their own permission filter (add-table-where-clauses).
                                  ;; Skip collection filtering to avoid blocking tables where the user
@@ -597,11 +597,8 @@
   [query {:keys [current-user-id is-superuser?]}]
   (sql.helpers/where
    query
-   (collection/visible-collection-filter-clause
-    :collection_id
-    {}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})))
+   (perms/visible-collections-filter-clause :model.collection_id {:user-id current-user-id
+                                                                  :is-superuser?   is-superuser?} {:root-namespace nil})))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
