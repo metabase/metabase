@@ -333,6 +333,8 @@ export function InlineExpressionEditor({
           stageIndex={stageIndex}
           expressionIndex={expressionIndex}
           clause={previewRun.clause}
+          source={previewRun.source}
+          availableColumns={availableColumns}
           name={previewRun.name ?? name ?? t`New column`}
           refreshKey={previewRefreshKey}
           isOutdated={isPreviewOutdated}

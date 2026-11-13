@@ -45,6 +45,19 @@ export const EXPRESSION_CASE_COUNTS_SETTING: BooleanPrototypeSetting = {
   defaultValue: true,
 };
 
+export const EXPRESSION_DEBUGGER_DISPLAY_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-debugger-display",
+  type: "segmented",
+  label: "Steps of the row evaluation in custom expressions",
+  description:
+    "List: all steps one below the other. Stepper: one step at a time, with buttons and a slider to move through them.",
+  options: [
+    { value: "list", label: "List" },
+    { value: "stepper", label: "Stepper" },
+  ],
+  defaultValue: "stepper",
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -55,4 +68,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_CASE_COUNTS_SETTING,
+  EXPRESSION_DEBUGGER_DISPLAY_SETTING,
 ];

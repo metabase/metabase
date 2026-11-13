@@ -104,12 +104,16 @@ export const NotebookStepPreview = ({
 type VisualizationPreviewProps = Pick<
   QuestionResultLoaderChildrenProps,
   "rawSeries" | "result" | "error"
->;
+> & {
+  /** Without its own border and shadow, for a host that draws them. */
+  isBare?: boolean;
+};
 
 export const VisualizationPreview = ({
   rawSeries,
   result,
   error,
+  isBare = false,
 }: VisualizationPreviewProps) => {
   const errorPayload = error || result?.error;
   const err = errorPayload
@@ -121,16 +125,12 @@ export const VisualizationPreview = ({
       rawSeries={rawSeries ?? undefined}
       error={err}
       queryBuilderMode="notebook"
-      className={cx(
-        S.PreviewVisualization,
-        CS.bordered,
-        CS.shadowed,
-        CS.rounded,
-        CS.bgWhite,
-        {
-          [CS.p2]: err,
-        },
-      )}
+      className={cx(S.PreviewVisualization, CS.bgWhite, {
+        [CS.bordered]: !isBare,
+        [CS.shadowed]: !isBare,
+        [CS.rounded]: !isBare,
+        [CS.p2]: err,
+      })}
       style={{
         height: err ? "auto" : getPreviewHeightForResult(result),
       }}

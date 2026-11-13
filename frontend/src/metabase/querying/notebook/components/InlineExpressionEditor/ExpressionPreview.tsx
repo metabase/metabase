@@ -1,9 +1,17 @@
 import cx from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import {
   ActionIcon,
   Button,
@@ -20,6 +28,7 @@ import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import { VisualizationPreview } from "../NotebookStep/NotebookStepPreview";
 
+import { ExpressionDebugger } from "./ExpressionDebugger";
 import S from "./ExpressionPreview.module.css";
 
 // Rows to run the expression on, and rows to show from them.
@@ -32,6 +41,9 @@ type ExpressionPreviewProps = {
   /** The index of the edited custom column, or undefined for a new one. */
   expressionIndex?: number;
   clause: Lib.ExpressionClause;
+  /** The text of `clause`, which the evaluation of a row shows. */
+  source: string;
+  availableColumns: Lib.ColumnMetadata[];
   name: string;
   /** A new value runs the expression again and picks new rows. */
   refreshKey: number;
@@ -51,6 +63,8 @@ export function ExpressionPreview({
   stageIndex,
   expressionIndex,
   clause,
+  source,
+  availableColumns,
   name,
   refreshKey,
   isOutdated,
@@ -79,6 +93,8 @@ export function ExpressionPreview({
     preview ? Lib.toJsQuery(preview.query) : skipToken,
   );
   const [seed, setSeed] = useState(0);
+  // The primary key of the row that the evaluation shows.
+  const [debugKey, setDebugKey] = useState<RowValue | null>(null);
 
   const clauseRef = useRef(clause);
   const isFirstRefreshRef = useRef(true);
@@ -135,6 +151,19 @@ export function ExpressionPreview({
       result: { ...data, data: sampleData },
     };
   }, [data, sample, preview]);
+
+  // The table is as wide as its columns, so that the debug buttons are next
+  // to the rows, not at the far right.
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableWidth = useColumnsWidth(tableRef, sampleSeries);
+
+  // The keys of the shown rows, when the first column is the primary key.
+  const rowKeys =
+    sample != null &&
+    preview?.primaryKeyName != null &&
+    sample.cols[0]?.display_name === preview.primaryKeyName
+      ? sample.rows.map((row) => row[0])
+      : null;
 
   const errorMessage =
     error != null || data?.error != null
@@ -196,13 +225,64 @@ export function ExpressionPreview({
         ) : sample.rows.length === 0 ? (
           <Text c="text-secondary" fz="sm">{t`No rows`}</Text>
         ) : (
-          <VisualizationPreview
-            rawSeries={sampleSeries?.rawSeries ?? null}
-            result={sampleSeries?.result ?? null}
-            error={null}
-          />
+          // Full width until the columns are measured, then as wide as they.
+          <div className={cx(S.rows, { [S.fitted]: tableWidth != null })}>
+            <div
+              ref={tableRef}
+              className={S.table}
+              style={tableWidth != null ? { width: tableWidth } : undefined}
+            >
+              <VisualizationPreview
+                rawSeries={sampleSeries?.rawSeries ?? null}
+                result={sampleSeries?.result ?? null}
+                error={null}
+                isBare
+              />
+            </div>
+            {rowKeys != null && (
+              // A column right after the last column of the table: a header,
+              // then a cell for each row, with the same heights and lines.
+              <div className={S.debugButtons}>
+                <div style={{ height: HEADER_HEIGHT }} />
+                {rowKeys.map((key, index) => (
+                  <div
+                    key={index}
+                    className={S.debugCell}
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <Tooltip label={t`Evaluate this row step by step`}>
+                      <ActionIcon
+                        aria-label={t`Evaluate row ${String(key)}`}
+                        aria-pressed={key === debugKey}
+                        variant={key === debugKey ? "filled" : "subtle"}
+                        onClick={() =>
+                          setDebugKey((current) =>
+                            current === key ? null : key,
+                          )
+                        }
+                      >
+                        <Icon name="play" />
+                      </ActionIcon>
+                    </Tooltip>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
+      {debugKey != null && (
+        <ExpressionDebugger
+          query={query}
+          stageIndex={stageIndex}
+          expressionIndex={expressionIndex}
+          availableColumns={availableColumns}
+          clause={clause}
+          source={source}
+          rowKey={debugKey}
+          onClose={() => setDebugKey(null)}
+        />
+      )}
     </div>
   );
 }
@@ -421,4 +501,34 @@ function isNumberOrNull(value: RowValue) {
 
 function shuffle<T>(items: T[]): T[] {
   return [...items].sort(() => Math.random() - 0.5);
+}
+
+/**
+ * The width of the columns of the table in `ref`. The table renders after
+ * its container, so it measures when the header shows up or changes.
+ */
+function useColumnsWidth(
+  ref: RefObject<HTMLDivElement | null>,
+  // A new table has other columns.
+  table: unknown,
+) {
+  const [width, setWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const container = ref.current;
+    if (container == null) {
+      return;
+    }
+    const measure = () => {
+      const headerRow = container.querySelector(
+        '[data-testid="table-header"] [role="row"]',
+      );
+      const rowWidth = headerRow?.getBoundingClientRect().width ?? 0;
+      setWidth(rowWidth > 0 ? Math.ceil(rowWidth) : null);
+    };
+    measure();
+    const mutations = new MutationObserver(measure);
+    mutations.observe(container, { childList: true, subtree: true });
+    return () => mutations.disconnect();
+  }, [ref, table]);
+  return width;
 }

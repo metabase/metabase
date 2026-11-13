@@ -119,6 +119,7 @@
     "leaflet-draw": "^0.4.9",
     "lodash.debounce": "^4.0.8",
     "marked": "18.0.6",
+    "motion": "12.23.12",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
     "ora": "^8.0.1",

@@ -11,3 +11,46 @@
 .outdated .body {
   opacity: 0.5;
 }
+
+/* The table and the column of debug buttons, in one box. */
+.rows {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.table {
+  flex: 1;
+  min-width: 0;
+}
+
+.fitted {
+  width: fit-content;
+  max-width: 100%;
+
+  .table {
+    flex: 0 1 auto;
+  }
+}
+
+.debugButtons {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  padding-inline: var(--mantine-spacing-xs);
+}
+
+.debugCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
