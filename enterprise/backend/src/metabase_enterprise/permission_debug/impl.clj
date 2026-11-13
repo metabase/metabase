@@ -13,6 +13,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -324,6 +325,132 @@
        :member_values member-values
        :other_values  other-values
        :default       (or (:value (first member-values)) (first other-values))})))
+
+(def AffectingAttributesResponse
+  "The attributes a security rule on a person's groups reads, each with the rules that read it and the person's value."
+  [:sequential [:map
+                [:attribute :string]
+                [:value [:maybe :string]]
+                [:uses [:sequential [:map
+                                     [:kind [:enum "sandbox" "impersonation" "routing"]]
+                                     [:label :string]
+                                     [:table_id {:optional true} ::lib.schema.id/table]
+                                     [:field_id {:optional true} ::lib.schema.id/field]
+                                     [:database_id {:optional true} ::lib.schema.id/database]]]]
+                [:applies :boolean]
+                [:member_values {:optional true} [:sequential [:map [:value :string] [:count pos-int?]]]]
+                [:other_values {:optional true} [:sequential :string]]]])
+
+(defn- principal-group-ids
+  "The groups whose rules apply to a principal: a user's own groups; a group with All Users (All tenant users for a
+  tenant group), as its preview user has; a tenant's All tenant users."
+  [principal-type principal-id]
+  (case principal-type
+    "user"   (permission-debug.db/user-group-ids principal-id)
+    "group"  (do (api/check-404 (permission-debug.db/group-name principal-id))
+                 #{principal-id (:id (if (permission-debug.db/tenant-group? principal-id)
+                                       (perms/all-external-users-group)
+                                       (perms/all-users-group)))})
+    "tenant" (do (api/check-404 (permission-debug.db/tenant principal-id))
+                 #{(:id (perms/all-external-users-group))})))
+
+(defn- rule-uses
+  "One use per place a rule on `group-ids` reads an attribute, plus every database router."
+  [group-ids]
+  (concat
+   (for [{:keys [table_id db_id attribute_remappings]} (permission-debug.db/sandboxes-of-groups group-ids)
+         [attribute target]                             attribute_remappings
+         :let [field-id (field-id-in-target target)]]
+     (cond-> {:attribute   attribute
+              :kind        "sandbox"
+              :label       (tru "Filters {0}" (or (permission-debug.db/table-display-name table_id) table_id))
+              :table_id    table_id
+              :database_id db_id}
+       field-id (assoc :field_id field-id)))
+   (for [{:keys [db_id attribute]} (permission-debug.db/impersonations-of-groups group-ids)]
+     {:attribute   attribute
+      :kind        "impersonation"
+      :label       (tru "Sets the database role on {0}" (:name (permission-debug.db/database db_id)))
+      :database_id db_id})
+   (for [{:keys [database_id user_attribute]} (permission-debug.db/database-routers)]
+     {:attribute   user_attribute
+      :kind        "routing"
+      :label       (tru "Picks the database behind {0}" (:name (permission-debug.db/database database_id)))
+      :database_id database_id})))
+
+(defn- card-scope
+  "The `{:table-ids :database-ids}` the Card with `card-id` queries. A native query, or one that can't be
+  preprocessed, counts as querying every table of its database."
+  [card-id]
+  (let [{:keys [dataset_query database_id]} (api/check-404 (permission-debug.db/card card-id))
+        query     (try (qp.preprocess/preprocess dataset_query) (catch Throwable _ nil))
+        native?   (or (nil? query) (match/match-one query {:native &truthy} true))]
+    {:table-ids          (if native? #{} (set (lib/all-source-table-ids query)))
+     :whole-database-ids (if native? #{database_id} #{})
+     :database-ids       #{database_id}}))
+
+(defn- item-scope
+  [card-id dashboard-id]
+  (cond
+    card-id      (card-scope card-id)
+    dashboard-id (do (api/check-404 (permission-debug.db/dashboard-exists? dashboard-id))
+                     (apply merge-with set/union
+                            {:table-ids #{} :whole-database-ids #{} :database-ids #{}}
+                            (map card-scope (permission-debug.db/dashboard-card-ids dashboard-id))))))
+
+(defn- use-touches-scope?
+  [{:keys [table-ids whole-database-ids database-ids]} {:keys [kind table_id database_id]}]
+  (if (= "sandbox" kind)
+    (boolean (or (table-ids table_id) (whole-database-ids database_id)))
+    (boolean (database-ids database_id))))
+
+(defn- principal-values
+  "The value of each attribute for the principal: a user's own (tenant, JSON Web Token then login attributes, as
+  [[metabase.users.models.user/add-attributes]] merges them), a tenant's own, or for a group the preview default."
+  [principal-type principal-id]
+  (case principal-type
+    "user"   (let [{:keys [tenant_id jwt_attributes login_attributes]}
+                   (api/check-404 (permission-debug.db/user-attribute-sources principal-id))]
+               (merge {}
+                      (some-> tenant_id permission-debug.db/tenant :attributes)
+                      jwt_attributes
+                      login_attributes))
+    "tenant" (or (:attributes (permission-debug.db/tenant principal-id)) {})
+    "group"  (into {}
+                   (keep (fn [{:keys [attribute default]}] (when default [attribute default])))
+                   (preview-attributes principal-id))))
+
+(mu/defn affecting-attributes :- AffectingAttributesResponse
+  "The attributes a security rule on the principal's groups reads (sandbox remappings, connection impersonation, database
+  routing), each with its rules and the principal's value. With `card-id` or `dashboard-id`, `:applies` says whether any
+  of the attribute's rules touch the tables and databases the item queries."
+  [{:keys [principal-type principal-id card-id dashboard-id]}
+   :- [:map {:closed true}
+       [:principal-type PrincipalType]
+       [:principal-id pos-int?]
+       [:card-id {:optional true} [:maybe pos-int?]]
+       [:dashboard-id {:optional true} [:maybe pos-int?]]]]
+  (let [group-ids  (principal-group-ids principal-type principal-id)
+        scope      (item-scope card-id dashboard-id)
+        values     (principal-values principal-type principal-id)
+        group-pick (when (= "group" principal-type)
+                     (m/index-by :attribute (preview-attributes principal-id)))]
+    (for [[attribute uses] (group-by :attribute (rule-uses group-ids))
+          :let [other-values (->> uses
+                                  (keep (fn [{:keys [kind field_id database_id]}]
+                                          (case kind
+                                            "sandbox"       (some-> field_id permission-debug.db/field-column-values)
+                                            "routing"       (permission-debug.db/destination-database-names database_id)
+                                            nil)))
+                                  (apply concat)
+                                  (remove nil?) (map str) distinct sort vec)]]
+      (cond-> {:attribute    attribute
+               :value        (some-> (get values attribute) str)
+               :uses         (mapv #(dissoc % :attribute) (distinct uses))
+               :applies      (or (nil? scope) (boolean (some #(use-touches-scope? scope %) uses)))
+               :other_values other-values}
+        group-pick (assoc :member_values (get-in group-pick [attribute :member_values] [])
+                          :other_values  (get-in group-pick [attribute :other_values] other-values))))))
 
 (defn- preview-user-email
   [principal-type principal-id]

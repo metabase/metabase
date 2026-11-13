@@ -137,13 +137,41 @@
         {:keys [grant expires-at]}    (preview-grant/issue api/*current-user-id* user_id session-key-hash)]
     (assoc preview :grant grant :expires_at expires-at)))
 
-(api.macros/defendpoint :get "/preview/attributes" :- permission-debug.impl/PreviewAttributesResponse
-  "The attributes the access of the group with `group-id` depends on (row-level security, connection impersonation,
-  database routing), each with its members' values, the other values to pick from, and the default."
+;; the snake_case parameters match the other `permission_debug` endpoints' bodies; `group-id` is the older form
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/preview/attributes" :- [:or
+                                                       permission-debug.impl/PreviewAttributesResponse
+                                                       permission-debug.impl/AffectingAttributesResponse]
+  "The attributes a security rule reads (row-level security, connection impersonation, database routing).
+
+  With `group-id`: the ones the group's access depends on, each with its members' values, the other values to pick
+  from, and the default.
+
+  With one of `user_id`, `group_id` or `tenant_id`: the ones the rules on that person's groups read, plus every
+  database router's, each with its rules (`uses`), the person's value (a group's or tenant's default), and `applies`,
+  false when `card_id` or `dashboard_id` is given and none of the attribute's rules touch the tables or databases it
+  queries."
   [_route-params
-   {:keys [group-id]} :- [:map {:closed true}
-                          [:group-id ms/PositiveInt]]]
-  (permission-debug.impl/preview-attributes group-id))
+   {:keys [group-id user_id group_id tenant_id card_id dashboard_id]}
+   :- [:and
+       [:map {:closed true}
+        [:group-id {:optional true} ms/PositiveInt]
+        [:user_id {:optional true} ms/PositiveInt]
+        [:group_id {:optional true} ms/PositiveInt]
+        [:tenant_id {:optional true} ms/PositiveInt]
+        [:card_id {:optional true} ms/PositiveInt]
+        [:dashboard_id {:optional true} ms/PositiveInt]]
+       [:fn {:error/message "exactly one of group-id, user_id, group_id or tenant_id, and at most one of card_id or dashboard_id"}
+        (fn [params]
+          (and (= 1 (count (keep params [:group-id :user_id :group_id :tenant_id])))
+               (> 2 (count (keep params [:card_id :dashboard_id])))))]]]
+  (if group-id
+    (permission-debug.impl/preview-attributes group-id)
+    (permission-debug.impl/affecting-attributes
+     {:principal-type (cond user_id "user" group_id "group" tenant_id "tenant")
+      :principal-id   (or user_id group_id tenant_id)
+      :card-id        card_id
+      :dashboard-id   dashboard_id})))
 
 (api.macros/defendpoint :get "/preview/principals" :- permission-debug.explain/PrincipalsResponse
   "Every user, group and tenant an admin can preview permissions as."

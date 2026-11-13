@@ -364,3 +364,38 @@
   "The listed values of the Field with `field-id` (the ones filter widgets offer), or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :values :model/FieldValues :field_id field-id :type "full"))
+
+;;; ------------------------------------------- Attributes that affect a person -------------------------------------------
+
+(mu/defn user-attribute-sources
+  "The `:login_attributes`, `:jwt_attributes` and `:tenant_id` of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :login_attributes :jwt_attributes :tenant_id] :id user-id))
+
+(mu/defn sandboxes-of-groups
+  "The `:group_id`, `:table_id`, `:db_id` (the Table's Database) and `:attribute_remappings` of the Sandboxes of the
+  groups with `group-ids`."
+  [group-ids :- [:set ms/PositiveInt]]
+  (if (seq group-ids)
+    (t2/select [:model/Sandbox :group_id :table_id :attribute_remappings [:table.db_id :db_id]]
+               {:join  [[(t2/table-name :model/Table) :table] [:= :table.id :sandboxes.table_id]]
+                :where [:in :group_id group-ids]})
+    []))
+
+(mu/defn impersonations-of-groups
+  "The `:group_id`, `:db_id` and `:attribute` of the ConnectionImpersonations of the groups with `group-ids`."
+  [group-ids :- [:set ms/PositiveInt]]
+  (if (seq group-ids)
+    (t2/select [:model/ConnectionImpersonation :group_id :db_id :attribute] :group_id [:in group-ids])
+    []))
+
+(mu/defn dashboard-card-ids
+  "The IDs of the Cards on the dashcards of the Dashboard with `dashboard-id`."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-fn-set :card_id :model/DashboardCard
+                    {:where [:and [:= :dashboard_id [:auto/param dashboard-id]] [:not= :card_id nil]]}))
+
+(mu/defn dashboard-exists?
+  "Whether the Dashboard with `dashboard-id` exists."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/exists? :model/Dashboard :id dashboard-id))
