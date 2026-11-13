@@ -207,17 +207,24 @@ describe("ParameterValueWidget", () => {
     expect(triggerButton).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("should close a date filter popover with Escape (metabase#54353)", async () => {
-    setup({
-      parameter: {
-        type: "date/all-options",
-        slug: "date",
-        name: "Date",
-      },
-      value: "past12months",
+  it("should close a date filter popover after picking a value, and with Escape after reopening it (metabase#54353)", async () => {
+    const { onValueChange } = setupStateful({
+      parameter: { type: "date/all-options" },
     });
+    const trigger = screen.getByTestId("parameter-value-widget-target");
 
-    await userEvent.click(screen.getByTestId("parameter-value-widget-target"));
+    await userEvent.click(trigger);
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByText(
+        /Previous 12 months/i,
+      ),
+    );
+    expect(onValueChange).toHaveBeenLastCalledWith("past12months");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(trigger);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
     await userEvent.keyboard("{Escape}");
