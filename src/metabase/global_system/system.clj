@@ -56,8 +56,7 @@
     @box
     (root-value @roots k)))
 
-;; A deftype, not a record: a record would be a map as well as an IDeref, and a handle is neither a value nor a
-;; lookup.
+;; A deftype, not a record: a record is a map as well as an IDeref, and a handle is neither a value nor a lookup.
 (deftype ComponentHandle [k]
   IDeref
   (deref [_] (current-value k))
