@@ -136,7 +136,8 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`; retry later. 422 if a
-  database's connection settings need an admin to fix them; retrying does not help."
+  database's connection settings need an admin to fix them, or if any emitted
+  value contains `{{` or `[[`; retrying does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
