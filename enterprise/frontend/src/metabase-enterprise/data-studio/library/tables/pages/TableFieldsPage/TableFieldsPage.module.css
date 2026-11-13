@@ -10,3 +10,13 @@
 .preview {
   box-shadow: 0 10px 30px 0 hsla(0, 0%, 0%, 0.1);
 }
+
+/* Contains the drawer's fixed positioning to the page, as in Connected data */
+.drawerContainer {
+  position: relative;
+  transform: translateZ(0);
+}
+
+.drawerBody {
+  height: 100%;
+}

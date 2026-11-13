@@ -68,7 +68,7 @@ export function TableMetadataPage() {
             </Stack>
           </DatabaseInfoSection>
           <DatabaseInfoSection
-            name={t`Data layer and visibility`}
+            name={t`Data layer`}
             description={t`The data layer decides who can find this table. Some roles and data layers hide a table from people browsing data.`}
             contentPx="xxxl"
             cardRadius="lg"

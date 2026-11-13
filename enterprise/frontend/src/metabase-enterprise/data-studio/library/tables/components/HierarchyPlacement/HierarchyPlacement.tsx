@@ -7,14 +7,15 @@ import type { TableId } from "metabase-types/api";
 
 /**
  * Hierarchies as a table tab of their own, with levels nested in a tree or
- * as pills in a list whose rows open a page; or as a sub-tab of Fields
+ * as pills in a list whose rows open a page; or as a sub-tab of Fields.
+ * `drawer` is `list` with the Fields tab's field details in a drawer.
  */
-export type HierarchyPlacement = "tab" | "list" | "fields";
+export type HierarchyPlacement = "tab" | "list" | "drawer" | "fields";
 
 // PROTOTYPE: a switch to compare the placements
 const STORAGE_KEY = "metabase-prototype-hierarchy-placement";
 
-const PLACEMENTS: HierarchyPlacement[] = ["list", "tab", "fields"];
+const PLACEMENTS: HierarchyPlacement[] = ["list", "drawer", "tab", "fields"];
 
 const parsePlacement = (value: unknown): HierarchyPlacement =>
   PLACEMENTS.find((placement) => placement === value) ?? "list";
@@ -43,6 +44,7 @@ const getPlacementOptions = (): {
   label: string;
 }[] => [
   { value: "list", label: t`Tab: list + page` },
+  { value: "drawer", label: t`Tab: list + page, field drawer` },
   { value: "tab", label: t`Tab: tree` },
   { value: "fields", label: t`In Fields` },
 ];
@@ -63,7 +65,7 @@ export function HierarchyPlacementToggle({
           data={getPlacementOptions()}
           value={placement}
           allowDeselect={false}
-          w={200}
+          w={260}
           comboboxProps={{ position: "top-end" }}
           onChange={(value) => {
             const next = PLACEMENTS.find((known) => known === value);

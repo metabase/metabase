@@ -294,6 +294,7 @@ export function SegmentTree({
     <Stack gap={rem(48)}>
       <GroupedItemTree
         nodes={nodes}
+        groupIcon="segment_group"
         searchPlaceholder={t`Search segments`}
         newItemButton={
           canCreateSegment && (
@@ -343,6 +344,7 @@ export function SegmentTree({
           <Title order={4}>{t`Proposed segments and groups`}</Title>
           <GroupedItemTree
             nodes={proposalNodes}
+            groupIcon="segment_group"
             emptyMessage={t`No proposed segments`}
             emptyIcon="segment"
             definitionHeader={t`Definition`}

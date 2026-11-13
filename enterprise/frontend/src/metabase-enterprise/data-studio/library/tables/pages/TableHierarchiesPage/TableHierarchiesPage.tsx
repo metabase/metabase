@@ -47,7 +47,7 @@ export function TableHierarchiesPage() {
     <PageContainer data-testid="table-hierarchies-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <TableListBody hasPageBackground>
-        {placement === "list" ? (
+        {placement !== "tab" ? (
           <HierarchyFlatList
             table={table}
             getHierarchyHref={(hierarchyId) =>

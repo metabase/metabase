@@ -8,3 +8,10 @@
 .EmptyState {
   padding-bottom: 128px;
 }
+
+/* A segmented control's items at a large button's 40px height, with the
+   control's 4px padding around them */
+.largeSegmentedLabel {
+  display: flex;
+  min-height: 2rem;
+}

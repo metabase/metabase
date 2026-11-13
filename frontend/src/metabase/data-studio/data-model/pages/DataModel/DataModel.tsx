@@ -62,7 +62,7 @@ import {
 } from "./contexts/PropertySelectionContext";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { DrawerPanel, RouteParams } from "./types";
-import { parseRouteParams } from "./utils";
+import { isPageEscape, parseRouteParams } from "./utils";
 
 export const DataModel = () => {
   return (
@@ -538,27 +538,6 @@ function DataModelContent() {
         </MetadataCardVariantProvider>
       </Drawer>
     </Box>
-  );
-}
-
-/**
- * Whether an Esc keypress is meant for this page's panels. Modals, menus and
- * popovers render outside the page and handle their own Esc, and inputs use
- * it to cancel an edit.
- */
-function isPageEscape(
-  target: EventTarget | null,
-  container: HTMLElement | null,
-): boolean {
-  if (!(target instanceof HTMLElement) || container == null) {
-    return false;
-  }
-  if (target !== document.body && !container.contains(target)) {
-    return false;
-  }
-  return !(
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-    target.isContentEditable
   );
 }
 

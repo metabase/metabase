@@ -1,19 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  useDiscardTablesFieldValuesMutation,
-  useRescanTablesFieldValuesMutation,
-  useSyncTablesSchemasMutation,
-} from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  trackDataStudioTableFieldValuesDiscardStarted,
-  trackDataStudioTableFieldsRescanStarted,
-  trackDataStudioTableSchemaSyncStarted,
-  trackDependencyEntitySelected,
-} from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/common/hooks";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
@@ -25,6 +14,8 @@ import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { dependencyGraph } from "metabase/urls/dependencies";
 import type { Table } from "metabase-types/api";
+
+import { useTableSyncActions } from "./use-table-sync-actions";
 
 interface Props {
   table: Table;
@@ -43,10 +34,11 @@ export function TableActionsMenu({
   onUpdate,
 }: Props) {
   const [modalType, setModalType] = useState<TableModalType>();
-  const [syncTablesSchemas] = useSyncTablesSchemasMutation();
-  const [rescanTablesFieldValues] = useRescanTablesFieldValuesMutation();
-  const [discardTablesFieldValues] = useDiscardTablesFieldValuesMutation();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const {
+    syncSchema: handleSyncSchema,
+    rescanFieldValues: handleRescan,
+    discardFieldValues: handleDiscard,
+  } = useTableSyncActions(table);
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -92,39 +84,6 @@ export function TableActionsMenu({
         triggeredFrom: "data-structure",
         eventDetail: "table",
       });
-    }
-  };
-
-  const handleSyncSchema = async () => {
-    const { error } = await syncTablesSchemas({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to start sync`);
-      trackDataStudioTableSchemaSyncStarted("failure");
-    } else {
-      sendSuccessToast(t`Sync triggered`);
-      trackDataStudioTableSchemaSyncStarted("success");
-    }
-  };
-
-  const handleRescan = async () => {
-    const { error } = await rescanTablesFieldValues({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to start scan`);
-      trackDataStudioTableFieldsRescanStarted("failure");
-    } else {
-      sendSuccessToast(t`Scan triggered`);
-      trackDataStudioTableFieldsRescanStarted("success");
-    }
-  };
-
-  const handleDiscard = async () => {
-    const { error } = await discardTablesFieldValues({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to discard values`);
-      trackDataStudioTableFieldValuesDiscardStarted("failure");
-    } else {
-      sendSuccessToast(t`Discard triggered`);
-      trackDataStudioTableFieldValuesDiscardStarted("success");
     }
   };
 

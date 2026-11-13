@@ -141,6 +141,8 @@ type GroupedItemTreeProps = {
   onNewGroup?: () => void;
   emptyMessage: string;
   emptyIcon: IconName;
+  /** The groups' icon; a folder unless the kind of item has its own */
+  groupIcon?: IconName;
   definitionHeader: string;
   /** An item dragged into a group, out of one, or between two */
   onMove?: (
@@ -165,6 +167,7 @@ export function GroupedItemTree({
   onNewGroup,
   emptyMessage,
   emptyIcon,
+  groupIcon = "folder",
   definitionHeader,
   onMove,
   onMoveGroup,
@@ -183,7 +186,7 @@ export function GroupedItemTree({
         minWidth: 240,
         cell: ({ row }) => {
           const node = row.original;
-          const icon = node.kind === "group" ? "folder" : node.icon;
+          const icon = node.kind === "group" ? groupIcon : node.icon;
           const nameCell = (
             <Group gap="sm" wrap="nowrap" miw={0}>
               <EntityNameCell
@@ -230,7 +233,7 @@ export function GroupedItemTree({
         ),
       },
     ],
-    [definitionHeader],
+    [definitionHeader, groupIcon],
   );
 
   const instance = useTreeTableInstance<TreeNode>({

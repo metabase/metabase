@@ -1,5 +1,5 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useDisclosure, useWindowEvent } from "@mantine/hooks";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -11,9 +11,12 @@ import { DetailPanelHeader } from "metabase/data-studio/data-model/pages/DataMod
 import {
   FieldActionsMenu,
   FieldDetails,
+  FieldDetailsPanel,
 } from "metabase/data-studio/data-model/pages/DataModel/FieldDetailsPanel";
 import { HierarchyList } from "metabase/data-studio/data-model/pages/DataModel/TableSection/HierarchyList";
 import { TableFieldsTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFieldsTab";
+import { DRAWER_PANEL_WIDTH } from "metabase/data-studio/data-model/pages/DataModel/constants";
+import { isPageEscape } from "metabase/data-studio/data-model/pages/DataModel/utils";
 import {
   MetadataCardVariantProvider,
   PreviewSection,
@@ -26,7 +29,16 @@ import {
   useParams,
   useSearchParams,
 } from "metabase/router";
-import { Box, Button, Center, Flex, Icon, Stack, Tabs } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Drawer,
+  Flex,
+  Icon,
+  Stack,
+  Tabs,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 
@@ -39,6 +51,7 @@ import { TableHeader } from "../../components/TableHeader";
 import { TableListBody } from "../../components/TableListBody";
 
 import S from "./TableFieldsPage.module.css";
+import { TableSyncMenu } from "./TableSyncMenu";
 
 type TableFieldsPageParams = {
   tableId: string;
@@ -66,6 +79,22 @@ export function TableFieldsPage() {
   const isHierarchiesView = searchParams.get("view") === "hierarchies";
   // Kept here so the width survives picking another field
   const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH);
+  // Kept here so the drawer's width survives picking another field
+  const [fieldPanelWidth, setFieldPanelWidth] = useState(
+    DRAWER_PANEL_WIDTH.field,
+  );
+  // PROTOTYPE: in the field drawer variant, Esc closes the innermost panel, as
+  // in Connected data. Assigned below, once the open panels are known.
+  const drawerContainerRef = useRef<HTMLDivElement>(null);
+  const closeDrawerPanelRef = useRef<() => void>(() => undefined);
+  useWindowEvent("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      isPageEscape(event.target, drawerContainerRef.current)
+    ) {
+      closeDrawerPanelRef.current();
+    }
+  });
 
   if (isLoading || error != null || table == null || tableId == null) {
     return (
@@ -119,6 +148,115 @@ export function TableFieldsPage() {
           onChange={setPlacement}
         />
       </PageContainer>
+    );
+  }
+
+  // PROTOTYPE: the "field drawer" variant: a full-width field list on the
+  // page's background, with a field's details in a drawer as in Connected data
+  if (placement === "drawer") {
+    const closeField = () => {
+      closePreview();
+      navigate(Urls.dataStudioTableFields(tableId));
+    };
+    // Esc closes the preview first, then the drawer
+    closeDrawerPanelRef.current = () => {
+      if (isPreviewOpen) {
+        closePreview();
+      } else if (field != null) {
+        closeField();
+      }
+    };
+    return (
+      <Box ref={drawerContainerRef} className={S.drawerContainer} h="100%">
+        <PageContainer data-testid="table-fields-page" gap="lg" px={0} pb={0}>
+          <TableHeader table={table} px="3.5rem" />
+          <TableListBody hasPageBackground>
+            {/* Same flat, bordered field cards as the other variants */}
+            <MetadataCardVariantProvider value="outlined">
+              <TableFieldsTab
+                key={tableId}
+                table={table}
+                activeFieldId={fieldId}
+                getFieldHref={(fieldId) =>
+                  Urls.dataStudioTableFields(tableId, fieldId)
+                }
+                searchVariant="page"
+                actions={
+                  !table.db?.is_attached_dwh && <TableSyncMenu table={table} />
+                }
+              />
+            </MetadataCardVariantProvider>
+          </TableListBody>
+          <HierarchyPlacementToggle
+            placement={placement}
+            onChange={setPlacement}
+          />
+        </PageContainer>
+        {/* Non-modal, like Connected data's: the list stays interactive */}
+        <Drawer
+          opened={field != null}
+          onClose={closeField}
+          position="right"
+          size="auto"
+          padding={0}
+          withinPortal={false}
+          withOverlay={false}
+          withCloseButton={false}
+          closeOnClickOutside={false}
+          closeOnEscape={false}
+          lockScroll={false}
+          trapFocus={false}
+          returnFocus={false}
+          shadow="lg_outline"
+          classNames={{ body: S.drawerBody }}
+        >
+          <MetadataCardVariantProvider value="outlined">
+            {field != null && (
+              <Flex h="100%" bg="background_page-secondary">
+                <FieldDetailsPanel
+                  field={field}
+                  table={table}
+                  error={undefined}
+                  isLoading={false}
+                  defaultWidth={fieldPanelWidth}
+                  onWidthChange={setFieldPanelWidth}
+                  getFieldHref={(fieldId) =>
+                    Urls.dataStudioTableFields(tableId, fieldId)
+                  }
+                  hierarchiesHref={getHierarchiesUrl(placement, tableId)}
+                  onClose={closeField}
+                  onPreviewClick={togglePreview}
+                />
+                {isPreviewOpen && (
+                  <Stack
+                    flex="0 0 auto"
+                    h="100%"
+                    p="xl"
+                    gap="xl"
+                    w={DRAWER_PANEL_WIDTH.preview}
+                  >
+                    <DetailPanelHeader
+                      title={t`Field preview`}
+                      onClose={closePreview}
+                    />
+                    <Box flex={1} mih={0}>
+                      <PreviewSection
+                        className={S.preview}
+                        field={field}
+                        table={table}
+                        previewType={previewType}
+                        withHeader={false}
+                        onPreviewTypeChange={setPreviewType}
+                        onClose={closePreview}
+                      />
+                    </Box>
+                  </Stack>
+                )}
+              </Flex>
+            )}
+          </MetadataCardVariantProvider>
+        </Drawer>
+      </Box>
     );
   }
 

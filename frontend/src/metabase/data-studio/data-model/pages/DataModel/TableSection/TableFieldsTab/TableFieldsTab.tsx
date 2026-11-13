@@ -16,12 +16,17 @@ import {
 } from "../ListSearchBar";
 import S from "../TableSection.module.css";
 
+// The sort order control at a large button's height, beside the page search
+const LARGE_ORDER_PICKER_CLASS_NAMES = { label: S.largeSegmentedLabel };
+
 interface TableFieldsTabProps {
   table: Table;
   activeFieldId?: FieldId;
   getFieldHref: (fieldId: FieldId) => string;
   /** More buttons beside Sorting, hidden while sorting */
   actions?: ReactNode;
+  /** The search bar's size: `page` matches the Segments tab */
+  searchVariant?: "compact" | "page";
 }
 
 /** The table's fields, searchable, with sorting beside the search */
@@ -30,6 +35,7 @@ export function TableFieldsTab({
   activeFieldId,
   getFieldHref,
   actions,
+  searchVariant,
 }: TableFieldsTabProps) {
   const {
     handleFieldOrderTypeChange,
@@ -57,6 +63,9 @@ export function TableFieldsTab({
     );
   }
 
+  // On a page, the buttons match the full-size search, as on the Segments tab
+  const buttonSize = searchVariant === "page" ? "lg" : undefined;
+
   return (
     <Stack gap="lg">
       {/* Sorting drags the full list, so search waits until it's done */}
@@ -64,10 +73,12 @@ export function TableFieldsTab({
         value={query}
         placeholder={t`Search fields`}
         disabled={isSorting}
+        variant={searchVariant}
         onChange={setQuery}
       >
         {!isSorting && !readOnly && (
           <Button
+            size={buttonSize}
             leftSection={<Icon name="sort_arrows" />}
             onClick={() => setIsSorting(true)}
           >{t`Sorting`}</Button>
@@ -76,11 +87,17 @@ export function TableFieldsTab({
         {isSorting && (
           <FieldOrderPicker
             value={table.field_order}
+            classNames={
+              searchVariant === "page"
+                ? LARGE_ORDER_PICKER_CLASS_NAMES
+                : undefined
+            }
             onChange={handleFieldOrderTypeChange}
           />
         )}
         {isSorting && (
           <Button
+            size={buttonSize}
             leftSection={<Icon name="check" />}
             onClick={() => setIsSorting(false)}
           >{t`Done`}</Button>
