@@ -181,7 +181,8 @@ export function TableStructure({
               label={t`End date`}
               fields={fields}
               value={structure.history.validToFieldId}
-              placeholder={t`The next version`}
+              placeholder={t`None: ends when the next version starts`}
+              clearable
               disabled={readOnly}
               onChange={(validToFieldId) =>
                 setHistoryBinding(table, { validToFieldId })
@@ -480,7 +481,7 @@ function getHistoryFieldInfo() {
   return {
     matchedOn: t`The column that says which record each row is a version of.`,
     trueFrom: t`The date this version of the record became true.`,
-    trueUntil: t`The date this version stopped being true. If it's empty, each version is true until the next one starts.`,
+    trueUntil: t`Optional. The date this version stopped being true. If it's empty, each version is true until the next one starts.`,
   };
 }
 
@@ -576,7 +577,8 @@ function StructureForm({
             }
             data={fields.map(toFieldOption)}
             value={toFieldValue(fields, history.validToFieldId)}
-            placeholder={t`The next version`}
+            description={t`Optional. Leave it empty if each version ends when the next one starts.`}
+            placeholder={t`None: ends when the next version starts`}
             clearable
             disabled={readOnly}
             onChange={(value) =>

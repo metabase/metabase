@@ -57,7 +57,7 @@ describe("inferSystemSegment", () => {
     });
 
     expect(inference.conditions).toEqual([]);
-    expect(inference.signal).toMatch(/latest row per key/);
+    expect(inference.signal).toMatch(/its latest row/);
   });
 });
 
@@ -78,6 +78,6 @@ describe("inferDefaultSegment", () => {
     });
 
     expect(inference.segment).toEqual({ type: "all" });
-    expect(inference.signal).toMatch(/latest row per key/);
+    expect(inference.signal).toMatch(/its latest row/);
   });
 });
