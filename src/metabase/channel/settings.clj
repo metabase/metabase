@@ -80,6 +80,8 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
+  :doc        (str "Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, "
+                   "and no other variable replaces it.")
   :default "metabase_files"
   :encryption :when-encryption-key-set
   :visibility :settings-manager
