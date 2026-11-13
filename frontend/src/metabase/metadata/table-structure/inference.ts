@@ -93,6 +93,10 @@ const VALID_FROM_RE =
   /(^|_)(valid_from|effective_from|effective_date|dbt_valid_from)$|^_fivetran_start$/;
 const VALID_TO_RE =
   /(^|_)(valid_to|effective_to|end_date|dbt_valid_to)$|^_fivetran_end$/;
+const START_DATE_RE =
+  /(^|_)(start_date|start_at|started_at|starts_at|start_time|valid_start|from_date|date_from|changed_at|entered_at)$/;
+const END_DATE_RE =
+  /(^|_)(end_at|ended_at|ends_at|end_time|valid_end|to_date|date_to|exited_at|left_at)$/;
 const CURRENT_FLAG_RE =
   /^(is_current|current_flag|is_latest|active|is_active)$|^_fivetran_active$/;
 const CREATED_RE = /^(created_at|created|created_on|inserted_at)$/;
@@ -403,16 +407,19 @@ export function inferHistoryBinding(fields: Field[]): HistoryBinding {
   const durableKeyFieldId =
     idOf(compositeKeyMember) ?? inferDurableKeyFieldId(fields);
   const validFrom = fields.find((field) => matches(field, VALID_FROM_RE));
-  const validTo = fields.find((field) => matches(field, VALID_TO_RE));
+  const validTo = findByPriority(fields, [VALID_TO_RE, END_DATE_RE]);
   const keyShapeVersion =
     pks.length > 1
       ? pks.find((field) => isDate(field) || matches(field, VERSION_RE))
       : undefined;
+  const startDate =
+    validFrom ??
+    fields.find((field) => matches(field, START_DATE_RE)) ??
+    (validTo ? undefined : keyShapeVersion) ??
+    findTimeColumn(fields, validTo);
   return {
     durableKeyFieldId,
-    validFromFieldId: idOf(
-      validFrom ?? (validTo ? undefined : keyShapeVersion),
-    ),
+    validFromFieldId: idOf(startDate),
     validToFieldId: idOf(validTo),
     currentFlagFieldId: idOf(
       fields.find((field) => matches(field, CURRENT_FLAG_RE)),
@@ -421,6 +428,13 @@ export function inferHistoryBinding(fields: Field[]): HistoryBinding {
       inferVersionFieldId(fields) ?? (validFrom ? null : idOf(keyShapeVersion)),
     currentRowsOnly: true,
   };
+}
+
+function findTimeColumn(fields: Field[], endDate: Field | undefined) {
+  const dates = fields.filter((field) => isDate(field) && field !== endDate);
+  return (
+    dates.find((field) => !matches(field, BOOKKEEPING_DATE_RE)) ?? dates[0]
+  );
 }
 
 export function inferEavBinding(fields: Field[]): EavBinding {

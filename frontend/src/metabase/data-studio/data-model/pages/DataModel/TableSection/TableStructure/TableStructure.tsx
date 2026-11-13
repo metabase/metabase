@@ -214,32 +214,36 @@ export function TableStructure({
           />
         }
       />
-      <DetailsRow
-        label={t`Grain`}
-        value={
-          <GrainFields
-            table={table}
-            grainFields={structure.grainFields}
-            getFieldUrl={getFieldUrl}
-          />
-        }
-      />
+      {!isHistoryRole && (
+        <DetailsRow
+          label={t`Grain`}
+          value={
+            <GrainFields
+              table={table}
+              grainFields={structure.grainFields}
+              getFieldUrl={getFieldUrl}
+            />
+          }
+        />
+      )}
       <DetailsRow
         label={t`Row identity`}
         value={getRowIdentityLabel(structure.rowIdentity)}
       />
-      <DetailsRow
-        label={t`Main date`}
-        fillValue
-        value={
-          <MainDateValue
-            fields={fields}
-            structure={structure}
-            disabled={readOnly}
-            onChange={(fieldId) => setMainDate(table, fieldId)}
-          />
-        }
-      />
+      {!isHistoryRole && (
+        <DetailsRow
+          label={t`Main date`}
+          fillValue
+          value={
+            <MainDateValue
+              fields={fields}
+              structure={structure}
+              disabled={readOnly}
+              onChange={(fieldId) => setMainDate(table, fieldId)}
+            />
+          }
+        />
+      )}
       <DetailsRow
         label={t`Visibility`}
         value={
@@ -482,8 +486,8 @@ function getRoleInference({
 /** What a history table's key and dates mean, for their info icons */
 function getHistoryFieldInfo() {
   return {
-    matchedOn: t`The column that says which record each row is a version of.`,
-    trueFrom: t`The date this version of the record became true.`,
+    matchedOn: t`The column that says which record each row is a version of. With the start date, it's what makes each row unique.`,
+    trueFrom: t`The date this version of the record became true. With the column it's matched on, it's what makes each row unique.`,
     trueUntil: t`The date this version stopped being true. If it's empty, each version is true until the next one starts.`,
   };
 }
@@ -600,25 +604,29 @@ function StructureForm({
         disabled={readOnly}
         onCommit={(value) => setGrainDescription(table, value)}
       />
-      <Input.Wrapper label={t`Grain`}>
-        <Box mt="xs">
-          <GrainFields
-            table={table}
-            grainFields={structure.grainFields}
-            getFieldUrl={getFieldUrl}
-          />
-        </Box>
-      </Input.Wrapper>
-      <Select
-        label={t`Main date`}
-        description={getMainDateInference(structure)}
-        data={dateFields.map(toFieldOption)}
-        value={toFieldValue(dateFields, getMainDateFieldId(structure))}
-        placeholder={t`No main date`}
-        clearable
-        disabled={readOnly}
-        onChange={(value) => setMainDate(table, toFieldId(value))}
-      />
+      {!isHistoryRole && (
+        <Input.Wrapper label={t`Grain`}>
+          <Box mt="xs">
+            <GrainFields
+              table={table}
+              grainFields={structure.grainFields}
+              getFieldUrl={getFieldUrl}
+            />
+          </Box>
+        </Input.Wrapper>
+      )}
+      {!isHistoryRole && (
+        <Select
+          label={t`Main date`}
+          description={getMainDateInference(structure)}
+          data={dateFields.map(toFieldOption)}
+          value={toFieldValue(dateFields, getMainDateFieldId(structure))}
+          placeholder={t`No main date`}
+          clearable
+          disabled={readOnly}
+          onChange={(value) => setMainDate(table, toFieldId(value))}
+        />
+      )}
       {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
         <Select
           label={t`Period`}

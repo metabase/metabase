@@ -198,10 +198,12 @@ export function FieldDetails({
                   }
                 />
               )}
-              <DetailsRow
-                label={t`Grain`}
-                value={<FieldGrainInput field={field} disabled={readOnly} />}
-              />
+              {!isHistoryTable && (
+                <DetailsRow
+                  label={t`Grain`}
+                  value={<FieldGrainInput field={field} disabled={readOnly} />}
+                />
+              )}
               {isHistoryTable && (
                 <DetailsRow
                   label={t`History`}

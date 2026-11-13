@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
+import { isNotNull } from "metabase/utils/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -27,7 +28,7 @@ import {
   inferRowIdentity,
   inferTableRole,
 } from "./inference";
-import { type TableRole, isTableRole } from "./roles";
+import { type TableRole, isRoleA, isTableRole } from "./roles";
 import type { ScdDetailsOverrides } from "./scd-types";
 
 /** What an admin set; anything absent comes from sync's inference */
@@ -207,6 +208,11 @@ export function useTableStructures() {
       const inference = inferTableRole(shape);
       const role = overrides.role ?? inference.role;
       const scdTypeInference = inferScdType(shape);
+      const history = withOverrides(
+        inferHistoryBinding(fields),
+        overrides.history,
+      );
+      const isHistory = role != null && isRoleA(role, "role/HistoryDimension");
       const structure: TableStructure = {
         role,
         inference,
@@ -216,15 +222,17 @@ export function useTableStructures() {
           overrides.role == null &&
           inference.role != null &&
           inference.confidence === "low",
-        grainFields: _.sortBy(
-          fields.filter((field) => isGrainField(field)),
-          (field) => field.position,
-        ),
+        grainFields: isHistory
+          ? getHistoryGrainFields(fields, history)
+          : _.sortBy(
+              fields.filter((field) => isGrainField(field)),
+              (field) => field.position,
+            ),
         grainDescription: overrides.grainDescription ?? "",
         rowIdentity: inferRowIdentity(fields),
         periodGranularity:
           overrides.periodGranularity ?? inferPeriodGranularity(shape),
-        history: withOverrides(inferHistoryBinding(fields), overrides.history),
+        history,
         scdType: overrides.scdType ?? scdTypeInference.scdType,
         scdTypeInference,
         isScdTypeOverridden: overrides.scdType != null,
@@ -232,6 +240,10 @@ export function useTableStructures() {
         eav: withOverrides(inferEavBinding(fields), overrides.eav),
         eavOverrides: overrides.eav ?? {},
         ...resolveMainDate(fields, role, overrides.mainDateFieldId),
+        ...(isHistory && {
+          mainDateField: undefined,
+          mainDateNeedsReview: false,
+        }),
       };
       return structure;
     },
@@ -360,6 +372,15 @@ export function useTableStructures() {
     setMainDate,
     setFieldGrain,
   };
+}
+
+function getHistoryGrainFields(
+  fields: Field[],
+  { durableKeyFieldId, validFromFieldId }: HistoryBinding,
+): Field[] {
+  return [durableKeyFieldId, validFromFieldId]
+    .map((fieldId) => fields.find((field) => field.id === fieldId))
+    .filter(isNotNull);
 }
 
 function resolveMainDate(
