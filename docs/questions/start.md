@@ -1,5 +1,6 @@
 ---
 title: Questions overview
+summary: Ask questions with the query builder, SQL, or the Metrics Explorer, then visualize, export, and share the results with alerts.
 redirect_from:
   - /docs/latest/questions
 ---

@@ -187,7 +187,7 @@
   aggregated row (#83416)."
   (into cell-generic-settings-keys
         [;; number formatting
-         :number_style :currency :currency_style :currency_in_header
+         :number_style :currency :currency_style :currency_position :currency_in_header
          :number_separators :decimals :scale :prefix :suffix
          ;; date/time formatting (only meaningful when the aggregation preserves datetime: min/max/median)
          :date_style :date_separator :date_abbreviate :time_enabled :time_style]))

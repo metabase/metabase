@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 

@@ -444,3 +444,18 @@
     (t/is (= [:field {"key1_updated" 1} [:field {"key2_updated" 2} nil]]
              (match/replace-all [:field {"key1" 1} [:field {"key2" 2} nil]]
                (_ :guard string?) (str &match "_updated"))))))
+
+(t/deftest ^:parallel replace-in-sequences-test
+  (t/testing "non-vector sequences are replaced in and come back as sequences"
+    (let [form' (match/replace '(:x 1 (1 2)) 1 2)]
+      (t/is (= '(:x 2 (2 2)) form'))
+      (t/is (seq? form'))
+      (t/is (seq? (last form'))))
+    (t/is (= '(0 9 2) (match/replace (range 3) 1 9))))
+  (t/testing "empty sequences"
+    (t/is (= () (match/replace () 1 2)))
+    (t/is (= [] (match/replace [] 1 2))))
+  (t/testing "&parents still sees the clause name"
+    (t/is (= [[:field] [:field]]
+             (match/match-many (match/replace '(:field 1 2) (n :guard number?) (inc n))
+               (n :guard number?) &parents)))))

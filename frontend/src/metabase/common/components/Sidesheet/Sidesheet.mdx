@@ -26,14 +26,28 @@ info panels with tabs. Other available sizes are `xs`, `lg`, `xl`, and `auto`.
 Set `offset` to add 16px of space above, below, and to the right of the
 Sidesheet, with rounded corners. The inset uses the `lg` spacing token.
 
-## Organize content with cards, pages, and tabs
+## Organize content with sections, cards, and pages
 
+- Lay out an info panel as one scrolling column of titled sections:
+  `SidebarSection` from `metabase/common/components/DetailSidebar`, with a
+  `DetailsTable` of `DetailsRow`s for key/value facts.
 - Use `SidesheetCard` to group related information and `SidesheetCardSection` to
   divide a card into sections. Card borders separate them from the Sidesheet
   surface.
 - Use `SidesheetSubPage` for a second level of settings with back navigation.
-- Use `SidesheetTabPanelContainer` with `removeBodyPadding` to scroll tab
-  content while keeping the tabs visible.
+
+## Put actions in the header and persistent content in the footer
+
+- `actions` renders icon buttons before the close button; use `ActionIcon` with
+  an `aria-label` and a `Tooltip`.
+- `footer` is pinned below the scrolling body, for content that must stay in
+  reach however long the body is.
+
+## Ask before closing
+
+Pass `confirmClose` to stop a user-initiated close (close button, Escape,
+overlay, `closeHotkey`) before any exit animation starts. Return or resolve
+`false` to keep the sheet open with its state, `true` to let it close.
 
 ## Keep Escape focused on the topmost dialog
 

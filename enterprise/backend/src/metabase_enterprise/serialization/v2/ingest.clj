@@ -1,16 +1,13 @@
 (ns metabase-enterprise.serialization.v2.ingest
-  "Ingestion is the first step in deserialization - reading from the export format (eg. a tree of YAML files) and
-  producing Clojure maps with `:serdes/meta` keys.
-
-  See the detailed description of the (de)serialization processes in [[metabase.models.serialization]]."
+  "Ingestion is the first step of an import: reading the export format (eg. a tree of YAML files) into exported
+  entities, each named by its `[model ref]` key (see [[metabase.serialization.core/key-of]])."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as u.memo]
    [metabase.util.yaml :as yaml]
    [potemkin.types :as p])
   (:import (java.io File)))
@@ -22,16 +19,11 @@
   ;; This is written as a protocol since overriding it with [[reify]] is useful for testing.
   (ingest-list
     [this]
-    "Return a reducible stream of `:serdes/meta`-style abstract paths, one for each entity in the dump.
-    See the description of these abstract paths in [[metabase.models.serialization]].
-    Each path is ordered from the root to the leaf.
+    "Return a reducible stream of the `[model ref]` keys of the entities in the dump, in no particular order.")
 
-    The order of the whole list is not specified and should not be relied upon!")
-
-  (ingest-one
-    [this path]
-    "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
-    corresponding entity.")
+  (ingest-many
+    [this ks]
+    "Given a batch of the keys [[ingest-list]] returns, read in and return their entities, nil for a missing one.")
 
   (ingest-errors
     [this]
@@ -61,17 +53,6 @@
     (keyword k)
     k))
 
-(defn strip-labels
-  "Removes :label keys from all maps in a hierarchy.
-
-  Args:
-    hierarchy: A collection of maps that may contain :label keys.
-
-  Returns:
-    A vector with :label keys removed from each map in the hierarchy."
-  [hierarchy]
-  (mapv #(dissoc % :label) hierarchy))
-
 (defn- ingest-file
   "Reads an entity YAML file and clean it up (eg. parsing timestamps)
   The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
@@ -79,7 +60,7 @@
   (-> file
       (yaml/from-file {:key-fn parse-key})
       read-timestamps
-      serdes/restore-path))
+      serialization/restore-identity))
 
 (defn- check-resource-path!
   "Throws unless `path` is a relative path that stays inside its entity's directory."
@@ -91,9 +72,9 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
+  "The ingested `entity` with each of its [[serialization/resource-paths]] read by `read-fn` into `:serdes/resources`."
   [entity read-fn]
-  (if-let [paths (seq (serdes/resource-paths entity))]
+  (if-let [paths (seq (serialization/resource-paths entity))]
     (assoc entity :serdes/resources (into {}
                                           (map (fn [path]
                                                  (check-resource-path! path)
@@ -130,24 +111,6 @@
                     (= entity-file-name file-name)
                     true)))))
 
-(defn- path-interner
-  "Returns a function that interns `:serdes/meta` path vectors.
-
-  Every parsed file allocates fresh copies of its path maps and strings, but the
-  `[db schema table]` prefix segments recur once per sibling file (a million-field instance
-  has ~#tables distinct prefixes). Interning each segment (and its strings) collapses those
-  duplicates to shared objects, so index keys share structure — value equality is unchanged,
-  so lookups and `:seen`-set comparisons behave identically. The interner caches live only as
-  long as the returned function is reachable; do not hold it past index construction."
-  []
-  (let [intern-str (u.memo/fast-interner)
-        intern-seg (u.memo/fast-interner
-                    (fn [seg]
-                      (cond-> (update seg :model intern-str)
-                        (string? (:id seg)) (update :id intern-str))))]
-    (fn intern-path [hierarchy]
-      (mapv intern-seg hierarchy))))
-
 (defn- ingestible-file?
   "Whether `file` is a regular file that [[entity-file-path?]] accepts. Dotfiles are excluded (editor temp files, see
   #41567)."
@@ -155,12 +118,12 @@
   (and (.isFile file)
        (entity-file-path? (str/replace (str (.relativize (.toPath root-dir) (.toPath file))) "\\" "/"))))
 
-(defn- file-hierarchy!
-  "Parses `file` and returns its `:serdes/meta` abstract path, or nil on parse failure.
-  On failure the exception is recorded in the `errors` atom."
+(defn- file-key!
+  "Parses `file` and returns the `[model ref]` key of its entity, or nil on parse failure, recording the exception in
+  the `errors` atom."
   [^File file errors]
   (try
-    (serdes/path (ingest-file file))
+    (serialization/key-of (ingest-file file))
     (catch Exception e
       (log/warn (u/strip-error e "Error reading file during ingestion"))
       (let [file-name (.getName file)]
@@ -169,18 +132,17 @@
       nil)))
 
 (defn- ingest-all
-  "Returns {:entities {unlabeled-hierarchy File}, :errors [Exception...]}.
+  "Returns {:entities {key File}, :errors [Exception...]}.
   Dotfiles are silently skipped (editor temp files, see #41567).
   Non-dotfile YAML parse failures are collected in :errors."
   [^File root-dir]
-  (let [errors      (atom [])
-        intern-path (path-interner)]
+  (let [errors (atom [])]
     {:entities (into {} (for [^File file (file-seq root-dir)
                               :when (ingestible-file? root-dir file)
-                              :let  [hierarchy (file-hierarchy! file errors)]
-                              :when hierarchy]
-                          [(intern-path (strip-labels hierarchy)) file]))
-     :errors  @errors}))
+                              :let  [k (file-key! file errors)]
+                              :when k]
+                          [k file]))
+     :errors   @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
   (when-not @cache
@@ -192,31 +154,37 @@
   Ingestable
   (ingest-list [_]
     (populate-cache! cache errors-atom #(ingest-all root-dir))
-    (-> @cache
-        keys
-        (concat (for [k (keys settings)]
-                  [{:model "Setting" :id (name k)}]))))
+    (concat (keys @cache)
+            (for [k (keys settings)]
+              [:model/Setting (name k)])))
 
-  (ingest-one [_ serdes-meta]
+  (ingest-many [_ ks]
     (populate-cache! cache errors-atom #(ingest-all root-dir))
-    (let [{:keys [id]} (first serdes-meta)
-          kw-id        (keyword id)]
-      (if (= ["Setting"] (mapv :model serdes-meta))
-        (when (contains? settings kw-id)
-          {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [file (get @cache (strip-labels serdes-meta))]
-          (try
-            (read-resources (ingest-file file)
-                            (fn [path]
-                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
-                                (when (.isFile resource)
-                                  (slurp resource)))))
-            (catch Exception e
-              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
-                                                       :abs-path serdes-meta} e))))))))
+    (mapv (fn [[model id :as k]]
+            (if (= model :model/Setting)
+              (let [kw-id (keyword id)]
+                (when (contains? settings kw-id)
+                  {:serdes/meta [{:model "Setting"}] :key id :value (get settings kw-id)}))
+              (when-let [file (get @cache k)]
+                (try
+                  (read-resources (ingest-file file)
+                                  (fn [path]
+                                    (let [resource (io/file (.getParentFile ^File file) ^String path)]
+                                      (when (.isFile resource)
+                                        (slurp resource)))))
+                  (catch Exception e
+                    (throw (ex-info "Unable to ingest file" {:file (.getName ^File file) :key k} e)))))))
+          ks))
 
   (ingest-errors [_]
     (or @errors-atom [])))
+
+(defn ingested
+  "An eduction of the `[k entity]` of each of the keys `ks` of `ingestion`, read a batch at a time."
+  [ingestion ks]
+  (eduction (comp (partition-all serialization/batch-size)
+                  (mapcat (fn [batch] (map vector batch (ingest-many ingestion (vec batch))))))
+            ks))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by

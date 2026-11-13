@@ -88,13 +88,6 @@
                                  [:in :table_id table-ids-query]
                                  extra-clause]})))
 
-(mu/defn delete-cards-for-database-returning-ids-reducible
-  "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
-                       :returning   [:id]}))
-
 (mu/defn card-ids-for-database-reducible
   "A reducible of the `:id`s of the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -114,11 +107,26 @@
     (t2/delete! :model/Action :id [:in action-ids])
     0))
 
-(mu/defn delete-cards-for-database!
-  "Delete the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
+(mu/defn delete-cards! :- :int
+  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`, returning the number
+  deleted."
+  [database-id :- ::lib.schema.id/database
+   card-ids    :- [:sequential ::lib.schema.id/card]]
+  (first (t2/query {:delete-from (t2/table-name :model/Card)
+                    :where       [:and
+                                  [:= :database_id database-id]
+                                  [:in :id card-ids]]})))
+
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
 
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
@@ -153,24 +161,6 @@
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
-
-(mu/defn databases-for-serdes-reducible
-  "A reducible of the Databases to export via serdes: routing destinations, stubs and the sample database are always
-  excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
-  of `filter-ids` when `filter-column` is given."
-  [filter-column :- [:maybe :keyword]
-   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   include-h2?   :- :boolean]
-  (t2/reducible-select :model/Database
-                       {:where [:and
-                                (when filter-column
-                                  [:in filter-column filter-ids])
-                                [:= :router_database_id nil]
-                                ;; never export the sample database, regardless of its driver
-                                [:not= :is_sample true]
-                                [:not= :is_stub true]
-                                (when-not include-h2?
-                                  [:not= :engine "h2"])]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

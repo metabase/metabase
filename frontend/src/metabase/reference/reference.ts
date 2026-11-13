@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils";
@@ -150,24 +148,28 @@ const initialState: ReferenceState = {
 export default handleActions(
   {
     [START_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", true),
+      next: (state: ReferenceState) => ({ ...state, isEditing: true }),
     },
     [END_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", false),
+      next: (state: ReferenceState) => ({ ...state, isEditing: false }),
     },
     [EXPAND_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", true),
+      next: (state: ReferenceState) => ({ ...state, isFormulaExpanded: true }),
     },
     [COLLAPSE_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", false),
+      next: (state: ReferenceState) => ({ ...state, isFormulaExpanded: false }),
     },
     [SHOW_DASHBOARD_MODAL]: {
-      next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", true),
+      next: (state: ReferenceState) => ({
+        ...state,
+        isDashboardModalOpen: true,
+      }),
     },
     [HIDE_DASHBOARD_MODAL]: {
-      next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", false),
+      next: (state: ReferenceState) => ({
+        ...state,
+        isDashboardModalOpen: false,
+      }),
     },
   },
   initialState,

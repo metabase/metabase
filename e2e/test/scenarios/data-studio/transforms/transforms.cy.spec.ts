@@ -2254,9 +2254,12 @@ LIMIT
         tableVariableTable: SOURCE_TABLE,
         tableVariableSchema: TARGET_SCHEMA,
       });
-      cy.log("set up remote sync");
+      cy.log("set up remote sync and push the transform");
       H.setupGitSync();
+      H.configureGit("read-write");
+      H.pushChangesWithApi();
       H.configureGit("read-only");
+      H.pollForTask({ taskName: "import" });
     });
 
     it("should make transform pages read-only", () => {
@@ -3331,13 +3334,13 @@ describe("scenarios > admin > transforms", () => {
     );
     H.DataStudio.Transforms.sectionHeader().should("be.visible");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Transforms" })
+      .findByRole("tab", { name: "Transforms" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Jobs" })
+      .findByRole("tab", { name: "Jobs" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Runs" })
+      .findByRole("tab", { name: "Runs" })
       .should("not.exist");
   });
 });

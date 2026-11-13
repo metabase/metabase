@@ -1,5 +1,5 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { CollectionId, ConcreteTableId } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({
@@ -8,7 +8,7 @@ export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   });
 };
 
-export const trackDataStudioTablePublished = (id?: ConcreteTableId) => {
+export const trackDataStudioTablePublished = (id?: TableId) => {
   trackSimpleEvent({
     event: "data_studio_table_published",
     target_id: id,
@@ -54,7 +54,7 @@ export const trackDataStudioTablePickerSearchPerformed = () => {
   });
 };
 
-export const trackDataStudioTableUnpublished = (id?: ConcreteTableId) => {
+export const trackDataStudioTableUnpublished = (id?: TableId) => {
   trackSimpleEvent({
     event: "data_studio_table_unpublished",
     target_id: id,
@@ -173,7 +173,7 @@ export const trackMetricCreated = (
   });
 };
 
-export const trackMeasureCreateStarted = (tableId: ConcreteTableId) => {
+export const trackMeasureCreateStarted = (tableId: TableId) => {
   trackSimpleEvent({
     event: "measure_create_started",
     triggered_from: "data_studio_measures_list",

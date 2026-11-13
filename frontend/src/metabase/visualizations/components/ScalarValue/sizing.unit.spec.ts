@@ -1,4 +1,8 @@
-import { SCALAR_SIZE_TIERS, getScalarSizeTier } from "./sizing";
+import {
+  SCALAR_SIZE_TIERS,
+  getScalarSizeTier,
+  getScalarValueFontSize,
+} from "./sizing";
 
 describe("getScalarSizeTier", () => {
   it("returns the smallest tier for tiny cards", () => {
@@ -40,5 +44,35 @@ describe("getScalarSizeTier", () => {
     expect(getScalarSizeTier(400, 200).multiComparisonMinHeight).toBe(264);
     expect(getScalarSizeTier(500, 240).multiComparisonMinHeight).toBe(288);
     expect(getScalarSizeTier(600, 320).multiComparisonMinHeight).toBe(320);
+  });
+});
+
+describe("getScalarValueFontSize", () => {
+  const fontSize = 32;
+  const minFontSize = getScalarSizeTier(0, 0).valueFontSize;
+
+  it("keeps the font size when the value fits the width", () => {
+    expect(getScalarValueFontSize("a@b.com", 1000, fontSize)).toBe(fontSize);
+  });
+
+  it("shrinks the font size for a long value", () => {
+    const fittedFontSize = getScalarValueFontSize(
+      "borer-hudson@yahoo.com",
+      300,
+      fontSize,
+    );
+
+    expect(fittedFontSize).toBeLessThan(fontSize);
+    expect(fittedFontSize).toBeGreaterThan(minFontSize);
+  });
+
+  it("does not shrink the font size below the smallest tier font size", () => {
+    expect(getScalarValueFontSize("borer-hudson@yahoo.com", 50, fontSize)).toBe(
+      minFontSize,
+    );
+  });
+
+  it("keeps the font size for non-string values", () => {
+    expect(getScalarValueFontSize(null, 10, fontSize)).toBe(fontSize);
   });
 });

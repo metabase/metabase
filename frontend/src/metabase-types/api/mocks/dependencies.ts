@@ -333,8 +333,8 @@ export function createMockDataAppDependencyNodeData(
   opts?: Partial<DataAppDependencyNodeData>,
 ): DataAppDependencyNodeData {
   return {
-    name: "data-app",
-    display_name: "Data app",
+    slug: "data-app",
+    name: "Data app",
     description: null,
     created_at: "2020-01-01T00:00:00Z",
     ...opts,

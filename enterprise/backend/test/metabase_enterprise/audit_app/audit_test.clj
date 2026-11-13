@@ -68,6 +68,16 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
+    (testing "Fields of the audit views get the external Dimensions that remap them to names"
+      (let [field-id (fn [table-name field-name]
+                       (t2/select-one-pk :model/Field
+                                         :%lower.name field-name
+                                         :table_id    (t2/select-one-pk :model/Table
+                                                                        :db_id       audit/audit-db-id
+                                                                        :%lower.name table-name)))]
+        (is (=? {:type                    :external
+                 :human_readable_field_id (field-id "v_content" "name")}
+                (t2/select-one :model/Dimension :field_id (field-id "v_query_log" "card_qualified_id"))))))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
       (let [audit-cards             (t2/select (card-schema/selection [:name]) :database_id audit/audit-db-id)
             audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]

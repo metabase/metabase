@@ -4,7 +4,7 @@ import {
 } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashCardDataSeries,
@@ -13,11 +13,9 @@ import {
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 describe("deserializeCardFromQuery", () => {
-  const MBQL_QUERY = {
-    database: 1,
-    type: "query",
-    query: { "source-table": 2 },
-  };
+  const MBQL_QUERY = Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  );
   const CARD_PAYLOAD = {
     dataset_query: MBQL_QUERY,
     display: "bar",

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
@@ -41,8 +41,8 @@ function setup({
 }: SetupOpts = {}) {
   const zoomToNode = jest.fn();
   const value = {
-    visibleTableIds: new Set<ConcreteTableId>(),
-    expandingTableIds: new Set<ConcreteTableId>(),
+    visibleTableIds: new Set<TableId>(),
+    expandingTableIds: new Set<TableId>(),
     expandToTable: jest.fn(),
     selectedNodeId: null,
     selectNode: jest.fn(),

@@ -1,11 +1,13 @@
 import { useCallback } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { updateDataPermission } from "metabase/permissions";
 import { useDispatch } from "metabase/redux";
+import { Modal } from "metabase/ui";
 import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
@@ -13,7 +15,10 @@ import type {
   ImpersonationModalParams,
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
-import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import {
+  getImpersonatedDatabaseId,
+  impersonatesUsers,
+} from "metabase-enterprise/advanced_permissions/utils";
 import { useGetImpersonationQuery } from "metabase-enterprise/api";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
@@ -22,10 +27,17 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
+  type Database,
   type UserAttributeKey,
 } from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
+
+const getImpersonationModalTitle = (database: Database) =>
+  impersonatesUsers(database)
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+      t`Map a Metabase user attribute to database users`
+    : t`Map a user attribute to database roles`;
 
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   // NaN preserves the pre-conversion parseInt behavior for the
@@ -104,25 +116,32 @@ export const ImpersonationModal = ({
     dispatch(fetchUserAttributes());
   });
 
-  const isLoading =
-    isDatabaseLoading || isImpersonationLoading || !attributes || !database;
-
-  if (isLoading) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error ?? impersonationError}
-      />
-    );
-  }
+  const isReady =
+    !isDatabaseLoading &&
+    !isImpersonationLoading &&
+    attributes != null &&
+    database != null;
+  const loadError = error ?? impersonationError;
 
   return (
-    <ImpersonationModalView
-      selectedAttribute={selectedAttribute}
-      attributes={attributes}
-      database={database}
-      onSave={handleSave}
-      onCancel={onClose}
-    />
+    <Modal
+      opened
+      density="relaxed"
+      withCloseButton={!isReady && loadError != null}
+      title={database ? getImpersonationModalTitle(database) : undefined}
+      onClose={onClose}
+    >
+      {isReady ? (
+        <ImpersonationModalView
+          selectedAttribute={selectedAttribute}
+          attributes={attributes}
+          database={database}
+          onSave={handleSave}
+          onCancel={onClose}
+        />
+      ) : (
+        <LoadingAndErrorWrapper loading error={loadError} />
+      )}
+    </Modal>
   );
 };
