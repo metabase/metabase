@@ -3380,8 +3380,16 @@
           (finally
             (ws/clear-instance-workspace!)))))))
 
+(deftest import-sets-a-setting-that-is-not-exported-test
+  (testing "an import sets a setting that is not exported, other than workspaces-enabled"
+    (mt/with-temporary-setting-values [admin-email "before@example.com"]
+      (is (false? (setting/export? :admin-email)))
+      (serdes.load/load-metabase!
+       (ts/ingestion-in-memory [{:serdes/meta [{:model "Setting"}] :key "admin-email" :value "after@example.com"}]))
+      (is (= "after@example.com" (setting/get :admin-email))))))
+
 (deftest import-does-not-set-workspaces-enabled-test
-  (testing "an import does not set workspaces-enabled, a setting that is not exported"
+  (testing "an import does not set workspaces-enabled"
     (mt/with-premium-features #{:workspaces :serialization}
       (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
         (let [import! (fn [value]

@@ -15,14 +15,15 @@
 
 (defn- load-settings!
   "Sets the exported `settings`, returning with `continue-on-error` the errors of those it could not set, which it
-  skips. Skips a registered setting that is not exported (`:export? false`): an export never carries it, and this
-  write does not go through the setting's setter, so it would skip the checks the setter makes."
+  skips. Skips `workspaces-enabled`."
   [settings continue-on-error]
   (into []
         (keep (fn [{:keys [key value]}]
                 (try
-                  (if (and (setting/registered? key) (not (setting/export? key)))
-                    (log/warnf "Skipping Setting %s: it is not exported, so an import does not set it" key)
+                  ;; This write does not go through the setter, and the checks and the remap-row cleanup in the
+                  ;; setter of workspaces-enabled must not be skipped.
+                  (if (= (keyword key) :workspaces-enabled)
+                    (log/warnf "Skipping Setting %s: an import does not set it" key)
                     (setting/set-value-of-type! :string (keyword key) (some-> value str)))
                   nil
                   (catch Exception e
