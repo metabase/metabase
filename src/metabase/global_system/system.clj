@@ -41,18 +41,6 @@
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
-(defn component-bound-fn
-  "Wrap `f` to run under the component bindings this thread has now, for handing to another thread.
-   Unlike [[bound-fn]], the wrapper carries no other bindings, so the thread that runs it keeps its own.
-   That thread shares the component bindings, so its writes are seen here too.
-   The wrapper carries every component bound here, not only the one the caller means to pass on.
-   One made inside an app DB binding runs `f` against that app DB."
-  [f]
-  (let [boxes *bound-boxes*]
-    (fn [& args]
-      (clojure.core/binding [*bound-boxes* boxes]
-        (apply f args)))))
-
 (defn- root-value
   "The root value of `k` in the roots map `rs`.
    Throws if `k` was never installed with [[mc/alter-root]]."

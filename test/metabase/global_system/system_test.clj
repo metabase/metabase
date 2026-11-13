@@ -426,16 +426,3 @@
                    (testing "the write lands after the section's own write"
                      (is (= expected (read)))))))))
       (mc/alter-root db-handle :root-db))))
-
-(deftest ^:synchronized component-bound-fn-test
-  (testing "a function made with component-bound-fn carries component bindings to another thread, and nothing else"
-    (mc/alter-root db-handle :root-db)
-    (let [seen (promise)]
-      (binding [*print-length* 3]
-        (mc/binding db-handle :bound-db
-                    (fn []
-                      (let [f      (system/component-bound-fn (fn [] [@db-handle *print-length*]))
-                            thread (Thread. ^Runnable (fn [] (deliver seen (f))))]
-                        (.start thread)
-                        (.join thread)))))
-      (is (= [:bound-db nil] @seen)))))
