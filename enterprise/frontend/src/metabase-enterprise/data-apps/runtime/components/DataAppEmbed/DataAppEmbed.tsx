@@ -29,7 +29,7 @@ createSnowplowTracker(() => getUserId(store.getState()));
 
 // The document URL carries the app slug, subpath
 // and query string, which must not reach analytics.
-setSnowplowPageUrl(window.location.pathname);
+setSnowplowPageUrl(window.location.pathname, { keepReferrerOrigin: true });
 
 initMetaplow({
   hostUrl: getCollectorHostUrl(),
