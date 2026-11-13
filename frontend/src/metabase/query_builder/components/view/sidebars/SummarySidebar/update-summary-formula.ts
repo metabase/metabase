@@ -1,6 +1,6 @@
+import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import {
   makeSummaryFormula,

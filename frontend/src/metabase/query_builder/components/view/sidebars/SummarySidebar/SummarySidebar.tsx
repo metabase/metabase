@@ -10,11 +10,13 @@ import { t } from "ttag";
 import { useDndSensors } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
+import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
 
 import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
@@ -38,14 +40,6 @@ import {
   getFieldSections,
   replaceWellWithField,
 } from "./utils";
-
-type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
-  generatedExpressions?: SummaryGeneratedExpression[];
-  onQueryChange: (
-    query: Lib.Query,
-    generatedExpressions: SummaryGeneratedExpression[],
-  ) => void;
-};
 
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
 
@@ -77,8 +71,9 @@ export function SummarySidebar({
   query,
   onQueryChange,
   stageIndex,
-  generatedExpressions = [],
-}: SummarySidebarProps) {
+}: UpdateQueryHookProps) {
+  const dispatch = useDispatch();
+  const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
   const handleQueryChange = (
     nextQuery: Lib.Query,
     options?: SummaryQueryChangeOptions,
@@ -90,7 +85,12 @@ export function SummarySidebar({
       generatedExpressions,
       ...options,
     });
-    onQueryChange(result.query, result.generatedExpressions);
+    dispatch(
+      setUIControls({
+        summaryGeneratedExpressions: result.generatedExpressions,
+      }),
+    );
+    onQueryChange(result.query);
   };
   const tc = useTranslateContent();
   const sections = useMemo(

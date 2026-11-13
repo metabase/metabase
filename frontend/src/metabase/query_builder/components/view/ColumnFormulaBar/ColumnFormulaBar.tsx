@@ -101,23 +101,21 @@ export function useColumnFormulaBar({
     }
   }, [isOpen, shouldRestoreFocus]);
 
-  const query = useMemo(() => {
-    const query = question.query();
-    if (!isEnabled) {
-      return query;
-    }
-    return Lib.aggregations(query, -1).length > 0
-      ? Lib.appendStage(query)
-      : Lib.ensureFilterStage(query);
-  }, [question, isEnabled]);
+  const { query, stageIndex } = useMemo(
+    () =>
+      isEnabled
+        ? Lib.asReturned(question.query(), -1, question.id())
+        : { query: question.query(), stageIndex: -1 },
+    [question, isEnabled],
+  );
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     isOpen && databaseId != null ? { id: databaseId } : skipToken,
   );
 
   const handleSubmit = ({ name, clause }: NamedExpression) => {
-    const uniqueName = getUniqueExpressionName(query, -1, name);
-    const nextQuery = Lib.expression(query, -1, uniqueName, clause);
+    const uniqueName = getUniqueExpressionName(query, stageIndex, name);
+    const nextQuery = Lib.expression(query, stageIndex, uniqueName, clause);
     onQuestionChange(question.setQuery(nextQuery));
     close();
   };
@@ -130,7 +128,7 @@ export function useColumnFormulaBar({
           <FormulaEditor
             key={editorKey}
             query={query}
-            stageIndex={-1}
+            stageIndex={stageIndex}
             database={database}
             expressionMode="expression"
             submitLabel={t`Add column`}

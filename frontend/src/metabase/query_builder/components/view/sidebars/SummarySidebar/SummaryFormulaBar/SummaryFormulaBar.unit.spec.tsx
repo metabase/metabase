@@ -18,6 +18,9 @@ import {
   deserializeCardFromUrl,
   serializeCardForUrl,
 } from "metabase/common/utils/card";
+import { useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -29,6 +32,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { resetUIControls } from "../../../../../store/actions";
+import { getQueryBuilderMode } from "../../../../../store/selectors";
 import {
   FormulaBarSlotProvider,
   FormulaBarSlotTarget,
@@ -67,6 +72,7 @@ async function setup({
   });
   function Harness({ initialCard }: { initialCard: Card }) {
     const [card, setCard] = useState(initialCard);
+    const mode = useSelector(getQueryBuilderMode);
     const question = new Question(card, metadata);
     const query = question.query();
     return (
@@ -84,23 +90,17 @@ async function setup({
         >
           Remove grouping outside sidebar
         </button>
-        <SummarySidebar
-          query={query}
-          stageIndex={-1}
-          generatedExpressions={
-            question.settings()["summary.generated_expressions"]
-          }
-          onQueryChange={(nextQuery, generatedExpressions) => {
-            savedCard = question
-              .setQuery(nextQuery)
-              .updateSettings({
-                "summary.generated_expressions": generatedExpressions,
-              })
-              .card();
-            setCard(savedCard);
-            onQueryChange(nextQuery);
-          }}
-        />
+        {mode === "view" && (
+          <SummarySidebar
+            query={query}
+            stageIndex={-1}
+            onQueryChange={(nextQuery) => {
+              savedCard = question.setQuery(nextQuery).card();
+              setCard(savedCard);
+              onQueryChange(nextQuery);
+            }}
+          />
+        )}
       </FormulaBarSlotProvider>
     );
   }
@@ -119,13 +119,21 @@ async function setup({
   return {
     onQueryChange,
     store,
-    reloadQuestion: () =>
+    setMode: (queryBuilderMode: QueryBuilderMode) =>
+      act(() => {
+        store.dispatch(setUIControls({ queryBuilderMode }));
+      }),
+    reloadQuestion: () => {
+      act(() => {
+        store.dispatch(resetUIControls());
+      });
       rerender(
         <Harness
           key={1}
           initialCard={deserializeCardFromUrl(serializeCardForUrl(savedCard))}
         />,
-      ),
+      );
+    },
   };
 }
 
@@ -150,8 +158,8 @@ describe("summary formula handoff", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
-  it("removes only custom columns created in the grouping well after loading the question again", async () => {
-    const { onQueryChange, reloadQuestion } = await setup({
+  it("cleans up well-created columns after an Editor round trip, keeping manual columns", async () => {
+    const { onQueryChange, setMode } = await setup({
       query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
@@ -171,10 +179,10 @@ describe("summary formula handoff", () => {
     await screen.findByRole("textbox", { name: "Formula" });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     await expectClosed();
-    reloadQuestion();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove Total + 10" }),
-    );
+    setMode("notebook");
+    expect(screen.queryByTestId("summary-sidebar")).not.toBeInTheDocument();
+    setMode("view");
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
     expect(onQueryChange).toHaveBeenCalledTimes(2);
     const [afterFormulaRemoval] = onQueryChange.mock.calls[1];
     expect(Lib.expressions(afterFormulaRemoval, -1)).toHaveLength(1);
@@ -185,11 +193,25 @@ describe("summary formula handoff", () => {
         Lib.expressions(afterFormulaRemoval, -1)[0],
       ).displayName,
     ).toBe("Manual");
-    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-    expect(onQueryChange).toHaveBeenCalledTimes(3);
-    const [afterClear] = onQueryChange.mock.calls[2];
-    expect(Lib.breakouts(afterClear, -1)).toHaveLength(0);
-    expect(Lib.expressions(afterClear, -1)).toHaveLength(1);
+    expect(Lib.breakouts(afterFormulaRemoval, -1)).toHaveLength(0);
+    expect(Lib.aggregations(afterFormulaRemoval, -1)).toHaveLength(0);
+  });
+  it("keeps custom columns after loading the question again", async () => {
+    const { onQueryChange, reloadQuestion } = await setup();
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    reloadQuestion();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Total + 10" }),
+    );
+    expect(onQueryChange).toHaveBeenCalledTimes(2);
+    const [query] = onQueryChange.mock.calls[1];
+    expect(Lib.breakouts(query, -1)).toHaveLength(0);
+    expect(Lib.expressions(query, -1)).toHaveLength(1);
   });
   it("keeps a formula regrouped after its grouping was removed outside the sidebar", async () => {
     const { onQueryChange } = await setup();
