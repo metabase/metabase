@@ -136,6 +136,13 @@ export type StartPreviewResponse = {
   attributes: Record<string, string>;
 };
 
+export type PreviewSessionResponse = StartPreviewResponse & {
+  /** Signs a request in as `user_id`, read-only, sent as `X-Metabase-Session`. */
+  session_token: string;
+  /** Epoch seconds. */
+  expires_at: number;
+};
+
 export type PreviewGrantResponse = StartPreviewResponse & {
   grant: string;
   /** Epoch seconds. */
@@ -246,7 +253,10 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
     }),
     endPreview: builder.mutation<
       void,
-      { request: StartPreviewRequest; preview: StartPreviewResponse }
+      {
+        request: StartPreviewRequest;
+        preview: StartPreviewResponse | PreviewSessionResponse;
+      }
     >({
       query: ({ request, preview }) => ({
         method: "POST",
@@ -257,7 +267,19 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
           principal_type: request.type,
           principal_id: request.id,
           attributes: preview.attributes,
+          session_token:
+            "session_token" in preview ? preview.session_token : undefined,
         },
+      }),
+    }),
+    startPreviewSession: builder.mutation<
+      PreviewSessionResponse,
+      StartPreviewRequest
+    >({
+      query: ({ type, id, attributes }) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/session",
+        body: { principal_type: type, principal_id: id, attributes },
       }),
     }),
     startPreview: builder.mutation<StartPreviewResponse, StartPreviewRequest>({
@@ -290,5 +312,6 @@ export const {
   useGetAffectingAttributesQuery,
   useEndPreviewMutation,
   useStartPreviewMutation,
+  useStartPreviewSessionMutation,
   useIssuePreviewGrantMutation,
 } = permissionPreviewApi;

@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import type { MetabaseCollectionItem } from "embedding-sdk-bundle/types/collection";
+import type {
+  MetabaseCollectionItem,
+  SdkCollectionId,
+} from "embedding-sdk-bundle/types/collection";
 import {
   CollectionBrowser,
   InteractiveDashboard,
   InteractiveQuestion,
 } from "embedding-sdk-package";
 import { Box, Button, Center, Icon, Stack, Text } from "metabase/ui";
+import type { ContentPreviewItem } from "metabase-enterprise/permission_preview/content-preview";
 
 import { reportReadyToParent } from "../../lib/report-ready-to-parent";
 import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
-
-type PreviewView =
-  | { type: "browser" }
-  | { type: "dashboard"; item: MetabaseCollectionItem }
-  | { type: "question"; item: MetabaseCollectionItem };
 
 const QUESTION_MODELS = new Set(["card", "dataset", "metric"]);
 
@@ -25,12 +24,12 @@ const QUESTION_MODELS = new Set(["card", "dataset", "metric"]);
  * stamps the preview grant.
  */
 export function PermissionPreviewApp() {
+  useEffect(() => {
+    reportReadyToParent();
+  }, []);
+
   if (window.parent === window) {
-    return (
-      <Center h="100vh">
-        <Text c="text-secondary">{t`This preview can’t be opened directly.`}</Text>
-      </Center>
-    );
+    return <OpenedDirectly />;
   }
 
   return (
@@ -40,50 +39,74 @@ export function PermissionPreviewApp() {
   );
 }
 
-function PreviewContent() {
-  const [view, setView] = useState<PreviewView>({ type: "browser" });
+export function OpenedDirectly() {
+  return (
+    <Center h="100vh">
+      <Text c="text-secondary">{t`This preview can’t be opened directly.`}</Text>
+    </Center>
+  );
+}
 
-  useEffect(() => {
-    reportReadyToParent();
-  }, []);
+type PreviewContentProps = {
+  /** The item to show first; the collection browser when null or a collection. */
+  initialItem?: ContentPreviewItem | null;
+  /** Called with the dashboard or question shown, or null when back on the collection browser. */
+  onItemChange?: (item: ContentPreviewItem | null) => void;
+};
 
-  const handleItemClick = (item: MetabaseCollectionItem) => {
-    if (item.model === "dashboard") {
-      setView({ type: "dashboard", item });
-    } else if (QUESTION_MODELS.has(item.model)) {
-      setView({ type: "question", item });
+/** The SDK's collection browser, then the dashboard or question clicked in it. */
+export function PreviewContent({
+  initialItem = null,
+  onItemChange,
+}: PreviewContentProps) {
+  const [item, setItem] = useState<ContentPreviewItem | null>(
+    initialItem?.type === "collection" ? null : initialItem,
+  );
+  const browserCollectionId: SdkCollectionId | "all" =
+    initialItem?.type === "collection" ? initialItem.id : "all";
+
+  const showItem = (newItem: ContentPreviewItem | null) => {
+    setItem(newItem);
+    onItemChange?.(newItem);
+  };
+
+  const handleItemClick = (clicked: MetabaseCollectionItem) => {
+    if (typeof clicked.id !== "number") {
+      return;
+    }
+    if (clicked.model === "dashboard") {
+      showItem({ type: "dashboard", id: clicked.id });
+    } else if (QUESTION_MODELS.has(clicked.model)) {
+      showItem({ type: "question", id: clicked.id });
     }
   };
 
   return (
     <>
       {/* kept mounted, so going back returns to the collection the item was opened from */}
-      <Box p="lg" display={view.type === "browser" ? undefined : "none"}>
+      <Box p="lg" display={item == null ? undefined : "none"}>
         <CollectionBrowser
-          collectionId="all"
+          collectionId={browserCollectionId}
           visibleEntityTypes={["collection", "dashboard", "question", "model"]}
           onClick={handleItemClick}
         />
       </Box>
-      {view.type !== "browser" && (
+      {item != null && (
         <Stack gap={0} h="100vh">
           <Box px="lg" pt="md">
             <Button
               variant="subtle"
               leftSection={<Icon name="chevronleft" />}
-              onClick={() => setView({ type: "browser" })}
+              onClick={() => showItem(null)}
             >
               {t`Back to collections`}
             </Button>
           </Box>
           <Box flex={1} mih={0} style={{ overflow: "auto" }}>
-            {view.type === "dashboard" ? (
-              <InteractiveDashboard dashboardId={view.item.id} />
+            {item.type === "dashboard" ? (
+              <InteractiveDashboard dashboardId={item.id} />
             ) : (
-              <InteractiveQuestion
-                questionId={view.item.id}
-                isSaveEnabled={false}
-              />
+              <InteractiveQuestion questionId={item.id} isSaveEnabled={false} />
             )}
           </Box>
         </Stack>
