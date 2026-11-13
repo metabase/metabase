@@ -27,12 +27,12 @@ export interface DataAppProps {
   path: string;
 
   /**
-   * Called with the new path whenever the app's page changes, for example when the user
-   * clicks a link, goes back or forward, or the app redirects. It is not called for a page
-   * that the host navigated to by changing `path`.
+   * Called with the new path whenever the app's page changes, for example
+   * when the user clicks a `DataAppLink`.
    *
-   * The path has the same format as `path`: the app slug, then the route, query and hash,
-   * such as `my-store/orders/42?tab=items`. Pages whose path `path` does not accept are not reported.
+   * The path has the same format as `path`, such as `my-store/orders/42?tab=items`.
+   *
+   * It is not called when the host changes the `path` prop manually.
    *
    * @example
    * ```tsx
