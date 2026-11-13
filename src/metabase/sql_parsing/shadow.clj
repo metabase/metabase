@@ -145,16 +145,13 @@
       (.allowCoreThreadTimeOut true))))
 
 (defn parser
-  "A SqlParser that answers with `primary` and, when `(sample? method)` is true, runs `shadow` on the same arguments
-  in the background and compares the two. Each comparison counts one `metabase-sql-parsing/shadow-comparisons`
-  outcome (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that
-  throws as `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running
-  or waiting. A comparison that is not a match also logs one INFO line (see [[difference-message]]), at most one per
-  method a minute, through `log-difference!` (default: `log/info`), and calls `record-difference!` (default: do
-  nothing) on the background thread with a map of `:method`, `:dialect`, `:outcome`, `:primary-backend`,
-  `:shadow-backend`, `:sql`, `:args` (the other arguments of the method), and `:primary` and `:shadow` (each
-  `{:value v}` or `{:error type, :message m}`). The backend keywords label the metrics. A `sample?` that throws
-  means no comparison.
+  "A SqlParser that answers with `primary` and, when `(sample? method)` is true, runs `shadow` on the same arguments in
+  the background and compares the two. Each comparison counts one `metabase-sql-parsing/shadow-comparisons` outcome
+  (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that throws as
+  `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running or waiting.
+  A comparison that is not a match also logs one INFO line (see [[difference-message]]), at most one per method a
+  minute, through `log-difference!` (default: `log/info`), and calls `record-difference!` (default: do nothing) on the
+  background thread. The backend keywords label the metrics. A `sample?` that throws means no comparison.
 
   Each call makes a thread pool, so callers keep the parser for the life of the process."
   [{:keys [primary-backend primary shadow-backend shadow sample? log-difference! record-difference!]

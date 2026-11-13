@@ -1,10 +1,6 @@
 (ns metabase.sql-tools.shadow-differences
-  "Keeps the inputs on which the two parsers of a shadow SQL parser backend (`sqlglot-shadow`,
-  `sqlglot-java-shadow`) did not agree in the app DB table `sql_parsing_shadow_difference`, so that each one can be
-  reproduced.
-
-  The table holds customer SQL, so it stays small: one row per distinct input (a repeat increments `seen_count`), and
-  long text is truncated. Nothing is written unless a shadow backend is in use."
+  "Keeps the inputs on which the two parsers of a shadow SQL parser backend did not agree in the app DB table
+  `sql_parsing_shadow_difference`, so that each one can be reproduced."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
@@ -20,11 +16,9 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-sql-length
-  "The most characters of SQL a row keeps."
   65536)
 
 (def ^:private max-json-length
-  "The most characters of each JSON column (the arguments and each result) a row keeps."
   16384)
 
 (defn- ->json
@@ -39,10 +33,6 @@
       (json/encode {:truncated (u/truncate s max-json-length)})
       s)))
 
-(defn- truncate
-  [s n]
-  (some-> s (u/truncate n)))
-
 (defn- canonical
   "`x` with every map and set in a fixed order, so that equal values print the same."
   [x]
@@ -56,8 +46,10 @@
 (defn- input-hash
   "SHA-256 of the input, with the arguments in [[canonical]] order."
   [{:keys [method dialect primary-backend shadow-backend sql args]}]
-  (codecs/bytes->hex
-   (buddy-hash/sha256 (pr-str [method dialect primary-backend shadow-backend sql (canonical args)]))))
+  (->> [method dialect primary-backend shadow-backend sql (canonical args)]
+       pr-str
+       buddy-hash/sha256
+       codecs/bytes->hex))
 
 (defn- unique-violation?
   "True when `e`, or an exception that caused it, is a unique constraint violation (SQL state class 23)."
@@ -68,7 +60,7 @@
         (take-while some? (iterate ex-cause e))))
 
 (defn record!
-  "Keep `difference`, a map that [[metabase.sql-parsing.core/set-shadow-difference-recorder!]] describes."
+  "Store `difference`, the map that [[metabase.sql-parsing.shadow/parser]] passes to `record-difference!`."
   [{:keys [method dialect outcome primary-backend shadow-backend sql args primary shadow] :as difference}]
   (let [hash-value (input-hash difference)
         changes    {:outcome        (name outcome)
@@ -80,7 +72,7 @@
                  :dialect         (some-> dialect name)
                  :primary_backend (name primary-backend)
                  :shadow_backend  (name shadow-backend)
-                 :sql             (truncate sql max-sql-length)
+                 :sql             (some-> sql (u/truncate max-sql-length))
                  :arguments       (when (seq args)
                                     (->json args))}]
         (try
