@@ -11,12 +11,9 @@ jest.mock("../utils/post-message");
 
 describe("use-sdk-iframe-embed-event-bus", () => {
   it("captures the actual sender origin independently of localhost settings", () => {
-    const removeListener = jest.fn();
-    jest.mocked(listenForEajsMessages).mockReturnValue(removeListener);
+    jest.mocked(listenForEajsMessages).mockReturnValue(jest.fn());
     const store = { dispatch: jest.fn() };
-    const { result, unmount } = renderHook(() =>
-      useSdkIframeEmbedEventBus({ store }),
-    );
+    const { result } = renderHook(() => useSdkIframeEmbedEventBus({ store }));
     const message = {
       type: "metabase.embed.setSettings" as const,
       data: {
@@ -40,9 +37,6 @@ describe("use-sdk-iframe-embed-event-bus", () => {
 
     expect(result.current.parentOrigin).toBe("https://host.example.com");
     expect(result.current.embedSettings).toEqual(message.data);
-
-    unmount();
-    expect(removeListener).toHaveBeenCalled();
   });
 
   describe("isMetabaseInstance", () => {

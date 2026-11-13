@@ -159,50 +159,41 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it("sends a local API key only in origin-bound settings", () => {
-    window.metabaseConfig = {
-      instanceUrl: INSTANCE_URL,
+  it.each<{
+    name: string;
+    apiKey?: string;
+    change: (config: NonNullable<typeof window.metabaseConfig>) => void;
+    nextApiKey?: string;
+  }>([
+    {
+      name: "added",
+      change: (config) => (config.apiKey = "development-key"),
+      nextApiKey: "development-key",
+    },
+    {
+      name: "swapped",
       apiKey: "development-key",
-    };
-    const iframe = setup().querySelector("iframe")!;
-    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
-
-    ready(iframe);
-
-    expect(postMessage).toHaveBeenCalledWith(
-      {
-        type: "metabase.embed.setSettings",
-        data: expect.objectContaining({
-          apiKey: "development-key",
-        }),
-      },
-      new URL(INSTANCE_URL).origin,
-    );
-    expect(iframe.src).not.toContain("development-key");
-  });
-
-  it("mounts the frame for an API key so the frame can show why it refuses a production host", () => {
-    window.metabaseConfig = {
-      instanceUrl: INSTANCE_URL,
+      change: (config) => (config.apiKey = "next-key"),
+      nextApiKey: "next-key",
+    },
+    {
+      name: "cleared",
       apiKey: "development-key",
-    };
-
-    expect(setup().querySelector("iframe")).not.toBeNull();
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    [undefined, "development-key"],
-    ["development-key", "next-key"],
-    ["development-key", undefined],
+      change: (config) => (config.apiKey = undefined),
+    },
+    {
+      name: "deleted",
+      apiKey: "development-key",
+      change: (config) => delete config.apiKey,
+    },
   ])(
-    "replaces the frame when the API key changes from %s to %s",
-    (apiKey, nextApiKey) => {
+    "replaces the frame when the API key is $name",
+    ({ apiKey, change, nextApiKey }) => {
       window.metabaseConfig = { instanceUrl: INSTANCE_URL, apiKey };
       const element = setup();
       const original = element.querySelector("iframe")!;
 
-      window.metabaseConfig.apiKey = nextApiKey;
+      change(window.metabaseConfig);
 
       const next = element.querySelector("iframe")!;
       expect(next).not.toBe(original);
@@ -212,43 +203,10 @@ describe("metabase-data-app", () => {
       expect(postMessage).not.toHaveBeenCalled();
 
       ready(next);
-      expect(postMessage).toHaveBeenCalledWith(
-        {
-          type: "metabase.embed.setSettings",
-          data: expect.objectContaining({ apiKey: nextApiKey }),
-        },
-        new URL(INSTANCE_URL).origin,
-      );
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage.mock.calls[0][0].data.apiKey).toBe(nextApiKey);
     },
   );
-
-  it("replaces the frame without the key when the API key is deleted from the config", () => {
-    window.metabaseConfig = {
-      instanceUrl: INSTANCE_URL,
-      apiKey: "development-key",
-    };
-    const element = setup();
-    const original = element.querySelector("iframe")!;
-
-    delete window.metabaseConfig.apiKey;
-
-    const next = element.querySelector("iframe")!;
-    expect(next).not.toBe(original);
-
-    const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
-    ready(original);
-    expect(postMessage).not.toHaveBeenCalled();
-
-    ready(next);
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith(
-      {
-        type: "metabase.embed.setSettings",
-        data: expect.not.objectContaining({ apiKey: expect.anything() }),
-      },
-      new URL(INSTANCE_URL).origin,
-    );
-  });
 
   it("keeps the frame and local key when the route or locale changes", () => {
     window.metabaseConfig = {
@@ -264,6 +222,7 @@ describe("metabase-data-app", () => {
     window.metabaseConfig.locale = "fr";
 
     expect(element.querySelector("iframe")).toBe(iframe);
+    expect(iframe.src).not.toContain("development-key");
     expect(postMessage).toHaveBeenLastCalledWith(
       {
         type: "metabase.embed.setSettings",

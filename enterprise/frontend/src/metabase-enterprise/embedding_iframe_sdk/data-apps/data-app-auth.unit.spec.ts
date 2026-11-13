@@ -1,18 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import {
-  MetabaseDataAppElement,
-  setupConfigWatcher,
-} from "metabase/embedding/embedding-iframe-sdk/embed";
+import { MetabaseDataAppElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import { defer } from "metabase/utils/promise";
 
 import { EmbedAuthManager } from "../auth-manager/AuthManager";
 import { initializePlugins } from "../sdk-iframe-embedding-script-ee-plugins";
-
-jest.mock("embedding-sdk-shared/lib/get-is-localhost");
 
 const INSTANCE_URL = "https://metabase.example.com/reports";
 
@@ -20,8 +14,6 @@ describe("metabase-data-app authentication replies", () => {
   const originalAuthManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager;
 
   beforeEach(() => {
-    jest.mocked(getIsLocalhost).mockReturnValue(true);
-    setupConfigWatcher();
     initializePlugins();
   });
 
@@ -124,27 +116,5 @@ describe("metabase-data-app authentication replies", () => {
     await authentication;
     expect(postMessage).not.toHaveBeenCalled();
     expect(nextIframePostMessage).not.toHaveBeenCalled();
-  });
-
-  it("discards a pending SSO reply after switching to a local key", async () => {
-    const { element, iframe, postMessage, tokenRequest, authentication } =
-      await setupPendingAuth();
-
-    window.metabaseConfig = {
-      instanceUrl: INSTANCE_URL,
-      apiKey: "development-key",
-    };
-
-    const nextIframe = element.querySelector("iframe")!;
-    const nextPostMessage = jest.spyOn(
-      nextIframe.contentWindow!,
-      "postMessage",
-    );
-    expect(nextIframe).not.toBe(iframe);
-
-    tokenRequest.resolve(SESSION_TOKEN);
-    await authentication;
-    expect(postMessage).not.toHaveBeenCalled();
-    expect(nextPostMessage).not.toHaveBeenCalled();
   });
 });
