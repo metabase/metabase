@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private stored-results
-  {:read-only-connections {:result {}, :checked_at "2026-11-06T10:00:00Z"}})
+  {:read-only-connections {:result {:databases []}, :checked_at "2026-11-06T10:00:00Z"}})
 
 (deftest run-health-checks!-test
   (testing "does nothing when Security Center is off"

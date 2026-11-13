@@ -449,11 +449,11 @@
 
 (deftest refresh-keeps-the-results-of-other-checks-test
   (mt/with-premium-features #{:admin-security-center}
-    (mt/with-temporary-setting-values [security-center-health-check-results {:another-check {:result     {:n 1}
-                                                                                             :checked_at "2026-11-01T00:00:00Z"}}]
+    (mt/with-temporary-setting-values [security-center-health-check-results {:https-redirect {:result     {:n 1}
+                                                                                              :checked_at "2026-11-01T00:00:00Z"}}]
       (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh (atom 0)))}]
         (health-checks/refresh-and-run-checks)
-        (is (= {:n 1} (health-checks/stored-result :another-check)))
+        (is (= {:n 1} (health-checks/stored-result :https-redirect)))
         (is (= {:status "fail", :message "The connection user can write"}
                (health-checks/stored-result :read-only-connections))
             "the stored result is read back from JSON: keywords that are values come back as strings")))))

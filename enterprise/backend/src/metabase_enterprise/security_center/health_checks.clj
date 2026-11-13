@@ -80,10 +80,10 @@
   [id]
   (get (settings/security-center-health-check-results) id))
 
-(defn stored-result
-  "What the last refresh of the background check `id` returned, read back from JSON: map keys are keywords, other
-  keywords are strings. Nil until a refresh has stored a result."
-  [id]
+(mu/defn stored-result :- [:maybe :map]
+  "What the last refresh of the background check `id` returned, read back from JSON: a keyword that the refresh stored
+  as a value comes back as a string."
+  [id :- ::security-center.schema/health-check-id]
   (:result (stored id)))
 
 (defn- stored-checked-at

@@ -7,11 +7,29 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::result
+  "What the refresh found for one database."
+  [:enum "read-only" "writable" "no-privileges" "not-supported" "timed-out" "error"])
+
+(mr/def ::stored
+  "What [[refresh]] returns and the setting holds for this check. The map is closed, so connection details cannot
+  get into the setting. Every value is the same before and after the JSON round trip."
+  [:map {:closed true}
+   [:databases [:sequential [:map {:closed true}
+                             [:id     ms/PositiveInt]
+                             [:name   :string]
+                             [:engine :string]
+                             [:result ::result]]]]])
 
 (def ^:private supported-engines
   ;; an explicit set, not the driver feature `:table-privileges`: MySQL has the privileges method and declares the
@@ -90,10 +108,9 @@
       (min max-pool-size)
       (max 1)))
 
-(defn refresh
+(mu/defn refresh :- ::stored
   "Asks every database in Admin → Databases, routing destinations included, whether its connection user can insert,
-  update or delete. Returns the value to store: `{:databases [{:id :name :engine :result}]}`, with no connection
-  details. Takes at most 30 seconds."
+  update or delete. Returns the value to store. Takes at most 30 seconds."
   []
   (let [timer     (u/start-timer)
         databases (security-center.db/databases-with-details)
@@ -138,10 +155,10 @@
      :entity_id   db-id
      :entity_name db-name}))
 
-(defn items
+(mu/defn items :- [:sequential {:min 1} ::security-center.schema/health-check-item]
   "The items of the check from `stored`, the value that [[refresh]] returned, read back from the JSON setting; nil
   until a refresh has run. One item per database."
-  [stored]
+  [stored :- [:maybe ::stored]]
   (cond
     (nil? stored)                [{:status :unknown, :message (tru "Not checked yet")}]
     (empty? (:databases stored)) [{:status :pass, :message (tru "There are no databases to check")}]
