@@ -12,24 +12,28 @@ import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import type { JsMetadata } from "metabase-lib";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card, Filter, Join, JoinCondition } from "metabase-types/api";
+import type {
+  Card,
+  Table,
+  TableId,
+  TestJoinSpec,
+  TestQuerySpec,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  PEOPLE,
   PEOPLE_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createOrdersTable,
@@ -44,123 +48,8 @@ const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
 const MULTI_SCHEMA_TABLE2_ID = 101;
 
-const BASE_GUI_QUESTION: Partial<Card> = {
-  display: "table",
-  visualization_settings: {},
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
-};
-
-const BASE_NATIVE_QUESTION: Partial<Card> = {
-  display: "table",
-  visualization_settings: {},
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
-      query: "select * from orders",
-    },
-  }),
-};
-
-const SAVED_QUESTION: Partial<Card> = {
-  id: 1,
-  name: "Q1",
-  description: null,
-  collection_id: null,
-};
-
-const ORDERS_QUERY = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: { "source-table": ORDERS_ID },
-});
-
-const PRODUCTS_QUERY = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: { "source-table": PRODUCTS_ID },
-});
-
-const PEOPLE_QUERY = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: { "source-table": PEOPLE_ID },
-});
-
-const QUERY_IN_MULTI_SCHEMA_DB = createMockStructuredDatasetQuery({
-  database: MULTI_SCHEMA_DB_ID,
-  query: {
-    "source-table": MULTI_SCHEMA_TABLE1_ID,
-  },
-});
-
-// Joins
-
-const ORDERS_PRODUCT_JOIN_CONDITION: JoinCondition = [
-  "=",
-  ["field", ORDERS.PRODUCT_ID, null],
-  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-];
-
-const ORDERS_PEOPLE_JOIN_CONDITION: JoinCondition = [
-  "=",
-  ["field", ORDERS.USER_ID, null],
-  ["field", PEOPLE.ID, { "join-alias": "People" }],
-];
-
-const PRODUCTS_JOIN: Join = {
-  alias: "Products",
-  condition: ORDERS_PRODUCT_JOIN_CONDITION,
-  "source-table": PRODUCTS_ID,
-};
-
-const PEOPLE_JOIN: Join = {
-  alias: "People",
-  condition: ORDERS_PEOPLE_JOIN_CONDITION,
-  "source-table": PEOPLE_ID,
-};
-
-const QUERY_WITH_PRODUCTS_JOIN = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    joins: [PRODUCTS_JOIN],
-  },
-});
-
-const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
-  },
-});
-
-// Filters
-
-const RANDOM_ORDER_ID = 155;
-const ORDERS_PK_FILTER: Filter = [
-  "=",
-  ["field", ORDERS.ID, null],
-  RANDOM_ORDER_ID,
-];
-
-const ORDER_DETAIL_QUERY = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    filter: ["and", ORDERS_PK_FILTER],
-  },
-});
-
-// Nested query
-
 const SOURCE_QUESTION_ID = 305;
-const SOURCE_QUESTION_VIRTUAL_ID = `card__${SOURCE_QUESTION_ID}`;
 const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
-
-// Factories
 
 const ORDERS_TABLE = createOrdersTable();
 const PRODUCTS_TABLE = createProductsTable();
@@ -190,7 +79,162 @@ function getMetadata() {
   });
 }
 
-function getQuestion(card: Partial<Card>, metadata?: Metadata) {
+type QuerySpecOpts = {
+  databaseId?: number;
+  questions?: Card[];
+};
+
+function createQueryJson(
+  spec: TestQuerySpec,
+  { databaseId = SAMPLE_DB_ID, questions = [] }: QuerySpecOpts = {},
+) {
+  const provider = createMetadataProvider({
+    databaseId,
+    metadata: createMockMetadata({
+      databases: [
+        createSampleDatabase(),
+        createMockDatabase({
+          id: MULTI_SCHEMA_DB_ID,
+          tables: [MULTI_SCHEMA_TABLE1, MULTI_SCHEMA_TABLE2],
+        }),
+      ],
+      questions,
+    }),
+  });
+  return Lib.toJsQuery(Lib.createTestQuery(provider, spec));
+}
+
+function createTableQuery(id: TableId, databaseId = SAMPLE_DB_ID) {
+  return createQueryJson(
+    { stages: [{ source: { type: "table", id } }] },
+    { databaseId },
+  );
+}
+
+const BASE_GUI_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: createTableQuery(ORDERS_ID),
+};
+
+const BASE_NATIVE_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
+  }),
+};
+
+const SAVED_QUESTION: Partial<Card> = {
+  id: 1,
+  name: "Q1",
+  description: null,
+  collection_id: null,
+};
+
+const ORDERS_QUERY = createTableQuery(ORDERS_ID);
+
+const SOURCE_CARD = createMockCard({
+  id: SOURCE_QUESTION_ID,
+  dataset_query: createTableQuery(PRODUCTS_ID),
+});
+
+const PRODUCTS_QUERY = createTableQuery(PRODUCTS_ID);
+
+const PEOPLE_QUERY = createTableQuery(PEOPLE_ID);
+
+const QUERY_IN_MULTI_SCHEMA_DB = createTableQuery(
+  MULTI_SCHEMA_TABLE1_ID,
+  MULTI_SCHEMA_DB_ID,
+);
+
+const PRODUCTS_JOIN: TestJoinSpec = {
+  source: { type: "table", id: PRODUCTS_ID },
+  strategy: "left-join",
+  alias: "Products",
+  conditions: [
+    {
+      operator: "=",
+      left: { type: "column", name: "PRODUCT_ID" },
+      right: { type: "column", name: "ID" },
+    },
+  ],
+};
+
+const PEOPLE_JOIN: TestJoinSpec = {
+  source: { type: "table", id: PEOPLE_ID },
+  strategy: "left-join",
+  alias: "People",
+  conditions: [
+    {
+      operator: "=",
+      left: { type: "column", name: "USER_ID" },
+      right: { type: "column", name: "ID" },
+    },
+  ],
+};
+
+const QUERY_WITH_PRODUCTS_JOIN = createQueryJson({
+  stages: [
+    { source: { type: "table", id: ORDERS_ID }, joins: [PRODUCTS_JOIN] },
+  ],
+});
+
+const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = createQueryJson({
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
+    },
+  ],
+});
+
+const RANDOM_ORDER_ID = 155;
+
+const ORDER_DETAIL_QUERY = createQueryJson({
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      filters: [
+        {
+          type: "operator",
+          operator: "=",
+          args: [
+            { type: "column", name: "ID" },
+            { type: "literal", value: RANDOM_ORDER_ID },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+const TABLES = [
+  ORDERS_TABLE,
+  PRODUCTS_TABLE,
+  PEOPLE_TABLE,
+  MULTI_SCHEMA_TABLE1,
+  MULTI_SCHEMA_TABLE2,
+];
+
+function getSourceTable(question: Question) {
+  const tableId = Lib.primarySourceTableId(question.query());
+  return checkNotNull(TABLES.find((table) => table.id === tableId));
+}
+
+function getTableQuestion(table: Table) {
+  return Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: table.db_id,
+    DEPRECATED_RAW_MBQL_tableId: table.id,
+    metadata: getMetadata(),
+  });
+}
+
+function getQuestion(
+  card: Partial<Card>,
+  metadata: JsMetadata = createMockMetadata(),
+) {
   return new Question(card, metadata);
 }
 
@@ -225,7 +269,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps> {
     return this.props.children;
   }
 }
-const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
 
 interface SetupOpts {
   card?: Partial<Card>;
@@ -386,12 +429,17 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays database name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const database = checkNotNull(question.database());
-          const node = await screen.findByText(database.displayName());
+          const database = checkNotNull(
+            Lib.databaseDisplayInfo(question.query()),
+          );
+          const node = await screen.findByText(database.displayName);
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseDatabase(database),
+            Urls.browseDatabase({
+              id: checkNotNull(Lib.databaseID(question.query())),
+              name: database.name,
+            }),
           );
         });
 
@@ -412,13 +460,9 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays table name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
-          );
+          const table = getSourceTable(question);
           await waitFor(() => {
-            const node = screen.getByText(new RegExp(table.displayName()));
+            const node = screen.getByText(new RegExp(table.display_name));
             expect(node).toBeInTheDocument();
             expect(node.closest("a")).not.toBeInTheDocument();
           });
@@ -428,16 +472,12 @@ describe("QuestionDataSource", () => {
           const question = checkNotNull(
             setup({ card, subHead: true }).question,
           );
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
-          );
-          const node = await screen.findByText(new RegExp(table.displayName()));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
           expect(
             areQuestionUrlsEquivalent(
               checkNotNull(node.closest("a")).href,
-              Urls.question(table.newQuestion()),
+              Urls.question(getTableQuestion(table)),
             ),
           ).toBe(true);
         });
@@ -446,16 +486,12 @@ describe("QuestionDataSource", () => {
           const question = checkNotNull(
             setup({ card, isObjectDetail: true }).question,
           );
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
-          );
-          const node = await screen.findByText(new RegExp(table.displayName()));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
           expect(
             areQuestionUrlsEquivalent(
               checkNotNull(node.closest("a")).href,
-              Urls.question(table.newQuestion()),
+              Urls.question(getTableQuestion(table)),
             ),
           ).toBe(true);
         });
@@ -473,16 +509,15 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays schema name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
-          );
-          const node = await screen.findByText(checkNotNull(table.schema_name));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(checkNotNull(table.schema));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseSchema(table),
+            Urls.browseSchema({
+              db_id: table.db_id,
+              schema_name: table.schema,
+            }),
           );
         });
       });
@@ -562,19 +597,15 @@ describe("QuestionDataSource", () => {
   });
 
   describe("Nested", () => {
-    const NESTED_QUERY = createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
-      },
-    });
+    const NESTED_QUERY = createQueryJson(
+      { stages: [{ source: { type: "card", id: SOURCE_QUESTION_ID } }] },
+      { questions: [SOURCE_CARD] },
+    );
 
-    const NESTED_QUERY_MULTI_SCHEMA = createMockStructuredDatasetQuery({
-      database: MULTI_SCHEMA_DB_ID,
-      query: {
-        "source-table": SOURCE_QUESTION_VIRTUAL_ID,
-      },
-    });
+    const NESTED_QUERY_MULTI_SCHEMA = createQueryJson(
+      { stages: [{ source: { type: "card", id: SOURCE_QUESTION_ID } }] },
+      { databaseId: MULTI_SCHEMA_DB_ID, questions: [SOURCE_CARD] },
+    );
 
     const NESTED_QUESTION: Partial<Card> = {
       ...BASE_GUI_QUESTION,
@@ -631,16 +662,30 @@ describe("QuestionDataSource", () => {
     setup({
       card: {
         ...BASE_GUI_QUESTION,
-        dataset_query: createMockStructuredDatasetQuery({
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PRODUCTS_ID,
-            filter: [
-              "and",
-              ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
-              ["=", ["field", PRODUCTS.ID, null], 1],
-            ],
-          },
+        dataset_query: createQueryJson({
+          stages: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              filters: [
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", name: "CATEGORY" },
+                    { type: "literal", value: "Gizmo" },
+                  ],
+                },
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", name: "ID" },
+                    { type: "literal", value: 1 },
+                  ],
+                },
+              ],
+            },
+          ],
         }),
       },
     });
@@ -670,7 +715,7 @@ describe("QuestionDataSource", () => {
       metadataProvider,
       "SELECT * FROM ORDERS",
     );
-    const originalQuestion = Question.create()
+    const originalQuestion = Question.create({ metadata: createMockMetadata() })
       .setId(1)
       .setDisplayName("SQL query")
       .setQuery(originalQuery);
@@ -682,13 +727,12 @@ describe("QuestionDataSource", () => {
     const newQuery = Lib.queryFromTableOrCardMetadata(
       newMetadataProvider,
       checkNotNull(
-        Lib.tableOrCardMetadata(
-          newMetadataProvider,
-          getQuestionVirtualTableId(originalQuestion.id()),
-        ),
+        Lib.cardMetadata(newMetadataProvider, originalQuestion.id()),
       ),
     );
-    const newQuestion = Question.create().setQuery(newQuery);
+    const newQuestion = Question.create({
+      metadata: createMockMetadata(),
+    }).setQuery(newQuery);
     setup({ card: newQuestion.card(), originalCard: originalQuestion.card() });
     expect(screen.getByText("SQL query")).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();

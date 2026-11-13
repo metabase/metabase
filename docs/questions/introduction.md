@@ -1,5 +1,6 @@
 ---
 title: Questions
+summary: Save a query, its results, and its visualization as a question you can organize, share, embed, and get alerts from.
 redirect_from:
   - /docs/latest/users-guide/04-asking-questions
   - /docs/latest/users-guide/06-sharing-answers

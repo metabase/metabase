@@ -892,7 +892,7 @@
                                                                            :name         "category"
                                                                            :display-name "Category"
                                                                            :type         :dimension
-                                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                                           :field-id     (mt/id :products :category)
                                                                            :widget-type  :category}}})}
                          :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
                                                                        :card_id      sql-card-id

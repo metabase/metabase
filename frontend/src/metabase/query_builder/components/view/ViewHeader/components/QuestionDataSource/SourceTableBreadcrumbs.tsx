@@ -28,7 +28,7 @@ export function SourceTableBreadcrumbs({
   isObjectDetail,
 }: SourceTableBreadcrumbsProps) {
   const query = question.query();
-  const tableId = Lib.sourceTableOrCardId(query);
+  const tableId = Lib.primarySourceTableId(query);
   const isSubhead = variant === "subhead";
   const hasTableLink = isSubhead || isObjectDetail;
 

@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
-import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   AutocompleteSuggestion,
@@ -138,23 +137,15 @@ export function setupDatabaseListEndpointError({
   );
 }
 
-export function setupDatabasesEndpoints(
-  databases: Database[],
-  { hasSavedQuestions = true } = {},
-  query: object = { saved: true },
-) {
-  const databasesWithSavedQuestions = hasSavedQuestions
-    ? [...databases, SAVED_QUESTIONS_DATABASE]
-    : databases;
-  fetchMock.get({
-    url: "path:/api/database",
-    query,
-    response: {
-      data: databasesWithSavedQuestions,
-      total: databasesWithSavedQuestions.length,
-    },
-    name: "database-list-with-query",
-  });
+export function setupDatabasesEndpoints(databases: Database[], query?: object) {
+  if (query) {
+    fetchMock.get({
+      url: "path:/api/database",
+      query,
+      response: { data: databases, total: databases.length },
+      name: "database-list-with-query",
+    });
+  }
   setupDatabaseListEndpoint(databases);
   fetchMock.post(
     "path:/api/database",

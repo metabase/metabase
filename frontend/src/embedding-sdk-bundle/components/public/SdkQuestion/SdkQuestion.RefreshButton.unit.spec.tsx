@@ -14,6 +14,8 @@ import { screen, waitFor } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -56,7 +58,10 @@ const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
     currentUser: TEST_USER,
   });
 
-  const card = createMockCard({ enable_embedding: true });
+  const card = createMockCard({
+    enable_embedding: true,
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
 
   setupCardEndpoints(card);
   setupCardQueryMetadataEndpoint(

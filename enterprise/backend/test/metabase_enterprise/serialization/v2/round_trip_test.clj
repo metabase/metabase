@@ -26,18 +26,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as load]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
-   [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
@@ -80,12 +79,8 @@
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (reduce dissoc x ignored-fields)
-       x))
-   (yaml/parse-string (slurp file))))
+  (match/replace-all (yaml/parse-string (slurp file))
+    #'map? (reduce dissoc &match ignored-fields)))
 
 (defn non-empty-diff [diff]
   (when (some identity diff)
@@ -103,12 +98,9 @@
   "Perform a round-trip of loading an existing serialization, then serializing it again."
   [input-dir output-dir]
   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-    (serdes/with-cache
-      (load/load-metabase! (ingest/ingest-yaml input-dir))))
-  ;; Use a separate cache to make sure there is no cross-contamination.
-  (serdes/with-cache
-    (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! (storage.files/file-writer output-dir)))))
+    (load/load-metabase! (ingest/ingest-yaml input-dir)))
+  (-> (extract/extract {:include-field-values true :include-metabot true})
+      (storage/store! (storage.files/file-writer output-dir))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -133,19 +125,16 @@
 
 (def source-dir-path (strip-base-path (File. (System/getProperty "user.dir")) source-dir))
 
-(def ^:private internal-model?
-  #{"Schema"})
-
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
   fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
   metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest is covered by
-  transform-test-round-trip-test and transform-test-expectations-round-trip-test in
-  metabase-enterprise.serialization.v2.e2e-test, and DataApp by
-  metabase-enterprise.data-apps.serialization-test; both stay out of the baseline until
+  transform-test-round-trip-test and transform-test-expectations-round-trip-test, and CardTest by
+  the card-test round-trip tests, in metabase-enterprise.serialization.v2.e2e-test, and DataApp by
+  metabase-enterprise.data-apps.serialization-test; these stay out of the baseline until
   @metabase/representations publishes a schema for them — the baseline is validated against that
   package, which refuses a model it does not know."
-  #{"DataApp" "OsiAiContext" "TransformTest"})
+  #{:model/CardTest :model/DataApp :model/OsiAiContext :model/TransformTest})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
@@ -156,11 +145,11 @@
 (deftest baseline-completeness-test
   (let [ingestable (ingest/ingest-yaml source-dir)
         resources  (ingest/ingest-list ingestable)
-        baselined  (into #{} (map :model) (apply concat resources))
+        baselined  (into #{} (map first) resources)
         necessary? (set serdes.models/exported-models)]
     (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
-    (doseq [b baselined :when (not (internal-model? b))]
+    (doseq [b baselined]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))
 
 (deftest baseline-comparison-test

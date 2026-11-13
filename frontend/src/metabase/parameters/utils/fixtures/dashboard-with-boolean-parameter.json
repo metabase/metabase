@@ -164,7 +164,7 @@
                 "name": "bbb",
                 "display-name": "Bbb",
                 "type": "dimension",
-                "dimension": ["field", 134, null],
+                "field-id": 134,
                 "widget-type": "category"
               },
               "ccc": {

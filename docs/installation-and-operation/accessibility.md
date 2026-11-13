@@ -1,5 +1,6 @@
 ---
 title: Accessibility in Metabase
+summary: Where Metabase stands on Section 508 and WCAG 2.1 accessibility compliance.
 redirect_from:
   - /docs/latest/accessibility
   - /docs/latest/people-and-groups/accessibility

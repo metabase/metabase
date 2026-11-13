@@ -1332,7 +1332,8 @@
                         (is (= original-name (read-name)))))))))))))))
 
 (deftest admins-can-run-show-timezone-statement-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                             :+features [:connection-impersonation]})
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))]
@@ -1580,7 +1581,8 @@
     ;; End-to-end check that the rejection holds through the real QP preprocess chain, and that it happens
     ;; *before* execution: we ask the warehouse directly rather than trusting the QP status, so that a
     ;; refactor moving validation after execution begins would fail here.
-    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                               :+features [:connection-impersonation]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a       (u/lower-case-en (mt/random-name))]

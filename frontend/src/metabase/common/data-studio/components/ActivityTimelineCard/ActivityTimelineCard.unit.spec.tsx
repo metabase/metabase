@@ -19,7 +19,7 @@ import {
 
 import { ActivityTimelineCard } from "./ActivityTimelineCard";
 
-const DASHBOARD_ID = 10;
+const CARD_ID = 10;
 
 const CREATED = createMockRevision({
   id: 1,
@@ -61,13 +61,13 @@ function setup({
     "token-features": createMockTokenFeatures({ content_verification: true }),
   });
   setupEnterpriseOnlyPlugin("moderation");
-  setupEntityRevisionsEndpoint("dashboard", DASHBOARD_ID, revisions);
+  setupEntityRevisionsEndpoint("card", CARD_ID, revisions);
   setupRevertRevisionEndpoint(CREATED);
 
   renderWithProviders(
     <ActivityTimelineCard
-      entity="dashboard"
-      id={DASHBOARD_ID}
+      entity="card"
+      id={CARD_ID}
       moderationReviews={moderationReviews}
       canWrite={canWrite}
       data-testid="history-list"
@@ -110,8 +110,8 @@ describe("ActivityTimelineCard", () => {
     );
     const call = fetchMock.callHistory.lastCall("path:/api/revision/revert");
     expect(await call?.request?.json()).toEqual({
-      entity: "dashboard",
-      id: DASHBOARD_ID,
+      entity: "card",
+      id: CARD_ID,
       revision_id: CREATED.id,
     });
   });

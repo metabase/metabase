@@ -369,7 +369,6 @@ export type DashboardCardQueryRequest = {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   cardId: CardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   // Sent in the request body (in addition to the path params above) when

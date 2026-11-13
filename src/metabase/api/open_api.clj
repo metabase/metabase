@@ -148,7 +148,8 @@
    [:map {:closed true}
     [:description :string]
     [:content     {:optional true} [:map-of
-                                    [:enum "application/json" "multipart/form-data"]
+                                    ;; a media type such as `text/csv`
+                                    [:re #"^[\w.+-]+/[\w.+-]+$"]
                                     [:map {:closed true} [:schema ::parameter.schema]]]]
     ;; TODO -- headers, links, etc.
     ]])
@@ -218,8 +219,6 @@
                                  :name        "X-API-Key"
                                  :description "API key for authentication"}}))))
 
-;; REPL example; api-routes is cross-module, resolved at runtime
-#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
   (require '[metabase.api.macros])
 

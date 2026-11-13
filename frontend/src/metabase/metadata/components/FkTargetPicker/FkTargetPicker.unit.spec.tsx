@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
@@ -96,15 +95,15 @@ describe("FkTargetPicker", () => {
   });
 
   it("calls onChange when a different field is selected", async () => {
-    const { onChange } = setup({ value: getRawTableFieldId(ID_FIELD_1) });
+    const { onChange } = setup({ value: ID_FIELD_1.id });
 
     await userEvent.click(screen.getByPlaceholderText("Select a target"));
     await userEvent.click(screen.getByText("Other.Table 2 → Field B"));
-    expect(onChange).toHaveBeenCalledWith(getRawTableFieldId(ID_FIELD_2));
+    expect(onChange).toHaveBeenCalledWith(ID_FIELD_2.id);
   });
 
   it("does not call onChange when the same field is selected", async () => {
-    const { onChange } = setup({ value: getRawTableFieldId(ID_FIELD_1) });
+    const { onChange } = setup({ value: ID_FIELD_1.id });
 
     await userEvent.click(screen.getByPlaceholderText("Select a target"));
     await userEvent.click(screen.getByText("Public.Table 1 → Field A"));

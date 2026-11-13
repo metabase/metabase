@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api";
@@ -138,7 +139,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           card,
         ).databaseId();
         const tableId = fk.origin.table_id;
-        if (!tableId || !databaseId) {
+        if (typeof tableId !== "number" || !databaseId) {
           return;
         }
         const metadataProvider = selectMetadataProvider(getState(), databaseId);

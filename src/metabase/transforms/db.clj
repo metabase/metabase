@@ -8,8 +8,12 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -26,6 +30,23 @@
                    :wr.is_active]}]])
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
+
+(mu/defn synced-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
+  [:= (u/qualified-key alias :built_in_type) nil])
+
+(mu/defn built-in-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTag table aliased `alias` selecting the built-in tags every instance has."
+  [alias :- :keyword]
+  [:not= (u/qualified-key alias :built_in_type) nil])
+
+(mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -70,11 +91,6 @@
   "The last checkpoint value of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
-
-(mu/defn transform-collection-id
-  "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
 (mu/defn insert-transform!
   "Insert `transform` and return the new instance."
@@ -884,11 +900,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn field-exists?
-  "Whether a Field with `field-id` exists."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id))
-
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
@@ -908,3 +919,16 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn synced-transform-items :- [:sequential ::transforms.schema/transform]
+  "The Transforms with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/Transform :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-transform-tag-items :- [:sequential ::transforms.schema/transform-tag]
+  "The TransformTags with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TransformTag :id :name] :id [:in ids]))

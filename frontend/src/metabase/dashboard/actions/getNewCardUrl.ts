@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
@@ -10,7 +11,6 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -87,11 +87,9 @@ export const getNewCardUrl = ({
   try {
     const { isNative } = Lib.queryDisplayInfo(nextQuestion.query());
     if (isNative) {
-      // Unjustified type cast. FIXME
-      const nativeQuery = nextQuestion.legacyNativeQuery() as NativeQuery;
       return Urls.question(nextQuestion, {
         query: remapParameterValuesToTemplateTags(
-          nativeQuery.templateTags(),
+          Lib.templateTags(nextQuestion.query()),
           parametersMappedToCard,
           parameterValues,
         ),

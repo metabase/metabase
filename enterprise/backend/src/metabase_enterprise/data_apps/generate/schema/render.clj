@@ -2,11 +2,12 @@
   "Converts semantic schema values into the TypeScript AST.
 
   This is the pure policy stage of the schema pipeline: it decides which
-  schema keys become runtime data, which become `/* metadata */` blocks, and how
-  metric dimensions compact into `pickFields(...)` calls. The output is the
+  schema keys become runtime data, which become `/* metadata */` blocks, how
+  metric dimensions compact into `pickFields(...)` calls, and which name each
+  table and metric is exported under. The output is the
   tagged-vector AST described in [[metabase-enterprise.data-apps.generate.schema.javascript]];
   [[schema->ast]] produces it, and the public
-  [[metabase-enterprise.data-apps.generate.schemas/render-typescript]] composes it with the
+  [[metabase-enterprise.data-apps.generate.schema/render-typescript]] composes it with the
   printer.
 
   Nothing here touches the database or builds strings: new rendering behavior
@@ -149,14 +150,74 @@
                   (sequential? value))        (entities->arr value child-kind)
              :else                            (generic->node value))])))
 
-(defn- table-fields-reference-lookup
-  "Returns table-id -> field-map reference expression for tables in `schema`."
+;; Names a module can't declare: JavaScript's reserved words, in strict mode and in a module.
+(def ^:private reserved-identifiers
+  #{"arguments" "await" "break" "case" "catch" "class" "const" "continue" "debugger" "default" "delete" "do" "else"
+    "enum" "eval" "export" "extends" "false" "finally" "for" "function" "if" "implements" "import" "in" "instanceof"
+    "interface" "let" "new" "null" "package" "private" "protected" "public" "return" "static" "super" "switch" "this"
+    "throw" "true" "try" "typeof" "var" "void" "while" "with" "yield"})
+
+;; Top-level sections, in declaration order (a metric reads its tables), and the kind of their entities. Tables also
+;; take export names first, as an app's code names them far more often.
+(def ^:private section-kinds
+  (array-map :tables  :table
+             :metrics :metric))
+
+;; The module's own declarations, which no table or metric may shadow.
+(def ^:private module-identifiers
+  #{"pickFields" "schema"})
+
+;; The characters that [[schemas.javascript/identifier?]] refuses.
+(def ^:private non-identifier-chars
+  #"[^A-Za-z0-9_$]")
+
+(defn- fallback-export-name
+  "Returns the export name of an entity whose key can't be one: its kind, its key without the characters an identifier
+  can't hold, and its id (`tableDefault_2`, `metricOrders_7`)."
+  [kind entity-key id]
+  (str (name kind) (u/capitalize-first-char (str/replace entity-key non-identifier-chars "")) "_" id))
+
+(defn- export-names
+  "Returns `{kind {entity-key export-name}}` for the tables and metrics of `schema`. An entity is exported under its key
+  when the key is an identifier that isn't reserved and that neither the module nor a table already declares. Every
+  other entity is exported under its [[fallback-export-name]], which holds its id, so that adding or removing another
+  entity never moves a name to a different one."
   [schema]
+  (let [entities (for [[section-key kind]        section-kinds
+                       [entity-key {:keys [id]}] (get schema section-key)]
+                   [kind entity-key id])
+        take-one (fn [{:keys [taken] :as acc} [kind entity-key] candidates]
+                   (if-let [export-name (some #(when (and (schemas.javascript/identifier? %)
+                                                          (not (contains? reserved-identifiers %))
+                                                          (not (contains? taken %)))
+                                                 %)
+                                              candidates)]
+                     (-> acc
+                         (update :taken conj export-name)
+                         (assoc-in [:names kind entity-key] export-name))
+                     acc))
+        own-keys (reduce (fn [acc [_ entity-key :as entity]]
+                           (take-one acc entity [entity-key]))
+                         {:taken module-identifiers
+                          :names {}}
+                         entities)]
+    (:names
+     (reduce (fn [acc [kind entity-key id :as entity]]
+               (cond-> acc
+                 (not (get-in acc [:names kind entity-key]))
+                 ;; A key can end in `_<id>` too; while one holds the fallback name, add the id again.
+                 (take-one entity (iterate #(str % "_" id) (fallback-export-name kind entity-key id)))))
+             own-keys
+             entities))))
+
+(defn- table-reference-lookup
+  "Returns table-id -> the table's key and a reference to its export, for tables in `schema`."
+  [schema table-export-names]
   (into {}
         (for [[table-key {:keys [id]}] (:tables schema)
               :when (integer? id)]
           [id {:key       table-key
-               :reference [:ref "tables" table-key "fields"]}])))
+               :reference [:ref (get table-export-names table-key)]}])))
 
 (defn- field-lookup-keys
   "Returns the table-scoped lookup keys that can identify a field."
@@ -183,12 +244,15 @@
         (:tables schema)))
 
 (defn- pick-fields-call
-  "Returns a `pickFields(...)` call expression for compacted metric dimensions."
-  ([fields-reference field-keys]
-   (pick-fields-call fields-reference field-keys nil))
-  ([fields-reference field-keys source-field-id]
-   (cond-> [:call "pickFields"
-            fields-reference
+  "Returns a `pickFields(...)` call expression for compacted metric dimensions, marked pure so that a bundler drops it
+  with an unused metric."
+  ([table-reference field-keys]
+   (pick-fields-call table-reference field-keys nil))
+  ([table-reference field-keys source-field-id]
+   ;; The call takes the table rather than `orders.fields`: a bundler treats a property read as a possible side
+   ;; effect, so an unused metric that reads `orders.fields` keeps the table.
+   (cond-> [:call "pickFields" {:pure true}
+            table-reference
             (into [:arr] (map (fn [field-key] [:lit field-key])) field-keys)]
      (integer? source-field-id)
      (conj [:obj ["sourceFieldId" [:lit source-field-id]]]))))
@@ -205,8 +269,8 @@
 
 (defn- metric-dimension-table-field
   "Returns table field metadata when a metric dimension can be represented by `pickFields(...)`."
-  [fields-reference-by-table field-key-by-table-and-field {:keys [tableId fieldId name sourceFieldId]}]
-  (when-let [{table-key :key, :keys [reference]} (get fields-reference-by-table tableId)]
+  [table-reference-by-id field-key-by-table-and-field {:keys [tableId fieldId name sourceFieldId]}]
+  (when-let [{table-key :key, :keys [reference]} (get table-reference-by-id tableId)]
     (when-let [{:keys [field-key]} (or (get field-key-by-table-and-field [tableId fieldId])
                                        (get field-key-by-table-and-field [tableId name]))]
       {:field-key       field-key
@@ -231,10 +295,10 @@
 
   Returns both the compacted `:fields` map and the original dimension keys that
   were compacted, so raw dimensions can be preserved without another lookup pass."
-  [fields-reference-by-table field-key-by-table-and-field dimensions]
+  [table-reference-by-id field-key-by-table-and-field dimensions]
   (let [{:keys [fields-by-group dimension-keys]}
         (reduce (fn [acc [dimension-key dimension]]
-                  (if-let [field (metric-dimension-table-field fields-reference-by-table
+                  (if-let [field (metric-dimension-table-field table-reference-by-id
                                                                field-key-by-table-and-field
                                                                dimension)]
                     (-> acc
@@ -280,16 +344,17 @@
       {group-key raw-fields})))
 
 (defn- compact-metric-dimensions
-  "Rewrites metric dimensions into compact field references where possible."
-  [schema]
-  (let [fields-reference-by-table     (table-fields-reference-lookup schema)
+  "Rewrites metric dimensions into compact field references where possible, reaching each table by its name in
+  `table-export-names`."
+  [schema table-export-names]
+  (let [table-reference-by-id        (table-reference-lookup schema table-export-names)
         field-key-by-table-and-field (table-field-key-lookup schema)]
     (update schema :metrics
             (fn [metrics]
               (update-vals metrics
                            (fn [metric]
                              (let [dimensions     (:dimensions metric)
-                                   compact-fields (compact-metric-dimension-fields fields-reference-by-table
+                                   compact-fields (compact-metric-dimension-fields table-reference-by-id
                                                                                    field-key-by-table-and-field
                                                                                    dimensions)
                                    fields         (:fields compact-fields)
@@ -303,12 +368,12 @@
   "The TypeScript helper used by compacted metric dimensions."
   [:raw (str/join "\n"
                   ["function pickFields<TFields extends object, TKey extends keyof TFields>("
-                   "  fields: TFields,"
+                   "  table: { fields: TFields },"
                    "  keys: readonly TKey[],"
                    "  options?: { sourceFieldId?: number },"
                    "): Pick<TFields, TKey> {"
                    "  return Object.fromEntries(keys.map((key) => {"
-                   "    const field = fields[key] as { tableId?: number };"
+                   "    const field = table.fields[key] as { tableId?: number };"
                    "    if (options?.sourceFieldId == null) {"
                    "      return [key, field];"
                    "    }"
@@ -326,35 +391,32 @@
            (some schemas.javascript/call? (vals (:dimensions metric))))
          (vals (:metrics schema)))))
 
-(def ^:private top-level-keys
-  [:tables :metrics])
-
-(defn- section->node
-  "Converts one top-level schema section into an object expression."
-  [section-key section]
-  (case section-key
-    :tables    (keyed-entities->obj section :table)
-    :metrics   (keyed-entities->obj section :metric)))
-
 (defn schema->ast
   "Converts a semantic schema value into a TypeScript module AST.
 
-  Each present top-level section becomes its own `const`; the `schema` const
-  ties them together with the remaining schema metadata and is the module's
-  export."
+  Each table and metric becomes its own exported `const`, so an app's bundle can leave out the ones it doesn't import.
+  The exported `schema` const holds them under their keys, with the remaining schema metadata."
   [schema]
-  (let [schema          (compact-metric-dimensions schema)
-        present-keys    (filter #(contains? schema %) top-level-keys)
-        schema-metadata (apply dissoc schema top-level-keys)
+  (let [export-names    (export-names schema)
+        schema          (compact-metric-dimensions schema (:table export-names))
+        present-keys    (filter #(contains? schema %) (keys section-kinds))
+        schema-metadata (apply dissoc schema (keys section-kinds))
         schema-entries  (concat (for [[entry-key value] schema-metadata]
                                   [entry-key (generic->node value)])
-                                (for [section-key present-keys]
-                                  [section-key [:ref (name section-key)]]))]
+                                (for [section-key present-keys
+                                      :let [kind (section-kinds section-key)]]
+                                  [section-key (into [:obj]
+                                                     (for [entity-key (keys (get schema section-key))]
+                                                       [entity-key [:ref (get-in export-names [kind entity-key])]]))]))]
     (into [:module]
           (concat
            (when (uses-pick-fields-helper? schema)
              [pick-fields-helper])
-           (for [section-key present-keys]
-             [:const (name section-key) (section->node section-key (get schema section-key))])
-           [[:const "schema" (into [:obj] schema-entries)]
-            [:export "schema"]]))))
+           (for [section-key         present-keys
+                 :let [kind (section-kinds section-key)]
+                 [entity-key entity] (get schema section-key)
+                 :let [metadata (entity-metadata kind entity entity-key)]]
+             [:const (get-in export-names [kind entity-key])
+              (cond-> {:export true} metadata (assoc :metadata metadata))
+              (entity->node entity kind)])
+           [[:const "schema" {:export true} (into [:obj] schema-entries)]]))))

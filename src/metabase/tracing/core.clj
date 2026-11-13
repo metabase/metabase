@@ -19,6 +19,7 @@
   (:require
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.global-system.system :as system]
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
@@ -327,8 +328,9 @@
 ;;; span exporter for pushing traces to a collector. Has no database dependency — can be
 ;;; initialized very early in the startup process.
 
-;; Holds the initialized OpenTelemetrySdk instance for manual shutdown.
-(defonce ^:private otel-sdk-instance (atom nil))
+;; The initialized OpenTelemetrySdk, or nil. Started by [[init!]] and stopped with the global system.
+(def ^:private otel-sdk-component
+  (system/mutable-component-handle ::otel-sdk (constantly nil)))
 
 (defn- make-id-generator
   "Create an IdGenerator that respects forced trace IDs from frontend traceparent
@@ -360,6 +362,26 @@
                         :exporter-timeout (Duration/ofMillis timeout-ms)
                         :schedule-delay   (Duration/ofMillis delay-ms)}]}}))
 
+(defn- set-default-sdk!
+  "Make `otel` clj-otel's default SDK, or clear the default when nil.
+  clj-otel caches the tracer its first span gets, and setting the default SDK does not clear that cache, so the tracer
+  is set here too. A tracer cached before this, from a closed SDK or from the no-op global one, would drop every span."
+  [otel]
+  (otel/set-default-otel! otel)
+  (span/set-default-tracer! (when otel (span/get-tracer {:open-telemetry otel}))))
+
+(defn- stop-otel-sdk!
+  "Stop tracing groups, then close `otel`, flushing any pending spans, and clear it as the default."
+  [otel]
+  (log/info "Shutting down OpenTelemetry tracing...")
+  (shutdown-groups!)
+  (try
+    (otel-sdk/close-otel-sdk! otel)
+    (catch Exception e
+      (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
+  (set-default-sdk! nil)
+  (log/info "OpenTelemetry tracing shut down"))
+
 (defn init!
   "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
    Should be called as early as possible in startup — has no database dependency."
@@ -374,31 +396,36 @@
             queue-size    (tracing.settings/tracing-max-queue-size)
             timeout-ms    (tracing.settings/tracing-export-timeout-ms)
             delay-ms      (tracing.settings/tracing-schedule-delay-ms)]
-        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
-                   service-name endpoint groups-str log-level-str)
-        (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
-                   queue-size timeout-ms delay-ms)
-        (let [otel (build-otel-sdk {:endpoint     endpoint
-                                    :service-name service-name
-                                    :queue-size   queue-size
-                                    :timeout-ms   timeout-ms
-                                    :delay-ms     delay-ms})]
-          (otel/set-default-otel! otel)
-          (reset! otel-sdk-instance otel)
-          (init-enabled-groups! groups-str log-level-str)
-          (log/info "OpenTelemetry tracing initialized successfully")))
+        (system/ensure-started!
+         otel-sdk-component
+         (fn []
+           ;; logged here, so a second call, which starts nothing, does not log config that is not in effect
+           (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
+                      service-name endpoint groups-str log-level-str)
+           (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
+                      queue-size timeout-ms delay-ms)
+           (let [otel (build-otel-sdk {:endpoint     endpoint
+                                       :service-name service-name
+                                       :queue-size   queue-size
+                                       :timeout-ms   timeout-ms
+                                       :delay-ms     delay-ms})]
+             ;; spans start once a group is enabled, so the SDK must be the default by then. A failed start closes the SDK
+             ;; and clears the default, leaving no running SDK behind.
+             (try
+               (set-default-sdk! otel)
+               (init-enabled-groups! groups-str log-level-str)
+               (catch Throwable e
+                 (stop-otel-sdk! otel)
+                 (throw e)))
+             (log/info "OpenTelemetry tracing initialized successfully")
+             otel))
+         stop-otel-sdk!))
       (catch Exception e
         (log/errorf "Failed to initialize OpenTelemetry tracing — tracing will be disabled: %s" (ex-message e))))))
 
 (defn shutdown!
-  "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown."
+  "Shut down the OTel SDK, flushing any pending spans.
+   Called during application shutdown; halting the global system shuts it down too."
   []
-  (when-let [otel @otel-sdk-instance]
-    (log/info "Shutting down OpenTelemetry tracing...")
-    (try
-      (otel-sdk/close-otel-sdk! otel)
-      (catch Exception e
-        (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
-    (reset! otel-sdk-instance nil)
-    (shutdown-groups!)
-    (log/info "OpenTelemetry tracing shut down")))
+  (system/stop! otel-sdk-component)
+  nil)

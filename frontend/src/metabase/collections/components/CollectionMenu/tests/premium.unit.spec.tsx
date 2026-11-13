@@ -144,6 +144,7 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: true,
         numberOfStaleItems: 10,
+        seenBadges: ["clean-stale-items"],
       });
 
       await assertIndicatorHidden();
@@ -151,7 +152,7 @@ describe("CollectionMenu", () => {
 
       expect(
         fetchMock.callHistory.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(0);

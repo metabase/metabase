@@ -1,6 +1,8 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as transformsUtils from "metabase/transforms/utils";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DraftTransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks";
 
@@ -12,13 +14,7 @@ jest.mock("metabase-enterprise/settings", () => ({
 
 const mockQuerySource: DraftTransformSource = {
   type: "query",
-  query: {
-    database: 1,
-    type: "query",
-    query: {
-      "source-table": 1,
-    },
-  },
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 };
 
 const mockPythonSource: DraftTransformSource = {
@@ -50,11 +46,9 @@ function setup({
 
   const nativeSource: DraftTransformSource = {
     type: "query",
-    query: {
-      database: 1,
-      type: "native",
-      native: { query: "SELECT * FROM table" },
-    },
+    query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM table",
+    }),
   };
 
   const resolvedSource = isPython

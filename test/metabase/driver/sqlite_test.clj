@@ -17,9 +17,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.serialization :as serdes]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.test :as qp]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -279,13 +279,13 @@
      (fn [path]
        (mt/with-premium-features #{}
          (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
-           (let [database (serdes/load-one! {:serdes/meta [{:model "Database" :id "Imported SQLite"}]
-                                             :name        "Imported SQLite"
-                                             :engine      "sqlite"
-                                             :details     {:db path}
-                                             :created_at  "2026-01-01T00:00:00Z"
-                                             :updated_at  "2026-01-01T00:00:00Z"}
-                                            nil)]
+           (let [database (first (serialization/load :model/Database
+                                                     [{:serdes/meta [{:model "Database"}]
+                                                       :name        "Imported SQLite"
+                                                       :engine      "sqlite"
+                                                       :details     {:db path}
+                                                       :created_at  "2026-01-01T00:00:00Z"
+                                                       :updated_at  "2026-01-01T00:00:00Z"}]))]
              (try
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                      (native-rows database "SELECT x FROM t")))

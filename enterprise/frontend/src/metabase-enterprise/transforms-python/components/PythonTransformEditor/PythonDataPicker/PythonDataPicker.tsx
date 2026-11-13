@@ -9,7 +9,6 @@ import type {
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";
@@ -187,7 +186,7 @@ function SelectionInput({
   }
 
   function handleTableChange(table: Table | undefined) {
-    if (!table || !isConcreteTableId(table.id)) {
+    if (!table) {
       onChange({
         ...selection,
         tableId: undefined,

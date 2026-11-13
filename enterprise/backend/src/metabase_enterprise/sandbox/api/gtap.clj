@@ -102,11 +102,7 @@
   (sandbox/check-columns-match-table {:table_id table_id
                                       :card_id  card_id}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a GTAP entry."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

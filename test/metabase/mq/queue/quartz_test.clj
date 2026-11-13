@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.payload :as payload]
@@ -43,9 +44,10 @@
                     (.setProperty "org.quartz.threadPool.threadCount" (str thread-count))
                     (.setProperty "org.quartz.jobStore.class" "org.quartz.simpl.RAMJobStore"))
         scheduler (.getScheduler (StdSchedulerFactory. props))]
-    (binding [task.impl/*quartz-scheduler* (atom scheduler)]
-      (.start scheduler)
-      (try (thunk) (finally (.shutdown scheduler true))))))
+    (mc/binding (task.impl/scheduler-handle) scheduler
+                (fn []
+                  (.start scheduler)
+                  (try (thunk) (finally (.shutdown scheduler true)))))))
 
 (defn- wait-for!
   "Polls `pred` until it returns truthy or `timeout-ms` elapses; returns the final value."
@@ -286,10 +288,11 @@
     ;; A nil scheduler (e.g. MB_DISABLE_SCHEDULER) must NOT be a silent no-op: the transactional
     ;; outbox relies on a thrown failure to keep the row for the recovery sweep, and the publish
     ;; buffer relies on it to retry/loudly drop rather than silently lose the message.
-    (binding [task.impl/*quartz-scheduler* (atom nil)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"scheduler is not running"
-           (publish! (keyword "queue" (str "quartz-nosched-" (random-uuid))) "x"))))))
+    (mc/binding (task.impl/scheduler-handle) nil
+                (fn []
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo #"scheduler is not running"
+                       (publish! (keyword "queue" (str "quartz-nosched-" (random-uuid))) "x")))))))
 
 (deftest quartz-publish-with-disabled-scheduler-throws-test
   (testing "publishing while the scheduler is disabled throws instead of writing a trigger that never fires"

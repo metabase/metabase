@@ -331,9 +331,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "document/:entityId",
                 lazy: documentPage,
                 children: [
-                  lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
-                    noWrap: true,
-                  }),
+                  lazyModalRoute("comments/:childTargetId", commentsSidesheet),
                 ],
               },
 
@@ -382,19 +380,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 children: [
                   ...toRouteObjects(
                     <>
-                      {modalRoute("move", MoveCollectionModal, {
-                        noWrap: true,
-                      })}
-                      {modalRoute("archive", ArchiveCollectionModal, {
-                        noWrap: true,
-                      })}
-                      {modalRoute("permissions", CollectionPermissionsModal, {
-                        noWrap: true,
-                      })}
+                      {modalRoute("move", MoveCollectionModal)}
+                      {modalRoute("archive", ArchiveCollectionModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal)}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
-                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,
@@ -430,15 +421,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "dashboard/:slug",
                 lazy: dashboardApp,
                 children: [
-                  lazyModalRoute("move", dashboardMoveModal, {
-                    noWrap: true,
-                  }),
-                  lazyModalRoute("copy", dashboardCopyModal, {
-                    noWrap: true,
-                  }),
-                  lazyModalRoute("archive", dashboardArchiveModal, {
-                    noWrap: true,
-                  }),
+                  lazyModalRoute("move", dashboardMoveModal),
+                  lazyModalRoute("copy", dashboardCopyModal),
+                  lazyModalRoute("archive", dashboardArchiveModal),
                 ],
               },
 

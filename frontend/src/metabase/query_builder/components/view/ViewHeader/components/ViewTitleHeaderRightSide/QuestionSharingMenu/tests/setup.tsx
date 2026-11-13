@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -143,18 +144,22 @@ export async function setupQuestionSharingMenu({
 
   renderWithProviders(
     <div>
-      <QuestionSharingMenu question={new Question(card)} />
+      <QuestionSharingMenu
+        question={new Question(card, createMockMetadata())}
+      />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },
   );
 
   // Wait for the admin menu button to settle so async endpoint mocks resolve
-  // inside act. Non-admin menus render synchronously, and model/archived
-  // questions render nothing at all.
+  // inside act. Non-admin menus render synchronously, and model, archived and
+  // instance analytics questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (isAdmin && !isModel && !isArchived) {
+  const isInstanceAnalytics =
+    questionOverrides.collection?.type === "instance-analytics";
+  if (isAdmin && !isModel && !isArchived && !isInstanceAnalytics) {
     await screen.findByTestId("sharing-menu-button");
   }
 }

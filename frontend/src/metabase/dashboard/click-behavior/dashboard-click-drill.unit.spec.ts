@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
@@ -288,6 +289,27 @@ describe("getDashboardDrillUrl", () => {
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
   });
+
+  it("omits the tab and filter params when the link has no tab and the target has no filters", () => {
+    const url = getDashboardDrillUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "dashboard",
+          targetId: 3,
+          tabId: undefined,
+          parameterMapping: {},
+        },
+      }),
+      data: [{ col: stateColumn, value: "CA" }],
+      extraData: {
+        ...drillExtraData,
+        dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+      },
+    });
+
+    expect(url).toBe("/dashboard/3?");
+  });
 });
 
 describe("getDashboardDrillLinkUrl", () => {
@@ -310,7 +332,7 @@ describe("getDashboardDrillLinkUrl", () => {
 describe("DashboardClickAction", () => {
   it("creates a click-behavior action for the configured chart behavior", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],
@@ -330,7 +352,7 @@ describe("DashboardClickAction", () => {
 
   it("returns no action when no click behavior is configured for the clicked target", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],

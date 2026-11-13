@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [some mapv not-empty])
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -17,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv some not-empty]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -321,3 +323,39 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
+
+(defn response-schema
+  "Response schema for an endpoint that returns a [[streaming-response]] whose JSON body matches `content-schema`.
+  OpenAPI documents `content-schema`, but validation only checks that a stream comes back."
+  [content-schema]
+  (streaming-response/streaming-response-schema content-schema))
+
+(mr/def ::query-result-response
+  "Response schema for an endpoint that returns a [[streaming-response]] of query results.
+  OpenAPI documents the query result the stream carries."
+  (response-schema ::qp.schema/query-result))
+
+(mr/def ::json-export-rows
+  "The body of a `json` export: one object per row, keyed by column title."
+  [:sequential [:map-of :string :any]])
+
+(defn export-response-schema
+  "Response schema for an endpoint that returns a [[streaming-response]] in the format the request names.
+  For the `api` format the body is a JSON object matching `api-result-schema`.
+  The other formats give CSV, an XLSX workbook, or a JSON array of rows."
+  [api-result-schema]
+  (mut/update-properties
+   (response-schema api-result-schema)
+   assoc :openapi/response {:description "Query results in the requested export format"
+                            :content     {"text/csv"
+                                          :string
+
+                                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                          [:string {:json-schema/format "binary"}]
+
+                                          "application/json"
+                                          [:or ::json-export-rows api-result-schema]}}))
+
+(mr/def ::export-response
+  "Response schema for an endpoint that streams query results in the format the request names."
+  (export-response-schema ::qp.schema/query-result))

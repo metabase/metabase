@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,10 +14,9 @@ import {
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, IconName } from "metabase-types/api";
 
 import { FieldList } from "../FieldList";
@@ -25,8 +24,8 @@ import { NodeListTitleText } from "../NodeList";
 import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
-  UniqueFieldId,
 } from "../types";
+import { getCardColumnListInfo } from "../utils";
 
 import S from "./QuestionPane.module.css";
 
@@ -53,12 +52,11 @@ export const QuestionPane = ({
     id,
   });
   const {
-    data: table,
-    isLoading: isLoadingTable,
-    error: tableError,
-  } = useGetTableQueryMetadataQuery({
-    id: getQuestionVirtualTableId(id),
-  });
+    data: cardMetadata,
+    isLoading: isLoadingCardMetadata,
+    error: cardMetadataError,
+  } = useGetCardQueryMetadataQuery(id);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -66,14 +64,25 @@ export const QuestionPane = ({
   } = useGetCollectionQuery(
     card ? { id: card.collection_id ?? "root" } : skipToken,
   );
-  const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
-  const error = cardError ?? tableError ?? collectionError;
+  const isLoading =
+    isLoadingCard || isLoadingCardMetadata || isLoadingCollection;
+  const error = cardError ?? cardMetadataError ?? collectionError;
 
-  if (card == null || table == null) {
+  if (card == null || cardMetadata == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const columnListInfo = getCardColumnListInfo(metadataProvider, card.id);
   const lastEditInfo = card["last-edit-info"];
+
+  const handleColumnClick = (columnIndex: number) => {
+    onItemClick({
+      type: "field",
+      kind: "card",
+      cardId: card.id,
+      columnIndex,
+    });
+  };
 
   return (
     <SidebarContent
@@ -126,22 +135,12 @@ export const QuestionPane = ({
             </Box>
           </Flex>
         )}
-        {table.fields && (
+        {columnListInfo && (
           <FieldList
-            table={table}
-            fields={table.fields}
-            onFieldClick={(field) => {
-              onItemClick({
-                type: "field",
-                id:
-                  typeof field.id === "number"
-                    ? field.id
-                    : // `getUniqueFieldId` returns the same synthetic string key
-                      // the field list renders with, which is what a non-numeric
-                      // field id means here.
-                      (getUniqueFieldId(field) as UniqueFieldId),
-              });
-            }}
+            query={columnListInfo.query}
+            stageIndex={columnListInfo.stageIndex}
+            columns={columnListInfo.columns}
+            onColumnClick={handleColumnClick}
           />
         )}
       </Box>
