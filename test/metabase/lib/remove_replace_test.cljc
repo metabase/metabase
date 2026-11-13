@@ -705,6 +705,35 @@
               (lib/breakouts renamed 1)))
       (is (=? [[:> {} [:field unbucketed? "Tomorrow"] 3]] (lib/filters renamed 1))))))
 
+(defn- last-stage-column
+  [query column-name]
+  (m/find-first (comp #{column-name} :name) (lib/breakoutable-columns query)))
+
+(defn- created-at-query
+  "Orders counted by `Created At` with temporal `unit`, with a second stage on top."
+  [unit]
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit))
+      (lib/aggregate (lib/count))
+      lib/append-stage))
+
+(defn- replace-stage-0-breakout
+  "Replace the stage 0 breakout ref of `query` with `(f breakout)`."
+  [query f]
+  (let [[breakout] (lib/breakouts query 0)]
+    (lib/replace-clause query 0 breakout (f breakout))))
+
+(defn- replace-stage-0-unit
+  [query unit]
+  (replace-stage-0-breakout query #(lib/with-temporal-bucket % unit)))
+
+(deftest ^:parallel replace-extraction-breakout-keeps-later-ref-type-test
+  (testing "changing Month of year -> Day of week preserves effective-type on a later stage ref"
+    (let [query (as-> (created-at-query :month-of-year) $q
+                  (lib/filter $q (lib/> (last-stage-column $q "CREATED_AT") 3)))]
+      (is (=? [[:> {} [:field {:effective-type :type/Integer} "CREATED_AT"] 3]]
+              (lib/filters (replace-stage-0-unit query :day-of-week) 1))))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"

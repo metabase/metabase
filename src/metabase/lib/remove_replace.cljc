@@ -335,13 +335,17 @@
   (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
 
 (defn- with-bucketing-of
-  "Return `a-ref` with exactly the temporal unit and binning of `source-ref`, so a reference without bucketing
-  stays without it."
+  "Return `a-ref` with exactly the temporal unit and binning of `source-ref`."
   [a-ref source-ref]
   (let [{:keys [temporal-unit binning]} (lib.options/options source-ref)]
-    (-> a-ref
-        (lib.temporal-bucket/with-temporal-bucket temporal-unit)
-        (lib.options/update-options u/assoc-dissoc :binning binning))))
+    (cond-> a-ref
+      ;; `with-temporal-bucket` with a nil unit restores `:lib/original-effective-type`, which is wrong for a ref
+      ;; that never had a unit.
+      (or temporal-unit (lib.temporal-bucket/raw-temporal-bucket a-ref))
+      (lib.temporal-bucket/with-temporal-bucket temporal-unit)
+
+      true
+      (lib.options/update-options u/assoc-dissoc :binning binning))))
 
 (defn- local-replace-expression-references [stage target-ref-id replacement-ref keep-bucketing?]
   (let [replace-embedded-refs (fn replace-refs [stage]
