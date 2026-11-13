@@ -129,3 +129,27 @@
                      (mc/form (mr/resolve-schema schema)))
       ::location
       [:ref ::location])))
+
+(def ^:private lazy-schema-builds (atom 0))
+
+(mr/def ::lazy-int
+  (delay
+    (swap! lazy-schema-builds inc)
+    :int))
+
+(deftest ^:parallel delayed-definition-test
+  (testing "A definition registered as a delay is forced the first time it's used, and only once"
+    (is (<= @lazy-schema-builds 1))
+    (is (mr/validate ::lazy-int 1))
+    (is (not (mr/validate ::lazy-int "1")))
+    (is (mr/validate [:map [:x ::lazy-int]] {:x 1}))
+    (is (= 1 @lazy-schema-builds))
+    (is (= :int (mc/form (mr/resolve-schema ::lazy-int))))))
+
+(mr/def ::lazy-documented-int
+  "An int, registered as a delay."
+  (delay [:int {:min 0}]))
+
+(deftest ^:parallel delayed-definition-with-docstring-test
+  (is (mr/validate ::lazy-documented-int 1))
+  (is (not (mr/validate ::lazy-documented-int -1))))

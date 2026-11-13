@@ -67,20 +67,25 @@
                                m)))))})
 
 (def ^:private common-clause-option-entries
-  "The entries of `:metabase.lib.schema.common/options` that converting any MBQL 5 clause to legacy MBQL can leave in its options: the type and name keys and the query processor's internal keys."
-  (into []
-        (filter (fn [[k]]
-                  (or (lib.schema.common/internal-key? k)
-                      (contains? #{:base-type :effective-type :semantic-type :database-type :name :display-name} k))))
-        (-> (mc/schema ::lib.schema.common/options) mc/deref-all mc/children first mc/children)))
+  "The entries of `:metabase.lib.schema.common/options` that converting any MBQL 5 clause to legacy MBQL can leave in its options: the type and name keys and the query processor's internal keys.
+
+  Delayed, so loading this namespace doesn't build the options schema."
+  (delay
+    (into []
+          (filter (fn [[k]]
+                    (or (lib.schema.common/internal-key? k)
+                        (contains? #{:base-type :effective-type :semantic-type :database-type :name :display-name} k))))
+          (-> (mc/schema ::lib.schema.common/options) mc/deref-all mc/children first mc/children))))
 
 (defn- with-common-clause-option-entries
-  "Add the [[common-clause-option-entries]] that closed map schema `map-schema` does not declare itself."
+  "Add the [[common-clause-option-entries]] that closed map schema `map-schema` does not declare itself. Returns a
+  `delay`, which [[mr/def]] accepts, so the schema is only built when it's first used."
   [[tag properties & entries :as _map-schema]]
-  (let [own-keys (into #{} (map first) entries)]
-    (-> [tag properties]
-        (into (remove (comp own-keys first)) common-clause-option-entries)
-        (into entries))))
+  (delay
+    (let [own-keys (into #{} (map first) entries)]
+      (-> [tag properties]
+          (into (remove (comp own-keys first)) @common-clause-option-entries)
+          (into entries)))))
 
 (defn- normalize-mbql-clause [x options]
   (when-let [schema (infer-mbql-clause-schema x)]
@@ -1937,7 +1942,8 @@
 ;;; TODO (Cam 10/20/25) -- it would be nice to come up with a way to automatically rebuild this if
 ;;; `::lib.schema.metadata/column` changes
 (mr/def ::legacy-column-metadata.qualified-keys
-  (legacy-column-metadata-qualified-keys-schema))
+  ;; built on first use, so loading this namespace doesn't resolve the whole Lib column metadata schema
+  (delay (legacy-column-metadata-qualified-keys-schema)))
 
 (mr/def ::driver-column
   "A column as a driver's `execute-reducible-query` reports it, before annotation adds the rest of its metadata."

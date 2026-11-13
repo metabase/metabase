@@ -408,21 +408,22 @@
   "A test query spec as callers write it, possibly with string or camelCase keys and without defaults, before parsing."
   [:map {:closed false, ::mr/deliberately-open true, :description "an unparsed test query spec"}])
 
-(def parse-query-spec
-  "Parser for query-spec."
-  (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
-              (mtx/transformer
-               mtx/json-transformer
-               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
-               {:name :normalize}
-               mtx/strip-extra-keys-transformer
-               mtx/default-value-transformer)))
+(def ^:private parse-query-spec
+  "Parser for query-spec. Delayed, so loading this namespace doesn't compile the whole query spec schema."
+  (delay
+    (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
+                (mtx/transformer
+                 mtx/json-transformer
+                 (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+                 {:name :normalize}
+                 mtx/strip-extra-keys-transformer
+                 mtx/default-value-transformer))))
 
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    query-spec            :- ::raw-spec]
-  (let [{:keys [stages]} (parse-query-spec query-spec)
+  (let [{:keys [stages]} (@parse-query-spec query-spec)
         source           (->> stages first :source (find-source metadata-providerable))
         query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
@@ -453,19 +454,20 @@
          (lib.native/with-template-tags query))))
 
 (def ^:private parse-native-query-spec
-  "Parser for native-query-spec."
-  (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
-              (mtx/transformer
-               mtx/json-transformer
-               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
-               {:name :normalize}
-               mtx/strip-extra-keys-transformer
-               mtx/default-value-transformer)))
+  "Parser for native-query-spec. Delayed, so loading this namespace doesn't compile the whole native query spec schema."
+  (delay
+    (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
+                (mtx/transformer
+                 mtx/json-transformer
+                 (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+                 {:name :normalize}
+                 mtx/strip-extra-keys-transformer
+                 mtx/default-value-transformer))))
 
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    native-query-spec     :- ::raw-spec]
-  (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
+  (let [{:keys [query template-tags]} (@parse-native-query-spec native-query-spec)]
     (-> (lib.native/native-query metadata-providerable query)
         (add-template-tags template-tags))))

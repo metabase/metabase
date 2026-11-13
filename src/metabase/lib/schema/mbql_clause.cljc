@@ -64,8 +64,10 @@
         @tag-registry))
 
 (defn- update-clause-schema! []
+  ;; This runs every time a clause is defined, so build the schema lazily: building it eagerly is quadratic in the
+  ;; number of clauses, and slows down loading the namespaces that define them.
   (mr/def ::clause
-    (clause-schema)))
+    (delay (clause-schema))))
 
 ;;; create an initial empty definition of `::clause`
 (update-clause-schema!)
