@@ -28,6 +28,7 @@
   :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json
   :audit      :getter
+  :can-read-from-env? false
   :getter     (fn []
                 (let [db (upload.db/current-database)]
                   {:db_id        (:id db)
