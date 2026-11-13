@@ -55,7 +55,7 @@
                     (thunk)))))]
       (do-with-user-local-values
        (fn []
-         (perms/with-relevant-permissions-for-user metabase-user-id
+         (perms/with-sandboxes-for-user metabase-user-id
            (remote-sync/do-with-read-only-pks-cache thunk)))))))
 
 (defn with-current-user-fetch-user-for-id

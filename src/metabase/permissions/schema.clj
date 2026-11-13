@@ -272,3 +272,11 @@
    [:include-trash-collection? {:optional true} :boolean]
    [:archive-operation-id      {:optional true} [:maybe :string]]
    [:root-namespace            [:maybe [:or :keyword :string]]]])
+
+(mr/def ::data-user-info
+  "The user a data permission question is about: a nil `:user-id` in a context without a user, where only a superuser
+  one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])

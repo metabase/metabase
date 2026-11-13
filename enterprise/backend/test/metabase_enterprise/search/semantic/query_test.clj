@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -285,8 +285,7 @@
                     (is (not-any? #{"Monsters Table"} (q "table" "monster facts"))))
                   (testing "give data permissions"
                     (unrestrict-table monsters-table)
-                    (data-perms/disable-perms-cache
-                     (is (some #{"Monsters Table"} (q "table" "monster facts"))))))))))))))
+                    (is (some #{"Monsters Table"} (q "table" "monster facts")))))))))))))
 
 (deftest basic-batched-query-test
   (testing "Small-batch reindexing"

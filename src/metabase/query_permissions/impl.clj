@@ -382,22 +382,19 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm db-id]
   (perms/at-least-as-permissive? perm-type
-                                 (perms/full-database-permission-for-user api/*current-user-id* perm-type db-id)
+                                 (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) perm-type [db-id]) db-id)
                                  required-perm))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
   is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
-  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids (set (keys table-id->required-perm))})
-  (every? (fn [[table-id required-perm]]
-            (perms/user-has-permission-for-table?
-             api/*current-user-id*
-             perm-type
-             required-perm
-             db-id
-             table-id))
-          table-id->required-perm))
+  (let [permissions (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                      perm-type
+                                                      (zipmap (keys table-id->required-perm) (repeat db-id)))]
+    (every? (fn [[table-id required-perm]]
+              (perms/at-least-as-permissive? perm-type (get permissions table-id) required-perm))
+            table-id->required-perm)))
 
 (defn- card
   [database-id card-id]
@@ -416,17 +413,14 @@
 (defn check-result-metadata-data-perms
   "Check current user has view-data perms on all columns of `result-metadata`."
   [database-id result-metadata]
-  (let [field-ids (keep :id result-metadata)
-        table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
-                        (when (seq field-ids)
-                          (query-permissions.db/field-table-ids field-ids)))]
-    (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
-    (run! #(when-not (perms/user-has-permission-for-table?
-                      api/*current-user-id*
-                      :perms/view-data
-                      :unrestricted
-                      database-id
-                      %)
+  (let [field-ids   (keep :id result-metadata)
+        table-ids   (into (set (keep (some-fn :table-id :table_id) result-metadata))
+                          (when (seq field-ids)
+                            (query-permissions.db/field-table-ids field-ids)))
+        permissions (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                      :perms/view-data
+                                                      (zipmap table-ids (repeat database-id)))]
+    (run! #(when-not (= :unrestricted (get permissions %))
              (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
@@ -568,7 +562,6 @@
     (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
           table-id->database-id (when (seq table-ids)
                                   (query-permissions.db/table-id->database-id table-ids))]
-      (perms/prime-table-perms-cache {:table-ids table-ids})
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]
         (when-not (can-query-table? database-id table-id)

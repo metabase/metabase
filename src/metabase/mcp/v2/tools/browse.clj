@@ -27,7 +27,6 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -155,8 +154,6 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        ;; `mi/can-read?` below is one permission check per database; load them in one query first.
-        _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? (t2/hydrate rows :can_read))]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
@@ -341,8 +338,6 @@
   ;; Read permission is not enough: values are rows of the table, not metadata about it. REST draws
   ;; the same line — `/api/field/:id/summary` gates on `read-check`, `/api/field/:id/values` on
   ;; `query-check` — so a metadata-only caller who is refused there must be refused here too.
-  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                  :table-ids (into #{} (keep :id) tables)})
   (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) (t2/hydrate tables :can_query))
         ;; Field ids are unique across tables, so restricting the fetch to queryable tables is the
         ;; whole gate — nothing withheld here can be looked up again below.

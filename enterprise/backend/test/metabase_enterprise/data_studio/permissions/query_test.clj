@@ -94,13 +94,11 @@
                             *current-user-permissions-set* (delay (if collection-readable?
                                                                     #{(perms/collection-read-path collection-id)}
                                                                     #{}))]
-                    (perms/disable-perms-cache
-                      ;; Query is only runnable when: library enabled AND collection readable AND table published AND view-data unrestricted
-                      (is (= (and (contains? features :library)
-                                  collection-readable?
-                                  table-is-published?
-                                  (not= view-data :blocked))
-                             (query-perms/can-run-query? mbql-query))))))))))))))
+                    (is (= (and (contains? features :library)
+                                collection-readable?
+                                table-is-published?
+                                (not= view-data :blocked))
+                           (query-perms/can-run-query? mbql-query)))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:library}
@@ -121,18 +119,17 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-              (perms/disable-perms-cache
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                          *is-superuser?*                false]
-                  (testing "Should grant create-queries via collection permissions"
-                    (is (= :query-builder
-                           (perms/table-permission-for-user user-id :perms/create-queries (mt/id) (mt/id :venues)))
-                        "Collection permissions should grant query-builder permission"))
-                  (testing "Should NOT grant view-data via collection permissions"
-                    (is (= :blocked
-                           (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
-                        "Collection permissions should NOT grant view-data permission")))))))))))
+              (binding [*current-user-id*              user-id
+                        *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
+                        *is-superuser?*                false]
+                (testing "Should grant create-queries via collection permissions"
+                  (is (= :query-builder
+                         (get (perms/table-permissions-for-user (perms/user-info user-id) :perms/create-queries {(mt/id :venues) (mt/id)}) (mt/id :venues)))
+                      "Collection permissions should grant query-builder permission"))
+                (testing "Should NOT grant view-data via collection permissions"
+                  (is (= :blocked
+                         (get (perms/table-permissions-for-user (perms/user-info user-id) :perms/view-data {(mt/id :venues) (mt/id)}) (mt/id :venues)))
+                      "Collection permissions should NOT grant view-data permission"))))))))))
 
 (deftest published-table-grants-database-access-test
   (testing "POST /api/dataset in EE: published table access GRANTS database access"

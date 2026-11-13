@@ -61,7 +61,6 @@
   "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
   [dbs & {:keys [can-query?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
-        _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? (t2/hydrate all-tables :can_read))
                           can-query?          (#(t2/hydrate % :can_query))
                           can-query?          (filter mi/can-query?))
@@ -84,7 +83,6 @@
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
                          {} rows)]
-      (perms/prime-schema-perms-cache {:db-ids db-ids})
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
@@ -109,16 +107,15 @@
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
-  (for [db dbs]
-    (assoc db
-           :native_permissions
-           (if (= :query-builder-and-native
-                  (perms/full-database-permission-for-user
-                   api/*current-user-id*
-                   :perms/create-queries
-                   (u/the-id db)))
-             :write
-             :none))))
+  (let [create-queries (when (seq dbs)
+                         (perms/every-table-in-database-permissions-for-user
+                          (perms/user-info api/*current-user-id*) :perms/create-queries (mapv u/the-id dbs)))]
+    (for [db dbs]
+      (assoc db
+             :native_permissions
+             (if (= :query-builder-and-native (get create-queries (u/the-id db)))
+               :write
+               :none)))))
 
 (mu/defn- add-transforms-perms-info :- [:maybe
                                         [:sequential
@@ -127,16 +124,15 @@
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
   [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
-  (for [db dbs]
-    (assoc db
-           :transforms_permissions
-           (if (perms/user-has-permission-for-database?
-                api/*current-user-id*
-                :perms/transforms
-                :yes
-                (u/the-id db))
-             :write
-             :none))))
+  (let [transforms (when (seq dbs)
+                     (perms/database-permissions-for-user
+                      (perms/user-info api/*current-user-id*) :perms/transforms (mapv u/the-id dbs)))]
+    (for [db dbs]
+      (assoc db
+             :transforms_permissions
+             (if (perms/at-least-as-permissive? :perms/transforms (get transforms (u/the-id db)) :yes)
+               :write
+               :none)))))
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
@@ -182,17 +178,17 @@
              include-only-uploadable?
              router-database-id
              can-query?]}]
-  (let [filter-on-router-database-id (when (some->> router-database-id
-                                                    (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
+  (let [filter-on-router-database-id (when (and router-database-id
+                                                (perms/user-has-permission-for-databases?
+                                                 (perms/user-info api/*current-user-id*)
+                                                 :perms/manage-database :yes [router-database-id]))
                                        router-database-id)
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
         dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
                                                 filter-by-data-access? filter-on-router-database-id
-                                                include-analytics? include-stubs?)
-        ;; everything below walks the list one database at a time
-        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+                                                include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
       include-schemas?             add-schemas
@@ -398,7 +394,6 @@
                ((if skip-fields?
                   #(t2/hydrate % [:tables :segments :metrics])
                   #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
-        _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -591,7 +586,6 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
-  (perms/prime-table-perms-cache {:db-ids #{id}})
   (let [fields (filter mi/can-read? (t2/hydrate (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
                                                     (t2/hydrate :table)) :can_read))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
@@ -1136,7 +1130,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
+                       (perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) (:id db))
                        (and (mi/can-write? (t2/hydrate db :can_write))
                             (mi/can-read? (t2/hydrate db :can_read)))))
     (->> (driver.u/lib-database (:id db))

@@ -6,7 +6,6 @@
    [metabase-enterprise.erd.db :as erd.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -92,13 +91,8 @@
   [database-id & {:keys [table-ids] :as opts}]
   (if (and (contains? opts :table-ids) (empty? table-ids))
     []
-    (do
-      (perms/prime-table-perms-cache (if (contains? opts :table-ids)
-                                       {:table-ids (set table-ids)}
-                                       {:db-ids #{database-id}}))
-      (->> (erd.db/active-tables-in-database table-select-columns database-id opts)
-           (#(t2/hydrate % :can_read))
-           (filter mi/can-read?)))))
+    (filter mi/can-read? (t2/hydrate (erd.db/active-tables-in-database table-select-columns database-id opts)
+                                     :can_read))))
 
 (defn- readable-table-ids
   [database-id & opts]

@@ -38,11 +38,11 @@
 
 (methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
   [_model k instance]
-  (vary-meta instance assoc k (boolean (perms/has-any-transforms-permission? api/*current-user-id*))))
+  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
 
 (methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
   [_model k instance]
-  (assoc instance k (boolean (perms/has-any-transforms-permission? api/*current-user-id*))))
+  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."

@@ -44,7 +44,7 @@
 (defn- user-can-access-table?
   "Returns true if the current user has :unrestricted :perms/view-data for the given table."
   [user-id database-id table-id]
-  (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted database-id table-id))
+  (perms/user-has-permission-for-tables? (perms/user-info user-id) :perms/view-data :unrestricted {table-id database-id}))
 
 ;;; ------------------------------------------------- Sandbox Extension -------------------------------------------------
 
@@ -139,11 +139,12 @@
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
-          _              (perms/prime-table-perms-cache {:db-ids    (set (vals table->db))
-                                                         :table-ids table-ids})
           sandbox-map    (sandbox-restricted-fields table-ids)
-          can-access?    (memoize (fn [db-id table-id]
-                                    (user-can-access-table? api/*current-user-id* db-id table-id)))
+          view-data      (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                           :perms/view-data
+                                                           (into {} (filter val) table->db))
+          can-access?    (fn [_db-id table-id]
+                           (= :unrestricted (get view-data table-id)))
           allowed?       (fn [dim->field-id dim]
                            (let [fid (get dim->field-id (:id dim))]
                              (if-not fid

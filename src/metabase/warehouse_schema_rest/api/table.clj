@@ -115,9 +115,6 @@
             :include-transform-targets? include-transform-targets})
           tables
       (apply t2/hydrate tables hydrations)
-      (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                          :table-ids (into #{} (map :id) tables)})
-          tables)
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
         (filter mi/can-read? (t2/hydrate tables :can_read)))
@@ -500,12 +497,7 @@
   (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
         database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
     (api/check-403
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:id database)
-      id))
+     (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {id (:id database)}))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try

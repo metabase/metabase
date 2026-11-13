@@ -4,7 +4,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -1040,13 +1040,11 @@
                    (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
                          uploaded-schema (:schema uploaded-table)]
                      (is (= :unrestricted
-                            (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
-                                                                    db-id (:id uploaded-table)))
+                            (get (data-perms/table-permissions-for-groups #{all-users-id} :perms/view-data {(:id uploaded-table) db-id}) (:id uploaded-table)))
                          "uploaded table in the granted schema must stay :unrestricted")
                      (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
                        (is (= :unrestricted
-                              (data-perms/full-schema-permission-for-user
-                               (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
+                              (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

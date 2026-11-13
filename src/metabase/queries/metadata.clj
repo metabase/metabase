@@ -32,17 +32,13 @@
   [db :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
-              (perms/full-database-permission-for-user
-               api/*current-user-id*
-               :perms/create-queries
-               (u/the-id db))))
+              (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [(u/the-id db)]) (u/the-id db))))
     :write
     :none))
 
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (perms/prime-database-perms-cache {:db-ids (set ids)})
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
           (t2/hydrate (queries.db/databases ids) :can_read))))

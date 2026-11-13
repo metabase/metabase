@@ -2,8 +2,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
@@ -41,18 +39,11 @@
     ;; ...but if we do, return the Field <3
     field))
 
-(defn- prime-table-perms-for-fields!
-  "Load table permissions for `fields`' tables in one go — reading a Field delegates to its Table, so filtering a batch
-  of Fields would otherwise check one table at a time."
-  [fields]
-  (perms/prime-table-perms-cache {:table-ids (into #{} (keep :table_id) fields)}))
-
 (defn get-fields
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
     (let [fields (warehouse-schema.db/fields ids)]
-      (prime-table-perms-for-fields! fields)
       (-> (filter mi/can-read? (t2/hydrate fields :can_read))
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
 
@@ -60,9 +51,7 @@
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (u/prog1 (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table)
-           (prime-table-perms-for-fields! <>)))
-       (#(t2/hydrate % :can_read))
+         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table :can_read))
        (filter mi/can-read?)
        (keep :table_id)
        set

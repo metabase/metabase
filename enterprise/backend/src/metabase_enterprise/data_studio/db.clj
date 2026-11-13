@@ -117,6 +117,11 @@
   (schema.table-user-settings/upsert-table-user-settings-for-tables!
    table-ids {:collection_id nil, :is_published false}))
 
+(mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-pk->fn :collection_id [:model/Table :id :collection_id] :id [:in table-ids] :is_published true))
+
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
   [table-id   :- ::lib.schema.id/table

@@ -61,13 +61,15 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(methodical/defmethod t2/simple-hydrate [:model/Measure :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (let [table (or (:table instance)
-                              (measures.db/table (:table_id instance)))]
-                (mi/can-read? (t2/hydrate table :can_read))))))
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_read]
+  "Whether the current user can read each of `measures`, which they can when they read its Table, the Tables answered
+  together."
+  [_model k measures]
+  (let [rows  (t2/hydrate (into [] (remove nil?) measures) [:table :can_read])
+        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
+    (for [measure measures]
+      (when measure
+        (vary-meta measure assoc k (get flags (:id measure) false))))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
@@ -78,12 +80,7 @@
                   (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 ;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
@@ -94,12 +91,7 @@
                   (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
