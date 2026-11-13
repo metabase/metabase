@@ -92,6 +92,20 @@
                                    {:op "add_tab" :id -2 :name "Q4"}
                                    {:op "add_card" :id -3 :card_id 42}])))))
 
+(deftest ^:parallel layout-error-text-test
+  (let [side-by-side (assoc empty-dash :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6}
+                                                   {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6}])]
+    (testing "two cards given positions that cover each other are named, with what to do instead"
+      (is (= (str "dashcards 7, 8 would overlap, and this call gives both a position — give them positions "
+                  "that don't cover each other. Other cards are pushed down automatically.")
+             (error-text side-by-side [{:op "move" :dashcard_id 7 :position {:row 0 :col 6}}
+                                       {:op "move" :dashcard_id 8 :position {:row 0 :col 10}}]))))
+    (testing "a resized or moved card past the right edge names its column and width"
+      (is (= "dashcard 8 would run past the 24-column grid: col 12 + size_x 24 is more than 24."
+             (error-text side-by-side [{:op "resize" :dashcard_id 8 :size {:size_x 24 :size_y 6}}])))
+      (is (= "dashcard 7 would run past the 24-column grid: col 20 + size_x 12 is more than 24."
+             (error-text side-by-side [{:op "move" :dashcard_id 7 :position {:row 10 :col 20}}]))))))
+
 (deftest ^:parallel wiring-errors-teach-the-target-grammar-test
   (testing "wiring errors point at learn(\"dashboard-filters\") for the target grammar"
     (is (re-find #"learn\(\"dashboard-filters\"\)"

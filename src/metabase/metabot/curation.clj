@@ -455,6 +455,14 @@
                           (when (= :mbql.stage/native (:lib/type stage))
                             (dissoc stage :template-tags)))))
 
+(defn curated-query?
+  "Whether everything `query` reads is curated or covered, as [[check-curated-query!]] judges it."
+  [query]
+  (let [query (cond-> query
+                (not (:lib/metadata query))
+                (->> (lib/query (lib-be/application-database-metadata-provider (:database query)))))]
+    (empty? (uncurated-query-sources (without-native-refs query)))))
+
 (defn check-curated-query!
   "Reject `query` — a query the conversation holds, as a lib query or a query map with `:database` — unless everything
   it reads is curated or covered (see [[uncurated-query-sources]]), naming it by `label`. A native stage is left to
@@ -467,8 +475,5 @@
   tells a user who already holds the query whether its entities are curated. Accepted: that user put the query in
   the conversation, and the alternative is a second permission walk ahead of the processor's own."
   [label query]
-  (let [query (cond-> query
-                (not (:lib/metadata query))
-                (->> (lib/query (lib-be/application-database-metadata-provider (:database query)))))]
-    (when (seq (uncurated-query-sources (without-native-refs query)))
-      (recoverable.common/not-curated! {:label label}))))
+  (when-not (curated-query? query)
+    (recoverable.common/not-curated! {:label label})))

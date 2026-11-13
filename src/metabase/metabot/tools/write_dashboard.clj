@@ -199,13 +199,14 @@
   (str/join ", " ids))
 
 (tools/defrecoverable cards-not-curated!
-  "This Metabot only uses curated content, and the ops add or place questions that aren't curated.
+  "This Metabot only uses curated content, and the ops add or place questions that aren't curated, or make a filter
+  take its values from one.
   The `:card-ids` are those questions, each one the user can read."
   {:payload [:map {:closed true} [:card-ids [:sequential {:min 1} :int]]]}
   [{:keys [card-ids]}]
   {:message  (str (if (next card-ids) "Questions " "Question ") (ids-text card-ids)
-                  " can't be added: this Metabot only uses curated content (verified, official, or Library"
-                  " content). Nothing was saved.")
+                  " can't be added or give a filter its values: this Metabot only uses curated content (verified,"
+                  " official, or Library content). Nothing was saved.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find curated questions, models, or metrics and add one of those instead."}]})
 
@@ -514,17 +515,52 @@
               (distinct))
         ops))
 
+(def ^:private parameter-ops
+  "The ops that may give a filter a question to take its values from."
+  #{"add_parameter" "update_parameter"})
+
+(defn- source-card-ids
+  "The ids of the questions `ops` make a filter of `dashboard`, nil on a create, take its values from.
+  A question the filter already takes its values from is left out, so renaming that filter doesn't judge it again."
+  [dashboard ops]
+  (let [stored (u/index-by :id (:parameters dashboard))]
+    (into []
+          (comp (filter (comp parameter-ops :op))
+                ;; As the compiler applies them: an update merges into the stored filter and drops what it clears.
+                (keep (fn [{op-name :op :keys [parameter_id clear] :as op}]
+                        (let [before (when (= "update_parameter" op-name) (get stored parameter_id))
+                              after  (apply dissoc (merge before (dissoc op :op :parameter_id :clear))
+                                            (map keyword clear))
+                              card   (dashboard-ops/source-card-id after)]
+                          (when (not= card (some-> before dashboard-ops/source-card-id))
+                            card))))
+                (distinct))
+          ops)))
+
+(defn- saved-by-this-conversation?
+  "Whether `card` was saved from a chart of this conversation, and its query reads only curated content.
+  The conversation is no proof of curation, as the card may have been saved while curation was off, so its query is
+  judged again, as [[save-entity/savable-chart]] judges a chart's."
+  [card]
+  (let [conversation-id (shared/current-conversation-id)]
+    (and conversation-id
+         (= conversation-id (:metabot_conversation_id card))
+         (curation/curated-query? (:dataset_query card)))))
+
 (defn- check-cards-curated!
-  "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` place is curated.
+  "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` place, or make a
+  filter of `dashboard` take its values from, is curated, or [[saved-by-this-conversation?]].
   The dashboard itself is a destination, so it needn't be curated. A question the user can't read is left to the ops
   compiler, which reports it as unknown, so the refusal doesn't reveal whether it is curated."
-  [ops]
+  [dashboard ops]
   (when (shared/curated-only?)
-    (when-let [card-ids (seq (placed-card-ids ops))]
+    (when-let [card-ids (seq (distinct (concat (placed-card-ids ops) (source-card-ids dashboard ops))))]
       (let [curated (curation/curated-ids (map #(vector "card" %) card-ids))
             refused (into []
                           (filter #(and (not (contains? curated ["card" %]))
-                                        (some-> (metabot.db/card %) mi/can-read?)))
+                                        (when-let [card (metabot.db/card %)]
+                                          (and (mi/can-read? card)
+                                               (not (saved-by-this-conversation? card))))))
                           card-ids)]
         (when (seq refused)
           (cards-not-curated! {:card-ids refused}))))))
@@ -567,28 +603,29 @@
   ;; The results cache's key: its canonical form drops uuids and names each aggregation ref by index, in every stage.
   (vec (lib-be/query-hash query)))
 
-(defn- reusable-card-id
-  "The id of a question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with
+(defn- reusable-card
+  "A question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with
   `conversation-id`, and holds `dataset-query` shown as `display`, or nil."
   [conversation-id chart-id dashboard-id dataset-query display]
   ;; The viewing context names a chart after the saved question the user is viewing, so the same chart id can hold
   ;; an edited query or display on a later turn. Matching both keeps that edit from being dropped for the old question.
   (let [wanted (comparable-query dataset-query)]
-    (some (fn [{:keys [id dataset_query] :as card}]
+    (some (fn [{:keys [dataset_query] :as card}]
             (when (and (= (keyword display) (keyword (:display card)))
                        (= wanted (comparable-query dataset_query)))
-              id))
+              card))
           (metabot.db/conversation-dashboard-questions conversation-id chart-id dashboard-id))))
 
 (defn- save-chart!
   "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
   A question already saved from the chart, with the same query and display, to this dashboard in this conversation is
-  reused, without a `:card`."
+  reused, without a `:card`. It keeps its name, which is returned as `:kept-name` when the chart asked for another."
   [dashboard-id {:keys [chart-id name dataset_query display]}]
   (let [conversation-id (shared/current-conversation-id)]
-    (if-let [card-id (some-> conversation-id
-                             (reusable-card-id chart-id dashboard-id dataset_query display))]
-      {:chart-id chart-id, :card-id card-id}
+    (if-let [reused (some-> conversation-id
+                            (reusable-card chart-id dashboard-id dataset_query display))]
+      (cond-> {:chart-id chart-id, :card-id (:id reused)}
+        (not= name (:name reused)) (assoc :kept-name (:name reused)))
       (let [card (queries/create-card! {:name                   name
                                         :dataset_query          dataset_query
                                         :display                display
@@ -633,9 +670,9 @@
   (vec (repeatedly 64 #(Object.))))
 
 (defn- dashboard-lock
-  "The lock for the dashboard with `dashboard-id`, or one shared by creates when it is nil."
+  "The lock for the dashboard with `dashboard-id`."
   ^Object [dashboard-id]
-  (nth dashboard-locks (mod (or dashboard-id 0) (count dashboard-locks))))
+  (nth dashboard-locks (mod dashboard-id (count dashboard-locks))))
 
 (defn- save-in-transaction!
   "Saves the change as [[save!]] does, once it holds the dashboard's lock."
@@ -668,9 +705,12 @@
   ;; The tool calls of one model step run in parallel, and ops save a full-replacement layout. So an edit holds the
   ;; dashboard's lock until it commits, and compiles against the dashboard as it is then. Otherwise a parallel edit's
   ;; cards would be deleted, or one chart saved twice. The lock is per JVM, which covers one conversation's calls.
-  (let [lock (dashboard-lock (:id dashboard))]
-    (locking lock
-      (save-in-transaction! dashboard attrs ops charts))))
+  ;; A create has no layout for a parallel call to overwrite, so it takes no lock, and creates don't wait on each other.
+  (if dashboard
+    (let [lock (dashboard-lock (:id dashboard))]
+      (locking lock
+        (save-in-transaction! dashboard attrs ops charts)))
+    (save-in-transaction! dashboard attrs ops charts)))
 
 ;;; -------------------------------------------------- Results -----------------------------------------------------
 
@@ -770,6 +810,7 @@
         pushed      (dashboard-ops/pushed-dashcard-ids dashboard)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
+        kept-names  (filter :kept-name saved-charts)
         output      (te/lines
                      (str "<dashboard_saved" (xml-attrs :action action :url link) ">")
                      (str "  <collection"
@@ -787,6 +828,9 @@
                        "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
                        "restored" "Tell the user you restored it."
                        "Tell the user what you changed and where the dashboard is saved.")
+                     (for [{:keys [chart-id card-id kept-name]} kept-names]
+                       (str "Chart " chart-id " was already saved here as question " card-id ", so it kept its name "
+                            (quoting/quoted kept-name) ". Use that name when you tell the user."))
                      (when (seq pushed)
                        (str (if (next pushed) "Cards " "Card ") (ids-text pushed)
                             " moved down to make room for the cards you placed. Mention it to the user."))
@@ -812,8 +856,8 @@
    "Create, edit, trash or restore a dashboard. Each call saves at once; don't ask the user to confirm first."
    ""
    "- Create: omit `dashboard_id` and pass `name`. A new dashboard goes to the user's personal collection unless"
-   "  you pass `collection_id`. To build a dashboard about a topic, create the charts first, then add them all in"
-   "  one call with `ops`."
+   "  you pass `collection_id`. To build a dashboard about a topic, add its charts or questions all in one call"
+   "  with `ops`."
    "- Edit: pass `dashboard_id` with `name`, `description`, `collection_id`, `clear` or `ops`."
    "- Trash or restore: pass `dashboard_id` and `archived`, with no `ops`."
    ""
@@ -843,7 +887,7 @@
         (check-collection-writable! (:collection_id attrs) (nil? dashboard)))
       (check-request! args)
       (check-op-sources! dashboard_id ops)
-      (check-cards-curated! ops)
+      (check-cards-curated! dashboard ops)
       (check-cards-not-in-other-dashboards! dashboard ops)
       (let [charts (requested-charts ops)
             {saved :dashboard :keys [before saved-charts]}
