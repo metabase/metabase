@@ -216,15 +216,32 @@ describe("DeleteTransformsFolderModal", () => {
     expect(screen.getByText("public.orders_by_day")).toBeInTheDocument();
   });
 
-  it("offers no table choice for a folder without transforms", async () => {
-    const { onClose } = await setup();
+  it("lists the subfolders of a folder without transforms, with no table choice", async () => {
+    await setup({ folder: FOLDER_WITH_SUBFOLDER });
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         "This will delete this folder and its subfolders. This can’t be undone.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Here’s what will be deleted:"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Folder")).toBeInTheDocument();
+    expect(screen.getByText("Daily")).toBeInTheDocument();
+  });
+
+  it("offers no table choice and no list for an empty folder", async () => {
+    const { onClose } = await setup();
+
+    expect(
+      screen.getByText("This will delete this folder. This can’t be undone."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Here’s what will be deleted:"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Delete folder and contents" }),
