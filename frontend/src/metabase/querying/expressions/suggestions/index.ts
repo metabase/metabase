@@ -7,3 +7,5 @@ export {
   MAX_COLUMN_VALUES,
   hasTextValues,
 } from "./values";
+export { FUNCTION_ALIASES } from "./aliases";
+export { findRelatedFunctions } from "./semantic";

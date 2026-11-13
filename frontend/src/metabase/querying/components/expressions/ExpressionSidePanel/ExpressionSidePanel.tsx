@@ -6,6 +6,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type SyntheticEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -13,7 +14,11 @@ import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { Markdown } from "metabase/common/components/Markdown";
-import { getHelpText } from "metabase/querying/expressions";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import {
+  findRelatedFunctions,
+  getHelpText,
+} from "metabase/querying/expressions";
 import {
   ActionIcon,
   HoverCard,
@@ -82,9 +87,15 @@ export function ExpressionSidePanel({
   const [tab, setTab] = useState<SidePanelTab>("templates");
   const [search, setSearch] = useState("");
 
+  const relatedNames = useRelatedFunctions({
+    expressionMode,
+    database,
+    search,
+  });
   const sections = useMemo(
-    () => getSidePanelView({ expressionMode, tab, database, search }),
-    [expressionMode, tab, database, search],
+    () =>
+      getSidePanelView({ expressionMode, tab, database, search, relatedNames }),
+    [expressionMode, tab, database, search, relatedNames],
   );
 
   const tabs = useMemo(
@@ -165,6 +176,48 @@ export function ExpressionSidePanel({
   );
 }
 
+// A pause in typing before the search by meaning, which asks a model.
+const RELATED_DELAY = 300;
+
+/**
+ * The functions whose meaning matches the search, with the on-device model
+ * that autocomplete also uses. Empty when the browser has no such model.
+ */
+function useRelatedFunctions({
+  expressionMode,
+  database,
+  search,
+}: {
+  expressionMode: Lib.ExpressionMode;
+  database: Database | undefined;
+  search: string;
+}) {
+  const debouncedSearch = useDebouncedValue(search, RELATED_DELAY);
+  const [related, setRelated] = useState<{ search: string; names: string[] }>({
+    search: "",
+    names: [],
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    findRelatedFunctions(
+      { expressionMode, database },
+      debouncedSearch,
+      controller.signal,
+    ).then((names) => {
+      if (!controller.signal.aborted) {
+        setRelated({ search: debouncedSearch, names });
+      }
+    });
+    return () => controller.abort();
+  }, [expressionMode, database, debouncedSearch]);
+
+  // Results for an earlier search would show unrelated functions.
+  return related.search === search ? related.names : NO_NAMES;
+}
+
+const NO_NAMES: string[] = [];
+
 // Clicking a row must not take focus away from the expression being typed.
 function handlePanelMouseDown(event: MouseEvent<HTMLDivElement>) {
   event.stopPropagation();
@@ -199,6 +252,7 @@ function Row({
       >
         <PanelIcon name={row.icon} />
         <span className={S.label}>{row.name}</span>
+        {row.hint != null && <span className={S.hint}>{row.hint}</span>}
       </UnstyledButton>
     );
   }
@@ -222,6 +276,7 @@ function Row({
             {row.displayName}
             <span className={S.parentheses}>()</span>
           </span>
+          {row.hint != null && <span className={S.hint}>{row.hint}</span>}
         </UnstyledButton>
       </HoverCard.Target>
       <HoverCard.Dropdown

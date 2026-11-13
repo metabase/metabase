@@ -1,5 +1,10 @@
+import { t } from "ttag";
+
 import { hasRequiredFeature } from "metabase/databases";
 import {
+  type ExpressionSuggestion,
+  FUNCTION_ALIASES,
+  fuzzyMatcher,
   getClauseDefinition,
   getHelpText,
   getMBQLName,
@@ -22,6 +27,8 @@ export type SidePanelRow =
       name: string;
       code: string;
       icon: SidePanelIconName;
+      /** Why the row matches the search, when its name does not show it. */
+      hint?: string;
     }
   | {
       type: "function";
@@ -32,6 +39,7 @@ export type SidePanelRow =
       icon: SidePanelIconName;
       /** The database lacks a feature the function needs. */
       isDisabled: boolean;
+      hint?: string;
     };
 
 export type SidePanelSectionView = {
@@ -44,18 +52,23 @@ type Options = {
   tab: SidePanelTab;
   database: Pick<Database, "engine" | "features"> | undefined;
   search: string;
+  /** Functions whose meaning matches the search, by their clause names. */
+  relatedNames?: string[];
 };
 
 /**
  * The sections of one tab, with functions resolved against the database and
- * everything filtered by the search: a row matches by its name, its section's
- * name, or a function's description.
+ * everything filtered by the search. A row matches like an option of
+ * autocomplete: by its name, an alias, an abbreviation or with a typo. It
+ * also matches by its section's name, a function's description, or by
+ * meaning, with `relatedNames`.
  */
 export function getSidePanelView({
   expressionMode,
   tab,
   database,
   search,
+  relatedNames = [],
 }: Options): SidePanelSectionView[] {
   const query = search.trim().toLowerCase();
   const matches = (text: string) => text.toLowerCase().includes(query);
@@ -69,26 +82,66 @@ export function getSidePanelView({
     return description != null && matches(description.replace(/[`$]/g, ""));
   };
 
-  return getSidePanelSections(expressionMode, tab).flatMap((section) => {
-    const sectionMatches = query === "" || matches(section.name);
+  const sections = getSidePanelSections(expressionMode, tab).map((section) => ({
+    name: section.name,
+    blocks: section.blocks.map((items) =>
+      items.flatMap((item, index) =>
+        toRow(item, `${section.name}-${index}`, section.icon, database),
+      ),
+    ),
+  }));
+  if (query === "") {
+    return sections;
+  }
 
+  // One search over all rows, so that typos match only when nothing else
+  // does, like in autocomplete.
+  const rows = sections.flatMap((section) => section.blocks.flat());
+  const textMatches = new Map(
+    fuzzyMatcher(rows.map(toOption))(query).map((option) => [
+      option.label,
+      option,
+    ]),
+  );
+  const related = new Set(relatedNames);
+
+  return sections.flatMap((section) => {
+    const sectionMatches = matches(section.name);
     const blocks = section.blocks
-      .map((items) =>
-        items
-          .flatMap((item, index) =>
-            toRow(item, `${section.name}-${index}`, section.icon, database),
-          )
-          .filter(
-            (row) =>
-              sectionMatches ||
-              matches(row.type === "function" ? row.displayName : row.name) ||
-              describes(row),
-          ),
+      .map((rows) =>
+        rows.flatMap((row): SidePanelRow[] => {
+          const textMatch = textMatches.get(getRowName(row));
+          if (sectionMatches || textMatch != null || describes(row)) {
+            return [{ ...row, hint: textMatch?.hint }];
+          }
+          if (row.type === "function" && related.has(row.name)) {
+            return [{ ...row, hint: t`related` }];
+          }
+          return [];
+        }),
       )
       .filter((rows) => rows.length > 0);
 
     return blocks.length > 0 ? [{ name: section.name, blocks }] : [];
   });
+}
+
+function getRowName(row: SidePanelRow) {
+  return row.type === "function" ? row.displayName : row.name;
+}
+
+/**
+ * A row as an option of autocomplete, for its text matcher. A function in
+ * several sections matches in each of them.
+ */
+function toOption(row: SidePanelRow): ExpressionSuggestion {
+  const name = getRowName(row);
+  return {
+    label: name,
+    displayLabel: name,
+    icon: "function",
+    aliases: row.type === "function" ? FUNCTION_ALIASES[row.name] : undefined,
+  };
 }
 
 function toRow(

@@ -315,15 +315,51 @@ export function suggestRelatedFunctions({
       type: expressionMode === "aggregation" ? "aggregation" : "function",
     }),
   );
-  const descriptions = clauses.map((clause) => {
-    const description = clause.description?.(database ?? {}) ?? "";
-    // The first sentence is enough to tell what a function does.
-    return `${clause.displayName}: ${description.split(/(?<=\.)\s/)[0]}`;
-  });
+  const descriptions = describeClauses(clauses, database);
   return suggestRelated(
     "functions",
     options,
     (option) => descriptions[options.indexOf(option)] ?? option.label,
     (token) => isIdentifier(token) && !isFieldReference(token),
   );
+}
+
+function describeClauses(
+  clauses: ReturnType<typeof getSupportedClauses>,
+  database: SuggestOptions["database"],
+) {
+  return clauses.map((clause) => {
+    const description = clause.description?.(database ?? {}) ?? "";
+    // The first sentence is enough to tell what a function does.
+    return `${clause.displayName}: ${description.split(/(?<=\.)\s/)[0]}`;
+  });
+}
+
+/**
+ * The names of the functions whose meaning matches the word, like the
+ * related functions of autocomplete, which share the session of the model.
+ * Empty when the browser has no on-device model.
+ */
+export async function findRelatedFunctions(
+  {
+    expressionMode,
+    database,
+  }: Pick<SuggestOptions, "expressionMode" | "database">,
+  search: string,
+  signal: AbortSignal,
+): Promise<string[]> {
+  const word = search.trim().toLowerCase();
+  if (word.length < MIN_WORD_LENGTH) {
+    return [];
+  }
+  const clauses = getSupportedClauses({ expressionMode, database });
+  const matcher = await getMatcher(
+    "functions",
+    describeClauses(clauses, database),
+  );
+  if (matcher == null || signal.aborted) {
+    return [];
+  }
+  const indexes = await matcher.search(word, signal).catch(() => []);
+  return indexes.map((index) => clauses[index].name);
 }
