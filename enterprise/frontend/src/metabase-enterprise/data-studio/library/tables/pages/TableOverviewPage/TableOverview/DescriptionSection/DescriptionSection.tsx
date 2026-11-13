@@ -2,7 +2,6 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -13,7 +12,6 @@ import {
   useDataLayers,
 } from "metabase/metadata/data-layers";
 import {
-  getRowIdentityLabel,
   getTableHiddenReason,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -161,47 +159,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       {/* Metadata Sections */}
       <Card mx="xl" bg="background_page-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon name="pencil" c="core-brand" />
-            <Text size="md" fw={600} lh="1rem">
-              <DateTime value={table.updated_at} />
-            </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Last edited at`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon name="database" c="core-brand" />
-            {table.db ? (
-              <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
-                <Text size="md" fw={600} lh="1rem">
-                  {table.db.name}
-                </Text>
-              </Link>
-            ) : (
-              <Text size="md" fw={600} lh="1rem">
-                —
-              </Text>
-            )}
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Database`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4} wrap="nowrap">
-            <Icon name="table" c="core-brand" />
-            <Text size="md" fw={600} lh="1rem" ff="monospace" truncate>
-              {table.name}
-            </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Raw name`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4} wrap="nowrap">
             <Icon
               name={
@@ -217,17 +174,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Data layer`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4} wrap="nowrap">
-            <Icon name="key" c="core-brand" />
-            <Text size="md" fw={600} lh="1rem">
-              {getRowIdentityLabel(structure.rowIdentity)}
-            </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Row identity`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="lg">
