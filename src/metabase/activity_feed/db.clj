@@ -266,11 +266,11 @@
                            [:= :c.archived false]]]}))
 
 (mu/defn unarchived-collections-with-details
-  "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
+  "The unarchived Collections with `collection-ids`, with their location, type, namespace, and authority level."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
              {:select [:id :name :description :authority_level
-                       :archived :location :type]
+                       :archived :location :type :namespace]
               :where [:and
                       [:in :id collection-ids]
                       [:= :archived false]]}))

@@ -451,22 +451,6 @@
   (and (not (audit-content-hidden? coll-id))
        (collection-permissions/user-has-permission-for-collection? api/*current-user-id* :read coll-id options)))
 
-;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
-(mu/defn can-read-audit-helper
-  "Audit instances should only be readable if audit app is enabled."
-  [model    :- [:= :model/Collection]
-   instance :- [:map {:closed true}
-                [:id        ms/PositiveInt]
-                [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]
-  (if (and (not (premium-features/enable-audit-app?))
-           (case model
-             :model/Collection (audit/is-collection-id-audit? (:id instance))
-             (audit/is-parent-collection-audit? instance)))
-    false
-    (case model
-      :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection (:collection_id instance) :read)))))
-
 ;;; ---- Collection-based visibility registration ----
 
 (defonce ^:private collection-based-visibility-registry

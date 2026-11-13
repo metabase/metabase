@@ -23,10 +23,6 @@
 
 (p.types/defrecord+ RootCollection [])
 
-(doto RootCollection
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
 (extend-protocol t2.protocols/IModel
   RootCollection
   (model [_this]
@@ -42,6 +38,13 @@
     #{((case read-or-write
          :read  permissions.path/collection-read-path
          :write permissions.path/collection-readwrite-path) collection)}))
+
+(defn unrestricted-snippets?
+  "Whether `collection`, a Collection or a root Collection, is in the snippets namespace while EE snippet Collections are
+  off, which leaves it open to everyone."
+  [collection]
+  (and (= (some-> (:namespace collection) u/qualified-name) "snippets")
+       (not (premium-features/enable-snippet-collections?))))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."

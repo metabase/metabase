@@ -388,6 +388,18 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
+(mu/defn collection-permission-columns
+  "The `namespace`, `type` and `location` of the Collections with `collection-ids`, the columns their permission checks
+  read, keyed by id."
+  [collection-ids :- [:set ms/PositiveInt]]
+  (if (empty? collection-ids)
+    {}
+    (into {}
+          (map (juxt :id #(select-keys % [:namespace :type :location])))
+          (t2/query {:select [:id :namespace :type :location]
+                     :from   [(t2/table-name :model/Collection)]
+                     :where  [:in :id (vec collection-ids)]}))))
+
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.
 
