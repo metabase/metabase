@@ -607,6 +607,74 @@
               (is (= [true true true false] (mapv curation/curated-metric? [m1 m2 m3 m4]))))
             (is (= (counted [m1]) (counted [m1 m2 m3])))))))))
 
+(deftest usable-metric-ids-judge-metrics-over-several-tables-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: the app-DB queries judging a batch takes don't grow with the number of metrics when the
+            metrics read more than one curated table"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp      (mt/metadata-provider)
+            table-q #(lib/query mp (lib.metadata/table mp (mt/id %)))
+            count-q #(lib/aggregate (table-q %) (lib/count))
+            sum-q   #(lib/aggregate (table-q %1) (lib/sum (lib.metadata/field mp (mt/id %1 %2))))]
+        (mt/with-temp [:model/Card {o1 :id} {:type :metric :name "orders count" :dataset_query (count-q :orders)}
+                       :model/Card {p1 :id} {:type :metric :name "products count" :dataset_query (count-q :products)}
+                       :model/Card {o2 :id} {:type :metric :name "orders total" :dataset_query (sum-q :orders :total)}
+                       :model/Card {p2 :id} {:type :metric :name "products price" :dataset_query (sum-q :products :price)}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :products) {:is_published true :data_layer :final}
+              (let [counted (fn [ids]
+                              ;; the first read warms the memoized lookups
+                              (curation/usable-metric-ids ids)
+                              (t2/with-call-count [call-count]
+                                (curation/usable-metric-ids ids)
+                                (call-count)))]
+                (testing "every metric is usable: each one reads a curated table only"
+                  (is (= #{o1 o2 p1 p2} (curation/usable-metric-ids [o1 o2 p1 p2]))))
+                (testing "a second metric over each table costs nothing"
+                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))))))))))
+
+(defn- metric-on-metric-query
+  "A legacy query over the Table `table-id` whose only aggregation is the metric `metric-id`."
+  [table-id metric-id]
+  {:database (mt/id) :type :query :query {:source-table table-id :aggregation [["metric" metric-id]]}})
+
+(defn- insert-metric!
+  "Insert a metric Card named `nm` with `dataset-query` and return its id, for a chain longer than `with-temp`
+  spells out comfortably."
+  [nm dataset-query]
+  (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card)
+                                              :name          nm
+                                              :type          :metric
+                                              :dataset_query dataset-query)))
+
+(deftest usable-metric-ids-keep-each-metrics-nesting-limit-test
+  (testing "BOT-2619: a curated metric deeper than the nesting limit covers no metric of the batch, so a metric
+            whose own walk loads it doesn't change another metric's verdict"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/Card]
+        (let [products (mt/id :products)
+              ;; a verified metric on raw PRODUCTS: a metric that reaches it may read PRODUCTS through it
+              deepest  (insert-metric! "verified products count"
+                                       {:database (mt/id) :type :query
+                                        :query    {:source-table products :aggregation [[:count]]}})
+              _        (verify-card! deepest)
+              ;; nine uncurated metrics on PRODUCTS, each counting the one below it: [deepest link9 ... link1]
+              chain    (reduce (fn [ids n]
+                                 (conj ids (insert-metric! (str "link " n)
+                                                           (metric-on-metric-query products (peek ids)))))
+                               [deepest]
+                               (range 9 0 -1))
+              top      (peek chain)
+              ;; one level above `top`, so the walk from it stops one metric short of the verified one
+              root     (insert-metric! "root" (metric-on-metric-query products top))]
+          (testing "the metric at the limit is usable: its own walk reaches the verified metric"
+            (is (true? (curation/curated-metric? top)))
+            (is (= #{top} (curation/usable-metric-ids [top]))))
+          (testing "the metric one level above it is not"
+            (is (false? (curation/curated-metric? root)))
+            (is (= #{} (curation/usable-metric-ids [root]))))
+          (testing "and judging the two together keeps both verdicts"
+            (is (= #{top} (curation/usable-metric-ids [root top])))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
