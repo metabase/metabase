@@ -43,7 +43,7 @@ export const BugReportModal = ({
       opened
       onClose={onClose}
       title={t`Report a bug`}
-      size={550}
+      size={600}
       density="relaxed"
     >
       <FormProvider
@@ -109,7 +109,7 @@ export const BugReportModal = ({
                 {t`Diagnostic info may contain sensitive data.`}
               </Text>
               <FormSubmitButton
-                label={c("This is a verb, not a noun").t`Download`}
+                label={c("This is a verb, not a noun").t`Download report`}
               />
               <Button
                 variant="filled"
