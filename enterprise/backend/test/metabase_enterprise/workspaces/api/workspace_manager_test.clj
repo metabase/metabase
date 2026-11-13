@@ -656,32 +656,32 @@
                         (deliver resume true)
                         (deref create 10000 nil))))))))))))))
 
-(deftest create-idempotency-retry-while-database-turns-provisioning-test
-  (testing "a same-key retry whose database turns provisioning right after the retry's first status query still gets 409, never the failed-create 500"
+(deftest create-idempotency-retry-while-database-turns-unprovisioned-test
+  (testing "a same-key retry whose database turns unprovisioned right after the retry's first status query still gets 409, never the 500 that says to delete the workspace"
     (do-with-eligible-database!
      (fn [db-id]
        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-         (let [{ws-id :id} (create-with-key 200 "retry-turns-provisioning" "Racing" db-id)
+         (let [{ws-id :id} (create-with-key 200 "retry-turns-unprovisioned" "Racing" db-id)
                exists?     t2/exists?
-               advanced?   (atom false)]
-           ;; the first create has committed the row but not yet reached it
+               failed?     (atom false)]
+           ;; the first create has inserted the row and is provisioning it
            (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
-                       {:status :unprovisioned :updated_at (t/offset-date-time)})
-           ;; the create's `provision-single!` commits `:provisioning` just after the retry's
-           ;; first WorkspaceDatabase status query
+                       {:status :provisioning :updated_at (t/offset-date-time)})
+           ;; the provisioning fails and `provision-workspace-database!` commits `:unprovisioned` just after
+           ;; the retry's first WorkspaceDatabase status query
            (with-redefs [t2/exists? (fn [model & args]
                                       (let [result (apply exists? model args)]
                                         (when (and (= :model/WorkspaceDatabase model)
-                                                   (compare-and-set! advanced? false true))
+                                                   (compare-and-set! failed? false true))
                                           (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
-                                                      {:status :provisioning}))
+                                                      {:status :unprovisioned}))
                                         result))]
              (is (=? {:error-code "workspace_busy"}
-                     (create-with-key 409 "retry-turns-provisioning" "Racing" db-id))))
-           (is (true? @advanced?) "the row advanced during the retry")))))))
+                     (create-with-key 409 "retry-turns-unprovisioned" "Racing" db-id))))
+           (is (true? @failed?) "the row turned unprovisioned during the retry")))))))
 
 (deftest create-idempotency-retry-of-stale-workspace-test
-  (testing "a retry whose workspace has only rows older than 15 minutes that are not provisioned answers the failed-create 500"
+  (testing "a retry whose workspace has only rows older than 15 minutes that are not provisioned answers the 500 that says to delete the workspace"
     (doseq [status [:provisioning :unprovisioned]]
       (testing status
         (do-with-eligible-database!
