@@ -1,6 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useContext, useEffect, useId, useState } from "react";
-import { createPortal } from "react-dom";
+import { useContext, useEffect, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Select, type SelectProps } from "metabase/ui";
@@ -16,7 +15,7 @@ type ChartSettingSelectOption = {
   value: ChartSettingSelectValue;
 };
 
-type ChartSettingSelectProps = Pick<
+export type ChartSettingSelectProps = Pick<
   SelectProps,
   | "className"
   | "defaultDropdownOpened"
@@ -29,7 +28,6 @@ type ChartSettingSelectProps = Pick<
   | "variant"
   | "w"
 > & {
-  footer?: ReactNode;
   hasLeftSection?: boolean;
   icon?: SelectProps["leftSection"];
   iconWidth?: SelectProps["leftSectionWidth"];
@@ -48,7 +46,6 @@ export const ChartSettingSelect = ({
   // uncontrolled component because it's wrapped with Uncontrollable.
   className,
   defaultDropdownOpened,
-  footer,
   hasLeftSection,
   icon,
   iconWidth,
@@ -80,14 +77,6 @@ export const ChartSettingSelect = ({
   const [dropdownOpened, setDropdownOpened] = useState(
     Boolean(defaultDropdownOpened),
   );
-  // Mantine's Select has no footer slot, so the footer is portaled into its dropdown element while it is open
-  const dropdownId = useId();
-  const [footerTarget, setFooterTarget] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setFooterTarget(
-      footer && dropdownOpened ? document.getElementById(dropdownId) : null,
-    );
-  }, [footer, dropdownOpened, dropdownId]);
   const scrollContainer = popoverPortal?.scrollContainer;
   useEffect(() => {
     if (!scrollContainer || !dropdownOpened) {
@@ -120,72 +109,61 @@ export const ChartSettingSelect = ({
   const resolvedLeftSection = leftSection ?? icon;
 
   return (
-    <>
-      <Select
-        px={0}
-        id={id}
-        data-testid="chart-setting-select"
-        className={cx(className, CS.block)}
-        attributes={{ dropdown: { id: dropdownId } }}
-        classNames={{
-          root: S.root,
-          wrapper: S.wrapper,
-          section: S.section,
-          input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
-        }}
-        styles={
-          externallyDisabled
-            ? {
-                input: {
-                  backgroundColor:
-                    "var(--mb-color-background_surface-disabled)",
-                  color: "var(--mb-color-text-disabled)",
-                },
-              }
-            : undefined
-        }
-        data={data}
-        disabled={disabled}
-        value={selectedValue}
-        // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
-        onChange={(v) => {
-          if (v == null) {
-            onChange(null);
-            return;
-          }
-          // the encoded options only ever hold these value types
-          onChange(decodeWidgetValue(v) as ChartSettingSelectValue);
-        }}
-        placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-        searchable={!!searchProp}
-        comboboxProps={comboboxProps}
-        leftSection={resolvedLeftSection}
-        leftSectionWidth={icon != null ? iconWidth : undefined}
-        rightSection={rightSection}
-        rightSectionProps={
-          rightSectionWidth
-            ? { style: { width: rightSectionWidth } }
-            : undefined
-        }
-        style={
-          inputPaddingRight
-            ? {
-                "--chart-setting-select-input-padding-right": inputPaddingRight,
-              }
-            : undefined
-        }
-        defaultDropdownOpened={
-          popoverPortal ? undefined : defaultDropdownOpened
-        }
-        dropdownOpened={popoverPortal ? dropdownOpened : undefined}
-        onDropdownOpen={() => setDropdownOpened(true)}
-        onDropdownClose={() => setDropdownOpened(false)}
-        pl={pl}
-        pr={pr}
-        variant={variant}
-        w={w}
-      />
-      {footer && footerTarget && createPortal(footer, footerTarget)}
-    </>
+    <Select
+      px={0}
+      id={id}
+      data-testid="chart-setting-select"
+      className={cx(className, CS.block)}
+      classNames={{
+        root: S.root,
+        wrapper: S.wrapper,
+        section: S.section,
+        input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
+      }}
+      styles={
+        externallyDisabled
+          ? {
+              input: {
+                backgroundColor: "var(--mb-color-background_surface-disabled)",
+                color: "var(--mb-color-text-disabled)",
+              },
+            }
+          : undefined
+      }
+      data={data}
+      disabled={disabled}
+      value={selectedValue}
+      // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
+      onChange={(v) => {
+        onChange(
+          // Unjustified type cast. FIXME
+          v == null ? null : (decodeWidgetValue(v) as ChartSettingSelectValue),
+        );
+      }}
+      placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
+      searchable={!!searchProp}
+      comboboxProps={comboboxProps}
+      leftSection={resolvedLeftSection}
+      leftSectionWidth={icon != null ? iconWidth : undefined}
+      rightSection={rightSection}
+      rightSectionProps={
+        rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
+      }
+      style={
+        inputPaddingRight
+          ? { "--chart-setting-select-input-padding-right": inputPaddingRight }
+          : undefined
+      }
+      defaultDropdownOpened={popoverPortal ? undefined : defaultDropdownOpened}
+      dropdownOpened={popoverPortal ? dropdownOpened : undefined}
+      onDropdownOpen={popoverPortal ? () => setDropdownOpened(true) : undefined}
+      onDropdownClose={
+        popoverPortal ? () => setDropdownOpened(false) : undefined
+      }
+      pl={pl}
+      pr={pr}
+      variant={variant}
+      w={w}
+    />
   );
 };
