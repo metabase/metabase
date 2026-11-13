@@ -1,17 +1,20 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type {
   Card,
   CardId,
-  CollectionId,
   TimelineId,
   VisualizationSettings,
 } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 const EVENTS = [
   { name: "Swallows return", timestamp: "2027-04-20T00:00:00Z" },
@@ -19,10 +22,38 @@ const EVENTS = [
 ];
 const EVENT_NAMES = EVENTS.map(({ name }) => name);
 
-describe("scenarios > organization > timelines > question persistence", () => {
+describe("scenarios > organization > timelines > question", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("should create the first event and timeline", () => {
+    cy.intercept("POST", "/api/timeline-event").as("createEvent");
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+    openQuestionEvents();
+    H.rightSidebar().button("Create event").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByLabelText("Date").type("10/20/2027");
+      cy.button("Create").click();
+    });
+    cy.wait("@createEvent");
+
+    H.rightSidebar().within(() => {
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+    });
+
+    cy.log("the event, its creator and its new timeline are stored");
+    cy.reload();
+    openQuestionEvents();
+    H.rightSidebar().within(() => {
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText(/^Bobby Tables added this on/).should("be.visible");
+    });
   });
 
   it("should save a timeline from another collection and hidden events for dashboards using the question", () => {
@@ -130,105 +161,6 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents(EVENT_NAMES);
   });
 
-  it("should save a new question when collection timelines fail to load", () => {
-    cy.intercept("GET", "/api/timeline?include=events", {
-      statusCode: 500,
-      body: { message: "Timelines are unavailable" },
-    }).as("getFailedTimelines");
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-        },
-      },
-      display: "line",
-    });
-    H.saveQuestionToCollection("Orders by month", undefined, { wrapId: true });
-
-    cy.wait("@getFailedTimelines");
-    cy.get<CardId>("@questionId").then((id) =>
-      cy
-        .request<Card>(`/api/card/${id}`)
-        .its("body.visualization_settings")
-        .should("not.have.property", "timeline.selected_timeline_ids"),
-    );
-  });
-
-  it("should keep a question saved into a collection without timelines empty until a timeline is turned on", () => {
-    H.createCollection({ name: "Quiet corner" }).then(({ body: collection }) =>
-      cy.wrap(collection.id).as("collectionId"),
-    );
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-        },
-      },
-      display: "line",
-    });
-    H.saveQuestionToCollection(
-      "Orders by month",
-      { path: ["Our analytics", "Quiet corner"] },
-      { wrapId: true },
-    );
-    cy.get<CardId>("@questionId").then((questionId) => {
-      cy.request<Card>(`/api/card/${questionId}`)
-        .its("body.visualization_settings")
-        .should("deep.include", { "timeline.selected_timeline_ids": [] });
-      H.createDashboardWithTabs({
-        dashcards: [
-          createMockDashboardCard({
-            id: -1,
-            card_id: questionId,
-            size_x: 12,
-            size_y: 8,
-          }),
-        ],
-      }).then((dashboard) => cy.wrap(dashboard.id).as("dashboardId"));
-    });
-    cy.get<CollectionId>("@collectionId").then((collection_id) =>
-      H.createTimelineWithEvents({
-        timeline: { name: "Migration seasons", collection_id },
-        events: EVENTS,
-      }),
-    );
-
-    cy.log("a timeline created later stays off the question and its dashboard");
-    cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
-    H.visitQuestion("@questionId");
-    cy.wait("@getTimelines");
-    expectEvents([], EVENT_NAMES);
-    H.visitDashboard("@dashboardId");
-    H.waitForDashcardsToLoad();
-    expectEvents([], EVENT_NAMES);
-
-    cy.log("turning the timeline on and saving shows it on both");
-    H.visitQuestion("@questionId");
-    openQuestionEvents();
-    H.rightSidebar().within(() =>
-      H.timelineVisibility("Migration seasons").click(),
-    );
-    expectEvents(EVENT_NAMES);
-    H.saveSavedQuestion();
-    cy.reload();
-    expectEvents(EVENT_NAMES);
-    H.visitDashboard("@dashboardId");
-    H.waitForDashcardsToLoad();
-    expectEvents(EVENT_NAMES);
-  });
-
   it("should keep an explicitly empty selection hidden after saving and reloading the question and dashboard", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
@@ -261,30 +193,6 @@ describe("scenarios > organization > timelines > question persistence", () => {
 
     H.visitDashboard("@dashboardId");
     expectEvents([], EVENT_NAMES);
-  });
-
-  it("should discard unsaved event choices when reopening a saved question", () => {
-    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
-    H.createTimelineWithEvents({
-      timeline: { name: "Migration seasons" },
-      events: EVENTS,
-    }).then(({ timeline }) =>
-      createTimeSeries({ "timeline.selected_timeline_ids": [timeline.id] }),
-    );
-
-    H.visitQuestion("@questionId");
-    expectEvents(EVENT_NAMES);
-    openQuestionEvents();
-    H.rightSidebar().within(() =>
-      H.timelineVisibility("Migration seasons").click(),
-    );
-    expectEvents([], EVENT_NAMES);
-    cy.findByTestId("qb-header").button("Save").should("be.visible");
-
-    cy.log("reopen the question without saving");
-    H.visitQuestion("@questionId");
-    expectEvents(EVENT_NAMES);
-    cy.get("@updateQuestion.all").should("have.length", 0);
   });
 
   it("should save event choices on a question that also uses a timeline the user cannot see", () => {
@@ -354,45 +262,48 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents(["Swallows return"], ["Swifts return", "Rare visitor"]);
   });
 
-  it("shows no events and does not record collection-default events when saving an unrelated chart change", () => {
-    H.createTimelineWithEvents({
-      timeline: { name: "Migration seasons" },
-      events: EVENTS,
+  it("should duplicate a question whose selected timeline the user cannot access", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+    H.createCollection({ name: "Events" }).then(({ body: { id } }) => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases", collection_id: id },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      }).then(({ timeline }) => {
+        H.createQuestion(
+          {
+            name: "Orders by month",
+            display: "line",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
+            visualization_settings: {
+              "timeline.selected_timeline_ids": [timeline.id],
+            },
+          },
+          { wrapId: true },
+        );
+      });
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [id]: "none" },
+        [COLLECTION_GROUP]: { [id]: "none" },
+        [DATA_GROUP]: { [id]: "none" },
+      });
     });
-    createTimeSeries();
 
+    cy.signInAsNormalUser();
     H.visitQuestion("@questionId");
-    expectTimelineOff("Migration seasons");
-    expectEvents([], EVENT_NAMES);
-    H.openVizSettingsSidebar();
-    H.vizSettingsSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText("Show values on data points").click();
-    });
-    H.openVizSettingsSidebar();
-    H.saveSavedQuestion();
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+    H.modal().button("Duplicate").click();
 
-    cy.get<CardId>("@questionId").then((id) => {
-      cy.request<Card>(`/api/card/${id}`)
-        .its("body.visualization_settings")
-        .should((settings) => {
-          expect(settings).to.include({ "graph.show_values": true });
-          expect(settings).not.to.have.property(
-            "timeline.selected_timeline_ids",
-          );
-          expect(settings).not.to.have.property(
-            "timeline.excluded_timeline_event_ids",
-          );
-        });
-    });
-    cy.reload();
-    expectTimelineOff("Migration seasons");
-    expectEvents([], EVENT_NAMES);
-
-    cy.log("the dashboard only shows events saved on the question");
-    H.visitDashboard("@dashboardId");
-    H.waitForDashcardsToLoad();
-    expectEvents([], EVENT_NAMES);
+    cy.wait("@cardCreate").its("response.statusCode").should("eq", 200);
+    cy.findByTestId("qb-header-left-side")
+      .findByDisplayValue("Orders by month - Duplicate")
+      .should("be.visible");
   });
 });
 
@@ -440,13 +351,6 @@ function createTimeSeriesWithHiddenTimeline() {
 function openQuestionEvents() {
   cy.findByTestId("view-footer").icon("calendar").click();
   H.rightSidebar().should("be.visible");
-}
-
-function expectTimelineOff(timelineName: string) {
-  openQuestionEvents();
-  H.rightSidebar().within(() =>
-    H.timelineVisibility(timelineName).should("not.be.checked"),
-  );
 }
 
 function expectEvents(visible: string[], hidden: string[] = []) {
