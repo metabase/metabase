@@ -365,10 +365,13 @@
     (let [{request :request, response :response, admin-id :admin-id} (preview-as-request request)]
       (if response
         (respond response)
-        (request/do-with-previewing-admin-id admin-id
-                                             (fn []
-                                               (with-current-user-for-request request
-                                                 (handler request respond raise))))))))
+        (let [handle (fn []
+                       (with-current-user-for-request request
+                         (handler request respond raise)))]
+          ;; only when this preview rebinds: a grant preview has bound its admin already
+          (if admin-id
+            (request/do-with-previewing-admin-id admin-id handle)
+            (handle)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         session activity tracking                                              |
