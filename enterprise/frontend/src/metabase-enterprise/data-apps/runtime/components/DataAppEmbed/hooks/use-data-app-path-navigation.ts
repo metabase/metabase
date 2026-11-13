@@ -30,7 +30,7 @@ export function useDataAppPathNavigation({
   navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
   onPathChange?: (path: string) => void;
 }) {
-  // True while the router follows the host's `path`, so the host is not told about its own navigation.
+  // True while navigating to the host's `path`, so that navigation is not reported back through `onPathChange`.
   const isNavigatingToHostPathRef = useRef(false);
 
   useEffect(() => {
