@@ -519,7 +519,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         validateDataAppPath(settings.path);
       } catch {
         raiseError(
-          `path must be a data app slug with an optional subpath, such as "my-store/orders". Received "${settings.path}".`,
+          `path must be a data app slug with an optional subpath, such as "my-store/orders". Received ${JSON.stringify(settings.path)}.`,
         );
       }
 

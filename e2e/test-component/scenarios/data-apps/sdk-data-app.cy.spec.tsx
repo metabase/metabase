@@ -147,8 +147,6 @@ describe("scenarios > embedding-sdk > data app component", () => {
     appIframe().findByTestId("current-pathname").should("have.text", "/orders");
     appIframe().findByLabelText("Notes").type("Keep this note");
 
-    cy.get<HTMLIFrameElement>(APP_FRAME).its("0.src").as("initialSrc");
-
     cy.log("host navigates to another route of the same app");
     cy.findByRole("button", { name: "Host: order details" }).click();
 
@@ -163,17 +161,15 @@ describe("scenarios > embedding-sdk > data app component", () => {
     cy.log("iframe is not reloaded");
     appIframe().findByLabelText("Notes").should("have.value", "Keep this note");
 
-    cy.get<string>("@initialSrc").then((initialSrc) =>
-      cy
-        .get<HTMLIFrameElement>(APP_FRAME)
-        .its("0.src")
-        .should("eq", initialSrc),
-    );
-
     cy.log("host navigates back");
     cy.findByRole("button", { name: "Host: orders" }).click();
 
     appIframe().findByTestId("current-pathname").should("have.text", "/orders");
+
+    cy.get<HTMLIFrameElement>(APP_FRAME)
+      .its("0.contentWindow.location.search")
+      .should("eq", "");
+
     appIframe().findByLabelText("Notes").should("have.value", "Keep this note");
   });
 
@@ -230,13 +226,7 @@ function HostWithNavigation({ slug }: { slug: string }) {
   );
 }
 
-const appIframe = () =>
-  cy
-    .get<HTMLIFrameElement>(APP_FRAME)
-    .should("have.length", 1)
-    .its("0.contentDocument.body")
-    .should("not.be.empty")
-    .then(cy.wrap);
+const appIframe = () => dataAppIframe(0, 1);
 
 const expireProviderAndFrameSessions = (sessionAlias: string) =>
   cy.get<MetabaseEmbeddingSessionToken>(sessionAlias).then(({ exp }) => {
@@ -256,10 +246,10 @@ const expireProviderAndFrameSessions = (sessionAlias: string) =>
     });
   });
 
-const dataAppIframe = (index: number) =>
+const dataAppIframe = (index: number, count = 2) =>
   cy
     .get<HTMLIFrameElement>(APP_FRAME)
-    .should("have.length", 2)
+    .should("have.length", count)
     .eq(index)
     .its("0.contentDocument.body")
     .should("not.be.empty")
