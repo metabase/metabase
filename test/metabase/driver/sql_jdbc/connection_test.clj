@@ -1230,17 +1230,29 @@
 (deftest ^:synchronized no-write-lands-between-a-stop-and-the-next-start-test
   (testing "a stop that comes while a write is under way waits for it, so the write cannot leave an untracked state"
     (let [pools       @#'sql-jdbc.conn/pools-component
-          pools-state (dynamic-redefs/original-fn #'sql-jdbc.conn/pools-state)]
+          pools-state (dynamic-redefs/original-fn #'sql-jdbc.conn/pools-state)
+          stopped?    (promise)
+          stopper     (Thread. ^Runnable #(deliver stopped? (system/stop! pools)))
+          waited?     (atom false)]
       (#'sql-jdbc.conn/pools-state)
-      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/pools-state (fn []
-                                                              (u/prog1 (pools-state)
-                                                                ;; give a stop on another thread the chance to run
-                                                                ;; before the write
-                                                                (deref (future (system/stop! pools)) 200 nil)))]
-        (#'sql-jdbc.conn/swap-pools-state! assoc ::written true))
-      ;; wait for the stop, which the write may have held up
-      (system/stop! pools)
-      (is (nil? @pools)))))
+      (try
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/pools-state
+                                    (fn []
+                                      (u/prog1 (pools-state)
+                                        ;; the write is under way here, so a stop on another thread has to wait for it
+                                        (.start stopper)
+                                        (reset! waited? (loop [tries 0]
+                                                          (cond
+                                                            (= Thread$State/BLOCKED (.getState stopper)) true
+                                                            (< tries 500) (do (Thread/sleep 10) (recur (inc tries)))
+                                                            :else false)))))]
+          (#'sql-jdbc.conn/swap-pools-state! assoc ::written true))
+        (is (= {:stop-waited-for-the-write? true, :stopped? true, :pools nil}
+               {:stop-waited-for-the-write? @waited?
+                :stopped?                   (deref stopped? 5000 ::timed-out)
+                :pools                      @pools}))
+        (finally
+          (.join stopper 5000))))))
 
 (deftest ^:synchronized checkout-after-a-halt-test
   (testing "a checkout on a pool left over from a halt closes the connection and does not start the pools again"
