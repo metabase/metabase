@@ -633,7 +633,9 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;; ClickHouse refuses the collision: `init-workspace-isolation-refuses-existing-objects-test`.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                           (remove #{:clickhouse} (mt/normal-drivers-with-feature :workspace)))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1032,10 +1034,13 @@
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
           ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); MySQL and ClickHouse check privileges regardless,
-          ;; so on those the batch dies on the namespace statement and never
-          ;; reaches CREATE USER — the leak assertion still covers whatever
-          ;; exception surfaces, it just can't prove the echo path there.
+          ;; guarded EXEC); MySQL checks privileges regardless, so there the
+          ;; batch dies on the namespace statement and never reaches CREATE
+          ;; USER. ClickHouse runs plain CREATEs, after reading `system.users`
+          ;; before any DDL; the low-privilege login cannot read it, so init
+          ;; fails there and never reaches CREATE USER either. The leak
+          ;; assertion still covers whatever exception surfaces, it just can't
+          ;; prove the echo path on those engines.
           (when (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))
