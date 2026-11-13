@@ -87,7 +87,7 @@
   (testing "no expectations at all is fine"
     (is (valid? []))
     (is (= [] (records []))))
-  (testing "an `equals` comparing against SQL"
+  (testing "an `equals` comparing against SQL is fine"
     (is (valid? [{"type" "equals" "name" "n" "format" "sql" "sql" "SELECT 1"}]))))
 
 (deftest builds-the-type-that-owns-each-branch-test

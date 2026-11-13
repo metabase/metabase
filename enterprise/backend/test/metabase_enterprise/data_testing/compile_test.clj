@@ -150,13 +150,13 @@
 
 (deftest comparison-query-compares-both-directions-test
   (testing "rows are grouped over the declared columns and kept when the two sides disagree"
-    (let [{:keys [query params]} (data-testing.compile/comparison-query :postgres "out" "exp" ["ID" "NAME"])]
+    (let [{:keys [query params]} (data-testing.compile/comparison-query :postgres "out" "exp" ["ID" "NAME"] ["ID" "NAME"])]
       (is (= [] params))
       (is (str/includes? query "UNION ALL") (pr-str query))
       (is (str/includes? query "GROUP BY \"ID\", \"NAME\"") (pr-str query))
       (is (str/includes? query "HAVING SUM(\"__mb_src\") <> 0") (pr-str query))))
   (testing "a column name the warehouse folded to something dotted stays one identifier"
-    (let [{:keys [query]} (data-testing.compile/comparison-query :postgres "out" "exp" ["a.b"])]
+    (let [{:keys [query]} (data-testing.compile/comparison-query :postgres "out" "exp" ["a.b"] ["a.b"])]
       (is (str/includes? query "GROUP BY \"a.b\"") (pr-str query))
       (is (not (str/includes? query "\"a\".\"b\"")) (pr-str query))))
   (testing "the expected table may spell the columns otherwise; the union pairs them by position"

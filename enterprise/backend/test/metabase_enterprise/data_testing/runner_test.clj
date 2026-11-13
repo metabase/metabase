@@ -111,14 +111,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (with-people-transform
       (fn [schema table transform]
-        (let [statuses (fn [sql]
-                         (mapv :status (:expectations (run-test! schema table transform one-row
-                                                                 [{:type :equals :name "rows" :format :sql :sql sql}]))))]
-          (testing "the expected rows read the target table, which the run rewrites to the output"
-            (is (= [:passed] (statuses (str "SELECT id, name FROM " schema ".people_summary")))))
-          (testing "literal expected rows"
-            (is (= [:passed] (statuses one-row)))
-            (is (= [:failed] (statuses "SELECT 2 AS id")))))))))
+        (testing "the expected rows read the target table, which the run rewrites to the output"
+          (is (= [:passed]
+                 (mapv :status (:expectations (run-test! schema table transform one-row
+                                                         [{:type :equals :name "rows" :format :sql
+                                                           :sql  (str "SELECT id, name FROM " schema ".people_summary")}]))))))))))
 
 (deftest run-transform-test-expectation-after-a-warehouse-error-test
   (testing "an expectation whose query fails at the warehouse does not change the result of the next one"

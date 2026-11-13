@@ -238,8 +238,9 @@
   (build {:type :equals :name "sql form" :format :sql :sql sql}))
 
 (def ^:private sql-context
-  "A run's context for the SQL form, once its temp table `expected` exists: the input `orders` stands in for by
-  `tmp_orders`, the output is `tmp_output`, and the expected table spells its columns as H2 folds them."
+  "A run's context for the SQL form, once its temp table `expected` exists: `tmp_orders` stands in for the input
+  `orders`, the output is `tmp_output`, and the expected table spells its columns as H2 folds them. The output token
+  becomes `__mb_output`, which no replacement maps."
   {:driver             :h2
    :output-table       "tmp_output"
    :output-token       "{{output}}"
@@ -250,7 +251,7 @@
                                     {:name "ID" :database_type "INTEGER"}]}})
 
 (deftest equals-sql-temp-table-test
-  (testing "the expected rows are the author's SQL, reading the input temp tables and the output"
+  (testing "the expected rows are the author's SQL, reading the input temp tables and the output's name"
     (let [{:keys [query params]} (get (expectations.protocol/temp-tables
                                        (equals-sql "SELECT o.id, o.name FROM orders o JOIN {{output}} x ON o.id = x.id")
                                        sql-context)
@@ -262,8 +263,7 @@
 
 (deftest equals-sql-probes-test
   (let [probes (expectations.protocol/probes (equals-sql "SELECT name, id FROM orders") sql-context)]
-    (testing "the comparison reads the output under its own spellings and the expected table under its own"
-      ;; Both sides list the columns in the expected table's order, so the union pairs them by position.
+    (testing "both sides of the comparison list the columns in the expected table's order"
       (let [query (get-in probes [:comparison :query])]
         (is (re-find #"SELECT \"NAME\", \"ID\", 1 AS \"__mb_src\" FROM \"tmp_output\"" query) query)
         (is (re-find #"SELECT \"NAME\", \"ID\", -1 AS \"__mb_src\" FROM \"tmp_expected\"" query) query)))
@@ -291,12 +291,9 @@
                     (expectations.protocol/interpret
                      (equals-sql "SELECT name, id FROM orders")
                      sql-context
-                     {:comparison     {:rows    comparison
-                                       :columns [{:name "NAME" :database_type "CHARACTER VARYING"}
-                                                 {:name "ID" :database_type "INTEGER"}
-                                                 {:name "__mb_delta" :database_type "BIGINT"}]}
-                      :actual-count   {:rows [[2]] :columns [{:name "__mb_count" :database_type "BIGINT"}]}
-                      :expected-count {:rows [[expected-count]] :columns [{:name "__mb_count" :database_type "BIGINT"}]}}))]
+                     (assoc (probe-results comparison [[2]])
+                            :expected-count {:rows    [[expected-count]]
+                                             :columns [{:name "__mb_count" :database_type "BIGINT"}]})))]
     (testing "a pass reports the expected table's columns, typed as the output types them, and both row counts"
       (is (= {:name            "sql form"
               :type            :equals

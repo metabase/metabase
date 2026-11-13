@@ -190,6 +190,48 @@
         (is (= ::data-testing.errors/unremapped-reference
                (:error-type (refusal #(run! (sql "real table" (str "SELECT id FROM " (qualified :orders))))))))))))
 
+(deftest equals-sql-matches-columns-across-case-and-reports-the-expected-spelling-test
+  (mt/test-drivers #{:h2 :postgres}
+    (let [run! (fn [& expectations]
+                 (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
+          sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
+      (testing "an expected column matches the output column that differs from it only in case"
+        (is (= {"mixed case" :passed}
+               (run! (sql "mixed case" "SELECT 1 AS \"Id\", 'abc' AS \"Name\"")))))
+      (testing "a differing cell is found, and the report names each column as the expected query spells it"
+        (is (= {:status          :failed
+                :columns         ["Id" "Name"]
+                :cell-mismatches [{:column "Name" :expected "xyz" :actual "abc"}]}
+               (-> (run! (sql "differs" "SELECT 1 AS \"Id\", 'xyz' AS \"Name\""))
+                   (get "differs")
+                   (select-keys [:status :columns :cell-mismatches])
+                   (update :columns (partial mapv :name)))))))))
+
+(deftest equals-sql-column-errors-test
+  (mt/test-drivers #{:h2 :postgres}
+    (let [error-of (fn [card sql]
+                     (-> (run-card-test! card [(people-input one-person)]
+                                         [{:type :equals :name "e" :format :sql :sql sql}])
+                         outcomes
+                         (get-in ["e" :error])))]
+      (testing "control: one expected column on the output's id passes"
+        (is (= {"e" :passed}
+               (outcomes (run-card-test! (people-card) [(people-input one-person)]
+                                         [{:type :equals :name "e" :format :sql :sql "SELECT 1 AS \"id\""}])))))
+      (testing "two expected columns that match one output column are refused, naming the output column"
+        (let [{:keys [type message]} (error-of (people-card) "SELECT 1 AS \"id\", 1 AS \"ID\"")]
+          (is (= ::data-testing.errors/colliding-columns type))
+          (is (re-find #"(?i)\bid\b" message) message)))
+      (testing "a compared column that takes the name of the comparison's own column is refused"
+        (let [{:keys [type message]} (error-of (native-card (str "SELECT id AS __mb_src FROM " (qualified :people)))
+                                               "SELECT 1 AS __mb_src")]
+          (is (= ::data-testing.errors/colliding-columns type))
+          (is (re-find #"(?i)__mb_src" message) message)))
+      (testing "a column the expected query computes without a name is reported as the query's, with the fix"
+        (let [{:keys [type message]} (error-of (people-card) "SELECT 1")]
+          (is (= ::data-testing.errors/unknown-column type))
+          (is (re-find #"\bAS\b" message) message))))))
+
 (deftest card-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run!   (fn [sql]
