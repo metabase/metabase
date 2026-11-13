@@ -114,10 +114,12 @@
                                       :metabase.tracing.core/otel-sdk}})
 
 ;; TODO (Chris 2026-11-13) -- Move the stops in this list into the halt, one component at a time, until the halt is
-;; the only step that stops a component. A component can move once it is started through the global system and what
-;; it uses is in [[system-dependencies]], since the halt takes its order from those edges and not from this list.
-;; Two limits of the halt matter more as steps move in. It does not wait for a stop already running on another
-;; thread, and it waits for a start in flight with no timeout, while the process has about 30 seconds to shut down.
+;; the only step that stops a component.
+;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
+;; since the halt takes its order from those edges and not from this list.
+;; Two limits of the halt matter more as steps move in.
+;; It does not wait for a stop already running on another thread.
+;; It waits for a start in flight with no timeout, while the process has about 30 seconds to shut down.
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []
