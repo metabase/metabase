@@ -18,7 +18,7 @@
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
@@ -126,10 +126,19 @@
   that is `:provisioning` or `:deprovisioning` and was last updated within the
   last 15 minutes. An older such row is treated as left by a crashed instance and
   is torn down. A row whose teardown succeeds is deleted. A row whose teardown
-  fails is kept, the workspace is kept with it, and the combined failure is the
-  error, so the delete can be retried. 204 on success, no response body."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  fails is kept as `teardown_failed`, the workspace is kept with it, and the
+  combined failure is the error, so the delete can be retried. 204 on success, no
+  response body.
+
+  `force=true` deletes `teardown_failed` rows without a warehouse teardown and
+  logs at WARN the identifiers of what may remain. It does so after the busy
+  check, so a 409 deletes nothing. Use it only when the warehouse is gone for
+  good. Other rows are torn down as without `force`."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)
+  (when force
+    (ws/abandon-teardown-failed-databases! id))
   (ws/delete-workspace! id)
   nil)
 
@@ -141,7 +150,9 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`; retry later. 422 if a
+  of the workspace's databases is not `:provisioned`. The body does not say which
+  status; read `GET /:id`. Retry while a database is `provisioning`. In any other
+  status, waiting does not clear the 409; delete the workspace. 422 if a
   database's connection settings need an admin to fix them; retrying does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)

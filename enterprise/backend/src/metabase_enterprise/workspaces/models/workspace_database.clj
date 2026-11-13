@@ -76,9 +76,9 @@
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any
    non-`:unprovisioned` workspace_database row references `db-id` — anything in a
-   `:provisioning`, `:provisioned`, or `:deprovisioning` state points at (or is in
-   flight against) live warehouse schemas/users that must be unprovisioned explicitly
-   first. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
+   `:provisioning`, `:provisioned`, `:deprovisioning`, or `:teardown_failed` state points
+   at (or is in flight against) live warehouse schemas/users that must be torn down first, by
+   deleting their workspaces. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
    FK RESTRICT doesn't trip on the subsequent Database delete. Deliberately NOT gated
    on a premium feature: a token expiry shouldn't leave workspace_database rows
    un-cleanable, and an active row must refuse the delete regardless of current
@@ -86,7 +86,7 @@
   :feature :none
   [db-id]
   (when (ws.db/database-has-active-workspace-databases? db-id)
-    (throw (ex-info "Cannot delete a Database with active workspace_database rows; deprovision them first"
+    (throw (ex-info "Cannot delete a Database with active workspace_database rows; delete their workspaces first (DELETE /api/ee/workspace-manager/:id). For rows in teardown_failed, add ?force=true only when the warehouse is gone for good."
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))

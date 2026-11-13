@@ -5,6 +5,8 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
@@ -164,6 +166,25 @@
             (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
               (is (nil? (ws/delete-workspace! (:id ws)))))))
+        (testing "success: the attached database comes back :provisioned"
+          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (let [ws (ws/create-workspace! {:name         "Provisioned"
+                                            :creator_id   (mt/user->id :crowberto)
+                                            :database_ids [db-id]})]
+              (is (=? [{:database_id   db-id
+                        :input_schemas ["public"]
+                        :status        :provisioned}]
+                      (:databases ws))))))))))
+
+(deftest create-workspace-cleanup-failure-test
+  ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which cannot
+  ;; see rows inside the default rollback-only `with-temp` transaction.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
         (testing "provisioning failure whose cleanup also fails keeps the workspace and throws, so that a later delete can retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
@@ -181,22 +202,146 @@
             (let [ws (t2/select-one :model/Workspace :name "Wedged")]
               (is (some? ws)
                   "the workspace must be kept while any database row remains")
-              (is (=? [{:status :unprovisioned}]
+              (is (=? [{:status           :teardown_failed
+                        :output_namespace "mb_iso_stub"
+                        :database_details {:user "stub_user"}}]
                       (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
-                  "the row whose teardown failed is kept, forced :unprovisioned")
+                  "the row whose teardown failed is kept as :teardown_failed, with the identifiers the teardown used")
               ;; retry the teardown via delete once the warehouse is back
               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                 (is (nil? (ws/delete-workspace! (:id ws)))))
-              (is (nil? (ws/get-workspace (:id ws)))))))
-        (testing "success: the attached database comes back :provisioned"
-          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-            (let [ws (ws/create-workspace! {:name         "Provisioned"
-                                            :creator_id   (mt/user->id :crowberto)
-                                            :database_ids [db-id]})]
-              (is (=? [{:database_id   db-id
-                        :input_schemas ["public"]
-                        :status        :provisioned}]
-                      (:databases ws))))))))))
+              (is (nil? (ws/get-workspace (:id ws)))))))))))
+
+(defn- lock-that-fails-once
+  "A stand-in for [[provisioning/do-with-workspace-database-lock]]. It throws on the `n`th lock of the row of the
+  Database `db-id`, as a lock timeout does, and takes the real lock every other time."
+  [db-id n]
+  (let [lock! provisioning/do-with-workspace-database-lock
+        locks (atom 0)]
+    (fn [wsd-id thunk]
+      (if (and (= db-id (t2/select-one-fn :database_id :model/WorkspaceDatabase :id wsd-id))
+               (= n (swap! locks inc)))
+        (throw (ex-info "lock timed out" {}))
+        (lock! wsd-id thunk)))))
+
+(defn- recording-provisioner-failing-init
+  "A provisioner whose init throws \"boom\" for the Database `failing-db-id`. It records the ids of the Databases it
+  destroys in the atom `destroyed`, and its destroy throws for the ids in `undestroyable`."
+  [failing-db-id destroyed undestroyable]
+  (reify provisioning/Provisioner
+    (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+    (init!    [_ _ db _]  (when (= failing-db-id (:id db))
+                            (throw (ex-info "boom" {:status-code 409}))))
+    (grant!   [_ _ _ _ _] nil)
+    (destroy! [_ _ db _]
+      (when (contains? undestroyable (:id db))
+        (throw (ex-info "warehouse down" {})))
+      (swap! destroyed conj (:id db)))))
+
+(deftest create-workspace-cleanup-fails-before-the-destroy-test
+  ;; Committed `with-temp`: the bookkeeping writes on a fresh autocommit connection.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db1-id :schema "public" :active true}
+                   :model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db2-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (testing "a provisioned row whose teardown fails before the destroy is kept as :teardown_failed"
+          (let [destroyed (atom #{})]
+            ;; the first lock of the first database's row is its provisioning, the second is its teardown
+            (with-redefs [provisioning/dispatching-provisioner          (recording-provisioner-failing-init db2-id destroyed #{})
+                          provisioning/do-with-workspace-database-lock (lock-that-fails-once db1-id 2)]
+              (let [e (is (thrown? ExceptionInfo
+                                   (ws/create-workspace! {:name         "Lock lost"
+                                                          :creator_id   (mt/user->id :crowberto)
+                                                          :database_ids [db1-id db2-id]})))]
+                (is (=? {:status-code 500 :cleanup_required true :message #"boom.*lock timed out"}
+                        (ex-data e)))))
+            (let [ws (t2/select-one :model/Workspace :name "Lock lost")]
+              (is (some? ws))
+              (is (=? [{:database_id      db1-id
+                        :status           :teardown_failed
+                        :output_namespace "mb_iso_stub"
+                        :database_details {:user "stub_user"}}]
+                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
+                  "a row left :provisioned would make the failed create look like a finished one")
+              (is (= #{db2-id} @destroyed))
+              (with-redefs [provisioning/dispatching-provisioner (recording-provisioner-failing-init nil destroyed #{})]
+                (is (nil? (ws/delete-workspace! (:id ws)))))
+              (is (= #{db1-id db2-id} @destroyed)
+                  "the delete tears down the kept row"))))))))
+
+(deftest create-workspace-cleanup-continues-past-a-never-started-row-test
+  ;; Committed `with-temp`: the bookkeeping writes on a fresh autocommit connection.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db1-id :schema "public" :active true}
+                   :model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db2-id :schema "public" :active true}
+                   :model/Database {db3-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db3-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        ;; the first database is provisioned, the second one's init fails, the third never starts
+        (letfn [(create! [ws-name]
+                  (try
+                    (ws/create-workspace! {:name         ws-name
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db1-id db2-id db3-id]})
+                    nil
+                    (catch ExceptionInfo e e)))
+                (rows [ws-name]
+                  (into {}
+                        (map (juxt :database_id :status))
+                        (t2/select :model/WorkspaceDatabase
+                                   :workspace_id (t2/select-one-pk :model/Workspace :name ws-name))))
+                (delete! [ws-name destroyed]
+                  (with-redefs [provisioning/dispatching-provisioner (recording-provisioner-failing-init nil destroyed #{})]
+                    (ws/delete-workspace! (t2/select-one-pk :model/Workspace :name ws-name))))]
+          (testing "the lock of the never-started row fails"
+            (let [destroyed (atom #{})
+                  e         (with-redefs [provisioning/dispatching-provisioner          (recording-provisioner-failing-init db2-id destroyed #{})
+                                          provisioning/do-with-workspace-database-lock (lock-that-fails-once db3-id 1)]
+                              (create! "Never-started lock"))]
+              (is (=? {:status-code 500 :cleanup_required true :message #"^boom; lock timed out$"}
+                      (ex-data e))
+                  "the create still answers the 500 that asks for a delete")
+              (is (= "boom" (ex-message (ex-cause e)))
+                  "the provisioning error stays the cause")
+              (is (= ["lock timed out"] (map ex-message (.getSuppressed ^Throwable e)))
+                  "the cleanup's error is attached as suppressed")
+              (is (= {db3-id :teardown_failed} (rows "Never-started lock"))
+                  "no row is left :provisioning, and the other rows are gone")
+              (is (= #{db1-id db2-id} @destroyed)
+                  "the other databases are torn down, and the never-started one is not")
+              (testing "a delete is not refused as busy"
+                (is (nil? (delete! "Never-started lock" destroyed))))))
+          (testing "the delete of the never-started row fails, and so does another database's destroy"
+            (let [destroyed   (atom #{})
+                  delete-row! ws.db/delete-workspace-database!
+                  e           (with-redefs [provisioning/dispatching-provisioner (recording-provisioner-failing-init db2-id destroyed #{db1-id})
+                                            ws.db/delete-workspace-database!     (fn [wsd-id]
+                                                                                   (if (= db3-id (t2/select-one-fn :database_id :model/WorkspaceDatabase :id wsd-id))
+                                                                                     (throw (ex-info "app db down" {}))
+                                                                                     (delete-row! wsd-id)))]
+                                (create! "Never-started delete"))]
+              (is (=? {:status-code 500 :cleanup_required true :message #"^boom; warehouse down; app db down$"}
+                      (ex-data e)))
+              (is (= "boom" (ex-message (ex-cause e))))
+              (is (= {db1-id :teardown_failed, db3-id :teardown_failed} (rows "Never-started delete"))
+                  "every row that is left is :teardown_failed")
+              (is (= #{db2-id} @destroyed))
+              (testing "a delete is not refused as busy"
+                (is (nil? (delete! "Never-started delete" destroyed)))))))))))
 
 (deftest create-workspace-empty-input-schemas-test
   (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
@@ -568,9 +713,13 @@
               "the combined teardown failure is thrown, carrying what the database returned"))
         (is (some? (ws/get-workspace (:id ws)))
             "the workspace must be kept when any teardown fails")
-        (is (=? {:status :unprovisioned}
+        (is (=? {:status           :teardown_failed
+                 :output_namespace "mb_iso_stub"}
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
-            "the failed row is kept, forced :unprovisioned")
+            "the failed row is kept as :teardown_failed, with the identifiers of what may remain")
+        (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows.*force=true"
+                              (workspace-database/reconcile-workspace-database-refs-before-delete! (mt/id)))
+            "a :teardown_failed row blocks deleting its Database, so the record of leftovers survives")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (is (nil? (ws/delete-workspace! (:id ws)))))

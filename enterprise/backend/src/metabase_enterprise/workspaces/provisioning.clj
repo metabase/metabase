@@ -268,9 +268,10 @@
   remappings would rewrite queries to a dropped schema and 500 the QP.
 
   Throws on failure. When the destroy itself fails, the row bookkeeping runs
-  first: the row is kept, forced `:unprovisioned`, and the remapping cleanup
-  still runs. Failures before the destroy — lock timeout, identifier
-  computation — throw without touching the row. Either way the teardown can be
+  first: the row is kept as `:teardown_failed` with its identifiers, since
+  warehouse objects may remain, and the remapping cleanup still runs. Failures
+  before the destroy — lock timeout, identifier computation — throw without
+  touching the row. Either way the teardown can be
   retried. Returns nil."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
@@ -291,9 +292,12 @@
             ;; The rethrow rolls back the cluster lock's wrapping transaction on
             ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
             ;; autocommit connection to survive it.
+            ;; Store the identifiers this teardown used: a row reset by a failed provision,
+            ;; or never provisioned, still holds "" and {} here.
             (binding [t2.connection/*current-connectable* nil]
-              (ws.db/update-workspace-database! (:id wsd)
-                                                {:output_namespace "" :database_details {} :status :unprovisioned}))
+              (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
+                                                           :output_namespace schema
+                                                           :database_details db-details}))
             (throw t))
           (finally
             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -304,6 +308,31 @@
               (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
         (ws.db/delete-workspace-database! (:id wsd))
         nil))))
+
+(defn mark-workspace-database-teardown-failed!
+  "Set the WorkspaceDatabase with `workspace-database-id` to `:teardown_failed`, keeping its identifiers. Writes on a
+  fresh autocommit connection, so the write survives the rollback of a surrounding transaction."
+  [workspace-database-id]
+  (binding [t2.connection/*current-connectable* nil]
+    (ws.db/update-workspace-database! workspace-database-id {:status :teardown_failed})))
+
+(defn abandon-teardown-failed-workspace-database!
+  "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
+  `:teardown_failed`. Use it only when the warehouse is gone for good. Its objects
+  may remain, so the identifiers are logged at WARN for manual cleanup.
+  Rows in any other state are left alone. The failed teardown already cleared the
+  `TableRemapping` rows. Returns nil."
+  [wsd]
+  (with-workspace-database-lock (:id wsd)
+    (when-let [wsd (ws.db/workspace-database (:id wsd))]
+      (when (= :teardown_failed (:status wsd))
+        ;; Log only identifiers, never the whole details map: it can hold passwords.
+        (log/warnf "Abandoning WorkspaceDatabase %s without warehouse teardown; clean up by hand: database %s, output namespace %s, database user %s, database role %s"
+                   (:id wsd) (:database_id wsd) (pr-str (:output_namespace wsd))
+                   (pr-str (get-in wsd [:database_details :user]))
+                   (pr-str (get-in wsd [:database_details :role])))
+        (ws.db/delete-workspace-database! (:id wsd))))
+    nil))
 
 (defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
