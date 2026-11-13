@@ -1,7 +1,6 @@
 import { c, msgid, t } from "ttag";
 
-import ShieldImage from "assets/img/shield-96x96.svg";
-import { Alert, Card, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Icon } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
 import { getStatusInfo } from "../utils";
@@ -16,13 +15,16 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   const isFailing = checks.some((check) => check.status === "fail");
 
   if (isAllClear) {
+    const { icon } = getStatusInfo("pass");
+
     return (
-      <Card p="xxl" withBorder>
-        <Stack align="center" gap="lg">
-          <img src={ShieldImage} alt="" />
-          <Text fw="bold">{t`All security checks pass`}</Text>
-        </Stack>
-      </Card>
+      <Alert
+        variant="default"
+        size="compact"
+        color="success"
+        icon={<Icon name={icon} />}
+        title={t`All security checks pass`}
+      />
     );
   }
 
