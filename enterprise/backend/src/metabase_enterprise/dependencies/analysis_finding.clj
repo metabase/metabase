@@ -57,8 +57,7 @@
          #{(lib/validation-exception-error "Could not resolve a database for this entity.")})))))
 
 (mu/defn record-failed-finding! :- :nil
-  "Record the failure `e` to analyze the entity `entity-type` `entity-id` as its finding, so it shows as failed rather
-  than keep an older finding or none, logging rather than throwing a failure to record it."
+  "Record `e` as the failed finding of the entity `entity-type` `entity-id`. Logs instead of throwing when that fails."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt
    e           :- (ms/InstanceOfClass Throwable)]
@@ -80,8 +79,7 @@
          (throw e))))
 
 (mu/defn- record-analysis-failure! :- :nil
-  "Count a failure to analyze the entity `entity-type` `entity-id`, which the job gives up on after
-  `dependency-max-failures` of them in a row."
+  "Count a failed analysis of the entity `entity-type` `entity-id`; the job gives up after `dependency-max-failures`."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt]
   (when (dependencies.db/record-analysis-finding-failure! entity-type entity-id (deps.settings/dependency-max-failures))

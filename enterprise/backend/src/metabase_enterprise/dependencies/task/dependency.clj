@@ -108,10 +108,9 @@
     (count entity-ids)))
 
 (mu/defn- record-failure! :- :nil
-  "Count the failure `e` to compute the dependencies of the entity `entity-type` `entity-id`, which the job gives up on
-  after `dependency-max-failures` of them in a row. The analysis waits for current dependencies, so it never reaches
-  an entity given up on here: an analyzable one gets the failure as its finding instead, and is marked stale for the
-  analysis, which would otherwise keep that finding once the dependencies compute again without changing."
+  "Count a failure `e` to compute the dependencies of `entity-type` `entity-id`. The analysis only runs on current
+  dependencies, so an analyzable entity the job gives up on gets `e` as its finding, and is marked stale so the
+  analysis replaces that finding once its dependencies compute again."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt
    e           :- (ms/InstanceOfClass Throwable)]

@@ -480,8 +480,7 @@
           (is (seq @submitted)))))))
 
 (deftest storing-card-leaves-dependencies-current-test
-  (testing "storing a re-derived card leaves its dependencies current, whatever schema the card was stored with, so
-           the dependency job never has work again from the result metadata job"
+  (testing "storing a re-derived card leaves its dependencies current, whatever its stored schema"
     (doseq [card-schema [nil 20]]
       (testing (str "card_schema " (or card-schema "current"))
         (with-dependencies-feature

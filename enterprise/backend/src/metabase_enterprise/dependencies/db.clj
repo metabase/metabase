@@ -634,9 +634,8 @@
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
 (mu/defn readable-entities :- [:sequential :any]
-  "What `read-entities` returns for the set of entity ids `ids`. When reading them together throws, each is read on its
-  own, and `on-unreadable` is called with the id and the exception of each one whose read throws, so that one entity
-  that cannot be read does not keep the others from being processed."
+  "`(read-entities ids)`. If that throws, read each id alone and call `on-unreadable` with the id and exception of each
+  that fails, so one unreadable row doesn't block the rest."
   [read-entities :- [:fn {:error/message "a function"} ifn?]
    ids           :- [:set ::deps.dependency-types/entity-id]
    on-unreadable :- [:fn {:error/message "a function"} ifn?]]
@@ -1175,9 +1174,7 @@
                                                    [:entity_id     :string]
                                                    [:name          :string]
                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  "The `id`, `entity_id`, `name` and, for a type kept in collections, `collection_id` of the entities of `entity-type`
-  whose AnalysisFinding failed, leaving out archived ones, and content Metabase manages itself, such as usage
-  analytics."
+  "The entities of `entity-type` whose analysis failed, excluding archived and Metabase-managed content."
   [entity-type :- (into [:enum] (keys failed-entity-columns))]
   (let [model                           (deps.dependency-types/dependency-type->model entity-type)
         {:keys [archived? collection?]} (failed-entity-columns entity-type)]
@@ -1196,7 +1193,7 @@
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 
 (mu/defn finding-errors-for-entities
-  "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, each entity's oldest first."
+  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, oldest first."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
   (into []
