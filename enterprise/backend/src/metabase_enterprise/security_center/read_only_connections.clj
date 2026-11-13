@@ -82,11 +82,11 @@
 
 (defn- check-databases
   "The result for each of `databases`, in order. Runs `check-fn` for the databases with a supported engine on a pool of
-  `pool-size` threads, and waits `timeout-ms` for all of them together. A database without an answer by then gets
+  `threads` threads, and waits `limit-ms` for all of them together. A database without an answer by then gets
   `\"timed-out\"`."
-  [databases check-fn pool-size timeout-ms]
-  (cp/with-shutdown! [pool (cp/threadpool pool-size)]
-    (let [deadline (+ (System/nanoTime) (* timeout-ms 1000000))
+  [databases check-fn threads limit-ms]
+  (cp/with-shutdown! [pool (cp/threadpool threads)]
+    (let [deadline (+ (System/nanoTime) (* limit-ms 1000000))
           futures  (mapv (fn [database]
                            (when (supported? database)
                              (cp/future pool (check-fn database))))
@@ -96,7 +96,7 @@
                 (let [result (deref fut (max 0 (quot (- deadline (System/nanoTime)) 1000000)) "timed-out")]
                   (when (= result "timed-out")
                     (log/warnf "Health check read-only-connections got no answer from database %d (%s) in %d ms"
-                               id (name engine) timeout-ms))
+                               id (name engine) limit-ms))
                   result)
                 "not-supported"))
             databases

@@ -98,9 +98,9 @@
   refresh has stored a result."
   []
   (try
-    (when-let [^Temporal time (health-checks/last-refreshed-at)]
+    (when-let [^Temporal t (health-checks/last-refreshed-at)]
       (analytics/set-gauge! :metabase-security-center/health-checks-last-run-timestamp-seconds
-                            (.getLong time ChronoField/INSTANT_SECONDS)))
+                            (.getLong t ChronoField/INSTANT_SECONDS)))
     (catch Exception e
       (log/warnf "Failed to set :metabase-security-center/health-checks-last-run-timestamp-seconds metric: %s"
                  (ex-message e)))))

@@ -88,7 +88,7 @@
 
 (defn- stored-checked-at
   [id]
-  (some-> (:checked_at (stored id)) t/offset-date-time))
+  (some-> (stored id) :checked_at t/offset-date-time))
 
 (defn- store-result!
   [id result]
