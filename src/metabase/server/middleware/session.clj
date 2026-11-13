@@ -25,7 +25,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.server.db :as server.db]
@@ -319,6 +319,13 @@
   [request & body]
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
+(defenterprise preview-as-request
+  "Returns `{:request request}` to bind and handle, possibly rebound to another user, or `{:response response}` to
+  answer without handling the request. OSS: the request, unchanged."
+  metabase-enterprise.permission-debug.preview
+  [request]
+  {:request request})
+
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
   [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
@@ -333,8 +340,11 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (with-current-user-for-request request
-      (handler request respond raise))))
+    (let [{request :request, response :response} (preview-as-request request)]
+      (if response
+        (respond response)
+        (with-current-user-for-request request
+          (handler request respond raise))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         session activity tracking                                              |

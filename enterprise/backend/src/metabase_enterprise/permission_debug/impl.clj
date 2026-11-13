@@ -12,6 +12,7 @@
   "
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -245,6 +246,169 @@
       :suggestions {}})))
 
 ;;; ------------------------------------------------ Preview as user ------------------------------------------------
+
+(def PrincipalType
+  "Who an admin can preview or explain: a user, a permissions group, or a tenant."
+  [:enum "user" "group" "tenant"])
+
+(defn- user-display
+  [{:keys [id first_name last_name email]}]
+  {:user_id   id
+   :user_name (or (not-empty (str/trim (str first_name " " last_name))) email)})
+
+(def ^:private Attributes
+  [:map-of :string :string])
+
+(def PreviewAttributesResponse
+  "The attributes a group's access depends on, each with the values to pick from."
+  [:sequential [:map
+                [:attribute :string]
+                [:uses [:sequential :string]]
+                [:member_values [:sequential [:map [:value :string] [:count pos-int?]]]]
+                [:other_values [:sequential :string]]
+                [:default [:maybe :string]]]])
+
+(defn- field-id-in-target
+  "The Field ID a sandbox's attribute remapping target points at (`[:dimension [:field 18 nil]]`), or nil."
+  [target]
+  (some (fn [form]
+          (when (and (sequential? form)
+                     (= "field" (some-> (first form) name))
+                     (pos-int? (second form)))
+            (second form)))
+        (tree-seq sequential? seq target)))
+
+(defn- attribute-uses
+  "One `{:attribute :use :values}` per place the group's access reads an attribute: a row-level security filter, a
+  connection impersonation role, or a database router (which applies to every group)."
+  [group-id]
+  (concat
+   (for [{:keys [table_id attribute_remappings]} (permission-debug.db/group-sandboxes group-id)
+         [attribute target]                       attribute_remappings
+         :let [field-id (field-id-in-target target)]]
+     {:attribute attribute
+      :use       (tru "Filters {0}" (or (permission-debug.db/table-display-name table_id) table_id))
+      :values    (some-> field-id permission-debug.db/field-column-values)})
+   (for [{:keys [db_id attribute]} (permission-debug.db/group-impersonations group-id)]
+     {:attribute attribute
+      :use       (tru "Sets the database role on {0}" (:name (permission-debug.db/database db_id)))
+      :values    nil})
+   (for [{:keys [database_id user_attribute]} (permission-debug.db/database-routers)]
+     {:attribute user_attribute
+      :use       (tru "Picks the database behind {0}" (:name (permission-debug.db/database database_id)))
+      :values    (permission-debug.db/destination-database-names database_id)})))
+
+(defn- member-attributes
+  "Each active, non-admin member's attributes, merged as [[metabase.users.models.user/add-attributes]] merges them."
+  [group-id]
+  (let [members        (permission-debug.db/group-members-attributes group-id)
+        tenant-id->attributes (permission-debug.db/tenant-attributes-by-id (set (keep :tenant_id members)))]
+    (for [{:keys [tenant_id jwt_attributes login_attributes]} members]
+      (merge {} (get tenant-id->attributes tenant_id) jwt_attributes login_attributes))))
+
+(mu/defn preview-attributes :- PreviewAttributesResponse
+  "The attributes the access of the group with `group-id` depends on, with the values its members have (most common
+  first) and the other values the filtered column or router offers. Empty when nothing depends on an attribute."
+  [group-id :- pos-int?]
+  (api/check-404 (permission-debug.db/group-name group-id))
+  (let [members (member-attributes group-id)]
+    (for [[attribute uses] (group-by :attribute (attribute-uses group-id))
+          :let [member-values (->> (keep #(get % attribute) members)
+                                   frequencies
+                                   (sort-by (juxt (comp - val) key))
+                                   (mapv (fn [[value value-count]] {:value value :count value-count})))
+                member-value? (set (map :value member-values))
+                other-values  (->> (mapcat :values uses) (remove nil?) (map str) distinct (remove member-value?) sort vec)]]
+      {:attribute     attribute
+       :uses          (vec (distinct (map :use uses)))
+       :member_values member-values
+       :other_values  other-values
+       :default       (or (:value (first member-values)) (first other-values))})))
+
+(defn- preview-user-email
+  [principal-type principal-id]
+  (format "permission-preview-%s-%d@permission-preview.invalid" principal-type principal-id))
+
+(defn- most-common-tenant-id
+  [group-id]
+  (some->> (permission-debug.db/group-members-attributes group-id)
+           (keep :tenant_id)
+           frequencies
+           not-empty
+           (apply max-key val)
+           key))
+
+(defn- ensure-preview-user!
+  "The ID of the hidden preview user of a group or tenant, created on first use: inactive, of type
+  `:permission-preview`, in that group only (plus All Users or All tenant users, which every new user joins). A tenant
+  group's preview user belongs to its members' most common tenant."
+  [principal-type principal-id principal-name]
+  (let [email (preview-user-email principal-type principal-id)]
+    (or (permission-debug.db/preview-user-id email)
+        (let [tenant-group? (and (= "group" principal-type) (permission-debug.db/tenant-group? principal-id))
+              tenant-id     (cond
+                              (= "tenant" principal-type) principal-id
+                              tenant-group?               (api/check (most-common-tenant-id principal-id)
+                                                                     [400 (tru "This tenant group has no users, so there''s no tenant to preview it in.")]))
+              user-id       (permission-debug.db/insert-preview-user! {:email      email
+                                                                       :first_name (tru "{0} preview" principal-name)
+                                                                       :tenant_id  tenant-id})
+              magic-groups  #{(:id (perms/all-users-group)) (:id (perms/all-external-users-group))}]
+          (when (and (= "group" principal-type) (not (magic-groups principal-id)))
+            (permission-debug.db/add-user-to-groups! user-id [principal-id]))
+          user-id))))
+
+(mu/defn start-preview! :- [:map
+                            [:user_id ::lib.schema.id/user]
+                            [:user_name :string]
+                            [:principal_name :string]
+                            [:attributes Attributes]]
+  "Resolve the principal an admin wants to preview to the user the request binds to, and record the start of the
+  preview in the audit log. A user previews as themselves. A group or tenant previews as its hidden preview user,
+  because permission checks look the user's groups up again by id, so the binding needs a user row; a real member
+  would bring their other groups and their own attributes. A group's preview user carries `attributes`, defaulting to
+  the most common value among members for each attribute the group's access depends on; a tenant's carries the
+  tenant's own."
+  [{:keys [principal-type principal-id attributes]} :- [:map {:closed true}
+                                                        [:principal-type PrincipalType]
+                                                        [:principal-id pos-int?]
+                                                        [:attributes {:optional true} [:maybe Attributes]]]]
+  (let [principal-name (case principal-type
+                         "user"   (:user_name (some-> (permission-debug.db/user-summary principal-id) user-display))
+                         "group"  (api/check-404 (permission-debug.db/group-name principal-id))
+                         "tenant" (:name (api/check-404 (permission-debug.db/tenant principal-id))))
+        _              (api/check (not (and (= "group" principal-type)
+                                            (= principal-id (:id (perms/admin-group)))))
+                                  [400 (tru "Administrators can''t be previewed: they see everything.")])
+        user-id        (if (= "user" principal-type)
+                         principal-id
+                         (ensure-preview-user! principal-type principal-id principal-name))
+        attributes     (if (= "group" principal-type)
+                         (into {}
+                               (keep (fn [{:keys [attribute default]}]
+                                       (when-let [value (get attributes attribute default)]
+                                         (when-not (str/blank? value)
+                                           [attribute value]))))
+                               (preview-attributes principal-id))
+                         {})]
+    (api/check (permission-debug.db/previewable-user-info user-id)
+               [400 (tru "This user can''t be previewed: only active users who aren''t admins can.")])
+    ;; TODO (proof of concept): one preview user per group stores the picked values on its own row, so two admins
+    ;; previewing the same group with different values overwrite each other. Assumes one admin at a time.
+    (when (= "group" principal-type)
+      (permission-debug.db/set-user-login-attributes! user-id attributes))
+    (events/publish-event! :event/permissions-preview
+                           {:user-id  api/*current-user-id*
+                            :model    :model/User
+                            :model-id user-id
+                            :details  (cond-> {:action         "start"
+                                               :principal-type principal-type
+                                               :principal-id   principal-id}
+                                        (= "group" principal-type) (assoc :attributes attributes))})
+    {:user_id        user-id
+     :user_name      principal-name
+     :principal_name principal-name
+     :attributes     attributes}))
 
 (mu/defn preview-card-query :- :map
   "Run the Card with `card-id` as the User with `user-id` would run it: their permissions, attributes (including tenant

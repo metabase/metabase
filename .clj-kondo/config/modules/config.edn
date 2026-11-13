@@ -4357,10 +4357,25 @@
            lib.schema
            models
            permissions
+           premium-features
            query-processor
            request
+           users.tenants
            util}
-   :model-imports #{:model/Card :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/FieldValues
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant
+                    :model/User}}
 
   enterprise/permissions.impersonation
   {:team "Security Engineering"

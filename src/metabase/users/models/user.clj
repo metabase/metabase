@@ -66,7 +66,8 @@
    :type             mi/transform-keyword})
 
 (def ^:private allowed-user-types
-  #{:internal :personal :api-key})
+  ;; `:permission-preview`: the hidden, inactive user an admin previews a group or tenant as (EE `permission-debug`)
+  #{:internal :personal :api-key :permission-preview})
 
 (def ^:private insert-default-values
   {:date_joined     :%now
@@ -417,14 +418,14 @@
     true))
 
 (mu/defn add-attributes
-  "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
-  this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
-  reading attributes stored on the user row."
+  "Adds the `:attributes` key to a user. Only personal and permission-preview users carry attributes; for other user
+  types (API-key, internal) this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user
+  attribute instead of reading attributes stored on the user row."
   [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
                                                           ::users.schema/user
                                                           [:map {:closed true}
                                                            [:type (into [:enum] allowed-user-types)]]]]
-  (assoc user :attributes (if (= (:type user) :personal)
+  (assoc user :attributes (if (#{:personal :permission-preview} (:type user))
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))
 

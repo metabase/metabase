@@ -135,7 +135,14 @@
    [:model    [:= :model/User]]
    [:model-id pos-int?]
    [:details  [:map {:closed true}
-               [:card-id pos-int?]]]])
+               [:card-id        {:optional true} pos-int?]
+               ;; "start" when an admin opens a preview, "query" for each query run in it
+               [:action         {:optional true} [:enum "start" "query"]]
+               [:uri            {:optional true} :string]
+               ;; a group or tenant previewed through its hidden preview user, with the attribute values picked
+               [:principal-type {:optional true} [:enum "user" "group" "tenant"]]
+               [:principal-id   {:optional true} pos-int?]
+               [:attributes     {:optional true} [:map-of :string :string]]]]])
 
 ;; action events
 
