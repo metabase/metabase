@@ -212,7 +212,7 @@
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
 
 (deftest contract-version-header-test
-  (testing "workspace-manager responses carry X-Metabase-Workspaces-Version: 2"
+  (testing "GET /api/ee/workspace-manager/ carries X-Metabase-Workspaces-Version: 2 on a 200 and on the 401, and GET of a missing workspace carries no header on its 404"
     (testing "on success"
       (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-manager/")
                          [:headers "X-Metabase-Workspaces-Version"]))))
