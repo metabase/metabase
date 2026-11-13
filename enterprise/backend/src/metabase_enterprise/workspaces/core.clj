@@ -31,10 +31,10 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned
 
-   Deleting a workspace tears down each of its databases. A teardown that
-   fails leaves the row `teardown_failed`: warehouse objects may remain, the row
-   keeps blocking deletion of its Database, and a retried delete tears it down
-   again."
+   Deleting a workspace tears down each of its databases, except while a create
+   or deprovision is running (409). A teardown that fails leaves the row
+   `teardown_failed`: warehouse objects may remain, the row keeps blocking
+   deletion of its Database, and a retried delete tears it down again."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
