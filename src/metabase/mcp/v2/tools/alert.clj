@@ -130,7 +130,7 @@
 (defn- check-goal-line!
   "A goal condition compares results to the question's goal line; without one the notification
    backend can only fail at send time, silently. Reject it here instead, mirroring
-   [[metabase.util.ui-logic/find-goal-value]]'s reading of where a goal lives per display.
+   [[metabase.visualization-settings.ui-logic/find-goal-value]]'s reading of where a goal lives per display.
 
    The FE alert modal gates on `graph.show_goal` instead, and toggling the goal line on persists
    no `graph.goal_value` (the rendered 0 is a render-time default) — so a chart can draw a goal
