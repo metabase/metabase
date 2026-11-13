@@ -442,6 +442,25 @@
          (testing "the dashboard stays where it was"
            (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))))))))
 
+(deftest move-to-root-collection-test
+  (sales-dashboard!
+   (fn [{:keys [dash-id coll-id]}]
+     (mt/with-current-user (mt/user->id :rasta)
+       (testing "a move to the root collection reads as not found without read access to it"
+         (is (=? {:class :recoverable
+                  :code  ::recoverable.common/not-found
+                  :text  #(str/starts-with? % (str "The entity referenced here was not found. It may not exist, or"
+                                                   " you may not have access to it."))}
+                 (failure {:dashboard_id dash-id, :collection_id "root"})))
+         (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id))))
+       (testing "and is refused with read access only"
+         (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+         (is (=? {:class :recoverable
+                  :code  ::write-dashboard/collection-not-writable
+                  :text  #"(?s)The user can't save dashboards to the root collection\. .*collection to move it to\."}
+                 (failure {:dashboard_id dash-id, :collection_id "root"})))
+         (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id))))))))
+
 (deftest parallel-edits-test
   (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Parallel"}
                  :model/Card      {card-a :id}  {:dataset_query (venues-query)}
