@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.findings
-  "The stored analysis findings read as a whole: every entity whose query analysis failed, with its errors and what
-  caused each, once the background work that keeps the findings current has run."
+  "Every entity whose analysis failed, with its errors and their causes, and the drain that makes the findings current."
   (:require
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.db :as dependencies.db]
@@ -21,24 +20,20 @@
 ;;; ------------------------------------------- Draining the jobs -------------------------------------------
 
 (def ^:private job-batches
-  "The jobs' batches, in the order their work flows: computing dependencies decides which result metadata and findings
-  are stale, and the analysis reads result metadata."
+  "The jobs' batches, in the order work flows between them."
   [task.dependency/run-batch-in-place!
    task.result-metadata/run-batch-in-place!
    task.analysis-finding/run-batch-in-place!])
 
 (mu/defn drain-pending! :- :nil
-  "Run the dependency, result metadata and analysis jobs in place until none has anything left to do, so that the
-  findings reflect every write committed before the call. A write marks what it makes stale in its own transaction, so
-  nothing committed is missed; only the jobs' scheduling is deferred. Throws when the findings cannot be made current:
-  the app DB is read-only, or a job is disabled."
+  "Run the jobs until none has work left, so the findings reflect every write committed before the call. Throws a 503
+  when the app DB is read-only or a job is disabled."
   []
   (when (cloud-migration/read-only-mode)
     (throw (ex-info (tru "The analysis cannot run while Metabase is in read-only mode.")
                     {:status-code 503})))
   (loop [job 0, idle 0]
-    ;; a job that worked may have made any job's entities stale, so the drain is done only once every job in a row
-    ;; finds nothing
+    ;; a job's work can make any job's entities stale, so stop only once every job in a row is idle
     (when (< idle (count job-batches))
       (case ((job-batches job))
         :worked   (recur job 0)
@@ -54,8 +49,7 @@
   (into [:enum] (sort deps.analysis-finding/analyzable-entities)))
 
 (mr/def ::cause
-  "The entity an error is traced to. `entity_id` is nil for a table, which has none, and `name` is nil when the entity
-  no longer exists."
+  "The entity an error is traced to. `entity_id` is nil for a table; `name` is nil once the entity is deleted."
   [:map {:closed true}
    [:type      ::lib.schema.validate/source-entity-type]
    [:id        ms/PositiveInt]
@@ -63,14 +57,12 @@
    [:name      [:maybe :string]]])
 
 (mr/def ::error
-  "One error of a failed analysis."
   [:map {:closed true}
    [:type   ::lib.schema.validate/validate-error-type]
    [:detail [:maybe :string]]
    [:cause  [:maybe ::cause]]])
 
 (mr/def ::failed-entity
-  "An entity whose analysis failed, with its errors."
   [:map {:closed true}
    [:type          ::analyzed-type]
    [:id            ms/PositiveInt]
@@ -80,14 +72,12 @@
    [:errors        [:sequential ::error]]])
 
 (def ^:private cause-columns
-  "The columns a cause is described by, per type; a table has no `entity_id`."
   {:table     [:id :name]
    :card      [:id :name :entity_id]
    :transform [:id :name :entity_id]})
 
 (mu/defn- cause-rows :- [:map-of [:tuple ::lib.schema.validate/source-entity-type ms/PositiveInt] :map]
-  "The entities the AnalysisFindingError `rows` name as their source, keyed by type and id, without the ones that no
-  longer exist."
+  "The source entities the `rows` name, keyed by `[type id]`; deleted ones are absent."
   [rows :- [:sequential ::dependencies.schema/analysis-finding-error]]
   (let [refs (into #{}
                    (keep (fn [{:keys [source_entity_type source_entity_id]}]
@@ -101,7 +91,6 @@
           (u/group-by first second refs))))
 
 (mu/defn- errors-by-id :- [:map-of ms/PositiveInt [:sequential ::error]]
-  "The errors of the entities `entity-type` `entity-ids`, keyed by id, each with its cause."
   [entity-type :- ::analyzed-type
    entity-ids  :- [:sequential ms/PositiveInt]]
   (let [rows   (dependencies.db/finding-errors-for-entities entity-type entity-ids)
@@ -119,7 +108,6 @@
                 rows)))
 
 (mu/defn- failed-entities-of-type :- [:sequential ::failed-entity]
-  "The entities of `entity-type` whose analysis failed, with their errors."
   [entity-type :- ::analyzed-type]
   (let [rows   (dependencies.db/failed-analysis-entities entity-type)
         errors (errors-by-id entity-type (mapv :id rows))]
@@ -133,7 +121,7 @@
           rows)))
 
 (mu/defn failed-entities :- [:sequential ::failed-entity]
-  "Every analyzed entity whose stored analysis failed, with its errors, by type then id: not archived, and not content
-  Metabase manages itself. Call [[drain-pending!]] first for an answer that reflects every committed write."
+  "Every entity whose stored analysis failed, with its errors, excluding archived and Metabase-managed content. Call
+  [[drain-pending!]] first for current results."
   []
   (into [] (mapcat failed-entities-of-type) (sort deps.analysis-finding/analyzable-entities)))

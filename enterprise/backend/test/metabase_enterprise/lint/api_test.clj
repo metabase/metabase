@@ -83,7 +83,6 @@
   (mt/user-http-request :crowberto :post 200 "ee/lint"))
 
 (defn- card-results
-  "The results of `report` on `card`."
   [report card]
   (filterv #(= (:entity_id card) (:entity_id %)) (:results report)))
 
@@ -200,7 +199,7 @@
       (f))))
 
 (deftest ^:synchronized uncomputable-dependencies-fail-test
-  (testing "POST /api/ee/lint fails on an entity whose dependencies cannot be computed, which the analysis never reaches"
+  (testing "POST /api/ee/lint fails on an entity whose dependencies cannot be computed"
     (do-with-plain-native-card!
      (fn [card]
        (do-with-uncomputable-dependencies!
@@ -216,7 +215,7 @@
                    (card-results report card))))))))))
 
 (deftest ^:synchronized recomputed-dependencies-clear-failure-test
-  (testing "POST /api/ee/lint stops failing an analyzed entity once its dependencies, given up on, compute again"
+  (testing "POST /api/ee/lint stops failing an entity once its given-up dependencies compute again"
     (do-with-plain-native-card!
      (fn [card]
        (let [mark-stale! #(dependencies.db/mark-dependency-statuses-stale! {:card #{(:id card)}})]
@@ -241,7 +240,7 @@
            (t2/update! (t2/table-name :model/Card) :id (:id card) {:parameters "[]"})))))))
 
 (deftest ^:synchronized waits-for-running-batch-test
-  (testing "POST /api/ee/lint called while a batch of the analysis runs elsewhere waits for it and reports what it found"
+  (testing "POST /api/ee/lint waits for an analysis batch running elsewhere and reports what it found"
     (do-with-broken-native-card!
      (fn [native-card]
        (deps.test/synchronously-run-dependency-job!)

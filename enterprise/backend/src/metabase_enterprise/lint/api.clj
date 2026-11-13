@@ -1,7 +1,6 @@
 (ns metabase-enterprise.lint.api
-  "`/api/ee/lint`: the instance's content checked against the lint rules, as a report an agent or a CI step can act on.
-  The rules are the errors the dependency analysis records; the report is built from the stored findings once the
-  analysis is current."
+  "`/api/ee/lint`: the errors the dependency analysis finds in the instance's content, as a report for an agent or CI
+  step."
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase.api.common :as api]
@@ -23,8 +22,7 @@
    [:severity    ::severity]
    [:description :string]])
 
-;; `validation-exception-error` is an error although the analysis threw rather than found something wrong with the
-;; query: an entity it could not check must not let the report pass.
+;; `validation-exception-error` is an error: an entity the analysis couldn't check must not pass.
 (def ^:private rules
   "One rule per analysis error type."
   {:missing-column             {:severity    :error
@@ -43,7 +41,7 @@
                                 :description "The analysis of the query failed."}})
 
 (mr/def ::result
-  "One error, on the entity `entity_id` names in `entities`."
+  "One error; `entity_id` keys into `entities`."
   [:map {:closed true}
    [:ruleId    ::lib.schema.validate/validate-error-type]
    [:entity_id :string]
@@ -114,7 +112,6 @@
       "The analysis failed")))
 
 (mu/defn- result :- ::result
-  "The result for one `error` of `entity`."
   [entity :- ::deps.findings/failed-entity
    error  :- ::deps.findings/error]
   {:ruleId    (:type error)
@@ -124,7 +121,6 @@
    :cause     (:cause error)})
 
 (mu/defn- report :- ::report
-  "The lint report of the `failed` entities."
   [failed :- [:sequential ::deps.findings/failed-entity]]
   (let [results (vec (for [entity failed, error (:errors entity)] (result entity error)))
         counts  (frequencies (map #(get-in rules [(:ruleId %) :severity]) results))]
@@ -142,11 +138,10 @@
      :results  results}))
 
 (api.macros/defendpoint :post "/" :- ::report
-  "The lint report of the instance's content, for superusers: every card, transform and segment whose query analysis
-  found an error, with each error as a `result` naming the entity, the rule it breaks and the entity that caused it
-  when the analysis traced one. The analysis the background jobs owe is run first, so the report reflects every write
-  committed before the request and `passed` means nothing is broken. When that analysis cannot run, because one of its
-  jobs is disabled or the instance is read-only, the request fails with a 503 rather than answer from stale findings."
+  "Lint report of the instance's cards, transforms and segments, for superusers. Each `result` is one error the query
+  analysis found, with its rule and, when traced, the entity that caused it. Pending analysis runs first, so the
+  report reflects every write committed before the request. Fails with a 503 when the analysis can't run: a job is
+  disabled or the instance is read-only."
   [_route-params _query-params]
   (api/check-superuser)
   (deps.findings/drain-pending!)
