@@ -27,6 +27,11 @@ import { sdkBundleExports } from "./sdk-bundle-exports";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 // oxfmt-ignore
 import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
+// oxfmt-ignore
+import {
+  recordSdkBundleLoaded,
+  watchSdkPageVisibility,
+} from "./analytics/sdk-first-component-performance/event";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
@@ -36,4 +41,10 @@ window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 // Signal that the bundle is ready. In the bootstrap flow (chunked loading),
 // rspack defers entry execution until all chunks are registered, so this event
 // fires only after everything is ready.
+try {
+  recordSdkBundleLoaded();
+  watchSdkPageVisibility();
+} catch {
+  // Broken analytics code should not break the app
+}
 document.dispatchEvent(new CustomEvent(SDK_BUNDLE_LOADED));

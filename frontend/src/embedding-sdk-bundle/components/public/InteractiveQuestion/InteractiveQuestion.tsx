@@ -208,7 +208,7 @@ const subComponents: InteractiveQuestionComponents = {
 
 const _InteractiveQuestionWrapped = withPublicComponentWrapper(
   _InteractiveQuestion,
-  { supportsGuestEmbed: false },
+  { supportsGuestEmbed: false, sdkComponentName: "InteractiveQuestion" },
 );
 
 export const InteractiveQuestion = Object.assign(

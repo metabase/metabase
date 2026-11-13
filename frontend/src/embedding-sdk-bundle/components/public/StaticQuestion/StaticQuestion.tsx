@@ -261,6 +261,7 @@ const subComponents: StaticQuestionComponents = {
 
 const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
   supportsGuestEmbed: true,
+  sdkComponentName: "StaticQuestion",
 });
 
 export const StaticQuestion = Object.assign(

@@ -4,6 +4,10 @@
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
 
 import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
+import {
+  recordSdkPageMark,
+  recordSdkSsoLogin,
+} from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -129,6 +133,13 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       // call, renewing the token when it expires.
       PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
         sessionTokenHandler;
+
+      // Auth was done in the bootstrap, so we use the values from the auth state.
+      recordSdkPageMark("init_end", authState.completedAtMs);
+      recordSdkSsoLogin({
+        method: "jwt",
+        isJwtProviderUriPassed: authState.isJwtProviderUriPassed === true,
+      });
 
       return;
     }
@@ -289,6 +300,7 @@ const getRefreshToken = async ({
   } = urlResponseJson || {};
 
   if (method === "saml") {
+    recordSdkSsoLogin({ method: "saml" });
     const sessionToken = await openSamlLoginPopup(
       responseUrl,
       metabaseInstanceUrl,
@@ -300,6 +312,10 @@ const getRefreshToken = async ({
     return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
+    recordSdkSsoLogin({
+      method: "jwt",
+      isJwtProviderUriPassed: shouldSkipSsoDiscovery,
+    });
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,

@@ -81,6 +81,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
 export const StaticDashboard = Object.assign(
   withPublicComponentWrapper(StaticDashboardInner, {
     supportsGuestEmbed: true,
+    sdkComponentName: "StaticDashboard",
   }),
   {
     schema: staticDashboardSchema,
