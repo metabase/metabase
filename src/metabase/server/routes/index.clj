@@ -213,3 +213,16 @@
            (nil? (:metabase-user-id request)))
     (data-app-shell request respond raise)
     (respond {:status 404 :body "Not found."})))
+
+(defn permission-preview-content
+  "`/embed/permission-preview-content` iframe entrypoint, where an admin previews one item as another user (EE
+  `permission-debug`): the data-app runtime, whose API requests send a preview session token in place of the admin's
+  cookie. Served only on the main host, to a superuser's session; the document carries only public settings. Answers
+  404 itself rather than falling through to the generic embed page."
+  [request respond raise]
+  (if (and (premium-features/enable-advanced-permissions?)
+           (not (mw.isolated-origin/isolated-origin-request? request))
+           (:metabase-user-id request)
+           (:is-superuser? request))
+    (data-app-shell request respond raise)
+    (respond {:status 404 :body "Not found."})))

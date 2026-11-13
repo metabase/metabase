@@ -70,6 +70,7 @@
   https-state
   internal-data-app?
   permission-preview?
+  permission-preview-content?
   public?
   referer])
 

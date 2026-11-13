@@ -565,10 +565,10 @@
            (contains? #{400 402} (:status response)))))
 
 (defn- data-app-iframe-request?
-  "The permission preview document serves the data-app runtime too, so it gets the same policy, with no connect hosts
-  of its own: its requests all go through the top page's broker."
+  "The permission preview documents serve the data-app runtime too, so they get the same policy, with no connect hosts
+  of their own: their requests go through the top page's broker, or to this origin with a preview session token."
   [request]
-  (boolean ((some-fn request/data-app? request/permission-preview?) request)))
+  (boolean ((some-fn request/data-app? request/permission-preview? request/permission-preview-content?) request)))
 
 (def ^:private data-app-slug-regex
   (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
@@ -675,7 +675,7 @@
     (request/embedded-data-app? request)
     :any
 
-    ((some-fn request/internal-data-app? request/permission-preview?) request)
+    ((some-fn request/internal-data-app? request/permission-preview? request/permission-preview-content?) request)
     (if (mw.isolated-origin/isolated-origin-request? request) :main-app :self)
 
     ((some-fn request/public? request/embed?) request)

@@ -75,6 +75,13 @@
   (boolean (when-let [[_ preview-name] (and uri (re-matches #"^/embed/permission-preview/([^/]+)(?:/.*)?$" uri))]
              (not (#{"." ".."} preview-name)))))
 
+(defn permission-preview-content?
+  "Whether the request targets `/embed/permission-preview-content` or a path under it, the document of the frame that
+  renders one item with the SDK as another user (EE `permission-debug`). Served from the main host: the frame signs in
+  with a preview session token, not the admin's cookie."
+  [{:keys [uri]}]
+  (boolean (and uri (re-matches #"^/embed/permission-preview-content(?:/.*)?$" uri))))
+
 (defn embedded-data-app?
   "Whether the request targets the dedicated SSO embedding route."
   [{:keys [uri]}]
