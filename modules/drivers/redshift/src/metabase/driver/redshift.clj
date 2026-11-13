@@ -980,18 +980,17 @@
 ;; - `destroy` replaces the postgres impl's `DROP OWNED BY` (which behaves
 ;;   differently in Redshift) with explicit per-schema REVOKEs.
 ;;
-;; Isolation limit, checked at grant time via [[assert-no-public-create-grant!]]:
-;; Redshift's permission model (inherited from PostgreSQL) lets a user receive
-;; privileges either directly or through PUBLIC. REVOKE-ing CREATE from a
-;; specific user only removes their direct grant — it can't override a PUBLIC
-;; grant. Redshift's `public` schema has CREATE granted to PUBLIC by default,
-;; so on a default-config cluster the workspace user inherits CREATE on `public`
-;; transitively: it can create tables there (privilege-escalation hole), becomes
-;; their owner, and `DROP USER` then fails at deprovisioning. The probe at grant
-;; time fails fast with a 412 so the cluster admin can run
-;; `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before retrying. Custom input
-;; schemas created without a PUBLIC grant pass the probe and don't need any
-;; admin action.
+;; Isolation limit, checked at init time via [[check-no-public-create-in-database!]]
+;; for every schema of the connected database, and again at grant time via [[assert-no-public-create-grant!]]
+;; for each input schema: Redshift's permission model (inherited from PostgreSQL)
+;; lets a user receive privileges either directly or through PUBLIC. REVOKE-ing
+;; CREATE from a specific user only removes their direct grant: it can't
+;; override a PUBLIC grant. Redshift's `public` schema has CREATE granted to
+;; PUBLIC by default, so on a default-config cluster the workspace user inherits
+;; CREATE on `public` transitively: it can create tables there (privilege-escalation
+;; hole), becomes their owner, and `DROP USER` then fails at deprovisioning. Both
+;; checks fail fast with a 412 so the cluster admin can run
+;; `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before retrying.
 
 (defn- user-exists?
   "Check if a Redshift user exists."
@@ -1015,6 +1014,111 @@
 
 (defn- quote-schema [s] (sql.u/quote-name :redshift :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :redshift :field s))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
+(defn- start-workspace-transaction!
+  "Pins search_path to pg_catalog for the current transaction. Call it first in every transaction of the workspace
+  methods: a function that a workspace user planted in a schema on the default search_path (`public`) would otherwise
+  run with the privileges of the admin connection's login (CVE-2018-1058)."
+  [conn]
+  (jdbc/execute! conn ["SET LOCAL search_path TO pg_catalog"]))
+
+(defn- exists-error
+  "The 409 init throws when objects it would create are already in the warehouse. `existing` lists them, each a map of
+  `:what` (a description), `:drop-sql` (the statement an admin runs to remove it when no workspace uses it) and
+  `:data`, in the order the drops must run: the schema first, because the user holds a privilege on it, and
+  `DROP USER` fails while it does. The objects may belong to another workspace, so init leaves them unchanged, and the
+  caller must not tear down after this error. `cause`, the server's error, may be nil."
+  [existing cause]
+  (let [[they them] (if (= 1 (count existing)) ["It" "it"] ["They" "them"])
+        user?       (perf/some (comp :user :data) existing)]
+    (ex-info (str (format (str "The warehouse already has a %s. %s may belong to another workspace, so init left %s "
+                               "unchanged. If no workspace uses %s, run %s, and retry.")
+                          (str/join " and a " (map :what existing))
+                          they them them
+                          (str/join ", then " (map #(str "`" (:drop-sql %) "`") existing)))
+                  (when user?
+                    " `DROP USER` fails while the user holds a privilege on any object, so revoke those first."))
+             (apply merge {:status-code 409, :workspace/cleanup? false} (map :data existing))
+             cause)))
+
+(defn- existing-schema
+  "The entry of [[exists-error]] for an output schema named `schema`."
+  [schema]
+  {:what     (str "schema named " (quote-schema schema))
+   :drop-sql (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
+   :data     {:schema schema}})
+
+(defn- existing-user
+  "The entry of [[exists-error]] for a workspace user named `user`."
+  [user]
+  {:what     (str "user named " (quote-field user))
+   :drop-sql (format "DROP USER %s;" (quote-field user))
+   :data     {:user user}})
+
+(defn- public-create-schemas
+  "The schemas of the connected database that grant CREATE to PUBLIC."
+  [conn]
+  (map :namespace_name (jdbc/query conn [(str "SELECT DISTINCT namespace_name FROM svv_schema_privileges "
+                                              "WHERE identity_type = 'public' AND privilege_type = 'CREATE' "
+                                              "ORDER BY namespace_name")])))
+
+(defn- check-no-public-create-in-database!
+  "Throws a 412 naming the REVOKEs to run when a schema of the connected database grants CREATE to PUBLIC (`public`
+  does by default). Every user, the workspace user included, can create objects in such a schema: writes outside its
+  output schema, and objects that keep `DROP USER` from succeeding."
+  [conn]
+  (when-let [schemas (seq (public-create-schemas conn))]
+    (throw (ex-info (format (str "The workspace user could create objects outside its output schema. These schemas grant "
+                                 "CREATE to PUBLIC: %s. As the owner of each schema named, or a superuser, run %s, and retry. Redshift "
+                                 "grants CREATE on `public` to PUBLIC by default. The REVOKE persists, so this is a one-time "
+                                 "setup step.")
+                            (str/join ", " schemas)
+                            (str/join ", " (map #(format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;`"
+                                                         (quote-schema %))
+                                                schemas)))
+                    {:status-code 412, :workspace/cleanup? false, :schemas (vec schemas)}))))
+
+(defn- check-init-preconditions!
+  "Throws before init makes any change: a 409 when the workspace user or its output schema already exists, a 412 when
+  PUBLIC can create in any schema of the connected database."
+  [conn user schema]
+  (let [existing (cond-> []
+                   (schema-exists? conn schema) (conj (existing-schema schema))
+                   (user-exists? conn user)     (conj (existing-user user)))]
+    (when (seq existing)
+      (throw (exists-error existing nil))))
+  (check-no-public-create-in-database! conn))
+
+(defn- init-workspace-sqls
+  "The statements init runs, in order, once [[check-init-preconditions!]] has passed."
+  [user escaped-password schema]
+  (let [quoted-schema (quote-schema schema)
+        quoted-user   (quote-field user)]
+    [(format "CREATE SCHEMA %s" quoted-schema)
+     (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
+     ;; Schema-level grant only (Redshift's two schema privileges):
+     ;;   USAGE  - access the schema
+     ;;   CREATE - create tables in it
+     ;; Table DML comes from ownership (the user owns the tables it creates), so we skip
+     ;; `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES` (that only covers tables created
+     ;; by the admin connection, which never happens on the transform path).
+     (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)]))
+
+(defn- end-sessions!
+  "Ends every open session of `user`, so that none holds a lock that the drops in teardown wait on. STV_SESSIONS shows
+  a regular user only its own sessions, and only a superuser may end another user's session, so this ends nothing
+  unless the admin connection's login is a superuser. It does not stop `user` from opening a new session after the
+  sessions end."
+  [conn user]
+  ;; `pg_terminate_backend` runs only on the leader node, so Redshift refuses it in a statement that reads a table:
+  ;; the pids come from one query, and each session ends in a statement of its own
+  (doseq [{:keys [process]} (jdbc/query conn ["SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?" user])]
+    (jdbc/query conn ["SELECT pg_terminate_backend(?) AS ended" process])))
 
 (defn- assert-no-public-create-grant!
   [conn schema-name]
@@ -1106,41 +1210,86 @@
                          :schema      schema-name
                          :owners      (vec owners)}))))))
 
+(defn- sql-states
+  "The SQLStates of `t` and of every cause of it."
+  [t]
+  (keep #(when (instance? java.sql.SQLException %) (.getSQLState ^java.sql.SQLException %))
+        (take-while some? (iterate ex-cause t))))
+
+(defn- init-error
+  "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
+  it leaves nothing behind. A schema or user of the workspace's name may be one that another session has just
+  committed (SQLState 42P06 or 42710): that gives the 409 of [[exists-error]], with `t` as its cause. A connection
+  failure once the transaction is `committing?` stays unmarked: the transaction may have committed, and its objects
+  then need the teardown. When the rollback fails too, clojure.java.jdbc throws its own error with the original under
+  `:handling`; that original is the one to judge."
+  [t committing? user schema]
+  (let [t      (or (when (contains? (ex-data t) :rollback) (:handling (ex-data t))) t)
+        states (sql-states t)]
+    (cond
+      (or (contains? (ex-data t) :workspace/cleanup?)
+          (and committing? (perf/some #(str/starts-with? % "08") states)))
+      t
+
+      (perf/some #{"42P06"} states)
+      (exists-error [(existing-schema schema)] t)
+
+      (perf/some #{"42710"} states)
+      (exists-error [(existing-user user)] t)
+
+      :else
+      (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t))))
+
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
   (let [schema-name      (:schema workspace)
         read-user        (:database_details workspace)
         escaped-password (sql.u/escape-sql (:password read-user) :ansi)
-        quoted-schema    (quote-schema schema-name)
-        quoted-user      (quote-field (:user read-user))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-      (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
-                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password))]
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          ;; Schema-level grant only (Redshift's two schema privileges):
-          ;;   USAGE  - access the schema
-          ;;   CREATE - create tables in it
-          ;; Table DML comes from ownership (the user owns the tables it creates), so we skip
-          ;; `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES` (that only covers tables created
-          ;; by the admin connection, which never happens on the transform path).
-          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
-                       user-sql
-                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)]]
-            (.addBatch ^Statement stmt ^String sql))
-          (try
-            (.executeBatch ^Statement stmt)
-            (catch Throwable t
-              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
+        ;; set once the transaction's last statement has run, so that the only step left is COMMIT
+        committing?      (volatile! false)]
+    (try
+      (sql-jdbc.execute/do-with-connection-with-options
+       :redshift
+       (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))
+       nil
+       (fn [^Connection conn]
+         (try
+           (jdbc/with-db-transaction [t-conn {:connection conn}]
+             (start-workspace-transaction! t-conn)
+             ;; a user or schema of this name may be another workspace's: taking it over would hand that workspace's
+             ;; grants to this one, and cleaning up after this init would drop it
+             (check-init-preconditions! t-conn (:user read-user) schema-name)
+             (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+               (doseq [sql (init-workspace-sqls (:user read-user) escaped-password schema-name)]
+                 (.addBatch ^Statement stmt ^String sql))
+               (try
+                 (.executeBatch ^Statement stmt)
+                 (catch Throwable t
+                   (throw (driver.u/scrub-exceptions (driver.u/batch-exception t)
+                                                     [(:password read-user) escaped-password])))))
+             (vreset! committing? true))
+           (catch Throwable t
+             ;; a failed rollback leaves the connection with autocommit off, in a state the pool cannot be trusted to
+             ;; reset, so it is discarded
+             (when (contains? (ex-data t) :rollback)
+               (sql-jdbc.conn/discard-pooled-connection! conn))
+             (throw t)))))
+      (catch Throwable t
+        (let [error (init-error t @committing? (:user read-user) schema-name)]
+          ;; init-error judges the error that caused a failed rollback: attach the rollback's own error, so that it
+          ;; is not lost
+          (when-let [rollback-error (:rollback (ex-data t))]
+            (.addSuppressed ^Throwable error ^Throwable rollback-error))
+          (throw error))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [driver database workspace schemas]
+  [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-    ;; Pre-flight check (read-only, one connection, no transaction). Redshift's
+    ;; Pre-flight check (queries only, own transaction, search_path pinned). Redshift's
     ;; GRANT statements error loudly when grant authority is missing, so PG's
     ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
     ;; DEFAULT PRIVILEGES failure modes do reproduce and need explicit checks:
@@ -1150,17 +1299,16 @@
     ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver (driver.u/ensure-lib-database database) nil
-     (fn [^Connection conn]
-       (let [check-conn {:connection conn}]
-         (doseq [s source-schemas]
-           (assert-no-public-create-grant!       check-conn s)
-           (assert-can-alter-default-privileges! check-conn s)))))
+    (jdbc/with-db-transaction [check-conn spec]
+      (start-workspace-transaction! check-conn)
+      (doseq [s source-schemas]
+        (assert-no-public-create-grant!       check-conn s)
+        (assert-can-alter-default-privileges! check-conn s)))
     ;; Grants run as one batched transaction; it commits before this fn
     ;; returns, so a subsequent describe-database from a different connection
     ;; still observes the privileges.
     (jdbc/with-db-transaction [t-conn spec]
+      (start-workspace-transaction! t-conn)
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [s   source-schemas
                 :let [quoted-schema (quote-schema s)]
@@ -1178,11 +1326,6 @@
           (.executeBatch ^Statement stmt)
           (catch Throwable t
             (throw (driver.u/batch-exception t))))))))
-
-(defn- schema-exists?
-  "Check if a schema exists in Redshift."
-  [conn schema-name]
-  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
 
 (defn- schemas-with-user-grants
   "Query Redshift to find schemas where the user has been granted schema-level
@@ -1263,10 +1406,13 @@
     ;; the entire destroy — that's fine: the workspace layer records the
     ;; failure and the deprovision is retried, re-discovering fresh state.
     (jdbc/with-db-transaction [t-conn spec]
+      (start-workspace-transaction! t-conn)
       (let [user-exists     (user-exists? t-conn username)
             schema-exists   (schema-exists? t-conn schema-name)
             granted-schemas (when user-exists
                               (schemas-with-user-grants t-conn username))]
+        (when user-exists
+          (end-sessions! t-conn username))
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (when user-exists
             ;; Foreign-grantor default-priv rows must be revoked FOR USER their

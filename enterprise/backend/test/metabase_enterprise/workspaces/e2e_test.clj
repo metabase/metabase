@@ -108,10 +108,14 @@
                                            :database_details {}
                                            :output_namespace ""})]
       ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default in a cluster
-      ;; created before Postgres 15 or upgraded from one, and the shared test cluster is not this test's to change:
-      ;; metabase.driver.postgres.workspace-test covers that check against a database of its own
+      ;; created before Postgres 15 or upgraded from one. Redshift init refuses a database where PUBLIC can create
+      ;; objects in any schema, and `public` allows it by default. The shared test clusters are not this test's to
+      ;; change: metabase.driver.postgres.workspace-test and metabase.driver.redshift-test cover those checks
       (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
-        (provisioning/provision-single! wsd-id)))))
+        (if (= :redshift driver/*driver*)
+          (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-in-database!) (constantly nil)}
+            #(provisioning/provision-single! wsd-id))
+          (provisioning/provision-single! wsd-id))))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;

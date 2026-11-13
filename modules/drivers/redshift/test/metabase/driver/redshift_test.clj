@@ -1064,7 +1064,9 @@
                    (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
         (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
-              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+              ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
+              _              (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
+                               (driver/init-workspace-isolation! :redshift (mt/db) workspace+det))
               iso-user       (-> workspace+det :database_details :user)]
           (try
             ;; Seed the foreign-grantor default-priv: connect as the foreign role
@@ -1104,6 +1106,21 @@
           (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))
 
+(deftest ^:synchronized workspace-public-create-schemas-live-test
+  ;; every live init stubs out the PUBLIC CREATE check, because the shared cluster's `public` may grant CREATE to
+  ;; PUBLIC; this runs its catalog query on the cluster, with search_path pinned as init pins it
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          schema     (str "ws_public_create_" (u/lower-case-en (mt/random-name)))]
+      (try
+        (execute! "CREATE SCHEMA \"%s\"; GRANT CREATE ON SCHEMA \"%s\" TO PUBLIC;" schema schema)
+        (testing "the unfiltered svv_schema_privileges query runs under search_path pg_catalog and finds the grant"
+          (jdbc/with-db-transaction [conn admin-spec]
+            (#'redshift/start-workspace-transaction! conn)
+            (is (some #{schema} (#'redshift/public-create-schemas conn)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
+
 (deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
   ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
   ;; privilege on some object` when the iso-user holds a schema-level USAGE
@@ -1122,7 +1139,9 @@
       (try
         (execute! (format "CREATE SCHEMA \"%s\"" schema))
         (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
-              _         (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+              ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
+              _         (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
+                          (driver/init-workspace-isolation! :redshift (mt/db) workspace))
               iso-user  (-> workspace :database_details :user)]
           (try
             (jdbc/execute! admin-spec [(format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" schema iso-user)])
@@ -1135,3 +1154,221 @@
               (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
+
+;;; ------------------------------ Workspace provisioning: generated SQL, no Redshift ------------------------------
+
+(defn- run-with-fake-jdbc
+  "Calls `(f)` with JDBC replaced, so that no Redshift is needed. A query returns `(answer sql)`. Returns
+  `{:log [...], :error throwable-or-nil}`: `:log` holds every query, as `[:query sql params]`, every statement run,
+  as `[:execute sql]`, every rollback, as `[:rollback]`, and every pooled connection discarded, as `[:discard]`, in
+  order.
+
+  Options: `:batch-error`, thrown by `executeBatch`; `:real-transaction?`, to run the real `jdbc/db-transaction*` on
+  the fake connection; `:rollback-error`, thrown by that connection's `rollback`."
+  ([answer f]
+   (run-with-fake-jdbc answer f {}))
+  ([answer f {:keys [batch-error real-transaction? rollback-error]}]
+   (let [log        (atom [])
+         autocommit (atom true)
+         stmt       (reify java.sql.Statement
+                      (addBatch [_ sql] (swap! log conj [:execute sql]))
+                      (executeBatch [_] (if batch-error (throw batch-error) (int-array 0)))
+                      (close [_]))
+         ;; a c3p0 proxy, so that `discard-pooled-connection!` acts on it
+         conn       (reify com.mchange.v2.c3p0.C3P0ProxyConnection
+                      (rawConnectionOperation [_ _method _target _args]
+                        (swap! log conj [:discard])
+                        nil)
+                      (createStatement [_] stmt)
+                      (getAutoCommit [_] @autocommit)
+                      (setAutoCommit [_ v] (reset! autocommit v))
+                      (getMetaData [_] (reify java.sql.DatabaseMetaData
+                                         (supportsTransactionIsolationLevel [_ _] true)))
+                      (getTransactionIsolation [_] java.sql.Connection/TRANSACTION_READ_COMMITTED)
+                      (setTransactionIsolation [_ _])
+                      (setHoldability [_ _])
+                      (isReadOnly [_] false)
+                      (setReadOnly [_ _])
+                      (commit [_])
+                      (rollback [_]
+                        (swap! log conj [:rollback])
+                        (when rollback-error (throw rollback-error)))
+                      (close [_]))
+         run        (fn []
+                      (mt/with-dynamic-fn-redefs [jdbc/query                               (fn [_conn [sql & params]]
+                                                                                             (swap! log conj [:query sql (vec params)])
+                                                                                             (answer sql))
+                                                  jdbc/execute!                            (fn [_conn [sql]]
+                                                                                             (swap! log conj [:execute sql])
+                                                                                             [0])
+                                                  sql-jdbc.conn/db->pooled-connection-spec (constantly {:connection conn})
+                                                  driver.u/lib-database                    identity]
+                        (try (f) nil (catch Throwable e e))))
+         error      (if real-transaction?
+                      (run)
+                      (mt/with-dynamic-fn-redefs [jdbc/db-transaction* (fn [_db func & _] (func {:connection conn}))]
+                        (run)))]
+     {:log @log, :error error})))
+
+(defn- answer-with
+  "An `answer` for [[run-with-fake-jdbc]]: rows for the queries whose SQL contains one of the keys of `rows-by-table`,
+  none for the rest."
+  [rows-by-table]
+  (fn [sql]
+    (or (some (fn [[table rows]] (when (str/includes? sql table) rows)) rows-by-table)
+        [])))
+
+(def ^:private unit-workspace
+  {:id               1
+   :schema           "mb__isolation_ws_1"
+   :database_details {:user "mb__isolation_user_1", :password "pa'ss"}})
+
+(defn- executed [log]
+  (keep (fn [[kind sql]] (when (= :execute kind) sql)) log))
+
+(deftest workspace-init-sql-test
+  (testing "init pins search_path, then creates the schema and the user, and grants on the schema"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {})
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (nil? error))
+      (is (= ["SET LOCAL search_path TO pg_catalog"
+              "CREATE SCHEMA \"mb__isolation_ws_1\""
+              "CREATE USER \"mb__isolation_user_1\" WITH PASSWORD 'pa''ss'"
+              "GRANT USAGE, CREATE ON SCHEMA \"mb__isolation_ws_1\" TO \"mb__isolation_user_1\""]
+             (executed log))))))
+
+(deftest workspace-init-refuses-before-any-change-test
+  (doseq [[desc rows expected-data expected-message]
+          [["an existing user"
+            {"FROM pg_user WHERE" [{:?column? 1}]}
+            {:status-code 409, :workspace/cleanup? false, :user "mb__isolation_user_1"}
+            #"already has a user named \"mb__isolation_user_1\".*run `DROP USER \"mb__isolation_user_1\";`.*revoke those first"]
+           ["an existing user and its schema, in the order the drops succeed"
+            {"FROM pg_user WHERE" [{:?column? 1}], "FROM pg_namespace WHERE" [{:?column? 1}]}
+            {:status-code 409, :workspace/cleanup? false, :user "mb__isolation_user_1", :schema "mb__isolation_ws_1"}
+            (re-pattern (str "already has a schema named \"mb__isolation_ws_1\" and a user named \"mb__isolation_user_1\"\\. "
+                             ".*run `DROP SCHEMA \"mb__isolation_ws_1\" CASCADE;`, then `DROP USER \"mb__isolation_user_1\";`"))]
+           ["an existing schema"
+            {"FROM pg_namespace WHERE" [{:?column? 1}]}
+            {:status-code 409, :workspace/cleanup? false, :schema "mb__isolation_ws_1"}
+            #"already has a schema named \"mb__isolation_ws_1\".*run `DROP SCHEMA \"mb__isolation_ws_1\" CASCADE;`"]
+           ["a schema, any schema, that grants CREATE to PUBLIC"
+            {"svv_schema_privileges" [{:namespace_name "public"} {:namespace_name "other"}]}
+            {:status-code 412, :workspace/cleanup? false, :schemas ["public" "other"]}
+            #"REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;.*REVOKE CREATE ON SCHEMA \"other\" FROM PUBLIC;"]]]
+    (testing (str "init refuses " desc ", and runs nothing but the search_path pin")
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 (answer-with rows)
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+        (is (= expected-data (select-keys (ex-data error) (keys expected-data))))
+        (is (re-find expected-message (ex-message error)))
+        (is (= ["SET LOCAL search_path TO pg_catalog"] (executed log)))))))
+
+(deftest workspace-public-create-check-has-no-schema-filter-test
+  (testing "init looks for PUBLIC CREATE grants on every schema, not only the input schemas"
+    (let [{:keys [log]} (run-with-fake-jdbc
+                         (answer-with {})
+                         #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))
+          [_ sql params] (first (filter (fn [[kind sql]] (and (= :query kind) (str/includes? sql "svv_schema_privileges")))
+                                        log))]
+      (is (= (str "SELECT DISTINCT namespace_name FROM svv_schema_privileges "
+                  "WHERE identity_type = 'public' AND privilege_type = 'CREATE' ORDER BY namespace_name")
+             sql))
+      (is (= [] params)))))
+
+(deftest workspace-grant-pins-search-path-before-catalog-queries-test
+  (testing "grant pins search_path before its preflight catalog queries, and again before the grants"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {})
+                               #(driver/grant-workspace-read-access! :redshift {:id 1} unit-workspace ["src"]))
+          pin                 [:execute "SET LOCAL search_path TO pg_catalog"]]
+      (is (nil? error))
+      (is (= pin (first log)))
+      (is (= 2 (count (filter #{pin} log)))))))
+
+(deftest workspace-destroy-ends-sessions-before-drops-test
+  (testing "destroy pins search_path, then ends the workspace user's sessions, before any REVOKE or DROP"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {"FROM pg_user WHERE"      [{:?column? 1}]
+                                             "FROM pg_namespace WHERE" [{:?column? 1}]
+                                             "FROM stv_sessions"       [{:process 41} {:process 42}]})
+                               #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))
+          positions           (map #(.indexOf ^java.util.List log %)
+                                   [[:query "SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?"
+                                     ["mb__isolation_user_1"]]
+                                    [:query "SELECT pg_terminate_backend(?) AS ended" [41]]
+                                    [:query "SELECT pg_terminate_backend(?) AS ended" [42]]
+                                    [:execute (str "ALTER DEFAULT PRIVILEGES IN SCHEMA \"mb__isolation_ws_1\" "
+                                                   "REVOKE ALL ON TABLES FROM \"mb__isolation_user_1\"")]
+                                    [:execute "DROP SCHEMA IF EXISTS \"mb__isolation_ws_1\" CASCADE"]
+                                    [:execute "DROP USER IF EXISTS \"mb__isolation_user_1\""]])]
+      (is (nil? error))
+      (is (= [:execute "SET LOCAL search_path TO pg_catalog"] (first log)))
+      (is (every? nat-int? positions))
+      (is (apply < positions))))
+  (testing "pg_terminate_backend runs only in statements that read no table: Redshift refuses it on the leader node otherwise"
+    (let [{:keys [log]} (run-with-fake-jdbc
+                         (answer-with {"FROM pg_user WHERE" [{:?column? 1}], "FROM stv_sessions" [{:process 41}]})
+                         #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= ["SELECT pg_terminate_backend(?) AS ended"]
+             (keep (fn [[_ sql]] (when (str/includes? sql "pg_terminate_backend") sql)) log)))))
+  (testing "destroy ends no sessions when the workspace user is already gone"
+    (let [{:keys [log]} (run-with-fake-jdbc
+                         (answer-with {})
+                         #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (not-any? (fn [[_ sql]] (str/includes? sql "pg_terminate_backend")) log)))))
+
+(deftest workspace-init-refuses-late-collision-test
+  (testing "control: a schema that the check finds gives the 409 refusal"
+    (let [{:keys [error]} (run-with-fake-jdbc
+                           (answer-with {"FROM pg_namespace WHERE" [{:?column? 1}]})
+                           #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= {:status-code 409, :workspace/cleanup? false}
+             (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
+  (doseq [[what sqlstate message check-table] [["schema" "42P06" "ERROR: schema \"mb__isolation_ws_1\" already exists"
+                                                "FROM pg_namespace WHERE"]
+                                               ["user" "42710" "ERROR: user \"mb__isolation_user_1\" already exists"
+                                                "FROM pg_user WHERE"]]]
+    (testing (str "a " what " created after the check fails CREATE with " sqlstate ", and init refuses: provisioning must not tear down")
+      (let [batch-error         (doto (java.sql.BatchUpdateException. "Batch entry 0 was aborted" ^String sqlstate 0 (int-array 0))
+                                  (.setNextException (java.sql.SQLException. ^String message ^String sqlstate)))
+            {:keys [log error]} (run-with-fake-jdbc
+                                 (answer-with {})
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:batch-error batch-error})
+            check-error         (:error (run-with-fake-jdbc
+                                         (answer-with {check-table [{:?column? 1}]})
+                                         #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)))]
+        (is (some #{"CREATE SCHEMA \"mb__isolation_ws_1\""} (executed log)))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))
+        (testing "with the message and data of the check's 409, which give the recovery steps"
+          (is (= (ex-message check-error) (ex-message error)))
+          (is (= (ex-data check-error) (ex-data error))))
+        (testing "and the server's error as its cause"
+          (is (= message (ex-message (ex-cause error)))))))))
+
+(deftest workspace-init-refusal-survives-failed-rollback-test
+  (let [answer (answer-with {"FROM pg_namespace WHERE" [{:?column? 1}]})]
+    (testing "control: after a successful rollback, init's error is the 409 refusal"
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 answer
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:real-transaction? true})]
+        (is (some #{[:rollback]} log))
+        (is (not-any? #{[:discard]} log))
+        (is (= {:status-code 409, :workspace/cleanup? false}
+               (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
+    (testing "after a failed rollback, init's error still says that provisioning must not tear down"
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 answer
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:real-transaction? true
+                                  :rollback-error    (java.sql.SQLException. "An I/O error occurred while sending to the backend." "08006")})]
+        (is (some #{[:rollback]} log))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))
+        (testing "with the rollback's error attached as suppressed"
+          (is (= ["An I/O error occurred while sending to the backend."]
+                 (map ex-message (.getSuppressed ^Throwable error)))))
+        (testing "and the connection discarded, not returned to the pool"
+          (is (some #{[:discard]} log)))))))
