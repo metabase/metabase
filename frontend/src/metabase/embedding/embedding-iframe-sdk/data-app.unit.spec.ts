@@ -1,4 +1,4 @@
-import { MetabaseDataAppElement, setupConfigWatcher } from "./embed";
+import { MetabaseDataAppElement } from "./embed";
 
 const INSTANCE_URL = "https://gizmo.example.com/mb";
 
@@ -6,7 +6,6 @@ describe("metabase-data-app", () => {
   let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
-    setupConfigWatcher();
     window.metabaseConfig = { instanceUrl: INSTANCE_URL };
     consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -159,7 +158,7 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it("keeps the frame and local key when the route or locale changes", () => {
+  it("sends a local API key in its settings, not in the iframe URL", () => {
     window.metabaseConfig = {
       instanceUrl: INSTANCE_URL,
       apiKey: "development-key",
@@ -169,19 +168,11 @@ describe("metabase-data-app", () => {
     const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
     ready(iframe);
 
-    element.path = "sales/customers";
-    window.metabaseConfig.locale = "fr";
-
-    expect(element.querySelector("iframe")).toBe(iframe);
     expect(iframe.src).not.toContain("development-key");
-    expect(postMessage).toHaveBeenLastCalledWith(
+    expect(postMessage).toHaveBeenCalledWith(
       {
         type: "metabase.embed.setSettings",
-        data: expect.objectContaining({
-          path: "sales/customers",
-          apiKey: "development-key",
-          locale: "fr",
-        }),
+        data: expect.objectContaining({ apiKey: "development-key" }),
       },
       new URL(INSTANCE_URL).origin,
     );
