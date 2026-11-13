@@ -401,11 +401,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
             [CS.scrollHideAll]: isEditingDashboard,
           })}
           h="100%"
-          fz={fontSize}
-          style={
-            // the cells size their rows from this custom property, which CSSProperties does not type
-            { "--pivot-cell-height": `${CELL_HEIGHT}px` } as React.CSSProperties
-          }
+          // inline so the px size matches the measured column widths; fz would convert it to rem
+          style={{ "--pivot-cell-height": `${CELL_HEIGHT}px`, fontSize }}
           data-testid="pivot-table"
         >
           <ScrollSync>

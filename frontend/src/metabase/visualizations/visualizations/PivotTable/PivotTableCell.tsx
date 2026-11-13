@@ -168,16 +168,13 @@ export function Cell({
       })}
       data-allow-page-break-after
       data-testid="pivot-table-cell"
-      style={
-        // custom properties, which CSSProperties does not type
-        {
-          ...style,
-          ...(backgroundColor ? { backgroundColor } : {}),
-          "--pivot-cell-color": getCellColor(theme),
-          "--pivot-cell-bg": getCellBackgroundColor(colorProps),
-          "--pivot-cell-hover-bg": getCellHoverBackgroundColor(colorProps),
-        } as React.CSSProperties
-      }
+      style={{
+        ...style,
+        ...(backgroundColor ? { backgroundColor } : {}),
+        "--pivot-cell-color": getCellColor(theme),
+        "--pivot-cell-bg": getCellBackgroundColor(colorProps),
+        "--pivot-cell-hover-bg": getCellHoverBackgroundColor(colorProps),
+      }}
       onClick={onClick}
     >
       <>

@@ -97,14 +97,11 @@ export function RowToggleIcon({
       className={cx(S.rowToggle, CS.cursorPointer)}
       align="center"
       p="xxs"
-      style={
-        // custom properties, which CSSProperties does not type
-        {
-          "--pivot-row-toggle-color": color(textColor),
-          "--pivot-row-toggle-bg": color(backgroundColor),
-          "--pivot-row-toggle-hover-bg": hoverColor,
-        } as React.CSSProperties
-      }
+      style={{
+        "--pivot-row-toggle-color": color(textColor),
+        "--pivot-row-toggle-bg": color(backgroundColor),
+        "--pivot-row-toggle-hover-bg": hoverColor,
+      }}
       data-testid={testId}
       onClick={(e) => {
         e.stopPropagation();
