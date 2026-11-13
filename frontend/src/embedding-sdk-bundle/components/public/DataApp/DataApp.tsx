@@ -1,6 +1,5 @@
 import { type CSSProperties, useId, useMemo } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
@@ -8,7 +7,6 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
-  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
@@ -46,13 +44,6 @@ function DataAppInner({ path, ...props }: DataAppProps) {
   const id = useId();
   const reduxStore = useSdkStore();
 
-  useTrackSdkComponentMount(
-    "DataApp",
-    // the slug and path are not sent to analytics - this only dedupe events per app
-    getEmbeddedAppSlugFromPath(path) ?? null,
-    {},
-  );
-
   const authConfig = providerProps?.authConfig;
   const instanceUrl = authConfig?.metabaseInstanceUrl;
 
@@ -62,8 +53,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
 
     try {
-      validateDataAppPath(path);
-
+      const slug = validateDataAppPath(path);
       const url = getDataAppEmbedUrl(instanceUrl, path);
 
       // Enable parallel loading of multiple data app embeds on the same page
@@ -73,6 +63,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
         src: url.href,
         origin: url.origin,
         path: normalizeDataAppPath(path),
+        slug,
       };
     } catch (error) {
       return { error: getErrorMessage(error, String(error)) };
