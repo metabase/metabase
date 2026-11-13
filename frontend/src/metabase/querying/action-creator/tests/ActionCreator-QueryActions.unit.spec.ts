@@ -193,7 +193,7 @@ describe("ActionCreator > Query Actions", () => {
       const onClose = jest.fn<void, []>();
       await setup({ action, onClose });
 
-      await userEvent.click(screen.getByLabelText("Show field"));
+      await userEvent.click(await screen.findByLabelText("Show field"));
       const view = screen.getByTestId("mock-native-query-editor");
       await userEvent.type(
         within(view).getByRole("textbox"),
