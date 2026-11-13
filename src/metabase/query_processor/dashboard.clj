@@ -20,6 +20,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.request.core :as request]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -194,7 +195,8 @@
         request-param-id->param   (into {} (map (juxt :id #(dissoc % :default))) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
-    (when-let [user-id api/*current-user-id*]
+    ;; an admin previewing as this user must not change the filter values the user sees next time
+    (when-let [user-id (when-not (request/previewing-admin-id) api/*current-user-id*)]
       ;; only ids the dashboard has: the rest are rejected below, and their ids are unbounded while the
       ;; `user_parameter_value.parameter_id` column is not
       (when-let [known-params (not-empty (filter #(contains? dashboard-param-id->param (:id %)) request-params))]

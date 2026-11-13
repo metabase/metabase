@@ -12,7 +12,6 @@
    [buddy.core.nonce :as nonce]
    [buddy.sign.jwt :as jwt]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
-   [metabase-enterprise.permission-debug.preview :as preview]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.core :as session]
@@ -78,6 +77,37 @@
         {:error "preview-grant-expired"}
         (do (log/debug e "Refused a preview grant")
             {:error "preview-grant-invalid"})))))
+
+;;; ------------------------------------------------ The preview scope ------------------------------------------------
+
+(def ^:private readable-paths
+  "`GET` endpoints the SDK's `CollectionBrowser`, `InteractiveDashboard` and `InteractiveQuestion` read, by prefix: the
+  previewed user's own reads, so their permissions decide what comes back."
+  #"^/api/(user/current|session/properties|collection|dashboard|card|dataset|table|field|database|search|segment|measure|timeline|native-query-snippet|bookmark|activity/recents|tiles|geojson|user-key-value|model-index|action|ee/content-translation|ee/library|ee/custom-viz-plugin)(/.*)?$")
+
+(def ^:private query-posts
+  "`POST` endpoints that only read: running a query, a saved question or a dashboard card, loading parameter values, or
+  translating entity IDs. Downloads aren't here: a preview shows the rows, it doesn't export them."
+  [#"^/api/dataset$"
+   #"^/api/dataset/pivot$"
+   #"^/api/dataset/native$"
+   #"^/api/dataset/query_metadata$"
+   #"^/api/dataset/parameter/values$"
+   #"^/api/dataset/parameter/search/[^/]+$"
+   #"^/api/card/\d+/query$"
+   #"^/api/card/pivot/\d+/query$"
+   #"^/api/dashboard/\d+/dashcard/\d+/card/\d+/query$"
+   #"^/api/dashboard/pivot/\d+/dashcard/\d+/card/\d+/query$"
+   #"^/api/eid-translation/translate$"])
+
+(defn- in-preview-scope?
+  "Whether a preview may reach `request`'s endpoint. The preview scope is this allowlist rather than an endpoint
+  `:scope` tag; the data-app query checks don't apply, since preview requests aren't data-app scoped."
+  [{:keys [request-method uri]}]
+  (case request-method
+    (:get :head :options) (boolean (re-matches readable-paths uri))
+    :post                 (boolean (some #(re-matches % uri) query-posts))
+    false))
 
 ;;; ------------------------------------------------ The swap ------------------------------------------------
 
@@ -169,10 +199,11 @@
             (target-refusal target)
             (target-refusal target)
 
-            (not (preview/read-only-request? request))
-            (do (log/infof "Refused %s %s while admin %d previews user %d"
-                           (u/upper-case-en (name (:request-method request))) (:uri request) admin-id user-id)
-                (refusal "preview-read-only" "You're previewing another user, so changes aren't allowed."))
+            (not (in-preview-scope? request))
+            (let [endpoint (str (u/upper-case-en (name (:request-method request))) " " (:uri request))]
+              (log/infof "Refused %s while admin %d previews user %d: outside the preview scope" endpoint admin-id user-id)
+              (refusal "preview-endpoint-not-allowed"
+                       (str "Previews are read-only and reach only some endpoints, and not " endpoint ".")))
 
             :else
             (do

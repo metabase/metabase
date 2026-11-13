@@ -51,8 +51,7 @@
        (not (str/starts-with? uri "/api/embed/"))
        (not (str/starts-with? uri "/api/public/"))))
 
-(defn read-only-request?
-  "Whether `request` only reads: see the namespace docstring."
+(defn- read-only-request?
   [{:keys [request-method uri]}]
   (or (#{:get :head :options} request-method)
       (and (= :post request-method)
