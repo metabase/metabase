@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.test-util :as global-system.tu]
@@ -1021,23 +1022,27 @@
       (is (= {:writes 1, :ticks 1}
              {:writes @writes, :ticks (count @tasks)})))))
 
-(deftest ^:synchronized early-tick-runs-without-the-requesting-user-test
-  (testing "an early tick asked for by a user under a bound state runs against that state, without the user's bindings"
-    (let [tasks (atom [])
-          seen  (promise)
-          box   (token-check/initial-state)]
-      ;; for every thread, since the task runs on one that has none of this test's bindings, and is built around the
-      ;; var's value when the tick is asked for
+(deftest ^:synchronized early-tick-carries-only-the-token-state-test
+  (testing (str "an early tick asked for by a user under a bound state and a bound app DB runs against that state, "
+                "with neither the user's bindings nor that app DB")
+    (let [tasks  (atom [])
+          seen   (promise)
+          box    (token-check/initial-state)
+          app-db (mdb.connection/application-db-handle)]
+      ;; for every thread, since the task runs on one that has none of this test's bindings
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [token-check/safe-tick! #(deliver seen {:user-id     api/*current-user-id*
-                                                           :same-state? (identical? box @(token-check/state-handle))})]
+                                                           :same-state? (identical? box @(token-check/state-handle))
+                                                           :app-db      @app-db})]
         (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
           (mc/binding (token-check/state-handle) box
                       (fn []
                         (mt/with-current-user (mt/user->id :rasta)
-                          (#'token-check/tick-for-new-token! "new-token-hash")))))
+                          ;; nothing reads the app DB while the tick is asked for, so a stand-in can be bound
+                          (mc/binding app-db ::bound-app-db
+                                      #(#'token-check/tick-for-new-token! "new-token-hash"))))))
         (doto (Thread. ^Runnable (first @tasks))
           (.start)
           (.join 5000)))
-      (is (= {:user-id nil, :same-state? true}
+      (is (= {:user-id nil, :same-state? true, :app-db @app-db}
              (deref seen 1000 ::not-run))))))

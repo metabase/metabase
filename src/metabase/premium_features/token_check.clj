@@ -17,6 +17,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.db :as premium-features.db]
@@ -666,9 +667,10 @@
         (let [[previous] (swap-state! box assoc :ticked-for-token-hash token-hash)]
           (when (not= token-hash (:ticked-for-token-hash previous))
             (try
-              ;; with the requester's component bindings, and no others such as the requesting user's, so a tick
-              ;; asked for under a bound state runs against that state with the refresher's own permissions
-              (.execute exec ^Runnable (system/component-bound-fn safe-tick!))
+              ;; under the requester's token state and nothing else it has bound, such as its user or an app DB, so a
+              ;; tick asked for under a bound state fills that state from the root app DB, with the refresher's own
+              ;; permissions
+              (.execute exec ^Runnable (fn [] (mc/binding state-component box safe-tick!)))
               (catch RejectedExecutionException _e
                 nil))))))))
 
