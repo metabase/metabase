@@ -426,3 +426,32 @@
               (testing "control: a config whose two forms agree loads and keeps the row"
                 (is (= :ok (advanced-config.file/initialize! (config " ws_l "))))
                 (is (= ["ws_l"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))))))))))
+
+(deftest databases-settings-without-the-schema-keep-remappings-at-boot-test
+  (testing "a config whose :workspace section names a database's schema, and whose databases[].settings for it has no
+            database-workspace-schema, keeps the database's remap rows at boot"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_l"}}]
+            (let [config (fn [settings]
+                           {:version 1
+                            :config  {:databases [{:name     db-name
+                                                   :engine   "h2"
+                                                   :details  (:details (mt/db))
+                                                   :settings settings}]
+                                      :workspace {:name      "W"
+                                                  :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                                                 :output        {:schema "ws_l"}}}}}})
+                  rows   #(t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)]
+              (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC"
+                                                 :from_table_name "VENUES"
+                                                 :to_db "" :to_schema "ws_l" :to_table_name "PUBLIC__VENUES"})
+              (testing "control: settings that name the same schema keep the row"
+                (is (= :ok (advanced-config.file/initialize! (config {:database-workspace-schema "ws_l"}))))
+                (is (= ["ws_l"] (rows))))
+              (is (= :ok (advanced-config.file/initialize! (config {:database-enable-actions true}))))
+              (is (= {:schema "ws_l"} (ws/db-workspace-namespace db-id)) "premise: the boot leaves the section's schema")
+              (is (= ["ws_l"] (rows))))))))))
