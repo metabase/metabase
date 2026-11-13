@@ -47,6 +47,13 @@
   [{:keys [user-id is-superuser?]}]
   (and (nil? user-id) (not is-superuser?)))
 
+(defn- root-objects
+  "The `metabase.permissions.db/root-objects` of the root Collection of `root-namespace`."
+  [root-namespace]
+  (let [root {:metabase.collections.models.collection.root/is-root? true :namespace (some-> root-namespace name)}]
+    {:write-object (permissions.path/collection-readwrite-path root)
+     :read-object  (permissions.path/collection-read-path root)}))
+
 (defn- root-collection-permission
   "The permission of the user of `user-info` on the root Collection of `root-namespace`: a superuser writes every root,
   and a data analyst the transforms one."
@@ -106,3 +113,16 @@
   a shared tenant Collection on an instance without tenants."
   [user-info :- ::permissions.schema/collection-user-info]
   (rank->permission (permissions.db/some-collection-rank (collection-user user-info))))
+
+(mu/defn visible-collections-filter-clause :- [:fn vector?]
+  "A HoneySQL where-clause holding when `collection-id-field`, qualified with its table, is a Collection listed to the
+  user of `user-info` with `options` (see `::permissions.schema/collection-filter-options`), or nil when they have
+  the permission on the root Collection of its namespace. It probes the Collection of each row, so a query asking about
+  a few rows doesn't work out every visible Collection."
+  [collection-id-field :- :keyword
+   user-info           :- ::permissions.schema/collection-user-info
+   options             :- ::permissions.schema/collection-filter-options]
+  (permissions.db/visible-collections-filter-clause collection-id-field
+                                                    (collection-user user-info)
+                                                    (root-objects (:root-namespace options))
+                                                    options))

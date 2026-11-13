@@ -954,6 +954,7 @@
            models
            parameters
            parameters.schema
+           permissions
            public-sharing
            queries
            query-permissions
@@ -1799,7 +1800,6 @@
            metabase.metrics.core}
    :uses #{api
            app-db
-           collections
            events
            lib
            lib.be
@@ -3139,6 +3139,7 @@
            events
            lib.schema
            models
+           permissions
            remote-sync
            serialization
            util}
@@ -4242,6 +4243,7 @@
            api-scope
            collections
            lib.schema
+           permissions
            premium-features
            util}
    :model-imports #{:model/Card
@@ -4275,7 +4277,6 @@
    :uses #{analytics
            analytics.interface
            audit-app
-           collections
            driver
            models
            util

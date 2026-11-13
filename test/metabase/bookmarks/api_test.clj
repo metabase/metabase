@@ -5,6 +5,7 @@
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -321,3 +322,13 @@
       (testing "archived explorations don't appear in bookmark list"
         (is (empty? (filter #(= (:type %) "exploration")
                             (mt/user-http-request :rasta :get 200 "bookmark"))))))))
+
+(deftest data-analyst-transforms-collection-bookmark-test
+  (testing "GET /api/bookmark lists transforms Collection bookmarked by data analyst"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection         {coll-id :id} {:name "Transforms folder" :namespace "transforms"}
+                     :model/CollectionBookmark _             {:user_id (mt/user->id :rasta) :collection_id coll-id}]
+        (let [bookmarked-ids #(into #{} (map :item_id) (mt/user-http-request :rasta :get 200 "bookmark"))]
+          (is (not (contains? (bookmarked-ids) coll-id)))
+          (perms.tu/with-data-analyst-role! (mt/user->id :rasta)
+            (is (contains? (bookmarked-ids) coll-id))))))))

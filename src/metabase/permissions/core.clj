@@ -43,7 +43,8 @@
  [metabase.permissions.collection-permissions
   collection-permission-at-least?
   collection-permissions-for-user
-  some-collection-permission-for-user]
+  some-collection-permission-for-user
+  visible-collections-filter-clause]
  [metabase.permissions.db
   group-tenant-flags
   groups-by-ids]

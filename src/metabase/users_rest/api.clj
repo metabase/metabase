@@ -305,15 +305,22 @@
     (assoc user :sso_source (users-rest.db/user-sso-source id))
     user))
 
+(defn- collection-user-info
+  "The user info of `user` for the Collection permission filters."
+  [user]
+  {:user-id          (:id user)
+   :is-superuser?    (boolean (:is_superuser user))
+   :is-data-analyst? (boolean (:is_data_analyst user))})
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
   (-> user
       (assoc :has_question_and_dashboard
-             (and (users-rest.db/has-visible-card? nil)
-                  (users-rest.db/has-visible-dashboard?)))
-      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
+             (and (users-rest.db/has-visible-card? (collection-user-info user) nil)
+                  (users-rest.db/has-visible-dashboard? (collection-user-info user))))
+      (assoc :has_model (users-rest.db/has-visible-card? (collection-user-info user) "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -340,7 +347,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (users-rest.db/writable-collection-exists?))))
+             (= :read-and-write (perms/some-collection-permission-for-user (collection-user-info user))))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,

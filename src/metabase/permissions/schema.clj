@@ -256,3 +256,19 @@
    [:user-id          [:maybe pos-int?]]
    [:is-superuser?    :boolean]
    [:is-data-analyst? :boolean]])
+
+(mr/def ::collection-filter-options
+  "Options of the Collection where-clauses:
+
+  - `:permission-level`, `:read` (the default) or `:write`;
+  - `:include-archived-items`, `:exclude` (the default), `:only` or `:all`;
+  - `:include-trash-collection?`, whether the trash counts, false by default;
+  - `:archive-operation-id`, only the Collections archived together by one operation, and the trash;
+  - `:root-namespace`, the namespace whose root Collection a nil collection id stands for, nil for the default one. It
+    is per entity, so the caller filtering the entity sets it."
+  [:map {:closed true}
+   [:permission-level          {:optional true} [:enum :read :write]]
+   [:include-archived-items    {:optional true} [:enum :only :exclude :all]]
+   [:include-trash-collection? {:optional true} :boolean]
+   [:archive-operation-id      {:optional true} [:maybe :string]]
+   [:root-namespace            [:maybe [:or :keyword :string]]]])

@@ -104,7 +104,7 @@
                 (fn [active-only?]
                   (let [select (published-tables/published-table-perm-grant-rows
                                 user-info [:perms/create-queries] active-only?)]
-                    (->> (t2/query (update select :where (fn [w] [:and w [:in :mt.id table-ids]])))
+                    (->> (t2/query (update select :where (fn [w] [:and w [:in :published_table.id table-ids]])))
                          (map (juxt :id :perm_type :perm_value))
                          set)))]
             (testing "without active-only? both active and inactive published+visible tables produce grants"

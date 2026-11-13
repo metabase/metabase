@@ -3,7 +3,6 @@
   Provides query access to published tables via collection permissions."
   (:require
    [metabase-enterprise.data-studio.db :as data-studio.db]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -44,20 +43,21 @@
   :query-builder`; `:perms/view-data` is intentionally not synthesized — view-data must come from
   real `data_permissions` entries.
 
-  Returns nil when the caller's permission mapping does not include `:perms/create-queries`."
+  Returns nil when the caller's permission mapping does not include `:perms/create-queries`. The Table has an alias of
+  its own, `published_table`: H2 resolves a qualified column in a subquery against the same alias of an earlier branch
+  of the union this select goes into."
   :feature :library
-  [{:keys [user-id is-superuser?]} perm-types active-only?]
+  [{:keys [user-id is-superuser? is-data-analyst?]} perm-types active-only?]
   (when (contains? (set perm-types) :perms/create-queries)
     ^:allow-subquery
-    {:select [[:mt.id :id]
+    {:select [[:published_table.id :id]
               [(h2x/literal :perms/create-queries) :perm_type]
               [(h2x/literal :query-builder) :perm_value]]
-     :from   [[(t2/table-name :model/Table) :mt]]
+     :from   [[(t2/table-name :model/Table) :published_table]]
      :where  (cond-> [:and
-                      [:= :mt.is_published true]
-                      (collection/visible-collection-filter-clause
-                       :mt.collection_id
-                       {}
-                       {:current-user-id user-id
-                        :is-superuser?   is-superuser?})]
-               active-only? (conj [:= :mt.active true]))}))
+                      [:= :published_table.is_published true]
+                      (perms/visible-collections-filter-clause
+                       :published_table.collection_id
+                       {:user-id user-id, :is-superuser? is-superuser?, :is-data-analyst? (boolean is-data-analyst?)}
+                       {:root-namespace nil})]
+               active-only? (conj [:= :published_table.active true]))}))

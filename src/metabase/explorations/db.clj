@@ -4,12 +4,13 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
@@ -73,7 +74,7 @@
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
                         [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
              :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))

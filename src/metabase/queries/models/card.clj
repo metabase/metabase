@@ -244,9 +244,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
-                                                                :include-archived-items    :exclude
-                                                                :permission-level          :read})])
+   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
+                                                                                                :include-archived-items    :exclude
+                                                                                                :permission-level          :read
+                                                                                                :root-namespace            nil})])
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
