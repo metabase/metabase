@@ -5,6 +5,7 @@
    [malli.json-schema :as mjs]
    [metabase.api-scope.core :as api-scope]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -359,7 +360,14 @@
                 (is (=? {:class :recoverable
                          :code  ::recoverable.common/not-found
                          :text  #(str/starts-with? % (str entity " was not found."))}
-                        (failure {:target_type target-type, (keyword (str target-type "_id")) id})))))))))))
+                        (failure {:target_type target-type, (keyword (str target-type "_id")) id}))))))
+          (testing "rasta saving to the root collection without read access to it"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (=? {:class :recoverable
+                       :code  ::recoverable.common/not-found
+                       :text  #(str/starts-with? % "The entity referenced here was not found. It may not exist, or you may not have access to it.")}
+                      (failure {:target_type "collection" :collection_id nil}))))
+            (is (not (t2/exists? :model/Card :collection_id nil :name (:name chart-args))))))))))
 
 (deftest read-only-destination-test
   (testing "a read-only destination produces a recoverable error that offers another collection"
@@ -369,6 +377,7 @@
                        :model/Dashboard  dash {:collection_id (:id coll)}
                        :model/Document   doc  {:collection_id (:id coll) :document document-ast}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
           (mt/with-current-user (mt/user->id :rasta)
             (doseq [[destination noun] [[{:target_type "collection" :collection_id (:id coll)}
                                          (str "collection " (:id coll))]
@@ -504,6 +513,7 @@
                    :model/Dashboard dash {:collection_id (:id coll)}
                    :model/Document doc {:collection_id (:id coll) :document document-ast}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
       (mt/with-current-user user-id
         (doseq [destination [{:target_type "collection" :collection_id (:id coll)}
                              {:target_type "collection" :collection_id nil}
