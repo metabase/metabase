@@ -17,6 +17,7 @@ export function TableStructureSections({ table }: { table: Table }) {
   const { role } = useTableStructures().getTableStructure(table);
   const isCustomPropertyTable =
     role != null && isRoleA(role, "role/CustomPropertyTable");
+  const isHistoryTable = role != null && isRoleA(role, "role/HistoryDimension");
   const getConnectedDataUrl = (tab: "properties") =>
     Urls.dataStudioData({
       databaseId: table.db_id,
@@ -29,7 +30,11 @@ export function TableStructureSections({ table }: { table: Table }) {
     <>
       <DatabaseInfoSection
         name={t`Structure`}
-        description={t`Its role, what one row is, and its main date. These change how queries on this table work.`}
+        description={
+          isHistoryTable
+            ? t`Its role, what one row is, and the dates each version is true for. These change how queries on this table work.`
+            : t`Its role, what one row is, and its main date. These change how queries on this table work.`
+        }
         contentPx="xxxl"
         cardRadius="lg"
       >
@@ -39,9 +44,6 @@ export function TableStructureSections({ table }: { table: Table }) {
             readOnly={!table.can_write}
             hasTitle={false}
             layout="form"
-            getFieldUrl={(fieldId) =>
-              Urls.dataStudioTableFields(table.id, fieldId)
-            }
           />
         </Stack>
       </DatabaseInfoSection>
