@@ -51,6 +51,20 @@ describe("Help (EE)", () => {
     reinitialize();
   });
 
+  it("does not show the `Helping hand` section without a token", async () => {
+    setup({ isPaidPlan: false });
+
+    expect(
+      await screen.findByRole("heading", { name: "Diagnostic info" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Helping hand" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Request a helping hand" }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("on a paid plan without the support-users feature", () => {
     it("links `Get help` to the premium help page with the instance version and diagnostic info", async () => {
       setup({ tokenFeatures: PRO_SELF_HOSTED_FEATURES });
