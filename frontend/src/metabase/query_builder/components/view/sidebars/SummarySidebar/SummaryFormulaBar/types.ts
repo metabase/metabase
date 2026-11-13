@@ -1,6 +1,6 @@
 import type * as Lib from "metabase-lib";
 
-import type { SummaryWellId } from "../types";
+import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 
 /**
  * The formula behind a well's chip. An unnamed one takes its name from the edited source.
@@ -28,14 +28,22 @@ export type SummaryFormulaBarOptions = {
   query: Lib.Query;
   stageIndex: number;
   onAdd: (query: Lib.Query, wellId: SummaryWellId) => void;
-  onEdit: (query: Lib.Query, formula: SummaryFormula) => void;
+  onEdit: (query: Lib.Query, options: SummaryQueryChangeOptions) => void;
 };
 
 export type SummaryFormulaDraft = {
   key: number;
   wellId: SummaryWellId;
   source: string;
-} & ({ kind: "new" } | { kind: "edit"; formula: SummaryFormulaEdit });
+} & (
+  | { kind: "new" }
+  | {
+      kind: "edit";
+      formula: SummaryFormulaEdit;
+      /** The formula's name when it was generated from its source, once that is printed. */
+      generatedName?: string;
+    }
+);
 
 export type SummaryFormulaInput = {
   start: (source: string, input: HTMLInputElement, onReady: () => void) => void;
