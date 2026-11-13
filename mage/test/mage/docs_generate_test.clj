@@ -1,5 +1,6 @@
 (ns mage.docs-generate-test
   (:require
+   [babashka.fs :as fs]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.docs-generate :as docs-generate]
@@ -8,6 +9,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private backend-command ["clojure" "-M:ee:doc" "all-documentation"])
+
+(def ^:private driver-features-file "src/metabase/cmd/driver_feature_dox.clj")
 
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in.
@@ -45,7 +48,7 @@
                                                  ["bun" "run" "embedding-sdk:docs:generate"] 1}
                                                 docs-generate/suite-names)]
     (testing "every suite runs"
-      (is (= 4 (count calls))))
+      (is (= (count docs-generate/suite-names) (count calls))))
     (testing "the failed suites are reported, in suite order"
       (is (= ["backend" "embedding-sdk"] failed))
       (is (str/includes? out "Failed: backend, embedding-sdk")))))
@@ -71,8 +74,26 @@
                      (:babashka/exit (ex-data e)))))))
       (is (= [backend-command] @calls))))
   (testing "with `:dir`, runs every suite in that checkout"
-    (let [calls (atom [])]
-      (with-redefs [shell/sh* (fake-sh calls {})]
-        (with-out-str (docs-generate/run! nil {:dir "/tmp/release-checkout"})))
-      (is (= (repeat (count docs-generate/suite-names) {:dir "/tmp/release-checkout"})
-             (map first @calls))))))
+    (fs/with-temp-dir [tmp {}]
+      (let [dir   (str tmp)
+            calls (atom [])]
+        (fs/create-dirs (fs/parent (fs/path dir driver-features-file)))
+        (fs/create-file (fs/path dir driver-features-file))
+        (with-redefs [shell/sh* (fake-sh calls {})]
+          (with-out-str (docs-generate/run! nil {:dir dir})))
+        (is (= (repeat (count docs-generate/suite-names) {:dir dir})
+               (map first @calls)))))))
+
+(deftest suite-without-its-generator-is-skipped-test
+  (fs/with-temp-dir [tmp {}]
+    (let [available-suites #(#'docs-generate/available-suites (str tmp) docs-generate/suite-names)]
+      (testing "a checkout without the generator, such as a release branch, skips only that suite"
+        (let [out (with-out-str
+                    (is (= (remove #{"driver-features"} docs-generate/suite-names)
+                           (available-suites))))]
+          (is (str/includes? out (str "Skipping driver-features docs: this checkout does not have "
+                                      driver-features-file)))))
+      (testing "a checkout with the generator runs every suite"
+        (fs/create-dirs (fs/parent (fs/path tmp driver-features-file)))
+        (fs/create-file (fs/path tmp driver-features-file))
+        (is (= docs-generate/suite-names (available-suites)))))))

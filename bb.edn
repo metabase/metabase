@@ -504,9 +504,10 @@
 
   docs-generate
   {:group "Local dev"
-   :doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
+   :doc "Regenerate the docs that are built from source. The backend suite runs the Clojure generators in one JVM. driver-features runs in its own JVM, with the driver modules."
    :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
               ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate driver-features" "Database feature support (needs the driver modules)"]
               ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
               ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
               ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
@@ -515,6 +516,7 @@
                 [:tuple]
                 [:tuple [:enum {:name "suite"}
                          "backend"
+                         "driver-features"
                          "usage-analytics"
                          "embedding-sdk"
                          "embedding-eajs"]]]
