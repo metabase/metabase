@@ -12,6 +12,8 @@
   Each row is a narrow pre-image snapshot: a plain map of raw column values, holding only the columns named by
   [[capture-fields]], selected with the statement's own conditions immediately before it executes.
   No instance decoration runs on them: no `after-select` methods and no type transforms.
+  When [[capture-fields]] is just the primary key and the statement names rows by literal primary key, the rows
+  are built from those keys without a query, so they can include keys that matched nothing.
 
   Deletes are captured because they have no affordable row-level hook: toucan2's `before-delete` realizes a
   full instance per matching row.
@@ -27,6 +29,8 @@
     No consumer needs delivery before commit; it stays there because this namespace is meant to become a
     toucan2 tool, and toucan2 knows nothing of Metabase's commit callbacks.
   - An empty pre-image snapshot delivers no event.
+    Rows built from literal primary keys are not a snapshot: a statement naming keys that match nothing still
+    delivers an event for those keys.
   - A statement matching more rows than [[max-pre-image-rows]] delivers no event, so that a wide delete cannot
     materialize an unbounded result set on the caller's thread.
     This is a capture hole, and a loud one: the consumer's convergence backstop is what covers it.
@@ -44,9 +48,11 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.pipeline :as t2.pipeline]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,8 +96,10 @@
 ;; the event arrives they are already gone, and their identity was never derivable from the deleted rows alone.
 (defmulti dependents
   "Identify whatever else the statement is about to destroy, while it still exists.
-  Called with the pre-image `rows`, before the statement runs; the return value rides on the event as
+  Called with the event's `rows`, before the statement runs; the return value rides on the event as
   `:dependents`, and nil (the default) leaves the key off.
+  The rows are the pre-image snapshot, or, for a delete by literal primary key, maps built from the named keys,
+  which can name rows that don't exist.
   Implementations run on the calling thread inside the statement's transaction.
   They may query, since nothing has failed yet at this point, but their failures propagate and abort the caller's
   delete, so keep them narrow.
@@ -163,27 +171,66 @@
                   (map #(into {} (t2.realize/realize %)))
                   conj []
                   (t2.execute/reducible-query sql-args))]
-        (cond
-          ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
-          ;; compiled query instead of running it, without calling the reducing function, so `transduce` above
-          ;; returns that query as is.
-          ;; Only rows are rows: anything else means no statement ran, so there is nothing to capture.
-          (not (every? map? rows))
-          nil
-
-          (< max-pre-image-rows (count rows))
+        (if (< max-pre-image-rows (count rows))
           (do (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
                           model max-pre-image-rows)
               nil)
-
-          :else
           rows)))))
+
+(defn- literal-pks
+  "The integer primary keys a pk condition value names, or nil for any other shape or a non-integer key.
+  Accepts the shapes `toucan2` accepts for `:toucan/pk`: a lone value, `[value]`, `[:= value]` and `[:in values]`."
+  [v]
+  (let [pks (cond
+              (int? v)                                     [v]
+              (and (vector? v) (= 1 (count v)))            v
+              (and (vector? v) (#{:= :in} (first v))
+                   (= 2 (count v)))                        (let [x (second v)] (if (int? x) [x] x))
+              :else                                        nil)]
+    (when (and (coll? pks) (every? int? pks))
+      (distinct (seq pks)))))
+
+(defn- pk-only-rows
+  "Snapshot rows built from the statement's own arguments, when `fields` is just the model's primary key and the
+  statement names rows by literal primary key and nothing else.
+  Returns nil when that isn't the case, and `::skip` when the statement names more than [[max-pre-image-rows]] rows."
+  [model fields parsed-args resolved-query]
+  (let [pk-columns (t2/primary-keys model)
+        pk         (first pk-columns)
+        kv-args    (:kv-args parsed-args)]
+    (when-let [pks (when (and (= 1 (count pk-columns))
+                              (= #{pk} (set fields)))
+                     (cond
+                       (and (int? resolved-query) (empty? kv-args))
+                       [resolved-query]
+
+                       (and (= {} resolved-query) (= 1 (count kv-args)))
+                       (let [[k v] (first kv-args)]
+                         (when (#{pk :toucan/pk} k)
+                           (literal-pks v)))))]
+      ;; Checked last: `t2/transforms` is an uncached multimethod call, and most deletes don't name literal keys.
+      (when-not (and (isa? model ::t2.transformed/transformed.model)
+                     (contains? (t2/transforms model) pk))
+        (if (< max-pre-image-rows (count pks))
+          (do (log/errorf "Skipping DML capture for %s: statement names more than %d rows" model max-pre-image-rows)
+              ::skip)
+          (mapv (fn [id] {pk id}) pks))))))
+
+;; Toucan's query-inspection tooling (`t2/compile`, `t2/build`, `t2/resolved`) rebinds execution to hand back the query
+;; instead of running it.
+;; This relies on the root binding of `*transduce-execute*`, which toucan2 does not document: recheck it on toucan2
+;; upgrades.
+(defn- statement-runs?
+  "Whether the statement being processed will actually execute."
+  []
+  (identical? t2.pipeline/*transduce-execute* #'t2.pipeline/transduce-execute))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
   "Capture the pre-image of the rows a DELETE statement matches, then deliver one `:delete` event."
   [rf query-type model parsed-args resolved-query]
-  (let [fields (when-not (::captured? parsed-args)
+  (let [fields (when (and (not (::captured? parsed-args))
+                          (statement-runs?))
                  (try
                    (capture-fields model :delete)
                    ;; Capture is still skipped and the delete still runs, but the interrupt is the caller's to see.
@@ -196,10 +243,16 @@
                      nil)))]
     (if (empty? fields)
       (next-method rf query-type model parsed-args resolved-query)
-      (let [rows (pre-image-rows :toucan.query-type/select.instances
-                                 model fields parsed-args resolved-query)
-            deps (when (seq rows)
-                   (dependents model rows))]
+      ;; A delete by literal primary key already names its rows, so it needs no snapshot query. Ids that match nothing
+      ;; only cost the consumer an empty re-derivation.
+      (let [pk-rows (pk-only-rows model fields parsed-args resolved-query)
+            rows    (cond
+                      (= ::skip pk-rows) nil
+                      pk-rows            pk-rows
+                      :else              (pre-image-rows :toucan.query-type/select.instances
+                                                         model fields parsed-args resolved-query))
+            deps    (when (seq rows)
+                      (dependents model rows))]
         (u/prog1 (next-method rf query-type model (assoc parsed-args ::captured? true) resolved-query)
           (when (seq rows)
             (deliver-captured! model (cond-> {:op :delete, :model model, :rows rows}

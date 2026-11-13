@@ -79,7 +79,7 @@
     ;; Do not hand the re-derivation off until the outer transaction commits; Metabase discards the callback on
     ;; rollback.
     ;; A step with nothing to do is left out, and so is the whole handoff, so a revision or review prune that feeds
-    ;; no document neither holds its rows until commit nor starts a thread.
+    ;; no document neither holds its rows until commit nor registers a callback.
     (let [instances (rows->instances model rows)
           steps     (cond-> []
                       (search/feeds-documents? instances)

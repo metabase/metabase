@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [some mapv not-empty])
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -327,3 +328,28 @@
   "Response schema for an endpoint that returns a [[streaming-response]] of query results.
   OpenAPI documents the query result the stream carries."
   (streaming-response/streaming-response-schema ::qp.schema/query-result))
+
+(mr/def ::json-export-rows
+  "The body of a `json` export: one object per row, keyed by column title."
+  [:sequential [:map-of :string :any]])
+
+(defn export-response-schema
+  "Response schema for an endpoint that returns a [[streaming-response]] in the format the request names.
+  For the `api` format the body is a JSON object matching `api-result-schema`.
+  The other formats give CSV, an XLSX workbook, or a JSON array of rows."
+  [api-result-schema]
+  (mut/update-properties
+   (streaming-response/streaming-response-schema api-result-schema)
+   assoc :openapi/response {:description "Query results in the requested export format"
+                            :content     {"text/csv"
+                                          :string
+
+                                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                          [:string {:json-schema/format "binary"}]
+
+                                          "application/json"
+                                          [:or ::json-export-rows api-result-schema]}}))
+
+(mr/def ::export-response
+  "Response schema for an endpoint that streams query results in the format the request names."
+  (export-response-schema ::qp.schema/query-result))

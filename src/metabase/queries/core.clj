@@ -38,6 +38,7 @@
   card-query-info
   cards-queries-info]
  [metabase.queries.models.card
+  card-read-check-columns
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!

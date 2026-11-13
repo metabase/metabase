@@ -29,7 +29,6 @@
   See [[try-resolve-card-source-info]]."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
@@ -48,6 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.util.performance :as perf]
    [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
@@ -353,7 +353,7 @@
 ;;; their arity isn't fixed, so a trailing map could be a legitimate arg.
 ;;;
 ;;; Repair condition (all four required):
-;;;   * clause-shaped vector (string head, not a map-entry, not an FK path);
+;;;   * clause-shaped vector (string head, not an FK path);
 ;;;   * head matches a known fixed-arity clause;
 ;;;   * count is exactly `expected + 1` (count off by >=2 is too ambiguous - the
 ;;;     schema validator will reject it with a friendly tuple-shape error);
@@ -1316,17 +1316,25 @@
 
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
-    (let [literals (mapv redundant-bucket-literal (subvec node 3))]
-      (if (every? whole-day-bound? (subvec node 3))
+    (let [operands   (subvec node 3)
+          literals   (mapv redundant-bucket-literal operands)
+          timestamp? #(and % (not (re-matches date-only-pattern %)))]
+      (if (every? whole-day-bound? operands)
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
         (unwrap-whole-day-start
-         (into (subvec node 0 3)
-               (map (fn [operand literal]
-                      (if (and literal (not (re-matches date-only-pattern literal))) (t-separated literal) operand))
-                    (subvec node 3) literals)))))
+         (if (some timestamp? literals)
+           (into (subvec node 0 3)
+                 (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
+                      operands literals))
+           node))))
     node))
+
+(def ^:private day-comparison-skipped-keys
+  "Keys that [[repair-day-and-default-comparisons*]] does not descend into, in a map at any depth.
+  Pass 2.95 hoists buckets under the stage keys, and join conditions refuse temporal literals."
+  (conj (set bucket-hoist-stage-keys) "conditions"))
 
 (defn- repair-day-and-default-comparisons*
   "Repair temporal comparisons outside of filters, expressions and join conditions."
@@ -1335,11 +1343,12 @@
     (letfn [(rewrite [node]
               (if (map? node)
                 (reduce-kv (fn [result k v]
-                             (assoc result k (if (or (= k "conditions") (some #{k} bucket-hoist-stage-keys))
-                                               v
-                                               (rewrite v))))
-                           (empty node) node)
-                (walk/walk rewrite repair-day-and-default-comparison node)))]
+                             (if (contains? day-comparison-skipped-keys k)
+                               result
+                               (let [v' (rewrite v)]
+                                 (if (identical? v' v) result (assoc result k v')))))
+                           node node)
+                (perf/walk rewrite repair-day-and-default-comparison node)))]
       (rewrite form))
     form))
 
@@ -2154,7 +2163,6 @@
   accepts numeric ids — a numeric field id."
   [v]
   (and (vector? v)
-       (not (map-entry? v))
        (>= (count v) 3)
        (= "field" (nth v 0))
        (map? (nth v 1))
@@ -2448,7 +2456,7 @@
 (defn- resolve-implicit-joins-in-stage
   "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
 
-  Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
+  Skips descent into the `\"joins\"` subtree by plucking it out before the rewrite and
   restoring it afterwards - field clauses inside explicit joins are expected to carry a
   `join-alias` already."
   [stage mp import-store export-store]
@@ -2677,11 +2685,11 @@
     (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
 
 (defn- postwalk-outside-join-stages
-  "Apply `f` with `walk/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
+  "Postwalk `f` over the parts of `stage` that [[without-join-stages]] keeps.
   Each join's [[hidden-join-keys]] come back unchanged."
   [f stage]
   (let [joins (get stage "joins")]
-    (cond-> (walk/postwalk f (without-join-stages stage))
+    (cond-> (perf/postwalk f (without-join-stages stage))
       (sequential? joins)
       (update "joins" #(mapv (fn [walked join]
                                (cond-> walked
@@ -2946,11 +2954,12 @@
 ;;; refs whose join or field can't be resolved are left for the resolver to report.
 ;;; ============================================================
 
-(defn- join-alias-string-field-clause? [v]
-  (and (not (map-entry? v))
-       (match/matches? v ["field"
-                          {"join-alias" (_ :guard non-blank-string?)}
-                          (_ :guard non-blank-string?)])))
+(defn- join-alias-string-field-clause?
+  "True if `v` is a field ref by column name through a join alias."
+  [v]
+  (match/matches? v ["field"
+                     {"join-alias" (_ :guard non-blank-string?)}
+                     (_ :guard non-blank-string?)]))
 
 (defn- join-alias-path-field-clause?
   "True if `v` is a concrete-column field ref (portable path or numeric id) through an explicit

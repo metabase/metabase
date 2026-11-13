@@ -1,7 +1,6 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
-   [clojure.set :as set]
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -260,24 +259,31 @@
   [instance & [always?]]
   (enqueue-hook-selectors! [instance] always?))
 
+;; Steps run on the committing thread while its connection is still checked out, so each one only queues work.
+;; Without an ingestion worker the queued work runs at once, which is the synchronous DB I/O that
+;; `mdb/do-after-commit` warns against.
+;; There is no worker under `*force-sync*`, nor on a node whose first indexed engine was turned on after startup,
+;; because the worker starts only at boot.
 (defn after-commit!
   "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
-  They run off the committing thread unless ingestion is forced synchronous, and count as pending index work until
-  they finish, see [[search.ingestion/await-pending-updates!]].
-  A step that throws is logged, naming the work by `description`, and the steps after it still run."
+  A step that throws is logged, naming the work by `description`, and the steps after it still run.
+  An interrupt stops the remaining steps."
   [description & steps]
   (mdb/do-after-commit
    (fn []
-     (let [run #(doseq [step steps]
-                  (try
-                    (step)
-                    (catch Throwable e
-                      (log/errorf e "Failed search-index handoff: %s" description))))]
-       (if search.ingestion/*force-sync*
-         ;; This is synchronous DB I/O inside the after-commit thunk, which `mdb/do-after-commit` warns against;
-         ;; only tests bind `*force-sync*`.
-         (run)
-         (search.ingestion/future-counted run))))))
+     (reduce (fn [_ step]
+               (try
+                 (step)
+                 nil
+                 ;; Later steps are skipped: on an interrupted thread their queries fail at once and log a second error.
+                 (catch InterruptedException e
+                   (.interrupt (Thread/currentThread))
+                   (log/errorf e "Interrupted; skipping the rest of the search-index handoff: %s" description)
+                   (reduced nil))
+                 (catch Throwable e
+                   (log/errorf e "Failed search-index handoff: %s" description))))
+             nil
+             steps))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
@@ -345,45 +351,15 @@
                    search.ingestion/max-enumerated-documents))
       merged)))
 
-;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so one unchunked id list
-;; would put up to the enumeration ceiling's worth of bind parameters in every statement it joins. Chunking caps a
-;; worker batch at its message limit times this size; the synchronous path still ORs every chunk into one statement.
-;; A statement the database rejects loses the entire batch, not just the oversized message.
-(def ^:private reindex-batch-size
-  "Ids per re-derivation message."
-  100)
-
-(defn- reconcile-search-model!
-  "Settle the enumerated `ids` of one `search-model`: re-derive the documents that still resolve, remove the rest."
-  [search-model ids]
-  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
-  (when-some [alive (search.ingestion/existing-doc-ids search-model ids)]
-    (let [gone     (set/difference ids alive)
-          messages (cond-> (mapv (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)])
-                                 (partition-all reindex-batch-size alive))
-                     (seq gone) (conj (search.ingestion/tombstone search-model gone)))]
-      (when (seq messages)
-        (search.ingestion/ingest-maybe-async! messages)))))
-
-;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
-;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
 (defn reconcile-cascading-documents!
-  "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
-  Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
-  A search-model whose surviving documents cannot be enumerated is left alone.
-  A failure while checking one search-model's survivors is logged and does not stop the others; an interrupt does.
-  Its queued work shares the ingestion worker's batches, where one failing message loses the run of re-index messages
-  it was coalesced with."
+  "Queue a check of the documents [[cascading-documents]] enumerated, now that the statement has run.
+  The ingestion worker re-derives the ones that still resolve and removes the rest, one search-model per message;
+  see [[search.ingestion/reconcile]]."
   [cascading]
   (when (and (seq cascading) (supports-index?))
-    (doseq [[search-model ids] cascading]
-      (try
-        (reconcile-search-model! search-model ids)
-        (catch InterruptedException e
-          (.interrupt (Thread/currentThread))
-          (throw e))
-        (catch Exception e
-          (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
+    (search.ingestion/ingest-maybe-async!
+     (for [[search-model ids] cascading]
+       (search.ingestion/reconcile search-model ids)))))
 
 (defn delete!
   "Queue removal of a model's corresponding search entries after all earlier re-index messages.

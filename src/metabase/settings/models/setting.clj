@@ -310,8 +310,8 @@
   [setting-keyword-or-name]
   (contains? @registered-settings (keyword setting-keyword-or-name)))
 
-;; The actual watch that triggers this happens in [[metabase.settings.models.setting.cache/cache*]] because the cache might be
-;; swapped out depending on which app DB we have in play
+;; The actual watch that triggers this is added in [[metabase.settings.models.setting.cache/new-state]], because each app
+;; DB has its own cache
 ;;
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
 ;; [[metabase.settings.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
@@ -563,10 +563,10 @@
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
     (settings.db/setting-value setting-name-str)
-    (do
+    (let [cache-state (setting.cache/current-state)]
       ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-      (setting.cache/restore-cache-if-needed!)
-      (let [cache (setting.cache/cache)]
+      (setting.cache/restore-cache-if-needed! :state cache-state)
+      (let [cache (setting.cache/cache cache-state)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
           (settings.db/setting-value setting-name-str)
@@ -609,7 +609,7 @@
     (when init
       (when (not (app-db/db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
-      ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
+      ;; We do not need to interact with the settings cache state's `:restore-lock`, as it is OK to race with it.
       (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
         (try

@@ -52,6 +52,23 @@
 
 ;;; Capture wiring
 
+(deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
+  (testing "the revisions and moderation reviews a card delete removes don't enqueue re-derivations of their own"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {id :id} {}
+                     :model/Revision         _        {:model       "Card"
+                                                       :model_id    id
+                                                       :user_id     (mt/user->id :crowberto)
+                                                       :object      {}
+                                                       :is_creation true
+                                                       :most_recent true}
+                     :model/ModerationReview _        {:moderated_item_type "card"
+                                                       :moderated_item_id   id
+                                                       :moderator_id        (mt/user->id :crowberto)
+                                                       :status              "verified"
+                                                       :most_recent         true}]
+        (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
+
 (deftest capture-fields-disabled-without-engine-test
   (testing "delete capture is skipped entirely, with no pre-select, when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
@@ -69,6 +86,15 @@
       (is (nil? (dml-capture/capture-fields :model/Card :insert)))
       (is (nil? (dml-capture/capture-fields :model/Card :update))))))
 
+(deftest captured-models-have-no-before-select-test
+  (testing "no model with delete capture has a before-select, which the snapshot would run and the DELETE would not"
+    ;; Resolving the hooks loads the namespace of every model that feeds search.
+    (search.spec/model-hooks)
+    ;; `t2/define-before-select` derives the model from this keyword, so inherited hooks count too.
+    (is (= [] (->> (descendants dml-capture/hook)
+                   (filter #(isa? % :toucan2.tools.before-select/model))
+                   (sort-by str))))))
+
 (deftest model-index-gets-delete-capture-test
   (testing "ModelIndex is captured for deletes despite being kept out of :hook/search-index"
     (testing "it is still excluded from the row-level hooks, whose update path trips a toucan2 bug"
@@ -78,6 +104,24 @@
       (is (nil? (dml-capture/capture-fields :model/ModelIndex :insert))))))
 
 ;;; Re-derivation on delete
+
+(deftest card-delete-capture-statement-count-test
+  (testing "capture adds a fixed number of statements to a card delete, whatever else the delete runs"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {captured :id} {}
+                     :model/Card {uncaptured :id} {}]
+        (let [statements      (fn [thunk]
+                                (t2/with-call-count [call-count]
+                                  ;; Stubbed, so the post-commit ingestion this delete queues is not counted.
+                                  (capture-enqueues! thunk)
+                                  (call-count)))
+              with-capture    (statements #(t2/delete! :model/Card :id captured))
+              without-capture (binding [search.ingestion/*disable-updates* true]
+                                (statements #(t2/delete! :model/Card :id uncaptured)))]
+          ;; The action and indexed-entity cascade scans.
+          ;; A delete by literal primary key builds the card's snapshot without a select, and the Revision and
+          ;; ModerationReview deletes in its `before-delete` bypass capture.
+          (is (= 2 (- with-capture without-capture))))))))
 
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
@@ -102,6 +146,27 @@
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
                  (capture-enqueues! #(t2/delete! :model/ModerationReview :id mr-id)))))))))
+
+;; Updates share the boolean fold with deletes. Without it, a superseded review's selector names its card beside a
+;; false comparison, and ingestion would purge the card.
+(deftest review-status-update-respects-most-recent-test
+  (testing "changing a superseded review's status queues nothing, while changing the current one's queues its card"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {card-id :id} {}
+                     :model/ModerationReview {old-id :id}  {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         false}
+                     :model/ModerationReview {new-id :id}  {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         true}]
+        (is (= [] (capture-enqueues! #(t2/update! :model/ModerationReview :id old-id {:status nil}))))
+        (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
+          (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
+                 (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
 
 (deftest delete-of-the-latest-revision-enqueues-its-card-test
   (testing "deleting a card's most recent revision enqueues re-derivation of the card it fed"
@@ -332,22 +397,83 @@
             (is (str/includes? (indexed) "To Model"))
             (is (not (str/includes? (indexed) "From Model")))))))))
 
-(deftest reconcile-chunks-reindex-messages-test
-  (testing "surviving ids go out in bounded chunks, so one batch cannot build an unbounded query"
+(deftest reconcile-only-queues-its-check-test
+  (testing "reconciling queues one check per search-model, and runs no query on the committing thread"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [checked (atom 0)]
+        (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [_search-model _ids]
+                                                                        (swap! checked inc)
+                                                                        #{})]
+          (is (= [#{(search.ingestion/reconcile "action" #{1})
+                    (search.ingestion/reconcile "indexed-entity" #{"1:1"})}]
+                 (capture-enqueues!
+                  #(search/reconcile-cascading-documents! {"action" #{1}, "indexed-entity" #{"1:1"}})))))
+        (is (zero? @checked))))))
+
+(deftest reconcile-chunks-statements-test
+  (testing "a reconcile checks and re-derives its ids in bounded chunks, so it cannot build an unbounded query"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model", :type :model}
                      :model/Action {_a1 :id}     {:name "Chunk Action 1", :model_id card-id, :type :query}
                      :model/Action {_a2 :id}     {:name "Chunk Action 2", :model_id card-id, :type :query}
                      :model/Action {_a3 :id}     {:name "Chunk Action 3", :model_id card-id, :type :query}]
-        (let [cascading (cascading-documents-of card-id)]
+        (let [cascading        (cascading-documents-of card-id)
+              checks           (atom [])
+              runs             (atom [])
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)
+              ingest-updates!  (mt/original-fn #'search.ingestion/ingest-updates!)]
           (is (= 3 (count (get cascading "action"))))
-          (let [selectors (into []
-                                cat
-                                ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
-                                (with-redefs [search/reindex-batch-size 2]
-                                  (capture-enqueues! #(search/reconcile-cascading-documents! cascading))))]
-            (testing "three surviving documents split across two messages, neither over the limit"
-              (is (= [2 1] (sort > (map (fn [[_model [_in _id-expr ids]]] (count ids)) selectors)))))))))))
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (swap! checks conj (count ids))
+                                                                          (existing-doc-ids search-model ids))
+                                      search.ingestion/ingest-updates!  (fn [messages]
+                                                                          (swap! runs conj messages)
+                                                                          (ingest-updates! messages))]
+            ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 2}
+              #(search/reconcile-cascading-documents! cascading)))
+          (testing "three surviving documents split across two checks and two re-index statements"
+            (is (= {:checks [2 1], :runs [2 1]}
+                   {:checks (sort > @checks)
+                    :runs   (sort > (map (fn [[[_model [_in _id-expr ids]]]] (count ids)) @runs))}))))))))
+
+(deftest reconcile-reindex-failure-keeps-tombstones-test
+  (testing "a reconcile whose re-index throws still removes the documents that stopped resolving"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}  {:name "Failing Reindex Model", :type :model}
+                     :model/Action {alive-id :id} {:name "Surviving Action", :model_id card-id, :type :query}
+                     :model/Action {gone-id :id}  {:name "Deleted Action", :model_id card-id, :type :query}]
+        (let [cascading (cascading-documents-of card-id)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages]
+                                                                         (throw (ex-info "reindex failed" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reindex failed"
+                                  (search/reconcile-cascading-documents! cascading))))
+          (is (= {:alive 1, :gone 0}
+                 {:alive (indexed-count "action" alive-id)
+                  :gone  (indexed-count "action" gone-id)})))))))
+
+(deftest reconcile-check-failure-keeps-earlier-tombstones-test
+  (testing "a survivor check that throws for a later chunk keeps the tombstones of the chunks before it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Failing Check Model", :type :model}
+                     :model/Action {gone-id :id} {:name "Deleted Action", :model_id card-id, :type :query}]
+        (let [unchecked-id     Long/MAX_VALUE
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (if (some #{unchecked-id} ids)
+                                                                            (throw (ex-info "check failed" {}))
+                                                                            (existing-doc-ids search-model ids)))]
+            ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+            ;; One id per chunk, and a sorted set so the deleted action's chunk is checked first.
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 1}
+              #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"check failed"
+                                     (#'search.ingestion/apply-reconcile!
+                                      {:search-model "action", :ids (sorted-set gone-id unchecked-id)})))))
+          (is (= 0 (indexed-count "action" gone-id))))))))
 
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
@@ -520,7 +646,7 @@
                                                                    (throw (ex-info "enumeration failed" {}))
                                                                    (doc-ids search-model where-clause)))]
             (is (contains? (cascading-documents-of card-id) "action")))))))
-  (testing "a reconcile failure for one search-model leaves the others reconciled"
+  (testing "a reconcile failure for one search-model leaves the others reconciled, and still reaches the caller"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id}   {:name "Partial Reconcile Model", :type :model}
                      :model/Action {action-id :id} {:name "Purged Action", :model_id card-id, :type :query}]
@@ -533,5 +659,6 @@
                                                                           (if (= "indexed-entity" search-model)
                                                                             (throw (ex-info "reconcile failed" {}))
                                                                             (existing-doc-ids search-model ids)))]
-            (search/reconcile-cascading-documents! cascading))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reconcile failed"
+                                  (search/reconcile-cascading-documents! cascading))))
           (is (= 0 (indexed-count "action" action-id))))))))
