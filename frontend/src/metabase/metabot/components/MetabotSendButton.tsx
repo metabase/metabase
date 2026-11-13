@@ -1,15 +1,24 @@
 import cx from "classnames";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
+import { t } from "ttag";
 
-import { Icon, UnstyledButton } from "metabase/ui";
+import { ActionIcon, Icon } from "metabase/ui";
 
 import S from "./MetabotSendButton.module.css";
 
-type MetabotSendButtonProps = ComponentPropsWithoutRef<"button"> & {
+type MetabotSendButtonProps = Omit<
+  ComponentPropsWithoutRef<"button">,
+  "color"
+> & {
   isResponding?: boolean;
   isHidden?: boolean;
 };
 
+/**
+ * Metabot's send button, which becomes a stop button while Metabot is
+ * responding. When `isHidden` is set it stays in the layout but is invisible,
+ * can't be focused or clicked, and is hidden from screen readers.
+ */
 export const MetabotSendButton = forwardRef<
   HTMLButtonElement,
   MetabotSendButtonProps
@@ -18,22 +27,18 @@ export const MetabotSendButton = forwardRef<
   ref,
 ) {
   return (
-    <UnstyledButton
+    <ActionIcon
       ref={ref}
-      className={cx(S.button, className, {
-        [S.buttonResponding]: isResponding,
-        [S.buttonHidden]: isHidden,
-      })}
+      variant={isResponding ? "light" : "filled"}
+      className={cx(S.button, className, { [S.hidden]: isHidden })}
+      aria-label={isResponding ? t`Stop generating` : t`Send message`}
+      inert={isHidden}
       data-testid={
         isResponding ? "metabot-stop-response" : "metabot-send-message"
       }
       {...props}
     >
-      {isResponding ? (
-        <Icon className={S.stopIcon} name="stop" />
-      ) : (
-        <Icon className={S.sendIcon} name="arrow_up" />
-      )}
-    </UnstyledButton>
+      <Icon name={isResponding ? "stop" : "arrow_up"} />
+    </ActionIcon>
   );
 });

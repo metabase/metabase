@@ -159,7 +159,7 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
             {!areMembersUnavailable && (
               <Stack gap="lg">
                 <Group gap="sm" wrap="nowrap">
-                  <Badge variant="filled" bg="core-brand">
+                  <Badge variant="filled" color="brand">
                     {transformRuns.length}
                   </Badge>
                   <Title order={5}>{t`Transforms`}</Title>
