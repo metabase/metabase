@@ -158,6 +158,10 @@ function setup({
     parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   } = {}) {
   const onReplaceCard = jest.fn();
+  const onReplaceAllDashCardVisualizationSettings = jest.fn<
+    void,
+    Parameters<DashCardProps["onReplaceAllDashCardVisualizationSettings"]>
+  >();
 
   const dashcardIds = (dashboard.dashcards ?? []).map(
     (dc: { id: number } | number) => (typeof dc === "number" ? dc : dc.id),
@@ -212,7 +216,9 @@ function setup({
         isTrashedOnRemove={false}
         onRemove={jest.fn()}
         markNewCardSeen={jest.fn()}
-        onReplaceAllDashCardVisualizationSettings={jest.fn()}
+        onReplaceAllDashCardVisualizationSettings={
+          onReplaceAllDashCardVisualizationSettings
+        }
         onUpdateVisualizationSettings={jest.fn()}
         showClickBehaviorSidebar={jest.fn()}
         autoScroll={false}
@@ -224,7 +230,7 @@ function setup({
     },
   );
 
-  return { onReplaceCard };
+  return { onReplaceCard, onReplaceAllDashCardVisualizationSettings };
 }
 
 describe("DashCard", () => {
@@ -900,6 +906,40 @@ describe("DashCard", () => {
       expect(screen.queryByText(card.name)).not.toBeInTheDocument();
     },
   );
+
+  it("should forward a cleared title from the settings modal to the correct dashcard (metabase#12013, metabase#36788)", async () => {
+    const user = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
+    const card = createMockCard({ id: 29, name: "Orders", display: "table" });
+    const dashcard = createMockDashboardCard({
+      id: 47,
+      card_id: card.id,
+      card,
+    });
+    const { onReplaceAllDashCardVisualizationSettings } = setup({
+      dashboard: { ...testDashboard, dashcards: [dashcard] },
+      dashcard,
+      dashcardData: {
+        [dashcard.id]: {
+          [card.id]: createMockDataset(),
+        },
+      },
+      isEditing: true,
+    });
+
+    await user.click(screen.getByLabelText("Show visualization options"));
+    const modal = await screen.findByRole("dialog");
+    await user.clear(within(modal).getByDisplayValue("Orders"));
+    await user.tab();
+    await user.click(within(modal).getByRole("button", { name: "Done" }));
+
+    expect(onReplaceAllDashCardVisualizationSettings).toHaveBeenCalledTimes(1);
+    expect(onReplaceAllDashCardVisualizationSettings).toHaveBeenCalledWith(
+      dashcard.id,
+      expect.objectContaining({ "card.title": "" }),
+    );
+  });
 
   describe("visualizer dashcard download permissions", () => {
     const sourceCard = createMockCard({

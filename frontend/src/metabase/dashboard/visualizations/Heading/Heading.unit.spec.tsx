@@ -88,8 +88,8 @@ describe("Text", () => {
       setup(options);
 
       expect(
-        screen.getByTestId("saved-dashboard-heading-content"),
-      ).toHaveTextContent("Example Heading");
+        screen.getByRole("heading", { level: 2, name: "Example Heading" }),
+      ).toBeVisible();
     });
 
     it("should replace mapped variables with parameter values", () => {
@@ -125,10 +125,11 @@ describe("Text", () => {
         setup(options);
 
         expect(
-          screen.getByTestId("editing-dashboard-heading-preview"),
-        ).toHaveTextContent(
-          "You can connect widgets to {{variables}} in heading cards.",
-        );
+          screen.getByRole("heading", {
+            level: 2,
+            name: "You can connect widgets to {{variables}} in heading cards.",
+          }),
+        ).toBeVisible();
       });
 
       it("should preview with text when it has content", () => {
@@ -139,8 +140,8 @@ describe("Text", () => {
         setup(options);
 
         expect(
-          screen.getByTestId("editing-dashboard-heading-preview"),
-        ).toHaveTextContent("Example Heading");
+          screen.getByRole("heading", { level: 2, name: "Example Heading" }),
+        ).toBeVisible();
       });
 
       it("should preview without replacing mapped variables with parameter values", () => {
