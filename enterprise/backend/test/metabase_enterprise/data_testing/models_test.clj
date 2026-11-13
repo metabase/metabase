@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -324,3 +325,11 @@
       (is (nil? (t2/select-one-fn :initiated_by :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:transform_id 1}]
+                                          [:write mi/can-write? {:transform_id 1 :id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a TransformTest"))
+                            (can? (t2/instance :model/TransformTest (dissoc full-instance k))))))))

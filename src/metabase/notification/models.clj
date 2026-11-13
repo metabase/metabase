@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -601,8 +602,23 @@
   [notification]
   (= (:creator_id notification) (mi/current-user-id)))
 
+(defn- check-read-keys
+  "Throws unless `notification` has the columns its read check reads."
+  [notification]
+  (api/check-500 (some? (:id notification)) "No :id is set for a Notification.")
+  (api/check-500 (contains? notification :creator_id) "No :creator_id is set for a Notification."))
+
+(defn- check-write-keys
+  "Throws unless `notification` has the columns its write check reads."
+  [notification]
+  (api/check-500 (contains? notification :creator_id) "No :creator_id is set for a Notification.")
+  (api/check-500 (contains? notification :payload_type) "No :payload_type is set for a Notification.")
+  (when (= :notification/card (:payload_type notification))
+    (api/check-500 (contains? notification :payload) "No :payload is set for a Notification.")))
+
 (defmethod mi/can-read? :model/Notification
   ([notification]
+   (check-read-keys notification)
    (or
     (mi/superuser?)
     (current-user-is-creator? notification)
@@ -641,6 +657,7 @@
 (defmethod mi/can-write? :model/Notification
   ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
   ([notification]
+   (check-write-keys notification)
    (or
     (mi/superuser?)
     (and

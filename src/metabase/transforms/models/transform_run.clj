@@ -45,8 +45,14 @@
    :run_method mi/transform-keyword})
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
+(defn- check-read-keys
+  "Throws unless `run` has the columns its read check reads."
+  [run]
+  (api/check-500 (contains? run :transform_id) "No :transform_id is set for a TransformRun."))
+
 (defmethod mi/can-read? :model/TransformRun
   ([instance]
+   (check-read-keys instance)
    (or api/*is-superuser?*
        (boolean (when-let [transform-id (:transform_id instance)]
                   (mi/can-read? :model/Transform transform-id)))))

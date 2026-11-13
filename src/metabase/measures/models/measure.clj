@@ -62,8 +62,14 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(defn- check-read-keys
+  "Throws unless `measure` has the columns its read and write checks read."
+  [measure]
+  (api/check-500 (or (contains? measure :table) (contains? measure :table_id)) "No :table_id is set for a Measure."))
+
 (defmethod mi/can-read? :model/Measure
   ([instance]
+   (check-read-keys instance)
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
      (mi/can-read? table)))
@@ -74,6 +80,7 @@
 ;; read-only instance that syncs their table.
 (defmethod mi/can-write? :model/Measure
   ([instance]
+   (check-read-keys instance)
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
      (and (or api/*is-superuser?*

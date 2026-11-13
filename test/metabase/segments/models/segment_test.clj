@@ -271,3 +271,8 @@
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
                                                   :table_id (mt/id :venues)
                                                   :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))
+
+(deftest can-check-keys-test
+  (doseq [can? [mi/can-read? mi/can-write?]]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :table_id is set for a Segment"
+                          (can? (t2/instance :model/Segment {:id 1}))))))

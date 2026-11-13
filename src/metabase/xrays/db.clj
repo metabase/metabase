@@ -50,7 +50,7 @@
   Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id :is_published :collection_id
               [:ts.count :num-fields]
               [[:and
                 [:>= :ts.count 2]

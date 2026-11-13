@@ -84,8 +84,14 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(defn- check-read-keys
+  "Throws unless `segment` has the columns its read and write checks read."
+  [segment]
+  (api/check-500 (or (contains? segment :table) (contains? segment :table_id)) "No :table_id is set for a Segment."))
+
 (defmethod mi/can-read? :model/Segment
   ([instance]
+   (check-read-keys instance)
    (let [table (:table (t2/hydrate instance :table))]
      (mi/can-read? table)))
   ([_model pk]
@@ -97,6 +103,7 @@
 ;; but not on a read-only instance that syncs their table
 (defmethod mi/can-write? :model/Segment
   ([instance]
+   (check-read-keys instance)
    (let [table (or (:table instance)
                    (segments.db/table (:table_id instance)))]
      (and (or (mi/superuser?)

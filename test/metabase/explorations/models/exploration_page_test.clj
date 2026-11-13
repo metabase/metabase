@@ -24,3 +24,11 @@
           (is (some? (:entity_id reloaded)))
           (is (some? (:created_at reloaded)))
           (is (some? (:updated_at reloaded))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:exploration_block_id 1}]
+                                          [:write mi/can-write? {:exploration_block_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for an ExplorationPage"))
+                            (can? (t2/instance :model/ExplorationPage (dissoc full-instance k))))))))

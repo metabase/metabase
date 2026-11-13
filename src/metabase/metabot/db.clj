@@ -512,9 +512,11 @@
   (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
 
 (mu/defn table-summaries
-  "The ID, names, schema, Database ID, and description of the Tables with `table-ids`."
+  "The ID, names, schema, Database ID, and description of the Tables with `table-ids`, with the columns their read
+  check reads."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description :is_published :collection_id]
+             :id [:in table-ids]))
 
 (mu/defn table-schema-rows
   "Return the ID, name, schema, and database ID of each table in `table-ids`.
@@ -608,18 +610,20 @@
              {:limit limit}))
 
 (mu/defn active-tables-for-database
-  "The presentable columns of the active Tables in the Database with `database-id`, ordered by schema and name."
+  "The presentable columns, and the ones their read check reads, of the active Tables in the Database with
+  `database-id`, ordered by schema and name."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description :is_published :collection_id]
              :db_id database-id
              :active true
              {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
 
 (mu/defn active-tables-in-schema
-  "The presentable columns of the active Tables in `schema` of the Database with `database-id`, ordered by name."
+  "The presentable columns, and the ones their read check reads, of the active Tables in `schema` of the Database with
+  `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description :is_published :collection_id]
              :db_id database-id
              :schema schema
              :active true

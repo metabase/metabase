@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -108,8 +109,14 @@
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
   (card-allows? mi/can-read? (:card_id card-test)))
 
+(defn- check-read-keys
+  "Throws unless `card-test` has the columns its read and write checks read."
+  [card-test]
+  (api/check-500 (contains? card-test :card_id) "No :card_id is set for a CardTest."))
+
 (defmethod mi/can-read? :model/CardTest
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/Card (:card_id instance)))
   ([_model pk]
    (when-let [card-test (data-testing.db/card-test pk)]
@@ -117,6 +124,7 @@
 
 (defmethod mi/can-write? :model/CardTest
   ([instance]
+   (check-read-keys instance)
    (can-save-test? (:card_id instance)))
   ([_model pk]
    (when-let [card-test (data-testing.db/card-test pk)]

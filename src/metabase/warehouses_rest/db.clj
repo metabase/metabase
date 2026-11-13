@@ -85,7 +85,7 @@
   [database-id  :- ::lib.schema.id/database
    like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :schema :name]
+  (t2/select [:model/Table :id :db_id :schema :name :is_published :collection_id]
              {:where    [:and [:= :db_id database-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]

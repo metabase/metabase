@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -100,8 +101,20 @@
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
+(defn- check-read-keys
+  "Throws unless `transform-test` has the columns its read check reads."
+  [transform-test]
+  (api/check-500 (contains? transform-test :transform_id) "No :transform_id is set for a TransformTest."))
+
+(defn- check-write-keys
+  "Throws unless `transform-test` is saved and has the columns its write check reads."
+  [transform-test]
+  (check-read-keys transform-test)
+  (api/check-500 (some? (:id transform-test)) "No :id is set for a TransformTest."))
+
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/Transform (:transform_id instance)))
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
@@ -109,6 +122,7 @@
 
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
+   (check-write-keys instance)
    (and (remote-sync/can-write? :model/TransformTest (:id instance))
         (can-save? (:transform_id instance))))
   ([_model pk]

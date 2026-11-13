@@ -347,3 +347,8 @@
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
                                                   :table_id (mt/id :venues)
                                                   :definition (measure-definition (lib/count))}))))))
+
+(deftest can-check-keys-test
+  (doseq [can? [mi/can-read? mi/can-write?]]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :table_id is set for a Measure"
+                          (can? (t2/instance :model/Measure {:id 1}))))))

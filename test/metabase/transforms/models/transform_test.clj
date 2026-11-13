@@ -413,3 +413,11 @@
               (is (not (t2/exists? :model/Transform :id transform-id)))))
           (finally
             (t2/delete! :model/Transform :id transform-id)))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:source {}}]
+                                          [:write mi/can-write? {:source {} :target {} :id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a Transform"))
+                            (can? (t2/instance :model/Transform (dissoc full-instance k))))))))

@@ -198,3 +198,11 @@
         (is (= {:run false :write false}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
                 :write (boolean (mi/can-write? card-test))}))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:card_id 1}]
+                                          [:write mi/can-write? {:card_id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a CardTest"))
+                            (can? (t2/instance :model/CardTest (dissoc full-instance k))))))))

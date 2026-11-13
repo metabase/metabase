@@ -56,3 +56,10 @@
             (is (mi/can-read? :model/TransformTag 1))
             (is (mi/can-write? tag))
             (is (mi/can-create? :model/TransformTag {}))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:write mi/can-write? {:id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a TransformTag"))
+                            (can? (t2/instance :model/TransformTag (dissoc full-instance k))))))))

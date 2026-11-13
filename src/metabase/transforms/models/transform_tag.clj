@@ -32,8 +32,14 @@
   ([_model _pk]
    (api/entitled-data-analyst?)))
 
+(defn- check-write-keys
+  "Throws unless `tag` is saved."
+  [tag]
+  (api/check-500 (some? (:id tag)) "No :id is set for a TransformTag."))
+
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
+   (check-write-keys instance)
    (and (remote-sync/can-write? :model/TransformTag (:id instance))
         (or api/*is-superuser?*
             (and (api/entitled-data-analyst?)

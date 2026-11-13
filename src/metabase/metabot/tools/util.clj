@@ -377,9 +377,9 @@
       api/read-check))
 
 (defn get-table
-  "Get the `fields` of the table with ID `id`."
+  "Get the `fields` of the table with ID `id`, selected with the columns its read check reads."
   [id & fields]
-  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
+  (-> (metabot.db/active-table-with-columns (into [:model/Table] (distinct) (concat [:id :db_id :is_published :collection_id] fields)) id)
       api/read-check))
 
 (tools/defrecoverable wrong-source-type!

@@ -247,7 +247,7 @@
    {:keys [run_all]} :- [:map {:closed true}
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (transforms-rest.db/job job-id))
+  (api/write-check (assoc (transforms-rest.db/job job-id) :tag_ids []))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Job run started")
    :job_run_id
@@ -357,7 +357,7 @@
   [{:keys [job-id run-id]} :- [:map {:closed true}
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]]
-  (api/write-check :model/TransformJob job-id)
+  (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
   (api/check-404 (transforms-rest.db/job-run run-id job-id))
   (api/check-400 (transforms.core/cancel-job-run! run-id))
   nil)

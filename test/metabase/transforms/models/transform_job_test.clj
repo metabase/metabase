@@ -86,16 +86,20 @@
         (mt/when-ee-evailable
          (mt/with-premium-features #{:advanced-permissions}
            (is (mi/can-read? :model/TransformJob 1))
-           (is (mi/can-write? (t2/instance :model/TransformJob {})))
+           (is (mi/can-write? (t2/instance :model/TransformJob {:tag_ids []})))
            (is (mi/can-create? :model/TransformJob {}))))
         (testing "and none once the feature is gone"
           (mt/with-premium-features #{}
             (is (not (mi/can-read? :model/TransformJob 1)))
-            (is (not (mi/can-write? (t2/instance :model/TransformJob {}))))
+            (is (not (mi/can-write? (t2/instance :model/TransformJob {:tag_ids []}))))
             (is (not (mi/can-create? :model/TransformJob {})))))))
     (testing "a superuser is unaffected"
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-premium-features #{}
           (is (mi/can-read? :model/TransformJob 1))
-          (is (mi/can-write? (t2/instance :model/TransformJob {})))
+          (is (mi/can-write? (t2/instance :model/TransformJob {:tag_ids []})))
           (is (mi/can-create? :model/TransformJob {})))))))
+
+(deftest can-check-keys-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :tag_ids is set for a TransformJob"
+                        (mi/can-write? (t2/instance :model/TransformJob {:id 1})))))

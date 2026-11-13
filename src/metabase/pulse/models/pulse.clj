@@ -164,8 +164,30 @@
     (boolean
      (some #{api/*current-user-id*} recipient-ids))))
 
+(defn- check-alert-keys
+  "Throws unless the Alert `notification` has what its Card is found by."
+  [notification]
+  (api/check-500 (or (some? (:card notification)) (some? (:id notification))) "No :id is set for a Pulse."))
+
+(defn- check-read-keys
+  "Throws unless `notification` has the columns its read check reads."
+  [notification]
+  (if (is-alert? notification)
+    (check-alert-keys notification)
+    (do (api/check-500 (some? (:id notification)) "No :id is set for a Pulse.")
+        (api/check-500 (contains? notification :creator_id) "No :creator_id is set for a Pulse."))))
+
+(defn- check-write-keys
+  "Throws unless `notification` has the columns its write check reads."
+  [notification]
+  (if (is-alert? notification)
+    (check-alert-keys notification)
+    (do (api/check-500 (contains? notification :collection_id) "No :collection_id is set for a Pulse.")
+        (api/check-500 (contains? notification :creator_id) "No :creator_id is set for a Pulse."))))
+
 (defmethod mi/can-read? :model/Pulse
   [notification]
+  (check-read-keys notification)
   (if (is-alert? notification)
     (mi/current-user-has-full-permissions? :read notification)
     (or api/*is-superuser?*
@@ -176,6 +198,7 @@
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
 (defmethod mi/can-write? :model/Pulse
   [notification]
+  (check-write-keys notification)
   (if (is-alert? notification)
     (mi/current-user-has-full-permissions? :write notification)
     (or api/*is-superuser?*

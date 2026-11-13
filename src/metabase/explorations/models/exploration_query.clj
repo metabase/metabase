@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-query
   (:require
+   [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -23,8 +24,14 @@
    :data_access_token      perms/data-access-token-transform
    :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
+(defn- check-read-keys
+  "Throws unless `instance` has the columns its read and write checks read."
+  [instance]
+  (api/check-500 (contains? instance :exploration_thread_id) "No :exploration_thread_id is set for an ExplorationQuery."))
+
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
    (when-let [q (explorations.db/query-thread-id-row pk)]
@@ -32,6 +39,7 @@
 
 (defmethod mi/can-write? :model/ExplorationQuery
   ([instance]
+   (check-read-keys instance)
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
    (when-let [q (explorations.db/query-thread-id-row pk)]

@@ -409,3 +409,8 @@
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))
+
+(deftest can-check-keys-test
+  (doseq [can? [mi/can-read? mi/can-write?]]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :table_id is set for a Field"
+                          (can? (t2/instance :model/Field {:id 1}))))))

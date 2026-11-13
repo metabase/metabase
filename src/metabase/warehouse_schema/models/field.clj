@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
@@ -187,9 +188,15 @@
   (or (:table instance)
       (warehouse-schema.db/table (:table_id instance))))
 
+(defn- check-read-keys
+  "Throws unless `field` has the columns its read and write checks read."
+  [field]
+  (api/check-500 (or (contains? field :table) (contains? field :table_id)) "No :table_id is set for a Field."))
+
 (defmethod mi/can-read? :model/Field
   ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
   ([instance]
+   (check-read-keys instance)
    (mi/can-read? (field->table instance)))
   ([_model pk]
    (mi/can-read? (warehouse-schema.db/field pk))))
@@ -213,6 +220,7 @@
 
 (defmethod mi/can-write? :model/Field
   ([instance]
+   (check-read-keys instance)
    (current-user-can-write-field? instance))
   ([_model pk]
    (mi/can-write? (warehouse-schema.db/field pk))))

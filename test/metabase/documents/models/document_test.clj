@@ -783,3 +783,11 @@
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
           (is (= card-id (get-in imported [:content 0 :attrs "id"]))))))))
+
+(deftest can-check-keys-test
+  (doseq [[operation can? full-instance] [[:read mi/can-read? {:collection_id nil :id 1}]
+                                          [:write mi/can-write? {:collection_id nil :id 1}]]
+          k                              (keys full-instance)]
+    (testing (str operation " without " k)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "No " k " is set for a Document"))
+                            (can? (t2/instance :model/Document (dissoc full-instance k))))))))

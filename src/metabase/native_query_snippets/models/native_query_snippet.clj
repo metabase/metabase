@@ -129,12 +129,27 @@
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
+(defn- check-read-keys
+  "Throws unless `snippet` has the columns its read check reads."
+  [snippet]
+  (api/check-500 (contains? snippet :collection_id) "No :collection_id is set for a NativeQuerySnippet."))
+
+(defn- check-write-keys
+  "Throws unless `snippet` is saved and has the columns its write check reads."
+  [snippet]
+  (check-read-keys snippet)
+  (api/check-500 (some? (:id snippet)) "No :id is set for a NativeQuerySnippet."))
+
 (defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+  ([snippet]
+   (check-read-keys snippet)
+   (snippet.perms/can-read? snippet))
+  ([model id]
+   (snippet.perms/can-read? model id)))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
   ([snippet]
+   (check-write-keys snippet)
    (and (snippet.perms/can-write? snippet)
         (remote-sync/can-write? :model/NativeQuerySnippet (:id snippet))))
   ([model id]
