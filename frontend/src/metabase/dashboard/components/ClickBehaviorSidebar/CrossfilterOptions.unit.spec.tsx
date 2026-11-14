@@ -48,7 +48,11 @@ const COUNT_COLUMN = createMockColumn({
   source: "native",
 });
 
-function setup() {
+interface SetupOpts {
+  clickBehavior?: ClickBehavior;
+}
+
+function setup({ clickBehavior = { type: "crossfilter" } }: SetupOpts = {}) {
   const dashboard = createMockDashboard({
     id: DASHBOARD_ID,
     parameters: PARAMETERS,
@@ -59,14 +63,12 @@ function setup() {
     card_id: CARD_ID,
     card: createMockCard({ id: CARD_ID }),
   });
-  const clickBehavior: ClickBehavior = { type: "crossfilter" };
-
   renderWithProviders(
     <CrossfilterOptions
       dashboard={dashboard}
       dashcard={dashcard}
       clickBehavior={clickBehavior}
-      updateSettings={jest.fn()}
+      updateSettings={jest.fn<void, [Partial<ClickBehavior>]>()}
     />,
     {
       storeInitialState: createMockState({
@@ -97,6 +99,30 @@ function setup() {
 }
 
 describe("CrossfilterOptions", () => {
+  it("keeps a dashboard-filter source available when a legacy mapping already uses it", async () => {
+    setup({
+      clickBehavior: {
+        type: "crossfilter",
+        parameterMapping: {
+          "category-1": {
+            id: "category-1",
+            source: { type: "parameter", id: "id-2", name: "ID 1" },
+            target: { type: "parameter", id: "category-1" },
+          },
+        },
+      },
+    });
+
+    const filters = await screen.findByTestId("unset-click-mappings");
+    await userEvent.click(within(filters).getByRole("button", { name: "ID" }));
+
+    const listbox = await screen.findByRole("listbox");
+    expect(within(listbox).getByText("Columns")).toBeInTheDocument();
+    expect(within(listbox).getByText("COUNT(*)")).toBeInTheDocument();
+    expect(within(listbox).getByText("Dashboard filters")).toBeInTheDocument();
+    expect(within(listbox).getByText("ID 1")).toBeInTheDocument();
+  });
+
   it.each(["ID", "Category"])(
     "offers only the card's columns as sources for the %s filter (metabase#14473)",
     async (filterName) => {
