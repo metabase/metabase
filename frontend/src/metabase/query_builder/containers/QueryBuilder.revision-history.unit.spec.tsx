@@ -96,7 +96,9 @@ describe("QueryBuilder > revision history", () => {
     expect(
       await within(history).findAllByTestId("revision-history-event"),
     ).toHaveLength(3);
-    expect(within(history).getAllByTestId("question-revert-button")).toHaveLength(2);
+    expect(
+      within(history).getAllByTestId("question-revert-button"),
+    ).toHaveLength(2);
 
     await userEvent.click(
       within(screen.getByTestId("sidesheet")).getByRole("button", {
@@ -114,7 +116,9 @@ describe("QueryBuilder > revision history", () => {
     await userEvent.click(screen.getByTestId("qb-header-info-button"));
     history = await findHistory();
     await userEvent.click(
-      await within(history).findByRole("button", { name: "revert to You created this" }),
+      await within(history).findByRole("button", {
+        name: "revert to You created this",
+      }),
     );
 
     await waitFor(() => expect(getHeaderTitle()).toHaveValue("Orders"));
@@ -140,7 +144,9 @@ describe("QueryBuilder > revision history", () => {
     expect(
       await within(history).findAllByTestId("revision-history-event"),
     ).toHaveLength(3);
-    expect(within(history).getByText("You added a description")).toBeInTheDocument();
+    expect(
+      within(history).getByText("You added a description"),
+    ).toBeInTheDocument();
     expect(
       within(history).queryByTestId("question-revert-button"),
     ).not.toBeInTheDocument();
