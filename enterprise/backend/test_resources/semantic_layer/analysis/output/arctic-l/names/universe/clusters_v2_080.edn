@@ -1,0 +1,612 @@
+{:threshold 0.8,
+ :catalog :universe,
+ :embeddings "names_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 105, :median 323, :p75 836, :max 2474, :mean 519.2108685555039},
+ :connected-components
+ {:count 15,
+  :multi-member 3,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "historical bug counts by feature and cluster"
+     "page_view"
+     "products model from question"
+     "log_visitor_online"
+     "sales_flat_quote_address"
+     "customer_survey_q_3_2025_dropdown_lists"
+     "trend_analysis_data_sheet1_20250929213307"
+     "webinar_registrant"
+     "snowplow_page_views"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "npe_20240918150104"
+     "monthly_revenue"
+     "sales_flat_order_address"
+     "datetime_20231213181718"
+     "usage stats anonymous history"
+     "revenue_data_subscriptions"
+     "page views anonymous with referer site area"
+     "npe_20240325092420"
+     "metric 1: orders by year"
+     "metric 3: revenue by month"
+     "hi_document"
+     "monthly account subscription status and usage"
+     "catalog_product_website"
+     "usage_stats_anonymous_history"
+     "negative_issues_20241217203222"
+     "customer_sentiment_subset_20240716072507"
+     "... (4290 total)"],
+    :size 4290,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members ["test - modern baseball games" "test - modern baseball games - duplicate"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9341936610694901,
+    :min-sim 0.9341936610694901}
+   {:members ["mean years of schooling long run" "mean_years_of_schooling_long_run_20240205162158"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9235427949460215,
+    :min-sim 0.9235427949460215}
+   {:members ["baseball native model"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["pr ci runs base"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["pro cloud use case split analysis table"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["talk to sales vs. talk to a person"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["pii management"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["kristin augmented"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["dsdssd"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["clitest"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["rolodex"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["multifamily_physical_inspection_scores"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["one_day_this_will_be_llm_generated"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["fpx"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}]},
+ :greedy-cliques
+ {:count 3788,
+  :multi-member 3776,
+  :top
+  [{:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "fake_table_47"
+     "page_view"
+     "fake_table_83"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "gift_message"
+     "fake_table_107"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "fake_table_36"
+     "live_view"
+     "fake_table_173"
+     "fake_table_134"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "fake_table_41"
+     "... (371 total)"],
+    :size 371,
+    :density 1.0,
+    :avg-sim 0.8624416429777862,
+    :min-sim 0.8000757861395627}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "fake_table_47"
+     "page_view"
+     "fake_table_83"
+     "thisone_20251128180856"
+     "gift_message"
+     "fake_table_107"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "fake_table_36"
+     "live_view"
+     "fake_table_173"
+     "fake_table_134"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "fake_table_41"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "... (360 total)"],
+    :size 360,
+    :density 1.0,
+    :avg-sim 0.8646859108141414,
+    :min-sim 0.8000494081298849}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "fake_table_47"
+     "page_view"
+     "thisone_20251128180856"
+     "gift_message"
+     "fake_table_107"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "fake_table_36"
+     "live_view"
+     "fake_table_134"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "fake_table_41"
+     "test_contract_version_20260312160438"
+     "... (356 total)"],
+    :size 356,
+    :density 1.0,
+    :avg-sim 0.8643224568924401,
+    :min-sim 0.8000252479477631}
+   {:members
+    ["fake_table_92"
+     "export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "newsletter_subscriber"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "fake_table_89"
+     "fake_table_88"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "com_metabase_downloads_1"
+     "live_view"
+     "fake_table_173"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "... (355 total)"],
+    :size 355,
+    :density 1.0,
+    :avg-sim 0.8545961307783807,
+    :min-sim 0.8001412743455714}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "fake_table_36"
+     "live_view"
+     "fake_table_173"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "fake_table_41"
+     "... (353 total)"],
+    :size 353,
+    :density 1.0,
+    :avg-sim 0.8590751075712418,
+    :min-sim 0.8000757861395627}
+   {:members
+    ["fake_table_92"
+     "export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "newsletter_subscriber"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "com_metabase_downloads_1"
+     "live_view"
+     "fake_table_173"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "... (352 total)"],
+    :size 352,
+    :density 1.0,
+    :avg-sim 0.8548788201814119,
+    :min-sim 0.8001412743455714}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "fake_table_47"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "fake_table_36"
+     "live_view"
+     "fake_table_173"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "fake_table_41"
+     "book4_20230628211759"
+     "... (344 total)"],
+    :size 344,
+    :density 1.0,
+    :avg-sim 0.8632191384507748,
+    :min-sim 0.800007063664607}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "fake_table_83"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "newsletter_subscriber"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "simple_user_flow_funnel_20240214174320"
+     "revenue_data_subscriptions"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "com_metabase_downloads_1"
+     "live_view"
+     "fake_table_173"
+     "fake_table_134"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "... (342 total)"],
+    :size 342,
+    :density 1.0,
+    :avg-sim 0.8547699702915615,
+    :min-sim 0.8000336262751593}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "snowplow_page_views"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "simple_user_flow_funnel_20240214174320"
+     "hi_document"
+     "negative_issues_20241217203222"
+     "issue_comment"
+     "ms_job_description"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "meeting_details_sheet_1"
+     "customers_10000_20240530173511"
+     "analysis_finding_error"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "... (339 total)"],
+    :size 339,
+    :density 1.0,
+    :avg-sim 0.8617656621192307,
+    :min-sim 0.8000224935376025}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "ms_job_description"
+     "com_metabase_downloads_1"
+     "live_view"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "... (337 total)"],
+    :size 337,
+    :density 1.0,
+    :avg-sim 0.854110411048616,
+    :min-sim 0.8000273458533326}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "simple_user_flow_funnel_20240214174320"
+     "npe_20240325092420"
+     "hi_document"
+     "negative_issues_20241217203222"
+     "issue_comment"
+     "ms_job_description"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "analysis_finding_error"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "early_fraud_warning"
+     "... (336 total)"],
+    :size 336,
+    :density 1.0,
+    :avg-sim 0.8622306351655511,
+    :min-sim 0.8000590024887335}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "page_view"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "ms_job_description"
+     "live_view"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "... (336 total)"],
+    :size 336,
+    :density 1.0,
+    :avg-sim 0.8585246972645423,
+    :min-sim 0.8000241823088032}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "simple_user_flow_funnel_20240214174320"
+     "revenue_data_subscriptions"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "com_metabase_downloads_1"
+     "live_view"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "book4_20230628211759"
+     "... (334 total)"],
+    :size 334,
+    :density 1.0,
+    :avg-sim 0.854918830829856,
+    :min-sim 0.8000336262751593}
+   {:members
+    ["fake_table_130"
+     "export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "simple_user_flow_funnel_20240214174320"
+     "revenue_data_subscriptions"
+     "fake_table_89"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "live_view"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "book4_20230628211759"
+     "... (334 total)"],
+    :size 334,
+    :density 1.0,
+    :avg-sim 0.8564601911427817,
+    :min-sim 0.8000336262751593}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "gift_message"
+     "fake_table_107"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "fake_table_155"
+     "fake_table_118"
+     "datetime_20231213181718"
+     "fake_table_82"
+     "simple_user_flow_funnel_20240214174320"
+     "hi_document"
+     "fake_table_15"
+     "usage_stats_anonymous_history"
+     "issue_comment"
+     "com_metabase_downloads_1"
+     "live_view"
+     "download_1__20241110183422"
+     "fake_table_78"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "meeting_details_sheet_1"
+     "analysis_finding_error"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "... (331 total)"],
+    :size 331,
+    :density 1.0,
+    :avg-sim 0.8537708930593076,
+    :min-sim 0.8000040859640104}]},
+ :avg-linkage-hac nil}

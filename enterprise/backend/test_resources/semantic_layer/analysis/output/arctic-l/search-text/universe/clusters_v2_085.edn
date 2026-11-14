@@ -1,0 +1,706 @@
+{:threshold 0.85,
+ :catalog :universe,
+ :embeddings "search-text_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 7, :median 34, :p75 148, :max 682, :mean 96.45750116117046},
+ :connected-components
+ {:count 236,
+  :multi-member 53,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "yet another test metric"
+     "metric 1: orders by year"
+     "metric 3: revenue by month"
+     "account, max of customer name"
+     "blog page views 2025 12 19"
+     "metric 1: orders by day"
+     "metric 1: orders by category"
+     "metric 7: avg orders by customer by month"
+     "weekly active users in stats"
+     "metric 1: orders by month by category"
+     "metric: products by category"
+     "self-service arr"
+     "metric_results_20251127134806"
+     "(cd) user metric"
+     "orders + products, count"
+     "weekly queries in stats"
+     "ticket reasons"
+     "orders, count metric"
+     "customers running custom builds (that we know of)"
+     "open bugs"
+     "feature requests for notifications & actions, nov 15, 2024"
+     "monthly sales"
+     "issues on tickets"
+     "count of metrics"
+     "number of open bugs"
+     "metric 123"
+     "all bugs"
+     "orders, count"
+     "new success tickets by month"
+     "... (3977 total)"],
+    :size 3977,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["daily instance tracking attributes"
+     "daily_instance_tracking_attributes"
+     "daily_instance_feature_availability"
+     "daily instance feature availability"
+     "daily_instance_feature_stats"
+     "monthly_instance_feature_stats"
+     "daily instance feature stats"
+     "monthly instance feature stats"
+     "daily_instance_metrics"
+     "daily instance metrics"],
+    :size 10,
+    :density 0.3111111111111111,
+    :avg-sim 0.8295672595749632,
+    :min-sim 0.711488784817317}
+   {:members
+    ["monthly infrastructure cost legacy"
+     "aws cost line item legacy"
+     "monthly_infrastructure_cost_legacy"
+     "aws_cost_line_item_legacy"
+     "cloud_unit_economic_legacy"
+     "cloud_unit_economic"
+     "cloud unit economic"],
+    :size 7,
+    :density 0.380952380952381,
+    :avg-sim 0.8089260213547222,
+    :min-sim 0.6612091300367857}
+   {:members
+    ["territory_planning_active_customers_import_recor_20260203202327"
+     "territory_planning_active_customers_active_custo_20260204194346"
+     "territory_planning_active_customers_active_custo_20260204201237"
+     "territory_planning_active_customers_active_custo_20260204194214"
+     "territory_planning_active_customers_geo_and_rout_20260203212309"
+     "territory_planning_active_customers_2025_opps_2_20260204203656"
+     "territory_planning_active_customers_2025_opps_1_20260204203606"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9497875749631336,
+    :min-sim 0.9265770362498259}
+   {:members
+    ["heap oom kills by day and host data 2026 01 14 04 42 41"
+     "heap oom kills by day and host data 2026 01 14 04 40 05"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044910"
+     "heap oom kills by day and host data 2026 01 14 04 48 29"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044355"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044325"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.949339626447768,
+    :min-sim 0.9136327001018331}
+   {:members
+    ["netflix top 100 in 2023"
+     "netflix all weeks global"
+     "netflix_all_weeks_global_20231214030044"
+     "imdb_top_250_tv_shows_20240301020143"
+     "imdb top 250 tv shows"],
+    :size 5,
+    :density 0.4,
+    :avg-sim 0.8425052848607244,
+    :min-sim 0.7660835554004379}
+   {:members
+    ["usage stats anonymous" "usage stats anonymous history" "usage_stats_anonymous_history" "usage_stats_anonymous"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9091892679568422,
+    :min-sim 0.866780338458282}
+   {:members
+    ["hubspot crm exports all deals 2024 07 22"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722091339"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722090759"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722102708"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9613280336874782,
+    :min-sim 0.9228587649593007}
+   {:members ["saml_relay_states" "sso_providers" "saml_providers" "sso_domains"],
+    :size 4,
+    :density 0.5,
+    :avg-sim 0.8593204300831113,
+    :min-sim 0.7790707820086825}
+   {:members
+    ["checkout funnel"
+     "checkout funnel by user - wide format"
+     "checkout funnel by user - wide format - (exclude embedding)"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.8928423325259439,
+    :min-sim 0.8463269370662192}
+   {:members ["simple event" "simple_event" "simple event - data editing"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.8756039224269275,
+    :min-sim 0.8517153693832553}
+   {:members ["session intent" "website_session_intent" "session_intent"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9091567442585561,
+    :min-sim 0.871992327036593}
+   {:members ["scored issues" "open scored issues - duplicate" "open scored issues"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9602597277537158,
+    :min-sim 0.9371394240761463}
+   {:members
+    ["meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37"
+     "meetabase_data_dashboards_and_vibes_in_ba_guests_20250626160559"
+     "meetabase_data_dashboards_and_vibes_in_madrid_gu_20250923212105"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.8924405135229247,
+    :min-sim 0.8637502795380494}
+   {:members ["ticket comment" "zendesk_ticket_comment" "pylon_ticket_comment"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9031389513552862,
+    :min-sim 0.8507495355274703}]},
+ :greedy-cliques
+ {:count 2715,
+  :multi-member 2532,
+  :top
+  [{:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (244 total)"],
+    :size 244,
+    :density 1.0,
+    :avg-sim 0.9130652405415932,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "sankey_data__2__20241122201033"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "... (244 total)"],
+    :size 244,
+    :density 1.0,
+    :avg-sim 0.9128579145650355,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (243 total)"],
+    :size 243,
+    :density 1.0,
+    :avg-sim 0.9134076099015047,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "... (240 total)"],
+    :size 240,
+    :density 1.0,
+    :avg-sim 0.9128487042795298,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "... (240 total)"],
+    :size 240,
+    :density 1.0,
+    :avg-sim 0.9131771148680613,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (239 total)"],
+    :size 239,
+    :density 1.0,
+    :avg-sim 0.914264164340415,
+    :min-sim 0.8501647834882735}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (239 total)"],
+    :size 239,
+    :density 1.0,
+    :avg-sim 0.9140061160845712,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "trend_analysis_data_sheet1_20250929213307"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "... (238 total)"],
+    :size 238,
+    :density 1.0,
+    :avg-sim 0.9133423150028847,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "trace_20250825145602"
+     "... (238 total)"],
+    :size 238,
+    :density 1.0,
+    :avg-sim 0.9128784936776375,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "sankey_data__2__20241122201033"
+     "out_20231114124952"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (238 total)"],
+    :size 238,
+    :density 1.0,
+    :avg-sim 0.913917297431496,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (237 total)"],
+    :size 237,
+    :density 1.0,
+    :avg-sim 0.91403617077253,
+    :min-sim 0.8501550398439776}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "trace_20250825145602"
+     "... (237 total)"],
+    :size 237,
+    :density 1.0,
+    :avg-sim 0.9133098885566638,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "trace_20250825145602"
+     "... (236 total)"],
+    :size 236,
+    :density 1.0,
+    :avg-sim 0.9145705574754097,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "sankey_data__2__20241122201033"
+     "out_20231114124952"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "... (235 total)"],
+    :size 235,
+    :density 1.0,
+    :avg-sim 0.9146584986685722,
+    :min-sim 0.8500187282817087}
+   {:members
+    ["export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "trend_analysis_data_sheet1_20250929213307"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "import_test_20230620221252"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "floors_20251013084354"
+     "... (234 total)"],
+    :size 234,
+    :density 1.0,
+    :avg-sim 0.9139333951847356,
+    :min-sim 0.8503170997907582}]},
+ :avg-linkage-hac nil}
