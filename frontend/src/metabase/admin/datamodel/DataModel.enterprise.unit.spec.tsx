@@ -416,11 +416,12 @@ describe("DataModelV1 in the admin routes (enterprise)", () => {
 
       expect(await findTreeItems("table")).toHaveLength(4);
       await userEvent.click(await findTreeItem("database", MYSQL_DB.name));
-      await waitFor(() => expect(getPathname()).toBe(path));
+      await waitFor(() => expect(queryTreeItems("table")).toHaveLength(0));
+      expect(getPathname()).toBe(path);
 
       await userEvent.click(await findTreeItem("database", MYSQL_DB.name));
-      await waitFor(() => expect(getPathname()).toBe(path));
       expect(await findTreeItems("table")).toHaveLength(4);
+      await waitFor(() => expect(getPathname()).toBe(path));
 
       // ensure navigation to another db works
       await userEvent.click(await findTreeItem("database", SAMPLE_DB.name));
