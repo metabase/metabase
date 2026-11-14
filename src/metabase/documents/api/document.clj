@@ -266,8 +266,11 @@
       {:uuid existing-uuid}
       (do
         (documents.db/update-document! document-id
-                                       {:public_uuid       (str (random-uuid))
-                                        :made_public_by_id api/*current-user-id*})
+                                       {:public_uuid                 (str (random-uuid))
+                                        :made_public_by_id           api/*current-user-id*
+                                        ;; Documents that were public before public links showed timeline events
+                                        ;; keep them hidden; making one public again shows them.
+                                        :show_public_timeline_events true})
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (documents.db/document-public-uuid document-id)}))))
 

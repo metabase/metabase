@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.test-util]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -173,3 +174,99 @@
                                                                 (:id card))
                                                   {})]
             (is (= 200 (:status response)))))))))
+
+;;; ------------------------------------------------- Timeline events -------------------------------------------------
+
+(defn- card-timeline-event-ids [document]
+  (update-vals (:card_timeline_events document) #(mapv :id %)))
+
+(deftest public-document-timeline-events-test
+  (testing "GET /api/public/document/:uuid returns the events each embedded card shows, keyed by card id"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/TimelineEvent shown {:timeline_id (:id timeline)}
+                     :model/TimelineEvent excluded {:timeline_id (:id timeline)}
+                     :model/Document document (document-with-public-link {})
+                     :model/Card events-card {:display                :line
+                                              :document_id            (:id document)
+                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                       [(:id timeline)]
+                                                                       :timeline.excluded_timeline_event_ids
+                                                                       [(:id excluded)]}}
+                     :model/Card plain-card {:display :line :document_id (:id document)}
+                     :model/Card _removed-card {:display                :line
+                                                :document_id            (:id document)
+                                                :visualization_settings {:timeline.selected_timeline_ids
+                                                                         [(:id timeline)]}}]
+        (t2/update! :model/Document :id (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id events-card) (:id plain-card)])})
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted)
+        (let [path     (str "public/document/" (:public_uuid document))
+              expected {(:id events-card) [(:id shown)]
+                        (:id plain-card)  []}
+              response (mt/client :get 200 path)]
+          (testing "only for the cards in the document's content"
+            (is (= expected (card-timeline-event-ids response))))
+          (testing "with only the columns safe to expose publicly"
+            (is (= #{:id :timeline_id :name :description :icon :timestamp :timezone :time_matters :archived :created_at}
+                   (set (keys (first (get-in response [:card_timeline_events (:id events-card)])))))))
+          (testing "the same for a signed-in viewer who cannot read the timeline"
+            (is (= expected (card-timeline-event-ids (mt/user-http-request :rasta :get 200 path))))))))))
+
+(deftest public-document-hides-timeline-events-when-flag-off-test
+  (testing "GET /api/public/document/:uuid shows no events for a document that was public before public documents
+           showed them"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Timeline timeline {}
+                     :model/TimelineEvent _event {:timeline_id (:id timeline)}
+                     :model/Document document (document-with-public-link {:show_public_timeline_events false})
+                     :model/Card card {:display                :line
+                                       :document_id            (:id document)
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (t2/update! :model/Document :id (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
+        (let [response (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
+          (testing "the card is still there"
+            (is (contains? (:cards response) (:id card))))
+          (testing "but shows no events"
+            (is (= {} (:card_timeline_events response))))
+          (testing "and the flag itself is not exposed"
+            (is (not (contains? response :show_public_timeline_events)))))))))
+
+(deftest public-document-editor-cannot-publish-unreadable-timeline-test
+  (testing "an editor who cannot read a timeline cannot publish its events by embedding a card that selects it, even
+           when the document already shows that timeline with some of its events hidden"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Collection restricted {}
+                         :model/Timeline timeline {:collection_id (:id restricted)}
+                         :model/TimelineEvent shown {:timeline_id (:id timeline)}
+                         :model/TimelineEvent hidden {:timeline_id (:id timeline)}
+                         :model/Document document (document-with-public-link {:collection_id coll-id})
+                         :model/Card admin-card {:display                :line
+                                                 :collection_id          coll-id
+                                                 :document_id            (:id document)
+                                                 :visualization_settings {:timeline.selected_timeline_ids
+                                                                          [(:id timeline)]
+                                                                          :timeline.excluded_timeline_event_ids
+                                                                          [(:id hidden)]}}
+                         :model/Card question {:display                :line
+                                               :collection_id          coll-id
+                                               :dataset_query          (mt/mbql-query venues)
+                                               :visualization_settings {:timeline.selected_timeline_ids
+                                                                        [(:id timeline)]}}]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (t2/update! :model/Document :id (:id document)
+                        {:document (documents.test-util/cards->prose-mirror-ast [(:id admin-card)])})
+            (mt/user-http-request :rasta :put 200 (str "document/" (:id document))
+                                  {:document (documents.test-util/cards->prose-mirror-ast
+                                              [(:id admin-card) (:id question)])})
+            (let [card-events (card-timeline-event-ids
+                               (mt/client :get 200 (str "public/document/" (:public_uuid document))))
+                  copy-id     (t2/select-one-pk :model/Card :document_id (:id document) :id [:not= (:id admin-card)])]
+              (is (= {(:id admin-card) [(:id shown)]
+                      copy-id          []}
+                     card-events)))))))))

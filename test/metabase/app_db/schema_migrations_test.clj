@@ -5001,3 +5001,32 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
+
+(deftest document-show-public-timeline-events-migration-test
+  (impl/test-migrations ["obttie" "kisr5n"] [migrate!]
+    (let [user-id     (t2/insert-returning-pk! :core_user {:first_name    "Doc"
+                                                           :last_name     "Author"
+                                                           :email         "doc-author@metabase.test"
+                                                           :entity_id     (subs (str (random-uuid)) 0 21)
+                                                           :date_joined   :%now
+                                                           :password      "password"
+                                                           :password_salt "and pepper"})
+          document    (fn [public-uuid]
+                        (t2/insert-returning-pk! :document {:name         "Doc"
+                                                            :document     "{}"
+                                                            :content_type "application/json+vnd.prose-mirror"
+                                                            :creator_id   user-id
+                                                            :entity_id    (subs (str (random-uuid)) 0 21)
+                                                            :public_uuid  public-uuid
+                                                            :created_at   :%now
+                                                            :updated_at   :%now}))
+          public-id   (document (str (random-uuid)))
+          private-id  (document nil)
+          flag        #(t2/select-one-fn :show_public_timeline_events :document :id %)]
+      (migrate!)
+      (testing "documents that are already public keep their timeline events hidden"
+        (is (false? (flag public-id))))
+      (testing "other documents show them once made public"
+        (is (true? (flag private-id))))
+      (testing "new documents default to showing them"
+        (is (true? (flag (document nil))))))))
