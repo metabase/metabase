@@ -6,19 +6,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [prewalk]]))
+   [metabase.util.match :as match]))
 
 (defn- contains-metric-reference?
   "Walk a clause and return true if it contains any `:metric` reference."
   [clause]
-  (let [found? (volatile! false)]
-    (prewalk
-     (fn [x]
-       (when (lib.util/clause-of-type? x :metric)
-         (vreset! found? true))
-       x)
-     clause)
-    @found?))
+  (match/match-one clause
+    (x :guard (lib.util/clause-of-type? x :metric)) true))
 
 (mr/def ::stage
   "Schema for a single stage in a measure definition.

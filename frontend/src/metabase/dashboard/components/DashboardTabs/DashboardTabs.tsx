@@ -12,7 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SelectedTabId } from "metabase/redux/store";
-import { ActionIcon, Flex, Icon, List } from "metabase/ui";
+import { ActionIcon, Flex, Icon, List, Text } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 
 import S from "./DashboardTabs.module.css";
@@ -100,7 +100,7 @@ export function DashboardTabs({
             t`If you'd like to keep any of them, you can move them to a different tab, dashboard, or collection.`
           ) : (
             <>
-              {t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}
+              <Text>{t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}</Text>
               <List ml="lg" mt="sm">
                 {uniq(tabDashboardQuestions, (dc) => dc.card.id).map(
                   (dashcard) => (

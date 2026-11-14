@@ -25,7 +25,7 @@ export function SegmentRetireModal({
       title={t`Retire this segment?`}
       size="lg"
     >
-      <Text>
+      <Text c="text-secondary">
         {t`Saved questions and other things that depend on this segment will continue to work, but it will no longer be selectable from the query builder.`}
       </Text>
       <Modal.Footer>

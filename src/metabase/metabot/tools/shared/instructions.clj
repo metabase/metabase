@@ -74,8 +74,10 @@ Reference items using: [name](metabase://type/id)")
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID
    in the link template. Matches Python CreateSQLQueryToolV2._create_result.
-   With `results-readable?`, the model is told it can read the results with `run_query`."
-  [query-id results-readable?]
+   With `results-readable?`, the model is told it can read the results with `run_query`.
+   With `chart-id`, the query already has that chart, so the model is told not to make another, and with
+   `edit-chart?` how to change its chart type."
+  [query-id results-readable? & [chart-id edit-chart?]]
   (str "The assistant needs to:\n"
        (if results-readable?
          "- Run the query with `run_query` when the answer needs a value from its results\n"
@@ -83,7 +85,11 @@ Reference items using: [name](metabase://type/id)")
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        not-saved-instruction "\n"
-       "- Consider whether to create a chart or graph when that better matches the user's intent\n"
+       (if chart-id
+         (str "- It is already drawn as a chart with `chart_id` `" chart-id "`, so don't call `create_chart` for it"
+              (when edit-chart? ". To show another chart type, call `edit_chart` with that `chart_id`")
+              "\n")
+         "- Consider whether to create a chart or graph when that better matches the user's intent\n")
        "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 
 (def query-loaded-in-editor-instructions
@@ -112,6 +118,11 @@ Reference items using: [name](metabase://type/id)")
        "your answer.\n"
        "- If the user wants to open the query, link it using `[Link text](metabase://query/" query-id ")`.\n"
        not-saved-instruction))
+
+(defn add-to-dashboard-instruction
+  "The line telling the model how to put the chart `chart-id` on a dashboard with `write_dashboard`."
+  [chart-id]
+  (str "- To add it to a dashboard, pass `chart_id` `" chart-id "` to `write_dashboard`, with no `create_chart` call."))
 
 (defn- delivery-instruction
   "The delivery line for an updated query, by how it reached the user.

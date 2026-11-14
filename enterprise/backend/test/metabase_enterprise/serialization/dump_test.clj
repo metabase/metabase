@@ -1,18 +1,12 @@
 (ns metabase-enterprise.serialization.dump-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
-   [metabase-enterprise.serialization.dump :as dump]))
+   [metabase-enterprise.serialization.dump :as dump]
+   [metabase.util.match :as match]))
 
 (defn datastructure-node-types
   [coll]
-  (let [types (atom #{})]
-    (walk/postwalk
-     (fn [n]
-       (swap! types conj (type n))
-       n)
-     coll)
-    (deref types)))
+  (set (match/match-all coll x (type x))))
 
 (def example-card
   {:source_card_id         "skoPT2xiuEcUV8vFkHE6S",
@@ -138,8 +132,7 @@ type: question
 
 (deftest serialization-deep-sort-test
   (testing "Sorting applies to all levels of nested data structures"
-    (is (= #{clojure.lang.MapEntry
-             java.lang.Boolean
+    (is (= #{java.lang.Boolean
              clojure.lang.PersistentVector
              clojure.lang.PersistentTreeMap                 ; Sorted maps, not unsorted maps
              java.lang.String
@@ -153,9 +146,7 @@ type: question
                 ["Internal Metabase Database" "public" "v_alerts" "archived"]]
                false]]
              [:Card :dataset_query :stages :filters]))))
-    (is (= #{nil
-             java.lang.Long
-             clojure.lang.MapEntry
+    (is (= #{java.lang.Long
              java.lang.Boolean
              clojure.lang.PersistentVector
              clojure.lang.PersistentTreeMap                 ; Sorted maps, not unsorted maps

@@ -18,10 +18,7 @@ type SetupOpts = {
   syncType?: RemoteSyncType;
 };
 
-const setup = ({
-  isEnabled = true,
-  syncType = "read-only",
-}: SetupOpts = {}) => {
+function setup({ isEnabled = true, syncType = "read-only" }: SetupOpts = {}) {
   const settings = createMockSettings({
     "remote-sync-enabled": isEnabled,
     "remote-sync-url": isEnabled ? "https://github.com/acme/metabase.git" : "",
@@ -37,15 +34,15 @@ const setup = ({
       settings: mockSettings(settings),
     }),
   });
-};
+}
 
-const getRequestBody = async (path: string): Promise<unknown> => {
+async function getRequestBody(path: string): Promise<unknown> {
   await waitFor(() =>
     expect(fetchMock.callHistory.calls(`path:${path}`)).toHaveLength(1),
   );
   const [call] = fetchMock.callHistory.calls(`path:${path}`);
   return call?.request?.json();
-};
+}
 
 describe("SyncActionsSection", () => {
   it("pulls changes on demand when syncing read-only", async () => {

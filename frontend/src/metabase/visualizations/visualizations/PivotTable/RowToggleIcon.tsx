@@ -1,6 +1,9 @@
+import cx from "classnames";
 import _ from "underscore";
 
-import { Icon } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Flex, Icon, useMantineTheme } from "metabase/ui";
+import { adjustBrightness, color } from "metabase/ui/colors";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
@@ -8,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { RowToggleIconRoot } from "./PivotTable.styled";
+import S from "./PivotTable.module.css";
 
 interface RowToggleIconProps {
   value: number | string[];
@@ -27,6 +30,8 @@ export function RowToggleIcon({
   rowIndex = [],
   "data-testid": testId,
 }: RowToggleIconProps) {
+  const theme = useMantineTheme();
+
   if (value == null) {
     return null;
   }
@@ -84,8 +89,19 @@ export function RowToggleIcon({
             (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
               settingValue.concat(ref);
 
+  const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
+  const hoverColor = adjustBrightness(backgroundColor, 0.2, 0.2);
+
   return (
-    <RowToggleIconRoot
+    <Flex
+      className={cx(S.rowToggle, CS.cursorPointer)}
+      align="center"
+      p="xxs"
+      style={{
+        "--pivot-row-toggle-color": color(textColor),
+        "--pivot-row-toggle-bg": color(backgroundColor),
+        "--pivot-row-toggle-hover-bg": hoverColor,
+      }}
       data-testid={testId}
       onClick={(e) => {
         e.stopPropagation();
@@ -98,6 +114,6 @@ export function RowToggleIcon({
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </RowToggleIconRoot>
+    </Flex>
   );
 }

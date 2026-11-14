@@ -22,11 +22,25 @@ driver:
         - dbname
         - name: db
           placeholder: birds_of_the_world
+    - name: auth-mode
+      display-name: Authentication method
+      type: select
+      default: password
+      required: true
+      options:
+        - {name: "Username & password", value: "password"}
+        - {name: "IAM instance profile", value: "iam-instance-profile"}
+    - merge:
+      - user
+      - visible-if:
+          auth-mode: password
+    - merge:
+      - password
+      - visible-if:
+          auth-mode: password
     - name: schema-filters
       type: schema-filters
       display-name: Schemas
-    - user
-    - password
     - cloud-ip-address-info
     - group:
         container-style: ["component", "backdrop"]

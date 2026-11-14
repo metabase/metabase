@@ -415,7 +415,7 @@
 (def ^:private CollectionInstance
   "Schema for a Collection as it flows through this namespace: a raw `:model/Collection` Toucan instance, one
   hydrated with any of the computed keys this namespace or [[metabase.collections.children]] adds, or a
-  null-padded row from the collection-items union query. Every key is optional because different call sites
+  null-padded row from the synced-collection-items union query. Every key is optional because different call sites
   select or hydrate different subsets."
   [:map {:closed true}
    [:id                    {:optional true} ms/PositiveInt]
@@ -2290,6 +2290,6 @@
 
 (defmethod remote-sync/spec :model/Collection
   [_model]
-  {:collection-id        :id
+  {:synced-items         collections.db/synced-collection-items
    :synced-filter-clause (partial collections.db/synced-collections-clause
                                   [data-apps-ns transforms-ns snippets-ns data-actions-ns])})

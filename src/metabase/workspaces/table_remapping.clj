@@ -20,6 +20,12 @@
   [_db-id _from-spec]
   nil)
 
+(defenterprise table-remappings-exist?
+  "Whether the Database with `db-id` has any TableRemapping. OSS fallback is false."
+  metabase-enterprise.workspaces.table-remapping
+  [_db-id]
+  false)
+
 (defenterprise filter-workspace-side-tables
   "Drop tuples from a `describe-database` result whose `(schema, name)` matches
   the to-side of any active TableRemapping for `db-id`. The workspace's physical

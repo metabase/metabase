@@ -63,10 +63,12 @@
   :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
   :metabase/check-testing-not-empty                          {:level :warning}
+  :metabase/component-handle-own-key                         {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
   :metabase/discourage-dynamic-vars                          {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
+  :metabase/dynamic-redefs-captured-proxy                    {:level :warning}
   :metabase/mbql-query-first-arg                             {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
@@ -630,6 +632,7 @@
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
+   clojure.core/let                                                                                                          hooks.clojure.core.let/lint-let
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -674,6 +677,8 @@
    metabase.embedding-rest.api.embed-test/with-chain-filter-fixtures!                                                        hooks.common/let-one-with-optional-value
    metabase.embedding-rest.api.embed-test/with-temp-card                                                                     hooks.common/let-one-with-optional-value
    metabase.embedding-rest.api.embed-test/with-temp-dashcard                                                                 hooks.common/let-one-with-optional-value
+   metabase.global-system.system/->ComponentHandle                                                                           hooks.metabase.global-system.system/mutable-component-handle
+   metabase.global-system.system/mutable-component-handle                                                                    hooks.metabase.global-system.system/mutable-component-handle
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
    metabase.legacy-mbql.schema.macros/defclause*                                                                             hooks.metabase.legacy-mbql.schemas.macros/defclause*
    metabase.legacy-mbql.schema.macros/one-of                                                                                 hooks.metabase.legacy-mbql.schemas.macros/one-of
@@ -837,6 +842,7 @@
    metabase.util.malli/defn-                                                                                                 hooks.clojure.core.def/lint-dynamic
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/match-all                                                                                             hooks.metabase.util.match/match-all
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
    metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
    metabase.util.match/replace-all                                                                                           hooks.metabase.util.match/replace-all

@@ -427,7 +427,7 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
       expect(
         await within(
-          screen.getByRole("button", { name: "All alerts" }),
+          screen.getByRole("tab", { name: "All alerts" }),
         ).findByText("137"),
       ).toBeVisible();
 
@@ -437,7 +437,7 @@ describe("NotificationsAdminPage", () => {
           ["Ownerless", "ownerless"],
           ["All alerts", "all"],
         ]) {
-          await userEvent.click(screen.getByRole("button", { name: label }));
+          await userEvent.click(screen.getByRole("tab", { name: label }));
           await waitFor(() => {
             expect(
               new URLSearchParams(router?.location.search).get("tab") ?? "all",
@@ -454,7 +454,7 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
       expect(
         await within(
-          screen.getByRole("button", { name: "All alerts" }),
+          screen.getByRole("tab", { name: "All alerts" }),
         ).findByText("9"),
       ).toBeVisible();
       await act(async () => router?.navigate("/outside"));
@@ -465,7 +465,7 @@ describe("NotificationsAdminPage", () => {
       await act(async () => router?.navigate(PATHNAME));
       expect(
         await within(
-          screen.getByRole("button", { name: "All alerts" }),
+          screen.getByRole("tab", { name: "All alerts" }),
         ).findByText("10"),
       ).toBeVisible();
       expect(getCountCalls()).toHaveLength(2);
@@ -525,7 +525,7 @@ describe("NotificationsAdminPage", () => {
 
         expect(
           await within(
-            screen.getByRole("button", { name: "All alerts" }),
+            screen.getByRole("tab", { name: "All alerts" }),
           ).findByText("23"),
         ).toBeInTheDocument();
         expect(getCountCalls()).toHaveLength(1);
@@ -548,11 +548,11 @@ describe("NotificationsAdminPage", () => {
       await waitFor(() =>
         expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0),
       );
-      await userEvent.click(screen.getByRole("button", { name: "Failing" }));
+      await userEvent.click(screen.getByRole("tab", { name: "Failing" }));
       await waitForTableToLoad();
-      expect(screen.getByRole("button", { name: "Failing" })).toHaveAttribute(
-        "aria-current",
-        "page",
+      expect(screen.getByRole("tab", { name: "Failing" })).toHaveAttribute(
+        "aria-selected",
+        "true",
       );
       expect(getCountCalls()).toHaveLength(1);
     });
@@ -562,11 +562,11 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
       expect(getCountCalls()).toHaveLength(1);
       expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Failing" })).toBeEnabled();
+      expect(screen.getByRole("tab", { name: "Failing" })).toBeEnabled();
       act(() => jest.advanceTimersByTime(1000));
       expect(
         await within(
-          screen.getByRole("button", { name: "All alerts" }),
+          screen.getByRole("tab", { name: "All alerts" }),
         ).findByText("137"),
       ).toBeInTheDocument();
     });
@@ -574,7 +574,7 @@ describe("NotificationsAdminPage", () => {
     it("refreshes counters after archiving and keeps the previous count until the response arrives", async () => {
       setup({ allCount: 1 });
       await waitForTableToLoad();
-      const allTab = screen.getByRole("button", { name: "All alerts" });
+      const allTab = screen.getByRole("tab", { name: "All alerts" });
       expect(await within(allTab).findByText("1")).toBeInTheDocument();
       const countsRefetch = defer<AdminNotificationCountsResponse>();
       fetchMock.modifyRoute("admin-notification-counts", {

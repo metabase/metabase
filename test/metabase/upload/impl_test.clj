@@ -2680,10 +2680,10 @@
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before upload create"
-              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
               (testing "write pool is created during upload create"
-                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
@@ -2701,9 +2701,9 @@
             (let [table (create-upload-table!)]
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "write pool does not exist before upload delete"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
               (upload/delete-upload! table)
               (testing "write pool is created during upload delete"
-                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))

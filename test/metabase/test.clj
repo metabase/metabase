@@ -257,7 +257,6 @@
   metric-value
   obj->json->obj
   ordered-subset?
-  postwalk-pred
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
@@ -280,6 +279,7 @@
   with-prometheus-system!
   with-random-premium-token!
   with-temp-env-var-value!
+  with-temp-system-property!
   with-temp-dir
   with-temp-file
   with-temp-scheduler!
