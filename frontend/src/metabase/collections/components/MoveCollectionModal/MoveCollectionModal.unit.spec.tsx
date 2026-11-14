@@ -76,7 +76,6 @@ function toSearchResult(
     id: Number(collection.id),
     name: collection.name,
     model: "collection",
-    effective_location: collection.location ?? undefined,
     can_write: true,
     collection: createMockCollection({ id: 1, name: parentName }),
   });
@@ -123,19 +122,20 @@ function setup() {
     collectionItems: [],
   });
   setupRecentViewsAndSelectionsEndpoints(
-    [firstCollection, secondCollection, thirdCollection].map((collection) =>
+    [
+      { collection: firstCollection, parentName: "Our analytics" },
+      { collection: secondCollection, parentName: firstCollection.name },
+      { collection: thirdCollection, parentName: secondCollection.name },
+    ].map(({ collection, parentName }) =>
       createMockRecentCollectionItem({
         id: Number(collection.id),
         name: collection.name,
         model: "collection",
         can_write: true,
-        effective_location: collection.location ?? undefined,
-        parent_collection:
-          collection.parent_id === 11
-            ? { id: 11, name: firstCollection.name }
-            : collection.parent_id === 12
-              ? { id: 12, name: secondCollection.name }
-              : { id: null, name: "Our analytics" },
+        parent_collection: {
+          id: collection.parent_id ?? null,
+          name: parentName,
+        },
       }),
     ),
     ["selections", "views"],

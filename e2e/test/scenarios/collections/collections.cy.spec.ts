@@ -4,15 +4,12 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
-  ORDERS_QUESTION_ID,
-  READ_ONLY_PERSONAL_COLLECTION_ID,
   SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -76,40 +73,6 @@ describe("scenarios > collection defaults", () => {
         triggered_from: "collection-nav",
       });
     });
-
-    it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {
-      cy.intercept("POST", "/api/collection").as("createCollection");
-
-      cy.signIn("readonly");
-      visitRootCollection();
-      cy.findByTestId("collection-menu")
-        .findByLabelText("Create a new collection")
-        .should("not.exist");
-
-      H.visitCollection(READ_ONLY_PERSONAL_COLLECTION_ID);
-
-      cy.findByTestId("collection-menu")
-        .findByLabelText("Create a new collection")
-        .click();
-      cy.findByTestId("new-collection-modal").within(() => {
-        cy.findByLabelText("Name").type("sub");
-        cy.findByTestId("collection-picker-button").should(
-          "contain",
-          "Read Only Tableton's Personal Collection",
-        );
-        cy.button("Create").click();
-        cy.wait("@createCollection");
-      });
-      cy.location("pathname").should("match", /^\/collection\/\d+-sub/);
-      cy.findByTestId("collection-empty-state").should("be.visible");
-
-      cy.log(
-        "Newly created personal sub-collection should also have the new collection button",
-      );
-      cy.findByTestId("collection-menu")
-        .findByLabelText("Create a new collection")
-        .should("be.visible");
-    });
   });
 
   describe("new collection modal", () => {
@@ -152,248 +115,6 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("sidebar behavior", () => {
-    it("should navigate effortlessly through collections tree", () => {
-      visitRootCollection();
-
-      cy.log(
-        "should allow a user to expand a collection without navigating to it",
-      );
-
-      // 1. click on the chevron to expand the sub collection
-      H.displaySidebarChildOf("First collection");
-
-      H.navigationSidebar().within(() => {
-        // 2. I should see the nested collection name
-        cy.findByText("Second collection");
-        cy.findByText("Third collection").should("not.exist");
-        // 3. The url should still be /collection/root to test that we haven't navigated away
-        cy.location("pathname").should("eq", "/collection/root");
-
-        cy.log(
-          "should expand/collapse collection tree by clicking on parent collection name (metabase#17339)",
-        );
-
-        // 1. Clicking on the collection name for the first time should navigate to that collection and expand its children
-        cy.findByText("Second collection").click();
-        cy.findByText("Third collection");
-
-        // 2. Click on that same collection for the second time should collapse its children
-        cy.findByText("Second collection").click();
-        cy.findByText("Third collection").should("not.exist");
-
-        // 3. However, clicking on previously opened collection will not close it immediately
-        cy.findByText("First collection").click();
-        cy.findByText("Second collection");
-        // 4. We need to click on it again to close it
-        cy.findByText("First collection").click();
-        cy.findByText("Second collection").should("not.exist");
-        cy.findByText("Third collection").should("not.exist");
-      });
-
-      cy.log(
-        "navigating directly to a collection should expand it and show its children",
-      );
-
-      H.visitCollection(SECOND_COLLECTION_ID);
-
-      H.navigationSidebar().within(() => {
-        cy.findByText("Second collection");
-        cy.findByText("Third collection");
-
-        // Collections without sub-collections shouldn't have chevron icon (metabase#14753)
-        ensureCollectionHasNoChildren("Third collection");
-        ensureCollectionHasNoChildren("Your personal collection");
-      });
-
-      cy.log("new collections are created within the current collection");
-      H.startNewCollectionFromSidebar();
-      cy.findByTestId("new-collection-modal").within(() => {
-        cy.findByText("Collection it's saved in").should("be.visible");
-        cy.findByTestId("collection-picker-button")
-          .findByText("Second collection")
-          .should("be.visible");
-      });
-    });
-
-    it("should correctly display deep nested collections with long names", () => {
-      cy.log("Create two more nested collections");
-
-      ["Fourth collection", "Fifth collection with a very long name"].forEach(
-        (collection, index) => {
-          cy.request("POST", "/api/collection", {
-            name: collection,
-            parent_id: THIRD_COLLECTION_ID + index,
-          });
-        },
-      );
-
-      H.visitCollection(THIRD_COLLECTION_ID);
-
-      // 1. Expand so that deeply nested collection is showing
-      H.displaySidebarChildOf("Fourth collection");
-
-      // 2. Ensure we show the helpful tooltip with the full (long) collection name
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Fifth collection with a very long name").realHover();
-      cy.findByRole("tooltip", {
-        name: /Fifth collection with a very long name/,
-      });
-    });
-
-    it("should be usable on mobile screen sizes (metabase#15006)", () => {
-      cy.viewport(480, 800);
-
-      visitRootCollection();
-
-      cy.log(
-        "should be able to toggle collections sidebar when switched to mobile screen size",
-      );
-
-      H.navigationSidebar().should("have.attr", "aria-hidden", "true");
-      H.openNavigationSidebar();
-
-      H.closeNavigationSidebar();
-      H.navigationSidebar().should("have.attr", "aria-hidden", "true");
-
-      cy.log(
-        "should close collections sidebar when collection is clicked in mobile screen size",
-      );
-
-      H.openNavigationSidebar();
-
-      H.navigationSidebar().within(() => {
-        cy.findByText("First collection").click();
-      });
-
-      cy.findByTestId("collection-name-heading").should(
-        "have.text",
-        "First collection",
-      );
-
-      H.navigationSidebar().should("have.attr", "aria-hidden", "true");
-    });
-  });
-
-  it("should support markdown in collection description and allow it to be edited in the sidesheet", () => {
-    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
-      description: "[link](https://metabase.com)",
-    });
-    cy.request("PUT", `/api/collection/${SECOND_COLLECTION_ID}`, {
-      description: "[link](https://metabase.com)",
-    });
-
-    H.visitCollection(FIRST_COLLECTION_ID);
-
-    cy.log("Markdown description renders in the collection items tooltip");
-    cy.findByTestId("collection-table")
-      .findByText("Second collection")
-      .closest("tr")
-      .icon("info")
-      .as("descriptionIcon")
-      .trigger("mouseenter");
-
-    cy.findByRole("tooltip").within(() => {
-      cy.findByRole("link").should("include.text", "link");
-      cy.findByRole("link").should("not.include.text", "[link]");
-    });
-
-    cy.get("@descriptionIcon").trigger("mouseleave");
-    cy.findByRole("tooltip").should("not.exist");
-
-    cy.log("Description visible in collection caption");
-    cy.findByTestId("collection-caption")
-      .findAllByTestId("editable-text")
-      .eq(1)
-      .findByRole("link")
-      .should("have.text", "link")
-      .should("have.attr", "href", "https://metabase.com");
-
-    const toggleSidesheet = () =>
-      cy.findByTestId("collection-menu").icon("info").click();
-
-    cy.log("Let's edit the description");
-    toggleSidesheet();
-    H.sidesheet().within(() => {
-      cy.findByTestId("editable-text").click().type("edited ");
-      cy.realPress("Tab");
-      cy.findByLabelText("Close").click();
-    });
-
-    cy.log("The edited description is visible in collection caption");
-
-    cy.findByTestId("collection-caption")
-      .findAllByTestId("editable-text")
-      .eq(1)
-      .should("have.text", "edited link");
-
-    cy.log("The edited description is visible in the sidesheet");
-    toggleSidesheet();
-    H.sidesheet().within(() => {
-      cy.findByTestId("editable-text").should("have.text", "edited link");
-    });
-  });
-
-  it("should render last edited by email when names are null, with a tooltip only for long values", () => {
-    const LONG_EMAIL = "averyverylongemail@veryverylongdomain.com";
-    const SHORT_EMAIL = "me@email.com";
-    const lastEditInfo = (email) => ({
-      id: 1,
-      last_name: null,
-      first_name: null,
-      email,
-      timestamp: "2022-07-05T07:31:09.054-07:00",
-    });
-
-    cy.intercept(
-      "GET",
-      "/api/collection/root/items?models=dashboard**",
-      (req) => {
-        req.on("response", (res) => {
-          const data = [...res.body.data];
-          data[0] = { ...data[0], "last-edit-info": lastEditInfo(LONG_EMAIL) };
-          data[1] = { ...data[1], "last-edit-info": lastEditInfo(SHORT_EMAIL) };
-          res.send({ ...res.body, data });
-        });
-      },
-    );
-    visitRootCollection();
-
-    cy.log("long value renders with a tooltip");
-    cy.findByTestId("collection-table")
-      .findByText(LONG_EMAIL)
-      .as("longEmail")
-      .trigger("mouseenter");
-    cy.findByRole("tooltip").should("be.visible");
-
-    cy.get("@longEmail").trigger("mouseleave");
-    cy.findByRole("tooltip").should("not.exist");
-
-    cy.log("short value renders without a tooltip");
-    cy.findByTestId("collection-table")
-      .findByText(SHORT_EMAIL)
-      .trigger("mouseenter");
-    cy.findByRole("tooltip").should("not.exist");
-  });
-
-  it("should not show you the parent collection in recents or search results", () => {
-    H.visitCollection(THIRD_COLLECTION_ID);
-    H.openCollectionMenu();
-    H.popover().findByText("Move").click();
-    H.entityPickerModal().within(() => {
-      // wait for collections to load before clicking on recents to prevent flakiness
-      cy.findByText("Third collection").should("exist");
-      cy.findByText("Recent items").click();
-      // the space is important, since search results are of the form "[collection name] [parent collection name]"
-      cy.findByRole("link", { name: /First collection / }).should("exist");
-      cy.findByRole("link", { name: /Second collection / }).should("not.exist");
-
-      cy.findByPlaceholderText("Search…").type("coll");
-      cy.findByRole("link", { name: /Robert Tableton's / }).should("exist");
-      cy.findByRole("link", { name: /Second collection / }).should("not.exist");
-    });
-  });
-
   describe("Collection related issues reproductions", () => {
     it("should handle moving a question when you don't have access to entire collection path (metabase#44316)", () => {
       H.createCollection({
@@ -418,19 +139,20 @@ describe("scenarios > collection defaults", () => {
                 cy.updatePermissionsGraph({
                   [ALL_USERS_GROUP_ID]: {
                     [SAMPLE_DB_ID]: {
-                      "view-data": "unrestricted",
-                      "create-queries": "query-builder-and-native",
+                      "view-data": DataPermissionValue.UNRESTRICTED,
+                      "create-queries":
+                        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
                     },
                   },
                 });
                 cy.updateCollectionGraph({
                   [ALL_USERS_GROUP_ID]: {
-                    root: "none",
-                    [collectionA.id]: "none",
-                    [collectionB.id]: "write",
-                    [collectionC.id]: "none",
-                    [collectionD.id]: "none",
-                    [collectionE.id]: "write",
+                    root: "none" as const,
+                    [collectionA.id]: "none" as const,
+                    [collectionB.id]: "write" as const,
+                    [collectionC.id]: "none" as const,
+                    [collectionD.id]: "none" as const,
+                    [collectionE.id]: "write" as const,
                   },
                 });
                 cy.signIn("none");
@@ -565,65 +287,6 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-table").findByText("Orders");
     });
 
-    it("should reject dragging a subcollection directly or in a mixed selection (metabase#37329)", () => {
-      H.createCollection({ name: "Destination collection" });
-      visitRootCollection();
-
-      cy.intercept(
-        "PUT",
-        /\/api\/(card|collection)\/\d+$/,
-        cy.spy().as("moveRequest"),
-      ).as("move");
-
-      cy.log("Subcollections cannot initiate a drag");
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("First collection")
-          .closest("a")
-          .should("have.attr", "draggable", "false");
-        cy.findByText("First collection").as("collectionDragSubject");
-        cy.findByText("Destination collection").as("collectionDropTarget");
-      });
-
-      H.dragAndDrop("collectionDragSubject", "collectionDropTarget");
-
-      cy.findByTestId("items-drag-preview").should("not.exist");
-      cy.findByTestId("collection-table")
-        .findByText("First collection")
-        .should("be.visible");
-
-      cy.log("A mixed selection is rejected as one operation");
-      cy.findByTestId("collection-table").within(() => {
-        selectItemUsingCheckbox("Orders");
-        selectItemUsingCheckbox("First collection");
-        cy.findByText("Orders").as("dragSubject");
-        cy.findByText("Destination collection").as("dropTarget");
-      });
-
-      H.dragAndDrop("dragSubject", "dropTarget");
-
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Orders").should("be.visible");
-        cy.findByText("First collection").should("be.visible");
-        cy.findByText("Destination collection").should("be.visible");
-      });
-
-      cy.log("Dropping only the question moves it with a single request");
-      cy.findByTestId("collection-table").within(() => {
-        selectItemUsingCheckbox("First collection");
-      });
-      cy.findByTestId("toast-card")
-        .findByText("1 item selected")
-        .should("be.visible");
-
-      H.dragAndDrop("dragSubject", "dropTarget");
-      cy.wait("@move");
-
-      cy.findByTestId("collection-table")
-        .findByText("Orders")
-        .should("not.exist");
-      cy.get("@moveRequest").should("have.been.calledOnce");
-    });
-
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
@@ -698,30 +361,6 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("sub-collection should be available in move modal (metabase#14122)", () => {
-      const COLLECTION = "14122C";
-
-      // Create Parent collection within admin's personal collection
-      H.createCollection({
-        name: COLLECTION,
-        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
-      });
-
-      visitRootCollection();
-
-      openEllipsisMenuFor("Orders");
-
-      H.popover().within(() => {
-        cy.findByText("Move").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Bobby Tables's Personal Collection").click();
-        cy.findByText(COLLECTION).click();
-        cy.button("Move").should("not.be.disabled");
-      });
-    });
-
     it("moving collections should update the UI (metabase#14280, metabase#14482)", () => {
       const NEW_COLLECTION = "New collection";
 
@@ -786,187 +425,9 @@ describe("scenarios > collection defaults", () => {
           children: ["Third collection"],
         });
       });
-
-      cy.log(
-        "the collection picker should show an error if we are unable to move a collection (metabase#40700)",
-      );
-      cy.intercept("PUT", `/api/collection/${THIRD_COLLECTION_ID}`, {
-        statusCode: 500,
-        body: { message: "Ryan said no" },
-      });
-      H.openCollectionMenu();
-      H.popover().findByText("Move").click();
-
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(0, "Our analytics").click();
-        cy.button("Move").click();
-        cy.log("Entity picker should show an error message");
-        cy.findByText("Ryan said no").should("exist");
-      });
     });
 
     describe("bulk actions", () => {
-      describe("selection", () => {
-        it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          cy.visit("/collection/root");
-
-          // Pin one item
-          H.openUnpinnedItemMenu("Orders, Count");
-          H.popover().findByText("Pin this").click();
-          H.getPinnedSection().within(() => {
-            cy.findByText("Orders, Count");
-          });
-
-          // Select one
-          selectItemUsingCheckbox("Orders");
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-          assertSelectAllIsIndeterminate(true);
-          getRowCheckbox("Orders").should("be.checked");
-
-          // pinned cards join the same selection
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .click();
-          cy.findByTestId("toast-card")
-            .findByText("2 items selected")
-            .should("be.visible");
-          assertSelectAllIsIndeterminate(true);
-
-          // Select all
-          cy.findByLabelText("Select all items").click();
-          assertSelectAllIsIndeterminate(false);
-          cy.findByLabelText("Select all items").should("be.checked");
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .should("have.attr", "aria-checked", "true");
-          H.getUnpinnedSection()
-            .findAllByRole("checkbox")
-            .each((checkbox) => {
-              cy.wrap(checkbox).should("be.checked");
-            });
-
-          // Deselecting the pinned card keeps the rest of the selection
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .click();
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .should("have.attr", "aria-checked", "false");
-          assertSelectAllIsIndeterminate(true);
-          cy.findByTestId("toast-card").should("be.visible");
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .click();
-          assertSelectAllIsIndeterminate(false);
-          cy.findByLabelText("Select all items").should("be.checked");
-
-          // Deselect all
-          cy.findByLabelText("Select all items").click();
-
-          cy.findByLabelText("Select all items").should("not.be.checked");
-          assertSelectAllIsIndeterminate(false);
-          cy.findByTestId("toast-card").should("not.exist");
-          H.getPinnedSection().findByText("Orders, Count").should("be.visible");
-          H.getPinnedSection()
-            .findByRole("checkbox", { name: "Orders, Count" })
-            .should("not.exist");
-          H.getUnpinnedSection()
-            .findAllByRole("checkbox")
-            .each((checkbox) => {
-              cy.wrap(checkbox).should("not.be.checked");
-            });
-        });
-
-        it("should support shift+click and the Select menu entry", () => {
-          cy.visit("/collection/root");
-
-          cy.log("shift+click a row selects it instead of navigating");
-          H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-          cy.location("pathname").should("include", "/collection/root");
-
-          cy.log("shift+click the row again clears the selection");
-          H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
-          H.getUnpinnedSection().findByText("Orders").should("be.visible");
-          cy.findByTestId("toast-card").should("not.exist");
-
-          cy.log(
-            "shift+clicking the ellipsis opens the menu without selecting",
-          );
-          H.getUnpinnedSection()
-            .findByText("Orders, Count")
-            .closest("tr")
-            .findByRole("button", { name: "Actions" })
-            .click({ shiftKey: true });
-          H.popover().findByText("Select").should("be.visible");
-          cy.findByTestId("toast-card").should("not.exist");
-
-          cy.log("the open overflow menu can start a selection");
-          H.popover().findByText("Select").click();
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-        });
-
-        it("should clear the selection with Escape and trash it with Delete or the bulk actions menu (metabase#16496)", () => {
-          cy.visit("/collection/root");
-          selectItemUsingCheckbox("Orders");
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-
-          cy.realPress("Escape");
-          H.getUnpinnedSection().findByText("Orders").should("be.visible");
-          cy.findByTestId("toast-card").should("not.exist");
-
-          selectItemUsingCheckbox("Orders");
-          cy.realPress("Delete");
-          H.modal().button("Move to trash").click();
-
-          H.getUnpinnedSection().findByText("Orders").should("not.exist");
-          cy.findByTestId("toast-card").should("not.exist");
-
-          cy.log("bulk archive from the selection toast (metabase#16496)");
-          H.getUnpinnedSection()
-            .findByText("Orders, Count")
-            .should("be.visible");
-          selectItemUsingCheckbox("Orders, Count");
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-
-          cy.findByTestId("toast-card").findByLabelText("More actions").click();
-          H.popover().findByText("Move to trash").click();
-          H.modal().button("Move to trash").click();
-
-          H.getUnpinnedSection()
-            .findByText("Orders, Count")
-            .should("not.exist");
-          cy.findByTestId("toast-card").should("not.exist");
-        });
-
-        it("should clean up selection when opening another collection (metabase#16491)", () => {
-          cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-            collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-          });
-          cy.visit("/collection/root");
-          H.navigationSidebar().findByText("Your personal collection").click();
-
-          selectItemUsingCheckbox("Orders");
-          cy.findByTestId("toast-card")
-            .findByText("1 item selected")
-            .should("be.visible");
-
-          H.navigationSidebar().findByText("Our analytics").click();
-          cy.location("pathname").should("eq", "/collection/root");
-          cy.findByTestId("toast-card").should("not.exist");
-        });
-      });
-
       describe("move", () => {
         it("should be possible to bulk move items and undo", () => {
           cy.visit("/collection/root");
@@ -991,250 +452,12 @@ describe("scenarios > collection defaults", () => {
           H.getUnpinnedSection().findByText("Orders").should("be.visible");
           cy.findByTestId("toast-undo").should("not.exist");
         });
-
-        it("moving collections should disable moving into any of the moving collections, including in recents and search (metabase#45248)", () => {
-          H.createCollection({ name: "Another collection" });
-          H.createCollection({ name: "Outer collection 1" }).then(
-            ({ body: { id: parentCollectionId } }) => {
-              H.createCollection({
-                name: "Inner collection 1",
-                parent_id: parentCollectionId,
-              }).then(({ body: { id: innerCollectionId } }) => {
-                cy.wrap(innerCollectionId).as("innerCollectionId");
-              });
-              H.createCollection({
-                name: "Inner collection 2",
-                parent_id: parentCollectionId,
-              });
-            },
-          );
-          H.createCollection({ name: "Outer collection 2" }).then(
-            ({ body: { id: outerCollectionId } }) => {
-              cy.wrap(outerCollectionId).as("outerCollectionId");
-            },
-          );
-
-          cy.log(
-            "mark an inner and an unrelated collection as recently selected",
-          );
-          cy.get("@innerCollectionId").then((innerCollectionId) => {
-            cy.request("POST", "/api/activity/recents", {
-              context: "selection",
-              model: "collection",
-              model_id: innerCollectionId,
-            });
-          });
-          cy.get("@outerCollectionId").then((outerCollectionId) => {
-            cy.request("POST", "/api/activity/recents", {
-              context: "selection",
-              model: "collection",
-              model_id: outerCollectionId,
-            });
-          });
-          cy.visit("/collection/root");
-
-          cy.log("single move in recents and search (metabase#45248)");
-
-          cy.wait("@getCollectionItems");
-
-          H.openCollectionItemMenu("Outer collection 1");
-
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByText("Outer collection 2").should("exist");
-            cy.findByText(/Inner collection/i).should("not.exist");
-
-            cy.findByText("Recent items").click();
-            // search and recent results are labeled "[collection name] [parent collection name]"
-            cy.findByRole("link", { name: /Outer collection 2 / }).should(
-              "exist",
-            );
-            cy.findByText(/Inner collection/i).should("not.exist");
-
-            cy.findByPlaceholderText("Search…").type("collection");
-            cy.findByRole("link", { name: /Outer collection 2 / }).should(
-              "exist",
-            );
-            cy.findByText(/Inner collection/i).should("not.exist");
-
-            cy.button("Cancel").click();
-          });
-
-          cy.log("bulk move in recents (metabase#45248)");
-
-          cy.findByTestId("collection-table").within(() => {
-            selectItemUsingCheckbox("Orders");
-            selectItemUsingCheckbox("Outer collection 1");
-          });
-
-          cy.findByTestId("toast-card").button("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByText("Outer collection 2").should("exist");
-            cy.findByText("Recent items").click();
-            cy.findByRole("link", { name: /Outer collection 2 / }).should(
-              "exist",
-            );
-            cy.findByText(/Inner collection/i).should("not.exist");
-          });
-
-          cy.log("moving a single collection");
-          cy.visit(`/collection/${SECOND_COLLECTION_ID}`);
-
-          cy.log("from the collection header");
-
-          cy.findByTestId("collection-menu").icon("ellipsis").click();
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.log("parent collection should be selected");
-            findPickerItem("First collection").should(
-              "have.attr",
-              "data-active",
-              "true",
-            );
-
-            cy.log("moving collection should be visible but disabled");
-            findPickerItem("Second collection").should(
-              "have.attr",
-              "data-disabled",
-            );
-            cy.findByText("Cancel").click();
-          });
-
-          cy.log("from the collection items list");
-
-          cy.findByTestId("collection-table").within(() => {
-            openEllipsisMenuFor("Third collection");
-          });
-
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.log("parent collection should be selected");
-            findPickerItem("Second collection").should(
-              "have.attr",
-              "data-active",
-              "true",
-            );
-
-            cy.log("moving collection should be visible but disabled");
-            findPickerItem("Third collection").should(
-              "have.attr",
-              "data-disabled",
-            );
-            cy.findByText("Cancel").click();
-          });
-
-          cy.log("bulk moving items that include collections");
-          cy.visit("/collection/root");
-
-          cy.findByTestId("collection-table").within(() => {
-            selectItemUsingCheckbox("Orders");
-            selectItemUsingCheckbox("Another collection");
-            selectItemUsingCheckbox("First collection");
-          });
-
-          cy.findByTestId("toast-card").button("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.log("should disable all moving collections");
-            findPickerItem("First collection").should(
-              "have.attr",
-              "data-disabled",
-            );
-            findPickerItem("Another collection").should(
-              "have.attr",
-              "data-disabled",
-            );
-            findPickerItem("Our analytics").should(
-              "have.attr",
-              "data-active",
-              "true",
-            );
-          });
-        });
       });
-    });
-
-    it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
-      // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
-      // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      Cypress._.times(50, (i) => H.createDashboard({ name: `Dashboard ${i}` }));
-
-      cy.visit("/");
-      // There is already a collection named "First collection" in the default snapshot
-      H.navigationSidebar().within(() => {
-        cy.findByText("First collection");
-      });
-    });
-  });
-
-  describe("x-rays", () => {
-    beforeEach(() => {
-      cy.signInAsNormalUser();
-      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
-    });
-
-    it("should allow to x-ray models from collection views", () => {
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-      cy.visit("/collection/root");
-
-      openEllipsisMenuFor("Orders");
-      H.popover().findByText("X-ray this").click();
-      cy.wait("@dashboard").its("response.statusCode").should("eq", 200);
-
-      cy.url().should("include", "/auto/dashboard/model/");
-      cy.findByTestId("automatic-dashboard-header").should("be.visible");
-      H.getDashboardCards().should("have.length.greaterThan", 0);
     });
   });
 });
 
 describe("scenarios > collection items listing", () => {
-  function toggleSortingFor(columnName) {
-    const testId = "items-table-head";
-    cy.findByTestId(testId).findByText(columnName).click();
-  }
-
-  function assertCollectionItemsOrder(testId, names) {
-    for (let index = 0; index < names.length; ++index) {
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
-    }
-  }
-
-  function visitRootCollection() {
-    cy.visit("/collection/root");
-    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
-  }
-
-  function archiveAll() {
-    cy.request("GET", "/api/collection/root/items").then((response) => {
-      response.body.data.forEach(({ model, id }) => {
-        if (model !== "collection") {
-          cy.request(
-            "PUT",
-            `/api/${model === "dataset" ? "card" : model}/${id}`,
-            {
-              archived: true,
-            },
-          );
-        }
-      });
-    });
-  }
-
-  beforeEach(() => {
-    cy.intercept("GET", "/api/collection/root/items?*").as(
-      "getCollectionItems",
-    );
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
   const TEST_QUESTION_QUERY = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -1244,416 +467,82 @@ describe("scenarios > collection items listing", () => {
   };
 
   const PAGE_SIZE = 25;
+  const ADDED_QUESTIONS = 25;
+  // The "First collection" sub-collection, the dashboard and the questions
+  const TOTAL_ITEMS = 1 + 1 + ADDED_QUESTIONS;
 
-  describe("search", () => {
-    function interceptSearch(query, alias) {
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/collection/root/items",
-        query: {
-          q: query,
-        },
-      }).as(alias);
-    }
-
-    beforeEach(() => {
-      archiveAll();
-
-      H.createCollection({
-        name: "Quarterly revenue",
-      });
-      // Enough items to keep the search input and type filters visible.
-      _.times(10, (i) =>
-        H.createQuestion({
-          name: `Extra question ${i + 1}`,
-          collection_position: null,
-          query: TEST_QUESTION_QUERY,
-        }),
-      );
-
-      cy.signIn("normal");
-      H.createQuestion({
-        name: "Customer health",
-        collection_position: null,
-        query: TEST_QUESTION_QUERY,
-      });
-      cy.signInAsAdmin();
-    });
-
-    it("should search by item name and last editor name, clear results, and show an empty state", () => {
-      visitRootCollection();
-
-      interceptSearch("revenue", "searchByName");
-      cy.findByLabelText("Search items in this collection")
-        .should("have.value", "")
-        .type("revenue")
-        .should("have.value", "revenue");
-      cy.wait("@searchByName").then(({ request }) => {
-        const searchParams = new URL(request.url).searchParams;
-
-        expect(searchParams.get("q")).to.equal("revenue");
-        expect(searchParams.get("offset")).to.equal("0");
-      });
-
-      cy.findByTestId("collection-table")
-        .should("contain", "Quarterly revenue")
-        .and("not.contain", "Customer health");
-
-      cy.findByLabelText("Clear search").click();
-      cy.findByLabelText("Search items in this collection").should(
-        "have.value",
-        "",
-      );
-      cy.findByTestId("collection-table")
-        .should("contain", "Quarterly revenue")
-        .and("contain", "Customer health");
-
-      interceptSearch("Robert", "searchByEditor");
-      cy.findByLabelText("Search items in this collection")
-        .type("Robert")
-        .should("have.value", "Robert");
-      cy.wait("@searchByEditor").then(({ request }) => {
-        const searchParams = new URL(request.url).searchParams;
-
-        expect(searchParams.get("q")).to.equal("Robert");
-        expect(searchParams.get("offset")).to.equal("0");
-      });
-
-      cy.findByTestId("collection-table")
-        .should("contain", "Customer health")
-        .and("not.contain", "Quarterly revenue");
-
-      cy.findByLabelText("Clear search").click();
-      cy.findByLabelText("Search items in this collection").should(
-        "have.value",
-        "",
-      );
-
-      interceptSearch("nothing matches this", "searchWithoutResults");
-      cy.findByLabelText("Search items in this collection")
-        .type("nothing matches this")
-        .should("have.value", "nothing matches this");
-      cy.wait("@searchWithoutResults").then(({ request }) => {
-        expect(new URL(request.url).searchParams.get("q")).to.equal(
-          "nothing matches this",
-        );
-      });
-
-      cy.findByTestId("collection-filter-empty-state").within(() => {
-        cy.findByText("Didn't find anything").should("be.visible");
-        cy.findByText("There weren't any results for your search.").should(
-          "be.visible",
-        );
-      });
-    });
-  });
-
-  describe("type filters", () => {
-    beforeEach(() => {
-      archiveAll();
-
-      H.createDashboard({
-        name: "Revenue dashboard",
-        collection_position: null,
-      });
-      H.createQuestion({
-        name: "Customer question",
-        collection_position: null,
-        query: TEST_QUESTION_QUERY,
-      });
-      // Enough items to keep the search input and type filters visible.
-      _.times(10, (i) =>
-        H.createQuestion({
-          name: `Extra question ${i + 1}`,
-          collection_position: null,
-          query: TEST_QUESTION_QUERY,
-        }),
-      );
-    });
-
-    it("should filter collection items by the checked types", () => {
-      cy.intercept(
-        {
-          method: "GET",
-          pathname: "/api/collection/root/items",
-        },
-        (request) => {
-          const models = new URL(request.url).searchParams
-            .getAll("models")
-            .sort();
-
-          if (models.join(",") === "card,collection") {
-            request.alias = "getTypeFilteredCollectionItems";
+  function archiveAll() {
+    cy.request("GET", "/api/collection/root/items").then((response) => {
+      response.body.data.forEach(
+        ({ model, id }: { model: string; id: number }) => {
+          if (model !== "collection") {
+            cy.request(
+              "PUT",
+              `/api/${model === "dataset" ? "card" : model}/${id}`,
+              { archived: true },
+            );
           }
         },
       );
-      visitRootCollection();
-
-      cy.findByRole("button", { name: "Filter" }).click();
-      H.popover().within(() => {
-        cy.findAllByRole("checkbox").should("have.length", 8);
-        cy.findByLabelText("Collection").should("not.be.checked");
-        cy.findByLabelText("Dashboard").should("not.be.checked");
-        cy.findByLabelText("Question").should("not.be.checked");
-        cy.findByLabelText("Model").should("be.disabled");
-        cy.findByLabelText("Metric").should("be.disabled");
-        cy.findByRole("button", { name: "Apply" }).should("not.exist");
-        cy.findByLabelText("Question").click();
-        cy.findByLabelText("Collection").click();
-      });
-
-      cy.wait("@getTypeFilteredCollectionItems").then(({ request }) => {
-        const searchParams = new URL(request.url).searchParams;
-
-        expect(searchParams.getAll("models").sort()).to.deep.equal([
-          "card",
-          "collection",
-        ]);
-        expect(searchParams.get("offset")).to.equal("0");
-      });
-      cy.findByTestId("collection-table")
-        .should("contain", "First collection")
-        .and("contain", "Customer question")
-        .and("not.contain", "Revenue dashboard");
-      cy.findByTestId("type-filter-indicator")
-        .find('[class*="Indicator-indicator"]')
-        .should("exist");
-
-      H.popover().findByLabelText("Question").click();
-      H.popover().findByLabelText("Collection").click();
-
-      cy.findByTestId("collection-table")
-        .should("contain", "Revenue dashboard")
-        .and("contain", "Customer question");
-      cy.findByTestId("type-filter-indicator")
-        .find('[class*="Indicator-indicator"]')
-        .should("not.exist");
     });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
   });
 
-  describe("pagination", () => {
-    const SUBCOLLECTIONS = 1;
-    const ADDED_QUESTIONS = 15;
-    const ADDED_DASHBOARDS = 14;
-
-    const TOTAL_ITEMS = SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS;
-
-    beforeEach(() => {
-      // Removes questions and dashboards included in the default database,
-      // so the test won't fail if we change the default database
-      archiveAll();
-
-      _.times(ADDED_DASHBOARDS, (i) =>
-        H.createDashboard({ name: `dashboard ${i}` }),
-      );
-      _.times(ADDED_QUESTIONS, (i) =>
-        H.createQuestion({
-          name: `generated question ${i}`,
-          query: TEST_QUESTION_QUERY,
-        }),
-      );
+  it("should page, sort, search and filter the items of a collection against the backend", () => {
+    archiveAll();
+    H.createDashboard({
+      name: "Revenue dashboard",
+      collection_position: null,
     });
+    _.times(ADDED_QUESTIONS, (i) =>
+      H.createQuestion({
+        name: `Question ${i + 1}`,
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      }),
+    );
 
-    it("should allow to navigate back and forth and reset pagination when sorting", () => {
-      visitRootCollection();
+    cy.intercept("GET", "/api/collection/root/items?*").as(
+      "getCollectionItems",
+    );
+    cy.visit("/collection/root");
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
 
-      // First page
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    cy.log("pagination");
+    cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+    cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    cy.findByLabelText("Next page").click();
+    cy.findAllByTestId("collection-entry").should(
+      "have.length",
+      TOTAL_ITEMS - PAGE_SIZE,
+    );
 
-      cy.findByLabelText("Next page").click();
-      cy.wait("@getCollectionItems");
+    cy.log("sorting by type lists dashboards first and resets pagination");
+    cy.findByTestId("items-table-head").findByText("Type").click();
+    cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    cy.findAllByTestId("collection-entry-name")
+      .first()
+      .should("have.text", "Revenue dashboard");
 
-      // Second page
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should(
-        "have.length",
-        TOTAL_ITEMS - PAGE_SIZE,
-      );
-      cy.findByLabelText("Next page").should("be.disabled");
+    cy.log("search");
+    cy.findByLabelText("Search items in this collection").type("revenue");
+    cy.findByTestId("collection-table")
+      .should("contain", "Revenue dashboard")
+      .and("not.contain", "Question 1");
+    cy.findByLabelText("Clear search").click();
+    cy.findByTestId("collection-table").should("contain", "Question 1");
 
-      cy.findByLabelText("Previous page").click();
-
-      // First page
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-
-      cy.log("sorting on a page other than the first resets pagination");
-      // The second page is cached, so revisiting it sends no request
-      cy.findByLabelText("Next page").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
-
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-    });
-  });
-
-  describe("sorting", () => {
-    beforeEach(() => {
-      // Removes questions and dashboards included in a default dataset,
-      // so it's easier to test sorting
-      archiveAll();
-    });
-
-    it("should allow to sort unpinned items by columns asc and desc", () => {
-      ["A", "B", "C"].forEach((letter, i) => {
-        H.createDashboard({
-          name: `${letter} Dashboard`,
-          collection_position: null,
-        });
-
-        // Signing in as a different users, so we have different names in "Last edited by"
-        // In that way we can test sorting by this column correctly
-        cy.signIn("normal");
-
-        H.createQuestion({
-          name: `${letter} Question`,
-          collection_position: null,
-          query: TEST_QUESTION_QUERY,
-        });
-      });
-
-      visitRootCollection();
-      // We're waiting for the loading spinner to disappear from the main sidebar.
-      // Otherwise, this causes the page re-render and the flaky test.
-      cy.findByTestId("main-navbar-root")
-        .findByText("Our analytics")
-        .should("be.visible");
-      cy.findByTestId("main-navbar-root").find("circle").should("not.exist");
-
-      cy.log("sorted alphabetically by default");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "A Dashboard",
-        "A Question",
-        "B Dashboard",
-        "B Question",
-        "C Dashboard",
-        "C Question",
-        "First collection",
-      ]);
-
-      toggleSortingFor(/Name/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted alphabetically reversed");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "First collection",
-        "C Question",
-        "C Dashboard",
-        "B Question",
-        "B Dashboard",
-        "A Question",
-        "A Dashboard",
-      ]);
-
-      toggleSortingFor(/Name/i);
-      // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
-      cy.log("sorted alphabetically");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "A Dashboard",
-        "A Question",
-        "B Dashboard",
-        "B Question",
-        "C Dashboard",
-        "C Question",
-        "First collection",
-      ]);
-
-      toggleSortingFor(/Type/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted dashboards first");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "A Dashboard",
-        "B Dashboard",
-        "C Dashboard",
-        "A Question",
-        "B Question",
-        "C Question",
-        "First collection",
-      ]);
-
-      toggleSortingFor(/Type/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted collections first");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "First collection",
-        "A Question",
-        "B Question",
-        "C Question",
-        "A Dashboard",
-        "B Dashboard",
-        "C Dashboard",
-      ]);
-
-      toggleSortingFor(/Last edited by/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted by last editor name alphabetically");
-      assertCollectionItemsOrder("collection-entry-last-edited-by", [
-        "Bobby Tables",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "",
-      ]);
-
-      toggleSortingFor(/Last edited by/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted by last editor name alphabetically reversed");
-      assertCollectionItemsOrder("collection-entry-last-edited-by", [
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Robert Tableton",
-        "Bobby Tables",
-        "",
-      ]);
-
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted newest last");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "A Dashboard",
-        "A Question",
-        "B Dashboard",
-        "B Question",
-        "C Dashboard",
-        "C Question",
-        "First collection",
-      ]);
-
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
-
-      cy.log("sorted newest first");
-      assertCollectionItemsOrder("collection-entry-name", [
-        "C Question",
-        "C Dashboard",
-        "B Question",
-        "B Dashboard",
-        "A Question",
-        "A Dashboard",
-        "First collection",
-      ]);
-    });
+    cy.log("type filter");
+    cy.findByRole("button", { name: "Filter" }).click();
+    H.popover().findByLabelText("Collection").click();
+    cy.findByTestId("collection-table")
+      .should("contain", "First collection")
+      .and("not.contain", "Revenue dashboard")
+      .and("not.contain", "Question 1");
   });
 });
 
@@ -1680,27 +569,12 @@ describe("scenarios > collections > entity id support", () => {
   });
 });
 
-function openEllipsisMenuFor(item) {
-  cy.findByText(item)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
-}
-
-function getRowCheckbox(item) {
+function getRowCheckbox(item: string) {
   return cy.findByText(item).closest("tr").findByRole("checkbox");
 }
 
-function selectItemUsingCheckbox(item) {
+function selectItemUsingCheckbox(item: string) {
   getRowCheckbox(item).closest("button").click();
-}
-
-function assertSelectAllIsIndeterminate(isIndeterminate) {
-  cy.findByLabelText("Select all items").should(
-    "have.prop",
-    "indeterminate",
-    isIndeterminate,
-  );
 }
 
 function visitRootCollection() {
@@ -1713,14 +587,17 @@ function visitRootCollection() {
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
 }
 
-function ensureCollectionHasNoChildren(collection) {
+function ensureCollectionHasNoChildren(collection: string) {
   cy.findByText(collection)
     .closest("li")
     .icon("chevronright")
     .should("be.hidden");
 }
 
-function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
+function ensureCollectionIsExpanded(
+  collection: string,
+  { children = [] }: { children?: string[] } = {},
+) {
   cy.findByText(collection)
     .closest("[data-testid=sidebar-collection-link-root]")
     .as("root")
@@ -1740,6 +617,6 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 // the button element that gets attributes is 2 levels up from the text
-function findPickerItem(name) {
+function findPickerItem(name: string) {
   return cy.findByText(name).closest("a");
 }

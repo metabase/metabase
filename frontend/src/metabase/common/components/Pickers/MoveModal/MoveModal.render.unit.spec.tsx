@@ -267,6 +267,13 @@ describe("BulkMoveModal (metabase#45248)", () => {
     secondInnerCollection,
   ];
 
+  // The API sends `effective_location` with recents and search results, and the
+  // picker reads it to find a moving collection's descendants, but the
+  // RecentCollectionItem and SearchResult types do not declare it.
+  function withEffectiveLocation(collection: Collection) {
+    return { effective_location: collection.location ?? undefined };
+  }
+
   function toCollectionItem(collection: Collection): CollectionItem {
     return createMockCollectionItem({
       id: Number(collection.id),
@@ -311,19 +318,22 @@ describe("BulkMoveModal (metabase#45248)", () => {
         setupCollectionItemsEndpoint({ collection, collectionItems: [] }),
       );
     setupRecentViewsAndSelectionsEndpoints(
-      [innerCollection, otherOuterCollection].map((collection) =>
-        createMockRecentCollectionItem({
+      [
+        { collection: innerCollection, parentName: outerCollection.name },
+        { collection: otherOuterCollection, parentName: "Our analytics" },
+      ].map(({ collection, parentName }) => ({
+        ...createMockRecentCollectionItem({
           id: Number(collection.id),
           name: collection.name,
           model: "collection",
           can_write: true,
-          effective_location: collection.location ?? undefined,
-          parent_collection:
-            collection.parent_id === outerCollection.id
-              ? { id: outerCollection.id, name: outerCollection.name }
-              : { id: null, name: "Our analytics" },
+          parent_collection: {
+            id: collection.parent_id ?? null,
+            name: parentName,
+          },
         }),
-      ),
+        ...withEffectiveLocation(collection),
+      })),
       ["selections", "views"],
     );
     fetchMock.get("path:/api/search", (call) => {
@@ -331,18 +341,19 @@ describe("BulkMoveModal (metabase#45248)", () => {
       const data =
         query === SEARCH_TEXT
           ? [innerCollection, secondInnerCollection, otherOuterCollection].map(
-              (collection) =>
-                createMockSearchResult({
+              (collection) => ({
+                ...createMockSearchResult({
                   id: Number(collection.id),
                   name: collection.name,
                   model: "collection",
                   can_write: true,
-                  effective_location: collection.location ?? undefined,
                   collection: createMockCollection({
                     id: 1,
                     name: SEARCH_RESULT_LOCATION,
                   }),
                 }),
+                ...withEffectiveLocation(collection),
+              }),
             )
           : [];
       return { data, total: data.length };
