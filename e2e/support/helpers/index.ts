@@ -32,7 +32,6 @@ export * from "./e2e-embedding-iframe-interactive-helpers";
 export * from "./e2e-embedding-iframe-sdk-helpers";
 export * from "./e2e-embedding-iframe-sdk-setup-helpers";
 export * from "./e2e-embedding-sdk-assertion-helpers";
-export * from "./e2e-enterprise-helpers";
 export * from "./e2e-explorations-helpers";
 export * from "./e2e-filter-helpers";
 export * from "./e2e-ldap-helpers";
