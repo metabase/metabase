@@ -6,8 +6,8 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
-  validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { getErrorMessage } from "metabase/api/utils/errors";
 
@@ -15,9 +15,12 @@ import { DataAppFrame } from "./DataAppFrame";
 
 /** @category DataApp */
 export interface DataAppProps {
+  // TODO(DAT-115): add `onPathChange` so the host can navigate back after the user navigates inside the app.
   /**
    * App slug and optional route/query, such as `my-store/orders?active=true`.
-   * Changing the path remounts the iframe.
+   *
+   * Changing only the route or query navigates within the app.
+   * Changing the app slug remounts the iframe.
    **/
   path: string;
 
@@ -52,7 +55,11 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
 
     try {
-      validateDataAppPath(path);
+      const slug = getEmbeddedAppSlugFromPath(path);
+
+      if (!slug) {
+        return { error: "A valid data app path must be provided." };
+      }
 
       const url = getDataAppEmbedUrl(instanceUrl, path);
 
@@ -60,7 +67,11 @@ function DataAppInner({ path, ...props }: DataAppProps) {
       url.searchParams.set("embed-js-identifier", `react-data-app-${id}`);
 
       return {
-        src: url.href,
+        // Remount the iframe only when the app slug or instance URL changes.
+        // Route and query changes trigger client-side routing instead.
+        frameKey: getDataAppEmbedUrl(instanceUrl, slug).href,
+
+        initialSrc: url.href,
         origin: url.origin,
         path: normalizeDataAppPath(path),
       };
@@ -86,10 +97,11 @@ function DataAppInner({ path, ...props }: DataAppProps) {
 
   return (
     <DataAppFrame
-      // TODO(DAT-74): apply client-side routing when slug does not change
-      key={route.src}
+      key={route.frameKey}
       {...props}
-      {...route}
+      path={route.path}
+      origin={route.origin}
+      initialSrc={route.initialSrc}
       authConfig={authConfig}
       store={reduxStore}
       locale={providerProps?.locale}

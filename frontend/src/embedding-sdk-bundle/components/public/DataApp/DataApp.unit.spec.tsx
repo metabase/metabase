@@ -50,6 +50,17 @@ const sessionMessage = (sessionToken = SESSION) => ({
   data: { authMethod: "provider-managed", sessionToken },
 });
 
+const settingsMessage = (path: string) => ({
+  type: "metabase.embed.setSettings",
+  data: {
+    componentName: "metabase-data-app",
+    path,
+    instanceUrl: CONFIG.metabaseInstanceUrl,
+    locale: "fr",
+    _embedReferrer: window.location.href,
+  },
+});
+
 const message = (
   iframe: HTMLIFrameElement,
   type: string,
@@ -215,18 +226,51 @@ describe("DataApp", () => {
     );
   });
 
-  it("reloads the iframe when the path changes and ignores its old session reply", async () => {
+  it("reloads the iframe when the app slug changes and ignores its old session reply", async () => {
     const pending = defer<typeof SESSION>();
     requestSession.mockReturnValueOnce(pending.promise);
     const { iframe, postMessage, rerender } = setup();
 
     message(iframe, "metabase.embed.requestSessionToken");
-    rerender(<DataApp path="/boba-hq/orders?active=true" />);
+    rerender(<DataApp path="/milk-tea-hq/orders" />);
     expect(screen.queryByTestId("data-app-frame")).not.toBe(iframe);
 
     // ignores old session replies
     await act(async () => pending.resolve(SESSION));
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps the iframe and sends the new path when only the route or query changes", () => {
+    const { iframe, postMessage, rerender } = setup();
+    const initialSrc = iframe.src;
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq/orders?active=true" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(iframe.src).toBe(initialSrc);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders?active=true"),
+      ORIGIN,
+    );
+  });
+
+  it("sends the latest path once the iframe is ready after a route change", () => {
+    const { iframe, postMessage, rerender } = setup();
+
+    rerender(<DataApp path="boba-hq/orders" />);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders"),
+      ORIGIN,
+    );
   });
 
   it("keeps the same iframe when a leading slash is added", () => {
@@ -382,6 +426,28 @@ describe("DataApp", () => {
     );
 
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("loads the iframe again and retries authentication after an error when the route changes", async () => {
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    const { iframe, rerender } = setup({ path: "boba-hq/orders" });
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    rerender(<DataApp path="boba-hq/products" />);
+    const nextIframe =
+      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
+    message(nextIframe, "metabase.embed.requestSessionToken");
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
+    );
+
+    // going back to the route that failed keeps the working iframe
+    rerender(<DataApp path="boba-hq/orders" />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("data-app-frame")).toBe(nextIframe);
   });
 
   it("shows an error when the provider cannot refresh the session", async () => {

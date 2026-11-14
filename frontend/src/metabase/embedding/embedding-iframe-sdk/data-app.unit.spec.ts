@@ -130,7 +130,9 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "A valid data app path must be provided.",
+        code: "EMBED_TAG_ERROR",
+        message:
+          'path must be a data app slug with an optional subpath, such as "my-store/orders". Received "sales/../other".',
       }),
     );
   });
