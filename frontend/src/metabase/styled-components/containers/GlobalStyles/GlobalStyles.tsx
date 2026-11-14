@@ -12,7 +12,10 @@ import { useSetting } from "metabase/settings";
 import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { getFontFamilyValue } from "metabase/utils/fonts";
+import {
+  getCustomFontFaceStyles,
+  getFontFamilyValue,
+} from "metabase/utils/fonts";
 import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -31,19 +34,7 @@ export const GlobalStyles = (): JSX.Element => {
   }, [theme, whitelabelColors]);
 
   const styles = useMemo(() => {
-    const fontFaces = (fontFiles ?? [])
-      .map(
-        (file) => `
-          @font-face {
-            font-family: "Custom";
-            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-            font-weight: ${file.fontWeight};
-            font-style: normal;
-            font-display: swap;
-          }
-        `,
-      )
-      .join("\n");
+    const fontFaces = getCustomFontFaceStyles(fontFiles);
 
     return `
       ${cssVariables}

@@ -1,5 +1,5 @@
 import createCache from "@emotion/cache";
-import { CacheProvider, Global } from "@emotion/react";
+import { CacheProvider } from "@emotion/react";
 import { type ReactNode, useMemo, useState } from "react";
 
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -7,6 +7,7 @@ import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPort
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { setDataApp } from "metabase/embedding/config";
 import { MetabaseReduxProvider } from "metabase/redux";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
@@ -65,7 +66,7 @@ export const DataAppProvider = (props: DataAppProviderProps) => {
     <CacheProvider value={emotionCache}>
       <MetabaseReduxProvider store={sdkStore}>
         <SdkThemeProvider theme={theme}>
-          <Global styles={SCOPED_CSS_RESET} />
+          <GlobalStyleSheet styles={SCOPED_CSS_RESET} />
 
           {children}
 
