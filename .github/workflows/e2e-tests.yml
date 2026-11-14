@@ -44,9 +44,10 @@ jobs:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - name: Prepare Docker containers
+      - name: Start Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
+          mode: start
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: false
@@ -73,6 +74,27 @@ jobs:
           java-version: "25"
           distribution: "temurin"
 
+      - name: Wait for Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          mode: wait
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: false
+          openldap: false
+          mocksaml: false
+          postgres: true
+          mysql: true
+          mongo: true
+
+      # Boots in the background while Cypress and the CLJS bundle are prepared.
+      - name: Start Metabase
+        run: |
+          mkdir -p target
+          rm -f target/metabase-start.exit
+          nohup bash -c 'node e2e/runner/run_cypress_ci.js start; echo $? > target/metabase-start.exit' \
+            > target/metabase-start.log 2>&1 < /dev/null &
+
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -93,8 +115,13 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+      - name: Wait for Metabase
+        timeout-minutes: 6
+        run: |
+          # run_cypress_ci.js gives up after 5 minutes, so the exit file always appears first.
+          while [ ! -s target/metabase-start.exit ]; do sleep 1; done
+          cat target/metabase-start.log
+          exit "$(cat target/metabase-start.exit)"
 
       - name: Generate database snapshots
         env:
@@ -115,11 +142,11 @@ jobs:
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - e2e-matrix-builder
-      - e2e-snapshots
-    # Run even if e2e-snapshots fails: each shard then generates its own snapshots. The matrix builder
-    # must succeed, because the strategy below cannot parse a matrix it never produced.
+    # Shards start alongside e2e-snapshots instead of after it, overlapping their ~3 minutes of setup
+    # with it. Each shard waits briefly for the snapshots artifact and generates the snapshots itself
+    # when it is not ready (or e2e-snapshots failed). The matrix builder must succeed, because the
+    # strategy below cannot parse a matrix it never produced.
+    needs: e2e-matrix-builder
     if: ${{ !cancelled() && needs.e2e-matrix-builder.result == 'success' && needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
