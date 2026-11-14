@@ -69,6 +69,33 @@
             (#'sync-advisories/sync-and-evaluate!)
             (is (nil? (settings/security-center-last-synced-at)))))))))
 
+(deftest sync-and-evaluate-last-sync-attempt-test
+  (mt/with-premium-features #{:admin-security-center}
+    (testing "failed fetch bumps last-sync-attempted-at and records the error"
+      (let [previous #t "2026-01-01T00:00:00Z"]
+        (mt/with-temporary-setting-values [security-center-last-synced-at         previous
+                                           security-center-last-sync-attempted-at previous
+                                           security-center-last-sync-error        nil]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      fetch/sync-advisories!                    #(throw (ex-info "Advisory fetch failed with status 502" {}))
+                                      matching/evaluate-all-advisories!         (constantly nil)]
+            (#'sync-advisories/sync-and-evaluate!)
+            (is (= previous (settings/security-center-last-synced-at)))
+            (is (not= previous (settings/security-center-last-sync-attempted-at)))
+            (is (= "Advisory fetch failed with status 502" (settings/security-center-last-sync-error)))))))
+    (testing "successful fetch clears the error and sets both timestamps to the same value"
+      (mt/with-temporary-setting-values [security-center-last-synced-at         nil
+                                         security-center-last-sync-attempted-at nil
+                                         security-center-last-sync-error        "Advisory fetch failed with status 502"]
+        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                    fetch/sync-advisories!                    (constantly nil)
+                                    matching/evaluate-all-advisories!         (constantly nil)]
+          (#'sync-advisories/sync-and-evaluate!)
+          (is (some? (settings/security-center-last-sync-attempted-at)))
+          (is (= (settings/security-center-last-synced-at)
+                 (settings/security-center-last-sync-attempted-at)))
+          (is (nil? (settings/security-center-last-sync-error))))))))
+
 (deftest sync-and-evaluate-e2e-test
   (testing "full flow: sync-and-evaluate! runs matching queries and updates match_status"
     (with-redefs [config/mb-version-info {:tag "v1.55.0"}]

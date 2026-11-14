@@ -46,6 +46,8 @@ function setup({
 
   fetchMock.get("path:/api/ee/security-center", {
     last_checked_at: null,
+    last_sync_attempted_at: null,
+    last_sync_error: null,
     advisories,
   });
 

@@ -16,7 +16,12 @@ const advisory = createAdvisory({ advisory_id: "SA-001" });
 
 function mockRefreshedAdvisories() {
   fetchMock.modifyRoute("advisories", {
-    response: { advisories: [], last_checked_at: "2026-09-10T00:00:00Z" },
+    response: {
+      advisories: [],
+      last_checked_at: "2026-09-10T00:00:00Z",
+      last_sync_attempted_at: "2026-09-10T00:00:00Z",
+      last_sync_error: null,
+    },
   });
 }
 
@@ -24,7 +29,12 @@ describe("security-center cache invalidation", () => {
   beforeEach(() => {
     fetchMock.get(
       LIST_URL,
-      { advisories: [advisory], last_checked_at: null },
+      {
+        advisories: [advisory],
+        last_checked_at: null,
+        last_sync_attempted_at: null,
+        last_sync_error: null,
+      },
       { name: "advisories" },
     );
   });
