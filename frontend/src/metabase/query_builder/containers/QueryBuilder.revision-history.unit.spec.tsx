@@ -6,7 +6,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card } from "metabase-types/api";
 import {
@@ -106,6 +106,10 @@ describe("QueryBuilder > revision history", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument(),
     );
+    // The sheet hides itself before it tells the query builder, so check that
+    // it stays closed and is not shown again by the query builder state.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByTestId("qb-header-info-button"));
     history = await findHistory();
