@@ -299,13 +299,16 @@ function newDashboard(
 
 // Replaced rather than merged: the targets belong to the dashboard being
 // loaded, and a stale entry would let a removed click behavior keep resolving.
-// Kept across RESET: navigating back to the dashboard reuses them.
 export function linkTargets(
   state: DashboardLinkTargets = INITIAL_DASHBOARD_STATE.linkTargets,
   action: UnknownAction,
 ): DashboardLinkTargets {
   if (fetchDashboard.fulfilled.match(action)) {
     return action.payload.linkTargets;
+  }
+  if (initialize.match(action)) {
+    const { clearCache = true } = action.payload ?? {};
+    return clearCache ? INITIAL_DASHBOARD_STATE.linkTargets : state;
   }
   return state;
 }
