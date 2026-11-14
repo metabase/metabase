@@ -93,7 +93,7 @@
 
 (def ^:private implicit-columns
   "The columns a spec never declares, since serialization never exports them."
-  #{:id :created_at :updated_at})
+  #{:id :created_at :updated_at :worktree_id :worktree_id_helper})
 
 (defn- boolean-default
   "The boolean value of `default-value`, the database default of a column, or nil when it is none."

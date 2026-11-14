@@ -17,6 +17,10 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
+(t2/define-after-select :model/PythonLibrary
+  [python-library]
+  (dissoc python-library :worktree_id :worktree_id_helper))
+
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 

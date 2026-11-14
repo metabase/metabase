@@ -78,10 +78,11 @@
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
-  (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings
-            #(first (serialization/import-visualizer-settings serialization/app-db-store [%] {:lenient? true})))
-    dashcard))
+  (let [dashcard (dissoc dashcard :worktree_id :worktree_id_helper)]
+    (cond-> dashcard
+      (contains? dashcard :visualization_settings)
+      (update :visualization_settings
+              #(first (serialization/import-visualizer-settings serialization/app-db-store [%] {:lenient? true}))))))
 
 (declare series)
 

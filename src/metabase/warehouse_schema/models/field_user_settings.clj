@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -16,6 +17,10 @@
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
+
+(t2/define-after-select :model/FieldUserSettings
+  [field-user-settings]
+  (dissoc field-user-settings :worktree_id :worktree_id_helper))
 
 (t2/deftransforms :model/FieldUserSettings
   {:effective_type    field/transform-field-effective-type
@@ -77,7 +82,8 @@
       (t2/with-transaction [_]
         (warehouse-schema.db/update-or-insert-field-user-settings!
          id (fn [existing] (cond->> settings existing (with-set-flags settings))))
-        (warehouse-schema.db/update-field! id settings)))))
+        (when-not (mdb/worktree-id)
+          (warehouse-schema.db/update-field! id settings))))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
@@ -90,7 +96,8 @@
          (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
       (when (seq existing)
         (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))
-      (warehouse-schema.db/update-field-custom-positions! field-id->position))))
+      (when-not (mdb/worktree-id)
+        (warehouse-schema.db/update-field-custom-positions! field-id->position)))))
 
 (mu/defn unset-field-user-settings!
   "Drop the user values of the Field columns `ks` for `field` from its settings, leaving its row as it is for sync to
@@ -149,7 +156,8 @@
         items))
 
 (defmethod serialization/after-load :model/FieldUserSettings [_ items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
+  (doseq [{{:keys [field_id] :as settings} :instance} items
+          :when (not (mdb/worktree-id))]
     (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
 
 (defmethod remote-sync/spec :model/FieldUserSettings

@@ -58,6 +58,7 @@
    [:model/Channel
     :model/ChannelTemplate
     :model/Database
+    :worktree
     :model/User
     :model/Setting
     :model/EmbeddingTheme
@@ -276,7 +277,8 @@
                    sql        (sql-for-selecting-instances-from-source-db model)
                    results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
-       (comp (model-results-xform model)
+       (comp (map #(dissoc % :worktree_id_helper))
+             (model-results-xform model)
              (partition-all chunk-size))
        ;; cnt    = the total number we've inserted so far
        ;; chunkk = current chunk to insert

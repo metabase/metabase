@@ -138,6 +138,7 @@
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
+      (dissoc :worktree_id :worktree_id_helper)
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 

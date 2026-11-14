@@ -11,6 +11,7 @@ import type {
 import { Api } from "./api";
 import {
   idTag,
+  invalidateRemoteSyncContentTags,
   invalidateTags,
   listTag,
   provideUserListTags,
@@ -107,11 +108,14 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, { id, worktree_id }) =>
         invalidateTags(error, [
           listTag("user"),
           idTag("user", id),
           idTag("current-user", id),
+          ...(worktree_id !== undefined
+            ? [tag("session-properties"), ...invalidateRemoteSyncContentTags()]
+            : []),
         ]),
     }),
     getPasswordResetUrl: builder.mutation<

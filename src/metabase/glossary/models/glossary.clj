@@ -10,6 +10,10 @@
 
 (methodical/defmethod t2/table-name :model/Glossary [_model] :glossary)
 
+(t2/define-after-select :model/Glossary
+  [glossary]
+  (dissoc glossary :worktree_id :worktree_id_helper))
+
 (doto :model/Glossary
   (derive :metabase/model)
   (derive :hook/timestamped?)

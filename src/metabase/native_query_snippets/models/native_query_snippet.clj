@@ -24,6 +24,10 @@
 
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
 
+(t2/define-after-select :model/NativeQuerySnippet
+  [native-query-snippet]
+  (dissoc native-query-snippet :worktree_id :worktree_id_helper))
+
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
   (derive :hook/timestamped?)

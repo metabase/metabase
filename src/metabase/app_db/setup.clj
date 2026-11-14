@@ -21,6 +21,7 @@
    [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
@@ -324,7 +325,8 @@
    (u/profile (trs "Database setup")
      (u/with-us-locale
        (binding [config/*disable-setting-cache* true
-                 custom-migrations/*create-sample-content* create-sample-content?]
+                 custom-migrations/*create-sample-content* create-sample-content?
+                 mdb.worktree/*worktree-id* :all]
          (mdb.connection/with-application-db
            (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
            (verify-db-connection db-type data-source)

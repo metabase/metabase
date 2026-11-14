@@ -325,7 +325,7 @@
     collection))
 
 (t2/define-after-select :model/Collection [collection]
-  (maybe-localize-system-collection-name collection))
+  (maybe-localize-system-collection-name (dissoc collection :worktree_id :worktree_id_helper)))
 
 (doto :model/Collection
   (derive :metabase/model)

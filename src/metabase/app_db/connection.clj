@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
@@ -55,7 +56,8 @@
   (getConnection [_]
     (try
       (.. lock readLock lock)
-      (.getConnection data-source)
+      (cond-> (.getConnection data-source)
+        (= db-type :postgres) mdb.worktree/configure-connection!)
       (finally
         (.. lock readLock unlock))))
 
@@ -180,14 +182,18 @@
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
 ;; something callers of this function really need to be concerned about
 (defn unique-identifier
-  "Unique identifier for the Metabase application DB. This value will stay the same as long as the application DB stays
-  the same; if the application DB is dynamically rebound, this will return a new value.
+  "Unique identifier for the Metabase application DB, and the remote sync worktree this thread works in. This value will
+  stay the same as long as the application DB and the worktree stay the same; if the application DB is dynamically
+  rebound, this will return a new value.
 
   For normal memoization you can use [[memoize-for-application-db]]; you should only need to use this directly for TTL
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id (current-application-db)))
+  (let [id (.id (current-application-db))]
+    (if-let [worktree-id (mdb.worktree/worktree-id)]
+      [id worktree-id]
+      id)))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]

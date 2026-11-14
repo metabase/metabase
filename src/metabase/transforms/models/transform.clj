@@ -233,10 +233,10 @@
         resolve-merge-key-field-ids))))
 
 (t2/define-after-select :model/Transform
-  [{:keys [source] :as transform}]
-  (if source
-    (assoc transform :source_type (transforms-base.u/transform-source-type source))
-    transform))
+  [transform]
+  (let [{:keys [source] :as transform} (dissoc transform :worktree_id :worktree_id_helper)]
+    (cond-> transform
+      source (assoc :source_type (transforms-base.u/transform-source-type source)))))
 
 (mu/defn- hydrate-permission :- [:sequential ::instance]
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`

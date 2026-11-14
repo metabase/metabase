@@ -177,3 +177,49 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+
+(mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
+  "Every worktree, by branch."
+  []
+  (t2/select :model/Worktree {:order-by [[:branch :asc] [:id :asc]]}))
+
+(mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/Worktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-branch :- [:maybe :string]
+  "The branch of the worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/Worktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-users :- [:sequential :map]
+  "The users working in the worktrees with `worktree-ids`, with their `worktree_id`."
+  [worktree-ids :- [:sequential ms/PositiveInt]]
+  (if (empty? worktree-ids)
+    []
+    (t2/select [:model/User :id :email :first_name :last_name :worktree_id]
+               :worktree_id [:in worktree-ids]
+               :is_active true
+               {:order-by [[:id :asc]]})))
+
+(mu/defn insert-worktree! :- ::remote-sync.schema/worktree
+  "Insert the worktree `worktree` and return it."
+  [worktree :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/Worktree worktree))
+
+(mu/defn update-worktree!
+  "Set the columns `changes` of the worktree with `worktree-id`."
+  [worktree-id :- ms/PositiveInt
+   changes     :- ::remote-sync.schema/worktree.update]
+  (t2/update! :model/Worktree :id [:auto/param worktree-id] changes))
+
+(mu/defn delete-worktree!
+  "Delete the worktree with `worktree-id`, the database deleting its content and moving its users to the main app."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/Worktree :id [:auto/param worktree-id]))
+
+(mu/defn row-level-security-bypassed? :- :boolean
+  "Whether the app DB role skips row-level security, as a superuser or a role with BYPASSRLS does."
+  []
+  (boolean (:bypassed (t2/query-one ["SELECT rolsuper OR rolbypassrls AS bypassed FROM pg_roles WHERE rolname = current_user"]))))

@@ -21,6 +21,10 @@
 
 (methodical/defmethod t2/table-name :model/TableIndex [_model] :metabase_table_indexes)
 
+(t2/define-after-select :model/TableIndex
+  [table-index]
+  (dissoc table-index :worktree_id :worktree_id_helper))
+
 (doto :model/TableIndex
   (derive :metabase/model)
   (derive :hook/timestamped?))

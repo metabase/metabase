@@ -1,6 +1,7 @@
 (ns metabase.request.session
   (:require
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
+   [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.request.db :as request.db]
@@ -53,10 +54,11 @@
                                                                (user/user-local-settings metabase-user-id))))
                   (binding [*user-local-values-user-id* metabase-user-id]
                     (thunk)))))]
-      (do-with-user-local-values
-       (fn []
-         (perms/with-relevant-permissions-for-user metabase-user-id
-           (remote-sync/do-with-read-only-pks-cache thunk)))))))
+      (mdb/with-worktree-id (:worktree-id current-user-info)
+        (do-with-user-local-values
+         (fn []
+           (perms/with-relevant-permissions-for-user metabase-user-id
+             (remote-sync/do-with-read-only-pks-cache thunk))))))))
 
 (defn with-current-user-fetch-user-for-id
   "Part of the impl for `with-current-user` -- don't use this directly."

@@ -31,6 +31,7 @@
        (cond-> (merge session/session-from-and-joins
                       {:select [[:session.user_id :metabase-user-id]
                                 [:user.is_superuser :is-superuser?]
+                                [:user.worktree_id :worktree-id]
                                 [:user.is_data_analyst :is-data-analyst?]
                                 [:user.locale :user-locale]
                                 [:auth_identity.provider :auth-provider]]
@@ -77,6 +78,7 @@
                             [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
+                            [:user.worktree_id :worktree-id]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      :api_key
@@ -101,6 +103,7 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:user.id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.worktree_id :worktree-id]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      [[:core_user :user]]

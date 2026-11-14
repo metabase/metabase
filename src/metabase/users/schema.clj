@@ -95,6 +95,7 @@
    [:entity_id               :string]
    [:deactivated_at          [:maybe ms/TemporalInstant]]
    [:tenant_id               [:maybe ms/PositiveInt]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          [:maybe LoginAttributes]]
    [:deactivated_with_tenant [:maybe :boolean]]
    [:is_data_analyst         :boolean]
@@ -125,6 +126,7 @@
    [:entity_id               {:optional true} [:maybe :string]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])

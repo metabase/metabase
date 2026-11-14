@@ -336,3 +336,36 @@ export type TestRemoteSyncConnectionRequest = {
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
+
+export type WorktreeId = number;
+
+export type WorktreeUser = {
+  id: UserId;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  common_name: string | null;
+};
+
+export type Worktree = {
+  id: WorktreeId;
+  branch: string;
+  creator_id: UserId | null;
+  creator?: WorktreeUser | null;
+  users?: WorktreeUser[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
+export type CreateBranchRequest = {
+  name: string;
+};
+
+export type CreateBranchResponse = {
+  status: "success";
+  message: string;
+};
