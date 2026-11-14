@@ -381,6 +381,17 @@
               ids)
       (some nil? collection-ids) (conj nil))))
 
+(defn remote-sync-writable-table?
+  "Whether remote sync leaves the metadata of `table` writable: any Table unless the instance is read-only, and then
+  one that isn't published into a synced Collection."
+  [{:keys [is_published collection_id] :as table}]
+  (or (not (remote-sync/read-only?))
+      (do
+        (api/check-500 (contains? table :is_published) "No :is_published is set for a Table.")
+        (api/check-500 (contains? table :collection_id) "No :collection_id is set for a Table.")
+        (or (not is_published)
+            (contains? (remote-sync-writable-collection-ids [collection_id]) collection_id)))))
+
 (defn- audit-collection-hidden?
   "Whether the Collection with `collection-id` is the audit Collection while the audit app is off, which hides it."
   [collection-id]

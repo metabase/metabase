@@ -6,7 +6,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -29,16 +28,6 @@
   "The NativeQuerySnippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
-
-(mu/defn writable-snippet-ids :- [:set ::lib.schema.id/native-query-snippet]
-  "The ids among `ids` of the NativeQuerySnippets remote sync lets be written."
-  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
-  (if (seq ids)
-    (set (t2/select-pks-set :model/NativeQuerySnippet
-                            {:where [:and
-                                     [:in :id ids]
-                                     (remote-sync/can-write-filter-clause :model/NativeQuerySnippet :native_query_snippet)]}))
-    #{}))
 
 (mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists."

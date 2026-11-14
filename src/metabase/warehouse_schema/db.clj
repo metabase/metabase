@@ -416,6 +416,15 @@
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
+(mu/defn table-publication-columns :- [:map-of ::lib.schema.id/table :map]
+  "The `:is_published` and `:collection_id` of the Tables with `table-ids`, by id."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
+                      [:model/Table :id :is_published :collection_id]
+                      :id [:in table-ids])
+    {}))
+
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
