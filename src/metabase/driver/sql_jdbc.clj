@@ -382,6 +382,25 @@
    (sql-jdbc.conn/db->pooled-connection-spec database)
    args))
 
+(defn current-user-table-privileges-on-new-connection
+  "The rows of [[sql-jdbc.sync/current-user-table-privileges]] for the user in the `:details` of `database`, a map with
+  `:engine` and `:details`. Opens its own connection from those details and uses no connection pool, so it also works
+  for a database that a pooled connection refuses. Throws when the network policy does not allow a host of the
+  details."
+  [{driver :engine, :keys [details], :as database}]
+  ;; a pooled connection gets this check when its pool is created, and a connection test before it connects; the
+  ;; details of a stored database can come from an import, or be older than the policy
+  (driver.u/with-database-network-policy database
+    (driver.u/validate-connection-hosts! driver details))
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^Connection conn]
+       ;; realized here: the rows may be lazy, and the connection closes when this function returns
+       (vec (sql-jdbc.sync/current-user-table-privileges driver {:connection conn}))))))
+
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]
   (sql-jdbc.metadata/query-result-metadata driver query))

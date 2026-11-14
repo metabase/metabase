@@ -3,9 +3,11 @@
    [metabase-enterprise.security-center.metrics]
    [metabase-enterprise.security-center.models.security-advisory]
    [metabase-enterprise.security-center.settings]
+   [metabase-enterprise.security-center.task.run-health-checks]
    [metabase-enterprise.security-center.task.sync-advisories]))
 
 (comment metabase-enterprise.security-center.metrics/keep-me
          metabase-enterprise.security-center.models.security-advisory/keep-me
          metabase-enterprise.security-center.settings/keep-me
+         metabase-enterprise.security-center.task.run-health-checks/keep-me
          metabase-enterprise.security-center.task.sync-advisories/keep-me)

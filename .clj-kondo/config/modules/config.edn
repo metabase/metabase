@@ -4540,6 +4540,7 @@
            security-center
            session
            settings
+           startup
            system
            task
            util

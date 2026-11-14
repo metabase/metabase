@@ -96,3 +96,17 @@
                                                :perm_value [:not= :no]))]
     (t2/select [:model/Database :id :name] :id [:in db-ids] {:order-by [:name]})
     []))
+
+(mu/defn databases-with-details :- [:sequential [:map
+                                                 [:id      ms/PositiveInt]
+                                                 [:name    :string]
+                                                 [:engine  :keyword]
+                                                 [:details :map]
+                                                 [:dbms_version [:maybe :map]]
+                                                 [:is_attached_dwh [:maybe :boolean]]]]
+  "The id, name, engine, connection details, synced server version and attached-DWH flag, in name order, of every
+  database that Admin → Databases shows: every database except the audit database, routing destinations included."
+  []
+  (t2/select [:model/Database :id :name :engine :details :dbms_version :is_attached_dwh]
+             :is_audit false
+             {:order-by [:name]}))
