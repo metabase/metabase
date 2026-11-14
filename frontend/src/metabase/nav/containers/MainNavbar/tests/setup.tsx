@@ -231,7 +231,7 @@ export async function setup({
     });
   }
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={route}
       element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
@@ -246,6 +246,8 @@ export async function setup({
 
   await waitForLoaderToBeRemoved();
   await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
+
+  return { router };
 }
 
 export async function setupCollectionPage({
