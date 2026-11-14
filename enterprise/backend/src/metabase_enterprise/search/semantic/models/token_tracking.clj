@@ -1,7 +1,9 @@
 (ns metabase-enterprise.search.semantic.models.token-tracking
   (:require
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -13,8 +15,19 @@
   {:request_type mi/transform-keyword})
 
 (defn record-tokens
-  "Record semantic search token usage."
+  "Records `total-tokens` used by `model` for `request-type`.
+  A failed insert is logged and counted in `:metabase-search/semantic-token-tracking-failures` instead of thrown.
+  An interruption still propagates."
   [model request-type total-tokens]
-  (semantic-search.db/insert-token-tracking! {:model_name   model
-                                              :request_type request-type
-                                              :total_tokens total-tokens}))
+  (try
+    (semantic-search.db/insert-token-tracking! {:model_name   model
+                                                :request_type request-type
+                                                :total_tokens total-tokens})
+    (catch InterruptedException e
+      (throw e))
+    ;; The row only accounts for an embedding call that already succeeded, so a failed insert must not fail the
+    ;; search or indexing batch that made the call. Failing it would not save the row, and a retried batch pays
+    ;; for the same tokens again.
+    (catch Exception e
+      (analytics/inc! :metabase-search/semantic-token-tracking-failures {:model model})
+      (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))
