@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
@@ -54,6 +56,7 @@ function setup({
     return (
       <>
         <DashboardTabs />
+        <UndoListing />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
@@ -536,6 +539,52 @@ describe("DashboardTabs", () => {
       expect(screen.getByText("Selected tab id is -2")).toBeInTheDocument();
       expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
+  });
+
+  it("should allow duplicating, deleting and undoing the deletion of tabs more than once (#45364)", async () => {
+    const { getDashcards } = setup({
+      tabs: [],
+      dashcards: _.mapObject(TEST_DASHBOARD_STATE.dashcards, (dashcard) => ({
+        ...dashcard,
+        dashboard_tab_id: null,
+      })),
+    });
+    const getTabNames = () =>
+      screen.getAllByRole("tab").map((tab) => tab.textContent);
+
+    await duplicateTab(1);
+    expect(getTabNames()).toEqual(["Tab 1", "Copy of Tab 1"]);
+
+    await duplicateTab(1);
+    expect(getTabNames()).toEqual(["Tab 1", "Copy of Tab 1", "Copy of Tab 1"]);
+
+    const firstTabDashcardIds = getDashcards()
+      .filter((dashcard) => dashcard.dashboard_tab_id === -1)
+      .map(({ id }) => id);
+    expect(firstTabDashcardIds).toHaveLength(2);
+
+    await deleteTab(1);
+    expect(queryTab("Tab 1")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(await screen.findByTestId("toast-undo")).getByRole("button", {
+        name: "Undo",
+      }),
+    );
+    expect(getTabNames()).toEqual(["Tab 1", "Copy of Tab 1", "Copy of Tab 1"]);
+    expect(
+      getDashcards().filter(({ id }) => firstTabDashcardIds.includes(id)),
+    ).toEqual([
+      expect.objectContaining({ dashboard_tab_id: -1, isRemoved: false }),
+      expect.objectContaining({ dashboard_tab_id: -1, isRemoved: false }),
+    ]);
+
+    await userEvent.click(screen.getAllByRole("tab")[2]);
+    await deleteTab(1);
+    expect(getTabNames()).toEqual(["Copy of Tab 1", "Copy of Tab 1"]);
+
+    await deleteTab(1);
+    expect(getTabNames()).toEqual(["Copy of Tab 1"]);
   });
 
   describe("when navigating away from dashboard", () => {
