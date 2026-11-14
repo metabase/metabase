@@ -59,14 +59,7 @@ const COLLECTION_IN_PERSONAL = createMockCollection({
   parent_id: PERSONAL_COLLECTION.id,
   is_personal: true,
   can_write: true,
-  effective_ancestors: [
-    {
-      id: PERSONAL_COLLECTION.id,
-      name: PERSONAL_COLLECTION.name,
-      can_write: true,
-      personal_owner_id: ADMIN_ID,
-    },
-  ],
+  effective_ancestors: [PERSONAL_COLLECTION],
 });
 
 function setupMovableCollectionEndpoints() {

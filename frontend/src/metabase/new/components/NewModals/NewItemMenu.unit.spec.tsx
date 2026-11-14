@@ -257,9 +257,14 @@ describe("NewItemMenu > new dashboard default collection", () => {
   type SetupOpts = {
     route: string;
     canCurate: boolean;
+    isAdmin?: boolean;
   };
 
-  const setupNewDashboard = async ({ route, canCurate }: SetupOpts) => {
+  const setupNewDashboard = async ({
+    route,
+    canCurate,
+    isAdmin = canCurate,
+  }: SetupOpts) => {
     mockGetBoundingClientRect();
     const rootCollection = createMockCollection({
       ...ROOT_COLLECTION,
@@ -324,7 +329,7 @@ describe("NewItemMenu > new dashboard default collection", () => {
         storeInitialState: createMockState({
           currentUser: createMockUser({
             id: USER_ID,
-            is_superuser: canCurate,
+            is_superuser: isAdmin,
             personal_collection_id: PERSONAL_COLLECTION.id,
             can_write_any_collection: true,
           }),
@@ -341,18 +346,22 @@ describe("NewItemMenu > new dashboard default collection", () => {
     jest.restoreAllMocks();
   });
 
-  it("should offer the currently opened collection", async () => {
-    const modal = await setupNewDashboard({
-      route: "/collection/11-second-collection",
-      canCurate: true,
-    });
+  it.each([true, false])(
+    "should offer the currently opened collection (isAdmin: %s)",
+    async (isAdmin) => {
+      const modal = await setupNewDashboard({
+        route: "/collection/11-second-collection",
+        canCurate: true,
+        isAdmin,
+      });
 
-    await waitFor(() =>
-      expect(
-        within(modal).getByLabelText(/Which collection/),
-      ).toHaveTextContent("Second collection"),
-    );
-  });
+      await waitFor(() =>
+        expect(
+          within(modal).getByLabelText(/Which collection/),
+        ).toHaveTextContent("Second collection"),
+      );
+    },
+  );
 
   it("should offer the root collection from a dashboard page (metabase#16832)", async () => {
     const modal = await setupNewDashboard({
