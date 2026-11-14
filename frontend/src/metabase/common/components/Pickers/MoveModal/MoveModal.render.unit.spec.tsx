@@ -402,7 +402,9 @@ describe("BulkMoveModal (metabase#45248)", () => {
       ),
       SEARCH_TEXT,
     );
-    expect(await screen.findByText(SEARCH_RESULT_LOCATION)).toBeInTheDocument();
+    expect(await screen.findAllByText(SEARCH_RESULT_LOCATION)).not.toHaveLength(
+      0,
+    );
     expect(await findResultTexts()).toEqual([
       `${otherOuterCollection.name} ${SEARCH_RESULT_LOCATION}`,
     ]);

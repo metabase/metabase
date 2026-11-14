@@ -82,6 +82,8 @@ function toSearchResult(
 }
 
 const SEARCH_TEXT = "coll";
+// Tells search results apart from the recents they replace
+const SEARCH_RESULT_LOCATION = "Search result location";
 
 function setup() {
   mockGetBoundingClientRect();
@@ -145,9 +147,9 @@ function setup() {
     const data =
       query === SEARCH_TEXT
         ? [
-            toSearchResult(personalCollection, "Our analytics"),
-            toSearchResult(secondCollection, firstCollection.name),
-            toSearchResult(thirdCollection, secondCollection.name),
+            toSearchResult(personalCollection, SEARCH_RESULT_LOCATION),
+            toSearchResult(secondCollection, SEARCH_RESULT_LOCATION),
+            toSearchResult(thirdCollection, SEARCH_RESULT_LOCATION),
           ]
         : [];
     return { data, total: data.length };
@@ -179,8 +181,10 @@ function findPickerItem(name: string) {
   return screen.findByRole("link", { name: pickerItemName(name) });
 }
 
-function queryPickerItem(name: string) {
-  return screen.queryByRole("link", { name: pickerItemName(name) });
+/** Recents and search results, which load in place of the collection tree */
+async function findResultTexts() {
+  const results = await screen.findAllByTestId("result-item");
+  return results.map((result) => result.textContent);
 }
 
 describe("MoveCollectionModal", () => {
@@ -205,18 +209,23 @@ describe("MoveCollectionModal", () => {
     expect(await findPickerItem("Third collection")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Recent items"));
 
-    const modal = within(screen.getByTestId("entity-picker-modal"));
-    expect(await findPickerItem("First collection")).toBeInTheDocument();
-    expect(queryPickerItem("Second collection")).not.toBeInTheDocument();
-    expect(queryPickerItem("Third collection")).not.toBeInTheDocument();
+    expect(await findResultTexts()).toEqual([
+      `${firstCollection.name} Our analytics`,
+    ]);
 
-    await userEvent.type(modal.getByPlaceholderText("Search…"), SEARCH_TEXT);
+    await userEvent.type(
+      within(screen.getByTestId("entity-picker-modal")).getByPlaceholderText(
+        "Search…",
+      ),
+      SEARCH_TEXT,
+    );
 
-    expect(
-      await findPickerItem("Bobby Tables's Personal Collection"),
-    ).toBeInTheDocument();
-    expect(queryPickerItem("Second collection")).not.toBeInTheDocument();
-    expect(queryPickerItem("Third collection")).not.toBeInTheDocument();
+    expect(await screen.findAllByText(SEARCH_RESULT_LOCATION)).not.toHaveLength(
+      0,
+    );
+    expect(await findResultTexts()).toEqual([
+      `${personalCollection.name} ${SEARCH_RESULT_LOCATION}`,
+    ]);
   });
 
   it("shows the error message when the move fails (metabase#40700)", async () => {
