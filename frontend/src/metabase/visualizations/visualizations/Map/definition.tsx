@@ -28,7 +28,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { CustomGeoJSONMap } from "metabase-types/api";
 
-import { CustomMapFooter } from "./CustomMapFooter";
 import { getColorplethColorScale } from "./map-color-scale";
 import { isMapSensible, isPinMapType } from "./utils";
 
@@ -170,7 +169,7 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       get title() {
         return t`Region map`;
       },
-      widget: "select",
+      widget: "mapRegion",
       getDefault: ([{ card, data }]) => {
         const display: string = card.display;
         if (display === "state" || _.any(data.cols, isState)) {
@@ -190,7 +189,6 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           .sortBy((x) => x.name.toLowerCase())
           .value(),
         placeholder: t`Select a region`,
-        footer: <CustomMapFooter />,
         hiddenIcons: true,
       }),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
