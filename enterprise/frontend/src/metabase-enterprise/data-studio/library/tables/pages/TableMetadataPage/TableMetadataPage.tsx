@@ -12,7 +12,7 @@ import {
   TableRequiredFilter,
 } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
 import { useParams } from "metabase/router";
-import { Box, Center, Stack } from "metabase/ui";
+import { Box, Center, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
@@ -49,20 +49,15 @@ export function TableMetadataPage() {
     <PageContainer data-testid="table-metadata-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Box className={S.body} flex={1} px="3.5rem" py="xxl">
-        <Stack gap="xxxl" maw="60rem" mx="auto">
-          <SettingsSection
-            title={t`What this table is`}
-            description={t`What each row is about, and what to call one row and many rows in plain words.`}
-          >
+        {/* Left-aligned with the page header, capped so rows stay readable */}
+        <Stack gap="xxxl" maw={rem(800)}>
+          <SettingsSection title={t`What this table is`}>
             <SettingsCard>
               <TableSubjectFields table={table} readOnly={readOnly} />
             </SettingsCard>
           </SettingsSection>
           <TableStructureSections table={table} />
-          <SettingsSection
-            title={t`Default segments and required filter`}
-            description={t`What every question on this table starts from. A required filter is helpful for very large tables, to prevent people from accidentally querying more data than they intend to.`}
-          >
+          <SettingsSection title={t`Default segments and required filter`}>
             <SettingsCard>
               <TableDefaultSegment table={table} readOnly={readOnly} />
               <TableRequiredFilter table={table} readOnly={readOnly} />

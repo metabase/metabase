@@ -68,6 +68,10 @@ const renderFilterPickers = (
   onChange: (query: Lib.Query) => void,
 ) => <FilterClausePickers query={query} onChange={onChange} />;
 
+const renderReadOnlyFilterPickers = (query: Lib.Query) => (
+  <FilterClausePickers query={query} />
+);
+
 // `null` makes a new group; `undefined` means the modal is closed
 type EditingGroup = SegmentGroup | null | undefined;
 
@@ -197,7 +201,8 @@ export function SegmentTree({
         namePlaceholder: proposal.name,
         isMuted: true,
         isValid: hasFilters,
-        renderPicker: renderFilterPickers,
+        // A proposal's filters can be looked at, not changed
+        renderPicker: renderReadOnlyFilterPickers,
         onSave: async (draft) => {
           const saved = await saves.create(draft, {
             fallbackName: proposal.name,

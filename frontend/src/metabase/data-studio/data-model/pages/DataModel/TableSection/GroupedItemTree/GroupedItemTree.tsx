@@ -261,7 +261,9 @@ export function GroupedItemTree({
     columns,
     getNodeId: (node) => node.id,
     getSubRows: (node) => (node.kind === "group" ? node.children : undefined),
-    getRowCanExpand: (row) => row.original.kind === "group",
+    // Proposed groups have nothing under them yet, so they don't expand
+    getRowCanExpand: (row) =>
+      row.original.kind === "group" && row.original.groupId != null,
     defaultExpanded: true,
   });
 
@@ -417,6 +419,7 @@ export function GroupedItemTree({
                   : emptyMessage
               }
               icon={query.trim() !== "" ? undefined : emptyIcon}
+              isCompact
             />
           }
           onRowClick={(row, event) => {

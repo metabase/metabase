@@ -37,7 +37,8 @@ export function SettingsCard({ children }: { children: ReactNode }) {
       radius="lg"
       shadow="none"
       px="xl"
-      py={0}
+      // With the rows' own lg padding, the card's edges get xl
+      py="sm"
     >
       {children}
     </Card>
@@ -78,9 +79,4 @@ export function SettingsRow({
       <Box className={S.control}>{children}</Box>
     </div>
   );
-}
-
-/** A read-only value, in a row's control position */
-export function SettingsValue({ children }: { children: ReactNode }) {
-  return <Text ta="right">{children}</Text>;
 }

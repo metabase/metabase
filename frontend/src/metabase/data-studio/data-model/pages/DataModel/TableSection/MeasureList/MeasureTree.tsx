@@ -51,6 +51,10 @@ const renderAggregationPicker = (
   onChange: (query: Lib.Query) => void,
 ) => <AggregationClausePicker query={query} onChange={onChange} />;
 
+const renderReadOnlyAggregationPicker = (query: Lib.Query) => (
+  <AggregationClausePicker query={query} />
+);
+
 // `null` makes a new group; `undefined` means the modal is closed
 type EditingGroup = MeasureGroup | null | undefined;
 
@@ -168,7 +172,8 @@ export function MeasureTree({
         namePlaceholder: proposal.name,
         isMuted: true,
         isValid: hasOneAggregation,
-        renderPicker: renderAggregationPicker,
+        // A proposal's aggregation can be looked at, not changed
+        renderPicker: renderReadOnlyAggregationPicker,
         onSave: async (draft) => {
           const saved = await saves.create(draft, {
             fallbackName: proposal.name,

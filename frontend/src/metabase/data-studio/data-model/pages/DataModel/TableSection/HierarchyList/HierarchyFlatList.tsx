@@ -152,6 +152,7 @@ export function HierarchyFlatList({
                   : t`No hierarchies yet`
               }
               icon="network"
+              isCompact
             />
           }
           onRowClick={(row, event) => {

@@ -32,7 +32,7 @@ export function TableDefaultSegment({ table, readOnly }: TableSettingProps) {
   return (
     <SettingsRow
       label={t`Default segment`}
-      description={t`Questions on this table start from this segment. People can remove it from a question.`}
+      description={t`Questions on this table start with this segment applied.`}
     >
       <DefaultSegmentPicker
         value={model.defaultSegment.segment}

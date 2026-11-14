@@ -11,7 +11,6 @@ import {
 import {
   SettingsCard,
   SettingsRow,
-  SettingsValue,
 } from "metabase/data-studio/common/components/SettingsSection";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
@@ -532,11 +531,6 @@ function StructureFormRows({
           disabled={readOnly}
           onCommit={(value) => setGrainDescription(table, value)}
         />
-      </SettingsRow>
-      <SettingsRow label={t`Row identity`}>
-        <SettingsValue>
-          {getRowIdentityLabel(structure.rowIdentity)}
-        </SettingsValue>
       </SettingsRow>
       {!isHistoryRole && (
         <SettingsRow label={t`Main date`}>
