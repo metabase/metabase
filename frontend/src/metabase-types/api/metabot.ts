@@ -247,6 +247,27 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
+export type SuggestSummaryFormulaRequest = {
+  /** `aggregation` for Values; `expression` for a custom column used to group Rows or Columns. */
+  mode: "aggregation" | "expression";
+  /** What was typed into the summary well, e.g. `average order total`. */
+  prompt: string;
+  /** Available columns, with names in escaped expression syntax, e.g. `[User → Name]` or `[Total\[USD\]]`. */
+  columns: { name: string; type?: string | null }[];
+  /** Metric references in escaped expression syntax. Only allowed in `aggregation` mode. */
+  metrics?: string[] | null;
+  /** Measure references in escaped expression syntax. Only allowed in `aggregation` mode. */
+  measures?: string[] | null;
+  table_name?: string | null;
+  database_id: DatabaseId;
+};
+
+export type SuggestSummaryFormulaResponse = {
+  /** Custom expression source without the leading `=`. */
+  expression: string;
+  name: string;
+};
+
 export type MetabotFeedback = {
   message_id: string;
   freeform_feedback?: string;

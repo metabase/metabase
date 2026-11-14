@@ -30,6 +30,7 @@ import type {
   MetabotTenantLimit,
   PurchaseCloudAddOnRequest,
   RegenerateSuggestedMetabotPromptsResponse,
+  SuggestSummaryFormulaResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
@@ -644,5 +645,20 @@ export function setupUserMetabotPermissionsEndpoint(
     "path:/api/metabot/permissions/user-permissions",
     response ?? createMockUserMetabotPermissions(),
     { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
+  );
+}
+
+const SUGGEST_SUMMARY_FORMULA_ROUTE_NAME = "metabot-suggest-summary-formula";
+
+export function setupSuggestSummaryFormulaEndpoint(
+  response:
+    | SuggestSummaryFormulaResponse
+    | { status: number; body: string | object },
+) {
+  fetchMock.removeRoute(SUGGEST_SUMMARY_FORMULA_ROUTE_NAME);
+  fetchMock.post(
+    "path:/api/metabot/custom-expression/summary-formula",
+    response,
+    { name: SUGGEST_SUMMARY_FORMULA_ROUTE_NAME },
   );
 }

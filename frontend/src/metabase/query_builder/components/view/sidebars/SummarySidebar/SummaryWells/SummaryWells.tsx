@@ -24,6 +24,7 @@ import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
 import { WellChip } from "./WellChip";
+import { useFormulaGenerator } from "./use-formula-generator";
 
 type SummaryWellsProps = {
   query: Lib.Query;
@@ -32,6 +33,7 @@ type SummaryWellsProps = {
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
+  onAdd: (nextQuery: Lib.Query, wellId: SummaryWellId) => void;
 };
 
 export function SummaryWells({
@@ -41,7 +43,20 @@ export function SummaryWells({
   draggedItem,
   onPick,
   onChange,
+  onAdd,
 }: SummaryWellsProps) {
+  const valueFormulaGenerator = useFormulaGenerator({
+    query,
+    stageIndex,
+    wellId: "values",
+    onAdd,
+  });
+  const columnFormulaGenerator = useFormulaGenerator({
+    query,
+    stageIndex,
+    wellId: "columns",
+    onAdd,
+  });
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -92,6 +107,7 @@ export function SummaryWells({
               handleRemove(lastItem.clause);
             }
           }}
+          formulaGenerator={valueFormulaGenerator}
         >
           {valueItems.map((item) => (
             <ValueChip
@@ -121,6 +137,7 @@ export function SummaryWells({
               handleRemove(lastItem.clause);
             }
           }}
+          formulaGenerator={columnFormulaGenerator}
         >
           {dimensionItems.map((item) => (
             <WellChip
