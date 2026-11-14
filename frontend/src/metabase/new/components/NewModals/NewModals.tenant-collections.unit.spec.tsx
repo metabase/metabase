@@ -87,7 +87,7 @@ describe("NewModals > shared tenant collections", () => {
     setupRootCollectionItemsEndpoint({
       rootCollectionItems: [
         createMockCollectionItem({
-          id: regularCollection.id,
+          id: 12,
           name: regularCollection.name,
           model: "collection",
           location: "/",
@@ -96,7 +96,7 @@ describe("NewModals > shared tenant collections", () => {
       ],
       tenantRootItems: [
         createMockCollectionItem({
-          id: sharedCollection.id,
+          id: 10,
           name: sharedCollection.name,
           model: "collection",
           location: "/",
@@ -111,7 +111,7 @@ describe("NewModals > shared tenant collections", () => {
       collection: sharedCollection,
       collectionItems: [
         createMockCollectionItem({
-          id: sharedSubCollection.id,
+          id: 11,
           name: sharedSubCollection.name,
           model: "collection",
           location: "/10/",
