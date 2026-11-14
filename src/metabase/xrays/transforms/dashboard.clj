@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
@@ -26,7 +26,7 @@
                              [:database ::lib.schema.id/database]]]
    [:name                   [:maybe :string]]
    [:collection_id          :nil]
-   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
+   [:visualization_settings ::lib.schema.visualization/visualization-settings]
    [:display                :keyword]])
 
 (mu/defn- cards->section

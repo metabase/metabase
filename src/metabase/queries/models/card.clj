@@ -124,7 +124,7 @@
    :embedding_params       mi/transform-json-no-keywordization
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
-   :visualization_settings mi/transform-visualization-settings
+   :visualization_settings lib-be/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword

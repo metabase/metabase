@@ -9,7 +9,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -292,8 +292,8 @@
                    :format-rows?     true
                    :results_metadata {:columns [{:name "A" :display_name "A" :base_type :type/Integer
                                                  :fingerprint {:global {:distinct-count 2}}}]}
-                   :viz-settings     {::mb.viz/column-settings
-                                      {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
+                   :viz-settings     {:column_settings
+                                      {(lib/column-name->column-settings-key "A") {:show_mini_bar true}}}}
           ;; render-pulse-card returns lazy hiccup, so realize it into HTML (as delivery does)
           ;; before parsing; this is the step that throws on the unfixed code.
           doc        (-> (channel.render/render-pulse-card :inline "UTC" render.tu/test-card nil {:data data})
@@ -336,7 +336,7 @@
 (deftest ^:parallel text-wrapping-fallback-width-test
   (testing "a text-wrapping column with no explicit table.column_widths (UXW-4714)"
     (let [columns    [{:name "desc"}]
-          viz        {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}}
+          viz        {:column_settings {(lib/column-name->column-settings-key "desc") {:text_wrapping true}}}
           styles-for #(get (table/column->viz-setting-styles columns viz) "desc")]
       (testing "defaults to a fixed fallback width, so email/Slack clients (which don't auto-wrap) wrap"
         (let [s (styles-for)]
@@ -351,7 +351,7 @@
             (is (not (contains? s :max-width))))))))
   (testing "an explicit table.column_widths gives min-width and ignores the fallback var entirely"
     (let [columns [{:name "desc"}]
-          viz     {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}
+          viz     {:column_settings {(lib/column-name->column-settings-key "desc") {:text_wrapping true}}
                    :table.column_widths [200]}]
       (binding [table/*text-wrapping-fallback-width* nil]
         (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
@@ -367,7 +367,7 @@
                                 ["file:///etc/passwd"]
                                 ["javascript:alert(1)"]
                                 ["data:text/html,<script>alert(1)</script>"]]}
-          viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} {::mb.viz/view-as "image"}}}
+          viz-settings  {:column_settings {(lib/column-name->column-settings-key "url") {:view_as "image"}}}
           rendered      (#'table/render-table (select-keys query-results [:cols :rows])
                                               {:col-names ["url"] :cols-for-color-lookup ["url"]}
                                               (query-results->header+rows query-results)

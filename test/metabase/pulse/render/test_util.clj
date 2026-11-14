@@ -49,7 +49,7 @@
    {:graph.metrics ["NumPurchased"]
     :graph.dimensions ["Price"]
     :table.column_formatting [{:columns       ["a"]
-                               :type          :single
+                               :type          "single"
                                :operator      ">"
                                :value         5
                                :color         "#ff0000"

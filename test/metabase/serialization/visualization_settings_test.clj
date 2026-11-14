@@ -36,7 +36,7 @@
                 :linkType "question"
                 :targetId 1
                 :parameterMapping
-                {(keyword "[\"dimension\",[\"field\",54,{\"source-field\":53}]]")
+                {"[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                  {:id     "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                   :source {:type "column", :id "Category_ID", :name "Category ID"}
                   :target {:type      "dimension"
@@ -79,7 +79,7 @@
             {"[\"ref\",[\"field\",3,null]]"
              {:click_behavior
               {:parameterMapping
-               {(keyword "[\"dimension\",[\"field\",3,{\"source-field\":3}]]")
+               {"[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                 {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                  :target {:type      "dimension"
                           :dimension ["dimension" [:field 3 {:source-field 3}]]

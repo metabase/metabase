@@ -138,7 +138,7 @@
   [:source-card :source_card :card-id :card_id])
 
 (def ^:private exported-field-id-keys
-  [:source-field :metabase.models.visualization-settings/param-mapping-source])
+  [:source-field])
 
 (defn- exported-entity-ids
   [normalized]

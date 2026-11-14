@@ -4,7 +4,7 @@
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metrics.core :as metrics]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli.registry :as mr]
@@ -103,7 +103,7 @@
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
-  ::lib.schema.visualization-settings/visualization-settings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::exploration-query.dataset-query
   "The `:dataset_query` column of a ExplorationQuery, decoded."

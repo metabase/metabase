@@ -325,9 +325,9 @@
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
-(mu/defn ensure-integer-link-card-id
-  "Return `id` if it is an integer, else throw a 400."
-  [id :- ms/VisualizationSettingsValue]
+(defn ensure-integer-link-card-id
+  "Return `id`, a value the client sent as the id of a link card's entity, if it is an integer, else throw a 400."
+  [id]
   (when-not (integer? id)
     (throw (ex-info "Link card entity id must be an integer"
                     {:status-code 400, :id id})))

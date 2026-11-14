@@ -18,7 +18,6 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.models.visualization-settings :as vs]
    [metabase.queries.models.query :as queries.query]
    [metabase.source-swap.core :as source-swap]))
 
@@ -137,9 +136,7 @@
         parameter-mappings' (replacement.walk/walk-parameter-mapping-targets parameter-mappings update-fn)
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
-                                    vs/db->norm
-                                    (replacement.walk/walk-viz-settings-click-behaviors update-fn)
-                                    vs/norm->db)
+                                    (replacement.walk/walk-viz-settings-click-behaviors update-fn))
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
                   (assoc :parameter_mappings parameter-mappings')
@@ -157,7 +154,7 @@
                                         (replacement.walk/parameter-mapping-card-ids
                                          (:parameter_mappings dashcard))
                                         (replacement.walk/viz-settings-click-behavior-card-ids
-                                         (-> dashcard :visualization_settings vs/db->norm)))))
+                                         (:visualization_settings dashcard)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
                         (replacement.db/cards-by-id all-card-ids)

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver :as driver]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
@@ -31,7 +31,7 @@
   ([format-settings col]
    (let [viz-settings (streaming.common/viz-settings-for-col
                        (assoc col :field_ref [:field 1])
-                       {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
+                       {:column_settings {(lib/field-id->column-settings-key 1) format-settings}})
          format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col true)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
@@ -54,56 +54,56 @@
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "number-style (non-currency)"
-        (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-style "decimal"})))
+        (is (= ["#,##0" "#,##0.##########"] (format-string {:number_style "decimal"})))
         (is (= ["#,##0" "#,##0.##########"]
-               (format-string {::mb.viz/number-style "decimal", ::mb.viz/currency-position "after"})))
-        (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
-        (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
+               (format-string {:number_style "decimal", :currency_position "after"})))
+        (is (= "#,##0.00%"   (format-string {:number_style "percent"})))
+        (is (= "#,##0.00E+0" (format-string {:number_style "scientific"})))))))
 
 (deftest format-settings->format-string-test-2b
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
-        (is (= "#,##0"     (format-string {::mb.viz/decimals 0, ::mb.viz/number-style "decimal"})))
-        (is (= "#,##0%"    (format-string {::mb.viz/decimals 0, ::mb.viz/number-style "percent"})))
-        (is (= "#,##0E+0"  (format-string {::mb.viz/decimals 0, ::mb.viz/number-style "scientific"})))
-        (is (= "[$$]#,##0" (format-string {::mb.viz/decimals 0,
-                                           ::mb.viz/currency-in-header false,
-                                           ::mb.viz/number-style "currency"})))
-        (is (= "#,##0.000"     (format-string {::mb.viz/decimals 3, ::mb.viz/number-style "decimal"})))
-        (is (= "#,##0.000%"    (format-string {::mb.viz/decimals 3, ::mb.viz/number-style "percent"})))
-        (is (= "#,##0.000E+0"  (format-string {::mb.viz/decimals 3, ::mb.viz/number-style "scientific"})))
-        (is (= "[$$]#,##0.000" (format-string {::mb.viz/decimals 3,
-                                               ::mb.viz/currency-in-header false,
-                                               ::mb.viz/number-style "currency"})))))))
+        (is (= "#,##0"     (format-string {:decimals 0, :number_style "decimal"})))
+        (is (= "#,##0%"    (format-string {:decimals 0, :number_style "percent"})))
+        (is (= "#,##0E+0"  (format-string {:decimals 0, :number_style "scientific"})))
+        (is (= "[$$]#,##0" (format-string {:decimals 0,
+                                           :currency_in_header false,
+                                           :number_style "currency"})))
+        (is (= "#,##0.000"     (format-string {:decimals 3, :number_style "decimal"})))
+        (is (= "#,##0.000%"    (format-string {:decimals 3, :number_style "percent"})))
+        (is (= "#,##0.000E+0"  (format-string {:decimals 3, :number_style "scientific"})))
+        (is (= "[$$]#,##0.000" (format-string {:decimals 3,
+                                               :currency_in_header false,
+                                               :number_style "currency"})))))))
 
 (deftest format-settings->format-string-test-2b2
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Negative decimal values not supported (unlike on frontend); falls back to 0"
-          (is (= "#,##0"     (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "decimal"})))
-          (is (= "#,##0%"    (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "percent"})))
-          (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
-          (is (= "[$$]#,##0" (format-string {::mb.viz/decimals           -1,
-                                             ::mb.viz/currency-in-header false,
-                                             ::mb.viz/number-style       "currency"}))))))))
+          (is (= "#,##0"     (format-string {:decimals -1, :number_style "decimal"})))
+          (is (= "#,##0%"    (format-string {:decimals -1, :number_style "percent"})))
+          (is (= "#,##0E+0"  (format-string {:decimals -1, :number_style "scientific"})))
+          (is (= "[$$]#,##0" (format-string {:decimals           -1,
+                                             :currency_in_header false,
+                                             :number_style       "currency"}))))))))
 
 (deftest format-settings->format-string-test-2b3
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Thousands separator can be omitted"
-          (is (= ["###0" "###0.##########"]   (format-string {::mb.viz/number-separators "."}))))))))
+          (is (= ["###0" "###0.##########"]   (format-string {:number_separators "."}))))))))
 
 (deftest format-settings->format-string-test-2b4
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Custom separators are not supported"
-          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ", "})))
-          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".,"})))
-          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".’"}))))))))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {:number_separators ", "})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {:number_separators ".,"})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {:number_separators ".’"}))))))))
 
 (deftest format-settings->format-string-test-2c
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -111,9 +111,9 @@
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
         (is (= ["#,##0" "#,##0.##########"]
-               (format-string {::mb.viz/scale 2})))
+               (format-string {:scale 2})))
         (is (= "#,##0.00"
-               (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2})))))))
+               (format-string {:scale 2, :decimals 2})))))))
 
 (deftest format-settings->format-string-test-2d
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -122,14 +122,14 @@
         (testing "Prefix/suffix on general number format"
           (is (= ["\"prefix\"#,##0"
                   "\"prefix\"#,##0.##########"]
-                 (format-string {::mb.viz/prefix "prefix"})))
+                 (format-string {:prefix "prefix"})))
           (is (= ["#,##0\"suffix\""
                   "#,##0.##########\"suffix\""]
-                 (format-string {::mb.viz/suffix "suffix"})))
+                 (format-string {:suffix "suffix"})))
           (is (= ["\"prefix\"#,##0\"suffix\""
                   "\"prefix\"#,##0.##########\"suffix\""]
-                 (format-string {::mb.viz/prefix "prefix",
-                                 ::mb.viz/suffix "suffix"}))))))))
+                 (format-string {:prefix "prefix",
+                                 :suffix "suffix"}))))))))
 
 (deftest format-settings->format-string-test-2d2
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -137,15 +137,15 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on number format w/fixed decimal count"
           (is (= "\"prefix\"#,##0.00"
-                 (format-string {::mb.viz/decimals 2,
-                                 ::mb.viz/prefix   "prefix"})))
+                 (format-string {:decimals 2,
+                                 :prefix   "prefix"})))
           (is (= "#,##0.00\"suffix\""
-                 (format-string {::mb.viz/decimals 2,
-                                 ::mb.viz/suffix   "suffix"})))
+                 (format-string {:decimals 2,
+                                 :suffix   "suffix"})))
           (is (= "\"prefix\"#,##0.00\"suffix\""
-                 (format-string {::mb.viz/decimals 2,
-                                 ::mb.viz/prefix   "prefix",
-                                 ::mb.viz/suffix   "suffix"}))))))))
+                 (format-string {:decimals 2,
+                                 :prefix   "prefix",
+                                 :suffix   "suffix"}))))))))
 
 (deftest format-settings->format-string-test-2d3
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -153,9 +153,9 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on percentage"
           (is (= "\"prefix\"#,##0.00%\"suffix\""
-                 (format-string {::mb.viz/number-style "percent",
-                                 ::mb.viz/prefix       "prefix",
-                                 ::mb.viz/suffix       "suffix"}))))))))
+                 (format-string {:number_style "percent",
+                                 :prefix       "prefix",
+                                 :suffix       "suffix"}))))))))
 
 (deftest format-settings->format-string-test-2d4
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -163,9 +163,9 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on scientific notation"
           (is (= "\"prefix\"#,##0.00E+0\"suffix\""
-                 (format-string {::mb.viz/number-style "scientific",
-                                 ::mb.viz/prefix       "prefix",
-                                 ::mb.viz/suffix       "suffix"}))))))))
+                 (format-string {:number_style "scientific",
+                                 :prefix       "prefix",
+                                 :suffix       "suffix"}))))))))
 
 (deftest format-settings->format-string-test-2d5
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -173,17 +173,17 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on currency"
           (is (= "\"prefix\"[$$]#,##0.00\"suffix\""
-                 (format-string {::mb.viz/currency-in-header false,
-                                 ::mb.viz/number-style       "currency",
-                                 ::mb.viz/prefix             "prefix",
-                                 ::mb.viz/suffix             "suffix"}))))))))
+                 (format-string {:currency_in_header false,
+                                 :number_style       "currency",
+                                 :prefix             "prefix",
+                                 :suffix             "suffix"}))))))))
 
 (deftest format-settings->format-string-test-3
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Default currency formatting is dollar sign"
-          (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))))))
+          (is (= "[$$]#,##0.00" (format-string {:currency_in_header false} price-col))))))))
 
 (deftest format-settings->format-string-currency-without-number-style-test
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -193,9 +193,9 @@
       ;; :type/Currency semantic type. CSV emits "$" here, so XLSX must too.
       (let [non-currency-col {:base_type :type/Float, :effective_type :type/Float}]
         (is (= "[$$]#,##0.00"
-               (format-string {::mb.viz/currency-in-header false
-                               ::mb.viz/currency-style     "symbol"
-                               ::mb.viz/currency           "USD"}
+               (format-string {:currency_in_header false
+                               :currency_style     "symbol"
+                               :currency           "USD"}
                               non-currency-col)))))))
 
 (deftest format-settings->format-string-test-3b
@@ -203,20 +203,20 @@
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Uses native currency symbol if supported"
-          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"} price-col)))
-          (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"} price-col)))
-          (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"} price-col)))
-          (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} price-col))))))))
+          (is (= "[$$]#,##0.00"   (format-string {:currency_in_header false, :currency "USD"} price-col)))
+          (is (= "[$CA$]#,##0.00" (format-string {:currency_in_header false, :currency "CAD"} price-col)))
+          (is (= "[$€]#,##0.00"   (format-string {:currency_in_header false, :currency "EUR"} price-col)))
+          (is (= "[$¥]#,##0.00"   (format-string {:currency_in_header false, :currency "JPY"} price-col))))))))
 
 (deftest format-settings->format-string-test-3c
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Falls back to code if native symbol not supported"
-          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "KGS"} price-col)))
-          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
-                                                   ::mb.viz/currency "KGS",
-                                                   ::mb.viz/currency-style "symbol"}
+          (is (= "[$KGS] #,##0.00" (format-string {:currency_in_header false, :currency "KGS"} price-col)))
+          (is (= "[$KGS] #,##0.00" (format-string {:currency_in_header false,
+                                                   :currency "KGS",
+                                                   :currency_style "symbol"}
                                                   price-col))))))))
 
 (deftest format-settings->format-string-test-3d
@@ -224,26 +224,26 @@
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Respects currency-style option"
-          (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency-style "symbol"}
+          (is (= "[$$]#,##0.00"            (format-string {:currency_in_header false,
+                                                           :currency_style "symbol"}
                                                           price-col)))
-          (is (= "[$USD] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency-style "code"}
+          (is (= "[$USD] #,##0.00"         (format-string {:currency_in_header false,
+                                                           :currency_style "code"}
                                                           price-col)))
-          (is (= "#,##0.00\" US dollars\"" (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency-style "name"}
+          (is (= "#,##0.00\" US dollars\"" (format-string {:currency_in_header false,
+                                                           :currency_style "name"}
                                                           price-col)))
-          (is (= "[$€]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency "EUR",
-                                                           ::mb.viz/currency-style "symbol"}
+          (is (= "[$€]#,##0.00"            (format-string {:currency_in_header false,
+                                                           :currency "EUR",
+                                                           :currency_style "symbol"}
                                                           price-col)))
-          (is (= "[$EUR] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency "EUR",
-                                                           ::mb.viz/currency-style "code"}
+          (is (= "[$EUR] #,##0.00"         (format-string {:currency_in_header false,
+                                                           :currency "EUR",
+                                                           :currency_style "code"}
                                                           price-col)))
-          (is (= "#,##0.00\" euros\""      (format-string {::mb.viz/currency-in-header false,
-                                                           ::mb.viz/currency "EUR",
-                                                           ::mb.viz/currency-style "name"}
+          (is (= "#,##0.00\" euros\""      (format-string {:currency_in_header false,
+                                                           :currency "EUR",
+                                                           :currency_style "name"}
                                                           price-col))))))))
 
 (deftest format-settings->format-string-test-3d2
@@ -251,68 +251,68 @@
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "narrowSymbol uses symbol_native and produces correct format strings"
-          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
-                                                  ::mb.viz/currency "USD",
-                                                  ::mb.viz/currency-style "narrowSymbol"}
+          (is (= "[$$]#,##0.00"   (format-string {:currency_in_header false,
+                                                  :currency "USD",
+                                                  :currency_style "narrowSymbol"}
                                                  price-col)))
           ;; CAD narrowSymbol is "$" (not "CA$" like symbol), so no space before number
-          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
-                                                  ::mb.viz/currency "CAD",
-                                                  ::mb.viz/currency-style "narrowSymbol"}
+          (is (= "[$$]#,##0.00"   (format-string {:currency_in_header false,
+                                                  :currency "CAD",
+                                                  :currency_style "narrowSymbol"}
                                                  price-col)))
-          (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
-                                                  ::mb.viz/currency "EUR",
-                                                  ::mb.viz/currency-style "narrowSymbol"}
+          (is (= "[$€]#,##0.00"   (format-string {:currency_in_header false,
+                                                  :currency "EUR",
+                                                  :currency_style "narrowSymbol"}
                                                  price-col))))
         (testing "narrowSymbol falls back to code with space if symbol not supported"
-          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
-                                                   ::mb.viz/currency "KGS",
-                                                   ::mb.viz/currency-style "narrowSymbol"}
+          (is (= "[$KGS] #,##0.00" (format-string {:currency_in_header false,
+                                                   :currency "KGS",
+                                                   :currency_style "narrowSymbol"}
                                                   price-col))))))))
 
 (deftest currency-position-format-string-test
   (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency_position "after"}}]
     (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}
-          settings  {::mb.viz/currency "EUR", ::mb.viz/currency-in-header false}]
+          settings  {:currency "EUR", :currency_in_header false}]
       (testing "The instance default applies to all currency label styles"
         (doseq [[style expected] [["symbol" "#,##0.00\"\u00a0\"[$€]"]
                                   ["narrowSymbol" "#,##0.00\"\u00a0\"[$€]"]
                                   ["code" "#,##0.00\"\u00a0\"[$EUR]"]
                                   ["name" "#,##0.00\" euros\""]]]
-          (is (= expected (format-string (assoc settings ::mb.viz/currency-style style) price-col)))))
+          (is (= expected (format-string (assoc settings :currency_style style) price-col)))))
       (testing "Column settings override the instance default"
         (is (= "[$€]#,##0.00"
-               (format-string (assoc settings ::mb.viz/currency-position "before") price-col))))
+               (format-string (assoc settings :currency_position "before") price-col))))
       (testing "Currency names always follow the amount"
         (is (= "#,##0.00\" euros\""
-               (format-string (assoc settings ::mb.viz/currency-position "before"
-                                     ::mb.viz/currency-style "name") price-col))))
+               (format-string (assoc settings :currency_position "before"
+                                     :currency_style "name") price-col))))
       (testing "Header currency labels stay out of the cell"
-        (is (= "#,##0.00" (format-string (assoc settings ::mb.viz/currency-in-header true) price-col)))))))
+        (is (= "#,##0.00" (format-string (assoc settings :currency_in_header true) price-col)))))))
 
 (deftest format-settings->format-string-test-3e
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
       (testing "Currency not included for non-currency semantic types"
-        (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} {:semantic_type :type/Quantity})))))))
+        (is (= "#,##0.00" (format-string {:currency_in_header false} {:semantic_type :type/Quantity})))))))
 
 (deftest format-settings->format-string-test-3f
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
-          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} price-col)))
-          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "narrowSymbol"} price-col)))
-          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} price-col)))
-          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} price-col)))
-          (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} price-col)))
-          (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "narrowSymbol"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} price-col))))))))
+          (is (= "#,##0.00" (format-string {:currency_style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {:currency_style "narrowSymbol"} price-col)))
+          (is (= "#,##0.00" (format-string {:currency_style "name"} price-col)))
+          (is (= "#,##0.00" (format-string {:currency_style "code"} price-col)))
+          (is (= "#,##0.00" (format-string {:currency "USD"} price-col)))
+          (is (= "#,##0.00" (format-string {:currency "EUR"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency_style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency_style "narrowSymbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency_style "name"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency_style "code"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency "USD"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, :currency "EUR"} price-col))))))))
 
 (deftest format-settings->format-string-test-3g
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -323,76 +323,76 @@
                                                                                 :currency_in_header false,
                                                                                 :currency_style "code"}}]
             (is (= "[$EUR] #,##0.00" (format-string {} price-col)))
-            (is (= "[$CAD] #,##0.00" (format-string {::mb.viz/currency "CAD"} price-col)))
-            (is (= "[$€]#,##0.00"    (format-string {::mb.viz/currency-style "symbol"} price-col)))
-            (is (= "#,##0.00"        (format-string {::mb.viz/currency-in-header true} price-col)))))))))
+            (is (= "[$CAD] #,##0.00" (format-string {:currency "CAD"} price-col)))
+            (is (= "[$€]#,##0.00"    (format-string {:currency_style "symbol"} price-col)))
+            (is (= "#,##0.00"        (format-string {:currency_in_header true} price-col)))))))))
 
 (deftest format-settings->format-string-test-4
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-style"
-          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"} date-col)))
-          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
-          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"} date-col)))
-          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"} date-col)))
-          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"} date-col)))
-          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))))))
+          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {:date_style "M/D/YYYY"} date-col)))
+          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {:date_style "D/M/YYYY"} date-col)))
+          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {:date_style "YYYY/M/D"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {:date_style "MMMM D, YYYY"} date-col)))
+          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {:date_style "DMMMM, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {:date_style "dddd, MMMM D, YYYY"} date-col))))))))
 
 (deftest format-settings->format-string-test-4b
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-style"
-          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"} date-col)))
-          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
-          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"} date-col)))
-          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"} date-col)))
-          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"} date-col)))
-          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))))))
+          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {:date_style "M/D/YYYY"} date-col)))
+          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {:date_style "D/M/YYYY"} date-col)))
+          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {:date_style "YYYY/M/D"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {:date_style "MMMM D, YYYY"} date-col)))
+          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {:date_style "DMMMM, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {:date_style "dddd, MMMM D, YYYY"} date-col))))))))
 
 (deftest format-settings->format-string-test-4c
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-separator"
-          (is (= "m/d/yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"} date-col)))
-          (is (= "m.d.yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."} date-col)))
-          (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"} date-col))))))))
+          (is (= "m/d/yyyy, h:mm am/pm" (format-string {:date_style "M/D/YYYY", :date_separator "/"} date-col)))
+          (is (= "m.d.yyyy, h:mm am/pm" (format-string {:date_style "M/D/YYYY", :date_separator "."} date-col)))
+          (is (= "m-d-yyyy, h:mm am/pm" (format-string {:date_style "M/D/YYYY", :date_separator "-"} date-col))))))))
 
 (deftest format-settings->format-string-test-4d
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-abbreviate"
-          (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-abbreviate true} date-col)))
-          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-abbreviate false} date-col)))
-          (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {::mb.viz/date-abbreviate true
-                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col)))
-          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-abbreviate false
-                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col))))))))
+          (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {:date_abbreviate true} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {:date_abbreviate false} date-col)))
+          (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {:date_abbreviate true
+                                                                  :date_style, "dddd, MMMM D, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {:date_abbreviate false
+                                                                  :date_style, "dddd, MMMM D, YYYY"} date-col))))))))
 
 (deftest format-settings->format-string-test-4e
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "time-style"
-          (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"} date-col)))
-          (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"} date-col)))
-          (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} date-col)))
-          (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"} date-col))))))))
+          (is (= "mmmm d, yyyy, hh:mm"      (format-string {:time_style "HH:mm"} date-col)))
+          (is (= "mmmm d, yyyy, hh:mm"      (format-string {:time_style "k:mm"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {:time_style "h:mm A"} date-col)))
+          (is (= "mmmm d, yyyy, h am/pm"    (format-string {:time_style "h A"} date-col))))))))
 
 (deftest format-settings->format-string-test-4f
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "time-enabled"
-          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-enabled nil} date-col)))
-          (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/time-enabled "minutes"} date-col)))
-          (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {::mb.viz/time-enabled "seconds"} date-col)))
-          (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {::mb.viz/time-enabled "milliseconds"} date-col)))
+          (is (= "mmmm d, yyyy"                    (format-string {:time_enabled nil} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {:time_enabled "minutes"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {:time_enabled "seconds"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {:time_enabled "milliseconds"} date-col)))
           ;; time-enabled overrides time-styled
-          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil} date-col))))))))
+          (is (= "mmmm d, yyyy"                    (format-string {:time_style "h:mm A", :time_enabled nil} date-col))))))))
 
 (deftest format-settings->format-string-test-4g
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -402,26 +402,26 @@
           (let [month-col (assoc date-col :unit :month)
                 year-col  (assoc date-col :unit :year)]
             (is (= "mmmm, yyyy" (format-string {} month-col)))
-            (is (= "m/yyyy"     (format-string {::mb.viz/date-style "M/D/YYYY"} month-col)))
-            (is (= "yyyy/m"     (format-string {::mb.viz/date-style "YYYY/M/D"} month-col)))
-            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "MMMM D, YYYY"} month-col)))
-            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "D MMMM, YYYY"} month-col)))
-            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "DDDD, MMMM D, YYYY"} month-col)))
+            (is (= "m/yyyy"     (format-string {:date_style "M/D/YYYY"} month-col)))
+            (is (= "yyyy/m"     (format-string {:date_style "YYYY/M/D"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {:date_style "MMMM D, YYYY"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {:date_style "D MMMM, YYYY"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {:date_style "DDDD, MMMM D, YYYY"} month-col)))
             (is (= "yyyy"       (format-string {} year-col)))
-            (is (= "yyyy"       (format-string {::mb.viz/date-style "M/D/YYYY"} year-col)))))))))
+            (is (= "yyyy"       (format-string {:date_style "M/D/YYYY"} year-col)))))))))
 
 (deftest format-settings->format-string-test-4h
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Datetime formatting"
       (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "misc combinations"
-          (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {::mb.viz/date-style "YYYY/M/D",
-                                                                    ::mb.viz/date-separator ".",
-                                                                    ::mb.viz/time-style "h:mm A",
-                                                                    ::mb.viz/time-enabled "seconds"} date-col)))
-          (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
-                                                                    ::mb.viz/time-style "HH:mm",
-                                                                    ::mb.viz/time-enabled "milliseconds"} date-col))))))))
+          (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {:date_style "YYYY/M/D",
+                                                                    :date_separator ".",
+                                                                    :time_style "h:mm A",
+                                                                    :time_enabled "seconds"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {:date_style "dddd, MMMM D, YYYY",
+                                                                    :time_style "HH:mm",
+                                                                    :time_enabled "milliseconds"} date-col))))))))
 
 (deftest format-settings->format-string-test-4i
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -432,9 +432,9 @@
                                                                                 :date_separator ".",
                                                                                 :time_style "HH:mm"}}]
             (is (= "yyyy.m.d, hh:mm"      (format-string {} date-col)))
-            (is (= "d.m.yyyy, hh:mm"      (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
-            (is (= "yyyy-m-d, hh:mm"      (format-string {::mb.viz/date-separator "-"} date-col)))
-            (is (= "yyyy.m.d, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} date-col)))))))))
+            (is (= "d.m.yyyy, hh:mm"      (format-string {:date_style "D/M/YYYY"} date-col)))
+            (is (= "yyyy-m-d, hh:mm"      (format-string {:date_separator "-"} date-col)))
+            (is (= "yyyy.m.d, h:mm am/pm" (format-string {:time_style "h:mm A"} date-col)))))))))
 
 (deftest format-settings->format-string-test-5
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -495,25 +495,25 @@
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
       (is (= [["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"]]
-             (rest (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
+             (rest (xlsx-export [{:field_ref [:field 1] :name "Col" :semantic_type :type/Cost}]
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                                 :parse-fn parse-format-strings)))))
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
-             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
-                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                             {::mb.viz/currency           "EUR"
-                                                              ::mb.viz/currency-in-header false}}}
+             (second (xlsx-export [{:field_ref [:field 1] :name "Col" :semantic_type :type/Cost}]
+                                  {:column_settings {(lib/field-id->column-settings-key 1)
+                                                     {:currency           "EUR"
+                                                      :currency_in_header false}}}
                                   [[1.23]]
                                   :parse-fn parse-format-strings))))
       (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
-                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                             {::mb.viz/date-style     "YYYY/M/D",
-                                                              ::mb.viz/date-separator ".",
-                                                              ::mb.viz/time-style     "h:mm A",
-                                                              ::mb.viz/time-enabled   "seconds"}}}
+             (second (xlsx-export [{:field_ref [:field 1] :name "Col" :effective_type :type/Temporal}]
+                                  {:column_settings {(lib/field-id->column-settings-key 1)
+                                                     {:date_style     "YYYY/M/D",
+                                                      :date_separator ".",
+                                                      :time_style     "h:mm A",
+                                                      :time_enabled   "seconds"}}}
                                   [[#t "2020-03-28T10:12:06.681"]]
                                   :parse-fn parse-format-strings)))))))
 
@@ -535,91 +535,91 @@
                               [["a" "b"] ["c" "d"]]))))))
 
 (deftest ^:parallel column-title-test
-  (testing "::mb.viz/column-title precedence over :display_name, which takes precendence over :name"
+  (testing ":column_title precedence over :display_name, which takes precendence over :name"
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
     (is (= ["Column title"]
-           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name" :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
+           (first (xlsx-export [{:id 1, :display_name "Display name", :name "Name" :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1) {:column_title "Column title"}}}
                                []))))
     ;; Columns can be correlated to viz settings by :name if :id is missing (e.g. for native queries)
     (is (= ["Column title"]
            (first (xlsx-export [{:display_name "Display name", :name "Name"}]
-                               {::mb.viz/column-settings {{::mb.viz/column-name "Name"} {::mb.viz/column-title "Column title"}}}
+                               {:column_settings {(lib/column-name->column-settings-key "Name") {:column_title "Column title"}}}
                                []))))))
 
 (deftest ^:parallel column-title-test-2
   (testing "Currency is included in column title if necessary"
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost}]
+                               {:column_settings {(lib/field-id->column-settings-key 1) {}}}
                                []))))
     ;; Currency code is used if requested in viz settings
     (is (= ["Col (USD)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "USD",
-                                                           ::mb.viz/currency-style "code"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "USD",
+                                                   :currency_style "code"}}}
                                []))))
     ;; Currency name is used if requested in viz settings
     (is (= ["Col (US dollars)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "USD",
-                                                           ::mb.viz/currency-style "name"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "USD",
+                                                   :currency_style "name"}}}
                                []))))
     ;; Currency type from viz settings is respected
     (is (= ["Col (€)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1) {:currency "EUR"}}}
                                []))))
     ;; narrowSymbol uses symbol_native (e.g. "$" for CAD instead of "CA$")
     (is (= ["Col ($)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "CAD",
-                                                           ::mb.viz/currency-style "narrowSymbol"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "CAD",
+                                                   :currency_style "narrowSymbol"}}}
                                []))))
     ;; narrowSymbol falls back to code if symbol not supported
     (is (= ["Col (KGS)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "KGS", ::mb.viz/currency-style "narrowSymbol"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "KGS", :currency_style "narrowSymbol"}}}
                                []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "KGS", ::mb.viz/currency-style "symbol"}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "KGS", :currency_style "symbol"}}}
                                []))))
     ;; Currency not included unless semantic type of column derives from :type/Currency
     (is (= ["Col"]
-           (first (xlsx-export [{:id 0, :name "Col"}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "USD"}}}
+           (first (xlsx-export [{:id 1, :name "Col"}]
+                               {:column_settings {(lib/field-id->column-settings-key 1) {:currency "USD"}}}
                                []))))
-    ;; Currency not included if ::mb.viz/currency-in-header is false
+    ;; Currency not included if :currency_in_header is false
     (is (= ["Col"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                          {::mb.viz/currency "USD",
-                                                           ::mb.viz/currency-style "code",
-                                                           ::mb.viz/currency-in-header false}}}
+           (first (xlsx-export [{:id 1, :name "Col", :semantic_type :type/Cost :field_ref [:field 1]}]
+                               {:column_settings {(lib/field-id->column-settings-key 1)
+                                                  {:currency "USD",
+                                                   :currency_style "code",
+                                                   :currency_in_header false}}}
                                []))))))
 
 (deftest ^:parallel column-title-test-3
   (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
     (is (= ["Correct title"]
-           (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1" :field_ref [:field 0]}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
-                                                          {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
+           (first (xlsx-export [{:id 2, :fk_field_id 1, :remapped_from "FIELD_1" :field_ref [:field 2]}]
+                               {:column_settings {(lib/field-id->column-settings-key 2) {:column_title "Incorrect title"}
+                                                  (lib/field-id->column-settings-key 1) {:column_title "Correct title"}}}
                                []))))))
 
 (deftest ^:parallel scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
            (second (xlsx-export [{:id 0, :name "Col"}]
-                                {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
+                                {:column_settings {(lib/column-name->column-settings-key "Col") {:scale 2}}}
                                 [[1.0]]))))))
 
 (deftest ^:parallel misc-data-test

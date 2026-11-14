@@ -249,10 +249,6 @@
   "What an endpoint returns, before its response schema encodes it."
   (open-json ::ring-response-body "response body"))
 
-(def VisualizationSettingsValue
-  "A value nested inside visualization settings, whose shape the frontend owns."
-  (open-json ::visualization-settings-value "visualization settings value"))
-
 (def HttpRequestBody
   "The body the test HTTP client sends, as written by the test calling the endpoint: a JSON-shaped value, or (for a
   multipart upload, where a key can repeat) a sequence of `[key value]` pairs whose value may be a byte array,

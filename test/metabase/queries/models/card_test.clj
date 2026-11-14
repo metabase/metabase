@@ -1005,20 +1005,18 @@
             (is (= [[(* 100 75)]]
                    (mt/rows (qp/process-query query))))))))))
 
-(deftest ^:parallel upgrade-to-v2-db-test
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
+(deftest ^:parallel pie-percent-visibility-normalized-on-select-test
+  (testing "the deprecated pie legend settings are normalized to the percent visibility on select"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
-      (is (= {:version 2
-              :pie.show_legend true
+      (is (= {:pie.show_legend        true
               :pie.percent_visibility "inside"}
              (t2/select-one-fn :visualization_settings :model/Card :id card-id))))))
 
-(deftest upgrade-to-v2-db-test-2
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
+(deftest pie-percent-visibility-normalized-on-update-test
+  (testing "the deprecated pie legend settings are normalized to the percent visibility and persisted on update"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card :id card-id {:name "Favorite Toucan Foods"})
-      (is (= {:version 2
-              :pie.show_legend true
+      (is (= {:pie.show_legend        true
               :pie.percent_visibility "inside"}
              (-> (t2/select-one (t2/table-name :model/Card) {:where [:= :id card-id]})
                  :visualization_settings

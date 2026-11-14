@@ -21,10 +21,8 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
-   [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -422,39 +420,6 @@
   [source]
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
-
-(jm/def-json-migration migrate-viz-settings*)
-
-(def ^:private viz-settings-current-version 2)
-
-(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings
-        new-visibility              (cond
-                                      legend?  "inside"
-                                      percent? "legend")
-        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
-                                      "dashboard")]
-    (cond-> viz-settings
-      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
-      new-visibility (assoc :pie.percent_visibility new-visibility)
-      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
-
-(defn- migrate-viz-settings
-  [viz-settings]
-  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
-    (cond-> new-viz-settings
-      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
-
-;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-
-(def transform-visualization-settings
-  "Transform for viz-settings."
-  {:in  (comp json-in migrate-viz-settings)
-   :out (comp migrate-viz-settings
-              #(lib/normalize ::lib.schema.visualization-settings/visualization-settings %)
-              json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]

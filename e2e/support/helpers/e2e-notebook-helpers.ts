@@ -205,6 +205,7 @@ export type Stage = {
   }[];
   expressions?: string[];
   filters?: string[];
+  filtersInAnyOrder?: boolean;
   aggregations?: string[];
   breakouts?: string[];
   sort?: {
@@ -222,6 +223,7 @@ export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
       joins,
       expressions,
       filters,
+      filtersInAnyOrder,
       aggregations,
       breakouts,
       sort,
@@ -230,7 +232,7 @@ export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
 
     verifyNotebookJoins(stageIndex, joins);
     verifyNotebookExpressions(stageIndex, expressions);
-    verifyNotebookFilters(stageIndex, filters);
+    verifyNotebookFilters(stageIndex, filters, filtersInAnyOrder);
     verifyNotebookAggregations(stageIndex, aggregations, breakouts);
     verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
     verifyNotebookSort(stageIndex, sort);
@@ -319,8 +321,17 @@ function verifyNotebookExpressions(
 function verifyNotebookFilters(
   stageIndex: number,
   filters: string[] | undefined,
+  inAnyOrder = false,
 ) {
-  if (Array.isArray(filters)) {
+  if (Array.isArray(filters) && inAnyOrder) {
+    getFilterItems(stageIndex).should(($items) => {
+      const filterTexts = $items
+        .toArray()
+        .slice(0, -1)
+        .map((item) => item.textContent ?? "");
+      expect(filterTexts.sort()).to.deep.equal([...filters].sort());
+    });
+  } else if (Array.isArray(filters)) {
     getFilterItems(stageIndex).should(
       "have.length",
       filters.length + 1, // +1 because of add button

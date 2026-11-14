@@ -20,7 +20,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -260,7 +260,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map [:id ms/PositiveInt]]]]]])
 

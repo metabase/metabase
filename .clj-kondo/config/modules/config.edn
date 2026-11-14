@@ -1181,9 +1181,9 @@
   {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
+           lib
            lib.schema
            lib.types
-           models
            query-processor
            util}}
 
@@ -1411,7 +1411,7 @@
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
           metabase.lib.schema.validate
-          metabase.lib.schema.visualization-settings}
+          metabase.lib.schema.visualization}
    :uses #{lib lib.types util}}
 
   lib.source-swap
@@ -1859,8 +1859,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.schema
-           metabase.models.util.spec-update
-           metabase.models.visualization-settings}
+           metabase.models.util.spec-update}
    :uses #{api
            app-db
            dependencies
@@ -2425,7 +2424,6 @@
            lib.metric
            lib.schema
            model-persistence
-           models
            parameters
            parameters.schema
            permissions
@@ -2492,7 +2490,7 @@
   {:team "UX West"
    :ns-prefix "metabase.pivot"
    :api #{metabase.pivot.core metabase.pivot.postprocess}
-   :uses #{models util}}
+   :uses #{lib util}}
 
   remote-sync
   {:team       "Data Apps"

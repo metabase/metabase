@@ -8,8 +8,8 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types.core :as types]
    [metabase.util.currency :as currency]
@@ -102,12 +102,6 @@
             0))
         0))))
 
-(defn- qualify-keys
-  [m]
-  (update-keys m (fn [k] (keyword
-                          "metabase.models.visualization-settings"
-                          (name k)))))
-
 ;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
 ;; doing the same thing (unifying global settings, column settings, and viz-settings for the column.
 ;; perhaps that implementation needs to move here, or to a new `metabase.formatter.common` or something?
@@ -124,23 +118,24 @@
                                  (streaming.common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
         ref-type             (first field-ref)
         col-id-or-name       (or col-id (second field-ref))
-        column-settings      (-> (get viz-settings ::mb.viz/column-settings)
-                                 (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings      (merge
                               global-type-settings
                               (when (= :field ref-type)
-                                (get column-settings {::mb.viz/field-id col-id-or-name}))
-                              (or (get column-settings {::mb.viz/column-name col-name})
-                                  (get column-settings {::mb.viz/column-name col-id-or-name}))
-                              (qualify-keys col-settings))
+                                (lib/column-settings-for-field-id viz-settings col-id-or-name))
+                              (or (lib/column-settings-for-name viz-settings col-name)
+                                  (lib/column-settings-for-name viz-settings col-id-or-name))
+                              col-settings)
         global-settings      (streaming.common/viz-settings-for-col col viz-settings)
         ;; Shared with the XLSX export path so both agree on what counts as currency (GDGT-2398). The extra
         ;; viz-settings check covers a number-style set at the global/viz level rather than on the column itself.
         currency?            (or (streaming.common/currency-settings? column-settings)
-                                 (= (::mb.viz/number-style viz-settings) "currency"))
+                                 (= (:number_style viz-settings) "currency"))
 
-        {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency-position currency]} global-settings
+        {number-separators :number_separators
+         number-style      :number_style
+         currency-style    :currency_style
+         currency-position :currency_position
+         :keys             [decimals scale prefix suffix currency]} global-settings
         currency           (when currency?
                              (keyword (or currency "USD")))
         currency-label     (when currency?
@@ -199,7 +194,7 @@
            (let [inline-currency? (and currency?
                                        (or
                                         scalar?
-                                        (false? (::mb.viz/currency-in-header column-settings))))
+                                        (false? (:currency_in_header column-settings))))
                  sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
@@ -231,7 +226,7 @@
 
   ([value        :- number?
     column       :- [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]
-    viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+    viz-settings :- [:maybe ::lib.schema.visualization/visualization-settings]]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
@@ -300,11 +295,11 @@
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+    visualization-settings :- [:maybe ::lib.schema.visualization/visualization-settings]]
    (create-formatter timezone-id col visualization-settings true))
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
+    visualization-settings :- [:maybe ::lib.schema.visualization/visualization-settings]
     apply-formatting?      :- :boolean]
    (cond
      ;; for numbers, return a format function that has already computed the differences.
@@ -347,7 +342,7 @@
   [col settings]
   (cond-> col
     (streaming.common/currency-settings? (streaming.common/viz-settings-for-col col settings))
-    (assoc-in [:settings :currency-in-header] false)))
+    (assoc-in [:settings :currency_in_header] false)))
 
 (defn- create-formatters
   "Value formatters for the columns at `indexes`; each formats a raw value via
@@ -371,7 +366,7 @@
    row-indexes  :- [:maybe [:sequential :int]]
    col-indexes  :- [:maybe [:sequential :int]]
    val-indexes  :- [:maybe [:sequential :int]]
-   settings     :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
+   settings     :- [:maybe ::lib.schema.visualization/visualization-settings]
    timezone     :- [:maybe :string]
    format-rows? :- :boolean]
   {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
