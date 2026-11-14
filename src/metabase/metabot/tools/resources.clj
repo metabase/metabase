@@ -336,11 +336,11 @@
 
 (def ^:private item-type->curation-model
   "List-item `:type` -> the model [[curation/curated-ids]] judges it as, for data-bearing items that carry a
-   curation signal."
+   direct curation signal. Metrics aren't here: [[curated-items]] judges them separately, by
+   [[curation/usable-metric-ids]]."
   {"table"     "table"
    "model"     "card"
    "question"  "card"
-   "metric"    "card"
    "dashboard" "dashboard"})
 
 (def ^:private uncuratable-item-types
@@ -348,21 +348,27 @@
   #{"transform"})
 
 (defn- curation-key
-  "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a curation
-   signal."
+  "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a direct
+   curation signal (including metrics, judged separately by [[curated-items]])."
   [{:keys [type id]}]
   (when-let [model (item-type->curation-model type)]
     [model id]))
 
 (defn- curated-items
-  "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, plus navigation items (databases,
-   schemas, collections, documents, dashcards without a card, ...) that carry no data of their own."
+  "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, uncurated metrics whose
+   definition passes [[curation/usable-metric-ids]] (the same rule a `metric/{id}` read applies), plus
+   navigation items (databases, schemas, collections, documents, dashcards without a card, ...) that carry no
+   data of their own."
   [items]
-  (let [curated (curation/curated-ids (keep curation-key items))]
-    (filterv (fn [item]
-               (if-let [k (curation-key item)]
-                 (contains? curated k)
-                 (not (uncuratable-item-types (:type item)))))
+  (let [usable-metrics (curation/usable-metric-ids
+                        (into [] (comp (filter #(= "metric" (:type %))) (map :id)) items))
+        curated        (curation/curated-ids (keep curation-key items))]
+    (filterv (fn [{:keys [type] :as item}]
+               (if (= "metric" type)
+                 (contains? usable-metrics (:id item))
+                 (if-let [k (curation-key item)]
+                   (contains? curated k)
+                   (not (uncuratable-item-types type)))))
              items)))
 
 (defn- list-result
