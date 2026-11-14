@@ -417,18 +417,12 @@ const ENTRY_NODES = [
   ORDERS_MODEL,
 ];
 
-function getNodeKey(id: number | string, type: string) {
-  return `${type}-${id}`;
-}
-
 function getAllNodes() {
   return [...ENTRY_NODES, ...Array.from(DEPENDENTS.values()).flat()];
 }
 
 function findNodeByEntry(id: number, type: string | null) {
-  return getAllNodes().find(
-    (node) => getNodeKey(node.id, node.type) === getNodeKey(id, type),
-  );
+  return getAllNodes().find((node) => node.id === id && node.type === type);
 }
 
 // The question is not in the dependents of the table, so that the table keeps 6 questions
