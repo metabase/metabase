@@ -1,0 +1,68 @@
+name: Uberjar smoke test
+
+# Checks that the JARs uberjar.yml built (called with `smoke-test: false`) start, and deletes a JAR that doesn't, so
+# the next run's `setup` builds it again instead of reusing it.
+#
+# This is a separate workflow, not a job in uberjar.yml, so the jobs that use the JAR don't wait for this check:
+# a `needs` on a reusable workflow waits for every job in it. Starting Metabase takes about a minute, and e2e
+# boots the JAR itself anyway. Keep the steps in sync with the `smoke-test` steps in uberjar.yml.
+
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: "The `commit` uberjar.yml was called with"
+        type: string
+        default: ''
+        required: false
+      editions:
+        description: "uberjar.yml's `build_editions` output: a JSON array of the editions it built"
+        type: string
+        required: true
+      java-version:
+        description: "uberjar.yml's `java_version` output"
+        type: string
+        default: ''
+        required: false
+
+jobs:
+  smoke-test:
+    if: ${{ inputs.editions != '' && inputs.editions != '[]' }}
+    name: smoke test (${{ matrix.edition }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    # `actions: write` lets this job delete a JAR that doesn't start.
+    permissions:
+      contents: read
+      actions: write
+    strategy:
+      matrix:
+        edition: ${{ fromJson(inputs.editions) }}
+    env:
+      ARTIFACT_NAME: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+    steps:
+      - name: Prepare JDK
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: ${{ inputs.java-version || '25' }}
+          distribution: "temurin"
+      - name: Download the uberjar
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+      - name: Launch uberjar
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        timeout-minutes: 5
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Delete the JAR artifact if Metabase did not start
+        if: ${{ failure() || cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: | # bash
+          artifact_id=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?name=$ARTIFACT_NAME" \
+            --jq '.artifacts[0].id // empty')
+          if [ -n "$artifact_id" ]; then
+            gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/$artifact_id"
+          fi

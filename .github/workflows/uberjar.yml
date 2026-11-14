@@ -14,6 +14,11 @@ on:
         type: string
         default: ''
         required: false
+      smoke-test:
+        description: "Check that the uberjar starts before the build job finishes"
+        type: boolean
+        default: true
+        required: false
   workflow_call:
     inputs:
       commit:
@@ -21,6 +26,20 @@ on:
         type: string
         default: ''
         required: false
+      smoke-test:
+        description: >-
+          Check that the uberjar starts before the build job finishes. Callers that pass `false` must run
+          uberjar-smoke-test.yml themselves; it can run in parallel with the jobs that use the JAR.
+        type: boolean
+        default: true
+        required: false
+    outputs:
+      build_editions:
+        description: "JSON array of the editions this run built, e.g. '[\"ee\",\"oss\"]'. Editions whose JAR already existed are left out."
+        value: ${{ jobs.setup.outputs.build_editions }}
+      java_version:
+        description: "The Java version the release branch requires, '' for the default"
+        value: ${{ jobs.setup.outputs.java_version }}
 
 jobs:
   setup:
@@ -135,7 +154,9 @@ jobs:
           echo "Both license files found in uberjar"
       # Metabase starts in the background while the JAR uploads, and only then is it checked. An uploaded JAR that
       # turns out not to start is deleted at the end, so `setup` never finds it and skips a rebuild.
+      # Keep in sync with uberjar-smoke-test.yml, which does the same check in a separate job.
       - name: Launch uberjar
+        if: ${{ inputs.smoke-test }}
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
       - name: Mark with the commit hash
@@ -158,10 +179,11 @@ jobs:
           # The JAR is already compressed, so zipping it again only costs CPU while Metabase starts.
           compression-level: 0
       - name: Wait for Metabase to start
+        if: ${{ inputs.smoke-test }}
         timeout-minutes: 5
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       - name: Delete the JAR artifact if Metabase did not start
-        if: ${{ (failure() || cancelled()) && steps.upload-jar.outputs.artifact-id != '' }}
+        if: ${{ inputs.smoke-test && (failure() || cancelled()) && steps.upload-jar.outputs.artifact-id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/${{ steps.upload-jar.outputs.artifact-id }}"

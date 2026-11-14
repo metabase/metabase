@@ -52,12 +52,22 @@ jobs:
     if: >-
       ${{ needs.gate.outputs.verdict != 'force-skip'
       && contains(fromJSON(needs.gate.outputs.matched), 'build_uberjar') }}
-    # `actions: write` lets the build delete an uploaded JAR that turns out not to start.
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+    with:
+      # `uberjar-smoke-test` below runs the check, so the jobs that need the JAR don't wait for it.
+      smoke-test: false
+
+  uberjar-smoke-test:
+    needs: uberjar
+    # `actions: write` lets the smoke test delete an uploaded JAR that turns out not to start.
     permissions:
       contents: read
       actions: write
-    uses: ./.github/workflows/uberjar.yml
-    secrets: inherit
+    uses: ./.github/workflows/uberjar-smoke-test.yml
+    with:
+      editions: ${{ needs.uberjar.outputs.build_editions }}
+      java-version: ${{ needs.uberjar.outputs.java_version }}
 
   containerize:
     needs: uberjar
