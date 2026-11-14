@@ -339,24 +339,32 @@ export type TestRemoteSyncConnectionResponse = {
 
 export type WorktreeId = number;
 
+export type WorktreeUser = {
+  id: UserId;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  common_name: string | null;
+};
+
 export type Worktree = {
   id: WorktreeId;
-  name: string;
   branch: string;
+  creator_id: UserId | null;
+  creator?: WorktreeUser | null;
+  users?: WorktreeUser[];
   created_at: string;
   updated_at: string;
 };
 
 export type CreateWorktreeRequest = {
-  name: string;
   branch: string;
 };
 
-export type CreateWorktreeResponse = Worktree & {
-  task_id: RemoteSyncTaskId;
+export type CreateRemoteSyncBranchRequest = {
+  name: string;
 };
 
-export type UpdateWorktreeRequest = {
-  id: WorktreeId;
+export type CreateRemoteSyncBranchResponse = {
   name: string;
 };

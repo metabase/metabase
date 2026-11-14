@@ -117,6 +117,10 @@ export function dataStudioActions(params: ExpandedIdsParams = {}) {
   return `${ROOT_URL}/actions${getExpandedIdsQueryString(params)}`;
 }
 
+export function dataStudioWorktrees() {
+  return `${ROOT_URL}/worktrees`;
+}
+
 export function dataStudioTable(tableId: TableId) {
   return `${dataStudioLibrary()}/tables/${tableId}`;
 }

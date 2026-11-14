@@ -8,17 +8,11 @@ import {
 
 type SyncMenuProps = {
   branch: string;
-  worktreeName?: string;
   onPull: () => void;
   onPush: () => void;
 };
 
-export function SyncMenu({
-  branch,
-  worktreeName,
-  onPull,
-  onPush,
-}: SyncMenuProps) {
+export function SyncMenu({ branch, onPull, onPush }: SyncMenuProps) {
   return (
     <Menu position="bottom-start">
       <Menu.Target>
@@ -30,7 +24,7 @@ export function SyncMenu({
           data-testid="git-sync-controls"
         >
           <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
-            {worktreeName ? `${worktreeName} · ${branch}` : branch}
+            {branch}
           </Text>
         </Button>
       </Menu.Target>

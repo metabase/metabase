@@ -179,9 +179,9 @@
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
 
 (mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
-  "Every worktree, by name."
+  "Every worktree, by branch."
   []
-  (t2/select :model/Worktree {:order-by [[:name :asc] [:id :asc]]}))
+  (t2/select :model/Worktree {:order-by [[:branch :asc] [:id :asc]]}))
 
 (mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
   "The worktree with `worktree-id`, or nil."
@@ -192,6 +192,16 @@
   "The branch of the worktree with `worktree-id`, or nil."
   [worktree-id :- ms/PositiveInt]
   (t2/select-one-fn :branch :model/Worktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-users :- [:sequential :map]
+  "The users working in the worktrees with `worktree-ids`, with their `worktree_id`."
+  [worktree-ids :- [:sequential ms/PositiveInt]]
+  (if (empty? worktree-ids)
+    []
+    (t2/select [:model/User :id :email :first_name :last_name :worktree_id]
+               :worktree_id [:in worktree-ids]
+               :is_active true
+               {:order-by [[:id :asc]]})))
 
 (mu/defn insert-worktree! :- ::remote-sync.schema/worktree
   "Insert the worktree `worktree` and return it."

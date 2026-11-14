@@ -40,15 +40,14 @@ export function AppBarControls() {
     return null;
   }
 
-  return <Controls branch={branch} worktreeName={worktree?.name} />;
+  return <Controls branch={branch} />;
 }
 
 type ControlsProps = {
   branch: string;
-  worktreeName?: string;
 };
 
-function Controls({ branch, worktreeName }: ControlsProps) {
+function Controls({ branch }: ControlsProps) {
   const [modal, setModal] = useState<ControlsModal | null>(null);
   const [checkIsDirty] = useLazyGetRemoteSyncIsDirtyQuery();
   const [importChanges, { isLoading: isPulling }] = useImportChangesMutation();
@@ -103,7 +102,6 @@ function Controls({ branch, worktreeName }: ControlsProps) {
     <>
       <SyncMenu
         branch={branch}
-        worktreeName={worktreeName}
         onPull={handlePull}
         onPush={() => setModal({ type: "push" })}
       />

@@ -345,25 +345,37 @@
   (api/check-400 (not (remote-sync.db/row-level-security-bypassed?))
                  (tru "Worktrees need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")))
 
+(defn- present-user
+  "`user` as a worktree lists them."
+  [user]
+  (some-> user (select-keys [:id :email :first_name :last_name :common_name])))
+
+(defn- present-worktrees
+  "`worktrees` with the user who created each and the users working in each."
+  [worktrees]
+  (for [worktree (t2/hydrate worktrees :creator :users)]
+    (-> worktree
+        (update :creator present-user)
+        (update :users #(mapv present-user %)))))
+
 (api.macros/defendpoint :get "/worktree" :- [:sequential ::remote-sync.schema/worktree]
-  "The worktrees."
+  "The worktrees, with the user who created each and the users working in each."
   []
   (api/check-superuser)
-  (remote-sync.db/worktrees))
+  (vec (present-worktrees (remote-sync.db/worktrees))))
 
 (api.macros/defendpoint :get "/worktree/:id" :- ::remote-sync.schema/worktree
-  "The worktree with `id`."
+  "The worktree with `id`, with the user who created it and the users working in it."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (remote-sync.db/worktree id)))
+  (first (present-worktrees [(api/check-404 (remote-sync.db/worktree id))])))
 
-(api.macros/defendpoint :post "/worktree" :- [:merge ::remote-sync.schema/worktree [:map [:task_id ms/PositiveInt]]]
-  "Create a worktree named `name` checking out `branch`, a branch of the repository, and start pulling it."
+(api.macros/defendpoint :post "/worktree" :- ::remote-sync.schema/worktree
+  "Create a worktree checking out `branch`, a branch of the repository, empty until someone working in it pulls."
   [_route
    _query
-   {:keys [name branch]} :- [:map {:closed true}
-                             [:name ms/NonBlankString]
-                             [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map {:closed true}
+                        [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (check-configured!)
   (check-read-write!)
@@ -371,22 +383,8 @@
   (let [repo (remote-sync.settings/repository)]
     (protocol/fetch! repo)
     (api/check-400 (protocol/version repo branch) (tru "The branch {0} doesn''t exist in the repository." branch))
-    (let [worktree (remote-sync.db/insert-worktree! {:name name :branch branch})
-          task     (mdb/with-worktree-id (:id worktree)
-                     (started (tasks/start! {:type "import" :branch branch :user-id api/*current-user-id*}
-                                            (fn [report]
-                                              (sync/pull! repo branch (tasks/base-version) {:force? true :report report})))))]
-      (assoc worktree :task_id (:id task)))))
-
-(api.macros/defendpoint :put "/worktree/:id" :- ::remote-sync.schema/worktree
-  "Rename the worktree with `id`."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query
-   {worktree-name :name} :- [:map {:closed true} [:name ms/NonBlankString]]]
-  (api/check-superuser)
-  (api/check-404 (remote-sync.db/worktree id))
-  (remote-sync.db/update-worktree! id {:name worktree-name})
-  (remote-sync.db/worktree id))
+    (first (present-worktrees [(remote-sync.db/insert-worktree! {:branch     branch
+                                                                 :creator_id api/*current-user-id*})]))))
 
 (api.macros/defendpoint :delete "/worktree/:id" :- ::api/generic-204-no-content
   "Delete the worktree with `id` and its content, moving the users working in it to the main app."
@@ -395,6 +393,27 @@
   (api/check-404 (remote-sync.db/worktree id))
   (remote-sync.db/delete-worktree! id)
   api/generic-204-no-content)
+
+(api.macros/defendpoint :post "/branch" :- [:map {:closed true} [:name ms/NonBlankString]]
+  "Create the branch `name` in the repository at the tip of the synced branch."
+  [_route
+   _query
+   {branch-name :name} :- [:map {:closed true}
+                           [:name ms/NonBlankString]]]
+  (api/check-superuser)
+  (check-configured!)
+  (check-read-write!)
+  (let [repo (remote-sync.settings/repository)]
+    (protocol/fetch! repo)
+    (api/check-400 (nil? (protocol/version repo branch-name))
+                   (tru "The branch {0} already exists in the repository." branch-name))
+    (let [base (api/check-400 (protocol/version repo (setting/get :remote-sync-branch))
+                              (tru "The synced branch doesn''t exist in the repository any more."))]
+      (try
+        (protocol/create-branch! repo branch-name base)
+        (catch Exception e
+          (throw (ex-info (tasks/error-message e) {:status-code 400} e))))
+      {:name branch-name})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

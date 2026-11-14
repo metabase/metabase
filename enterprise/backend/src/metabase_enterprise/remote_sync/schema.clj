@@ -206,17 +206,29 @@
    [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])
 
+(mr/def ::worktree-user
+  "A user as a worktree lists them."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:email       :string]
+   [:first_name  [:maybe :string]]
+   [:last_name   [:maybe :string]]
+   [:common_name [:maybe :string]]])
+
 (mr/def ::worktree
-  "A worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app."
+  "A worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app, with the user
+  who created it and the users working in it when hydrated."
   [:map {:closed true}
    [:id         ms/PositiveInt]
-   [:name       ms/NonBlankString]
    [:branch     ms/NonBlankString]
+   [:creator_id [:maybe ms/PositiveInt]]
    [:created_at :any]
-   [:updated_at :any]])
+   [:updated_at :any]
+   [:creator    {:optional true} [:maybe ::worktree-user]]
+   [:users      {:optional true} [:sequential ::worktree-user]]])
 
 (mr/def ::worktree.update
   "The columns of a worktree a create or update sets."
   [:map {:closed true}
-   [:name   {:optional true} ms/NonBlankString]
-   [:branch {:optional true} ms/NonBlankString]])
+   [:branch     {:optional true} ms/NonBlankString]
+   [:creator_id {:optional true} [:maybe ms/PositiveInt]]])

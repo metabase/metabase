@@ -17,17 +17,15 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: name
-                  type: varchar(254)
-                  remarks: The name of the worktree
-                  constraints:
-                    nullable: false
-              - column:
                   name: branch
                   type: varchar(254)
                   remarks: The remote sync branch the worktree checks out
                   constraints:
                     nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the worktree
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -42,6 +40,19 @@ databaseChangeLog:
                   remarks: The timestamp of when the worktree was last updated
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: wtk4cz
+      author: ranquild
+      comment: Add the foreign key of worktree.creator_id, keeping the worktree when its creator is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: worktree
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_worktree_creator_id
+            onDelete: SET NULL
 
   - changeSet:
       id: wtq7kd
