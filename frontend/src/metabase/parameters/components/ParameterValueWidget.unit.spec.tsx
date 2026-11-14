@@ -207,6 +207,73 @@ describe("ParameterValueWidget", () => {
     expect(triggerButton).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("should close a date filter popover after picking a value, and with Escape after reopening it (metabase#54353)", async () => {
+    const { onValueChange } = setupStateful({
+      parameter: { type: "date/all-options" },
+    });
+    const trigger = screen.getByTestId("parameter-value-widget-target");
+
+    await userEvent.click(trigger);
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByText(
+        /Previous 12 months/i,
+      ),
+    );
+    expect(onValueChange).toHaveBeenLastCalledWith("past12months");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])(
+    "should open a filter popover with %s (metabase#52674)",
+    async (_keyName, key) => {
+      setup({
+        parameter: {
+          type: "number/between",
+          slug: "number",
+          name: "Number",
+        },
+      });
+
+      screen.getByTestId("parameter-value-widget-target").focus();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await userEvent.keyboard(key);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    },
+  );
+
+  it("should close an open filter popover when its trigger is clicked again", async () => {
+    setup({
+      parameter: {
+        type: "number/between",
+        slug: "number",
+        name: "Number",
+      },
+    });
+
+    const trigger = screen.getByTestId("parameter-value-widget-target");
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.click(trigger);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
   describe("static list source with custom labels in a saved question", () => {
     const CARD_ID = 1;
     const LABELED_VALUE = "1018947080336";
