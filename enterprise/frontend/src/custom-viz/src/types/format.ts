@@ -15,6 +15,17 @@ export type FormatValueOptions = {
   date_separator?: string;
   date_abbreviate?: boolean;
   decimals?: number;
+  duration_precision?: "minutes" | "milliseconds" | "seconds";
+  duration_style?: "digital" | "narrow";
+  duration_unit?:
+    | "nanosecond"
+    | "microsecond"
+    | "millisecond"
+    | "second"
+    | "minute"
+    | "hour"
+    | "day"
+    | "week";
   number_style?: string;
   number_separators?: string;
   prefix?: string;
