@@ -35,7 +35,7 @@
 
 (def ^:private max-formula-tokens
   ;; a formula needs a few dozen tokens, but reasoning models spend this budget before the forced tool call
-  1024)
+  2048)
 
 (def ^:private max-name-chars
   "Limit the length of a drafted formula's name, in characters."
