@@ -1059,3 +1059,29 @@
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))
+
+(deftest ^:parallel cached-results-rff-drops-internal-remaps-test
+  (testing "Results cached before internal remaps were kept out of result metadata do not replay them"
+    (let [cached-results-rff @#'cache/cached-results-rff
+          remap              {:lib/type              :metadata.column.remapping/internal
+                              :id                    1
+                              :name                  "X [internal remap]"
+                              :values                [1 2]
+                              :human-readable-values ["one" "two"]}
+          col                {:name               "x"
+                              :display_name       "X"
+                              :base_type          :type/Integer
+                              :remapped_to        "X [internal remap]"
+                              :lib/internal-remap remap}
+          rf                 ((cached-results-rff qp.reducible/default-rff (byte-array 1))
+                              {:last-ran (t/zoned-date-time) :cache-version 1 :cols [col]})
+          acc                (reduce rf (rf)
+                                     [[1 "one"]
+                                      {:data {:cols             [col]
+                                              :results_metadata {:columns [col]}}}])
+          result             (rf acc)]
+      (is (= [[1 "one"]] (get-in result [:data :rows])))
+      (is (=? [{:name "x", :remapped_to "X [internal remap]"}]
+              (get-in result [:data :cols])))
+      (is (not-any? :lib/internal-remap (get-in result [:data :cols])))
+      (is (not-any? :lib/internal-remap (get-in result [:data :results_metadata :columns]))))))
