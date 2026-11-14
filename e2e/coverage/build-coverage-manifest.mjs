@@ -52,6 +52,7 @@ import {
   discriminatingFiles,
   discriminatingFilesForTest,
 } from "./baseline.mjs";
+import { buildFunctionManifest } from "./functions.mjs";
 import {
   apiRoutes,
   loadRouteTable,
@@ -81,6 +82,10 @@ const OUTPUT_FILE = path.join(
 const OUTPUT_TEST_FILE = path.join(
   REPO_ROOT,
   "e2e/coverage/spec-test-manifest.json",
+);
+const OUTPUT_FUNCTIONS_FILE = path.join(
+  REPO_ROOT,
+  "e2e/coverage/spec-test-functions.json",
 );
 
 function readEntry(file) {
@@ -157,16 +162,19 @@ function main() {
     process.exit(1);
   }
 
-  // Load every per-spec entry, find the baseline.
+  // Load every per-spec entry, find the baseline. The raw dir also holds one
+  // fnmap-*.json per shard, naming the istanbul function ids; those feed the
+  // per-test function manifest.
   const entries = {};
+  const functionMaps = {};
   for (const file of fs.readdirSync(PER_SPEC_DIR)) {
     if (!file.endsWith(".json")) {
       continue;
     }
     const entry = readEntry(path.join(PER_SPEC_DIR, file));
-    // The raw dir also holds fnmap-*.json function-metadata files (for
-    // offline analysis, not the manifests); only spec entries belong here.
-    if (entry?.spec) {
+    if (file.startsWith("fnmap-") && entry) {
+      Object.assign(functionMaps, entry);
+    } else if (entry?.spec) {
       entries[entry.spec] = entry;
     }
   }
@@ -286,10 +294,25 @@ function main() {
     OUTPUT_TEST_FILE,
     JSON.stringify({ builtAt, specs: specTests }) + "\n",
   );
+  // Which functions each test fired, for the e2e-to-unit verify runner. It
+  // describes today's instrumented build only; the raw shards it is built
+  // from expire after a week.
+  const functionManifest = buildFunctionManifest(
+    Object.fromEntries(
+      Object.entries(entries).filter(([spec]) => spec !== BASELINE_SPEC),
+    ),
+    functionMaps,
+    REPO_ROOT,
+  );
+  fs.writeFileSync(
+    OUTPUT_FUNCTIONS_FILE,
+    JSON.stringify({ builtAt, ...functionManifest }) + "\n",
+  );
 
   const specCount = Object.keys(specs).length;
   const bytes = fs.statSync(OUTPUT_FILE).size;
   const testBytes = fs.statSync(OUTPUT_TEST_FILE).size;
+  const functionBytes = fs.statSync(OUTPUT_FUNCTIONS_FILE).size;
   console.log(
     `Wrote ${OUTPUT_FILE} (${specCount} specs, ${backfilled} backfilled, ` +
       `${totalFiles} file edges, ${(bytes / 1e6).toFixed(1)} MB, ` +
@@ -298,6 +321,11 @@ function main() {
   console.log(
     `Wrote ${OUTPUT_TEST_FILE} (${totalTests} tests, ` +
       `${(testBytes / 1e6).toFixed(1)} MB).`,
+  );
+  console.log(
+    `Wrote ${OUTPUT_FUNCTIONS_FILE} (${functionManifest.totalTests} tests, ` +
+      `${functionManifest.keys.length} functions, ` +
+      `${(functionBytes / 1e6).toFixed(1)} MB).`,
   );
 
   // Drift log: captured API routes that resolve to no endpoint definition —
