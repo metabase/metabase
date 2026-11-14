@@ -4,18 +4,35 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
-import { Route } from "metabase/router";
-import type { Database, UserMetabotPermissions } from "metabase-types/api";
+import { Outlet, Route } from "metabase/router";
+import type {
+  Collection,
+  Database,
+  UserMetabotPermissions,
+} from "metabase-types/api";
 import {
   createMockCollection,
+  createMockCollectionItemFromCollection,
   createMockDashboard,
   createMockUser,
   createMockUserMetabotPermissions,
@@ -202,4 +219,189 @@ describe("NewItemMenu", () => {
       expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
     });
   });
+});
+
+describe("NewItemMenu > new dashboard default collection", () => {
+  const USER_ID = 7;
+  const PERSONAL_COLLECTION = createMockCollection({
+    id: 20,
+    name: "Read Only Tableton's Personal Collection",
+    personal_owner_id: USER_ID,
+    is_personal: true,
+    can_write: true,
+  });
+  const FIRST_COLLECTION = createMockCollection({
+    id: 10,
+    name: "First collection",
+    location: "/",
+  });
+  const SECOND_COLLECTION = createMockCollection({
+    id: 11,
+    name: "Second collection",
+    location: "/10/",
+  });
+  const THIRD_COLLECTION = createMockCollection({
+    id: 12,
+    name: "Third collection",
+    location: "/10/11/",
+  });
+  // Shares its id with the dashboard below, so reading the dashboard id as a
+  // collection id would offer this collection.
+  const DECOY_COLLECTION = createMockCollection({
+    id: 5,
+    name: "Decoy collection",
+    location: "/",
+    can_write: true,
+  });
+
+  type SetupOpts = {
+    route: string;
+    canCurate: boolean;
+  };
+
+  const setupNewDashboard = async ({ route, canCurate }: SetupOpts) => {
+    mockGetBoundingClientRect();
+    const rootCollection = createMockCollection({
+      ...ROOT_COLLECTION,
+      can_write: canCurate,
+    });
+    const collections: Collection[] = [
+      rootCollection,
+      PERSONAL_COLLECTION,
+      DECOY_COLLECTION,
+      ...[FIRST_COLLECTION, SECOND_COLLECTION, THIRD_COLLECTION].map(
+        (collection) => ({ ...collection, can_write: canCurate }),
+      ),
+    ];
+
+    setupUserMetabotPermissionsEndpoint(createMockUserMetabotPermissions());
+    setupDatabasesEndpoints([SAMPLE_DATABASE]);
+    setupRecentViewsAndSelectionsEndpoints([]);
+    setupLibraryEndpoints();
+    setupCollectionByIdEndpoint({ collections });
+    setupCollectionsEndpoints({
+      collections: collections.filter(({ id }) => id !== "root"),
+      rootCollection,
+    });
+    setupCollectionItemsEndpoint({
+      collection: rootCollection,
+      collectionItems: [
+        createMockCollectionItemFromCollection({
+          ...FIRST_COLLECTION,
+          can_write: canCurate,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: PERSONAL_COLLECTION,
+      collectionItems: [],
+    });
+    setupSearchEndpoints(
+      collections
+        .filter(({ id }) => id !== "root")
+        .map((collection) =>
+          createMockCollectionItemFromCollection(collection),
+        ),
+    );
+
+    renderWithProviders(
+      <Route
+        path="/"
+        element={
+          <>
+            <NewItemMenu trigger={<button>New</button>} />
+            <NewModals />
+            <Outlet />
+          </>
+        }
+      >
+        <Route path="collection/:slug" element={<div />} />
+        <Route path="dashboard/:slug" element={<div />} />
+      </Route>,
+      {
+        withRouter: true,
+        initialRoute: route,
+        storeInitialState: createMockState({
+          currentUser: createMockUser({
+            id: USER_ID,
+            is_superuser: canCurate,
+            personal_collection_id: PERSONAL_COLLECTION.id,
+            can_write_any_collection: true,
+          }),
+        }),
+      },
+    );
+
+    await userEvent.click(await screen.findByText("New"));
+    await userEvent.click(await screen.findByText("Dashboard"));
+    return screen.findByRole("dialog", { name: "New dashboard" });
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should offer the currently opened collection", async () => {
+    const modal = await setupNewDashboard({
+      route: "/collection/11-second-collection",
+      canCurate: true,
+    });
+
+    await waitFor(() =>
+      expect(
+        within(modal).getByLabelText(/Which collection/),
+      ).toHaveTextContent("Second collection"),
+    );
+  });
+
+  it("should offer the root collection from a dashboard page (metabase#16832)", async () => {
+    const modal = await setupNewDashboard({
+      route: "/dashboard/5-orders-in-a-dashboard",
+      canCurate: true,
+    });
+
+    await waitFor(() =>
+      expect(
+        within(modal).getByLabelText(/Which collection/),
+      ).toHaveTextContent("Our analytics"),
+    );
+    expect(modal).not.toHaveTextContent("Decoy collection");
+  });
+
+  it.each(["/", "/collection/root"])(
+    "should not offer collections with read access from %s (metabase#15281)",
+    async (route) => {
+      const modal = await setupNewDashboard({ route, canCurate: false });
+
+      await userEvent.click(
+        await within(modal).findByText(PERSONAL_COLLECTION.name),
+      );
+
+      const picker = await screen.findByRole("dialog", {
+        name: "Select a collection",
+      });
+      expect(
+        await within(picker).findByText(PERSONAL_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(
+        within(picker).queryByText("First collection"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.type(
+        within(picker).getByPlaceholderText("Search…"),
+        "third",
+      );
+
+      expect(
+        await within(picker).findByText("We didn't find anything"),
+      ).toBeInTheDocument();
+      const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
+      const searchParams = new URL(searchCall?.url ?? "").searchParams;
+      expect(searchParams.get("q")).toBe("third");
+      expect(searchParams.getAll("models")).toEqual(["collection"]);
+      expect(
+        within(picker).queryByText("Third collection"),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
