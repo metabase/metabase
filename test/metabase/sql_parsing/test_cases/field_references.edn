@@ -1,48 +1,349 @@
 {:cases
- [{:name      "a query whose columns all resolve reports no errors"
-   :dialect   "postgres"
-   :sql       "SELECT id, name FROM people"
-   :errors    []
-   :returned  ["id" "name"]}
+ [{:name     "a query whose columns all resolve reports no errors"
+   :dialect  "postgres"
+   :sql      "SELECT id, name FROM people"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}
+                                {:type :single-column :column "name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}
+                               {:type :single-column :column "name" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}]
+             :errors          #{}}}
 
-  {:name      "a column qualified by a table the query does not read is a dangling qualifier"
-   :dialect   "postgres"
-   :sql       "SELECT people.id FROM tmp_people"
-   :errors    [{:type :missing-table-alias :name "people"}]
-   :returned  []}
+  {:name     "a column qualified by a table the query does not read is a dangling qualifier"
+   :dialect  "postgres"
+   :sql      "SELECT people.id FROM tmp_people"
+   :expected {:used-fields     #{}
+             :returned-fields []
+             :errors          #{{:type :missing-table-alias :name "people"}}}}
 
-  {:name      "a column qualified by an alias is not dangling"
-   :dialect   "postgres"
-   :sql       "SELECT p.id FROM people p"
-   :errors    []
-   :returned  ["id"]}
+  {:name     "a column qualified by an alias is not dangling"
+   :dialect  "postgres"
+   :sql      "SELECT p.id FROM people p"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people" :table-alias "p"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people" :table-alias "p"}}]]}]
+             :errors          #{}}}
 
-  {:name      "a column qualified by the table's own name is not dangling"
-   :dialect   "postgres"
-   :sql       "SELECT people.id FROM people"
-   :errors    []
-   :returned  ["id"]}
+  {:name     "a column qualified by the table's own name is not dangling"
+   :dialect  "postgres"
+   :sql      "SELECT people.id FROM people"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}]
+             :errors          #{}}}
 
-  {:name      "a star is a star, not a column"
-   :dialect   "postgres"
-   :sql       "SELECT * FROM people"
-   :errors    []
-   :returned  []}
+  {:name     "a star is a star, not a column"
+   :dialect  "postgres"
+   :sql      "SELECT * FROM people"
+   :expected {:used-fields     #{}
+             :returned-fields [{:type :all-columns :table {:table "people"}}]
+             :errors          #{}}}
 
-  {:name      "a qualifier left behind by a rewrite is what Guard B looks for"
-   :dialect   "postgres"
-   :sql       "SELECT people.id, tmp_people.name FROM tmp_people"
-   :errors    [{:type :missing-table-alias :name "people"}]
-   :returned  ["name"]}
+  {:name     "a qualifier left behind by a rewrite is what Guard B looks for"
+   :dialect  "postgres"
+   :sql      "SELECT people.id, tmp_people.name FROM tmp_people"
+   :expected {:used-fields     #{{:type :single-column :column "name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "tmp_people"}}]]}}
+             :returned-fields [{:type :single-column :column "name" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "tmp_people"}}]]}]
+             :errors          #{{:type :missing-table-alias :name "people"}}}}
 
-  {:name       "a column qualified through a CTE name resolves"
-   :dialect    "postgres"
-   :sql        "WITH c AS (SELECT id FROM people) SELECT c.id FROM c"
-   :errors     []
-   :returned   ["id"]}
+  {:name     "a column qualified through a CTE name resolves"
+   :dialect  "postgres"
+   :sql      "WITH c AS (SELECT id FROM people) SELECT c.id FROM c"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}]
+             :errors          #{}}}
 
-  {:name       "a syntax error is reported as one, with no fields"
-   :dialect    "postgres"
-   :sql        "SELECT * FROM WHERE ("
-   :errors     [{:type :syntax-error}]
-   :returned   []}]}
+  {:name     "a syntax error is reported as one, with no fields"
+   :dialect  "postgres"
+   :sql      "SELECT * FROM WHERE ("
+   :expected {:used-fields     #{}
+             :returned-fields []
+             :errors          #{{:type :syntax-error}}}}
+
+  {:name     "computed columns are custom fields that use the columns they read"
+   :dialect  "postgres"
+   :sql      "SELECT total * 1.08 AS with_tax, UPPER(status) FROM orders"
+   :expected {:used-fields     #{{:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "status" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :custom-field :alias "with_tax"
+                                :used-fields #{{:type :single-column :column "total" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
+                               {:type :custom-field :alias nil
+                                :used-fields #{{:type :single-column :column "status" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+             :errors          #{}}}
+
+  {:name     "a CASE is one custom field that uses every column it reads"
+   :dialect  "postgres"
+   :sql      "SELECT CASE WHEN total > 100 THEN name ELSE email END AS contact FROM users"
+   :expected {:used-fields     #{{:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                {:type :single-column :column "name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                {:type :single-column :column "email" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}}
+             :returned-fields [{:type :custom-field :alias "contact"
+                                :used-fields #{{:type :single-column :column "total" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                               {:type :single-column :column "name" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                               {:type :single-column :column "email" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}}}]
+             :errors          #{}}}
+
+  {:name     "aggregates are custom fields, and a GROUP BY column can be the select column or the table column"
+   :dialect  "postgres"
+   :sql      "SELECT user_id, COUNT(*) AS n, SUM(total) AS sum_total FROM orders GROUP BY user_id"
+   :expected {:used-fields     #{{:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :custom-field :alias "n"
+                                                    :used-fields #{}}
+                                                   {:type :custom-field :alias "sum_total"
+                                                    :used-fields #{{:type :single-column :column "total" :alias nil
+                                                                    :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                                                  [{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :single-column :column "user_id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :custom-field :alias "n"
+                                :used-fields #{}}
+                               {:type :custom-field :alias "sum_total"
+                                :used-fields #{{:type :single-column :column "total" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+             :errors          #{}}}
+
+  {:name     "a window function is a custom field that uses its partition and order columns"
+   :dialect  "postgres"
+   :sql      "SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at) AS rn FROM orders"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "created_at" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :custom-field :alias "rn"
+                                :used-fields #{{:type :single-column :column "user_id" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                               {:type :single-column :column "created_at" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+             :errors          #{}}}
+
+  {:name     "literals are custom fields that use no columns"
+   :dialect  "postgres"
+   :sql      "SELECT 1 AS one, 'x' AS tag FROM orders"
+   :expected {:used-fields     #{}
+             :returned-fields [{:type :custom-field :alias "one"
+                                :used-fields #{}}
+                               {:type :custom-field :alias "tag"
+                                :used-fields #{}}]
+             :errors          #{}}}
+
+  {:name     "columns returned through a CTE are traced to the table, and its WHERE column is used"
+   :dialect  "postgres"
+   :sql      "WITH recent AS (SELECT id, total FROM orders WHERE created_at > '2026-01-01') SELECT id, total FROM recent"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "created_at" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :single-column :column "total" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}]
+             :errors          #{}}}
+
+  {:name     "a computed CTE column is returned as the custom field"
+   :dialect  "postgres"
+   :sql      "WITH agg AS (SELECT user_id, SUM(total) AS spend FROM orders GROUP BY user_id) SELECT user_id, spend FROM agg"
+   :expected {:used-fields     #{{:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :custom-field :alias "spend"
+                                 :used-fields #{{:type :single-column :column "total" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
+                                {:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :custom-field :alias "spend"
+                                                    :used-fields #{{:type :single-column :column "total" :alias nil
+                                                                    :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                                                  [{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :single-column :column "user_id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :custom-field :alias "spend"
+                                :used-fields #{{:type :single-column :column "total" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+             :errors          #{}}}
+
+  {:name     "a star over a CTE returns the CTE columns"
+   :dialect  "postgres"
+   :sql      "WITH c AS (SELECT id, name FROM people) SELECT * FROM c"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}
+                                {:type :single-column :column "name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}
+                               {:type :single-column :column "name" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "people"}}]]}]
+             :errors          #{}}}
+
+  {:name     "a star over a derived table returns its columns, and its WHERE column is used"
+   :dialect  "postgres"
+   :sql      "SELECT * FROM (SELECT id, email FROM users WHERE active) AS u"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                {:type :single-column :column "email" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                                {:type :single-column :column "active" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}
+                               {:type :single-column :column "email" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}]
+             :errors          #{}}}
+
+  {:name     "a column renamed in a derived table keeps the alias"
+   :dialect  "postgres"
+   :sql      "SELECT sub.uid FROM (SELECT id AS uid FROM users) AS sub"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias "uid"
+                                 :source-columns [[{:type :all-columns :table {:table "users"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias "uid"
+                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}]
+             :errors          #{}}}
+
+  {:name     "a qualified star in a join returns all columns of that table"
+   :dialect  "postgres"
+   :sql      "SELECT o.*, u.email FROM orders o JOIN users u ON u.id = o.user_id"
+   :expected {:used-fields     #{{:type :single-column :column "email" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users" :table-alias "u"}}]]}
+                                {:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "users" :table-alias "u"}}]]}
+                                {:type :single-column :column "user_id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders" :table-alias "o"}}]]}}
+             :returned-fields [{:type :all-columns :table {:table "orders" :table-alias "o"}}
+                               {:type :single-column :column "email" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "users" :table-alias "u"}}]]}]
+             :errors          #{}}}
+
+  {:name     "union columns are composite fields of the columns in each arm"
+   :dialect  "postgres"
+   :sql      "SELECT id, name FROM customers UNION ALL SELECT id, vendor_name FROM vendors"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "customers"}}]]}
+                                {:type :single-column :column "name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "customers"}}]]}
+                                {:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "vendors"}}]]}
+                                {:type :single-column :column "vendor_name" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "vendors"}}]]}}
+             :returned-fields [{:type :composite-field :alias "id"
+                                :member-fields [{:type :single-column :column "id" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "customers"}}]]}
+                                                {:type :single-column :column "id" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "vendors"}}]]}]}
+                               {:type :composite-field :alias "name"
+                                :member-fields [{:type :single-column :column "name" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "customers"}}]]}
+                                                {:type :single-column :column "vendor_name" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "vendors"}}]]}]}]
+             :errors          #{}}}
+
+  {:name     "a union column can be composed of a custom field and a column"
+   :dialect  "postgres"
+   :sql      "SELECT id, total * 2 AS dbl FROM orders UNION SELECT id, refund_amount FROM refunds"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}
+                                {:type :single-column :column "refund_amount" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}}
+             :returned-fields [{:type :composite-field :alias "id"
+                                :member-fields [{:type :single-column :column "id" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                                {:type :single-column :column "id" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}]}
+                               {:type :composite-field :alias "dbl"
+                                :member-fields [{:type :custom-field :alias "dbl"
+                                                 :used-fields #{{:type :single-column :column "total" :alias nil
+                                                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
+                                                {:type :single-column :column "refund_amount" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}]}]
+             :errors          #{}}}
+
+  {:name     "a union of stars is one composite field of both tables"
+   :dialect  "postgres"
+   :sql      "SELECT * FROM a_table UNION ALL SELECT * FROM b_table"
+   :expected {:used-fields     #{}
+             :returned-fields [{:type :composite-field :alias nil
+                                :member-fields [{:type :all-columns :table {:table "a_table"}}
+                                                {:type :all-columns :table {:table "b_table"}}]}]
+             :errors          #{}}}
+
+  {:name     "an aggregate in nested subqueries is traced to the outer column"
+   :dialect  "postgres"
+   :sql      "SELECT outer_q.n FROM (SELECT COUNT(*) AS n FROM (SELECT id FROM orders WHERE total > 0) inner_q) outer_q"
+   :expected {:used-fields     #{{:type :custom-field :alias "n"
+                                 :used-fields #{}}
+                                {:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "total" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :custom-field :alias "n"
+                                :used-fields #{}}]
+             :errors          #{}}}
+
+  {:name     "a snowflake variant path is a custom field that uses the variant column"
+   :dialect  "snowflake"
+   :sql      "SELECT v:k::string AS extracted, id FROM raw_events"
+   :expected {:used-fields     #{{:type :single-column :column "v" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}
+                                {:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}}
+             :returned-fields [{:type :custom-field :alias "extracted"
+                                :used-fields #{{:type :single-column :column "v" :alias nil
+                                                :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}}}
+                               {:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}]
+             :errors          #{}}}
+
+  {:name     "a bigquery struct path is reported as a dangling qualifier"
+   :dialect  "bigquery"
+   :sql      "SELECT user.address.city AS city, id FROM events"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "events"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "events"}}]]}]
+             :errors          #{{:type :missing-table-alias :name "address"}}}}
+
+  {:name     "a column selected more than once is returned each time"
+   :dialect  "postgres"
+   :sql      "SELECT id, id, id AS id_again FROM orders"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                                {:type :single-column :column "id" :alias "id_again"
+                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
+             :returned-fields [{:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :single-column :column "id" :alias nil
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
+                               {:type :single-column :column "id" :alias "id_again"
+                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}]
+             :errors          #{}}}]}

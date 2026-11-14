@@ -12,3 +12,11 @@
   :visibility :internal
   :export?    false
   :setter     :none)
+
+(defsetting sql-parsing-shadow-sample-rate
+  "Share of calls, from 0.0 to 1.0, that a shadow parser backend also runs on its second parser."
+  :type       :double
+  :default    1.0
+  :visibility :internal
+  :export?    false
+  :setter     :none)

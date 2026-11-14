@@ -1,0 +1,419 @@
+(ns metabase.sql-parsing.sqlglot-java.field-references
+  "`field_references`: the fields a query uses and returns, in Macaw's output shape (`FieldReferenceWalker`).
+
+  A source is `{:names :returned_fields :used_fields :errors}`, plus `:is_recursive_cte` for a recursive CTE. `sources`
+  is a list of scope levels, innermost first, each a list of the sources in that scope (FROM and JOINs). `withs` maps a
+  CTE name to its source."
+  (:require
+   [clojure.string :as str]
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
+  (:import
+   (com.metabase.sqlglot.ast Expressions$Alias Expressions$Between Expressions$Binary Expressions$Boolean
+                             Expressions$Case Expressions$Column Expressions$DataType Expressions$Exists
+                             Expressions$Func Expressions$Group Expressions$Identifier Expressions$In
+                             Expressions$Interval Expressions$Literal Expressions$Order Expressions$Ordered
+                             Expressions$Select Expressions$Star
+                             Expressions$Subquery Expressions$Table Expressions$UDTF Expressions$Unary
+                             Expressions$Union Expressions$Window)
+   (com.metabase.sqlglot.reference ParseError)))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private syntax-error {:type "syntax_error"})
+
+(defn- missing-table-alias-error [table-name]
+  {:type "missing_table_alias" :table table-name})
+
+(defn- missing-column-error [column-name]
+  {:type "missing_column" :column column-name})
+
+;;; ------------------------------------------------------ sources ------------------------------------------------------
+
+(defn- table-matches?
+  "Whether `table-name`, a bare name, names the source with `names`: by its alias, or by its table name."
+  [table-name names]
+  (boolean (and names
+                (or (= (:table_alias names) table-name)
+                    (= (:table names) table-name)))))
+
+(defn- find-source
+  "The first source in `sources` that `table-name` names."
+  [table-name sources]
+  (some (fn [scope-sources]
+          (some #(when (and % (table-matches? table-name (:names %))) %) scope-sources))
+        sources))
+
+(defn- names-match?
+  "Whether `n` is the alias or the table name in the source names `names`, ignoring case."
+  [names n]
+  (boolean (some #(and % (= (ast/lower %) (ast/lower n)))
+                 [(:table_alias names) (:table names)])))
+
+(defn- source-might-have-column?
+  "Whether `source` might hold the column: any source might when the column is unqualified; otherwise only the one
+  its qualifier names, ignoring case."
+  [source table-ref]
+  (boolean (and source
+                (or (empty? table-ref)
+                    (names-match? (:names source) table-ref)))))
+
+(defn- recursive-cte-reference
+  "A column read from the recursive CTE `source` by its own body: a single column whose source is the CTE itself."
+  [source table-ref column-name]
+  (let [names (:names source)]
+    {:col {:type           "single_column"
+           :column         column-name
+           :alias          nil
+           :source_columns [[{:type  "all_columns"
+                              :table (cond-> {:table (get names :table table-ref)}
+                                       (:table_alias names) (assoc :table_alias (:table_alias names)))}]]}}))
+
+(defn- get-column
+  "The column `column-name`, qualified by `table-ref` (\"\" when unqualified), resolved against `sources`, with the
+  sources it might come from as `:source_columns`."
+  [sources column-name table-ref return-table-matches?]
+  (let [valid-sources  (if (seq table-ref)
+                         (if-let [source (find-source table-ref sources)] [[source]] [[]])
+                         sources)
+        source-columns (vec (for [scope-sources valid-sources
+                                  :let  [scope-fields (into []
+                                                            (comp (filter #(source-might-have-column? % table-ref))
+                                                                  (mapcat :returned_fields))
+                                                            scope-sources)]
+                                  :when (seq scope-fields)]
+                              scope-fields))
+        source-column  (some (fn [field]
+                               (let [field-name (or (not-empty (:alias field)) (:column field))]
+                                 (when (and field-name (= (ast/lower field-name) (ast/lower column-name)))
+                                   field)))
+                             (first source-columns))
+        ;; SELECT o FROM (SELECT * FROM orders) AS o: an unqualified name may name a source rather than a column
+        table-match    (when (and (not source-column) (empty? table-ref))
+                         (some (fn [scope-sources]
+                                 (some (fn [source]
+                                         (when (and source (names-match? (:names source) column-name))
+                                           source))
+                                       scope-sources))
+                               valid-sources))]
+    (cond
+      table-match
+      (if return-table-matches?
+        [{:col {:type        "custom_field"
+                :alias       column-name
+                :used_fields (vec (:returned_fields table-match))}}]
+        [])
+
+      source-column
+      (case (:type source-column)
+        "single_column"
+        (let [cte-source (when (and (seq table-ref) (not return-table-matches?))
+                           (find-source table-ref valid-sources))]
+          (if (:is_recursive_cte cte-source)
+            [(recursive-cte-reference cte-source table-ref column-name)]
+            [{:col (cond-> source-column
+                     ;; an unqualified reference seen from several scopes keeps them all
+                     (and (empty? table-ref) (> (count source-columns) 1))
+                     (assoc :source_columns source-columns))}]))
+
+        "custom_field"
+        (let [cte-source (when (seq table-ref) (find-source table-ref valid-sources))]
+          (if (:is_recursive_cte cte-source)
+            [(recursive-cte-reference cte-source table-ref column-name)]
+            [{:col source-column}]))
+
+        [{:col source-column}])
+
+      (and (empty? source-columns) (seq table-ref))
+      ;; The qualifier names no source: an error only. A column with no sources would make the caller report a
+      ;; second, redundant missing column.
+      [{:errors #{(missing-table-alias-error table-ref)}}]
+
+      :else
+      [{:col    {:type           "single_column"
+                 :column         column-name
+                 :alias          nil
+                 :source_columns source-columns}
+        :errors (if (empty? source-columns) #{(missing-column-error column-name)} #{})}])))
+
+;;; ------------------------------------------------------- walk --------------------------------------------------------
+
+(declare process-query)
+
+(defn- cols [results]
+  (keep :col results))
+
+(defn- with-alias
+  "`results` with the alias of the Alias node `expr` on each column."
+  [results expr]
+  (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr))) results))
+
+(defn- child-expressions
+  "The children of `expr` whose used fields are fields that `expr` uses. The order of the classes matters, because
+  they overlap: an `Is` is a `Binary`, a `Paren` is a `Unary`, and a `Case` is a `Func`."
+  [expr]
+  (condp instance? expr
+    Expressions$Star     nil
+    Expressions$Binary   [(ast/this expr) (ast/arg expr "expression")]
+    ;; sql_tools.py also has branches for Is, Cast and Paren that never run: in sqlglot an Is is a Binary, a Cast is
+    ;; a Func and a Paren is a Unary, and the branches for those come first. They are left out here.
+    Expressions$Unary    [(ast/this expr)]
+    Expressions$Exists   [(ast/this expr)]
+    Expressions$Ordered  [(ast/this expr)]
+    Expressions$Case     (concat [(ast/this expr)]
+                                 (mapcat (fn [ifs] [(ast/this ifs) (ast/arg ifs "true")]) (ast/arg expr "ifs"))
+                                 [(ast/arg expr "default")])
+    Expressions$Between  [(ast/this expr) (ast/arg expr "low") (ast/arg expr "high")]
+    Expressions$In       (cons (ast/this expr) (ast/expressions expr))
+    Expressions$Func     (mapcat (fn [value]
+                                   (cond
+                                     (instance? java.util.List value) value
+                                     (ast/ast-node? value)            [value]))
+                                 (vals (ast/args expr)))
+    Expressions$Window   (concat [(ast/this expr)] (ast/arg expr "partition_by") [(ast/arg expr "order")])
+    Expressions$Order    (map ast/this (ast/expressions expr))
+    Expressions$Group    (ast/expressions expr)
+    Expressions$Literal  nil
+    Expressions$Interval nil
+    Expressions$DataType nil
+    Expressions$Boolean  nil
+    (ast/iter-expressions expr)))
+
+(defn- column-used-fields
+  "The fields that the column `expr` uses. `t.*` uses the fields of the source `t`, but not its all_columns and
+  unknown_columns markers. A qualifier that names no source uses nothing; the error is reported for the returned field."
+  [expr sources]
+  (let [column-name (ast/node-name expr)
+        table-ref   (ast/text expr "table")]
+    (if (and (= column-name "*") (seq table-ref))
+      (into []
+            (comp (remove #(#{"all_columns" "unknown_columns"} (:type %)))
+                  (map (fn [field] {:col field})))
+            (:returned_fields (find-source table-ref sources)))
+      (get-column sources column-name table-ref false))))
+
+(defn- add-used-fields
+  "`acc` with the fields that `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT
+  expression) added in walk order."
+  [acc expr sources withs]
+  (let [walk (fn [acc e] (add-used-fields acc e sources withs))]
+    (cond
+      (nil? expr)
+      acc
+
+      (instance? Expressions$Column expr)
+      (into acc (column-used-fields expr sources))
+
+      ;; a bare identifier is a column without a table
+      (instance? Expressions$Identifier expr)
+      (into acc (get-column sources (ast/node-name expr) "" false))
+
+      (ast/instance-of-any? [Expressions$Subquery Expressions$Select] expr)
+      (into acc
+            (map (fn [field] {:col field}))
+            (:used_fields (process-query (cond-> expr (instance? Expressions$Subquery expr) ast/this) sources withs)))
+
+      ;; An alias names the column it wraps, but not the columns a computed expression reads.
+      (instance? Expressions$Alias expr)
+      (if (instance? Expressions$Column (ast/this expr))
+        (into acc (with-alias (column-used-fields (ast/this expr) sources) expr))
+        (walk acc (ast/this expr)))
+
+      :else
+      (reduce walk acc (child-expressions expr)))))
+
+(defn- find-used-fields
+  "The fields that `expr` uses."
+  [expr sources withs]
+  (add-used-fields [] expr sources withs))
+
+(defn- find-returned-fields
+  "The fields the SELECT expression `expr` returns."
+  [expr sources withs]
+  (cond
+    (instance? Expressions$Alias expr)
+    (with-alias (find-returned-fields (ast/this expr) sources withs) expr)
+
+    ;; SELECT * returns every field of the innermost scope's sources
+    (instance? Expressions$Star expr)
+    (vec (for [source (first sources)
+               field  (:returned_fields source)]
+           {:col field}))
+
+    (instance? Expressions$Column expr)
+    (let [column-name (ast/node-name expr)
+          table-ref   (ast/text expr "table")]
+      (cond
+        (and (= column-name "*") (seq table-ref))
+        (if-let [source (find-source table-ref sources)]
+          (mapv (fn [field] {:col field}) (:returned_fields source))
+          [{:errors #{(missing-table-alias-error table-ref)}}])
+
+        (= column-name "*")
+        []
+
+        :else
+        (get-column sources column-name table-ref true)))
+
+    ;; a scalar subquery returns its first column
+    (instance? Expressions$Subquery expr)
+    (if-let [field (first (:returned_fields (process-query (ast/this expr) sources withs)))]
+      [{:col field}]
+      [])
+
+    ;; a function, CASE, arithmetic and the rest compute a field from the ones they use
+    :else
+    [{:col {:type        "custom_field"
+            :alias       (not-empty (ast/node-alias expr))
+            :used_fields (vec (cols (find-used-fields expr sources withs)))}}]))
+
+(defn- unknown-columns-source
+  "A table function's source: its columns are unknown."
+  [source-alias]
+  {:names           (when (seq source-alias) {:table_alias source-alias})
+   :returned_fields [{:type "unknown_columns"}]
+   :used_fields     #{}
+   :errors          #{}})
+
+(defn- process-source
+  "The source `source-expr` (a table, a CTE reference, a subquery or a table function) in a FROM or JOIN."
+  [source-expr outside-sources withs]
+  (cond
+    (instance? Expressions$UDTF source-expr)
+    (unknown-columns-source (ast/node-alias source-expr))
+
+    (instance? Expressions$Table source-expr)
+    (let [table-name  (ast/node-name source-expr)
+          table-alias (ast/node-alias source-expr)]
+      (cond
+        (contains? withs table-name)
+        (assoc (get withs table-name) :names (cond-> {:table table-name}
+                                               (seq table-alias) (assoc :table_alias table-alias)))
+
+        ;; a table function sqlglot did not recognise, named by its alias or wrapping a function call
+        (and (empty? table-name) (or (seq table-alias) (instance? Expressions$Func (ast/this source-expr))))
+        (unknown-columns-source table-alias)
+
+        :else
+        (let [table-info (cond-> {:table table-name}
+                           (seq (ast/text source-expr "db"))      (assoc :schema (ast/text source-expr "db"))
+                           (seq (ast/text source-expr "catalog")) (assoc :database (ast/text source-expr "catalog"))
+                           (seq table-alias)                      (assoc :table_alias table-alias))]
+          {:names           table-info
+           :returned_fields [{:type "all_columns" :table table-info}]
+           :used_fields     #{}
+           :errors          #{}})))
+
+    (instance? Expressions$Subquery source-expr)
+    (assoc (process-query (ast/this source-expr) outside-sources withs)
+           :names (when (seq (ast/node-alias source-expr)) {:table_alias (ast/node-alias source-expr)}))))
+
+(defn- build-sources
+  "The sources of `select-expr`: its JOINs, then its FROM, the order Macaw expands wildcards in."
+  [select-expr outside-sources withs]
+  (into []
+        (keep #(process-source % outside-sources withs))
+        (concat (map ast/this (ast/arg select-expr "joins"))
+                (some-> (ast/arg select-expr "from_") ast/this vector))))
+
+(defn- process-ctes
+  "`withs` with the CTEs `select-expr` declares added, and the errors their bodies hold."
+  [select-expr outside-sources withs]
+  (let [with-clause (ast/arg select-expr "with_")
+        recursive?  (some-> with-clause (ast/arg "recursive"))]
+    (reduce (fn [[withs errors] cte]
+              (let [cte-name         (ast/node-alias cte)
+                    body             (ast/this cte)
+                    recursive-union? (and recursive? (instance? Expressions$Union body))
+                    ;; The base case, the left of the UNION, gives the CTE's fields, so the recursive part can read
+                    ;; the CTE while the full body is processed.
+                    withs            (cond-> withs
+                                       recursive-union?
+                                       (assoc cte-name (assoc (process-query (ast/this body) outside-sources withs)
+                                                              :names            {:table cte-name :table_alias cte-name}
+                                                              :is_recursive_cte true)))
+                    result           (process-query body outside-sources withs)]
+                [(assoc withs cte-name (cond-> (assoc result :names {:table cte-name})
+                                         recursive-union? (assoc :is_recursive_cte true)))
+                 (into errors (:errors result))]))
+            [withs #{}]
+            (some-> with-clause ast/expressions))))
+
+(defn- process-select [select-expr outside-sources withs]
+  (let [[local-withs cte-errors] (process-ctes select-expr outside-sources withs)
+        local-sources            (build-sources select-expr outside-sources local-withs)
+        combined-sources         (into [local-sources] outside-sources)
+        returned                 (mapcat #(find-returned-fields % combined-sources local-withs)
+                                         (ast/expressions select-expr))
+        returned-fields          (vec (cols returned))
+        ;; SELECT aliases are a scope level of their own, ahead of the tables, for ORDER BY and the like
+        select-source            {:names           nil
+                                  :returned_fields (filterv #(not-empty (:alias %)) returned-fields)
+                                  :used_fields     #{}
+                                  :errors          #{}}
+        sources-with-select      (into [[select-source] local-sources] outside-sources)
+        clauses                  (concat [(ast/arg select-expr "where")]
+                                         (map #(ast/arg % "on") (ast/arg select-expr "joins"))
+                                         [(ast/arg select-expr "group")
+                                          (ast/arg select-expr "order")
+                                          (ast/arg select-expr "having")])
+        used                     (as-> [] acc
+                                   (reduce #(add-used-fields %1 %2 combined-sources local-withs)
+                                           acc
+                                           (ast/expressions select-expr))
+                                   (reduce #(add-used-fields %1 %2 sources-with-select local-withs) acc clauses))]
+    {:used_fields     (-> (set (cols used))
+                          (into (mapcat :used_fields) local-sources)
+                          (into (mapcat :used_fields) (vals local-withs)))
+     :returned_fields returned-fields
+     :errors          (-> cte-errors
+                          (into (mapcat :errors) returned)
+                          (into (mapcat :errors) used))}))
+
+(defn- process-union
+  "A UNION's fields: each returned field is the composite of the fields both sides return in its place."
+  [union-expr outside-sources withs]
+  (let [left  (process-query (ast/this union-expr) outside-sources withs)
+        right (process-query (ast/arg union-expr "expression") outside-sources withs)
+        [left-fields right-fields] (map :returned_fields [left right])]
+    {:used_fields     (into (set (:used_fields left)) (:used_fields right))
+     :returned_fields (vec (for [i (range (max (count left-fields) (count right-fields)))
+                                 :let [left-field  (get left-fields i)
+                                       right-field (get right-fields i)
+                                       named       (or left-field right-field)]]
+                             {:type          "composite_field"
+                              :alias         (or (not-empty (:alias named)) (:column named))
+                              :member_fields (vec (remove nil? [left-field right-field]))}))
+     :errors          (into (set (:errors left)) (:errors right))}))
+
+(defn- process-query
+  "The fields of the query `expr`: a SELECT or a UNION. Anything else is a syntax error."
+  [expr outside-sources withs]
+  (cond
+    (instance? Expressions$Select expr) (process-select expr outside-sources withs)
+    (instance? Expressions$Union expr)  (process-union expr outside-sources withs)
+    :else                               {:used_fields #{} :returned_fields [] :errors #{syntax-error}}))
+
+(defn- strip-temp-table-qualifiers!
+  "For T-SQL, drop the `#` prefix of each column qualifier in `tree` (`_column_qualifier`). SQLGlot reads the temp table
+  `[#t]` in a FROM clause as the table `t`, but keeps `#t` as the name of the qualifier in `[#t].col`. Returns `tree`."
+  [tree dialect]
+  (when (= dialect "tsql")
+    (doseq [column (ast/find-all tree Expressions$Column)
+            :let   [table-name (ast/text column "table")]
+            :when  (str/starts-with? table-name "#")]
+      (ast/set-arg! column "table" (ast/identifier (str/replace table-name #"^#+" "")
+                                                   (ast/quoted? (ast/arg column "table"))))))
+  tree)
+
+(defn field-references
+  "`{:used_fields :returned_fields :errors}` for `sql`: the fields its clauses use, the fields it returns in order,
+  and the qualifiers and columns that resolve to nothing."
+  [dialect sql]
+  (try
+    (let [tree (strip-temp-table-qualifiers! (ast/parse-one sql dialect) dialect)
+          {:keys [used_fields returned_fields errors]} (process-query tree [] {})]
+      {:used_fields     (vec used_fields)
+       :returned_fields returned_fields
+       :errors          (vec errors)})
+    (catch ParseError _
+      {:used_fields [] :returned_fields [] :errors [syntax-error]})))

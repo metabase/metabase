@@ -1,14 +1,14 @@
 (ns metabase.sql-parsing.protocol
-  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently
-  [[metabase.sql-parsing.graal]]). Callers go through [[metabase.sql-parsing.core]], which owns the
-  JVM-side pre/post-processing and invokes these methods on the implementation. Every parser throws [[call-failed-ex]] when a
+  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently [[metabase.sql-parsing.graal]] and
+  [[metabase.sql-parsing.sqlglot-java]]). Callers go through [[metabase.sql-parsing.core]], which owns the JVM-side
+  pre/post-processing and invokes these methods on the implementation. Every parser throws [[call-failed-ex]] when a
   call fails.")
 
 (set! *warn-on-reflection* true)
 
 (defprotocol SqlParser
-  "Dialect-aware SQL parsing via sqlglot. Each method calls the corresponding `sql_tools` Python function
-  and returns its result parsed from JSON into Clojure data, except the SQL-rewriting methods
+  "Dialect-aware SQL parsing via sqlglot. Each method implements the corresponding `sql_tools` function
+  and returns Clojure data, except the SQL-rewriting methods
   ([[add-into-clause]], [[add-insert-clause]], [[replace-names]]) which return the rewritten SQL string. `dialect` is a sqlglot
   dialect string, or nil for sqlglot's default dialect."
   (referenced-tables [parser dialect sql]
@@ -43,9 +43,9 @@
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 
 (defn call-failed-ex
-  "The uniform exception for a Python-side sqlglot failure, thrown by every transport so callers can
-  handle parse errors without knowing which backend ran ([[metabase.sql-parsing.core/parse-error?]]).
-  `error` is the Python error rendered as `ErrorType: message`."
+  "The uniform exception for a failed sqlglot call, thrown by every backend so callers can handle parse
+  errors without knowing which ran ([[metabase.sql-parsing.core/parse-error?]]). `error` is rendered as
+  `ErrorType: message`, with the Python error name where one applies."
   ([error]
    (call-failed-ex error nil))
   ([error cause]

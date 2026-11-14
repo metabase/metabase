@@ -202,4 +202,192 @@
   {:name    "a star with an EXCLUDE list still names its table"
    :dialect "redshift"
    :sql     "SELECT * EXCLUDE (id) FROM products"
-   :tables  [[nil nil "products"]]}]}
+   :tables  [[nil nil "products"]]}
+
+  {:name    "a postgres ARRAY literal and ILIKE"
+   :dialect "postgres"
+   :sql     "SELECT ARRAY[1, 2, 3] AS a FROM t WHERE name ILIKE '%bob%'"
+   :tables  [[nil nil "t"]]}
+
+  {:name    "a postgres LATERAL subquery reads its own table"
+   :dialect "postgres"
+   :sql     "SELECT u.id, o.total FROM users u, LATERAL (SELECT total FROM orders WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1) o"
+   :tables  [[nil nil "orders"] [nil nil "users"]]}
+
+  {:name    "postgres DISTINCT ON"
+   :dialect "postgres"
+   :sql     "SELECT DISTINCT ON (user_id) user_id, total FROM orders ORDER BY user_id, created_at DESC"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "postgres GROUPING SETS"
+   :dialect "postgres"
+   :sql     "SELECT a, b, SUM(x) FROM t GROUP BY GROUPING SETS ((a), (b), ())"
+   :tables  [[nil nil "t"]]}
+
+  {:name    "a snowflake LATERAL FLATTEN is not a table"
+   :dialect "snowflake"
+   :sql     "SELECT f.value FROM t, LATERAL FLATTEN(input => t.arr) f"
+   :tables  [[nil nil "t"]]}
+
+  {:name    "snowflake QUALIFY"
+   :dialect "snowflake"
+   :sql     "SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn FROM orders QUALIFY rn = 1"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "a snowflake PIVOT reads its table"
+   :dialect "snowflake"
+   :sql     "SELECT * FROM monthly_sales PIVOT (SUM(amount) FOR month IN ('JAN', 'FEB', 'MAR')) AS p"
+   :tables  [[nil nil "monthly_sales"]]}
+
+  {:name    "snowflake CONVERT_TIMEZONE"
+   :dialect "snowflake"
+   :sql     "SELECT CONVERT_TIMEZONE('UTC', 'America/Los_Angeles', created_at) AS local_ts FROM orders"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "a bigquery backtick-quoted project, dataset and table"
+   :dialect "bigquery"
+   :sql     "SELECT * FROM `my-project.analytics.events` WHERE _PARTITIONDATE = ?"
+   :tables  [["my-project" "analytics" "events"]]}
+
+  {:name    "a bigquery UNNEST is not a table"
+   :dialect "bigquery"
+   :sql     "SELECT e.id, item FROM events e, UNNEST(e.items) AS item"
+   :tables  [[nil nil "events"]]}
+
+  {:name    "mysql backtick-quoted schema with a space"
+   :dialect "mysql"
+   :sql     "SELECT `id`, `name` FROM `my db`.`users` LIMIT 10 OFFSET 5"
+   :tables  [[nil "my db" "users"]]}
+
+  {:name    "mysql GROUP_CONCAT with SEPARATOR"
+   :dialect "mysql"
+   :sql     "SELECT user_id, GROUP_CONCAT(tag ORDER BY tag SEPARATOR ',') FROM tags GROUP BY user_id WITH ROLLUP"
+   :tables  [[nil nil "tags"]]}
+
+  {:name    "sql server brackets and a table hint"
+   :dialect "tsql"
+   :sql     "SELECT TOP 10 [id], [name] FROM [dbo].[users] WITH (NOLOCK)"
+   :tables  [[nil "dbo" "users"]]}
+
+  {:name    "a sql server CROSS APPLY reads its own table"
+   :dialect "tsql"
+   :sql     "SELECT u.id, o.total FROM users u CROSS APPLY (SELECT TOP 1 total FROM orders WHERE user_id = u.id ORDER BY created_at DESC) o"
+   :tables  [[nil nil "orders"] [nil nil "users"]]}
+
+  {:name    "sql server OFFSET FETCH"
+   :dialect "tsql"
+   :sql     "SELECT id FROM users ORDER BY id OFFSET 10 ROWS FETCH NEXT 10 ROWS ONLY"
+   :tables  [[nil nil "users"]]}
+
+  {:name    "oracle DUAL is reported as a table"
+   :dialect "oracle"
+   :sql     "SELECT SYSDATE FROM dual WHERE ROWNUM <= 1"
+   :tables  [[nil nil "dual"]]}
+
+  {:name    "oracle FETCH FIRST"
+   :dialect "oracle"
+   :sql     "SELECT id FROM users ORDER BY id FETCH FIRST 10 ROWS ONLY"
+   :tables  [[nil nil "users"]]}
+
+  {:name    "a trino UNNEST WITH ORDINALITY is not a table"
+   :dialect "trino"
+   :sql     "SELECT t.id, u.x, u.ord FROM t CROSS JOIN UNNEST(t.arr) WITH ORDINALITY AS u(x, ord)"
+   :tables  [[nil nil "t"]]}
+
+  {:name    "a clickhouse ARRAY JOIN is not a table"
+   :dialect "clickhouse"
+   :sql     "SELECT id, tag FROM events ARRAY JOIN tags AS tag"
+   :tables  [[nil nil "events"]]}
+
+  {:name    "spark backticks and TABLESAMPLE"
+   :dialect "spark"
+   :sql     "SELECT `id` FROM `db`.`events` TABLESAMPLE (10 PERCENT)"
+   :tables  [[nil "db" "events"]]}
+
+  {:name    "redshift DATEADD and GETDATE"
+   :dialect "redshift"
+   :sql     "SELECT id FROM events WHERE created_at > DATEADD(day, -7, GETDATE())"
+   :tables  [[nil nil "events"]]}
+
+  {:name    "a card reference inlined as a subquery reads the card table"
+   :dialect "postgres"
+   :sql     "SELECT \"source\".\"id\" AS \"id\", \"source\".\"total\" AS \"total\" FROM (SELECT id, total FROM orders WHERE status = ?) AS \"source\" WHERE \"source\".\"total\" > 100"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "nested card references read every card table"
+   :dialect "postgres"
+   :sql     "SELECT * FROM (SELECT * FROM (SELECT id, user_id FROM orders) AS \"card_101\" JOIN (SELECT id, email FROM users) AS \"card_102\" ON \"card_101\".user_id = \"card_102\".id) AS wrapper"
+   :tables  [[nil nil "orders"] [nil nil "users"]]}
+
+  {:name    "a 40 KB chain of CTEs reads the two tables at its root"
+   :dialect "snowflake"
+   :build   {:prefix    "WITH cte_0 AS (\n  -- running total for segment 0\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
+            :item      "cte_%4$d AS (\n  -- running total for segment %4$d\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
+            :count     119
+            :separator ",\n"
+            :suffix    "\nSELECT * FROM cte_119"}
+   :tables  [[nil nil "base_table"] [nil nil "table_b"]]}
+
+  {:name     "common read shapes in each dialect: star"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT * FROM orders"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: join filter"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT o.id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.total > 100"
+   :tables   [[nil nil "orders"] [nil nil "products"]]}
+
+  {:name     "common read shapes in each dialect: cte group"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "WITH t AS (SELECT id, total FROM orders WHERE status = 'paid') SELECT id, SUM(total) AS st FROM t GROUP BY id HAVING SUM(total) > 10 ORDER BY st DESC LIMIT 10"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: window frame"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT id, SUM(total) OVER (PARTITION BY user_id ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rt FROM orders"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: union all"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT id FROM a UNION ALL SELECT id FROM b"
+   :tables   [[nil nil "a"] [nil nil "b"]]}
+
+  {:name     "common read shapes in each dialect: placeholders"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT * FROM orders WHERE created_at >= ? AND user_id IN (?, ?, ?)"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: case groupby"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT CASE WHEN total > 100 THEN 'big' ELSE 'small' END AS size, COUNT(*) FROM orders GROUP BY 1"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: derived table"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT sub.id FROM (SELECT id FROM orders WHERE total > 0) AS sub"
+   :tables   [[nil nil "orders"]]}
+
+  {:name     "common read shapes in each dialect: string semi"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "-- note\nSELECT 'a;b' AS x FROM t"
+   :tables   [[nil nil "t"]]}
+
+  {:name     "common read shapes in each dialect: subquery in"
+   :dialects ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks" nil]
+   :sql      "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"
+   :tables   [[nil nil "orders"] [nil nil "users"]]}
+
+  {:name     "a dialect sqlglot does not know fails the call"
+   :dialects ["mariadb"]
+   :sqls     ["SELECT * FROM orders"
+              "SELECT o.id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.total > 100"
+              "WITH t AS (SELECT id, total FROM orders WHERE status = 'paid') SELECT id, SUM(total) AS st FROM t GROUP BY id HAVING SUM(total) > 10 ORDER BY st DESC LIMIT 10"
+              "SELECT id, SUM(total) OVER (PARTITION BY user_id ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rt FROM orders"
+              "SELECT id FROM a UNION ALL SELECT id FROM b"
+              "SELECT * FROM orders WHERE created_at >= ? AND user_id IN (?, ?, ?)"
+              "SELECT CASE WHEN total > 100 THEN 'big' ELSE 'small' END AS size, COUNT(*) FROM orders GROUP BY 1"
+              "SELECT sub.id FROM (SELECT id FROM orders WHERE total > 0) AS sub"
+              "-- note\nSELECT 'a;b' AS x FROM t"
+              "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
+   :error    "ValueError: Unknown dialect 'mariadb'."}]}

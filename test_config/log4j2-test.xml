@@ -41,6 +41,13 @@
       <AppenderRef ref="File"/>
     </Logger>
 
+    <!-- The SQL parsing corpus tests log their counts rather than asserting on all of them, and run only from a
+         private CI job, which reads them from the console. Named for test/metabase/sql_parsing/corpus_test.clj. -->
+    <Logger name="metabase.sql-parsing.corpus-test" level="INFO" additivity="false">
+      <AppenderRef ref="ConsoleRaw"/>
+      <AppenderRef ref="File"/>
+    </Logger>
+
     <!-- Eval-trace sink (metabase.ai-tracing): additivity=false with no appender keeps the JSONL
          spans out of the shared test log. Tests that assert on emitted spans attach their own
          appender via metabase.util.log.capture, so this does not hide them. Mirrors the prod

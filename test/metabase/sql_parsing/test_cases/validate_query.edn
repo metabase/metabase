@@ -1,7 +1,9 @@
 {:schemas
  {:products {"PUBLIC" {"PRODUCTS" {"ID" "INT" "TITLE" "VARCHAR" "CATEGORY" "VARCHAR" "PRICE" "DECIMAL"}
                        "ORDERS"   {"ID" "INT" "USER_ID" "INT" "PRODUCT_ID" "INT" "TOTAL" "DECIMAL"}
-                       "USERS"    {"ID" "INT" "NAME" "VARCHAR" "EMAIL" "VARCHAR"}}}}
+                       "USERS"    {"ID" "INT" "NAME" "VARCHAR" "EMAIL" "VARCHAR"}}}
+  :snowflake-products {"PUBLIC" {"PRODUCTS" {"ID" "NUMBER" "TITLE" "VARCHAR"}}}
+  :mysql-shop         {"shop" {"products" {"id" "INT" "title" "VARCHAR"}}}}
 
  :cases
  [{:name           "columns that exist"
@@ -81,4 +83,29 @@
    :sql            "SELECT * FROM products WHERE title NOT LIKE '%deluxe%'"
    :default-schema "PUBLIC"
    :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "snowflake folds unquoted names to upper case to match the schema"
+   :dialect        "snowflake"
+   :sql            "SELECT id, title FROM products"
+   :default-schema "PUBLIC"
+   :schema         :snowflake-products
+   :expected       {:status "ok"}}
+
+  {:name           "snowflake names a column that does not exist, with its position"
+   :dialect        "snowflake"
+   :sql            "SELECT nonexistent FROM products"
+   :default-schema "PUBLIC"
+   :schema         :snowflake-products
+   :expected       {:status  "error"
+                    :type    "column_not_resolved"
+                    :message "Column 'NONEXISTENT' could not be resolved."
+                    :column  "NONEXISTENT"
+                    :details " Line: 1, Col: 18"}}
+
+  {:name           "mysql backtick-quoted names in a lower-case schema"
+   :dialect        "mysql"
+   :sql            "SELECT `id` FROM `products`"
+   :default-schema "shop"
+   :schema         :mysql-shop
    :expected       {:status "ok"}}]}
