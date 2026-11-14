@@ -277,6 +277,13 @@ describe("NewModals > shared tenant collections", () => {
     expect(within(modal).getByText(/Collection type/i)).toBeInTheDocument();
     expect(within(modal).getByText("Regular")).toBeInTheDocument();
     expect(within(modal).getByText("Official")).toBeInTheDocument();
+
+    await userEvent.click(within(modal).getByLabelText("Close"));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("new-collection-modal"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it.each([
