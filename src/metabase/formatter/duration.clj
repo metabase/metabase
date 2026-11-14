@@ -51,12 +51,14 @@
 
 (defn- format-digital
   [total-ms precision decimal grouping]
-  (str (format-integer (quot total-ms ms-per-hour) grouping)
-       ":" (zero-pad (quot (rem total-ms ms-per-hour) ms-per-minute) 2)
-       (when-not (= precision "minutes")
-         (str ":" (zero-pad (quot (rem total-ms ms-per-minute) ms-per-second) 2)))
-       (when (= precision "milliseconds")
-         (str decimal (zero-pad (rem total-ms ms-per-second) 3)))))
+  (let [hours   (format-integer (quot total-ms ms-per-hour) grouping)
+        minutes (zero-pad (quot (rem total-ms ms-per-hour) ms-per-minute) 2)
+        seconds (zero-pad (quot (rem total-ms ms-per-minute) ms-per-second) 2)
+        millis  (zero-pad (rem total-ms ms-per-second) 3)]
+    (case precision
+      "minutes"      (str hours ":" minutes)
+      "milliseconds" (str hours ":" minutes ":" seconds decimal millis)
+      (str hours ":" minutes ":" seconds))))
 
 (defn- format-narrow
   [total-ms precision grouping]

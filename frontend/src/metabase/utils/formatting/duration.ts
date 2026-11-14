@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
@@ -163,20 +164,19 @@ function formatDigitalDuration(
     groupingSeparator,
   }: { decimalSeparator: string; groupingSeparator: string },
 ): string {
-  const hours = Math.floor(totalMs / HOUR_MS);
-  const minutes = Math.floor((totalMs % HOUR_MS) / MINUTE_MS);
-  const seconds = Math.floor((totalMs % MINUTE_MS) / SECOND_MS);
-  const milliseconds = totalMs % SECOND_MS;
+  const hours = formatInteger(Math.floor(totalMs / HOUR_MS), groupingSeparator);
+  const minutes = padDigits(Math.floor((totalMs % HOUR_MS) / MINUTE_MS), 2);
+  const seconds = padDigits(Math.floor((totalMs % MINUTE_MS) / SECOND_MS), 2);
+  const milliseconds = padDigits(totalMs % SECOND_MS, 3);
 
-  const clock = [
-    formatInteger(hours, groupingSeparator),
-    padDigits(minutes, 2),
-    ...(precision === "minutes" ? [] : [padDigits(seconds, 2)]),
-  ].join(":");
-
-  return precision === "milliseconds"
-    ? clock + decimalSeparator + padDigits(milliseconds, 3)
-    : clock;
+  return match(precision)
+    .with("minutes", () => `${hours}:${minutes}`)
+    .with("seconds", () => `${hours}:${minutes}:${seconds}`)
+    .with(
+      "milliseconds",
+      () => `${hours}:${minutes}:${seconds}${decimalSeparator}${milliseconds}`,
+    )
+    .exhaustive();
 }
 
 function formatNarrowDuration(

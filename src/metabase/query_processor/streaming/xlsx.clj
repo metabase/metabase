@@ -101,14 +101,20 @@
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
 
+(def ^:private duration-format-strings
+  "Format strings for duration columns by style and precision."
+  {"digital" {"minutes"      "[h]:mm"
+              "seconds"      "[h]:mm:ss"
+              "milliseconds" "[h]:mm:ss.000"}
+   "narrow"  {"minutes"      "[h]\"h \"m\"m\""
+              "seconds"      "[h]\"h \"m\"m \"s\"s\""
+              "milliseconds" "[h]\"h \"m\"m \"s.000\"s\""}})
+
 (defn- duration-format-string
   "Returns the format string for a duration column, whose cells hold the duration in days."
   [{::mb.viz/keys [duration-style duration-precision]}]
-  (let [narrow? (= duration-style "narrow")]
-    (case duration-precision
-      "minutes"      (if narrow? "[h]\"h \"m\"m\"" "[h]:mm")
-      "milliseconds" (if narrow? "[h]\"h \"m\"m \"s.000\"s\"" "[h]:mm:ss.000")
-      (if narrow? "[h]\"h \"m\"m \"s\"s\"" "[h]:mm:ss"))))
+  (let [by-precision (get duration-format-strings duration-style (duration-format-strings "digital"))]
+    (get by-precision duration-precision (by-precision "seconds"))))
 
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
