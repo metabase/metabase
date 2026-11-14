@@ -819,7 +819,7 @@
 
 (deftest ^:parallel provider-type-models-test
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
-    (is (= {"anthropic"  "claude-sonnet-4-6"
+    (is (= {"anthropic"  "claude-haiku-5-5"
             "openai"     "gpt-5.4"
             "openrouter" "anthropic/claude-sonnet-4.6"
             "mistral"    "mistral-medium-3-5"
@@ -842,7 +842,7 @@
   (testing (str "every type's mini model, which short utility calls like conversation titles fall back to. A type "
                 "that grows a mini model, or loses one, has to be spelled out here — a missing `:mini-model` reads "
                 "as nil and quietly sends titles to the full-size model instead.")
-    (is (= {"anthropic"  "claude-haiku-4-5-20251001"
+    (is (= {"anthropic"  "claude-haiku-5-5"
             "openai"     "gpt-5.4-mini"
             "openrouter" "anthropic/claude-haiku-4.5"
             "mistral"    "mistral-medium-3-5"
@@ -852,7 +852,7 @@
             "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil
-            "bedrock"    "anthropic.claude-haiku-4-5"
+            "bedrock"    "anthropic.claude-haiku-5-5"
             ;; a self-hosted server serves the models the operator chose to host, so there is no cheaper tier
             ;; to fall back to
             "vllm"       nil
@@ -891,9 +891,9 @@
 
 (deftest ^:parallel served-mini-model-test
   (testing "a listing that includes the type's mini model records it on the connection"
-    (is (= {:mini-model "claude-haiku-4-5-20251001"}
+    (is (= {:mini-model "claude-haiku-5-5"}
            (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                                                        {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]))))
+                                                        {:id "claude-haiku-5-5" :display_name "Claude Haiku 5.5"}]))))
   (testing "one that leaves it out records nothing, so an earlier answer is retired rather than kept"
     (is (= {:mini-model nil}
            (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}])))

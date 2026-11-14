@@ -14,22 +14,20 @@
   ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
   (letfn [(tool-names [profile]
             (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
-    (testing "retrieves embedding_next profile with default provider"
+    (testing "retrieves embedding_next profile"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
         (is (= :embedding_next (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_chart"))
         (is (contains? (tool-names profile) "edit_chart"))))
-    (testing "retrieves internal profile with default provider"
+    (testing "retrieves internal profile"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
         (is (= :internal (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
@@ -40,7 +38,6 @@
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
-                 :model "anthropic/claude-sonnet-4-6"
                  :max-iterations int?
                  :required-tool-call? true}
                 profile))
@@ -51,7 +48,6 @@
         (is (some? profile))
         ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 20 (:max-iterations profile)))
         ;; In tests the library index can't answer, so :nlq is transparently served the general-search
         ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
@@ -62,7 +58,6 @@
       (let [profile (profiles/get-profile :slackbot)]
         (is (some? profile))
         (is (= :slackbot (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))

@@ -132,12 +132,12 @@
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
-  "Default model reference used for Metabot when no explicit model is selected."
-  "anthropic/claude-sonnet-4-6")
+  "Default model reference for Metabot when no model is selected: the Anthropic provider's default model."
+  (str "anthropic/" (llm.provider/default-model "anthropic")))
 
 (def default-metabase-llm-metabot-provider
-  "Managed-provider version of [[default-llm-metabot-provider]]."
-  (str llm.provider/managed-connection-key "/" default-llm-metabot-provider))
+  "Default model reference for Metabot on the managed provider."
+  (str llm.provider/managed-connection-key "/" (llm.provider/default-model llm.provider/managed-connection-key)))
 
 (def azure-model-families
   "Wire-protocol families for models hosted on Azure: the first segment of the azure model
