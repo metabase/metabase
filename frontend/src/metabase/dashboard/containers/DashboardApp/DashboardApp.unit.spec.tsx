@@ -439,6 +439,52 @@ describe("DashboardApp", () => {
     }
   });
 
+  describe("archived dashboard", () => {
+    const getDashboardHeader = () => screen.getByTestId("dashboard-header");
+
+    it("shows the editing actions of a dashboard that is not archived", async () => {
+      await setup({ dashboard: { archived: false } });
+
+      expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
+      const header = getDashboardHeader();
+      expect(within(header).getByLabelText("pencil icon")).toBeInTheDocument();
+      expect(
+        within(header).getByTestId("sharing-menu-button"),
+      ).toBeInTheDocument();
+      expect(
+        within(header).getByLabelText("bookmark icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(header).getByLabelText("ellipsis icon"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the archive banner and hides the editing actions of an archived dashboard", async () => {
+      await setup({ dashboard: { archived: true } });
+
+      expect(screen.getByTestId("archive-banner")).toBeInTheDocument();
+      expect(
+        screen.getByText("This dashboard is in the trash."),
+      ).toBeInTheDocument();
+      const header = getDashboardHeader();
+      expect(
+        within(header).queryByLabelText("pencil icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(header).queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(header).queryByLabelText("clock icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(header).queryByLabelText("bookmark icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(header).queryByLabelText("ellipsis icon"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   /**
    * passing the same uuid in the URL is required to enable metadata cache
    * sharing on BE
