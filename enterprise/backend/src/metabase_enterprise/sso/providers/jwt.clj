@@ -100,8 +100,26 @@
     :else
     jwt-data))
 
+(defn- check-audience
+  "Return the verified `jwt-data` if its `aud` names one of `audiences` or is missing.
+
+  Accept a string or an array of strings. Log a warning when the claim is missing; throw for any other audience."
+  [{:keys [aud] :as jwt-data} audiences]
+  (cond
+    (nil? aud)
+    (do (log/warn "Accepted a JWT without an aud claim. Sign it with aud set to" (first audiences))
+        jwt-data)
+
+    (some (set audiences) (if (sequential? aud) aud [aud]))
+    jwt-data
+
+    :else
+    (throw (ex-info (tru "The JWT''s aud claim must name {0}." (first audiences))
+                    {:status-code 400
+                     :error :invalid-audience}))))
+
 (methodical/defmethod auth-identity/authenticate :provider/jwt
-  [_provider {:keys [token jwt/require-exp-and-iat?] :as _request}]
+  [_provider {:keys [token jwt/require-exp-and-iat? jwt/audiences] :as _request}]
   (cond
     (not (sso-settings/jwt-enabled-and-configured))
     {:success? false
@@ -116,7 +134,8 @@
     :else
     (try
       (let [jwt-data (cond-> (decode-and-verify-jwt token)
-                       require-exp-and-iat? check-exp-and-iat)
+                       require-exp-and-iat? check-exp-and-iat
+                       audiences (check-audience audiences))
             email (get jwt-data (jwt-attribute-email))
             first-name (get jwt-data (jwt-attribute-firstname))
             last-name (get jwt-data (jwt-attribute-lastname))

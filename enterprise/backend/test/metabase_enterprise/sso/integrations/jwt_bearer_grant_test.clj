@@ -4,6 +4,7 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.mcp.test-util :as mcp.tu]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
@@ -115,6 +116,20 @@
           (is (not (t2/exists? :model/Session :user_id (:id user))))
           (is (not (t2/exists? :model/LoginHistory :user_id (:id user)))))))))
 
+(deftest exchange-login-test
+  (testing "an exchange counts as a login, and the first one as the user joining"
+    (with-jwt-bearer-setup!
+      (let [email  "jwt-bearer-login@metabase.com"
+            login! (fn []
+                     (token! email)
+                     (let [{id :id, last-login :last_login} (t2/select-one [:model/User :id :last_login] :email email)]
+                       {:last-login last-login
+                        :joined     (count (mt/all-entries-for :user-joined :model/User id))}))]
+        (is (=? {:last-login some?, :joined 1} (login!)))
+        (t2/update! :model/User :email email {:last_login #t "2020-01-01T00:00Z"})
+        (let [earlier (t2/select-one-fn :last_login :model/User :email email)]
+          (is (=? {:last-login #(t/after? % earlier), :joined 1} (login!))))))))
+
 (deftest exchange-group-sync-test
   (testing "the exchange syncs the user's groups from the JWT, as JWT login does"
     (with-jwt-bearer-setup!
@@ -126,6 +141,31 @@
             (token-response 200 {:assertion (assertion {:email email, :groups ["analysts"]})})
             (is (t2/exists? :model/PermissionsGroupMembership
                             :user_id (t2/select-one-pk :model/User :email email), :group_id group-id))))))))
+
+(deftest exchange-audience-test
+  (with-jwt-bearer-setup!
+    (let [issuer (system/site-url)
+          email  "jwt-bearer-audience@metabase.com"]
+      (testing "an assertion naming this server, or without an audience, is accepted"
+        (doseq [claims [{:aud issuer}
+                        {:aud (str issuer "/oauth/token")}
+                        {:aud ["https://another-service.example.com" issuer]}
+                        {}]]
+          (testing (pr-str claims)
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.sso.providers.jwt :warn]]
+              (is (=? {:access_token string?}
+                      (:body (token-response 200 {:assertion (assertion (assoc claims :email email))}))))
+              (is (= (when-not (:aud claims)
+                       [(str "Accepted a JWT without an aud claim. Sign it with aud set to " issuer)])
+                     (seq (map :message (messages)))))))))
+      (testing "an assertion naming only other services is refused before provisioning"
+        (doseq [aud ["https://another-service.example.com"
+                     ["https://another-service.example.com" "https://yet-another-service.example.com"]]]
+          (testing (pr-str aud)
+            (let [email "jwt-bearer-audience-refused@metabase.com"]
+              (is (= {:error "invalid_grant", :error_description (str "The JWT's aud claim must name " issuer ".")}
+                     (:body (token-response 400 {:assertion (assertion {:email email, :aud aud})}))))
+              (is (not (t2/exists? :model/User :email email))))))))))
 
 (deftest exchange-scope-test
   (with-jwt-bearer-setup!
@@ -142,6 +182,37 @@
         (doseq [resource [(mcp-url) (str (mcp-url) "/") (str (system/site-url) "/api/mcp")]]
           (testing resource
             (is (= [(mcp-url)] (:resource (token! email :resource resource))))))))))
+
+(deftest exchange-scope-claim-test
+  (with-jwt-bearer-setup!
+    (let [email   "jwt-bearer-scope-claim@metabase.com"
+          request (fn [status claim requested]
+                    (:body (token-response status (cond-> {:assertion (assertion {:email email, :scope claim})}
+                                                    requested (assoc :scope requested)))))]
+      (testing "the token gets only the scopes that the JWT's scope claim allows"
+        (doseq [[claim requested granted]
+                [["agent:content:read"               nil                             "agent:content:read"]
+                 ["agent:sql:run agent:content:read" "agent:query:run agent:sql:run" "agent:sql:run"]
+                 ["agent:*"                          "agent:query:run agent:sql:run" "agent:query:run agent:sql:run"]]]
+          (testing (pr-str claim)
+            (is (= granted (:scope (request 200 claim requested)))))))
+      (testing "a claim that allows none of the requested scopes is refused"
+        (doseq [[claim requested] [["agent:content:read" "agent:sql:run"]
+                                   [""                   nil]]]
+          (testing (pr-str claim)
+            (is (= {:error             "invalid_scope"
+                    :error_description (str "The JWT's scope claim must allow at least one of these scopes: "
+                                            (or requested (str/join " " (mcp/v2-scopes))))}
+                   (request 400 claim requested))))))
+      (testing "a refused claim leaves an account but no token, audit row or login"
+        (let [email "jwt-bearer-scope-refused@metabase.com"]
+          (token-response 400 {:assertion (assertion {:email email, :scope "openid"})})
+          (let [user-id (t2/select-one-pk :model/User :email email)]
+            (is (some? user-id))
+            (is (not (t2/exists? :model/OAuthAccessToken :user_id user-id)))
+            (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued" :user_id user-id)))
+            (is (empty? (mt/all-entries-for :user-joined :model/User user-id)))
+            (is (nil? (t2/select-one-fn :last_login :model/User :id user-id)))))))))
 
 (deftest exchange-provisioning-test
   (with-jwt-bearer-setup!
@@ -286,14 +357,16 @@
         (mt/with-temporary-setting-values [jwt-group-sync     true
                                            jwt-group-mappings {"agents" [group-id]}]
           (let [email "jwt-bearer-mcp-groups@metabase.com"]
-            (testing "a user whose groups don't allow MCP is refused, and gets an account but no token or audit row"
+            (testing "a user whose groups don't allow MCP is refused, with an account but no token, audit row or login"
               (is (= {:error             "unsupported_grant_type"
                       :error_description "MCP access is not enabled for this user's groups."}
                      (:body (token-response 400 {:assertion (assertion {:email email})}))))
               (let [user-id (t2/select-one-pk :model/User :email email)]
                 (is (some? user-id))
                 (is (not (t2/exists? :model/OAuthAccessToken :user_id user-id)))
-                (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued" :user_id user-id)))))
+                (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued" :user_id user-id)))
+                (is (empty? (mt/all-entries-for :user-joined :model/User user-id)))
+                (is (nil? (t2/select-one-fn :last_login :model/User :id user-id)))))
             (testing "once the JWT syncs the user into a group that allows MCP, they get a token that MCP accepts"
               (let [{:keys [access_token]} (:body (token-response 200 {:assertion (assertion {:email  email
                                                                                               :groups ["agents"]})}))]
@@ -304,7 +377,11 @@
     (with-jwt-bearer-setup!
       (mcp.tu/with-group-level-mode
         (let [verified   [["unsupported_grant_type" #(assertion {:email "jwt-bearer-no-mcp@metabase.com"})]
-                          ["invalid_grant"          #(assertion {:first_name "Jay"})]]
+                          ["invalid_grant"          #(assertion {:first_name "Jay"})]
+                          ["invalid_grant"          #(assertion {:email "jwt-bearer-wrong-aud@metabase.com"
+                                                                 :aud "https://another-service.example.com"})]
+                          ["invalid_scope"          #(assertion {:email "jwt-bearer-no-scope@metabase.com"
+                                                                 :scope "openid"})]]
               unverified [["invalid_grant" #(jwt/sign {:email "jwt-bearer-forged@metabase.com"} "not-the-secret")]
                           ["invalid_grant" #(assertion {:email "jwt-bearer-expired@metabase.com"
                                                         :exp   (- (buddy-util/now) 60)})]]]
