@@ -95,6 +95,13 @@
     (check-app-query data-app query))
   nil)
 
+(defn- card-refusal
+  "The message refusing `data-app` the card with `card-id`."
+  [data-app card-id]
+  (if (preview? data-app)
+    (tru "A data app''s dev preview cannot run saved cards, not the card {0}." (str card-id))
+    (tru "A data app can run only the cards in its own collection, not the card {0}." (str card-id))))
+
 (defenterprise-schema check-card :- :nil
   "Throws a 400 unless `data-app` is an app and the card with `card-id` is in its collection, after a read check of the
   card; a dev preview runs no saved card."
@@ -102,12 +109,21 @@
   [data-app :- ::data-apps.schema/data-app-info
    card-id  :- ::lib.schema.id/card]
   (let [card (api/read-check :model/Card card-id)]
-    (when (preview? data-app)
-      (throw (data-app-error (tru "A data app''s dev preview cannot run saved cards, not the card {0}." (str card-id)))))
-    (when-not (in-app-collection? data-app card)
-      (throw (data-app-error (tru "A data app can run only the cards in its own collection, not the card {0}."
-                                  (str card-id))))))
+    (when (or (preview? data-app) (not (in-app-collection? data-app card)))
+      (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
+
+(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app-info
+   specs    :- [:sequential [:map [:type :string] [:id :int]]]]
+  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) specs))
+        external (if (preview? data-app)
+                   card-ids
+                   (some->> (not-empty (set card-ids))
+                            (data-apps.db/external-card-ids (app-collection-id data-app))))]
+    (into {} (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)])) (concat invalid-ids external))))
 
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` is an app and the action with `action-id` is in its collection, after a read check of

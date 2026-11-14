@@ -104,3 +104,28 @@
               [:model/Collection (eid \d)] #{[:model/Dashboard (eid \c)]}
               [:model/Card (eid \g)]       #{[:model/Dashboard (eid \c)]}}
              escapes)))))
+
+(deftest ^:parallel dynamic-goals-dependencies-test
+  (let [card-eid    "card00000000000000001"
+        measure-eid "meas00000000000000007"
+        goals       (fn [card measure]
+                      {:graph.goal_value {:id card :type "card" :column "total"}
+                       :progress.goal    {:id measure :type "measure" :column "avg"}
+                       :gauge.segments   [{:min 0 :max {:id card :type "card" :column "total"}}]})
+        visualizer  (fn [settings] {:visualization {:display "line" :settings settings}})]
+    (testing "export dependencies are the numeric ids"
+      (is (= #{[:model/Card 1] [:model/Measure 7]}
+             (serialization/export-visualization-settings-dependencies (goals 1 7)))))
+    (testing "import dependencies are the entity ids"
+      (is (= #{[:model/Card card-eid] [:model/Measure measure-eid]}
+             (serialization/import-visualization-settings-dependencies (goals card-eid measure-eid)))))
+    (testing "numeric ids are no dependencies at import"
+      (is (= #{} (serialization/import-visualization-settings-dependencies (goals 1 7)))))
+    (testing "literal goals are no dependencies"
+      (is (= #{} (serialization/export-visualization-settings-dependencies {:graph.goal_value 100}))))
+    (testing "goals nested in a visualizer dashcard are dependencies too"
+      (is (= #{[:model/Card 1] [:model/Measure 7]}
+             (serialization/export-visualization-settings-dependencies (visualizer (goals 1 7)))))
+      (is (= #{[:model/Card card-eid] [:model/Measure measure-eid]}
+             (serialization/import-visualization-settings-dependencies
+              (visualizer (goals card-eid measure-eid))))))))

@@ -268,7 +268,9 @@ const uiControls = createReducer<QueryBuilderUIControls>(
             | undefined;
         }
       >(OPEN_CHART_SETTINGS, (state, action) => {
-        const { initialChartSettings, showSidebarTitle = false } =
+        const isSidebarTitleShown =
+          state.isShowingChartSettingsSidebar && state.showSidebarTitle;
+        const { initialChartSettings, showSidebarTitle = isSidebarTitleShown } =
           action.payload ?? {};
         return {
           ...state,

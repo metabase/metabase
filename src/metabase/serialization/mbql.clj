@@ -110,7 +110,7 @@
        (:source_table :source-table :table-id)
        (cond-> m (pos-int? v) (assoc k (visit :model/Table v)))
 
-       (:source-field :field-id :metabase.models.visualization-settings/param-mapping-source)
+       (:source-field :field-id :metabase.visualization-settings.core/param-mapping-source)
        (cond-> m (pos-int? v) (assoc k (visit :model/Field v)))
 
        :segment

@@ -6,9 +6,9 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.visualization-settings.core :as vs]))
 
 (set! *warn-on-reflection* true)
 

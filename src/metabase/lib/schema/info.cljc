@@ -27,6 +27,8 @@
    :pulse
    :dashboard-subscription
    :dashboard
+   ;; a dynamic goal's source query, run alongside the chart that shows the goal
+   :dynamic-goal
    :question
    :csv-download
    :xlsx-download

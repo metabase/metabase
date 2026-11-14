@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -135,6 +137,86 @@
           (is (=? {:channel "#general"
                    :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
+
+(deftest line-graph-with-unresolved-dynamic-goal-test
+  (testing "a has_result alert on a chart whose dynamic goal can't resolve still sends the email (GDGT-3346)"
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query          (mt/mbql-query orders {:aggregation [["count"]]
+                                                                                          :breakout    [!day.created_at]})
+                                           :display                :line
+                                           :visualization_settings {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-card-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}
+                       :notification-card {:send_condition :has_result}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email :as emails]]
+              (is (= 1 (count emails)))
+              (is (= {notification.tu/default-card-name true
+                      "its goal of"                     false}
+                     (-> (mt/summarize-multipart-single-email email card-name-regex #"its goal of")
+                         :message
+                         first))))})
+          (testing "and warns once that the goal can't be resolved"
+            (is (=? [(re-pattern (str "Dynamic goal graph\\.goal_value can't be resolved \\(query-failed\\): "
+                                      "card \\d+, column count\\. Chart card \\d+, display line"))]
+                    (mapv :message (messages))))))))))
+
+(deftest goal-alert-with-unresolved-dynamic-goal-test
+  (testing "a goal alert whose dynamic goal can't resolve fails before rendering, so it leaves no render warning"
+    (mt/with-temp [:model/Card {goal-card-id :id}
+                   {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query          (mt/mbql-query orders
+                                                                     {:aggregation [["count"]]
+                                                                      :breakout    [!day.created_at]})
+                                           :display                :line
+                                           :visualization_settings {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-card-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}
+                       :notification-card {:send_condition :goal_above}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                (notification.tu/test-send-notification! notification {:channel/email (fn [_])})))
+          (is (empty? (messages))))))))
+
+(deftest send-once-goal-alert-with-unresolved-dynamic-goal-test
+  (mt/with-temp [:model/Card {goal-card-id :id}
+                 {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+    (notification.tu/with-card-notification
+      [notification {:card              {:dataset_query          (mt/mbql-query orders
+                                                                   {:aggregation [["count"]]
+                                                                    :breakout    [!day.created_at]})
+                                         :display                :line
+                                         :visualization_settings {:graph.show_goal  true
+                                                                  :graph.goal_value {:id     goal-card-id
+                                                                                     :type   "card"
+                                                                                     :column "count"}}}
+                     :notification-card {:send_condition :goal_above
+                                         :send_once      true}
+                     :handlers          [@notification.tu/default-email-handler]}]
+      (letfn [(stored-notification []
+                (t2/select-one :model/Notification :id (:id notification)))]
+        (testing "a send-once goal alert whose dynamic goal can't resolve isn't sent, so it stays active"
+          (let [messages (notification.tu/with-captured-channel-send!
+                           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                                 (notification/send-notification! (stored-notification)))))]
+            (is (empty? (:channel/email messages)))
+            (is (true? (:active (stored-notification))))))
+        (testing "once the goal resolves, the alert is sent and archived"
+          (t2/update! :model/Card :id goal-card-id {:dataset_query (mt/native-query {:query "SELECT 0 AS \"count\""})})
+          (notification.tu/test-send-notification!
+           (stored-notification)
+           {:channel/email (fn [emails]
+                             (is (= 1 (count emails))))})
+          (is (false? (:active (stored-notification)))))))))
 
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
@@ -292,6 +374,36 @@
                            :semantic_type  :type/Quantity}]
                    :rows [["2021-01-01T00:00:00Z" val]]}}})
 
+(defn- referenced-timeseries-result
+  "Like [[timeseries-result]] but with the goal referencing another entity's value."
+  [val goal-part]
+  (-> (timeseries-result val)
+      (assoc-in [:card :visualization_settings :graph.goal_value] {:id 42 :type "card" :column "target"})
+      (assoc-in [:result :data :referenced_entities] {"card" {"42" goal-part}})))
+
+(deftest ^:parallel goal-met-referenced-goal-test
+  (testing "Timeseries whose goal is another card's value"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          goal-part {:status "completed"
+                     :data   {:cols [{:name "target"}]
+                              :rows [[5]]}}]
+      (testing "alert above"
+        (let [alert {:send_condition "goal_above"}]
+          (testing "value below goal"  (is (false? (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value equals goal" (is (true?  (goal-met? alert (referenced-timeseries-result 5 goal-part)))))
+          (testing "value above goal"  (is (true?  (goal-met? alert (referenced-timeseries-result 6 goal-part)))))))
+      (testing "alert below"
+        (let [alert {:send_condition "goal_below"}]
+          (testing "value below goal" (is (true?  (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value above goal" (is (false? (goal-met? alert (referenced-timeseries-result 6 goal-part))))))))))
+
+(deftest ^:parallel goal-met-referenced-goal-failed-test
+  (testing "a failed referenced query makes the alert error instead of silently (not) firing"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                            (goal-met? {:send_condition "goal_above"}
+                                       (referenced-timeseries-result 4 {:status "failed" :error "boom"})))))))
+
 (deftest ^:parallel goal-met-progress-bar-alert-above-test
   (testing "Progress bar with alert above"
     (let [alert-above-pulse {:send_condition "goal_above"}
@@ -423,6 +535,102 @@
                   email
                   card-name-regex
                   #"This question has gone below its goal of 1\.1\."))))}))))
+
+(defn- send-goal-alert!
+  "Send a `send-condition` alert on a card with `card` attributes, and return the emails it sent."
+  [card send-condition]
+  (let [emails (atom nil)]
+    (notification.tu/with-card-notification
+      [notification {:card              card
+                     :notification-card {:send_condition send-condition}
+                     :handlers          [@notification.tu/default-email-handler]}]
+      (notification.tu/test-send-notification! notification {:channel/email #(reset! emails %)}))
+    @emails))
+
+(defn- goal-message
+  "The first part of `email`'s message, summarized as whether its text matches `goal-regex`."
+  [email goal-regex]
+  (-> (mt/summarize-multipart-single-email email goal-regex) :message first))
+
+(defn- daily-checkins-line
+  "Attributes of a line chart counting checkins per day in spring 2014, whose goal line is `goal`."
+  [goal]
+  {:dataset_query          (mt/mbql-query checkins
+                             {:aggregation [["count"]]
+                              :filter      [:between $date "2014-04-01" "2014-06-01"]
+                              :breakout    [!day.date]})
+   :display                :line
+   :visualization_settings {:graph.show_goal  true
+                            :graph.goal_value goal
+                            :graph.dimensions ["DATE"]
+                            :graph.metrics    ["count"]}})
+
+(defn- target-card
+  "Attributes of a card whose only value is `target`."
+  [target]
+  {:dataset_query (mt/native-query {:query (str "SELECT " target " AS \"target\"")})})
+
+(defn- target-ref [card-id]
+  {:id card-id :type "card" :column "target"})
+
+(deftest send-condition-dynamic-goal-test
+  (testing "a goal alert compares the rows to the value its dynamic goal resolves to"
+    (mt/with-temp [:model/Card {high-id :id}    (target-card 1000)
+                   :model/Card {reached-id :id} (target-card 5.9)
+                   :model/Card {zero-id :id}    (target-card 0)
+                   :model/Card {low-id :id}     (target-card 1.1)]
+      (testing "an above-goal alert skips a goal no day reaches"
+        (is (empty? (send-goal-alert! (daily-checkins-line (target-ref high-id)) :goal_above))))
+      (testing "an above-goal alert sends for a goal some day reaches, naming the resolved goal"
+        (let [[email :as emails] (send-goal-alert! (daily-checkins-line (target-ref reached-id)) :goal_above)]
+          (is (= 1 (count emails)))
+          (is (= "Alert: Card notification test card has reached its goal" (:subject email)))
+          (is (= {"This question has reached its goal of 5\\.9\\." true}
+                 (goal-message email #"This question has reached its goal of 5\.9\.")))))
+      (testing "a below-goal alert skips a goal no day goes below"
+        (is (empty? (send-goal-alert! (daily-checkins-line (target-ref zero-id)) :goal_below))))
+      (testing "a below-goal alert sends for a goal some day goes below, naming the resolved goal"
+        (let [[email :as emails] (send-goal-alert! (daily-checkins-line (target-ref low-id)) :goal_below)]
+          (is (= 1 (count emails)))
+          (is (= "Alert: Card notification test card has gone below its goal" (:subject email)))
+          (is (= {"This question has gone below its goal of 1\\.1\\." true}
+                 (goal-message email #"This question has gone below its goal of 1\.1\."))))))))
+
+(deftest send-condition-dynamic-progress-goal-test
+  (testing "a progress chart's goal alert compares its value to a measure goal"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (let [mp (mt/metadata-provider)]
+                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                      (lib/aggregate (lib/count))))}]
+      (let [progress (fn [query]
+                       {:dataset_query          query
+                        :display                :progress
+                        :visualization_settings {:progress.goal {:id measure-id :type "measure" :column "count"}}})
+            checkins (progress (mt/mbql-query checkins {:aggregation [[:count]]}))
+            users    (progress (mt/mbql-query users {:aggregation [[:count]]}))]
+        (testing "1000 checkins reach the goal of 100 venues"
+          (let [[email :as emails] (send-goal-alert! checkins :goal_above)]
+            (is (= 1 (count emails)))
+            (is (= {"This question has reached its goal of 100\\." true}
+                   (goal-message email #"This question has reached its goal of 100\.")))))
+        (testing "15 users don't"
+          (is (empty? (send-goal-alert! users :goal_above))))
+        (testing "15 users go below it"
+          (is (= 1 (count (send-goal-alert! users :goal_below)))))
+        (testing "1000 checkins don't"
+          (is (empty? (send-goal-alert! checkins :goal_below))))))))
+
+(deftest send-condition-dynamic-metric-goal-test
+  (testing "a goal alert compares the rows to a metric's value over everything, not its rows per group"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (mt/mbql-query orders {:aggregation [[:sum $total]]
+                                                                                      :breakout    [!month.created_at]})}]
+      (let [line (daily-checkins-line {:id metric-id :type "card" :column "sum"})]
+        (testing "no day of checkins reaches the total revenue"
+          (is (empty? (send-goal-alert! line :goal_above))))
+        (testing "a day of checkins goes below it"
+          (is (= 1 (count (send-goal-alert! line :goal_below)))))))))
 
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification

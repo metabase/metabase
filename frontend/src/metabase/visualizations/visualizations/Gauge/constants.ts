@@ -1,6 +1,9 @@
 import { color } from "metabase/ui/utils/colors";
 
+import type { GaugeRange } from "./types";
+
 export const MAX_WIDTH = 500;
+export const DEFAULT_GAUGE_RANGE: GaugeRange = [0, 1];
 export const PADDING_BOTTOM = 10;
 
 export const OUTER_RADIUS = 45; // within 100px SVG element

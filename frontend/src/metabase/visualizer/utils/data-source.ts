@@ -1,4 +1,6 @@
 import type {
+  Card,
+  LegacyDatasetQuery,
   VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
@@ -19,6 +21,19 @@ export function createDataSource(
     type,
     name,
   };
+}
+
+// A visualizer card has no query of its own. Goal references are answered by re-running a query with
+// them attached, so the card borrows one that reads its first data source.
+export function createDataSourceQuery(
+  card: Pick<Card, "id" | "database_id">,
+): LegacyDatasetQuery {
+  // LegacyDatasetQuery is opaque; Lib can't build a query from a card id without its metadata
+  return {
+    type: "query",
+    database: card.database_id ?? null,
+    query: { "source-table": `card__${card.id}` },
+  } as unknown as LegacyDatasetQuery;
 }
 
 export function parseDataSourceId(id: VisualizerDataSourceId) {

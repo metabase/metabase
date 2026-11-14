@@ -20,6 +20,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.settings :as dashboards.settings]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
@@ -477,7 +478,9 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashcards                        (:dashcards old-dashboard)
+        {:keys [copy discard reference]} (dashboards.write/add-goal-sources-to-copy
+                                          (cards-to-copy deep-copy? dashcards) deep-copy? dashcards)]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
@@ -611,10 +614,11 @@
                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
-                               {id->new-card :copied
+                               {id->copied-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
                                (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+                               id->new-card (dashboards.write/remap-copied-goal-sources! id->copied-card)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
@@ -623,7 +627,10 @@
                                                                             id->new-card
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
-                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                             (dashboard-card/with-copy-source-dashcards (:dashcards existing-dashboard)
+                               (api/check-500 (dashboard/add-dashcards!
+                                               dash
+                                               (dashboards.write/remap-dashcard-goal-sources dashcards id->new-card)))))
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]
@@ -827,7 +834,10 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
-  (api/check-500 (dashboard/add-dashcards! dashboard dashcards)))
+  ;; goals the dashboard stores were read-checked when saved, whatever their display, or predate that check and so
+  ;; already ran wherever the dashboard was shown, so new dashcards may reuse them
+  (dashboard-card/with-copy-source-dashcards (:dashcards dashboard)
+    (api/check-500 (dashboard/add-dashcards! dashboard dashcards))))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -855,6 +865,8 @@
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
     (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
+    (queries/check-newly-exposed-dashcards-goal-permissions!
      dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps

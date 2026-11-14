@@ -12,6 +12,7 @@ import {
   getAdjustedBrushEndEvent,
   getBrushClickObject,
   getBrushData,
+  getGoalFormatter,
   getGoalLineHoverData,
   getSeriesClickData,
   getSeriesHovered,
@@ -168,7 +169,7 @@ export const useChartEvents = (
             const eventData = getGoalLineHoverData(
               settings,
               event.event.event.target,
-              chartModel.leftAxisModel?.formatGoal,
+              getGoalFormatter(chartModel),
             );
 
             onHoverChange?.(eventData);

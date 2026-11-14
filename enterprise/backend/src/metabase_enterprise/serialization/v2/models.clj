@@ -21,7 +21,9 @@
    :model/Field
    :model/FieldUserSettings
    :model/Dimension
-   :model/Segment])
+   :model/Segment
+   ;; a dynamic goal in viz settings can name a Measure
+   :model/Measure])
 
 (def content
   "Content model types"

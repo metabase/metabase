@@ -150,13 +150,28 @@
   [x]
   x)
 
+(defn- scrub-referenced-entity-errors
+  "A failed referenced query carries the raw driver message, which can name tables and columns. Public and
+  embedded viewers get the same generic text the `:failed` method gives the main query."
+  [referenced-entities]
+  (reduce-kv (fn [acc entity-type by-id]
+               (assoc acc entity-type
+                      (update-vals by-id (fn [result]
+                                           (cond-> result
+                                             (:error result)
+                                             (assoc :error (tru "An error occurred while running the query.")))))))
+             {}
+             referenced-entities))
+
 (defmethod transform-qp-result :completed
   [results]
-  (u/select-nested-keys
-   results
-   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone]
-    [:json_query :parameters]
-    :status]))
+  (-> (u/select-nested-keys
+       results
+       ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
+       [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
+        [:json_query :parameters]
+        :status])
+      (m/update-existing-in [:data :referenced_entities] scrub-referenced-entity-errors)))
 
 (defn error-response
   "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
@@ -240,7 +255,8 @@
                           [:dashcard       {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
                           [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                           [:ignore-cache   {:optional true} [:maybe :boolean]]
-                          [:card-transform {:optional true} [:maybe ifn?]]]]]
+                          [:card-transform {:optional true} [:maybe ifn?]]
+                          [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it

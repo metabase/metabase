@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type {
   ClickObject,
+  OnUpdateGoalWarning,
   VisualizationPassThroughProps,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -71,6 +72,7 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   }) => void;
   onUpdateQuestion?: (question: Question, opts?: { run?: boolean }) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
   onUpdateVisualizationSettings?: (
     settings: VisualizationSettings,
     question?: Question,

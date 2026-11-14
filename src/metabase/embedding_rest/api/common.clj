@@ -373,6 +373,21 @@
     :json :embedded-json-download
     :embedded-question))
 
+(defn- sets-a-value?
+  "Whether parameter value `v` sets anything. An empty value doesn't: `[]` turns a locked filter off."
+  [v]
+  (cond
+    (nil? v)     false
+    (string? v)  (valid-param-value? v)
+    (seqable? v) (boolean (seq v))
+    :else        true))
+
+(defn- signed-parameter-ids
+  "The ids of the `parameters` that `token-params` sign a value for."
+  [parameters token-params]
+  (let [signed-slugs (into #{} (keep (fn [[slug v]] (when (sets-a-value? v) (name slug)))) token-params)]
+    (into #{} (keep (fn [{:keys [slug id]}] (when (signed-slugs slug) id))) parameters)))
+
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
 ;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
@@ -395,6 +410,7 @@
                 :context     (get-embed-card-context export-format)
                 :constraints constraints
                 :qp          qp
+                :signed-parameter-ids (signed-parameter-ids parameters token-params)
                 options))))
 
 (defn- tile-slug->value
@@ -509,7 +525,8 @@
        :qp            qp
        :context       (get-embed-dashboard-context export-format)
        :constraints   constraints
-       :middleware    middleware))))
+       :middleware    middleware
+       :signed-parameter-ids (signed-parameter-ids parameters token-params)))))
 
 (defn process-tiles-query-for-dashcard
   "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card

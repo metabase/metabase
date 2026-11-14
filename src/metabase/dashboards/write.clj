@@ -31,6 +31,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -195,7 +196,10 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
-  (api/check-500 (dashboard/add-dashcards! dashboard dashcards)))
+  ;; goals the dashboard stores were read-checked when saved, whatever their display, or predate that check and so
+  ;; already ran wherever the dashboard was shown, so new dashcards may reuse them
+  (dashboard-card/with-copy-source-dashcards (:dashcards dashboard)
+    (api/check-500 (dashboard/add-dashcards! dashboard dashcards))))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -227,6 +231,8 @@
     ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
     ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
+    (queries/check-newly-exposed-dashcards-goal-permissions!
      dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
@@ -459,6 +465,51 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- copyable-goal-source?
+  "Whether a deep copy duplicates `card`, a goal source that isn't on the dashboard. When it doesn't, the goal keeps
+  reading the original."
+  [card]
+  (and (not (:archived card))
+       (nil? (:dashboard_id card))
+       (nil? (:document_id card))
+       (contains? #{:question :metric} (keyword (:type card)))
+       (mi/can-read? card)))
+
+(defn add-goal-sources-to-copy
+  "Adds to `cards` (what `cards-to-copy` returned for `dashcards`) the goal sources of the copy that aren't on the
+  dashboard and that [[copyable-goal-source?]] accepts. Only direct sources: a copied source's own goals aren't
+  followed."
+  [{:keys [copy reference discard] :as cards} deep-copy? dashcards]
+  (if-not deep-copy?
+    cards
+    (let [kept?    (fn [{:keys [card_id]}] (or (contains? copy card_id) (contains? reference card_id)))
+          decided? (into (set (concat (keys copy) (keys reference))) (map :id) discard)
+          goal-ids (into #{}
+                         (comp (mapcat dynamic-goals/goal-card-ids) (remove decided?))
+                         (concat (map :visualization_settings (vals copy))
+                                 (map :visualization_settings (filter kept? dashcards))))]
+      (update cards :copy merge (m/index-by :id (filter copyable-goal-source? (dashboards.db/cards goal-ids)))))))
+
+(defn remap-copied-goal-sources!
+  "Points the goals of the copies in `id->new-card` (old card id -> its copy) that read a copied card at that copy,
+  saving each copy that changes. Returns `id->new-card` with the changes."
+  [id->new-card]
+  (let [id->new-id (update-vals id->new-card :id)]
+    (reduce-kv (fn [acc old-id {:keys [visualization_settings] :as new-card}]
+                 (let [viz (dynamic-goals/remap-goal-card-ids visualization_settings id->new-id)]
+                   (if (= viz visualization_settings)
+                     acc
+                     (do (dashboards.db/update-card! (:id new-card) {:visualization_settings viz})
+                         (assoc acc old-id (assoc new-card :visualization_settings viz))))))
+               id->new-card
+               id->new-card)))
+
+(defn remap-dashcard-goal-sources
+  "Points the goals of `dashcards` that read a card in `id->new-card` (old card id -> its copy) at that copy."
+  [dashcards id->new-card]
+  (let [id->new-id (update-vals id->new-card :id)]
+    (map #(m/update-existing % :visualization_settings dynamic-goals/remap-goal-card-ids id->new-id) dashcards)))
+
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -468,7 +519,9 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashcards                        (:dashcards old-dashboard)
+        {:keys [copy discard reference]} (add-goal-sources-to-copy
+                                          (cards-to-copy deep-copy? dashcards) deep-copy? dashcards)]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
@@ -602,10 +655,11 @@
                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)
-                               {id->new-card :copied
+                               {id->copied-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
                                (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+                               id->new-card (remap-copied-goal-sources! id->copied-card)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
@@ -614,7 +668,9 @@
                                                                             id->new-card
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
-                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                             (dashboard-card/with-copy-source-dashcards (:dashcards existing-dashboard)
+                               (api/check-500 (dashboard/add-dashcards!
+                                               dash (remap-dashcard-goal-sources dashcards id->new-card)))))
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]

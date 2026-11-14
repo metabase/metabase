@@ -9,9 +9,11 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.models.query-execution]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
    [metabase.query-processor.card]
+   [metabase.query-processor.template-tags]
    [potemkin :as p]))
 
 (comment metabase.queries.cached-result/keep-me
@@ -24,7 +26,8 @@
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
          metabase.queries.models.stored-result-use/keep-me
-         metabase.query-processor.card/keep-me)
+         metabase.query-processor.card/keep-me
+         metabase.query-processor.template-tags/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -39,6 +42,9 @@
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
+  check-new-goal-references!
+  check-shared-dashboard-goal-permissions!
+  check-newly-exposed-dashcards-goal-permissions!
   create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
@@ -78,6 +84,8 @@
   average-execution-time-ms
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!]
+ [metabase.queries.models.query-execution
+  not-referenced-run]
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
@@ -86,7 +94,7 @@
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
   carry-pairings-for-document!]
- [metabase.query-processor.card
+ [metabase.query-processor.template-tags
   parameter-template-tag?])
 
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

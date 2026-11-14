@@ -74,7 +74,8 @@
 (def ^:private dependency-columns
   "For each model, the columns whose update has the dependency job compute the entity's dependencies again."
   {:model/Action             #{:model_id :type}
-   :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
+   :model/Card               #{:type :dataset_query :dimension_mappings :parameters
+                               :visualization_settings}
    :model/Dashboard          #{:parameters}
    :model/DataApp            #{:resource_collection_id}
    :model/Document           #{:content_type :document}

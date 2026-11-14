@@ -105,6 +105,15 @@
                    :display_name "Different Column"}]
            :rows [[0]]}}])
 
+(deftest ^:parallel visualizer-display-type-test
+  (testing "a visualizer dashcard renders as its nested display"
+    (is (= :line (render-util/visualizer-display-type {:visualization_settings {:visualization {:display "line"}}}))))
+  (testing "a visualizer dashcard without a display renders as a bar chart, as in the app"
+    (is (= :bar (render-util/visualizer-display-type {:visualization_settings {:visualization {:display nil}}}))))
+  (testing "a regular dashcard has no visualizer display"
+    (is (nil? (render-util/visualizer-display-type {:visualization_settings {:card.title "x"}})))
+    (is (nil? (render-util/visualizer-display-type nil)))))
+
 (deftest ^:parallel test-scalar-funnel-visualization
   (testing "scalar funnel visualization"
     (let [result (render-util/get-visualization-columns scalar-funnel-definition scalar-funnel-series-data)]

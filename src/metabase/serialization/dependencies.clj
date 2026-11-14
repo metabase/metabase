@@ -15,7 +15,8 @@
    [metabase.serialization.util :as serialization.util]
    [metabase.serialization.visualization-settings :as viz]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -144,6 +145,17 @@
           (comp (map event-id) (filter event-ref?) (map (fn [id] [:model/TimelineEvent id])))
           excluded-ids)))
 
+(defn- dynamic-goals-deps
+  "The `[model id]` of the entities the dynamic goals in `settings` reference, nested visualizer settings included."
+  [settings {:keys [id-ref?]}]
+  (into #{}
+        (keep (fn [goal-value]
+                (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+                  (when-let [model (dynamic-goals/goal-entity-models type)]
+                    (when (or (mbql/entity-id? id) (id-ref? id))
+                      [model id])))))
+        (dynamic-goals/dashcard-goal-values settings)))
+
 (defn- visualization-settings-deps
   "The `[model id]` of what `:visualization_settings` refer to, read as [[export-opts]] or [[import-opts]] say."
   [viz opts]
@@ -160,7 +172,8 @@
                  [(mbql-deps viz opts)
                   (viz-link-card-deps viz opts)
                   (viz-click-behavior-deps viz)
-                  (timeline-events-deps viz opts)])
+                  (timeline-events-deps viz opts)
+                  (dynamic-goals-deps viz opts)])
          (filter some?)
          (reduce set/union #{}))))
 

@@ -25,11 +25,13 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -145,18 +147,6 @@
   here."
   false)
 
-;;; These live here rather than in [[metabase.queries.models.card]] so the QP can use them without
-;;; depending on the Card model.
-(mu/defn parameter-template-tag? :- :boolean
-  "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
-  like snippets, card references, and tables."
-  [{tag-type :type, widget-type :widget-type} :- [:maybe ::lib.schema.template-tag/template-tag]]
-  (boolean
-   (and tag-type
-        (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-            (= tag-type :temporal-unit)
-            (and (= tag-type :dimension) widget-type (not= widget-type :none))))))
-
 ;;; TODO -- move this to Lib so the logic can be shared between the backend and frontend (?)
 ;;;
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -169,7 +159,7 @@
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card :- [:maybe ::queries.schema/card]]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card :dataset_query not-empty lib/all-template-tags)
-        :when                         (parameter-template-tag? tag)]
+        :when                         (qp.template-tags/parameter-template-tag? tag)]
     {:id       (:id tag)
      :type     (or widget-type (case tag-type
                                  :temporal-unit :temporal-unit
@@ -394,7 +384,8 @@
   transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
    export-format :- ::qp.schema/export-format
-   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
+   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform
+             signed-parameter-ids]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -410,7 +401,9 @@
                [:qp             {:optional true} [:maybe ifn?]]
                [:make-run       {:optional true} [:maybe ifn?]]
                [:ignore-cache   {:optional true} [:maybe :boolean]]
-               [:card-transform {:optional true} [:maybe ifn?]]]]]
+               [:card-transform {:optional true} [:maybe ifn?]]
+               ;; set by static embeds: the parameters their token signs a value for
+               [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)
@@ -422,14 +415,26 @@
         dashcard-id (:id dashcard)
         parameters  (some->> parameters (lib/normalize ::parameters.schema/parameters-with-optional-types))
         parameters  (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
-        dash-viz    (when (and (not= context :question) dashcard)
-                      (:visualization_settings dashcard))
-        card-viz    (:visualization_settings card)
-        merged-viz  (m/deep-merge card-viz dash-viz)
+        ;; the dashcard whose viz settings apply; a question opened from a dashboard is drawn with the card's alone
+        viz-dashcard (when (not= context :question) dashcard)
+        dash-viz    (:visualization_settings viz-dashcard)
+        merged-viz  (m/deep-merge (:visualization_settings card) dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
+        ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals
+                     qp card viz-dashcard export-format
+                     ;; a referenced card is cached like one placed on this dashboard
+                     (fn [goal-card goal-query]
+                       (-> (cache-strategy goal-card dashboard-id)
+                           (enrich-strategy goal-query)))
+                     ;; a goal source runs without parameter values, and a signed value is often what separates
+                     ;; tenants. Any signed value withholds the goals, wired to this card or not: an unwired card's
+                     ;; goal source can still read tenant data, and a visualizer card may be filtered through a
+                     ;; secondary source only.
+                     :withhold? (seq signed-parameter-ids))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

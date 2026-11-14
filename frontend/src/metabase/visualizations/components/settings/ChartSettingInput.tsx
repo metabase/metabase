@@ -1,25 +1,31 @@
 import debounce from "lodash.debounce";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
+  "aria-label"?: string;
   value: string | undefined;
   placeholder: string;
   title?: string;
   onChange: (value: string) => void;
   id?: string;
   disabled?: boolean;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
 }
 
 export const ChartSettingInput = ({
+  "aria-label": ariaLabel,
   value,
   onChange,
   placeholder,
   title,
   id,
   disabled,
+  leftSection,
+  rightSection,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value ?? "");
 
@@ -37,9 +43,14 @@ export const ChartSettingInput = ({
     <TextInput
       id={id}
       data-testid={id}
+      aria-label={ariaLabel}
       placeholder={placeholder}
       title={title}
       disabled={disabled}
+      leftSection={leftSection}
+      leftSectionPointerEvents={leftSection == null ? undefined : "all"}
+      rightSection={rightSection}
+      rightSectionPointerEvents={rightSection == null ? undefined : "all"}
       value={inputValue}
       onChange={(e) => {
         setInputValue(e.target.value);
