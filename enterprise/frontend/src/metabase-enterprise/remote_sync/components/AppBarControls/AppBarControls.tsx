@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
+  useGetWorktreeQuery,
   useImportChangesMutation,
   useLazyGetRemoteSyncIsDirtyQuery,
 } from "metabase-enterprise/api";
@@ -26,20 +29,26 @@ type ControlsModal =
 
 export function AppBarControls() {
   const isVisible = useSelector(getIsRemoteSyncVisible);
-  const branch = useSetting("remote-sync-branch");
+  const worktreeId = useSelector(getUser)?.worktree_id;
+  const settingBranch = useSetting("remote-sync-branch");
+  const { data: worktree } = useGetWorktreeQuery(
+    isVisible && worktreeId != null ? worktreeId : skipToken,
+  );
+  const branch = worktreeId != null ? worktree?.branch : settingBranch;
 
   if (!isVisible || !branch) {
     return null;
   }
 
-  return <Controls branch={branch} />;
+  return <Controls branch={branch} worktreeName={worktree?.name} />;
 }
 
 type ControlsProps = {
   branch: string;
+  worktreeName?: string;
 };
 
-function Controls({ branch }: ControlsProps) {
+function Controls({ branch, worktreeName }: ControlsProps) {
   const [modal, setModal] = useState<ControlsModal | null>(null);
   const [checkIsDirty] = useLazyGetRemoteSyncIsDirtyQuery();
   const [importChanges, { isLoading: isPulling }] = useImportChangesMutation();
@@ -94,6 +103,7 @@ function Controls({ branch }: ControlsProps) {
     <>
       <SyncMenu
         branch={branch}
+        worktreeName={worktreeName}
         onPull={handlePull}
         onPush={() => setModal({ type: "push" })}
       />

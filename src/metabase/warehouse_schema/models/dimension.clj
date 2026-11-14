@@ -18,6 +18,10 @@
 
 (methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
 
+(t2/define-after-select :model/Dimension
+  [dimension]
+  (dissoc dimension :worktree_id_helper))
+
 (doto :model/Dimension
   (derive :metabase/model)
   (derive :hook/entity-id)

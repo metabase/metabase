@@ -30,8 +30,20 @@
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Action [_model] :action)
+
+(t2/define-after-select :model/Action
+  [action]
+  (dissoc action :worktree_id_helper))
 (methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
+
+(t2/define-after-select :model/QueryAction
+  [query-action]
+  (dissoc query-action :worktree_id_helper))
 (methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
+
+(t2/define-after-select :model/ImplicitAction
+  [implicit-action]
+  (dissoc implicit-action :worktree_id_helper))
 
 (def ^:private action-sub-models [:model/QueryAction :model/ImplicitAction])
 

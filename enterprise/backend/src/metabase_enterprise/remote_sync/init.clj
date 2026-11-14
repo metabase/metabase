@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.init
   (:require
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.worktree]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.stats]
    [metabase-enterprise.remote-sync.sync :as sync]

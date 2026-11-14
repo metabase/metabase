@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -32,7 +33,15 @@
   :visibility :admin
   :encryption :when-encryption-key-set
   :export? false
-  :can-read-from-env? true)
+  :can-read-from-env? true
+  :getter (fn []
+            (if-let [worktree-id (mdb/worktree-id)]
+              (remote-sync.db/worktree-branch worktree-id)
+              (setting/get-value-of-type :string :remote-sync-branch)))
+  :setter (fn [branch]
+            (if-let [worktree-id (mdb/worktree-id)]
+              (remote-sync.db/update-worktree! worktree-id {:branch branch})
+              (setting/set-value-of-type! :string :remote-sync-branch branch))))
 
 (defsetting remote-sync-token
   (deferred-tru "An access token for the git repository, such as a personal access token.")

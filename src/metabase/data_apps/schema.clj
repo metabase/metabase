@@ -119,6 +119,7 @@
   model computes, all optional."
   [:map {:closed true}
    [:entity_id       {:optional true} [:maybe :string]]
+   [:worktree_id     {:optional true} [:maybe pos-int?]]
    [:slug            {:optional true} ::slug]
    [:name            {:optional true} ::name]
    [:allowed_hosts   {:optional true} ::allowed-hosts]

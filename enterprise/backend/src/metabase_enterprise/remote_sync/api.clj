@@ -2,6 +2,7 @@
   "`/api/ee/remote-sync` endpoints."
   (:require
    [metabase-enterprise.remote-sync.content :as content]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.protocol :as protocol]
@@ -12,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -334,6 +336,65 @@
                                           (protocol/create-branch! repo new-branch base)
                                           (sync/push! repo new-branch base {:message message :report report})))))]
       {:status "success" :message (tru "Pushing changes to {0}" new-branch) :task_id (:id task)})))
+
+(defn- check-worktrees-supported!
+  "Throws a 400 unless the app DB keeps worktrees apart: Postgres, with a role that row-level security applies to."
+  []
+  (api/check-400 (= :postgres (mdb/db-type))
+                 (tru "Worktrees need a PostgreSQL application database."))
+  (api/check-400 (not (remote-sync.db/row-level-security-bypassed?))
+                 (tru "Worktrees need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")))
+
+(api.macros/defendpoint :get "/worktree" :- [:sequential ::remote-sync.schema/worktree]
+  "The worktrees."
+  []
+  (api/check-superuser)
+  (remote-sync.db/worktrees))
+
+(api.macros/defendpoint :get "/worktree/:id" :- ::remote-sync.schema/worktree
+  "The worktree with `id`."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (remote-sync.db/worktree id)))
+
+(api.macros/defendpoint :post "/worktree" :- [:merge ::remote-sync.schema/worktree [:map [:task_id ms/PositiveInt]]]
+  "Create a worktree named `name` checking out `branch`, a branch of the repository, and start pulling it."
+  [_route
+   _query
+   {:keys [name branch]} :- [:map {:closed true}
+                             [:name ms/NonBlankString]
+                             [:branch ms/NonBlankString]]]
+  (api/check-superuser)
+  (check-configured!)
+  (check-read-write!)
+  (check-worktrees-supported!)
+  (let [repo (remote-sync.settings/repository)]
+    (protocol/fetch! repo)
+    (api/check-400 (protocol/version repo branch) (tru "The branch {0} doesn''t exist in the repository." branch))
+    (let [worktree (remote-sync.db/insert-worktree! {:name name :branch branch})
+          task     (mdb/with-worktree-id (:id worktree)
+                     (started (tasks/start! {:type "import" :branch branch :user-id api/*current-user-id*}
+                                            (fn [report]
+                                              (sync/pull! repo branch (tasks/base-version) {:force? true :report report})))))]
+      (assoc worktree :task_id (:id task)))))
+
+(api.macros/defendpoint :put "/worktree/:id" :- ::remote-sync.schema/worktree
+  "Rename the worktree with `id`."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query
+   {worktree-name :name} :- [:map {:closed true} [:name ms/NonBlankString]]]
+  (api/check-superuser)
+  (api/check-404 (remote-sync.db/worktree id))
+  (remote-sync.db/update-worktree! id {:name worktree-name})
+  (remote-sync.db/worktree id))
+
+(api.macros/defendpoint :delete "/worktree/:id" :- ::api/generic-204-no-content
+  "Delete the worktree with `id` and its content, moving the users working in it to the main app."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (remote-sync.db/worktree id))
+  (remote-sync.db/delete-worktree! id)
+  api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

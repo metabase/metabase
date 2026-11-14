@@ -117,8 +117,9 @@
 ;; untouched rather than gaining a spurious `:allowed_hosts` key.
 (t2/define-after-select :model/DataApp
   [app]
-  (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+  (let [app (dissoc app :worktree_id_helper)]
+    (cond-> app
+      (contains? app :allowed_hosts) (update :allowed_hosts #(or % [])))))
 
 (defmethod mi/can-read? :model/DataApp
   ([app] (mi/can-read? :model/DataApp (:id app)))

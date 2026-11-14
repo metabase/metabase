@@ -123,6 +123,7 @@
 (mr/def ::table-index.update
   "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
    [:structured       {:optional true} [:maybe ::table-index.structured]]

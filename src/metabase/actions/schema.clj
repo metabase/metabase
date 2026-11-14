@@ -209,6 +209,7 @@
 (mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:action_id ::lib.schema.id/action]
    [:kind      ::lib.schema.common/keyword]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
@@ -216,6 +217,7 @@
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
    [:kind      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
@@ -227,6 +229,7 @@
 (mr/def ::query-action
   "A QueryAction as selected from the app DB: every column of `:query_action`."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:action_id     ::lib.schema.id/action]
    [:database_id   ::lib.schema.id/database]
    [:dataset_query ::query-action.dataset-query]
@@ -235,6 +238,7 @@
 (mr/def ::query-action.update
   "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]

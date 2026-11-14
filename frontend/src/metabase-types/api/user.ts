@@ -51,6 +51,7 @@ export interface BaseUser {
   first_login: string;
   updated_at: string;
   tenant_id: number | null;
+  worktree_id?: number | null;
 }
 
 export interface UserPermissions {

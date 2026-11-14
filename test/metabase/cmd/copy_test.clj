@@ -185,7 +185,8 @@
     :model/TaskHistory
     :model/TaskRun
     :model/Undo
-    :model/UserKeyValue})
+    :model/UserKeyValue
+    :model/Worktree})
 
 (defn- all-model-names []
   (into (sorted-set)

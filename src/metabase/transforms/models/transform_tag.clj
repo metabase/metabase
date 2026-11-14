@@ -68,9 +68,9 @@
     {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
-  (if (nil? (:built_in_type tag))
-    tag
-    (merge tag (translate-name tag))))
+  (let [tag (dissoc tag :worktree_id_helper)]
+    (cond-> tag
+      (some? (:built_in_type tag)) (merge (translate-name tag)))))
 
 (t2/define-before-update :model/TransformTag [tag]
   (if (or (nil? (:built_in_type tag))

@@ -867,14 +867,15 @@
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
   ;; |   See [[current-card-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
-  (-> card
-      (dissoc :dataset_query_metrics_v2_migration_backup)
-      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-sharing/remove-public-uuid-if-public-sharing-is-disabled
-      add-query-description-to-metric-card
-      ;; At this point, the card should be at schema version 20 or higher.
-      (cond-> (schema-governed-select? card) upgrade-card-schema-to-latest)
-      monitor-blank-dataset-query))
+  (let [card (dissoc card :worktree_id_helper)]
+    (-> card
+        (dissoc :dataset_query_metrics_v2_migration_backup)
+        (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+        public-sharing/remove-public-uuid-if-public-sharing-is-disabled
+        add-query-description-to-metric-card
+        ;; At this point, the card should be at schema version 20 or higher.
+        (cond-> (schema-governed-select? card) upgrade-card-schema-to-latest)
+        monitor-blank-dataset-query)))
 
 (defn- normalize-card
   "`card` normalized to `::queries.schema/card`, checked against that schema wherever `mu/defn`s are instrumented."

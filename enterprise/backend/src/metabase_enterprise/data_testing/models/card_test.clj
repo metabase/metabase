@@ -20,6 +20,10 @@
 
 (methodical/defmethod t2/table-name :model/CardTest [_model] :card_test)
 
+(t2/define-after-select :model/CardTest
+  [card-test]
+  (dissoc card-test :worktree_id_helper))
+
 (doto :model/CardTest
   (derive :metabase/model)
   (derive :hook/entity-id)

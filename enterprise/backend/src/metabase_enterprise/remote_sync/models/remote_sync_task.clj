@@ -20,6 +20,10 @@
 
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
+(t2/define-after-select :model/RemoteSyncTask
+  [remote-sync-task]
+  (dissoc remote-sync-task :worktree_id_helper))
+
 (derive :model/RemoteSyncTask :metabase/model)
 
 (t2/deftransforms :model/RemoteSyncTask

@@ -198,9 +198,10 @@
       nil)))
 
 (t2/define-after-select :model/Segment
-  [{:keys [definition] :as segment}]
-  (cond-> segment
-    (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
+  [segment]
+  (let [{:keys [definition] :as segment} (dissoc segment :worktree_id_helper)]
+    (cond-> segment
+      (some? definition) (assoc :definition (maybe-migrated-segment-definition segment)))))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."

@@ -44,6 +44,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-changes",
   "remote-sync-current-task",
   "remote-sync-remote-changes",
+  "remote-sync-worktree",
   "source-replacement-run",
   "python-transform-library",
   "support-access-grant",

@@ -336,3 +336,27 @@ export type TestRemoteSyncConnectionRequest = {
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
+
+export type WorktreeId = number;
+
+export type Worktree = {
+  id: WorktreeId;
+  name: string;
+  branch: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateWorktreeRequest = {
+  name: string;
+  branch: string;
+};
+
+export type CreateWorktreeResponse = Worktree & {
+  task_id: RemoteSyncTaskId;
+};
+
+export type UpdateWorktreeRequest = {
+  id: WorktreeId;
+  name: string;
+};

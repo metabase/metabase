@@ -31,6 +31,7 @@
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
+   [:worktree_id   {:optional true} [:maybe pos-int?]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
 
 (mr/def ::external-native-query-snippet

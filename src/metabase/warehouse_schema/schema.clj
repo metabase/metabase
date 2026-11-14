@@ -27,7 +27,8 @@
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe pos-int?]]])
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
@@ -102,6 +103,7 @@
 (mr/def ::field-user-settings.update
   "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]

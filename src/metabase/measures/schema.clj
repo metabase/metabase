@@ -48,6 +48,7 @@
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:name               {:optional true} [:maybe :string]]

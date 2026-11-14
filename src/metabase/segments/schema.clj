@@ -57,7 +57,8 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe pos-int?]]])
 
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."

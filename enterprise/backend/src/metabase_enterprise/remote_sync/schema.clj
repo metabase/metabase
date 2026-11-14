@@ -193,6 +193,7 @@
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
   [:map {:closed true}
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:progress                {:optional true} [:maybe number?]]
    [:cancelled               {:optional true} [:maybe :boolean]]
@@ -205,3 +206,18 @@
    [:version                 {:optional true} [:maybe :string]]
    [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])
+
+(mr/def ::worktree
+  "A worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:name       ms/NonBlankString]
+   [:branch     ms/NonBlankString]
+   [:created_at :any]
+   [:updated_at :any]])
+
+(mr/def ::worktree.update
+  "The columns of a worktree a create or update sets."
+  [:map {:closed true}
+   [:name   {:optional true} ms/NonBlankString]
+   [:branch {:optional true} ms/NonBlankString]])

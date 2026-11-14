@@ -2513,6 +2513,7 @@
            metabase.request.user-agent}
    :uses #{analytics.interface
            api
+           app-db
            embedding
            lib.schema
            permissions

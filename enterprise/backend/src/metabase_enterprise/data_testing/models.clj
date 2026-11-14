@@ -22,6 +22,10 @@
 
 (methodical/defmethod t2/table-name :model/TransformTest [_model] :transform_test)
 
+(t2/define-after-select :model/TransformTest
+  [transform-test]
+  (dissoc transform-test :worktree_id_helper))
+
 ;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest
   (derive :metabase/model)

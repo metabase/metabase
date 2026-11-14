@@ -173,7 +173,7 @@
 
 (t2/define-after-select :model/Measure
   [measure]
-  (normalize-definition-from-db measure))
+  (normalize-definition-from-db (dissoc measure :worktree_id_helper)))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Measure's definition."
