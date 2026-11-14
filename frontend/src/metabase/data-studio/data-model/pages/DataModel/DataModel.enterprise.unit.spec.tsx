@@ -782,7 +782,11 @@ type TreeItemType = "database" | "schema" | "table";
 function queryTreeItems(type: TreeItemType) {
   return screen
     .queryAllByTestId("tree-item")
-    .filter((item) => item.getAttribute("data-type") === type);
+    .filter(
+      (item) =>
+        item.getAttribute("data-type") === type &&
+        within(item).queryByTestId("loading-placeholder") == null,
+    );
 }
 
 function queryTreeItem(type: TreeItemType, name: string) {
