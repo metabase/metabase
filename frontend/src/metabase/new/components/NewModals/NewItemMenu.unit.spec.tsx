@@ -374,6 +374,10 @@ describe("NewItemMenu > new dashboard default collection", () => {
         within(modal).getByLabelText(/Which collection/),
       ).toHaveTextContent("Our analytics"),
     );
+    await act(() => fetchMock.callHistory.flush(true));
+    expect(within(modal).getByLabelText(/Which collection/)).toHaveTextContent(
+      "Our analytics",
+    );
     expect(modal).not.toHaveTextContent("Decoy collection");
   });
 
@@ -392,6 +396,7 @@ describe("NewItemMenu > new dashboard default collection", () => {
       expect(
         await within(picker).findByText(PERSONAL_COLLECTION.name),
       ).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
       expect(
         within(picker).queryByText("First collection"),
       ).not.toBeInTheDocument();
