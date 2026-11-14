@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { segmentIsValid } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -28,7 +27,7 @@ import {
   getSegmentLabelColor,
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
-import { isGaugeRange, isGaugeSegmentsArray } from "./types";
+import { getValidGaugeSegments, isGaugeRange } from "./types";
 import { getValue, radians } from "./utils";
 
 function GaugeComponent({
@@ -71,9 +70,7 @@ function GaugeComponent({
   const gaugeRange = settings["gauge.range"];
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
   const gaugeSegments = settings["gauge.segments"];
-  const segments = isGaugeSegmentsArray(gaugeSegments)
-    ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-    : [];
+  const segments = getValidGaugeSegments(gaugeSegments);
 
   // value to angle in radians, clamped
   const angle = d3
