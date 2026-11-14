@@ -97,6 +97,7 @@
   [:merge
    ::field-user-settings.update
    [:map {:closed true}
+    [:id    {:optional true} pos-int?]
     [:field {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field-user-settings.update
@@ -149,6 +150,7 @@
   [:merge
    ::table-user-settings.update
    [:map {:closed true}
+    [:id         {:optional true} pos-int?]
     [:table      {:optional true} [:maybe [:ref ::table]]]
     [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 

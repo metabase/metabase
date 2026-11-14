@@ -416,8 +416,6 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
     :model/ImplicitAction
-    :model/FieldUserSettings
-    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

@@ -11,10 +11,12 @@
   "The HoneySQL where-clause selecting every row."
   [:= 1 1])
 
-(defn- synced-filter-clause
+(mu/defn synced-filter-clause :- [:fn vector?]
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows remote sync syncs,
-  all of them unless its spec says otherwise, with `opts` (see `::remote-sync.schema/synced-filter-opts`)."
-  [model alias opts]
+  all of them unless its spec says otherwise, with `opts`."
+  [model :- :keyword
+   alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   (if-let [clause (:synced-filter-clause (remote-sync.spec/spec model))]
     (clause alias opts)
     all-rows-filter-clause))

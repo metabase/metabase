@@ -5029,3 +5029,68 @@
         (let [trash-id (t2/select-one-fn :id :collection :type "trash")]
           (is (pos? (t2/count :permissions :collection_id trash-id :perm_value "read-and-write")))
           (is (zero? (t2/count :permissions :collection_id nil :object (format "/collection/%d/" trash-id)))))))))
+
+(deftest user-settings-id-primary-key-test
+  (impl/test-migrations ["zr3x3c" "mjumxg"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "User Settings Id Test DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          insert-table! (fn [table-name]
+                          (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                    :db_id        db-id
+                                                                    :name         table-name
+                                                                    :display_name table-name
+                                                                    :created_at   :%now
+                                                                    :updated_at   :%now}))
+          insert-field! (fn [table-id field-name]
+                          (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                    :name          field-name
+                                                                    :display_name  field-name
+                                                                    :active        true
+                                                                    :base_type     "type/Text"
+                                                                    :database_type "TEXT"
+                                                                    :created_at    :%now
+                                                                    :updated_at    :%now}))
+          table-1       (insert-table! "one")
+          table-2       (insert-table! "two")
+          field-1       (insert-field! table-1 "one")
+          field-2       (insert-field! table-2 "two")]
+      (t2/insert! :metabase_table_user_settings [{:table_id table-1 :display_name "Table One"}
+                                                 {:table_id table-2 :display_name "Table Two"}])
+      (t2/insert! :metabase_field_user_settings [{:field_id field-1 :display_name "Field One"}
+                                                 {:field_id field-2 :display_name "Field Two"}])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their values"
+        (let [table-rows (t2/select :metabase_table_user_settings :table_id [:in [table-1 table-2]])
+              field-rows (t2/select :metabase_field_user_settings :field_id [:in [field-1 field-2]])]
+          (is (= {table-1 "Table One" table-2 "Table Two"}
+                 (into {} (map (juxt :table_id :display_name)) table-rows)))
+          (is (= {field-1 "Field One" field-2 "Field Two"}
+                 (into {} (map (juxt :field_id :display_name)) field-rows)))
+          (is (= 2 (count (into #{} (map :id) table-rows))))
+          (is (= 2 (count (into #{} (map :id) field-rows))))
+          (is (every? pos-int? (map :id (concat table-rows field-rows))))))
+      (testing "new rows get generated ids"
+        (let [table-3 (insert-table! "three")
+              field-3 (insert-field! table-3 "three")]
+          (is (pos-int? (t2/insert-returning-pk! :metabase_table_user_settings {:table_id table-3})))
+          (is (pos-int? (t2/insert-returning-pk! :metabase_field_user_settings {:field_id field-3})))))
+      (testing "one settings row per Table and per Field"
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (is (thrown? Exception (t2/insert! :metabase_field_user_settings {:field_id field-1}))))
+      (testing "settings are deleted with their Table and Field"
+        (t2/delete! :metabase_field :id field-2)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-2)))
+        (t2/delete! :metabase_table :id table-2)
+        (is (not (t2/exists? :metabase_table_user_settings :table_id table-2))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (= {:table_id table-1 :display_name "Table One"}
+               (t2/select-one [:metabase_table_user_settings :table_id :display_name] :table_id table-1)))
+        (is (not (contains? (t2/select-one :metabase_table_user_settings :table_id table-1) :id)))
+        (is (not (contains? (t2/select-one :metabase_field_user_settings :field_id field-1) :id)))
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (t2/delete! :metabase_field :id field-1)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-1)))))))

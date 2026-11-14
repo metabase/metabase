@@ -9,6 +9,7 @@
 (shared.ns/import-fns
  [remote-sync.db
   built-in-filter-clause
+  synced-filter-clause
   synced-fk-clause
   synced-ids-clause]
  [remote-sync.spec

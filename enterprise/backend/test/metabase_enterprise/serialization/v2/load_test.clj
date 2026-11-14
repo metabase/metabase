@@ -328,8 +328,8 @@
       (let [db       (ts/create! :model/Database :name "my-db")
             table    (ts/create! :model/Table :name "customers" :db_id (:id db))
             email    (ts/create! :model/Field :name "email" :table_id (:id table))
-            _        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
-            settings (ts/extract-one "FieldUserSettings" (:id email))]
+            id       (t2/insert-returning-pk! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
+            settings (ts/extract-one "FieldUserSettings" id)]
         (t2/update! :model/FieldUserSettings :field_id (:id email) {:display_name "Local"})
         (serdes.load/load-metabase! (ts/ingestion-in-memory [settings]))
         (is (=? {:description "edited" :display_name nil}

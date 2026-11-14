@@ -360,8 +360,8 @@
     (is (=? [{:message #".*`:id \(u/the-id card\)`.*"}]
             (implicit-pk-findings '(t2/select-one :model/Card (u/the-id card))))))
   (testing "a model whose primary key is not :id gets its own column in the message"
-    (is (=? [{:message #".*`:table_id table-id`.*"}]
-            (implicit-pk-findings '(t2/update! :model/TableUserSettings table-id {:x 1}))))
+    (is (=? [{:message #".*`:key setting-key`.*"}]
+            (implicit-pk-findings '(t2/update! :model/Setting setting-key {:x 1}))))
     (is (=? [{:message #".*`:action_id action-id`.*"}]
             (implicit-pk-findings '(t2/select-one :model/QueryAction action-id)))))
   (testing "a model that is not a literal keyword gets :toucan/pk, which matches on that model's own primary key"

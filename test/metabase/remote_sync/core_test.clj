@@ -82,16 +82,16 @@
                  :model/Collection        unsynced        {:name "Unsynced" :location "/"}
                  :model/Table             synced-table    {:db_id (mt/id) :name "synced_table"}
                  :model/Table             unsynced-table  {:db_id (mt/id) :name "unsynced_table"}
-                 :model/TableUserSettings _               {:table_id      (:id synced-table)
+                 :model/TableUserSettings synced-ts       {:table_id      (:id synced-table)
                                                            :is_published  true
                                                            :collection_id (:id synced)}
-                 :model/TableUserSettings _               {:table_id      (:id unsynced-table)
+                 :model/TableUserSettings unsynced-ts     {:table_id      (:id unsynced-table)
                                                            :is_published  true
                                                            :collection_id (:id unsynced)}
                  :model/Field             synced-field    {:table_id (:id synced-table) :name "SYNCED"}
                  :model/Field             unsynced-field  {:table_id (:id unsynced-table) :name "UNSYNCED"}
-                 :model/FieldUserSettings _               {:field_id (:id synced-field) :display_name "Synced"}
-                 :model/FieldUserSettings _               {:field_id (:id unsynced-field) :display_name "Unsynced"}
+                 :model/FieldUserSettings synced-fs       {:field_id (:id synced-field) :display_name "Synced"}
+                 :model/FieldUserSettings unsynced-fs     {:field_id (:id unsynced-field) :display_name "Unsynced"}
                  :model/Segment           synced-seg      {:table_id (:id synced-table) :name "Synced segment"}
                  :model/Segment           unsynced-seg    {:table_id (:id unsynced-table) :name "Unsynced segment"}
                  :model/Measure           synced-measure  {:table_id (:id synced-table) :name "Synced measure"}
@@ -121,8 +121,8 @@
                                                            :database_id   (mt/id)
                                                            :dataset_query (mt/native-query {:query "SELECT 1"})}
                  :model/Transform         transform       {}]
-    (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-table) (:id unsynced-table)]
-                                           [:model/FieldUserSettings (:id synced-field) (:id unsynced-field)]
+    (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-ts) (:id unsynced-ts)]
+                                           [:model/FieldUserSettings (:id synced-fs) (:id unsynced-fs)]
                                            [:model/Segment (:id synced-seg) (:id unsynced-seg)]
                                            [:model/Measure (:id synced-measure) (:id unsynced-measure)]
                                            [:model/Document (:id synced-doc) (:id unsynced-doc)]
