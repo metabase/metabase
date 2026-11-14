@@ -10,6 +10,8 @@ import {
   setupDashboardQuestionCandidatesEndpoint,
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupRootCollectionItemsEndpoint,
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
@@ -17,6 +19,7 @@ import { createMockAppState, createMockState } from "__support__/state";
 import {
   act,
   fireEvent,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -794,6 +797,111 @@ describe("CollectionContent selection", () => {
           }),
         },
       ]);
+    });
+  });
+
+  describe("moving collections (metabase#45248)", () => {
+    const movingCollection = createMockCollectionItem({
+      id: 7,
+      name: "Moving collection",
+      model: "collection",
+      can_write: true,
+      collection_id: defaultCollection.id,
+      location: `/${defaultCollection.id}/`,
+      here: ["collection"],
+      below: ["collection"],
+      collection_position: null,
+    });
+    const siblingCollection = createMockCollectionItem({
+      id: 8,
+      name: "Sibling collection",
+      model: "collection",
+      can_write: true,
+      collection_id: defaultCollection.id,
+      location: `/${defaultCollection.id}/`,
+      here: ["collection"],
+      below: ["collection"],
+      collection_position: null,
+    });
+    const items = [tableQuestion, movingCollection, siblingCollection];
+
+    function setupPicker() {
+      mockGetBoundingClientRect();
+      setupRecentViewsAndSelectionsEndpoints([]);
+      setupRootCollectionItemsEndpoint({
+        rootCollectionItems: [
+          createMockCollectionItem({
+            id: Number(defaultCollection.id),
+            name: defaultCollection.name,
+            model: "collection",
+            can_write: true,
+            location: "/",
+            here: ["collection", "card"],
+            below: ["collection"],
+          }),
+        ],
+      });
+      [movingCollection, siblingCollection].forEach((item) =>
+        setupCollectionItemsEndpoint({
+          collection: { id: item.id },
+          collectionItems: [],
+        }),
+      );
+      fetchMock.get("path:/api/user/recipients", { data: [] });
+    }
+
+    function getPickerItem(name: string) {
+      return within(screen.getByTestId("entity-picker-modal")).getByRole(
+        "link",
+        { name: new RegExp(`^[\\w-]+ icon ${name}`) },
+      );
+    }
+
+    it("disables the collection moved from its row menu and starts in the current collection", async () => {
+      setupPicker();
+      await setup({ collectionItems: items });
+
+      const row = screen.getByRole("row", {
+        name: new RegExp(movingCollection.name),
+      });
+      await userEvent.click(
+        within(row).getByRole("button", { name: "Actions" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Move" }),
+      );
+
+      await waitFor(() => {
+        expect(getPickerItem(movingCollection.name)).toHaveAttribute(
+          "data-disabled",
+        );
+      });
+      expect(getPickerItem(siblingCollection.name)).not.toHaveAttribute(
+        "data-disabled",
+      );
+      expect(getPickerItem(defaultCollection.name)).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+    });
+
+    it("disables every collection in a bulk move", async () => {
+      setupPicker();
+      await setup({ collectionItems: items });
+
+      await userEvent.click(getRowSelectionButton(tableQuestion.name));
+      await userEvent.click(getRowSelectionButton(movingCollection.name));
+      expect(await screen.findByText("2 items selected")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+
+      await waitFor(() => {
+        expect(getPickerItem(movingCollection.name)).toHaveAttribute(
+          "data-disabled",
+        );
+      });
+      expect(getPickerItem(siblingCollection.name)).not.toHaveAttribute(
+        "data-disabled",
+      );
     });
   });
 });
