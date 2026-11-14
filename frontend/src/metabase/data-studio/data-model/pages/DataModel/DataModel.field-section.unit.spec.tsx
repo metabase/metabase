@@ -11,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -555,7 +556,7 @@ describe.each(AREAS)("data model field section > %s", (area) => {
           },
         },
       });
-      expect(getFieldDisplayValuesInput()).toHaveValue("Custom mapping");
+      expect(await findFieldDisplayValuesInput()).toHaveValue("Custom mapping");
       await waitFor(() =>
         expect(
           fetchMock.callHistory.calls(`field-${ORDERS.QUANTITY}-values`),
@@ -668,12 +669,12 @@ describe.each(AREAS)("data model field section > %s", (area) => {
           fk_target_field_id: null,
         }),
       );
+      await assertAndCloseToast("Semantic type of Product ID updated");
       expect(trackSimpleEvent).toHaveBeenCalledWith({
         event: "metadata_edited",
         event_detail: "semantic_type_change",
         triggered_from: triggeredFrom,
       });
-      await assertAndCloseToast("Semantic type of Product ID updated");
       await waitFor(() =>
         expect(getFieldSemanticTypeInput()).toHaveValue("No semantic type"),
       );
@@ -686,7 +687,7 @@ describe.each(AREAS)("data model field section > %s", (area) => {
       await setup({ area, tableId: ORDERS_ID, fieldId: ORDERS.PRODUCT_ID });
 
       const input = getFieldSemanticTypeFkTargetInput();
-      expect(input).toHaveValue("Products → ID");
+      await waitFor(() => expect(input).toHaveValue("Products → ID"));
       await userEvent.clear(input);
       const listbox = await screen.findByRole("listbox");
       expect(listbox).toHaveTextContent("Orders → ID");
@@ -783,12 +784,12 @@ describe.each(AREAS)("data model field section > %s", (area) => {
           visibility_type: "normal",
         }),
       );
+      await assertAndCloseToast("Visibility of Tax updated");
       expect(trackSimpleEvent).toHaveBeenCalledWith({
         event: "metadata_edited",
         event_detail: "visibility_change",
         triggered_from: triggeredFrom,
       });
-      await assertAndCloseToast("Visibility of Tax updated");
       await waitFor(() =>
         expect(getFieldVisibilityInput()).toHaveValue("Everywhere"),
       );
@@ -878,12 +879,12 @@ describe.each(AREAS)("data model field section > %s", (area) => {
           has_field_values: "none",
         }),
       );
+      await assertAndCloseToast("Filtering of Quantity updated");
       expect(trackSimpleEvent).toHaveBeenCalledWith({
         event: "metadata_edited",
         event_detail: "filtering_change",
         triggered_from: triggeredFrom,
       });
-      await assertAndCloseToast("Filtering of Quantity updated");
       await waitFor(() =>
         expect(getFieldFilteringInput()).toHaveValue("Plain input box"),
       );
@@ -977,6 +978,9 @@ async function assertAndCloseToast(message: string) {
   await waitFor(() =>
     expect(undoList.queryByText(message)).not.toBeInTheDocument(),
   );
+  // the refetch that follows a write must land before the next step, as it
+  // does for a user who reads the toast
+  await act(() => fetchMock.callHistory.flush(true));
 }
 
 async function discardCachedFieldValues() {
@@ -1055,8 +1059,8 @@ function getFieldFilteringInput() {
   );
 }
 
-function getFieldDisplayValuesInput() {
-  return within(getFieldSection()).getByPlaceholderText(
+function findFieldDisplayValuesInput() {
+  return within(getFieldSection()).findByPlaceholderText(
     "Select display values",
   );
 }
