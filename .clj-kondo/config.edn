@@ -609,6 +609,8 @@
   potemkin/defrecord+                                                                   clojure.core/defrecord
   potemkin/deftype+                                                                     clojure.core/deftype
   toucan.db/with-call-counting                                                          clojure.core/fn
+  metabase.toucan.core/compile                                                          clojure.core/identity
+  metabase.toucan.core/with-call-count                                                  clojure.core/fn
   toucan2.core/with-call-count                                                          clojure.core/fn}
 
  :hooks
@@ -726,6 +728,43 @@
    toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
    toucan2.core/update!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
    toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/count                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/define-after-insert                                                                                  hooks.toucan2.tools.after-insert/define-after-insert
+   metabase.toucan.core/define-after-select                                                                                  hooks.toucan2.tools.after-select/define-after-select
+   metabase.toucan.core/define-after-update                                                                                  hooks.toucan2.tools.after-update/define-after-update
+   metabase.toucan.core/define-before-delete                                                                                 hooks.toucan2.tools.before-delete/define-before-delete
+   metabase.toucan.core/define-before-insert                                                                                 hooks.toucan2.tools.before-insert/define-before-insert
+   metabase.toucan.core/define-before-select                                                                                 hooks.toucan2.tools.before-select/define-before-select
+   metabase.toucan.core/define-before-update                                                                                 hooks.toucan2.tools.before-update/define-before-update
+   metabase.toucan.core/define-default-fields                                                                                hooks.toucan2.tools.default-fields/define-default-fields
+   metabase.toucan.core/delete!                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/exists?                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/insert!                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/insert-returning-instance!                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/insert-returning-instances!                                                                          hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/insert-returning-pk!                                                                                 hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/insert-returning-pks!                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/query                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/query-one                                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/reducible-query                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/reducible-select                                                                                     hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/save!                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-fn->fn                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-fn->pk                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-fn-reducible                                                                                  hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-fn-set                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-fn-vec                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-one                                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-one-fn                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-one-pk                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-pk->fn                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-pks-set                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/select-pks-vec                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/update!                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/update-returning-pks!                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.toucan.core/with-connection                                                                                      hooks.toucan2.connection/with-connection
+   metabase.toucan.core/with-transaction                                                                                     hooks.toucan2.connection/with-transaction
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
@@ -855,6 +894,11 @@
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job
+   metabase.toucan.core/define-batched-hydrate                                                  macros.metabase.toucan.core/define-batched-hydrate
+   metabase.toucan.core/define-model-for-automagic-hydration                                    macros.metabase.toucan.core/define-model-for-automagic-hydration
+   metabase.toucan.core/define-primary-keys                                                     macros.metabase.toucan.core/define-primary-keys
+   metabase.toucan.core/define-simple-hydrate                                                   macros.metabase.toucan.core/define-simple-hydrate
+   metabase.toucan.core/define-table-name                                                       macros.metabase.toucan.core/define-table-name
    clojurewerkz.quartzite.schedule.calendar-interval/build                                      macros.quartz/build-job
    clojurewerkz.quartzite.schedule.cron/schedule                                                macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
@@ -1098,6 +1142,7 @@
      toucan.db                  {:message "Don't use application database inside Lib code"}
      toucan.models              {:message "Don't use application database inside Lib code"}
      toucan.util.test           {:message "Don't use application database inside Lib code"}
+     metabase.toucan.core       {:message "Don't use application database inside Lib code"}
      toucan2.core               {:message "Don't use application database inside Lib code"}}}}
 
   metabase-lib-excluding-legacy-mbql
@@ -1182,6 +1227,7 @@
      toucan.db                      {:message "Don't use application database directly in QP code; use the MetadataProvider"}
      toucan.models                  {:message "Don't use application database directly in QP code; use the MetadataProvider"}
      toucan.util.test               {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     metabase.toucan.core           {:message "Don't use application database directly in QP code; use the MetadataProvider"}
      toucan2.core                   {:message "Don't use application database directly in QP code; use the MetadataProvider"}}
 
     :discouraged-var
