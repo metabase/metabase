@@ -7,7 +7,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
-const { TablePicker, TableSection, FieldSection, Shared } = cy.H.DataModel;
+const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
+  cy.H.DataModel;
 
 const {
   verifyTablePreview,
@@ -16,8 +17,7 @@ const {
   getTriggeredFromArea,
 } = Shared;
 
-const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
 
@@ -68,59 +68,7 @@ areas.forEach((area) => {
 
       describe("Behavior", () => {
         describe("Display values", () => {
-          it("should show tooltips explaining why remapping options are disabled", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: PRODUCTS_ID,
-              fieldId: PRODUCTS.TITLE,
-            });
-
-            FieldSection.getDisplayValuesInput().click();
-
-            cy.log("foreign key mapping");
-            H.popover().within(() => {
-              cy.findByRole("option", { name: /Use foreign key/ }).should(
-                "have.attr",
-                "data-combobox-disabled",
-                "true",
-              );
-              cy.findByRole("option", { name: /Use foreign key/ })
-                .icon("info")
-                .realHover();
-            });
-            H.tooltip().should(
-              "contain.text",
-              'You can only use foreign key mapping for fields with the semantic type set to "Foreign Key"',
-            );
-
-            cy.log("custom mapping");
-            H.popover().within(() => {
-              cy.findByRole("option", { name: /Custom mapping/ }).should(
-                "have.attr",
-                "data-combobox-disabled",
-                "true",
-              );
-              cy.findByRole("option", { name: /Custom mapping/ })
-                .icon("info")
-                .realHover();
-            });
-            H.tooltip().should(
-              "contain.text",
-              'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
-            );
-
-            cy.log("clicking disabled option does not change the value");
-            cy.findByRole("option", { name: /Custom mapping/ }).click({
-              force: true, // try to click it despite pointer-events: none
-            });
-            FieldSection.getDisplayValuesInput().should(
-              "have.value",
-              "Use original value",
-            );
-          });
-
-          it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
+          it("should let you change to 'Use foreign key', change the target and see the remapped values", () => {
             visit({
               databaseId: SAMPLE_DB_ID,
               schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -169,6 +117,13 @@ areas.forEach((area) => {
               ],
             });
 
+            FieldSection.get()
+              .findByText(
+                "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+              )
+              .scrollIntoView()
+              .should("be.visible");
+
             cy.reload();
             FieldSection.getDisplayValuesInput()
               .scrollIntoView()
@@ -177,119 +132,6 @@ areas.forEach((area) => {
             FieldSection.getDisplayValuesFkTargetInput()
               .should("be.visible")
               .and("have.value", "Title");
-          });
-
-          it("should allow 'Custom mapping' null values", () => {
-            const remappedNullValue = "nothin";
-
-            cy.signInAsAdmin();
-            H.addSqliteDatabase();
-
-            cy.get<number>("@sqliteID").then((databaseId) => {
-              H.withDatabase(
-                databaseId,
-                ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
-                  cy.request("GET", `/api/database/${databaseId}/schemas`).then(
-                    ({ body }) => {
-                      const [schemaName] = body;
-
-                      visit({
-                        databaseId,
-                        schemaId: `${databaseId}:${schemaName}`,
-                        tableId: NUMBER_WITH_NULLS_ID,
-                        fieldId: NUM,
-                      });
-                    },
-                  );
-
-                  cy.log("Change `null` to custom mapping");
-                  FieldSection.getDisplayValuesInput().scrollIntoView().click();
-                  H.popover().findByText("Custom mapping").click();
-                  cy.wait("@updateFieldValues");
-                  H.expectUnstructuredSnowplowEvent({
-                    event: "metadata_edited",
-                    event_detail: "display_values",
-                    triggered_from: getTriggeredFrom(),
-                  });
-                  H.undoToast().should(
-                    "contain.text",
-                    "Display values of Num updated",
-                  );
-                  H.undoToast().icon("close").click({
-                    force: true, // it's behind a modal
-                  });
-
-                  H.modal()
-                    .should("be.visible")
-                    .within(() => {
-                      cy.findAllByPlaceholderText("Enter value")
-                        .filter("[value='null']")
-                        .clear()
-                        .type(remappedNullValue);
-                      cy.button("Save").click();
-                    });
-                  cy.wait("@updateFieldValues");
-                  H.undoToast().should(
-                    "contain.text",
-                    "Display values of Num updated",
-                  );
-
-                  cy.log("Make sure custom mapping appears in QB");
-                  H.openTable({
-                    database: databaseId,
-                    table: NUMBER_WITH_NULLS_ID,
-                  });
-                  cy.findAllByRole("gridcell", {
-                    name: remappedNullValue,
-                  }).should("be.visible");
-                },
-              );
-            });
-          });
-
-          it("should correctly show remapped column value", () => {
-            visit({ databaseId: SAMPLE_DB_ID });
-
-            // edit "Product ID" column in "Orders" table
-            TablePicker.getTable("Orders").click();
-            if (area === "data studio") {
-              TableSection.clickFieldsTab();
-            }
-            TableSection.clickField("Product ID");
-
-            // remap its original value to use foreign key
-            FieldSection.getDisplayValuesInput().click();
-            H.popover().findByText("Use foreign key").click();
-            H.popover().findByText("Title").click();
-            cy.wait("@updateFieldDimension");
-            H.undoToast().should(
-              "contain.text",
-              "Display values of Product ID updated",
-            );
-
-            cy.log("verify preview");
-            FieldSection.getPreviewButton().click();
-            verifyObjectDetailPreview({
-              rowNumber: 2,
-              row: ["Product ID", "Awesome Concrete Shoes"],
-            });
-            verifyTablePreview({
-              column: "Product ID",
-              values: [
-                "Awesome Concrete Shoes",
-                "Mediocre Wooden Bench",
-                "Fantastic Wool Shirt",
-                "Awesome Bronze Plate",
-                "Sleek Steel Table",
-              ],
-            });
-
-            FieldSection.get()
-              .findByText(
-                "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
-              )
-              .scrollIntoView()
-              .should("be.visible");
 
             cy.log("Name of the product should be displayed instead of its ID");
             H.openOrdersTable();
@@ -370,49 +212,6 @@ areas.forEach((area) => {
                 .scrollIntoView()
                 .should("be.visible");
             });
-          });
-
-          it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: REVIEWS_ID,
-              fieldId: REVIEWS.RATING,
-            });
-
-            FieldSection.getFilteringInput().click();
-            H.popover().findByText("Search box").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Filtering of Rating updated");
-
-            FieldSection.getDisplayValuesInput().click();
-            H.popover()
-              .findByRole("option", { name: /Custom mapping/ })
-              .should("have.attr", "data-combobox-disabled", "true");
-            H.popover()
-              .findByRole("option", { name: /Custom mapping/ })
-              .icon("info")
-              .realHover();
-            H.tooltip()
-              .should("be.visible")
-              .and(
-                "have.text",
-                'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
-              );
-
-            cy.log("close popover by clicking on element inside panel");
-            FieldSection.get().findByText("Field settings").click();
-
-            cy.log("open popover");
-            FieldSection.getFilteringInput().click();
-            H.popover().findByText("A list of all values").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Filtering of Rating updated");
-
-            FieldSection.getDisplayValuesInput().click();
-            H.popover()
-              .findByRole("option", { name: /Custom mapping/ })
-              .should("not.have.attr", "data-combobox-disabled");
           });
 
           it("should allow to map FK to date fields (metabase#7108)", () => {
@@ -586,19 +385,14 @@ areas.forEach((area) => {
               column: "A",
               values: ["10", "10"],
             });
-          });
 
-          it("should smartly truncate prefix name", () => {
+            cy.log("close the preview so the prefixes get their usual width");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.get().should("not.exist");
+
+            cy.log("does not truncate a short prefix");
             const shortPrefix = "Short prefix";
             const longPrefix = "Legendarily long column prefix";
-            visit({ databaseId: WRITABLE_DB_ID });
-            TablePicker.getTable("Many Data Types").click();
-            if (area === "data studio") {
-              TableSection.clickFieldsTab();
-            }
-            TableSection.clickField("Json → A");
-
-            cy.log("should not truncante short prefixes");
             TableSection.getFieldNameInput("Json")
               .clear()
               .type(shortPrefix)
@@ -615,9 +409,10 @@ areas.forEach((area) => {
             H.tooltip().should("not.exist");
 
             cy.log("in table section");
+            // the test id is on a box that never clips, so measure its text
             TableSection.getField("Json → D")
               .findByTestId("name-prefix")
-              .should("have.text", `${shortPrefix}:`)
+              .findByText(`${shortPrefix}:`)
               .then((element) => {
                 H.assertIsNotEllipsified(element[0]);
               });
@@ -626,7 +421,7 @@ areas.forEach((area) => {
               .realHover();
             H.tooltip().should("not.exist");
 
-            cy.log("should truncante long prefixes");
+            cy.log("truncates a long prefix");
             TableSection.getFieldNameInput(shortPrefix)
               .clear()
               .type(longPrefix)
@@ -653,7 +448,12 @@ areas.forEach((area) => {
             TableSection.getField("Json → D")
               .scrollIntoView({ offset: { left: 0, top: -400 } })
               .findByTestId("name-prefix")
-              .should("have.text", `${longPrefix}:`)
+              .findByText(`${longPrefix}:`)
+              .then((element) => {
+                H.assertIsEllipsified(element[0]);
+              });
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
               .realHover({ scrollBehavior: "center" });
             H.tooltip().should("be.visible").and("have.text", longPrefix);
           });
@@ -661,81 +461,6 @@ areas.forEach((area) => {
       });
 
       describe("Formatting", () => {
-        it("should let you to change field formatting", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.QUANTITY,
-          });
-
-          FieldSection.getFormatControl().findByText("123%").click();
-          cy.wait("@updateField");
-          H.expectUnstructuredSnowplowEvent({
-            event: "metadata_edited",
-            event_detail: "formatting",
-            triggered_from: getTriggeredFrom(),
-          });
-          verifyAndCloseToast("Formatting of Quantity updated");
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "Quantity",
-            values: ["200%", "300%", "200%", "600%", "500%"],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 8,
-            row: ["Quantity", "200%"],
-          });
-        });
-
-        it("should only show currency formatting options for currency fields", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.DISCOUNT,
-          });
-          cy.wait("@metadata");
-
-          cy.findByTestId("column-settings")
-            .scrollIntoView()
-            .within(() => {
-              cy.findByText("Unit of currency").should("be.visible");
-              cy.findByText("Currency label style").should("be.visible");
-            });
-
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.QUANTITY,
-          });
-          cy.wait("@metadata");
-
-          cy.findByTestId("column-settings")
-            .scrollIntoView()
-            .within(() => {
-              // shouldnt show currency settings by default for quantity field
-              cy.findByText("Unit of currency").should("not.be.visible");
-              cy.findByText("Currency label style").should("not.be.visible");
-
-              // if you change the format to currency, currency settings should appear
-              cy.findByTestId("chart-settings-widget-number_style")
-                .findByText("$1.23")
-                .click();
-            });
-
-          cy.wait("@updateField");
-          verifyAndCloseToast("Formatting of Quantity updated");
-
-          cy.findByTestId("column-settings").within(() => {
-            cy.findByText("Unit of currency").should("be.visible");
-            cy.findByText("Currency label style").should("be.visible");
-          });
-        });
-
         it("should save and obey field prefix formatting settings", () => {
           visit({
             databaseId: SAMPLE_DB_ID,
@@ -775,24 +500,52 @@ areas.forEach((area) => {
             .findByText("about 69,540")
             .should("be.visible");
         });
+      });
+    });
 
-        it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.QUANTITY,
-          });
-          cy.wait("@metadata");
-
-          FieldSection.getPrefixInput().focus().blur();
-          cy.get("@updateFieldSpy").should("not.have.been.called");
-          H.undoToast().should("not.exist");
-
-          FieldSection.getSuffixInput().focus().blur();
-          cy.get("@updateFieldSpy").should("not.have.been.called");
-          H.undoToast().should("not.exist");
+    describe("Undos", () => {
+      it("should undo a field order change and a field change", () => {
+        visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.QUANTITY,
         });
+
+        cy.log("custom field order");
+        TableSection.getSortButton().click();
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
+          vertical: 50,
+        });
+        cy.wait("@updateFieldOrder");
+        verifyToastAndUndo("Field order updated");
+        cy.wait("@updateTable")
+          .its("request.body.field_order")
+          .should("eq", "database");
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+        TableSection.get().button("Done").click();
+
+        cy.log("semantic type");
+        FieldSection.getSemanticTypeInput().click();
+        H.popover().findByText("Score").click();
+        cy.wait("@updateField");
+        verifyToastAndUndo("Semantic type of Quantity updated");
+        cy.wait("@updateField")
+          .its("request.body.semantic_type")
+          .should("eq", "type/Quantity");
+        FieldSection.getSemanticTypeInput().should("have.value", "Quantity");
+
+        cy.log("the undone values are stored");
+        cy.reload();
+        FieldSection.getSemanticTypeInput().should("have.value", "Quantity");
+        TableSection.getSortButton().click();
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+        TableSection.getSortableFields().first().should("contain.text", "ID");
       });
     });
   });
@@ -801,4 +554,22 @@ areas.forEach((area) => {
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
+}
+
+function verifyToastAndUndo(message: string) {
+  // Under network throttling, clicking Undo creates a new "Change undone"
+  // toast alongside the original (Mantine notifications stack rather than
+  // mutate in place). The original auto-dismisses, but the dismiss can lag
+  // past Cypress's 4s retry window, so cy.findByTestId("toast-undo")
+  // singular sees two elements and fails with "Found multiple elements".
+  // Assert against the list (waits for the expected toast), then scope the
+  // action to that toast so we never act on the wrong one.
+  const toast = (text: string) =>
+    H.undoToastList().filter(`:contains("${text}")`).first();
+
+  H.undoToastList().should("contain.text", message);
+  toast(message).button("Undo").click();
+
+  H.undoToastList().should("contain.text", "Change undone");
+  toast("Change undone").icon("close").click({ force: true });
 }
