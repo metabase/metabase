@@ -335,6 +335,21 @@
         (is (=? {:description "edited" :display_name nil}
                 (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))
 
+(deftest osi-ai-context-import-updates-one-row-test
+  (testing "importing an OsiAiContext over an existing row leaves the other rows of its entity type as they are"
+    (mt/with-empty-h2-app-db!
+      (let [db       (ts/create! :model/Database :name "my-db")
+            orders   (ts/create! :model/Table :name "orders" :db_id (:id db))
+            people   (ts/create! :model/Table :name "people" :db_id (:id db))
+            context  (fn [table] (t2/select-one-fn :ai_context :model/OsiAiContext
+                                                   :entity_type "table" :entity_local_id (:id table)))]
+        (t2/insert! :model/OsiAiContext [{:entity_type "table" :entity_local_id (:id orders) :ai_context {:instructions "Orders"}}
+                                         {:entity_type "table" :entity_local_id (:id people) :ai_context {:instructions "People"}}])
+        (let [exported (ts/extract-one "OsiAiContext" [:= :entity_local_id (:id orders)])]
+          (serdes.load/load-metabase! (ts/ingestion-in-memory [(assoc-in exported [:ai_context :instructions] "Sales")])))
+        (is (= {:instructions "Sales"} (context orders)))
+        (is (= {:instructions "People"} (context people)))))))
+
 (deftest nested-field-dimension-import-test
   (testing "a Dimension of a nested Field in a Table without a schema imports onto that Field"
     (mt/with-empty-h2-app-db!

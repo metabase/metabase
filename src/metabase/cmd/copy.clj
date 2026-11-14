@@ -419,7 +419,6 @@
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext
     ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
     :model/TransformRunCancelation})
 

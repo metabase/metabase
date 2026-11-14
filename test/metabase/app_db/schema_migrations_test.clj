@@ -5094,3 +5094,29 @@
         (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
         (t2/delete! :metabase_field :id field-1)
         (is (not (t2/exists? :metabase_field_user_settings :field_id field-1)))))))
+
+(deftest osi-ai-context-id-primary-key-test
+  (impl/test-migrations ["xdt6kw" "rcp0pz"] [migrate!]
+    (let [row (fn [entity-type local-id]
+                {:entity_type     entity-type
+                 :entity_local_id local-id
+                 :entity_id       (format "osiaicontext%s%07d" (first entity-type) local-id)
+                 :ai_context      "{}"
+                 :created_at      :%now
+                 :updated_at      :%now})]
+      (t2/insert! :osi_ai_context [(row "table" 1) (row "table" 2) (row "card" 1)])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their keys"
+        (let [rows (t2/select :osi_ai_context)]
+          (is (= #{["table" 1] ["table" 2] ["card" 1]}
+                 (into #{} (map (juxt :entity_type :entity_local_id)) rows)))
+          (is (= 3 (count (into #{} (map :id) rows))))
+          (is (every? pos-int? (map :id rows)))))
+      (testing "new rows get generated ids"
+        (is (pos-int? (t2/insert-returning-pk! :osi_ai_context (row "card" 2)))))
+      (testing "one row per entity"
+        (is (thrown? Exception (t2/insert! :osi_ai_context (row "table" 1)))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (not (contains? (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 1) :id)))
+        (is (thrown? Exception (t2/insert! :osi_ai_context (dissoc (row "table" 1) :entity_id))))))))

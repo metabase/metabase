@@ -50,9 +50,13 @@
   (or (:identity (spec model)) [:entity_id]))
 
 (defn primary-key
-  "The primary key column of `model`, the first when it has several."
+  "The primary key column of `model`, which must have exactly one."
   [model]
-  (first (t2.model/primary-keys model)))
+  (let [pks (t2.model/primary-keys model)]
+    (when-not (= 1 (count pks))
+      (throw (ex-info (format "Serialization needs a single primary key column, and %s has %s" model (pr-str pks))
+                      {:model model :primary-keys pks})))
+    (first pks)))
 
 (defn parent
   "The `:parent` of the spec of `model`, `{:model parent-model :key column :order key-fn}`, or nil."
