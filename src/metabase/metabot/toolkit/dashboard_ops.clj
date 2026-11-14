@@ -624,37 +624,41 @@
   "The new rows of the dashcards in `dcs`, all on one tab, that must move down, as `{id row}`.
    `placed` maps the id of each card an op placed to `:position` or `:size`, as [[mark-placed]] records it.
    Cards given a position stay where they are.
-   Resized cards settle next, then the rest, each group in reading order, and each card below whatever settled card
-   it overlaps.
-   So a pushed card pushes the cards it lands on in turn."
+   Resized cards settle next, then the rest, each group in reading order.
+   A resized card moves below whatever settled card it overlaps.
+   Any other card moves only when it overlaps a placed card or a card that moved, and then it moves below every
+   settled card it overlaps.
+   So a pushed card pushes the cards it lands on in turn, and two cards that already overlapped stay as they were
+   unless something pushes one of them."
   [placed dcs]
   (let [{positioned :position resized :size others nil} (group-by (comp placed :id) dcs)
         in-reading-order (partial sort-by (juxt :row :col))]
-    (second
-     (reduce (fn [[settled moved] dc]
-               (let [settled-dc (push-below settled dc)]
+    (peek
+     (reduce (fn [[settled disturbed moved] dc]
+               (let [placed?    (contains? placed (:id dc))
+                     settled-dc (if (or placed? (some (partial overlap? dc) disturbed))
+                                  (push-below settled dc)
+                                  dc)
+                     moved?     (not= (:row dc) (:row settled-dc))]
                  [(conj settled settled-dc)
-                  (cond-> moved
-                    (not= (:row dc) (:row settled-dc)) (assoc (:id dc) (:row settled-dc)))]))
-             [(vec positioned) {}]
+                  (cond-> disturbed (or placed? moved?) (conj settled-dc))
+                  (cond-> moved moved? (assoc (:id dc) (:row settled-dc)))]))
+             [(vec positioned) (vec positioned) {}]
              (concat (in-reading-order resized) (in-reading-order others))))))
 
 (defn- settle-layout
   "Push down the cards that a card an op placed now covers, as the dashboard editor does, and record under
    `::pushed` the ids of the stored dashcards that moved, in save order.
-   Only tabs holding a card an op placed, and tabs the call created, are settled.
-   Elsewhere a layout that already overlaps stays as it was, so an edit to a filter or another tab doesn't rearrange
-   it."
-  [{:keys [tabs dashcards] :as state}]
+   Only tabs holding a card an op placed are settled, and there only the cards a placed card reaches move.
+   A layout that already overlaps stays as it was elsewhere, so adding a tab or editing a filter doesn't rearrange it.
+   A duplicated tab's copies carry their cards' marks, so they settle as the source tab does."
+  [{:keys [dashcards] :as state}]
   (let [tab-of      #(shown-tab state (:dashboard_tab_id %))
         ;; A card an op placed and a later op removed is gone.
         placed      (select-keys (::placed state) (map :id dashcards))
-        ;; A new tab's copies may hold no placed card, but their layout is the call's to make valid.
-        new-tabs    (into #{} (comp (map :id) (filter neg?)) tabs)
         placed-tabs (into #{} (comp (filter (comp placed :id)) (map tab-of)) dashcards)
-        touched     (into new-tabs placed-tabs)
         ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
-        by-tab      (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards)))
+        by-tab      (vals (group-by tab-of (filter #(contains? placed-tabs (tab-of %)) dashcards)))
         _           (run! (partial check-placements! placed) by-tab)
         rows        (into {} (mapcat (partial settle-tab placed)) by-tab)]
     (-> state
@@ -897,7 +901,7 @@
             "set_series"   (:card_ids op)
             nil)))
 
-(defn- source-card-id
+(defn source-card-id
   "The card `parameter` takes its values from, or nil when its values come from somewhere else."
   [parameter]
   ;; Matches what the save read-checks: a source card counts only while the source type is card.
@@ -1013,9 +1017,10 @@
    It covers the cards [[referenced-card-ids]] finds, leaving out the ones the user cannot read.
    A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
-   A card that an op gives a position stays where the op put it, and a resized card keeps its place unless such a
-   card covers it.
-   Either pushes down the cards it covers.
+   A card that an op gives a position stays where the op put it.
+   A resized card keeps its place unless a card given a position, or a resized card above it or to its left, covers
+   it.
+   Either pushes down the cards it covers, and a card that no op placed moves only then.
    [[pushed-dashcard-ids]] reads which stored cards moved from the payload's metadata.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]

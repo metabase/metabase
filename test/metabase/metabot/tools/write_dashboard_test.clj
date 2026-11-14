@@ -254,6 +254,25 @@
           (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
           (is (= 2 (count (dashcards dash-id)))))))))
 
+(deftest reused-question-keeps-its-name-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (binding [shared/*memory-atom* (chart-memory convo-id)]
+          (let [add! (fn [chart-name]
+                       (:output (call {:dashboard_id dash-id
+                                       :ops          [{:op "add_card", :id -1, :chart_id "A", :name chart-name}]})))]
+            (testing "a chart added again under its first name says nothing about names"
+              (add! "Revenue")
+              (is (not (re-find #"kept its name" (add! "Revenue")))))
+            (testing "a chart added again under another name keeps the first, and the result says so"
+              (let [card-id (t2/select-one-pk :model/Card :dashboard_id dash-id)]
+                (is (str/includes? (add! "Monthly revenue")
+                                   (str "Chart A was already saved here as question " card-id
+                                        ", so it kept its name \"Revenue\". Use that name when you tell the user.")))
+                (is (= ["Revenue"] (t2/select-fn-vec :name :model/Card :dashboard_id dash-id)))))))))))
+
 (deftest reseeded-chart-saves-new-question-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
@@ -358,6 +377,21 @@
                    (dashcards dash-id))))
          (testing "the result says which card moved, so the model can tell the user"
            (is (re-find (re-pattern (str "Card " dashcard-id " moved down")) (:output result)))))))))
+
+(deftest add-tab-leaves-existing-overlap-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Overlapping"}
+                 :model/DashboardCard {top-id :id}  {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
+                                                     :visualization_settings {:virtual_card {:display "text"}
+                                                                              :text         "Top"}}
+                 :model/DashboardCard {low-id :id}  {:dashboard_id dash-id, :row 2, :col 0, :size_x 12, :size_y 6
+                                                     :visualization_settings {:virtual_card {:display "text"}
+                                                                              :text         "Low"}}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [output (:output (call {:dashboard_id dash-id, :ops [{:op "add_tab", :id -1, :name "Details"}]}))]
+        (testing "adding the first tab leaves cards that already overlapped where they were"
+          (is (=? [{:id top-id, :row 0} {:id low-id, :row 2}] (dashcards dash-id))))
+        (testing "and reports no moved cards"
+          (is (not (re-find #"moved down" output))))))))
 
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
@@ -469,6 +503,28 @@
         (testing "parallel edits of one dashboard keep each other's cards"
           (is (= #{card-a card-b} (set (map :card_id (dashcards dash-id))))))))))
 
+(deftest parallel-creates-test
+  (mt/with-model-cleanup [:model/Dashboard]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [first-waiting (promise)
+            second-done   (promise)
+            write!        (mt/original-fn #'dashboard-write/write!)]
+        ;; The first create waits inside its save until the second finishes. If creates shared a lock, the second
+        ;; would wait for the first, and the first's wait would time out before the second saved.
+        (mt/with-dynamic-fn-redefs [dashboard-write/write! (fn [opts]
+                                                             (when (= "First" (get-in opts [:attrs :name]))
+                                                               (deliver first-waiting true)
+                                                               (deref second-done 5000 nil))
+                                                             (write! opts))]
+          (let [first-create (future (call {:name "First"}))]
+            (deref first-waiting 10000 nil)
+            (call {:name "Second"})
+            (deliver second-done true)
+            @first-create
+            (testing "a create doesn't wait for another create to commit"
+              (is (< (t2/select-one-fn :id :model/Dashboard :name "Second")
+                     (t2/select-one-fn :id :model/Dashboard :name "First"))))))))))
+
 ;;; ------------------------------------------------ Trash ---------------------------------------------------------
 
 (deftest trash-and-restore-test
@@ -579,6 +635,20 @@
     (testing "a missing dashboard reads as not found"
       (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
               (failure {:dashboard_id Integer/MAX_VALUE, :name "x"}))))))
+
+(deftest unreadable-dashboard-and-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Hidden"}
+                   :model/Dashboard  {dash-id :id} {:name "Q4 plan", :collection_id coll-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "a dashboard the user can't see reads as not found, not as read-only"
+          (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
+                  (failure {:dashboard_id dash-id, :name "Renamed"}))))
+        (testing "so does a collection the user can't see, on a create"
+          (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
+                  (failure {:name "Mine", :collection_id coll-id}))))
+        (is (= "Q4 plan" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
+        (is (not (t2/exists? :model/Dashboard :name "Mine")))))))
 
 (deftest unwritable-collection-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -692,8 +762,9 @@
           (let [before (dashcards dash-id)]
             (is (= {:class :recoverable
                     :code  ::write-dashboard/cards-not-curated
-                    :text  (str "Question " plain-id " can't be added: this Metabot only uses curated content"
-                                " (verified, official, or Library content). Nothing was saved.\n"
+                    :text  (str "Question " plain-id " can't be added or give a filter its values: this Metabot"
+                                " only uses curated content (verified, official, or Library content). Nothing was"
+                                " saved.\n"
                                 "Call `search` to find curated questions, models, or metrics and add one of those"
                                 " instead.")}
                    (failure {:dashboard_id dash-id
@@ -773,6 +844,103 @@
                                           :internal)))]
               (is (= 2 (count (dashcards dash-id))))
               (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))))
+
+(deftest curated-only-filter-source-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id plain-id dash-id curated-metabot]}]
+     (let [source (fn [card-id] {:values_source_type   "card"
+                                 :values_source_config {:card_id     card-id
+                                                        :value_field ["field" (mt/id :venues :name) nil]}})]
+       (as-metabot
+        curated-metabot
+        (fn []
+          (testing "a filter can't take its values from an uncurated question"
+            (is (=? {:code ::write-dashboard/cards-not-curated
+                     :text (re-pattern (str "(?s)\\QQuestion " plain-id " can't be added or give a filter its values\\E.*"))}
+                    (failure {:dashboard_id dash-id
+                              :ops          [(merge {:op "add_parameter", :parameter_id "p", :name "Name"
+                                                     :type "category"}
+                                                    (source plain-id))]})))
+            (is (=? {:code ::write-dashboard/cards-not-curated}
+                    (failure {:dashboard_id dash-id
+                              :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"}
+                                             (merge {:op "update_parameter", :parameter_id "p"} (source plain-id))]})))
+            (testing "even when one op sets the source type and a later one the question"
+              (is (=? {:code ::write-dashboard/cards-not-curated}
+                      (failure {:dashboard_id dash-id
+                                :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"
+                                                :values_source_type "card"}
+                                               {:op "update_parameter", :parameter_id "p"
+                                                :values_source_config (:values_source_config (source plain-id))}]}))))
+            (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a filter source a parallel call saved is judged with this call's ops"
+            (t2/update! :model/Dashboard :id dash-id
+                        {:parameters [{:id "p", :name "Name", :slug "name", :type "category"}]})
+            ;; The parallel call sets the source question after this call's first read, and this call sets its type.
+            (let [reread (mt/original-fn #'metabot.db/dashboard)]
+              (mt/with-dynamic-fn-redefs [metabot.db/dashboard
+                                          (fn [id]
+                                            (t2/update! :model/Dashboard :id id
+                                                        {:parameters [{:id "p", :name "Name", :slug "name"
+                                                                       :type "category"
+                                                                       :values_source_config
+                                                                       (:values_source_config (source plain-id))}]})
+                                            (reread id))]
+                (is (=? {:code ::write-dashboard/cards-not-curated}
+                        (failure {:dashboard_id dash-id
+                                  :ops          [{:op "update_parameter", :parameter_id "p"
+                                                  :values_source_type "card"}]})))))
+            (t2/update! :model/Dashboard :id dash-id {:parameters []}))
+          (testing "a filter that already takes its values from an uncurated question can still be renamed"
+            (t2/update! :model/Dashboard :id dash-id
+                        {:parameters [(merge {:id "p", :name "Name", :slug "name", :type "category"}
+                                             (source plain-id))]})
+            (call {:dashboard_id dash-id
+                   :ops          [{:op "update_parameter", :parameter_id "p", :name "Customer"}]}
+                  :internal)
+            (is (=? [{:name "Customer", :values_source_config {:card_id plain-id}}]
+                    (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a filter can take its values from a curated question"
+            (call {:dashboard_id dash-id
+                   :ops          [(merge {:op "update_parameter", :parameter_id "p"} (source curated-id))]}
+                  :internal)
+            (is (=? [{:values_source_config {:card_id curated-id}}]
+                    (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))))))))
+
+(deftest curated-only-conversation-card-in-ops-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id dash-id curated-metabot]}]
+     (mt/with-temp [:model/MetabotConversation {convo-id :id}   {:user_id (mt/user->id :crowberto)}
+                    :model/Card                {curated-q :id}  {:name                    "Over curated"
+                                                                 :dashboard_id            dash-id
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "A"}
+                    :model/Card                {plain-q :id}    {:name                    "Over venues"
+                                                                 :dashboard_id            dash-id
+                                                                 :dataset_query           (venues-query)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "B"}
+                    ;; A dashboard question must be on its dashboard, or the save trashes it.
+                    :model/DashboardCard       _                {:dashboard_id dash-id, :card_id curated-q
+                                                                 :row 6, :col 0, :size_x 12, :size_y 6}
+                    :model/DashboardCard       _                {:dashboard_id dash-id, :card_id plain-q
+                                                                 :row 12, :col 0, :size_x 12, :size_y 6}]
+       (as-metabot
+        curated-metabot
+        #(binding [shared/*memory-atom* (chart-memory convo-id)]
+           (testing "a question this conversation saved over curated content can be set as a series"
+             (call {:dashboard_id dash-id
+                    :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                   {:op "set_series", :dashcard_id -1, :card_ids [curated-q]}]}
+                   :internal)
+             (is (= 4 (count (dashcards dash-id)))))
+           (testing "but one whose query reads uncurated content is still refused"
+             (is (=? {:code ::write-dashboard/cards-not-curated
+                      :text (re-pattern (str "(?s)\\QQuestion " plain-q " \\E.*"))}
+                     (failure {:dashboard_id dash-id
+                               :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                              {:op "set_series", :dashcard_id -1, :card_ids [plain-q]}]}))))))))))
 
 (deftest curated-only-conversation-chart-test
   (curated-dashboard!
@@ -919,6 +1087,34 @@
                  :text (re-pattern (str "(?s).*\\Qread `metabase://dashboard/" dash-id "/items` with"
                                         " `read_resource`.\\E"))}
                 (failure {:dashboard_id dash-id, :ops [{:op "remove", :dashcard_id 999}]})))))))
+
+(deftest layout-error-wording-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard {left :id}    {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
+                                                       :visualization_settings {:virtual_card {:display "text"}}}
+                   :model/DashboardCard {right :id}   {:dashboard_id dash-id, :row 0, :col 12, :size_x 12, :size_y 6
+                                                       :visualization_settings {:virtual_card {:display "text"}}}]
+      (testing "two cards given positions that cover each other"
+        (is (=? {:text (str "Cards " left ", " right " would overlap, and this call gives both a"
+                            " `position`. Give them positions that don't cover each other. Other cards move down by"
+                            " themselves. Nothing was saved.\n"
+                            "To check the ids of its cards, read `metabase://dashboard/" dash-id "/items` with"
+                            " `read_resource`.")}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "move", :dashcard_id left, :position {:row 0, :col 6}}
+                                         {:op "move", :dashcard_id right, :position {:row 0, :col 10}}]}))))
+      (testing "a resize past the right edge"
+        (is (=? {:text (re-pattern (str "(?s)\\QCard " right " would run past the grid's right edge:"
+                                        " `col` 12 plus `size_x` 24 is more than 24. Move it left or make it"
+                                        " narrower. Nothing was saved.\\E\n.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "resize", :dashcard_id right, :size {:size_x 24, :size_y 6}}]}))))
+      (testing "a move past the right edge"
+        (is (=? {:text (re-pattern (str "(?s)\\QCard " left " would run past the grid's right edge:"
+                                        " `col` 20 plus `size_x` 12 is more than 24.\\E.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "move", :dashcard_id left, :position {:row 10, :col 20}}]})))))))
 
 (deftest op-error-wording-test
   (testing "every compiler error has Metabot wording"

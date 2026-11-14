@@ -42,7 +42,7 @@ dashboard_write {"method": "create", "name": "Revenue overview",
 
 `move` (new `position` and/or `tab`), `resize` (`size`), `remove`, addressed by dashcard id from `get_content`. Layout keys never ride `patch_dashcard` (content merges only) — `move`/`resize`/`replace_card`/`set_series` own row, col, size, tab, card_id, series.
 
-A card given an explicit `position` stays put, and a resized card keeps its place unless a positioned card covers it; either pushes down the cards it covers, as the editor does, and the response's `pushed_dashcard_ids` lists them. Two cards given positions in the same call must not cover each other, and a moved, resized or positioned card must end by column 24.
+A card given an explicit `position` stays put, and a resized card keeps its place unless a positioned card, or a resized card above it or to its left, covers it. Either pushes down the cards it covers, as the editor does, and the response's `pushed_dashcard_ids` lists them. Other cards stay put, even where they already overlap. Two cards given positions in the same call must not cover each other, and a moved, resized or positioned card must end by column 24.
 
 ## Tabs
 
