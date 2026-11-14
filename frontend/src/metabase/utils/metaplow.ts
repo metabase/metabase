@@ -8,13 +8,20 @@ const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
+const ENTITY_NAME_SUFFIX = /(\/\d+)-[^/]+$/;
+
+// `EMBEDDED_DATA_APP_PREFIX` from embedding-sdk-shared, which lib modules may not import.
+const EMBEDDED_DATA_APP_PATH = /(\/embed\/embedded-apps)\/.*$/;
+
+/** Removes customer-chosen names from a path: entity names, and an embedded data app's name and route. */
+export const sanitizeAnalyticsPathname = (pathname: string): string =>
+  pathname
+    .replace(EMBEDDED_DATA_APP_PATH, (_, prefix) => prefix)
+    .replace(ENTITY_NAME_SUFFIX, (_, path) => path);
+
 const getSanitizedUrl = (url: string) => {
   const parsed = new URL(url, window.location.origin);
-  const pathWithoutSlug = parsed.pathname.replace(
-    /(\/\d+)-[^\/]+$/,
-    (_, path) => path,
-  );
-  return anonymizedOrigin + pathWithoutSlug;
+  return anonymizedOrigin + sanitizeAnalyticsPathname(parsed.pathname);
 };
 
 interface MetaplowConfig {

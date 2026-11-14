@@ -1,14 +1,21 @@
+jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/analytics/snowplow"),
+  trackSdkSimpleEvent: jest.fn(),
+}));
+
 import {
   act,
   render as renderWithoutProviders,
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
+import { renderWithProviders } from "__support__/ui";
+import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/snowplow";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
-import { getSdkStore } from "embedding-sdk-bundle/store";
+import { getSdkStore, sdkReducers } from "embedding-sdk-bundle/store";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
   initAuth,
@@ -17,8 +24,14 @@ import {
   setErrorComponent,
   setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk-bundle/test/mocks/state";
+import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { defer } from "metabase/utils/promise";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { DataApp, type DataAppProps } from "./DataApp";
 
@@ -393,5 +406,69 @@ describe("DataApp", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "SSO is unavailable",
     );
+  });
+
+  describe("analytics", () => {
+    const COMPONENT_EVENT = {
+      event: "embedding_sdk_component_rendered",
+      detail: expect.objectContaining({ component: "DataApp", properties: {} }),
+    };
+
+    const renderTracked = (ui: ReactElement) => {
+      const { state } = setupSdkState({
+        settingValues: createMockSettings({ "anon-tracking-enabled": true }),
+        sdkState: createMockSdkState({
+          initStatus: createMockLoginStatusState({ status: "success" }),
+          sdkTrackerReady: true,
+        }),
+      });
+
+      return renderWithProviders(ui, {
+        storeInitialState: state,
+        customReducers: sdkReducers,
+      });
+    };
+
+    const getComponentEvents = () =>
+      jest.mocked(trackSdkSimpleEvent).mock.calls.map(([event]) => {
+        const detail: unknown = JSON.parse(event.event_detail ?? "{}");
+
+        return { event: event.event, detail };
+      });
+
+    it("reports one component event per data app", () => {
+      renderTracked(
+        <>
+          <DataApp path="tracked-store/orders" />
+          <DataApp path="tracked-store/customers" />
+          <DataApp path="tracked-crm" />
+        </>,
+      );
+
+      // one event for each data app: tracked-store + tracked-crm
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT, COMPONENT_EVENT]);
+    });
+
+    it("reports the new data app when the path changes to another app", () => {
+      const { rerender } = renderTracked(
+        <DataApp path="switched-from/orders" />,
+      );
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT]);
+
+      rerender(<DataApp path="switched-from/customers" />);
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT]);
+
+      rerender(<DataApp path="switched-to" />);
+      expect(getComponentEvents()).toEqual([COMPONENT_EVENT, COMPONENT_EVENT]);
+    });
+
+    it("does not report a data app with an invalid path", () => {
+      renderTracked(<DataApp path="../not-an-app" />);
+
+      expect(
+        screen.getByText("A valid data app path must be provided."),
+      ).toBeInTheDocument();
+      expect(getComponentEvents()).toEqual([]);
+    });
   });
 });

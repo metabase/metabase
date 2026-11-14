@@ -10,10 +10,13 @@ import {
 import userEvent from "@testing-library/user-event";
 
 import { render, renderHook, screen } from "__support__/ui";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import { useDataAppLocation } from "embedding-sdk-package/hooks/public/use-data-app-location";
 
 import { DataAppEmbed } from "./DataAppEmbed";
 import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
+
+const store = getSdkStore();
 
 describe("DataAppEmbed - router navigation", () => {
   const originalRoot = window.MetabaseRoot;
@@ -42,7 +45,7 @@ describe("DataAppEmbed - router navigation", () => {
       data: { component: App, providerProps: {} },
     });
 
-    const { rerender } = render(<DataAppEmbed />);
+    const { rerender } = render(<DataAppEmbed store={store} />);
 
     await userEvent.type(
       screen.getByRole("textbox", { name: "Gizmo" }),
@@ -51,7 +54,7 @@ describe("DataAppEmbed - router navigation", () => {
 
     // preceding slashes should be ignored
     setupSettings({ path: "///sales/products?active=false#details" });
-    rerender(<DataAppEmbed />);
+    rerender(<DataAppEmbed store={store} />);
 
     // data app path should be updated
     expect(await screen.findByText("/products")).toBeInTheDocument();
