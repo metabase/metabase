@@ -280,3 +280,15 @@
    [:user-id          [:maybe pos-int?]]
    [:is-superuser?    :boolean]
    [:is-data-analyst? :boolean]])
+
+(mr/def ::table-filter-options
+  "The options of the Table filters: with `:active-only?`, the rows of an inactive Table don't count, and with
+  `:include-published-via-collection?`, a Table published into a Collection the user reads grants
+  `:perms/create-queries :query-builder` on EE."
+  [:map {:closed true}
+   [:active-only?                      :boolean]
+   [:include-published-via-collection? :boolean]])
+
+(mr/def ::permission-mapping
+  "Map of permission type to the permission value the user needs, or a more permissive one."
+  [:map-of ::data-permission-type ::data-permission-value])

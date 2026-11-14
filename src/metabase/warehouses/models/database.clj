@@ -206,11 +206,6 @@
       (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database.")
       (assoc database k (database-writable? database)))))
 
-(mu/defmethod mi/visible-filter-clause :model/Database
-  [_model column-or-exp user-info permission-mapping]
-  {:clause [:in column-or-exp
-            (perms/visible-database-filter-select user-info permission-mapping)]})
-
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]

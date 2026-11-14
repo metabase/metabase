@@ -30,7 +30,7 @@
                (map :id (mdb/query {:select [:id]
                                     :from   [:data_app]
                                     :where  [:in :id (data-apps/visible-data-app-filter-select
-                                                      {:user-id (mt/user->id :rasta) :is-superuser? false})]}))))))))
+                                                      {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false})]}))))))))
 
 (deftest added-groups-authorize-access-test
   (mt/with-premium-features #{:data-apps}
@@ -94,7 +94,7 @@
               (is (= allowed? (boolean (mi/can-read? (t2/hydrate app :can_read))))))
             (is (= allowed? (contains? (t2/select-pks-set :model/DataApp
                                                           {:where [:in :id (data-apps/visible-data-app-filter-select
-                                                                            {:user-id user-id :is-superuser? admin?})]})
+                                                                            {:user-id user-id :is-superuser? admin? :is-data-analyst? false})]})
                                        (:id app))))))))))
 
 (deftest group-api-test
