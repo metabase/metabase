@@ -1,9 +1,8 @@
 import type React from "react";
-import { useEffect, useRef } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { useLocation } from "metabase/router";
+import { RESET_SCROLL_ON_NAVIGATE } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import S from "./AdminSettingsLayout.module.css";
@@ -19,9 +18,6 @@ export const AdminSettingsLayout = ({
   fullWidth?: boolean;
   maw?: string;
 }) => {
-  const contentRef = useRef<HTMLDivElement>(null);
-  useScrollToTop(contentRef);
-
   return (
     <Box className={S.Wrapper}>
       <Box className={S.Main}>
@@ -31,9 +27,9 @@ export const AdminSettingsLayout = ({
           </Box>
         )}
         <Box
-          ref={contentRef}
           className={S.Content}
           data-testid="admin-layout-content"
+          {...RESET_SCROLL_ON_NAVIGATE}
           p={fullWidth ? 0 : "2rem"}
         >
           <Box maw={fullWidth ? undefined : maw} w="100%">
@@ -45,12 +41,4 @@ export const AdminSettingsLayout = ({
       </Box>
     </Box>
   );
-};
-
-const useScrollToTop = (contentRef: React.RefObject<HTMLDivElement | null>) => {
-  const location = useLocation();
-
-  useEffect(() => {
-    contentRef.current?.scrollTo(0, 0);
-  }, [location?.pathname, contentRef]);
 };
