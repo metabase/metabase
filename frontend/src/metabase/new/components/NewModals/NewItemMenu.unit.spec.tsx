@@ -22,6 +22,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Outlet, Route } from "metabase/router";
@@ -221,6 +222,17 @@ describe("NewItemMenu", () => {
   });
 });
 
+// `waitForRequestsToSettle` does not wait for delayed responses, which the
+// negative checks below must see before they can pass.
+async function waitForAllResponses() {
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory.calls().every((call) => call.response != null),
+    ).toBe(true),
+  );
+  await waitForRequestsToSettle();
+}
+
 describe("NewItemMenu > new dashboard default collection", () => {
   const USER_ID = 7;
   const PERSONAL_COLLECTION = createMockCollection({
@@ -374,7 +386,7 @@ describe("NewItemMenu > new dashboard default collection", () => {
         within(modal).getByLabelText(/Which collection/),
       ).toHaveTextContent("Our analytics"),
     );
-    await act(() => fetchMock.callHistory.flush(true));
+    await waitForAllResponses();
     expect(within(modal).getByLabelText(/Which collection/)).toHaveTextContent(
       "Our analytics",
     );
@@ -396,7 +408,7 @@ describe("NewItemMenu > new dashboard default collection", () => {
       expect(
         await within(picker).findByText(PERSONAL_COLLECTION.name),
       ).toBeInTheDocument();
-      await act(() => fetchMock.callHistory.flush(true));
+      await waitForAllResponses();
       expect(
         within(picker).queryByText("First collection"),
       ).not.toBeInTheDocument();
