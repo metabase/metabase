@@ -20,10 +20,10 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
-import { Badge } from "metabase/ui";
+import { Box, Divider } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { getCurrentTab } from "./utils";
+import { getCurrentTab, getPythonLibraryUrl } from "./utils";
 
 export function DataStudioLayout() {
   const {
@@ -47,6 +47,7 @@ export function DataStudioLayout() {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   const isTransformsSetupComplete = useSetting("transforms-setup-complete");
   const areTransformsEnabled = useSetting("transforms-enabled");
@@ -57,6 +58,11 @@ export function DataStudioLayout() {
 
   const settings = useDataStudioSettings();
   const currentTab = getCurrentTab(pathname);
+  const libraryDirtyBadge = hasLibraryFeature ? (
+    <PLUGIN_REMOTE_SYNC.ChangesBadge
+      target={{ type: "area", area: "library" }}
+    />
+  ) : undefined;
 
   const upperNav = (
     <>
@@ -67,6 +73,49 @@ export function DataStudioLayout() {
         isSelected={currentTab === "guide"}
         showLabel={isNavbarOpened}
       />
+
+      <Divider />
+      <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
+        {isAdmin && (
+          <Box mt={isNavbarOpened ? "md" : 0}>
+            <AreaTab
+              label={t`Data apps`}
+              icon="app"
+              to={Urls.dataStudioDataApps()}
+              isSelected={currentTab === "data-apps"}
+              showLabel={isNavbarOpened}
+              isGated={!PLUGIN_DATA_APPS.isEnabled}
+            />
+          </Box>
+        )}
+        <Box mt="lg">
+          <AreaTabGroup
+            label={t`Semantic layer`}
+            showLabel={isNavbarOpened}
+            isSubgroup
+          >
+            <AreaTab
+              label={t`Data`}
+              icon="table"
+              to={Urls.dataStudioPublishedData()}
+              isSelected={currentTab === "published-data"}
+              showLabel={isNavbarOpened}
+              isGated={!hasLibraryFeature}
+              rightSection={libraryDirtyBadge}
+            />
+            <AreaTab
+              label={t`Metrics`}
+              icon="metric"
+              to={Urls.dataStudioMetrics()}
+              isSelected={currentTab === "metrics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasLibraryFeature}
+              rightSection={libraryDirtyBadge}
+            />
+          </AreaTabGroup>
+        </Box>
+      </AreaTabGroup>
+      <Divider />
 
       <AreaTabGroup label={t`Data`} showLabel={isNavbarOpened}>
         {canAccessDataModel && (
@@ -94,22 +143,7 @@ export function DataStudioLayout() {
         )}
       </AreaTabGroup>
 
-      <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
-        <AreaTab
-          label={t`Semantic layer`}
-          icon="repository"
-          to={Urls.dataStudioLibrary()}
-          isSelected={currentTab === "library"}
-          showLabel={isNavbarOpened}
-          rightSection={
-            hasLibraryFeature ? (
-              <PLUGIN_REMOTE_SYNC.ChangesBadge
-                target={{ type: "area", area: "library" }}
-              />
-            ) : undefined
-          }
-          isGated={!hasLibraryFeature}
-        />
+      <AreaTabGroup label={t`Utilities`} showLabel={isNavbarOpened}>
         <AreaTab
           label={t`SQL snippets`}
           icon="snippet"
@@ -123,6 +157,14 @@ export function DataStudioLayout() {
           }
         />
         <AreaTab
+          label={t`Python library`}
+          icon="code_block"
+          to={getPythonLibraryUrl()}
+          isSelected={currentTab === "python-library"}
+          showLabel={isNavbarOpened}
+          isGated={!hasPythonTransformsFeature}
+        />
+        <AreaTab
           label={t`Data actions`}
           icon="bolt"
           to={Urls.dataStudioActions()}
@@ -134,21 +176,6 @@ export function DataStudioLayout() {
             />
           }
         />
-        {isAdmin && (
-          <AreaTab
-            label={t`Data apps`}
-            icon="app"
-            to={Urls.dataStudioDataApps()}
-            isSelected={currentTab === "data-apps"}
-            showLabel={isNavbarOpened}
-            rightSection={
-              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
-                <Badge color="brand">{t`Beta`}</Badge>
-              ) : null
-            }
-            isGated={!PLUGIN_DATA_APPS.isEnabled}
-          />
-        )}
         <AreaTab
           label={t`Glossary`}
           icon="glossary"
@@ -237,6 +264,8 @@ export function DataStudioLayout() {
       headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
+      isResizable
+      hasBrandIcons
     >
       <Outlet />
     </AreaLayout>

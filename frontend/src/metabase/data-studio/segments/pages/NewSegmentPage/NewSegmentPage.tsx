@@ -14,7 +14,7 @@ import {
   useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
-import { Button } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
@@ -32,12 +32,15 @@ type NewSegmentPageProps = {
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
+  /** Where Cancel goes; without it there's no Cancel */
+  cancelUrl?: string;
 };
 
 export function NewSegmentPage({
   table,
   breadcrumbs,
   getSuccessUrl,
+  cancelUrl,
 }: NewSegmentPageProps) {
   const navigate = useNavigate();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -51,6 +54,7 @@ export function NewSegmentPage({
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
   const [savedSegment, setSavedSegment] = useState<Segment | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const isInitialized = useRef(false);
 
@@ -63,10 +67,10 @@ export function NewSegmentPage({
 
   const { query, filters } = useSegmentQuery(definition);
 
-  const isDirty =
-    !savedSegment &&
-    (name.trim().length > 0 || description.length > 0 || filters.length > 0);
-  const isValid = name.trim().length > 0 && filters.length > 0;
+  const isChanged =
+    name.trim().length > 0 || description.length > 0 || filters.length > 0;
+  const isDirty = !savedSegment && isChanged;
+  const isValid = filters.length > 0;
   const previewUrl =
     filters.length > 0
       ? getDatasetQueryPreviewUrl(definition, buildQuestion)
@@ -83,7 +87,8 @@ export function NewSegmentPage({
       return;
     }
     const { data: segment, error } = await createSegment({
-      name: name.trim(),
+      // PROTOTYPE: an unnamed segment takes the placeholder's name
+      name: name.trim() || t`New segment`,
       definition: definition,
       description: description.trim() || undefined,
     });
@@ -113,6 +118,13 @@ export function NewSegmentPage({
     }
   }, [savedSegment, getSuccessUrl, navigate]);
 
+  // Cancel goes once the leave guard is off
+  useEffect(() => {
+    if (isCancelling && cancelUrl) {
+      navigate(cancelUrl);
+    }
+  }, [isCancelling, cancelUrl, navigate]);
+
   return (
     <PageContainer data-testid="new-segment-page" gap="xxl">
       <NewSegmentHeader
@@ -120,15 +132,24 @@ export function NewSegmentPage({
         onNameChange={setName}
         breadcrumbs={breadcrumbs}
         actions={
-          isDirty && (
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              loading={isSaving}
-              onClick={handleSave}
-            >
-              {t`Save`}
-            </Button>
+          (cancelUrl || isDirty) && (
+            <Group gap="sm" wrap="nowrap">
+              {cancelUrl && (
+                <Button onClick={() => setIsCancelling(true)}>
+                  {t`Cancel`}
+                </Button>
+              )}
+              {isDirty && (
+                <Button
+                  variant="filled"
+                  disabled={!isValid}
+                  loading={isSaving}
+                  onClick={handleSave}
+                >
+                  {t`Save`}
+                </Button>
+              )}
+            </Group>
           )
         }
       />
@@ -138,7 +159,9 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal
+        isEnabled={isDirty && !isSaving && !isCancelling}
+      />
     </PageContainer>
   );
 }

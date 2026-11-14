@@ -16,6 +16,30 @@
   box-shadow: 0 10px 30px 0 hsla(0, 0%, 0%, 0.1);
 }
 
-.header {
-  z-index: 10;
+/* Contains the drawer's fixed positioning to the page instead of the viewport */
+.container {
+  position: relative;
+  transform: translateZ(0);
+}
+
+.drawerBody {
+  height: 100%;
+}
+
+.drawerPanels {
+  overflow-x: auto;
+}
+
+/* Animates between zero and the content's own width (0fr ↔ 1fr), so the
+ * field panel can open and close without knowing its resized width */
+.widthReveal {
+  display: grid;
+  height: 100%;
+}
+
+.widthRevealContent {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }

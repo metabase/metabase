@@ -4,6 +4,12 @@ export const isObject = (
   return typeof value === "object" && value !== null;
 };
 
+export const isStringRecord = (
+  value: unknown,
+): value is Record<string, string> =>
+  isObject(value) &&
+  Object.values(value).every((entry) => typeof entry === "string");
+
 export const isFunction = (
   value: unknown,
 ): value is (...args: unknown[]) => unknown => {

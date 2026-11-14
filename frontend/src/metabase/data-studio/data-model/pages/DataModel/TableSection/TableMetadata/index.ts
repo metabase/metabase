@@ -1,1 +1,1 @@
-export { TableMetadata } from "./TableMetadata";
+export { TableMetadata, TableStats } from "./TableMetadata";

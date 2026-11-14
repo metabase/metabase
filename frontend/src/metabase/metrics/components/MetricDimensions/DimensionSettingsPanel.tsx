@@ -31,7 +31,10 @@ import type {
   UpdateMetricDimensionRequest,
 } from "metabase-types/api";
 
-import { DimensionTimeGroupingSelect } from "./DimensionTimeGroupingSelect";
+import {
+  DimensionTimeGroupingSelect,
+  useMetricDimensionTemporalUnits,
+} from "./DimensionTimeGroupingSelect";
 import S from "./MetricDimensions.module.css";
 import {
   getDimensionTypeLabel,
@@ -39,7 +42,7 @@ import {
   isOrphaned,
 } from "./utils";
 
-type DimensionChanges = Omit<
+export type DimensionChanges = Omit<
   UpdateMetricDimensionRequest,
   "metricId" | "dimensionId"
 >;
@@ -51,6 +54,7 @@ interface DimensionSettingsPanelProps {
   queryMetadata: CardQueryMetadata;
 }
 
+/** Settings for one dimension of a saved metric; changes save as you make them */
 export function DimensionSettingsPanel({
   metricId,
   dimension,
@@ -60,25 +64,10 @@ export function DimensionSettingsPanel({
   const [updateDimension] = useUpdateMetricDimensionMutation();
   const [setDefaultDimension, { isLoading: isSettingDefault }] =
     useSetDefaultMetricDimensionMutation();
-
-  const [displayName, setDisplayName] = useState(dimension.display_name);
-  const [description, setDescription] = useState(dimension.description ?? "");
-  const [defaultTemporalUnit, setDefaultTemporalUnit] = useState(
-    dimension.default_temporal_unit,
-  );
-
+  const temporalUnits = useMetricDimensionTemporalUnits(metricId, dimension);
   const { sendErrorToast } = useMetadataToasts();
 
-  const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
-  // An orphaned dimension can't be made the default, but one that already is
-  // still needs a way out.
-  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
-
-  useEffect(() => {
-    setDefaultTemporalUnit(dimension.default_temporal_unit);
-  }, [dimension.default_temporal_unit]);
-
-  const persist = async (changes: DimensionChanges) => {
+  const handleUpdate = async (changes: DimensionChanges) => {
     try {
       await updateDimension({
         metricId,
@@ -91,37 +80,6 @@ export function DimensionSettingsPanel({
       trackMetricDimensionUpdated(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
       return false;
-    }
-  };
-
-  const handleNameBlur = async () => {
-    const nextDisplayName = displayName.trim();
-    if (!nextDisplayName) {
-      setDisplayName(dimension.display_name);
-      return;
-    }
-
-    setDisplayName(nextDisplayName);
-    if (nextDisplayName !== dimension.display_name) {
-      const isPersisted = await persist({ display_name: nextDisplayName });
-      if (!isPersisted) {
-        setDisplayName(dimension.display_name);
-      }
-    }
-  };
-
-  const handleDescriptionBlur = () => {
-    if (description !== (dimension.description ?? "")) {
-      persist({ description });
-    }
-  };
-
-  const handleTimeGroupingChange = async (unit: TemporalUnit) => {
-    const previousUnit = defaultTemporalUnit;
-    setDefaultTemporalUnit(unit);
-    const isPersisted = await persist({ default_temporal_unit: unit });
-    if (!isPersisted) {
-      setDefaultTemporalUnit(previousUnit);
     }
   };
 
@@ -151,6 +109,85 @@ export function DimensionSettingsPanel({
   };
 
   return (
+    <DimensionSettingsPanelView
+      dimension={dimension}
+      isDefaultLoading={isSettingDefault || isFetching}
+      sourceColumnLabel={getSourceColumnLabel(dimension, queryMetadata)}
+      temporalUnits={temporalUnits}
+      onUpdate={handleUpdate}
+      onSetDefault={handleSetDefault}
+      onRemoveDefault={handleRemoveDefault}
+    />
+  );
+}
+
+interface DimensionSettingsPanelViewProps {
+  dimension: MetricDimension;
+  isDefaultLoading: boolean;
+  sourceColumnLabel: string | null;
+  temporalUnits: TemporalUnit[];
+  /** Resolves to whether the change stuck; the field reverts when it didn't */
+  onUpdate: (changes: DimensionChanges) => Promise<boolean>;
+  onSetDefault: () => void;
+  onRemoveDefault: () => void;
+}
+
+/** The dimension settings form, independent of where the dimension is stored */
+export function DimensionSettingsPanelView({
+  dimension,
+  isDefaultLoading,
+  sourceColumnLabel,
+  temporalUnits,
+  onUpdate,
+  onSetDefault,
+  onRemoveDefault,
+}: DimensionSettingsPanelViewProps) {
+  const [displayName, setDisplayName] = useState(dimension.display_name);
+  const [description, setDescription] = useState(dimension.description ?? "");
+  const [defaultTemporalUnit, setDefaultTemporalUnit] = useState(
+    dimension.default_temporal_unit,
+  );
+
+  // An orphaned dimension can't be made the default, but one that already is
+  // still needs a way out.
+  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
+
+  useEffect(() => {
+    setDefaultTemporalUnit(dimension.default_temporal_unit);
+  }, [dimension.default_temporal_unit]);
+
+  const handleNameBlur = async () => {
+    const nextDisplayName = displayName.trim();
+    if (!nextDisplayName) {
+      setDisplayName(dimension.display_name);
+      return;
+    }
+
+    setDisplayName(nextDisplayName);
+    if (nextDisplayName !== dimension.display_name) {
+      const isPersisted = await onUpdate({ display_name: nextDisplayName });
+      if (!isPersisted) {
+        setDisplayName(dimension.display_name);
+      }
+    }
+  };
+
+  const handleDescriptionBlur = () => {
+    if (description !== (dimension.description ?? "")) {
+      onUpdate({ description });
+    }
+  };
+
+  const handleTimeGroupingChange = async (unit: TemporalUnit) => {
+    const previousUnit = defaultTemporalUnit;
+    setDefaultTemporalUnit(unit);
+    const isPersisted = await onUpdate({ default_temporal_unit: unit });
+    if (!isPersisted) {
+      setDefaultTemporalUnit(previousUnit);
+    }
+  };
+
+  return (
     <Stack
       className={S.column}
       data-testid="dimension-settings-panel"
@@ -166,8 +203,8 @@ export function DimensionSettingsPanel({
         <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
         {showDefaultButton && (
           <Button
-            loading={isSettingDefault || isFetching}
-            onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
+            loading={isDefaultLoading}
+            onClick={dimension.default ? onRemoveDefault : onSetDefault}
           >
             {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
@@ -184,8 +221,7 @@ export function DimensionSettingsPanel({
           onBlur={handleNameBlur}
         />
         <DimensionTimeGroupingSelect
-          metricId={metricId}
-          dimension={dimension}
+          temporalUnits={temporalUnits}
           value={defaultTemporalUnit}
           onChange={handleTimeGroupingChange}
         />

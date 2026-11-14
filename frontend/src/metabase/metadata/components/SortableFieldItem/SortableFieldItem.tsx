@@ -6,6 +6,8 @@ import { Box, Card, Ellipsified, Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
+import { useMetadataCardVariant } from "../MetadataCardVariant";
+
 import S from "./SortableFieldItem.module.css";
 
 type SortableFieldItemProps<T extends number | string> = {
@@ -26,11 +28,13 @@ export function SortableFieldItem<T extends number | string>({
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
   const label = field.display_name;
   const draggable = !disabled;
+  const isOutlined = useMetadataCardVariant() === "outlined";
 
   return (
     <Sortable
       className={cx(S.sortableField, {
         [S.active]: active,
+        [S.outlined]: isOutlined,
       })}
       id={fieldKey}
       disabled={disabled}
@@ -45,6 +49,7 @@ export function SortableFieldItem<T extends number | string>({
         className={cx(S.card, {
           [S.active]: active,
           [S.draggable]: draggable,
+          [S.outlined]: isOutlined,
         })}
         draggable={draggable}
         role="listitem"

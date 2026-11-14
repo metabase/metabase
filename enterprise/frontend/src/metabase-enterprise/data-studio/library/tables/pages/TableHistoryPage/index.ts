@@ -1,0 +1,1 @@
+export { TableHistoryPage } from "./TableHistoryPage";

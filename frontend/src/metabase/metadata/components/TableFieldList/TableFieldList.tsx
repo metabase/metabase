@@ -11,11 +11,14 @@ interface Props {
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
   activeFieldId?: FieldId;
+  /** Only fields it returns true for are listed, e.g. ones matching a search */
+  filterField?: (field: Field) => boolean;
 }
 
 export const TableFieldList = ({
   table,
   activeFieldId,
+  filterField,
   getFieldHref,
 }: Props) => {
   const [updateField] = useUpdateFieldMutation();
@@ -23,8 +26,9 @@ export const TableFieldList = ({
     useMetadataToasts();
 
   const fields = useMemo(() => {
-    return _.sortBy(table.fields ?? [], (item) => item.position);
-  }, [table.fields]);
+    const sortedFields = _.sortBy(table.fields ?? [], (item) => item.position);
+    return filterField ? sortedFields.filter(filterField) : sortedFields;
+  }, [table.fields, filterField]);
 
   const handleGetFieldHref = useCallback(
     (field: Field) => getFieldHref(field.id),

@@ -1,26 +1,9 @@
-.gridLabelInput {
-  .label {
-    font-weight: normal;
-    color: var(--mb-color-text-secondary);
-  }
+/* A property row whose value is a picker: the whole row opens it */
+.pickerProperty {
+  cursor: pointer;
 
-  .input {
-    width: 11rem;
-    border-radius: 1.25rem;
-
-    &.unset {
-      color: var(--mb-color-text-secondary);
-    }
-  }
-
-  .sectionLabel {
-    &[data-position="right"] {
-      color: var(--mb-color-text-primary);
-    }
-
-    &[data-position="left"] {
-      color: var(--mb-color-core-brand);
-    }
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 

@@ -1,0 +1,6 @@
+/* The page's own background with no divider, like the Fields and Segments
+   tabs, so the white settings cards stand out */
+.body {
+  overflow-y: auto;
+  background-color: var(--mb-color-background_page-secondary);
+}

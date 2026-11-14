@@ -34,6 +34,7 @@ export function PublishedTableNewMeasurePage() {
       getSuccessUrl={(measure) =>
         Urls.dataStudioPublishedTableMeasure(tableId, measure.id)
       }
+      cancelUrl={Urls.dataStudioTableMeasures(tableId)}
     />
   );
 }

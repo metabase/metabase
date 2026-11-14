@@ -1,0 +1,9 @@
+/* Contains the drawer's fixed positioning to the page, as in Connected data */
+.drawerContainer {
+  position: relative;
+  transform: translateZ(0);
+}
+
+.drawerBody {
+  height: 100%;
+}

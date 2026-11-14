@@ -1,0 +1,36 @@
+.resizable {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: var(--mantine-spacing-sm);
+  cursor: col-resize;
+
+  /* Sits over the panel's right border; colored while hovered or dragged */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    transition: background-color 0.15s ease;
+  }
+
+  &:hover::after,
+  &:active::after {
+    background-color: var(--mb-color-border-neutral-strong);
+  }
+}
+
+.noSelect {
+  user-select: none;
+}

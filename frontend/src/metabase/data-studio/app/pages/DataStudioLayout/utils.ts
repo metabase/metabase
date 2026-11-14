@@ -1,10 +1,13 @@
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 
 type TabName =
   | "guide"
   | "data"
-  | "library"
+  | "published-data"
+  | "metrics"
   | "snippets"
+  | "python-library"
   | "actions"
   | "data-apps"
   | "transforms"
@@ -32,8 +35,12 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "actions";
     case pathname.startsWith(Urls.dataStudioDataApps()):
       return "data-apps";
+    case pathname.startsWith(Urls.dataStudioMetrics()):
+      return "metrics";
     case pathname.startsWith(Urls.dataStudioLibrary()):
-      return "library";
+      return "published-data";
+    case pathname.startsWith(getPythonLibraryUrl()):
+      return "python-library";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
     case pathname.startsWith(Urls.dataStudioData()):
@@ -44,3 +51,12 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "guide";
   }
 };
+
+/**
+ * PROTOTYPE: the shared Python library that transforms import lives under
+ * the transforms section; the nav links to it from Utilities
+ */
+export const getPythonLibraryUrl = () =>
+  Urls.transformPythonLibrary({
+    path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
+  });

@@ -34,6 +34,8 @@ import {
 
 import { EmptyStateAction } from "./EmptyStateAction";
 
+const NO_EXTRA_COLUMNS: TreeTableColumnDef<TreeItem>[] = [];
+
 type Params = {
   tree: TreeItem[];
   isLoading: boolean;
@@ -43,6 +45,10 @@ type Params = {
   defaultExpandedIds: readonly string[];
   renderRowMenu: (item: TreeItem) => ReactNode;
   emptyStateActions?: Partial<Record<LibrarySectionType, () => void>>;
+  /** Section-specific columns between the name and the update time */
+  extraColumns?: TreeTableColumnDef<TreeItem>[];
+  /** Section-specific columns after the update time, before the row menu */
+  trailingColumns?: TreeTableColumnDef<TreeItem>[];
 };
 
 export function useLibraryTreeTableInstance({
@@ -54,6 +60,8 @@ export function useLibraryTreeTableInstance({
   defaultExpandedIds,
   renderRowMenu,
   emptyStateActions,
+  extraColumns = NO_EXTRA_COLUMNS,
+  trailingColumns = NO_EXTRA_COLUMNS,
 }: Params) {
   const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(
@@ -129,6 +137,7 @@ export function useLibraryTreeTableInstance({
           );
         },
       },
+      ...extraColumns,
       {
         id: "updatedAt",
         header: t`Updated At`,
@@ -145,13 +154,20 @@ export function useLibraryTreeTableInstance({
           return <DateTime value={updatedAt} />;
         },
       },
+      ...trailingColumns,
       {
         id: "actions",
         width: 48,
         cell: ({ row }) => renderRowMenu(row.original),
       },
     ],
-    [isRemoteSyncReadOnly, emptyStateActions, renderRowMenu],
+    [
+      isRemoteSyncReadOnly,
+      emptyStateActions,
+      renderRowMenu,
+      extraColumns,
+      trailingColumns,
+    ],
   );
 
   // Section roots and any IDs from the URL start expanded

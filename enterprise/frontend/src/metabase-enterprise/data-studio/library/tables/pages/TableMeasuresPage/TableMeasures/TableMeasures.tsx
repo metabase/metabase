@@ -1,57 +1,30 @@
-import { t } from "ttag";
-
-import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
-import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import {
-  EntityList,
-  EntityListItem,
-} from "metabase/data-studio/common/components/EntityList";
-import { useSelector } from "metabase/redux";
-import { Flex } from "metabase/ui";
+  type MeasureListUrls,
+  MeasureTree,
+} from "metabase/data-studio/data-model/pages/DataModel/TableSection/MeasureList";
 import * as Urls from "metabase/urls";
-import type { Table, TableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 type TableMeasuresProps = {
   table: Table;
 };
 
+/**
+ * The published table's measures and measure groups, and what sync proposes.
+ * Measures and proposals edit in place; their ⋯ menus open the Library's
+ * measure pages.
+ */
 export function TableMeasures({ table }: TableMeasuresProps) {
-  const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table.is_published),
-  );
-  const measures = table.measures ?? [];
+  return <MeasureTree table={table} urls={getPublishedMeasureUrls(table)} />;
+}
 
-  return (
-    <Flex direction="column" flex={1}>
-      <EntityList
-        items={measures}
-        title={t`Measures`}
-        emptyState={{
-          icon: "ruler",
-          title: t`No measures yet`,
-          message: t`Create a measure to define aggregations for this table.`,
-        }}
-        newButtonProps={
-          canWriteMeasures
-            ? {
-                label: t`New measure`,
-                trackClickEvent: () =>
-                  // Unjustified type cast. FIXME
-                  trackMeasureCreateStarted(table.id as TableId),
-                url: Urls.dataStudioPublishedTableMeasureNew(table.id),
-              }
-            : undefined
-        }
-        renderItem={(measure) => (
-          <EntityListItem
-            key={measure.id}
-            name={measure.name}
-            description={measure.definition_description}
-            icon="ruler"
-            href={Urls.dataStudioPublishedTableMeasure(table.id, measure.id)}
-          />
-        )}
-      />
-    </Flex>
-  );
+function getPublishedMeasureUrls(table: Table): MeasureListUrls {
+  return {
+    measure: (measureId) =>
+      Urls.dataStudioPublishedTableMeasure(table.id, measureId),
+    newMeasure: Urls.dataStudioPublishedTableMeasureNew(table.id),
+    measureGroup: (groupId) =>
+      Urls.dataStudioPublishedTableMeasureGroup(table.id, groupId),
+    newMeasureGroup: Urls.dataStudioPublishedTableMeasureGroupNew(table.id),
+  };
 }

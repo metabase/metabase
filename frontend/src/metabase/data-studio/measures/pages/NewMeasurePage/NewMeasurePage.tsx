@@ -14,7 +14,7 @@ import {
   useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
-import { Button } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
@@ -32,12 +32,15 @@ type NewMeasurePageProps = {
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
+  /** Where Cancel goes; without it there's no Cancel */
+  cancelUrl?: string;
 };
 
 export function NewMeasurePage({
   table,
   breadcrumbs,
   getSuccessUrl,
+  cancelUrl,
 }: NewMeasurePageProps) {
   const navigate = useNavigate();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -51,6 +54,7 @@ export function NewMeasurePage({
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
   const [savedMeasure, setSavedMeasure] = useState<Measure | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const isInitialized = useRef(false);
 
@@ -63,12 +67,10 @@ export function NewMeasurePage({
 
   const { query, aggregations } = useMeasureQuery(definition);
 
-  const isDirty =
-    !savedMeasure &&
-    (name.trim().length > 0 ||
-      description.length > 0 ||
-      aggregations.length > 0);
-  const isValid = name.trim().length > 0 && aggregations.length === 1;
+  const isChanged =
+    name.trim().length > 0 || description.length > 0 || aggregations.length > 0;
+  const isDirty = !savedMeasure && isChanged;
+  const isValid = aggregations.length === 1;
   const previewUrl =
     aggregations.length === 1
       ? getDatasetQueryPreviewUrl(definition, buildQuestion)
@@ -85,7 +87,8 @@ export function NewMeasurePage({
       return;
     }
     const { data: measure, error } = await createMeasure({
-      name: name.trim(),
+      // PROTOTYPE: an unnamed measure takes the placeholder's name
+      name: name.trim() || t`New measure`,
       definition: definition,
       description: description.trim() || undefined,
     });
@@ -115,6 +118,13 @@ export function NewMeasurePage({
     }
   }, [savedMeasure, getSuccessUrl, navigate]);
 
+  // Cancel goes once the leave guard is off
+  useEffect(() => {
+    if (isCancelling && cancelUrl) {
+      navigate(cancelUrl);
+    }
+  }, [isCancelling, cancelUrl, navigate]);
+
   return (
     <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
@@ -122,15 +132,24 @@ export function NewMeasurePage({
         onNameChange={setName}
         breadcrumbs={breadcrumbs}
         actions={
-          isDirty && (
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              loading={isSaving}
-              onClick={handleSave}
-            >
-              {t`Save`}
-            </Button>
+          (cancelUrl || isDirty) && (
+            <Group gap="sm" wrap="nowrap">
+              {cancelUrl && (
+                <Button onClick={() => setIsCancelling(true)}>
+                  {t`Cancel`}
+                </Button>
+              )}
+              {isDirty && (
+                <Button
+                  variant="filled"
+                  disabled={!isValid}
+                  loading={isSaving}
+                  onClick={handleSave}
+                >
+                  {t`Save`}
+                </Button>
+              )}
+            </Group>
           )
         }
       />
@@ -140,7 +159,9 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal
+        isEnabled={isDirty && !isSaving && !isCancelling}
+      />
     </PageContainer>
   );
 }

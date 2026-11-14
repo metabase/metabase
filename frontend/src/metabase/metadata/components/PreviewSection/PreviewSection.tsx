@@ -28,6 +28,8 @@ type PreviewSectionBaseProps = {
   previewType: PreviewType;
   onPreviewTypeChange: (value: PreviewType) => void;
   onClose: () => void;
+  /** Off when the caller renders its own title and close button above the card */
+  withHeader?: boolean;
 };
 
 const PreviewSectionBase = ({
@@ -37,6 +39,7 @@ const PreviewSectionBase = ({
   previewType,
   onPreviewTypeChange,
   onClose,
+  withHeader = true,
 }: PreviewSectionBaseProps) => {
   const fieldId = field.id;
   const tableId = table.id;
@@ -56,13 +59,15 @@ const PreviewSectionBase = ({
       py="lg"
       withBorder
     >
-      <Group justify="space-between">
-        <Text fw="bold">{t`Field preview`}</Text>
+      {withHeader && (
+        <Group justify="space-between">
+          <Text fw="bold">{t`Field preview`}</Text>
 
-        <ActionIcon variant="subtle" onClick={onClose}>
-          <Icon name="close" />
-        </ActionIcon>
-      </Group>
+          <ActionIcon variant="subtle" onClick={onClose}>
+            <Icon name="close" />
+          </ActionIcon>
+        </Group>
+      )}
 
       <Flex py="sm" w="100%">
         <SegmentedControl
