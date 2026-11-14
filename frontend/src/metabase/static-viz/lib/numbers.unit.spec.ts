@@ -1,6 +1,23 @@
 import { formatNumber } from "./numbers";
 
 describe("formatNumber", () => {
+  it("preserves lakh-crore formatting inside custom affixes", () => {
+    expect(
+      formatNumber(125000, {
+        number_format: "lakh-crore",
+        prefix: "[",
+        suffix: "]",
+      }),
+    ).toBe("[1,25,000]");
+    expect(
+      formatNumber(125000, {
+        number_format: "lakh-crore",
+        compact: true,
+        decimals: 2,
+      }),
+    ).toBe("1.25L");
+  });
+
   it("should format a number with default options", () => {
     const number = 1500;
 

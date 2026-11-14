@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { CurrencyPosition } from "metabase-types/api";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
+import { type NumberFormat, getNumberFormatLocale } from "./number-format";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
@@ -33,6 +34,7 @@ export type FormatNumberOptions = {
   minimumSignificantDigits?: number;
   negativeInParentheses?: boolean;
   number_separators?: string;
+  number_format?: NumberFormat;
   number_style?: string;
   scale?: number;
   type?: string;
@@ -233,14 +235,13 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
   };
-  const cacheKey = JSON.stringify(formatterOptions);
+  const locale = getNumberFormatLocale(options.number_format);
+  const cacheKey = JSON.stringify([locale, formatterOptions]);
   const cached = numberFormatterCache.get(cacheKey);
   if (cached) {
     return cached;
   }
-  // always use "en" locale so we have known number separators we can replace depending on number_separators option
-  // TODO: if we do that how can we get localized currency names?
-  const formatter = new Intl.NumberFormat("en", formatterOptions);
+  const formatter = new Intl.NumberFormat(locale, formatterOptions);
   if (numberFormatterCache.size >= NUMBER_FORMATTER_CACHE_SIZE) {
     const oldestKey = numberFormatterCache.keys().next().value;
     if (oldestKey !== undefined) {
@@ -318,7 +319,7 @@ function _formatNumberCompact(
         formatted = String(rounded);
       }
     }
-  } else if (typeof value === "number") {
+  } else {
     const isDefaultDecimalCount =
       options.maximumFractionDigits ===
       DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
@@ -335,9 +336,7 @@ function _formatNumberCompact(
           : options.maximumFractionDigits;
     }
 
-    formatted = compactNumber(value, decimals);
-  } else {
-    formatted = PRECISION_NUMBER_FORMATTER.format(value);
+    formatted = compactNumber(value, decimals, options.number_format);
   }
 
   return options?.number_separators !== DEFAULT_NUMBER_SEPARATORS
@@ -412,14 +411,19 @@ function multiply(a: number | bigint, b: number) {
   }
 }
 
-function compactNumber(value: number, decimals: number): string {
-  const numberFormat = new Intl.NumberFormat("en", {
+function compactNumber(
+  value: number | bigint,
+  decimals: number,
+  numberFormat?: NumberFormat,
+): string {
+  const locale = getNumberFormatLocale(numberFormat);
+  const formatter = new Intl.NumberFormat(locale, {
     notation: "compact",
     useGrouping: false,
     maximumFractionDigits: decimals,
     minimumFractionDigits: decimals,
   });
-  let formatted = numberFormat.format(value);
+  let formatted = formatter.format(value);
   // Match legacy casing for thousands
   if (formatted.endsWith("K")) {
     formatted = formatted.replace("K", "k");

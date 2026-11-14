@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { NumberFormat } from "metabase/utils/formatting/number-format";
+
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
@@ -31,6 +33,7 @@ export interface DateFormattingSettings {
 }
 
 export interface NumberFormattingSettings {
+  number_format?: NumberFormat;
   number_separators?: string;
 }
 
