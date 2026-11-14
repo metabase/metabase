@@ -16,7 +16,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -988,27 +987,34 @@ describe("DependencyGraphPage", () => {
       await userEvent.click(
         await screen.findByText("Include items in personal collections"),
       );
-      await waitForElementToBeRemoved(() =>
-        within(getDependencyPanel()).queryByRole("generic", {
-          name: "Question in personal collection",
-        }),
-      );
-      expect(getLastDependentsRequestParams()).toEqual({
-        id: String(TABLE.id),
-        type: "table",
-        "dependent-types": ["card"],
-        "dependent-card-types": ["question"],
-        "include-personal-collections": "false",
+      await waitFor(() => {
+        expect(getLastDependentsRequestParams()).toEqual({
+          id: String(TABLE.id),
+          type: "table",
+          "dependent-types": ["card"],
+          "dependent-card-types": ["question"],
+          "include-personal-collections": "false",
+        });
       });
-      for (const question of [
-        QUESTION_IN_DASHBOARD,
-        QUESTION_IN_DOCUMENT,
-        QUESTION_IN_ROOT,
-        QUESTION_IN_FIRST,
-        QUESTION_IN_SECOND,
-      ]) {
-        expect(await findPanelItem(getLabel(question))).toBeInTheDocument();
-      }
+      await waitFor(() => {
+        const panel = getDependencyPanel();
+        for (const question of [
+          QUESTION_IN_DASHBOARD,
+          QUESTION_IN_DOCUMENT,
+          QUESTION_IN_ROOT,
+          QUESTION_IN_FIRST,
+          QUESTION_IN_SECOND,
+        ]) {
+          expect(
+            within(panel).getByRole("generic", { name: getLabel(question) }),
+          ).toBeInTheDocument();
+        }
+        expect(
+          within(panel).queryByRole("generic", {
+            name: "Question in personal collection",
+          }),
+        ).not.toBeInTheDocument();
+      });
 
       await verifyPanelNavigation({
         router,
