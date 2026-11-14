@@ -16,6 +16,7 @@
    [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
+   [metabase.util.malli.json-schema :as mu.json-schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -144,14 +145,76 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
+(def ^:private annotation-keys
+  "JSON Schema keywords that describe a value without constraining it."
+  #{:$comment :default :deprecated :description :examples :readOnly :title :writeOnly})
+
+(def ^:private null-neutral-keys
+  "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
+  (into annotation-keys
+        #{:additionalProperties :contains :contentEncoding :contentMediaType :contentSchema :dependentRequired
+          :dependentSchemas :exclusiveMaximum :exclusiveMinimum :format :items :maxContains :maxItems :maxLength
+          :maxProperties :maximum :minContains :minItems :minLength :minProperties :minimum :multipleOf :pattern
+          :patternProperties :prefixItems :properties :propertyNames :required :uniqueItems}))
+
+(defn- nullable
+  "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
+  Where `schema` has one non-null `:type` and otherwise only [[null-neutral-keys]], returns it with `null` added to
+  that type and to any `:enum`.
+  Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
+  [schema]
+  (let [{:keys [type description]} schema]
+    ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
+    (if (and (string? type)
+             (not= "null" type)
+             (every? (conj null-neutral-keys :type :enum) (keys schema)))
+      (cond-> (assoc schema :type [type "null"])
+        ;; an enum rejects a `null` it does not list
+        (:enum schema) (update :enum #(vec (distinct (conj (vec %) nil)))))
+      (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
+        description (assoc :description description)))))
+
+(defn- one-of-replacement
+  "What replaces the `oneOf` `branches`: [[nullable]] X for `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`,
+  and otherwise an `anyOf` of the same branches."
+  [[x y :as branches]]
+  (if (and (= 2 (count branches)) (= {:type "null"} y))
+    (nullable x)
+    {:anyOf branches}))
+
+(defn- without-one-of
+  "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
+  Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win.
+  Where any other keyword does, the replacement joins those keywords under `allOf`."
+  [json-schema]
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
+  ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
+  ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
+  ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
+  ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
+  (mu.json-schema/postwalk-schemas
+   (fn [{branches :oneOf :as node}]
+     (if-not branches
+       node
+       (let [siblings    (dissoc node :oneOf)
+             replacement (one-of-replacement branches)]
+         ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
+         ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
+         ;; A sibling annotation, such as the `[:maybe]`'s own description, wins over the replacement's.
+         (if (every? annotation-keys (keys siblings))
+           (merge replacement siblings)
+           (update siblings :allOf (fnil conj []) replacement)))))
+   json-schema))
+
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
-   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
-   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
-   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
+  Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
+  `:map`, applies tool-description preferences, and transforms to JSON Schema.
+  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf` (see [[without-one-of]]).
+  Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
-    (mjs/transform prepared)))
+    (without-one-of (mjs/transform prepared))))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
@@ -226,10 +289,10 @@
             (let [schema (cond-> schema
                            (:properties schema) (update :properties update-vals strict-schema)
                            (:items schema)      (update :items strict-schema)
-                           (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
                            (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
                            (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
-              (if (and (= "object" (:type schema)) (seq (:properties schema)))
+              ;; a nullable object is typed `["object" "null"]`
+              (if (and (some #{"object"} (u/one-or-many (:type schema))) (seq (:properties schema)))
                 (assoc schema
                        :required (vec (keys (:properties schema)))
                        :additionalProperties false)

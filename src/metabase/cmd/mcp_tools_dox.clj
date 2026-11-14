@@ -30,8 +30,8 @@
 
 ;;;; Reading a property's JSON Schema
 ;;;;
-;;;; Malli puts an argument's description and enum on the wrapped schema, not the property:
-;;;; `[:maybe [:int {:description ...}]]` publishes `{:oneOf [{:type "integer" :description ...} {:type "null"}]}`.
+;;;; A nullable argument publishes as a type array (`{:type ["integer" "null"] :description ...}`) where it can, but
+;;;; as `{:anyOf [X {:type "null"}]}` otherwise, and an `[:or ...]` keeps its descriptions and enums on the branches.
 ;;;; Everything below reads through those alternatives.
 
 (defn- union-branches
@@ -86,10 +86,10 @@
   (into [] (comp (keep :description) (remove str/blank?) (distinct)) (documented-schemas property)))
 
 (defn- enum-values
-  "The enum members among a property's [[documented-schemas]], deduped. For an action hub like `browse_data`, the
-  enum is the argument's real documentation."
+  "The enum members among a property's [[documented-schemas]], deduped, without the `nil` of a nullable enum.
+  For an action hub like `browse_data`, the enum is the argument's real documentation."
   [property]
-  (into [] (comp (mapcat :enum) (distinct)) (documented-schemas property)))
+  (into [] (comp (mapcat :enum) (remove nil?) (distinct)) (documented-schemas property)))
 
 ;;;; From the registry to page data
 

@@ -92,6 +92,97 @@
       (is (= "Internal ID"
              (get-in jss [:properties :id :description]))))))
 
+(deftest ^:parallel maybe-publishes-nullable-type-test
+  (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client validator fails for false, 0 and \"\""
+    (is (= {:type                 "object"
+            :properties           {:flag   {:type ["boolean" "null"], :description "A flag."}
+                                   :limit  {:type ["integer" "null"], :minimum 1}
+                                   :mode   {:type ["string" "null"], :enum ["a" "b" nil]}
+                                   :pick   {:anyOf [{:type "string", :const "x"} {:type "null"}], :description "Pick."}
+                                   :filter {:type                 ["object" "null"]
+                                            :properties           {:x {:type "string"}}
+                                            :required             [:x]
+                                            :additionalProperties false}
+                                   :either {:anyOf       [{:anyOf [{:type "string"} {:type "integer"}]}
+                                                          {:type "null"}]
+                                            :description "A string or an id."}
+                                   :value  {:anyOf [{} {:type "null"}]}}
+            :required             [:flag :limit :mode :pick :filter :either :value]
+            :additionalProperties false}
+           (tools-manifest/strict-tool-input-schema
+            (tools-manifest/malli->json-schema
+             [:map
+              [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
+              [:limit {:optional true} [:maybe [:int {:min 1}]]]
+              [:mode {:optional true} [:maybe [:enum "a" "b"]]]
+              [:pick {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
+              [:filter {:optional true} [:maybe [:map [:x :string]]]]
+              [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
+              [:value {:optional true} [:maybe :any]]]))))))
+
+(deftest ^:parallel property-named-one-of-test
+  (testing "a property named `oneOf` is a property, not branches to rewrite"
+    (is (= {:type       "object"
+            :properties {:oneOf {:type "integer"}}
+            :required   [:oneOf]}
+           (tools-manifest/malli->json-schema [:map [:oneOf :int]])))))
+
+(deftest ^:parallel one-of-in-a-value-test
+  (testing "a `oneOf` key inside a constant is data, so it publishes unchanged"
+    (is (= {:const {:oneOf ["a" "b"]}}
+           (get-in (tools-manifest/malli->json-schema [:map [:k [:= {} {:oneOf ["a" "b"]}]]])
+                   [:properties :k])))))
+
+(deftest ^:parallel hand-written-one-of-test
+  (testing "a `oneOf` under any subschema keyword of a hand-written `:json-schema` publishes as `anyOf`"
+    (let [branches [{:type "integer"} {:type "boolean"}]]
+      (is (= {:else          {:anyOf branches}
+              :contains      {:anyOf branches}
+              :contentSchema {:anyOf branches}
+              ;; draft-07 `dependencies` mixes schemas with lists of property names, which stay as they are
+              :dependencies  {:a {:anyOf branches}
+                              :b ["c"]}}
+             (get-in (tools-manifest/malli->json-schema
+                      [:map [:k [:any {:json-schema {:else          {:oneOf branches}
+                                                     :contains      {:oneOf branches}
+                                                     :contentSchema {:oneOf branches}
+                                                     :dependencies  {:a {:oneOf branches}
+                                                                     :b ["c"]}}}]]])
+                     [:properties :k]))))))
+
+(deftest ^:parallel one-of-rewrite-keeps-meaning-test
+  (testing "a hand-written `oneOf` rewrite accepts exactly what the `oneOf` and its sibling keywords accepted"
+    (let [published (fn [json-schema]
+                      (get-in (tools-manifest/malli->json-schema [:map [:k [:any {:json-schema json-schema}]]])
+                              [:properties :k]))]
+      ;; a keyword that may reject `null` keeps the branches apart
+      (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
+             (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
+      ;; an enum that already lists `null` lists it once
+      (is (= {:type ["string" "null"], :enum ["a" nil]}
+             (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
+      ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
+      (is (= {:anyOf [{:type "string"}]
+              :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
+             (published {:anyOf [{:type "string"}], :oneOf [{:minLength 1} {:maxLength 0}]})))
+      ;; and so must a sibling `type`
+      (is (= {:type  "string"
+              :allOf [{:type ["integer" "null"]}]}
+             (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]})))
+      ;; a branch's `additionalProperties` must not start reading the sibling `properties`
+      (is (= {:properties {:a {}}
+              :allOf      [{:type                 ["object" "null"]
+                            :additionalProperties false}]}
+             (published {:properties {:a {}}
+                         :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]}))))))
+
+(deftest ^:parallel multi-publishes-any-of-test
+  (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
+    (is (= {:anyOf [{:type "string"} {:type "integer"}]}
+           (get-in (tools-manifest/malli->json-schema
+                    [:map [:op [:multi {:dispatch string?} [true :string] [false :int]]]])
+                   [:properties :op])))))
+
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
 
@@ -495,9 +586,8 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:oneOf [{:type        "integer"
-                                                         :description "Maximum number of results to return"}
-                                                        {:type "null"}]}}
+                                        :limit {:type        ["integer" "null"]
+                                                :description "Maximum number of results to return"}}
                            :required   [:q :limit]
                            :additionalProperties false}
           :outputSchema {:type       "object"
@@ -532,7 +622,7 @@
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id      {:type "integer"}
-                                        :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
+                                        :dry-run {:type ["boolean" "null"]}
                                         :name    {:type "string"}}
                            :required   [:id :dry-run :name]
                            :additionalProperties false}}
