@@ -208,21 +208,28 @@
   (compiled driver {:select [[[:count [:inline 1]] (as :field-alias "__mb_count")]]
                     :from   [(from table)]}))
 
+(def comparison-tag
+  "The column [[comparison-query]] adds to each side to tell the two apart. No compared column may share its name."
+  "__mb_src")
+
 (mu/defn comparison-query :- ::compiled-query
-  "The query returning each row over the columns `sql-names` whose count differs between the temp tables `output-table`
-  and `expected-table`, followed by how many more times it appears in `output-table`."
+  "The query returning each row whose count differs between the temp tables `output-table` and `expected-table`,
+  followed by how many more times it appears in `output-table`. The row's columns are `sql-names`, as `output-table`
+  spells them; `expected-names` are the same columns as `expected-table` spells them, paired by position."
   [driver         :- :keyword
    output-table   :- :string
    expected-table :- :string
-   sql-names      :- [:sequential :string]]
+   sql-names      :- [:sequential :string]
+   expected-names :- [:sequential :string]]
   (let [columns (mapv field sql-names)
-        src     (field "__mb_src")
-        tagged  (fn [table tag]
-                  {:select (conj (mapv as columns) [[:inline tag] (as :field-alias "__mb_src")])
+        src     (field comparison-tag)
+        tagged  (fn [table table-columns tag]
+                  {:select (conj (mapv as table-columns) [[:inline tag] (as :field-alias comparison-tag)])
                    :from   [(from table)]})]
+    ;; `UNION ALL` takes its column names from its first branch, so the expected side needs no aliases.
     (compiled driver {:select   (conj (mapv as columns) [[:sum src] (as :field-alias "__mb_delta")])
-                      :from     [[{:union-all [(tagged output-table 1)
-                                               (tagged expected-table -1)]}
+                      :from     [[{:union-all [(tagged output-table columns 1)
+                                               (tagged expected-table (mapv field expected-names) -1)]}
                                   (as :table-alias "__mb_comparison")]]
                       :group-by columns
                       :having   [:<> [:sum src] [:inline 0]]})))

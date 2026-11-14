@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
-   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.expectations.empty :as expectations.empty]
    [metabase-enterprise.data-testing.expectations.equals :as expectations.equals]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
@@ -88,7 +87,7 @@
   (testing "no expectations at all is fine"
     (is (valid? []))
     (is (= [] (records []))))
-  (testing "an `equals` comparing against SQL is a shape the schema knows, though no run can use it"
+  (testing "an `equals` comparing against SQL is fine"
     (is (valid? [{"type" "equals" "name" "n" "format" "sql" "sql" "SELECT 1"}]))))
 
 (deftest builds-the-type-that-owns-each-branch-test
@@ -156,17 +155,6 @@
     (is (not (valid? ["SELECT 1"])))))
 
 ;;; ----------------------------------- Checks deferred to run time -----------------------------------
-
-(deftest equals-sql-is-accepted-but-cannot-run-test
-  ;; Passing the schema says the shape is storable, not that a run can use it. Refusing it at read
-  ;; time would instead make every already-stored test of this shape unreadable.
-  (testing "equals/sql builds, then refuses at probe time as not implemented"
-    (let [[r] (records [{"type" "equals" "name" "n" "format" "sql" "sql" "SELECT 1"}])]
-      (is (satisfies? expectations.protocol/Expectation r))
-      (is (= ::data-testing.errors/unsupported-format
-             (try (expectations.protocol/probes r nil)
-                  ::no-refusal
-                  (catch clojure.lang.ExceptionInfo e (:error-type (ex-data e)))))))))
 
 (deftest database-type-and-column-name-are-not-checked-here-test
   ;; Neither is checked anywhere: `compile/rows-query` writes a column name as one quoted identifier
