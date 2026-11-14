@@ -58,7 +58,7 @@ import type {
 import { getFormattingOptionsWithoutScaling } from "./util";
 
 // Default to 5 ticks for consistent behavior between single and multiple series
-const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
+export const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
 
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;

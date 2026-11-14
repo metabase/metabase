@@ -19,7 +19,13 @@ export {
   hasDay,
   hasHour,
 } from "./datetime-utils";
-export { duration, formatDuration, formatDurationLong } from "./duration";
+export {
+  type FormatDurationOptions,
+  duration,
+  formatDuration,
+  formatDurationLong,
+  getDurationTickInterval,
+} from "./duration";
 export { formatField } from "./field";
 export { formatNullable } from "./nullable";
 export {

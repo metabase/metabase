@@ -1,6 +1,11 @@
 import { Model, helper } from "echarts/core";
 import type { YAXisOption } from "echarts/types/dist/shared";
 
+import {
+  type FormatDurationOptions,
+  getDurationTickInterval,
+} from "metabase/utils/formatting";
+
 import { PLOT_HEIGHT_BREAKPOINTS } from "../../../shared/constants/layout";
 import type { Extent } from "../../../types";
 
@@ -13,6 +18,38 @@ class ValueAxisScaleModel extends Model<ValueAxisOption> {
   }
 }
 
+export function getResponsiveYAxisSegments(height: number) {
+  return height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
+}
+
+export function getDurationYAxisTicks(
+  extent: Extent,
+  axis: ValueAxisOption,
+  maxSegments: number,
+  durationOptions: FormatDurationOptions,
+) {
+  const [dataMin, dataMax] = axis.scale
+    ? extent
+    : [Math.min(extent[0], 0), Math.max(extent[1], 0)];
+  const lower = typeof axis.min === "number" ? axis.min : dataMin;
+  const upper = typeof axis.max === "number" ? axis.max : dataMax;
+  const interval = getDurationTickInterval(
+    upper - lower,
+    maxSegments,
+    durationOptions,
+  );
+  const min = Math.floor(lower / interval) * interval;
+  const max = Math.max(Math.ceil(upper / interval) * interval, min + interval);
+  const hasPaddedMin = axis.boundaryGap != null;
+
+  return {
+    ...axis,
+    interval,
+    min: axis.min ?? (hasPaddedMin ? undefined : min),
+    max: axis.max ?? max,
+  };
+}
+
 /** Uses the final axis options so explicit ticks share ECharts' rendered scale. */
 export function getResponsiveYAxisTicks(
   extent: Extent,
@@ -21,7 +58,7 @@ export function getResponsiveYAxisTicks(
 ) {
   const scale = helper.createScale(extent, new ValueAxisScaleModel(axis));
   const [min, max] = scale.getExtent();
-  const segments = height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
+  const segments = getResponsiveYAxisSegments(height);
   const gridlines = Array.from({ length: segments + 1 }, (_, index) =>
     index === segments ? max : min + ((max - min) * index) / segments,
   );

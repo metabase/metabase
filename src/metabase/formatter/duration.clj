@@ -82,7 +82,7 @@
    {:keys [unit style precision decimal grouping]} :- DurationOptions]
   (let [precision-ms (get precision->ms precision ms-per-second)
         ms           (duration->ms value unit)
-        total-ms     (* (Math/round (/ (abs ms) precision-ms)) precision-ms)]
+        total-ms     (* (Math/round (/ (Math/abs (double ms)) (double precision-ms))) precision-ms)]
     (str (when (and (neg? ms) (pos? total-ms)) "-")
          (if (= style "narrow")
            (format-narrow total-ms precision grouping)

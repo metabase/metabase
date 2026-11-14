@@ -93,6 +93,17 @@ const DURATION_PRECISION_MS: Record<TimeEnabled, number> = {
   milliseconds: MILLISECOND_MS,
 };
 
+const DURATION_TICK_STEPS_MS = [
+  ...[1, 2, 5, 10, 20, 50, 100, 200, 500].map(
+    (count) => count * MILLISECOND_MS,
+  ),
+  ...[1, 2, 5, 10, 15, 20, 30].map((count) => count * SECOND_MS),
+  ...[1, 2, 5, 10, 15, 20, 30].map((count) => count * MINUTE_MS),
+  ...[1, 2, 3, 6, 12].map((count) => count * HOUR_MS),
+];
+
+const DAY_TICK_FACTORS = [1, 2, 5, 10];
+
 type NarrowDurationUnit = {
   unitMs: number;
   wrapMs: number;
@@ -200,4 +211,33 @@ function formatInteger(value: number, groupingSeparator: string): string {
 
 function padDigits(value: number, length: number): string {
   return String(value).padStart(length, "0");
+}
+
+export function getDurationTickInterval(
+  span: number,
+  maxIntervalCount: number,
+  {
+    duration_unit = "second",
+    duration_precision = "seconds",
+  }: FormatDurationOptions = {},
+): number {
+  const unitMs = DURATION_UNIT_MS[duration_unit];
+  const minStepMs = Math.max(
+    (span * unitMs) / maxIntervalCount,
+    DURATION_PRECISION_MS[duration_precision],
+  );
+  const stepMs =
+    DURATION_TICK_STEPS_MS.find((step) => step >= minStepMs) ??
+    getDayTickStepMs(minStepMs);
+
+  return stepMs / unitMs;
+}
+
+function getDayTickStepMs(minStepMs: number): number {
+  const minDays = Math.max(minStepMs / DAY_MS, 1);
+  const magnitude = 10 ** Math.floor(Math.log10(minDays));
+  const factor =
+    DAY_TICK_FACTORS.find((factor) => factor * magnitude >= minDays) ?? 10;
+
+  return factor * magnitude * DAY_MS;
 }

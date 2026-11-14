@@ -1,4 +1,8 @@
-import { formatDuration, formatDurationLong } from "./duration";
+import {
+  formatDuration,
+  formatDurationLong,
+  getDurationTickInterval,
+} from "./duration";
 
 describe("formatDurationLong", () => {
   it("formats 0 and sub-second durations in ms", () => {
@@ -138,5 +142,43 @@ describe("formatDuration", () => {
         number_separators: ", ",
       }),
     ).toBe("1 000d");
+  });
+});
+
+describe("getDurationTickInterval", () => {
+  it("picks smallest round duration that fits interval count", () => {
+    expect(getDurationTickInterval(3723, 4)).toBe(1200);
+    expect(getDurationTickInterval(3723, 5)).toBe(900);
+    expect(getDurationTickInterval(36_000, 4)).toBe(10_800);
+    expect(getDurationTickInterval(45, 4)).toBe(15);
+  });
+
+  it("returns interval in column unit", () => {
+    expect(
+      getDurationTickInterval(100, 5, {
+        duration_unit: "millisecond",
+        duration_precision: "milliseconds",
+      }),
+    ).toBe(20);
+    expect(getDurationTickInterval(90, 4, { duration_unit: "minute" })).toBe(
+      30,
+    );
+    expect(getDurationTickInterval(2, 4, { duration_unit: "hour" })).toBe(0.5);
+  });
+
+  it("steps by round day counts past 12 hours", () => {
+    expect(getDurationTickInterval(3 * 86_400, 4)).toBe(86_400);
+    expect(getDurationTickInterval(30 * 86_400, 4)).toBe(10 * 86_400);
+    expect(getDurationTickInterval(900, 4, { duration_unit: "day" })).toBe(500);
+  });
+
+  it("never steps below shown precision", () => {
+    expect(getDurationTickInterval(0, 4)).toBe(1);
+    expect(
+      getDurationTickInterval(60, 4, { duration_precision: "minutes" }),
+    ).toBe(60);
+    expect(
+      getDurationTickInterval(2, 4, { duration_precision: "milliseconds" }),
+    ).toBe(0.5);
   });
 });
