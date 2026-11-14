@@ -13,6 +13,7 @@
   can-run-query?
   can-run-query-with-resolved-source-ids?
   check-card-read-perms
+  check-cards-read-perms
   check-card-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms

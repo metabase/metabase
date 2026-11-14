@@ -46,7 +46,6 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
                     :permissions-error?   true
                     :response/keys        #{:required-permissions}}
                    additional-ex-data))))
@@ -186,11 +185,13 @@
         (query-permissions.db/card-collection-id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- source-card-read-perms :- [:set perms/PathSchema]
-  "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
-  query."
-  [source-card-id :- ::lib.schema.id/card]
-  (mi/perms-objects-set (card-instance source-card-id) :read))
+(mu/defn- can-read-card-collections? :- :boolean
+  "Whether the current user reads the Collection of each of the Cards with `card-ids`, which running a query over the
+  Cards needs, answered together."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (let [collection-ids (mapv #(:collection_id (card-instance %)) card-ids)
+        permissions    (perms/collection-permissions-for-user (api/current-user-info) collection-ids {:root-namespace nil})]
+    (every? #(perms/collection-permission-at-least? (get permissions %) :read) collection-ids)))
 
 (defn- preprocess-query [query]
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
@@ -294,11 +295,8 @@
    {:perms/create-queries :query-builder-and-native
     :perms/view-data      :unrestricted}
    (when (seq card-ids)
-     {:card-ids card-ids
-      :paths    (into #{}
-                      (mapcat (fn [card-id]
-                                (mi/perms-objects-set (card-instance card-id) :read)))
-                      card-ids)})))
+     {:card-ids        card-ids
+      :source-card-ids card-ids})))
 
 (defn- native-query-perms
   [query]
@@ -333,7 +331,9 @@
                                        not-empty
                                        (->> (lib-be/normalize-query metadata-provider))
                                        lib/primary-source-card-id)]
-         {:paths (source-card-read-perms source-card-id)}
+         (do
+           (card-instance source-card-id)
+           {:source-card-ids #{source-card-id}})
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
          (resolved-source-ids->required-perms
           (or resolved-source-ids
@@ -364,7 +364,8 @@
 
 (defn required-perms-for-query
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries.
+  :source-card-ids (the Cards whose Collections the user must read), :card-ids, :perms/view-data, and
+  :perms/create-queries.
 
   `:resolved-source-ids` stands in for preprocessing."
   [query & {:as perms-opts}]
@@ -439,7 +440,7 @@
 (mr/def ::required-perms
   "The permissions required to run a query, as returned by [[required-perms-for-query]]."
   [:map {:closed true}
-   [:paths                 {:optional true} [:set :string]]
+   [:source-card-ids       {:optional true} [:set ::lib.schema.id/card]]
    [:card-ids              {:optional true} [:set ::lib.schema.id/card]]
    [:perms/view-data       {:optional true} ::perm-value]
    [:perms/create-queries  {:optional true} ::perm-value]])
@@ -463,17 +464,26 @@
        (throw (ex-info (tru "Invalid permissions format") required-perms)))
      true)))
 
+(mu/defn check-cards-read-perms
+  "Check that the current user has permissions to read each Card of `card-ids`, or throw an Exception for the first
+  they cannot read. The Cards are hydrated together."
+  [database-id :- [:maybe ::lib.schema.id/database]
+   card-ids    :- [:seqable ::lib.schema.id/card]]
+  (when (seq card-ids)
+    (qp.store/with-metadata-provider database-id
+      (let [card-ids (vec card-ids)
+            cards    (t2/hydrate (mapv #(card database-id %) card-ids) :can_read)]
+        (doseq [[card-id card] (map vector card-ids cards)]
+          (when-not (mi/can-read? card)
+            (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
+                                    {:card-ids #{card-id}}
+                                    {:card-id card-id}))))))))
+
 (mu/defn check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
-  (qp.store/with-metadata-provider database-id
-    (let [card (card database-id card-id)]
-      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-      (when-not (mi/can-read? (t2/hydrate card :can_read))
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
-                                (mi/perms-objects-set card :read)
-                                {:card-id card-id}))))))
+  (check-cards-read-perms database-id [card-id]))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
@@ -482,9 +492,9 @@
   [query required-perms & {:keys [throw-exceptions?]
                            :or   {throw-exceptions? true}}]
   (try
-    (when-let [paths (:paths required-perms)]
-      (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
-          (throw (perms-exception paths))))
+    (when-let [source-card-ids (:source-card-ids required-perms)]
+      (or (can-read-card-collections? source-card-ids)
+          (throw (perms-exception required-perms))))
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
@@ -506,8 +516,8 @@
     (let [required-perms (required-perms-for-query query perms-opts)]
       (check-data-perms query required-perms)
       ;; Check card read permissions for any cards referenced in subqueries!
-      (doseq [card-id (:card-ids required-perms)]
-        (check-card-read-perms database-id card-id))
+      (when-let [card-ids (seq (:card-ids required-perms))]
+        (check-cards-read-perms database-id card-ids))
       true)
     (catch clojure.lang.ExceptionInfo e
       (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))
@@ -599,7 +609,6 @@
                           :query          query
                           :required-perms (if (instance? Throwable required-perms)
                                             :error
-                                            required-perms)
-                          :actual-perms   @api/*current-user-permissions-set*}
+                                            required-perms)}
                          (when (instance? Throwable required-perms)
                            required-perms))))))))

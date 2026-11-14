@@ -251,7 +251,7 @@
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
-    (doseq [dashboard dashboards]
+    (doseq [dashboard (t2/hydrate dashboards :can_write)]
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
 
@@ -723,7 +723,7 @@
           ;; whole, as the update event's previous object: a listener reads a card's metadata from it
           before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
-      (doseq [card cards]
+      (doseq [card (t2/hydrate cards :can_write)]
         (api/write-check card))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]

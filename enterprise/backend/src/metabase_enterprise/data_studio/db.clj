@@ -90,6 +90,13 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
+(mu/defn collections
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Collection :id [:in collection-ids])
+    []))
+
 (mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]

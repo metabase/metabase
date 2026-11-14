@@ -2,6 +2,7 @@
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -19,16 +20,24 @@
 (methodical/defmethod t2/table-name :model/TaskRun [_model] :task_run)
 
 (doto :model/TaskRun
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write TaskRun. Same as TaskHistory - requires superusers or monitoring permission.
-(defmethod mi/perms-objects-set :model/TaskRun
-  [_task-run _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskRun rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (def run-types
   "Valid run types."

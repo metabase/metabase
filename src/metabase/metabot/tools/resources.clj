@@ -512,7 +512,7 @@
    :id            id
    :name          name
    :collection_id collection_id
-   :can_write     (boolean (mi/can-write? (t2/hydrate dashboard :can_write)))
+   :can_write     (boolean (mi/can-write? dashboard))
    :description   description
    :uri           (llm-shape/metabase-uri :dashboard id)})
 
@@ -522,7 +522,7 @@
    :id            id
    :name          name
    :collection_id collection_id
-   :can_write     (boolean (mi/can-write? (t2/hydrate document :can_write)))
+   :can_write     (boolean (mi/can-write? document))
    :uri           (llm-shape/metabase-uri :document id)})
 
 (defn- present-transform
@@ -694,9 +694,11 @@
     (let [coll-id        (parse-long id-str)
           coll           (when-not (= id-str "root") (readable-collection id-str))
           cards          (filterv mi/can-read? (t2/hydrate (metabot.db/cards-in-collection coll-id) :can_read))
-          dashboards     (filterv mi/can-read? (t2/hydrate (metabot.db/dashboards-in-collection coll-id) :can_read))
+          dashboards     (-> (filterv mi/can-read? (t2/hydrate (metabot.db/dashboards-in-collection coll-id) :can_read))
+                             (t2/hydrate :can_write))
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
-          documents      (filterv mi/can-read? (t2/hydrate (metabot.db/documents-in-collection coll-id) :can_read))
+          documents      (-> (filterv mi/can-read? (t2/hydrate (metabot.db/documents-in-collection coll-id) :can_read))
+                             (t2/hydrate :can_write))
           subcollections (-> (if (= id-str "root")
                                (metabot.db/navigable-collections false)
                                (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
@@ -872,20 +874,26 @@
                    :field-id    field-id
                    :limit       30})))
 
-(defn- readable-source-item?
-  "Whether the current user can read the table or card a `card-sources-items` entry names."
-  [{:keys [type id]}]
-  (case type
-    "table"                      (some-> (metabot.db/table id) (t2/hydrate :can_read) mi/can-read?)
-    ("model" "metric" "question") (some-> (metabot.db/card id) (t2/hydrate :can_read) mi/can-read?)
-    true))
+(defn- readable-source-items
+  "The `card-sources-items` entries `items` whose table or card the current user can read."
+  [items]
+  (let [ids-of   (fn [types] (into [] (comp (filter (comp types :type)) (map :id) (distinct)) items))
+        readable (fn [rows] (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate rows :can_read)))
+        tables   (readable (metabot.db/tables-with-ids (ids-of #{"table"})))
+        cards    (readable (metabot.db/cards-with-ids (ids-of #{"model" "metric" "question"})))]
+    (filterv (fn [{:keys [type id]}]
+               (case type
+                 "table"                       (contains? tables id)
+                 ("model" "metric" "question") (contains? cards id)
+                 true))
+             items)))
 
 (defn- fetch-card-sources [type-str id-str query-params]
   (let [card (check-card-kind (parse-long id-str) (keyword type-str) "sources")]
     ;; under curated-only the list is filtered by curation, so what the user cannot read is dropped first
     (list-result :card-sources
                  (cond->> (card-sources-items card)
-                   (shared/curated-only?) (filterv readable-source-item?))
+                   (shared/curated-only?) readable-source-items)
                  query-params)))
 
 ;; ----- Metric -----

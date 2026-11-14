@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
@@ -275,8 +274,7 @@
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
-        (binding [api/*current-user-id*              (test.users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta test.users/user->id perms/user-permissions-set atom)]
+        (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))

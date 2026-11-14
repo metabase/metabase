@@ -1,19 +1,9 @@
 (ns metabase.revisions.models.revision.diff
   (:require
    [clojure.data :as data]
-   [metabase.models.interface :as mi]
-   [metabase.revisions.db :as revisions.db]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.match :as match]
-   [toucan2.core :as t2]))
-
-(defn- readable-name
-  [model id]
-  (when id
-    (when-let [instance (revisions.db/entity model id)]
-      (when (mi/can-read? (t2/hydrate instance :can_read))
-        (:name instance)))))
+   [metabase.util.match :as match]))
 
 (defn- match-1 [k v1 v2 identifier]
   (match/match-one [k v1 v2]
@@ -56,7 +46,7 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")))
 
-(defn- match-2 [k v1 v2 identifier]
+(defn- match-2 [k v1 v2 identifier names]
   (match/match-one [k v1 v2]
     [:archived _ after]
     (if after
@@ -68,17 +58,17 @@
 
     [:collection_id nil coll-id]
     (deferred-tru "moved {0} to {1}" identifier (if coll-id
-                                                  (or (readable-name :model/Collection coll-id)
+                                                  (or (get-in names [:collection-names coll-id])
                                                       (str "#" coll-id))
                                                   (deferred-tru "Our analytics")))
 
     [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
                   identifier
-                  (or (readable-name :model/Collection prev-coll-id)
+                  (or (get-in names [:collection-names prev-coll-id])
                       (str "#" prev-coll-id))
                   (if coll-id
-                    (or (readable-name :model/Collection coll-id)
+                    (or (get-in names [:collection-names coll-id])
                         (str "#" coll-id))
                     (deferred-tru "Our analytics")))
 
@@ -108,12 +98,12 @@
     [:dashboard_id v1 v2]
     (cond
       (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
-                                (readable-name :model/Dashboard v1)
-                                (readable-name :model/Dashboard v2))
+                                (get-in names [:dashboard-names v1])
+                                (get-in names [:dashboard-names v2]))
       (nil? v1) (deferred-tru "moved this question into {0}"
-                              (readable-name :model/Dashboard v2))
+                              (get-in names [:dashboard-names v2]))
       (nil? v2) (deferred-tru "moved this question from {0}"
-                              (readable-name :model/Dashboard v1)))
+                              (get-in names [:dashboard-names v1])))
 
     [:width v1 v2]
     (if (and v1 v2)
@@ -131,9 +121,9 @@
     ;; Don't recurse, bail on fallthrough.
     _ nil))
 
-(defn- diff-string [k v1 v2 identifier]
+(defn- diff-string [k v1 v2 identifier names]
   (or (match-1 k v1 v2 identifier)
-      (match-2 k v1 v2 identifier)))
+      (match-2 k v1 v2 identifier names)))
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one."
@@ -158,9 +148,9 @@
     "CardTest"      (deferred-tru "Card test")))
 
 (defn diff-strings*
-  "Create a seq of string describing how `o1` is different from `o2`.
+  "Create a seq of string describing how `o1` is different from `o2`, naming Collections and Dashboards from `names`.
   The directionality of the statement should indicate that `o1` changed into `o2`."
-  [model o1 o2]
+  [model o1 o2 names]
   (when-let [[before after] (data/diff o1 o2)]
     (let [model-name (try
                        (model-str->i18n-str model)
@@ -181,6 +171,6 @@
           strings
           (let [k          (first ks)
                 identifier (if (zero? identifier-count) (deferred-tru "this {0}" model-name) (deferred-tru "it"))]
-            (if-let [diff-str (diff-string k (k before) (k after) identifier)]
+            (if-let [diff-str (diff-string k (k before) (k after) identifier names)]
               (recur (rest ks) (inc identifier-count) (conj strings diff-str))
               (recur (rest ks) identifier-count strings))))))))

@@ -301,12 +301,12 @@
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
 (defn- save-card!
-  [card]
+  [id->existing-card card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (dashboards.db/card (:id card)))
+    (and (integer? (:id card)) (get id->existing-card (:id card)))
     (do
-      (api/read-check :model/Card (:id card))
+      (api/read-check (get id->existing-card (:id card)))
       card)
 
     ;; Don't save text cards
@@ -323,7 +323,7 @@
                          (assoc :creator_id api/*current-user-id*))
                      (lib/normalize ::queries.schema/card.update)))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      card)))
 
 (defn- check-dashcard-parameter-mapping-permissions
   [dashcards]
@@ -360,17 +360,20 @@
                                       :creator_id api/*current-user-id*))
                            (lib/normalize ::dashboards.schema/dashboard.update)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
+          dashcards  (for [dashcard dashcards]
+                       (-> dashcard
+                           (update :card #(some-> % (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)))
+                           (update :series #(some->> % (mapv (fn [card] (assoc card :collection_id parent-collection-id)))))))
+          existing-card-ids (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                                           (keep :id)
+                                           (filter pos-int?)
+                                           (distinct))
+                                  dashcards)
+          id->existing-card (m/index-by :id (t2/hydrate (dashboards.db/cards-by-ids existing-card-ids) :can_read))
           dashcards-to-add (for [dashcard dashcards]
-                             (let [card     (some-> dashcard :card
-                                                    (assoc :dashboard_id (:id dashboard)
-                                                           :collection_id parent-collection-id)
-                                                    save-card!)
-                                   series   (some->> dashcard
-                                                     :series
-                                                     (mapv (fn [card]
-                                                             (-> card
-                                                                 (assoc :collection_id parent-collection-id)
-                                                                 save-card!))))
+                             (let [card     (some->> dashcard :card (save-card! id->existing-card))
+                                   series   (some->> dashcard :series (mapv #(save-card! id->existing-card %)))
                                    dashcard (-> dashcard
                                                 (dissoc :card :id :creator_id)
                                                 (update :parameter_mappings

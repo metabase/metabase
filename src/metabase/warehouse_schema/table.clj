@@ -95,7 +95,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (warehouse-schema.db/tables ids)
+     (let [tables (t2/hydrate (warehouse-schema.db/tables ids) :can_read)
            tables (filter can-access-table-for-query-metadata? tables)
            sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]

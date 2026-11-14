@@ -2,14 +2,12 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-permissions.impl-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -90,8 +88,7 @@
                    :model/Table    table {:db_id (u/the-id db) :schema nil}
                    :model/Field    _     {:table_id (u/the-id table)}]
       (mt/with-no-data-perms-for-all-users!
-        (binding [*current-user-permissions-set* (atom nil)
-                  *current-user-id*              (mt/user->id :rasta)]
+        (mt/with-current-user (mt/user->id :rasta)
           (is (= {:perms/view-data      {(u/the-id table) :unrestricted}
                   :perms/create-queries {(u/the-id table) :query-builder}}
                  (query-perms/required-perms-for-query
@@ -127,7 +124,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -138,7 +135,7 @@
                                      :dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{(permissions.path/collection-read-path collection)}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -150,7 +147,7 @@
                                       :type     :query
                                       :query    {:source-table (mt/id :checkins)
                                                  :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -160,7 +157,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :native
                                                      :native   {:query "SELECT * FROM CHECKINS"}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -322,8 +319,7 @@
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted
                 :card-ids             #{card-1-id card-2-id}
-                :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                        (format "/collection/%d/read/" collection-2-id)}}
+                :source-card-ids      #{card-1-id card-2-id}}
                (query-perms/required-perms-for-query
                 {:database                              (mt/id)
                  :type                                  :native
@@ -341,15 +337,13 @@
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
                   :card-ids             #{card-1-id card-2-id}
-                  :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                          (format "/collection/%d/read/" collection-2-id)}}
+                  :source-card-ids      #{card-1-id card-2-id}}
                  (query-perms/required-perms-for-query native-query :already-preprocessed? true)))
           (testing "MBQL 5 query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
                     :card-ids             #{card-1-id card-2-id}
-                    :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                            (format "/collection/%d/read/" collection-2-id)}}
+                    :source-card-ids      #{card-1-id card-2-id}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
                                (lib/->mbql5 native-query))

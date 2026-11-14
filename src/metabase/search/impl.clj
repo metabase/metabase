@@ -36,26 +36,22 @@
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
-(defmacro ^:private ensure-current-user-perms-set-is-bound
-  "TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user-permissions-set*]] to be
-  bound (since [[mi/can-write?]] and [[mi/can-read?]] depend on it) despite search context requiring
-  `:current-user-perms` to be passed in. We should fix things so search works independently of API-specific dynamic
-  variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
-  on dynamic variables."
-  {:style/indent 0}
-  [current-user-id current-user-perms & body]
-  `(binding [api/*current-user-id*              ~current-user-id
-             api/*current-user-permissions-set* (atom ~current-user-perms)]
+(defmacro ^:private with-search-user
+  "Runs `body` with the user of `search-ctx` as the current user, whom `mi/can-read?` and `mi/can-write?` answer for."
+  {:style/indent 1}
+  [search-ctx & body]
+  `(binding [api/*current-user-id* (:current-user-id ~search-ctx)
+             api/*is-superuser?*   (boolean (:is-superuser? ~search-ctx))]
      ~@body))
 
-(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? (t2/hydrate instance :can_write))))
+(defn- can-write? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-write? (t2/hydrate instance :can_write))))
 
-(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? (t2/hydrate instance :can_read))))
+(defn- can-read? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-read? (t2/hydrate instance :can_read))))
 
-(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? (t2/hydrate instance :can_query))))
+(defn- can-query? [search-ctx instance]
+  (with-search-user search-ctx (mi/can-query? (t2/hydrate instance :can_query))))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
@@ -262,7 +258,6 @@
    [:is-routed-user?                                      :boolean]
    [:is-superuser?                                        :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
-   [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -299,7 +294,6 @@
            created-at
            created-by
            current-user-id
-           current-user-perms
            display-type
            filter-items-in-personal-collection
            ids
@@ -329,7 +323,7 @@
            curated
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
-  {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
+  {:pre [(pos-int? current-user-id)]}
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -342,7 +336,6 @@
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
-                        :current-user-perms                  current-user-perms
                         :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
@@ -418,13 +411,21 @@
 
 (def ^:private hydrated-checks
   "The checks to hydrate on the search results of each model, which the permission checks and `:can_write` read."
-  {:model/Card      [:can_read :can_write]
-   :model/Dashboard [:can_write]
-   :model/Document  [:can_write]
-   :model/Table     [:can_query :can_write]
-   :model/Segment   [:can_read :can_write]
-   :model/Measure   [:can_read :can_write]
-   :model/Database  [:can_read]})
+  {:model/Card        [:can_read :can_write]
+   :model/Dashboard   [:can_write]
+   :model/Document    [:can_write]
+   :model/Table       [:can_query :can_write]
+   :model/Segment     [:can_read :can_write]
+   :model/Measure     [:can_read :can_write]
+   :model/Database    [:can_read]})
+
+(def ^:private archived-checks
+  "The checks to hydrate on archived search results of the models [[hydrated-checks]] leaves out, which only the
+  archived permission check reads."
+  {:model/Action      [:can_write]
+   :model/Transform   [:can_write]
+   :model/Exploration [:can_write]
+   :model/DataApp     [:can_write]})
 
 (defn- collection-check-answers
   "The `:can_write` answer of each Collection with `collection-ids`, keyed by model and id, from the columns the check
@@ -437,12 +438,16 @@
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
 (defn- model-check-answers
-  "The [[hydrated-checks]] answers of `results`, keyed by model and id, leaving `:can_write` out without `write?`."
-  [write? results]
+  "The check answers of `results`, keyed by model and id, for `phase`: `:read` leaves `:can_write` out, `:page` takes
+  the [[hydrated-checks]], and `:archived` the [[archived-checks]] too."
+  [phase results]
   (into {}
         (mapcat (fn [[model rows]]
-                  (when-let [checks (not-empty (cond->> (get hydrated-checks model)
-                                                 (not write?) (remove #{:can_write})))]
+                  (when-let [checks (not-empty (case phase
+                                                 :read     (remove #{:can_write} (get hydrated-checks model))
+                                                 :page     (get hydrated-checks model)
+                                                 :archived (or (get hydrated-checks model)
+                                                               (get archived-checks model))))]
                     (for [row (apply t2/hydrate
                                      (cond->> rows
                                        (= model :model/Table) (map #(assoc % :db_id (:database_id %))))
@@ -452,13 +457,13 @@
 
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
-  per model its [[hydrated-checks]], and `:can_write` on Collections. Without `write?`, `:can_write` is left out."
-  [{:keys [current-user-id current-user-perms]} write? results]
+  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`."
+  [search-ctx phase results]
   (let [results        (vec results)
-        collection-ids (when write?
+        collection-ids (when (not= phase :read)
                          (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
-        answers        (ensure-current-user-perms-set-is-bound current-user-id current-user-perms
-                                                               (merge (collection-check-answers collection-ids) (model-check-answers write? results)))]
+        answers        (with-search-user search-ctx
+                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
@@ -468,7 +473,7 @@
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
   [search-ctx result]
-  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (boolean (:archived? search-ctx)) [(normalize-result result)]))))
+  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read) [(normalize-result result)]))))
 
 (defn- add-can-write
   "Leaves `:can_write` on the results that carry it in the response, and takes the hydrated checks off the others."
@@ -531,7 +536,7 @@
                             (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
-                            true (hydrate-checks search-ctx true)
+                            true (hydrate-checks search-ctx :page)
                             true (map (partial add-can-write search-ctx))
                             true (map serialize)
                             ;; Realize within the enclosing tracing span so hydration and
@@ -565,7 +570,7 @@
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (partition-all 500)
-                           (mapcat (partial hydrate-checks search-ctx (boolean (:archived? search-ctx))))
+                           (mapcat (partial hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read)))
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

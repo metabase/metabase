@@ -673,15 +673,19 @@
               (distinct))
         (tree-seq coll? seq parsed-query)))
 
-(defn- readable-card-by-ref
-  "The Card `ref` names, when it exists and the current user can read it; nil otherwise, which leaves a missing or
-  unreadable Card to resolve's own answer."
-  [ref]
-  (when-let [card (cond
-                    (string? ref)                           (metabot.db/card-by-entity-id ref)
-                    repr.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
-    (when (mi/can-read? (t2/hydrate card :can_read))
-      card)))
+(defn- readable-cards-by-ref
+  "A function from each of `refs` to the Card it names, when that Card exists and the current user can read it; nil
+  otherwise, which leaves a missing or unreadable Card to resolve's own answer."
+  [refs]
+  (let [by-eid    (metabot.db/cards-with-entity-ids (into [] (comp (filter string?) (distinct)) refs))
+        by-id     (if repr.resolve/*numeric-ids-allowed?*
+                    (metabot.db/cards-with-ids (into [] (comp (filter pos-int?) (distinct)) refs))
+                    [])
+        readable  (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate (into by-eid by-id) :can_read))
+        eid->card (into {} (comp (filter (comp readable :id)) (map (juxt :entity_id identity))) by-eid)
+        id->card  (into {} (comp (filter (comp readable :id)) (map (juxt :id identity))) by-id)]
+    (fn [ref]
+      (if (string? ref) (eid->card ref) (id->card ref)))))
 
 (defn- check-curated-portable-sources!
   "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, a Card it
@@ -693,18 +697,18 @@
   [[check-source-table-query-permissions!]] resolved."
   [metadata-provider parsed-query table-ids]
   (when (shared/curated-only?)
-    (let [cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
-          metric-ids   (into #{}
-                             (comp (keep readable-card-by-ref) (map :id))
-                             (portable-metric-refs parsed-query))
+    (let [source-ref   (or (first-stage-source-card-eid parsed-query)
+                           (when repr.resolve/*numeric-ids-allowed?*
+                             (first-stage-numeric-source-card parsed-query)))
+          card-refs    (source-card-refs parsed-query)
+          metric-refs  (portable-metric-refs parsed-query)
+          card-by-ref  (readable-cards-by-ref (cond-> (into card-refs metric-refs) source-ref (conj source-ref)))
+          cards        (into [] (keep card-by-ref) card-refs)
+          metric-ids   (into #{} (comp (keep card-by-ref) (map :id)) metric-refs)
           ;; a metric Card used as a source is judged as a metric, as the full rule judges it
           metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
           card-ids     (into #{} (comp (remove #(= :metric (:type %))) (map :id)) cards)
-          source-card  (some-> (or (first-stage-source-card-eid parsed-query)
-                                   (when repr.resolve/*numeric-ids-allowed?*
-                                     (first-stage-numeric-source-card parsed-query)))
-                               readable-card-by-ref
-                               :id)
+          source-card  (some-> source-ref card-by-ref :id)
           source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
                                          (when repr.resolve/*numeric-ids-allowed?*
                                            (first-stage-numeric-source-table parsed-query)))]

@@ -1920,21 +1920,6 @@
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
-;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
-(defmethod mi/perms-objects-set :model/Collection
-  [collection-or-id read-or-write]
-  (let [collection (if (integer? collection-or-id)
-                     (collections.db/collection-id-and-namespace collection-or-id)
-                     collection-or-id)]
-    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (premium-features/enable-snippet-collections?)))
-      #{}
-      ;; This is not entirely accurate as you need to be a superuser to modify a collection itself (e.g., changing its
-      ;; name) but if you have write perms you can add/remove cards
-      #{(case read-or-write
-          :read  (perms/collection-read-path (u/the-id collection-or-id))
-          :write (perms/collection-readwrite-path (u/the-id collection-or-id)))})))
-
 (def instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")
@@ -1957,6 +1942,19 @@
                 (get collections (:entity_id coll))))
         entities))
 
+(def ^:private library-stored-names
+  "The names that the system-created Library collections are stored and serialized with, by entity id."
+  {library-entity-id            "Library"
+   library-data-entity-id       "Data"
+   library-metrics-entity-id    "Metrics"
+   library-dashboards-entity-id "Dashboards"})
+
+(defn- stored-names
+  "A transform fn exporting and importing the system-created Library collections with their stored names, which a select translates."
+  [_store collections names _opts]
+  (mapv (fn [collection collection-name] (get library-stored-names (:entity_id collection) collection-name))
+        collections names))
+
 (defn- import-parent-locations
   "A transform fn importing parent Collection entity ids as the locations of their children."
   [store _entities parent-eids opts]
@@ -1968,8 +1966,10 @@
 (defmethod serialization/spec :model/Collection [_]
   {:schema    ::collections.schema/external-collection
    :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :name :namespace :slug :type]
-   :transform {:location          {:as     :parent_id
+               :is_remote_synced :is_sample :namespace :slug :type]
+   :transform {:name              {:export stored-names
+                                   :import stored-names}
+               :location          {:as     :parent_id
                                    :export (fn [store _ locations _]
                                              (serialization/column-refs store :model/Collection
                                                                         (map location-path->parent-id locations)))
@@ -2186,24 +2186,25 @@
                                                (every? writable-ids (cons (u/the-id coll) descendant-ids)))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [[{collection :collection} item] (map vector (t2/hydrate items [:collection :can_write]) items)]
-    (assoc item :can_restore (boolean
-                              (and
-                               ;; the item is archived
-                               (:archived item)
-                               ;; the item is directly in the trash (it was archived independently, not as
-                               ;; part of a collection)
-                               (:archived_directly item)
-                               ;; EITHER:
-                               (or
-                                ;; the item was archived from the root collection
-                                (nil? (:collection_id item))
-                                ;; or the collection we'll restore to actually exists.
-                                (some? collection))
-                               ;; the collection we'll restore to is not archived
-                               (not (:archived collection))
-                               ;; we have perms on the collection
-                               (mi/can-write? (or collection (t2/hydrate root-collection :can_write))))))))
+  (let [hydrated-root (delay (t2/hydrate root-collection :can_write))]
+    (for [[{collection :collection} item] (map vector (t2/hydrate items [:collection :can_write]) items)]
+      (assoc item :can_restore (boolean
+                                (and
+                                 ;; the item is archived
+                                 (:archived item)
+                                 ;; the item is directly in the trash (it was archived independently, not as
+                                 ;; part of a collection)
+                                 (:archived_directly item)
+                                 ;; EITHER:
+                                 (or
+                                  ;; the item was archived from the root collection
+                                  (nil? (:collection_id item))
+                                  ;; or the collection we'll restore to actually exists.
+                                  (some? collection))
+                                 ;; the collection we'll restore to is not archived
+                                 (not (:archived collection))
+                                 ;; we have perms on the collection
+                                 (mi/can-write? (or collection @hydrated-root))))))))
 
 (mi/define-batched-hydration-method can-restore
   :can_restore

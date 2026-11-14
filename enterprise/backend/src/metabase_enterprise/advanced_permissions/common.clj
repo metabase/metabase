@@ -46,13 +46,13 @@
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
   This function is meant to be used for GET /api/user/current."
   [user]
-  (let [permissions-set       @api/*current-user-permissions-set*
-        user-id               api/*current-user-id*
+  (let [user-id               api/*current-user-id*
+        application           (perms/application-permissions-for-user (api/current-user-info))
         can-access-data-model (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-table-metadata)]
     (update user :permissions assoc
-            :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
-            :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
-            :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_setting      (contains? application :setting)
+            :can_access_subscription (contains? application :subscription)
+            :can_access_monitoring   (contains? application :monitoring)
             :can_access_data_model   can-access-data-model
             :can_access_db_details   (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-database)
             :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
@@ -66,8 +66,7 @@
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
   :feature :advanced-permissions
   [perm-type]
-  (or api/*is-superuser?*
-      (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
+  (contains? (perms/application-permissions-for-user (api/current-user-info)) perm-type))
 
 (defenterprise has-advanced-setting-access?
   "Check if `*current-user*` has permissions to edit settings."

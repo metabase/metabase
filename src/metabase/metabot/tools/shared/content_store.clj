@@ -171,19 +171,23 @@
                 true))
             field-id->table-id)))
 
-(defn- readable?
-  "Whether the current user can read the row; with `audited?` a refusal leaves the
-  [[api/read-check]] audit trail."
-  [audited? card-id]
+(defn- every-readable?
+  "Whether the current user can read every Card with `card-ids`, in order, throwing a 404 for a missing one; with
+  `audited?` a refusal leaves the [[api/read-check]] audit trail."
+  [audited? card-ids]
   (if audited?
-    (try
-      (api/read-check :model/Card card-id)
-      true
-      (catch clojure.lang.ExceptionInfo e
-        (if (= 403 (:status-code (ex-data e)))
-          false
-          (throw e))))
-    (mi/can-read? (t2/hydrate (api/check-404 (metabot.db/card card-id)) :can_read))))
+    (every? #(try
+               (api/read-check :model/Card %)
+               true
+               (catch clojure.lang.ExceptionInfo e
+                 (if (= 403 (:status-code (ex-data e)))
+                   false
+                   (throw e))))
+            card-ids)
+    (let [id->card (into {}
+                         (map (juxt :id identity))
+                         (t2/hydrate (metabot.db/cards-with-ids (into [] (distinct) card-ids)) :can_read))]
+      (every? #(mi/can-read? (api/check-404 (id->card %))) card-ids))))
 
 (defn- runnable-normalized-query
   "`resolved` normalized, when the current user may run it and see every table and field it
@@ -206,7 +210,7 @@
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
-                 (every? #(readable? audited? %) card)
+                 (every-readable? audited? card)
                  ;; throw on a calculation failure, so it lands in the catch below as a check we
                  ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))

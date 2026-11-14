@@ -17,27 +17,20 @@
 (def ^:private root-namespaces
   [nil :data-actions :snippets :transforms])
 
-(defn- check-against-permission-set
-  "Checks `collection-permissions-for-user` against the permission set of the test user `user` on `ids` and on the root
-  Collections."
-  [user ids]
-  (let [user-id     (user-info user)
-        perm-set    (perms/user-permissions-set (mt/user->id user))
-        expected    (fn [object]
-                      (cond
-                        (perms/set-has-full-permissions? perm-set (perms/collection-readwrite-path object)) :read-and-write
-                        (perms/set-has-full-permissions? perm-set (perms/collection-read-path object))      :read
-                        :else                                                                               :none))
-        permissions (perms/collection-permissions-for-user user-id (vec ids) {:root-namespace nil})]
+(defn- check-permissions
+  "Checks `collection-permissions-for-user` for the test user `user` against `expected` on the Collections and
+  `expected-roots` on the root Collections."
+  [user expected expected-roots]
+  (let [user-info (user-info user)]
     (testing "Collections"
-      (is (= (into {} (map (juxt identity expected)) ids)
-             permissions)))
+      (is (= expected
+             (perms/collection-permissions-for-user user-info (vec (keys expected)) {:root-namespace nil}))))
     (doseq [root-namespace root-namespaces]
       (testing (str "root of " root-namespace)
-        (is (= {nil (expected (assoc collection/root-collection :namespace root-namespace))}
-               (perms/collection-permissions-for-user user-id [nil] {:root-namespace root-namespace})))))))
+        (is (= {nil (get expected-roots root-namespace)}
+               (perms/collection-permissions-for-user user-info [nil] {:root-namespace root-namespace})))))))
 
-(deftest collection-permissions-match-permission-set-test
+(deftest collection-permissions-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [rasta-id    (mt/user->id :rasta)
           personal-id (:id (collection/user->personal-collection rasta-id))]
@@ -52,19 +45,26 @@
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
         (perms/grant-collection-read-permissions! (perms/all-users-group) child-id)
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-id)
-        (let [ids [read-id write-id none-id child-id archived-id transforms-id personal-id personal-child-id
-                   (collection/trash-collection-id)]]
+        (let [trash-id    (collection/trash-collection-id)
+              user-expect {read-id :read, write-id :read-and-write, none-id :none, child-id :read,
+                           archived-id :read-and-write, transforms-id :none, personal-id :read-and-write,
+                           personal-child-id :read-and-write, trash-id :read-and-write}
+              no-roots    {nil :none, :data-actions :none, :snippets :read-and-write, :transforms :none}]
           (testing "a user"
-            (check-against-permission-set :rasta ids))
+            (check-permissions :rasta user-expect no-roots))
           (testing "a data analyst"
             (perms.tu/with-data-analyst-role! rasta-id
-              (check-against-permission-set :rasta ids)))
+              (check-permissions :rasta
+                                 (assoc user-expect transforms-id :read-and-write)
+                                 (assoc no-roots :transforms :read-and-write))))
           (testing "a superuser"
-            (check-against-permission-set :crowberto ids))
+            (check-permissions :crowberto
+                               (update-vals user-expect (constantly :read-and-write))
+                               (update-vals no-roots (constantly :read-and-write))))
           (testing "with root Collection permissions"
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
             (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
-              (check-against-permission-set :rasta ids))))))))
+              (check-permissions :rasta user-expect (assoc no-roots nil :read-and-write :data-actions :read)))))))))
 
 (deftest collection-permissions-answer-every-id-asked-test
   (mt/with-non-admin-groups-no-root-collection-perms

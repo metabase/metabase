@@ -43,6 +43,20 @@
   [id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id id :type "metric"))
 
+(mu/defn metric-cards-by-ids
+  "The metric Cards with `ids`."
+  [ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids] :type "metric")
+    []))
+
+(mu/defn measures-by-ids
+  "The Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (if (seq ids)
+    (t2/select :model/Measure :id [:in ids])
+    []))
+
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]

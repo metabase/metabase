@@ -1,6 +1,6 @@
 (ns metabase.request.session
   (:require
-   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
+   [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
@@ -26,22 +26,16 @@
   ;;
   ::none)
 
-(mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
-  [{:keys [permissions-set metabase-user-id]} :- [:or ::request.schema/current-user-info ::request.schema/request]]
-  (or permissions-set
-      (some-> metabase-user-id perms/user-permissions-set)))
-
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?]} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
    thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *is-data-analyst?*             (boolean is-data-analyst?)
-            *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (current-user-info->permissions-set current-user-info))]
+            *current-user*                 (delay (find-user metabase-user-id))]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
     ;; propagated to frames further up the stack.
     (letfn [(do-with-user-local-values [thunk]
@@ -70,7 +64,6 @@
    (merge
     (with-current-user-fetch-user-for-id *current-user-id*)
     {:is-superuser? true
-     :permissions-set #{"/"}
      :user-locale i18n/*user-locale*})
    thunk))
 

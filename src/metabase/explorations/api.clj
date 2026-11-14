@@ -613,6 +613,10 @@
 
 ;;; ----------------------------------------- endpoints -----------------------------------------
 
+(defn- index-by-id
+  [rows]
+  (into {} (map (juxt :id identity)) rows))
+
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
   and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary
@@ -629,10 +633,14 @@
   ;; Block metric-card and timeline references are persisted verbatim and read back unfiltered
   ;; (planning context, thread hydration), so attach time is the
   ;; permission boundary: every referenced id must exist (404) and be readable (403) by the creator.
-  (doseq [card-id (distinct (mapcat #(map :card_id (:metrics %)) blocks))]
-    (api/read-check :model/Card card-id))
-  (doseq [timeline-id (distinct timeline_ids)]
-    (api/read-check :model/Timeline timeline-id))
+  (let [card-ids     (vec (distinct (mapcat #(map :card_id (:metrics %)) blocks)))
+        timeline-ids (vec (distinct timeline_ids))
+        id->card     (index-by-id (t2/hydrate (explorations.db/cards-by-ids (remove nil? card-ids)) :can_read))
+        id->timeline (index-by-id (t2/hydrate (explorations.db/timelines (set timeline-ids)) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id)))
+    (doseq [timeline-id timeline-ids]
+      (api/read-check (get id->timeline timeline-id))))
   (let [persisted
         (t2/with-transaction [_]
           (let [exploration (explorations.db/insert-exploration! {:name          name
@@ -710,9 +718,11 @@
                                     src-thread-id))
           metric-selections (:metrics block)
           metric-selection  (first metric-selections)
+          id->card      (index-by-id (t2/hydrate (explorations.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) metric-selections))
+                                                 :can_read))
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
+                                 (api/check-404 (when card_id (get id->card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -965,8 +975,9 @@
    {:keys [page_ids hidden]} :- [:map {:closed true}
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
-  (doseq [id page_ids]
-    (api/write-check (get-exploration-page-or-404 id)))
+  (let [id->page (index-by-id (t2/hydrate (explorations.db/pages-by-ids page_ids) :can_write))]
+    (doseq [id page_ids]
+      (api/write-check (api/check-404 (get id->page id)))))
   (when (seq page_ids)
     (explorations.db/update-pages! page_ids {:hidden hidden}))
   nil)

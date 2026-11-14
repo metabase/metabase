@@ -3,7 +3,6 @@
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
    [metabase.classloader.core :as classloader]
-   [metabase.models.interface :as mi]
    [metabase.parameters.db :as parameters.db]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
@@ -16,12 +15,6 @@
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues."
   [field]
   (get-or-create-field-values! field))
-
-(defn current-user-can-fetch-field-values?
-  "Whether the current User has permissions to fetch FieldValues for a `field`."
-  [field]
-  ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
-  (mi/can-read? (t2/hydrate field :can_read)))
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.

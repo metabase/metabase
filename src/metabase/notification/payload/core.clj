@@ -22,6 +22,7 @@
   dashcard-link-card->part
   execute-dashboard
   execute-dashboard-subscription-card
+  link-card-entities
   process-virtual-dashcard
   virtual-card-of-type?]
  [notification.payload.temp-storage

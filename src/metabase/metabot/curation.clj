@@ -438,18 +438,16 @@
   (when (and subject (not (subject-curated? subject)))
     (recoverable.common/not-curated! {:label label})))
 
-(defn check-curated-readable-subject!
-  "[[check-curated-subject!]] for a tool that takes a bare id and has no pre-checks of its own: the judgement runs
-  only when the entity exists and the current user can read it, so a missing or unreadable id gets the handler's
-  own answer rather than a curation verdict, and an unreadable entity doesn't reveal whether it's curated."
-  [label [model id :as subject]]
-  (let [row (case model
-              "table"           (metabot.db/table id)
-              ("card" "metric") (metabot.db/card id)
-              "dashboard"       (metabot.db/dashboard id)
-              nil)]
-    (when (some-> row (t2/hydrate :can_read) mi/can-read?)
-      (check-curated-subject! label subject))))
+(defn check-curated-readable-metrics!
+  "[[check-curated-subject!]] in order for each of `metric-ids` naming a Card the current user can read, so a missing
+  or unreadable id gets the handler's own answer and an unreadable Card doesn't reveal whether it's curated."
+  [metric-ids]
+  (let [readable (into #{}
+                       (comp (filter mi/can-read?) (map :id))
+                       (t2/hydrate (metabot.db/cards-with-ids (into [] (distinct) metric-ids)) :can_read))]
+    (doseq [id metric-ids
+            :when (contains? readable id)]
+      (check-curated-subject! (str "metric " id) ["metric" id]))))
 
 (defn- without-native-refs
   "`query` with the template tags of its native stages removed, in joins too, so that the entity walk sees only what

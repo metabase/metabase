@@ -149,6 +149,20 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards-by-ids
+  "The Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids])
+    []))
+
+(mu/defn actions-by-ids
+  "The Actions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Action :id [:in ids])
+    []))
+
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -396,6 +410,26 @@
             (assoc :model model))
     (t2/select-one (serialization/link-card-model->toucan-model model)
                    (h2x/assert-map-or-nil! (link-card-info-query-for-model model id)))))
+
+(mu/defn link-card-entities
+  "The instances of the link-card `model` (a string like \"card\" or \"table\") with integer `ids`, projected like
+  [[link-card-entity]]; none for an unknown model."
+  [model :- :string
+   ids   :- [:sequential :int]]
+  (cond
+    (empty? ids)
+    []
+
+    (= model "collection")
+    (mapv #(assoc % :model model)
+          (t2/select [:model/Collection :id :name :description :type :namespace] :id [:in ids]))
+
+    (contains? serialization/link-card-model->toucan-model model)
+    (t2/select (serialization/link-card-model->toucan-model model)
+               (h2x/assert-map-or-nil! (link-card-info-query-for-model model ids)))
+
+    :else
+    []))
 
 (defn- link-card-info-query
   [link-card-model->ids]

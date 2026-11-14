@@ -140,10 +140,10 @@
   name and ID of these databases, removing all other fields."
   [dbs]
   (map
-   (fn [db] (if (mi/can-read? (t2/hydrate db :can_read))
+   (fn [db] (if (mi/can-read? db)
               db
               (select-keys db [:id :name :tables])))
-   (schema.table/filter-databases-by-data-model-perms dbs)))
+   (t2/hydrate (schema.table/filter-databases-by-data-model-perms dbs) :can_read)))
 
 (defn- check-db-data-model-perms
   "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
@@ -1055,7 +1055,7 @@
                     [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))
-        tables (map api/write-check (:tables (first (add-tables [db]))))]
+        tables (map api/write-check (t2/hydrate (:tables (first (add-tables [db]))) :can_write))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]

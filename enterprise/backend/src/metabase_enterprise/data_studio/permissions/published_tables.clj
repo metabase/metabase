@@ -41,12 +41,11 @@
   :feature :library
   [table]
   (when (:is_published table)
-    (perms/collection-permission-at-least?
-     (get (perms/collection-permissions-for-user (perms/user-info api/*current-user-id*)
-                                                 [(:collection_id table)]
-                                                 {:root-namespace nil})
-          (:collection_id table))
-     :read)))
+    (let [collection-id (:collection_id table)]
+      (perms/collection-permission-at-least?
+       (get (perms/collection-permissions-for-user (api/current-user-info) [collection-id] {:root-namespace nil})
+            collection-id)
+       :read))))
 
 (defenterprise published-table-clause
   "A HoneySQL clause holding when the Table aliased `table-alias` is published into a Collection the user of

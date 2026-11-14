@@ -271,10 +271,12 @@
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
   [cards]
-  (doseq [card cards
-          :let [card-id (u/the-id card)]]
-    (assert (integer? card-id))
-    (api/read-check :model/Card card-id)))
+  (let [card-ids (mapv u/the-id cards)]
+    (doseq [card-id card-ids]
+      (assert (integer? card-id)))
+    (let [id->card (into {} (map (juxt :id identity)) (t2/hydrate (pulse.db/cards card-ids) :can_read))]
+      (doseq [card-id card-ids]
+        (api/read-check (get id->card card-id))))))
 
 (defn- drop-unchanged-collection-keys
   "Remove `:collection_id` and `:collection_position` from `pulse-updates` of a dashboard subscription.

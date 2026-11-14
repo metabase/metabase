@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -39,14 +40,14 @@
 
 (defn- can-write-config?
   "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it
-  targets and the database it targets, each looked up only for the configs that target one."
-  [instance target-collection-id target-database]
+  targets, the current user's permission on each collection and the database it targets, each looked up only for the
+  configs that target one."
+  [instance target-collection-id collection-permissions target-database]
   (case (:model instance)
     "root"      (mi/superuser?)
-    "database"  (boolean (some-> target-database (t2/hydrate :can_write) mi/can-write?))
+    "database"  (boolean (some-> target-database mi/can-write?))
     ("dashboard" "question")
-    (mi/current-user-has-full-permissions?
-     (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
+    (perms/collection-permission-at-least? (get collection-permissions target-collection-id) :read-and-write)))
 
 (methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
   "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
@@ -58,11 +59,20 @@
           target-ids     (fn [model] (into [] (comp (filter (comp #{model} :model)) (keep :model_id) (distinct)) configs))
           collection-ids {"dashboard" (cache.db/dashboard-collection-ids (target-ids "dashboard"))
                           "question"  (cache.db/card-collection-ids (target-ids "question"))}
-          databases      (u/index-by :id (cache.db/databases (target-ids "database")))]
+          collection-permissions (perms/collection-permissions-for-user
+                                  (api/current-user-info)
+                                  (into [] (comp (filter (comp #{"dashboard" "question"} :model))
+                                                 (map (fn [{:keys [model model_id]}]
+                                                        (get-in collection-ids [model model_id])))
+                                                 (distinct))
+                                        configs)
+                                  {:root-namespace nil})
+          databases      (u/index-by :id (t2/hydrate (cache.db/databases (target-ids "database")) :can_write))]
       (into {}
             (map (fn [{:keys [id model model_id] :as config}]
                    [id (can-write-config? config
                                           (get-in collection-ids [model model_id])
+                                          collection-permissions
                                           (when (= "database" model) (get databases model_id)))]))
             configs))
    :id

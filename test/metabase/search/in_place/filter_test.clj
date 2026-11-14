@@ -17,7 +17,6 @@
    :current-user-id                1
    :is-superuser?                  true
    :is-data-analyst?               false
-   :current-user-perms             #{"/"}
    :calculate-available-models?    false
    :is-sandboxed-user?             false
    :is-impersonated-user?          false

@@ -192,7 +192,7 @@
                                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            cards-to-copy)))
+            (t2/hydrate cards-to-copy :can_read))))
 
 (defn copy-document!
   "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the

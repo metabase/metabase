@@ -10,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -157,13 +158,13 @@
   table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
   lack of query permissions."
   [table]
-  (and (mi/can-write? (t2/hydrate table :can_write)) (mi/can-query? (t2/hydrate table :can_query))))
+  (and (mi/can-write? table) (mi/can-query? table)))
 
 (defn- can-publish-all-tables?
   "This function returns `true` iff you have permission to publish every table passed."
   [table-ids]
   (every? can-publish? (when (seq table-ids)
-                         (data-studio.db/tables table-ids))))
+                         (t2/hydrate (data-studio.db/tables table-ids) :can_write :can_query))))
 
 (api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
@@ -202,8 +203,9 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (run! (comp api/write-check data-studio.db/collection)
-            (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
+      (let [collection-ids (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update))
+            by-id          (u/index-by :id (t2/hydrate (data-studio.db/collections collection-ids) :can_write))]
+        (run! (comp api/write-check by-id) collection-ids))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids-to-update)]

@@ -271,7 +271,6 @@
     :is-sandboxed-user?                  (perms/sandboxed-user?)
     :is-routed-user?                     (perms/routed-user?)
     :is-superuser?                       api/*is-superuser?*
-    :current-user-perms                  @api/*current-user-permissions-set*
     :filter-items-in-personal-collection filter-items-in-personal-collection
     :last-edited-at                      last-edited-at
     :last-edited-by                      (set last-edited-by)

@@ -2060,7 +2060,6 @@
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
-           metabase.permissions.path
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -2072,7 +2071,6 @@
            models
            premium-features
            settings
-           tracing
            users.schema
            util
            util.config
@@ -2640,15 +2638,18 @@
            transforms.feature-gating
            util
            util.config}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
                     :model/Database
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/Segment
                     :model/Table
+                    :model/Transform
                     :model/User}}
 
   search.embeddings
@@ -4380,8 +4381,8 @@
   enterprise/native-query-snippets
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.snippet-collections"
-   :uses #{lib.schema
-           models
+   :uses #{api
+           lib.schema
            native-query-snippets
            permissions
            premium-features

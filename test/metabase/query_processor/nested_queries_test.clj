@@ -10,7 +10,6 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -752,7 +751,7 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
-        (is (= {:paths #{(perms/collection-read-path 1000)}}
+        (is (= {:source-card-ids #{1}}
                (query-perms/required-perms-for-query (query-with-source-card 1
                                                                              lib.schema.id/saved-questions-virtual-database-id
                                                                              :aggregation [:count]))))))))
@@ -763,7 +762,7 @@
       (testing "should be able to save even if you don't have SQL write perms (#6845)"
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/native-query {:query "SELECT * FROM VENUES"})])
-          (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
+          (is (= {:source-card-ids #{1}}
                  (query-perms/required-perms-for-query (query-with-source-card 1
                                                                                lib.schema.id/saved-questions-virtual-database-id
                                                                                :aggregation [:count])))))))))
@@ -784,10 +783,6 @@
                            :model/Card       card-2 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query nil
                                                                       {:source-table (format "card__%d" (u/the-id card-1))})}]
-              (testing "read perms for both Cards should be the same as reading the parent collection"
-                (is (= (mi/perms-objects-set collection :read)
-                       (mi/perms-objects-set card-1 :read)
-                       (mi/perms-objects-set card-2 :read))))
               (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1

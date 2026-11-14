@@ -11,7 +11,6 @@
   []
   (throw (ex-info (tru "You do not have permissions to run this query.")
                   {:type               qp.error-type/missing-required-permissions
-                   :actual-permissions @api/*current-user-permissions-set*
                    :permissions-error? true})))
 
 (defenterprise check-block-permissions

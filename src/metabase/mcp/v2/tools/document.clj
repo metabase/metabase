@@ -73,13 +73,13 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  a [[mi/can-read?]] implementation to defer to, read off `:can_read` hydrated on the row; user rows are pre-filtered by
   [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
     (or (= (:id row) api/*current-user-id*)
         (not (perms/sandboxed-or-impersonated-user?)))
-    (mi/can-read? (t2/hydrate row :can_read))))
+    (mi/can-read? row)))
 
 (defn- visible-user-rows
   "The `:model/User` rows among `ids` whose names the current user may see: the mention picker's
@@ -116,11 +116,13 @@
                         ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
                         rows     (when db-model
                                    (try
-                                     (filterv #(and (not (v2.resolve/hidden? db-model %))
-                                                    (smart-link-readable? model %))
+                                     (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
-                                                (visible-user-rows ids)
-                                                (mcp.db/select-by-ids db-model ids)))
+                                                (remove #(v2.resolve/hidden? db-model %) (visible-user-rows ids))
+                                                (t2/hydrate (into []
+                                                                  (remove #(v2.resolve/hidden? db-model %))
+                                                                  (mcp.db/select-by-ids db-model ids))
+                                                            :can_read)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -214,12 +216,12 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
+      (let [cards (into {} (map (juxt :id identity)) (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card
                            (or (and document-id (= document-id (:document_id card)))
-                               (mi/can-read? (t2/hydrate card :can_read))))
+                               (mi/can-read? card)))
               (common/throw-not-found :model/Card id))))))))
 
 (defn- body-projection

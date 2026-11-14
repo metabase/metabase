@@ -134,10 +134,14 @@
   [_model _id card-test]
   (select-keys card-test revision-columns))
 
-(defmethod revision/revision-readable? :model/CardTest
-  [_model object]
+(defmethod revision/revisions-readable? :model/CardTest
+  [_model objects]
   ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
-  (boolean (some-> (data-testing.db/card (:card_id object)) (t2/hydrate :can_read) mi/can-read?)))
+  (let [readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))
+                                       :can_read))]
+    (mapv #(contains? readable-ids (:card_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/CardTest
   [_model id _user-id serialized-instance]

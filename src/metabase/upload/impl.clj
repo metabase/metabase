@@ -1000,7 +1000,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (upload.db/tables table-ids) :db)
+         (->> (t2/hydrate (upload.db/tables table-ids) :db :can_query)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

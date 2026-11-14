@@ -1,12 +1,22 @@
 (ns metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require
-   [metabase.models.interface :as mi]
+   [metabase.api.common :as api]
    [metabase.native-query-snippets.core :as snippets]
    [metabase.native-query-snippets.schema :as snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]))
+
+(defn- permitted-collection-ids
+  "Those of `collection-ids`, nil standing for the snippets root, on which the current user has `read-or-write`
+  permissions, answered together."
+  [collection-ids read-or-write]
+  (let [collection-ids (into [] (distinct) collection-ids)
+        permissions    (perms/collection-permissions-for-user (api/current-user-info) collection-ids
+                                                              {:root-namespace "snippets"})
+        needed         (case read-or-write :read :read, :write :read-and-write)]
+    (into #{} (filter #(perms/collection-permission-at-least? (get permissions %) needed)) collection-ids)))
 
 (mu/defn- has-parent-collection-perms?
   "Whether the current user has `read-or-write` permissions on `snippet`'s parent collection. `snippet` must not be
@@ -15,7 +25,7 @@
                      ::snippets.schema/native-query-snippet
                      ::snippets.schema/native-query-snippet.update]
    read-or-write :- [:enum :read :write]]
-  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
+  (contains? (permitted-collection-ids [(:collection_id snippet)] read-or-write) (:collection_id snippet)))
 
 (defenterprise permitted-snippet-ids
   "The ids of the `snippets` the current User can read or write, by `read-or-write`: none for a sandboxed User or one
@@ -25,7 +35,8 @@
   [snippets read-or-write]
   (if (and (not (perms/sandboxed-user?))
            (snippets/has-any-native-permissions?))
-    (into #{} (comp (filter #(has-parent-collection-perms? % read-or-write)) (map :id)) snippets)
+    (let [permitted (permitted-collection-ids (map :collection_id snippets) read-or-write)]
+      (into #{} (comp (filter #(contains? permitted (:collection_id %))) (map :id)) snippets))
     #{}))
 
 (defenterprise can-create?
