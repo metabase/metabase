@@ -3,11 +3,10 @@ import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
-export function makeSummaryFormula(
+export function getLegacyStage(
   query: Lib.Query,
   stageIndex: number,
-  name: string,
-): SummaryGeneratedExpression | undefined {
+): Record<string, unknown> | undefined {
   const stageCount = Lib.stageCount(query);
   const index = stageIndex < 0 ? stageCount + stageIndex : stageIndex;
   if (
@@ -29,7 +28,22 @@ export function makeSummaryFormula(
     }
     stage = source;
   }
-  if (!isObject(stage.expressions) || !Object.hasOwn(stage.expressions, name)) {
+  return stage;
+}
+
+export function makeSummaryFormula(
+  query: Lib.Query,
+  stageIndex: number,
+  name: string,
+): SummaryGeneratedExpression | undefined {
+  const stageCount = Lib.stageCount(query);
+  const index = stageIndex < 0 ? stageCount + stageIndex : stageIndex;
+  const stage = getLegacyStage(query, stageIndex);
+  if (
+    !stage ||
+    !isObject(stage.expressions) ||
+    !Object.hasOwn(stage.expressions, name)
+  ) {
     return;
   }
   return {

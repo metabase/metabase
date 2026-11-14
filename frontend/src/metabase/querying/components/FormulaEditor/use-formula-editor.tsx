@@ -22,6 +22,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     stageIndex,
     database,
     expressionMode,
+    expressionIndex,
     initialSource,
     onEditorCreate,
     onNameChange,
@@ -30,8 +31,8 @@ export function useFormulaEditor(props: FormulaEditorProps) {
   } = props;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const availableColumns = useMemo(
-    () => getFormulaColumns(query, stageIndex, expressionMode),
-    [query, stageIndex, expressionMode],
+    () => getFormulaColumns(query, stageIndex, expressionMode, expressionIndex),
+    [query, stageIndex, expressionMode, expressionIndex],
   );
   const availableMetrics = useMemo(
     () =>
@@ -62,6 +63,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       expressionMode,
       query,
       stageIndex,
+      expressionIndex,
       database,
       availableColumns,
       availableMetrics,

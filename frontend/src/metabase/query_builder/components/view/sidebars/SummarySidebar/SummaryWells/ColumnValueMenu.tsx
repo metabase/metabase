@@ -11,6 +11,8 @@ type ColumnValueMenuProps = {
   query: Lib.Query;
   stageIndex: number;
   item: Extract<SummaryValueItem, { kind: "column" }>;
+  /** False when the chip shows the label on its own, leaving the menu its chevron. */
+  hasLabel?: boolean;
   onChange: (nextQuery: Lib.Query) => void;
 };
 
@@ -18,6 +20,7 @@ export function ColumnValueMenu({
   query,
   stageIndex,
   item,
+  hasLabel = true,
   onChange,
 }: ColumnValueMenuProps) {
   return (
@@ -27,7 +30,7 @@ export function ColumnValueMenu({
           className={S.chipButton}
           aria-label={t`Change how ${item.label} is calculated`}
         >
-          <Ellipsified fw="inherit">{item.label}</Ellipsified>
+          {hasLabel && <Ellipsified fw="inherit">{item.label}</Ellipsified>}
           <Icon name="chevrondown" size={10} />
         </UnstyledButton>
       </Menu.Target>

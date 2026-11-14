@@ -8,11 +8,14 @@ import type { SummaryBucketOption, SummaryDimensionItem } from "../types";
 
 type DimensionBucketMenuProps = {
   item: SummaryDimensionItem;
+  /** False when the chip shows the label on its own, leaving the menu its chevron. */
+  hasLabel?: boolean;
   onSelect: (option: SummaryBucketOption) => void;
 };
 
 export function DimensionBucketMenu({
   item,
+  hasLabel = true,
   onSelect,
 }: DimensionBucketMenuProps) {
   const { bucketOptions, initialBucketOptionCount } = item;
@@ -37,7 +40,7 @@ export function DimensionBucketMenu({
           className={S.chipButton}
           aria-label={t`Change how ${item.label} is grouped`}
         >
-          <Ellipsified fw="inherit">{item.label}</Ellipsified>
+          {hasLabel && <Ellipsified fw="inherit">{item.label}</Ellipsified>}
           <Icon name="chevrondown" size={10} />
         </UnstyledButton>
       </Menu.Target>

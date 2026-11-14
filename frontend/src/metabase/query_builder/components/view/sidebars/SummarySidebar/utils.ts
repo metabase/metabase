@@ -254,6 +254,11 @@ function getValueItem(
   };
 }
 
+/** Value chips that come from a formula: expression aggregations and named ones. */
+export function isFormulaValue(item: SummaryValueItem): boolean {
+  return item.kind === "expression" || item.isNamed;
+}
+
 export function getValueItems(
   query: Lib.Query,
   stageIndex: number,
