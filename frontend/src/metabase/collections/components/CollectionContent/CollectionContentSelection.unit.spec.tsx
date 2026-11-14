@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupBookmarksEndpoints,
@@ -12,8 +13,9 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import { createMockAppState, createMockState } from "__support__/state";
 import {
+  act,
   fireEvent,
   renderWithProviders,
   screen,
@@ -23,13 +25,21 @@ import {
 import * as Analytics from "metabase/analytics";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { Collection, CollectionItem, User } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+  User,
+} from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import CollectionLanding from "../CollectionLanding";
 
 import { CollectionContent } from "./CollectionContent";
 
@@ -80,7 +90,18 @@ type SetupOpts = {
   otherCollections?: Collection[];
   rootCollection?: Collection;
   currentUser?: User;
+  /** Enables the drag sources, as the app does once its DnD provider mounts */
+  isDndAvailable?: boolean;
 };
+
+function setupCommonEndpoints() {
+  setupBookmarksEndpoints([]);
+  setupDatabasesEndpoints([]);
+  setupSearchEndpoints([]);
+  setupNullGetUserKeyValueEndpoints();
+  setupDashboardQuestionCandidatesEndpoint([]);
+  setupUserMetabotPermissionsEndpoint();
+}
 
 async function setup({
   collection = defaultCollection,
@@ -88,6 +109,7 @@ async function setup({
   otherCollections = [],
   rootCollection = createMockCollection(ROOT_COLLECTION),
   currentUser = createMockUser(),
+  isDndAvailable = false,
 }: SetupOpts = {}) {
   setupCollectionByIdEndpoint({
     collections: [collection, rootCollection, ...otherCollections],
@@ -97,12 +119,7 @@ async function setup({
     rootCollection,
   });
   setupCollectionItemsEndpoint({ collection, collectionItems });
-  setupBookmarksEndpoints([]);
-  setupDatabasesEndpoints([]);
-  setupSearchEndpoints([]);
-  setupNullGetUserKeyValueEndpoints();
-  setupDashboardQuestionCandidatesEndpoint([]);
-  setupUserMetabotPermissionsEndpoint();
+  setupCommonEndpoints();
 
   renderWithProviders(
     <Route
@@ -112,11 +129,16 @@ async function setup({
     {
       withRouter: true,
       withDND: true,
-      storeInitialState: createMockState({ currentUser }),
+      storeInitialState: createMockState({
+        currentUser,
+        app: createMockAppState({ isDndAvailable }),
+      }),
     },
   );
 
-  await screen.findByTestId("pinned-items");
+  if (collectionItems.some((item) => item.collection_position != null)) {
+    await screen.findByTestId("pinned-items");
+  }
   await screen.findByText(tableQuestion.name);
 }
 
@@ -518,5 +540,260 @@ describe("CollectionContent selection", () => {
 
     expect(await screen.findByText("Select")).toBeInTheDocument();
     expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+  });
+
+  it("clears the selection when another collection opens (metabase#16491)", async () => {
+    const otherCollection = createMockCollection({
+      id: 2,
+      name: "Other collection",
+      can_write: true,
+    });
+    const otherItem = createMockCollectionItem({
+      id: 20,
+      name: "Other collection question",
+      model: "card",
+    });
+    setupCollectionByIdEndpoint({
+      collections: [defaultCollection, otherCollection],
+    });
+    setupCollectionsEndpoints({
+      collections: [defaultCollection, otherCollection],
+    });
+    setupCollectionItemsEndpoint({
+      collection: defaultCollection,
+      collectionItems: defaultItems,
+    });
+    setupCollectionItemsEndpoint({
+      collection: otherCollection,
+      collectionItems: [otherItem],
+    });
+    setupCommonEndpoints();
+    const { router } = renderWithProviders(
+      <Route path="/collection/:slug" element={<CollectionLanding />} />,
+      {
+        withRouter: true,
+        withDND: true,
+        initialRoute: `/collection/${defaultCollection.id}`,
+      },
+    );
+
+    expect(await screen.findByText(tableDashboard.name)).toBeInTheDocument();
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+
+    await act(async () => {
+      await router?.navigate(`/collection/${otherCollection.id}`);
+    });
+
+    expect(await screen.findByText(otherItem.name)).toBeInTheDocument();
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+  });
+
+  it("moves the selection to the trash from the bulk actions menu and removes it from the list (metabase#16496)", async () => {
+    fetchMock.put(`path:/api/card/${tableQuestion.id}`, async () => {
+      setupCollectionItemsEndpoint({
+        collection: defaultCollection,
+        collectionItems: defaultItems.filter(
+          (item) => item.id !== tableQuestion.id,
+        ),
+      });
+      return { ...tableQuestion, archived: true };
+    });
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Move to trash" }),
+    );
+    const confirmation = await screen.findByTestId(
+      "move-to-trash-confirmation",
+    );
+    await userEvent.click(
+      within(confirmation).getByRole("button", { name: "Move to trash" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("row", { name: new RegExp(tableQuestion.name) }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("row", { name: new RegExp(tableDashboard.name) }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/card/${tableQuestion.id}`,
+      { method: "PUT" },
+    );
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(String(calls[0].options.body))).toMatchObject({
+      archived: true,
+    });
+  });
+
+  describe("drag and drop (metabase#37329)", () => {
+    const nestedCollection = createMockCollectionItem({
+      id: 5,
+      name: "Nested collection",
+      model: "collection",
+      can_write: true,
+      collection_position: null,
+    });
+    const destinationCollection = createMockCollectionItem({
+      id: 6,
+      name: "Destination collection",
+      model: "collection",
+      can_write: true,
+      collection_position: null,
+    });
+    const dragItems = [
+      tableQuestion,
+      tableDashboard,
+      nestedCollection,
+      destinationCollection,
+    ];
+
+    function getRow(itemName: string) {
+      return screen.getByRole("row", { name: new RegExp(itemName) });
+    }
+
+    function startDrag(itemName: string) {
+      const dataTransfer = {
+        types: [],
+        setData: () => undefined,
+        getData: () => "",
+        setDragImage: () => undefined,
+      };
+      const source = getRow(itemName);
+      const isStarted = fireEvent.dragStart(source, {
+        dataTransfer,
+        clientX: 10,
+        clientY: 10,
+      });
+      return { source, dataTransfer, isStarted };
+    }
+
+    function dropOn(
+      targetName: string,
+      { source, dataTransfer }: ReturnType<typeof startDrag>,
+    ) {
+      const target = getRow(targetName);
+      fireEvent.dragEnter(target, { dataTransfer, clientX: 20, clientY: 20 });
+      fireEvent.dragOver(target, { dataTransfer, clientX: 20, clientY: 20 });
+      fireEvent.drop(target, { dataTransfer, clientX: 20, clientY: 20 });
+      fireEvent.dragEnd(source, { dataTransfer });
+    }
+
+    function getMoveCalls() {
+      return fetchMock.callHistory
+        .calls(/\/api\/(card|dashboard|collection)\/\d+$/, { method: "PUT" })
+        .map((call) => ({
+          url: new URL(call.url).pathname,
+          body: JSON.parse(String(call.options.body)),
+        }));
+    }
+
+    function setupMoveEndpoints(collectionId: CollectionId) {
+      // Read before the move to offer an undo
+      fetchMock.get(
+        `path:/api/card/${tableQuestion.id}`,
+        createMockCard({ id: tableQuestion.id, collection_id: 1 }),
+      );
+      fetchMock.put(`path:/api/card/${tableQuestion.id}`, async () => {
+        setupCollectionItemsEndpoint({
+          collection: defaultCollection,
+          collectionItems: dragItems.filter(
+            (item) => item.id !== tableQuestion.id || item.model !== "card",
+          ),
+        });
+        return { ...tableQuestion, collection_id: collectionId };
+      });
+      fetchMock.put(`path:/api/collection/${nestedCollection.id}`, {});
+      fetchMock.put(`path:/api/dashboard/${tableDashboard.id}`, {});
+    }
+
+    it("does not let a sub-collection start a drag", async () => {
+      setupMoveEndpoints(destinationCollection.id);
+      await setup({ collectionItems: dragItems, isDndAvailable: true });
+
+      expect(
+        within(getRow(nestedCollection.name)).getByRole("link", {
+          name: nestedCollection.name,
+        }),
+      ).toHaveAttribute("draggable", "false");
+      expect(
+        within(getRow(tableQuestion.name)).getByRole("link", {
+          name: tableQuestion.name,
+        }),
+      ).toHaveAttribute("draggable", "true");
+
+      // A cancelled dragstart is how the browser is told not to drag at all,
+      // so no drop follows it.
+      const collectionDrag = startDrag(nestedCollection.name);
+      expect(collectionDrag.isStarted).toBe(false);
+      expect(
+        screen.queryByTestId("items-drag-preview"),
+      ).not.toBeInTheDocument();
+      fireEvent.dragEnd(collectionDrag.source, {
+        dataTransfer: collectionDrag.dataTransfer,
+      });
+
+      const questionDrag = startDrag(tableQuestion.name);
+      expect(questionDrag.isStarted).toBe(true);
+      expect(await screen.findByTestId("items-drag-preview")).toHaveTextContent(
+        "Move 1 item",
+      );
+      fireEvent.dragEnd(questionDrag.source, {
+        dataTransfer: questionDrag.dataTransfer,
+      });
+
+      expect(getRow(nestedCollection.name)).toBeInTheDocument();
+      expect(getMoveCalls()).toEqual([]);
+    });
+
+    it("rejects a mixed selection that includes a sub-collection as one operation, then moves the question alone", async () => {
+      setupMoveEndpoints(destinationCollection.id);
+      await setup({ collectionItems: dragItems, isDndAvailable: true });
+
+      await userEvent.click(getRowSelectionButton(tableQuestion.name));
+      await userEvent.click(getRowSelectionButton(nestedCollection.name));
+      expect(await screen.findByText("2 items selected")).toBeInTheDocument();
+
+      const mixedDrag = startDrag(tableQuestion.name);
+      expect(await screen.findByTestId("items-drag-preview")).toHaveTextContent(
+        "Move 2 items",
+      );
+      dropOn(destinationCollection.name, mixedDrag);
+
+      expect(getRow(tableQuestion.name)).toBeInTheDocument();
+      expect(getRow(nestedCollection.name)).toBeInTheDocument();
+      expect(getRow(destinationCollection.name)).toBeInTheDocument();
+      expect(getMoveCalls()).toEqual([]);
+
+      await userEvent.click(getRowSelectionButton(nestedCollection.name));
+      expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+
+      const questionDrag = startDrag(tableQuestion.name);
+      expect(await screen.findByTestId("items-drag-preview")).toHaveTextContent(
+        "Move 1 item",
+      );
+      dropOn(destinationCollection.name, questionDrag);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("row", { name: new RegExp(tableQuestion.name) }),
+        ).not.toBeInTheDocument();
+      });
+      expect(getMoveCalls()).toEqual([
+        {
+          url: `/api/card/${tableQuestion.id}`,
+          body: expect.objectContaining({
+            collection_id: destinationCollection.id,
+          }),
+        },
+      ]);
+    });
   });
 });
