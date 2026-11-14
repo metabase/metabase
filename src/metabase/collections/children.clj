@@ -126,14 +126,13 @@
                 [:= :namespace nil])
               (when (seq namespaces)
                 [:in :namespace namespaces])]
-             (collection/visible-collection-filter-clause
-              :id
-              {:include-archived-items    (if archived
-                                            :only
-                                            :exclude)
-               :include-trash-collection? true
-               :permission-level          :read
-               :archive-operation-id      nil})]
+             (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items    (if archived
+                                                                                                                           :only
+                                                                                                                           :exclude)
+                                                                                              :include-trash-collection? true
+                                                                                              :permission-level          :read
+                                                                                              :archive-operation-id      nil
+                                                                                              :root-namespace            nil})]
      ;; Order NULL collection types first so that audit collections are last
      :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                 [[[:case
@@ -328,6 +327,31 @@
                          (update :archived_directly api/bit->boolean)))
                    :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)))
 
+(defn- visible-items-options
+  "The `perms/visible-collections-filter-clause` options of a listing of Collection items, of the trash when
+  `archived?`, a nil collection id standing for the root Collection of the `:root-namespace` option."
+  [archived? {:keys [root-namespace]}]
+  {:include-archived-items    :all
+   :permission-level          (if archived? :write :read)
+   :include-trash-collection? (boolean archived?)
+   :root-namespace            root-namespace})
+
+(defn- visible-items-clause
+  "The where-clause keeping the items whose Collection, by `collection-id-field`, the current user sees in this listing:
+  the Collections they can read, or write when listing the trash, the trash then included, a nil collection id standing
+  for the root Collection of the `:root-namespace` option, which they only have to read in either listing."
+  [collection-id-field archived? options]
+  (let [clause (fn [permission-level]
+                 (perms/visible-collections-filter-clause collection-id-field
+                                                          (api/current-user-info)
+                                                          (assoc (visible-items-options archived? options)
+                                                                 :permission-level permission-level)))]
+    (if archived?
+      [:or
+       [:and [:= collection-id-field nil] (clause :read)]
+       [:and [:not= collection-id-field nil] (clause :write)]]
+      (clause :read))))
+
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state created-by-id show-exploration-documents?]}]
   (-> {:select [:document.id
@@ -350,7 +374,7 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
+               (visible-items-clause :document.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
@@ -432,7 +456,7 @@
                     [:= :ere.rn [:inline 1]]]
                    [:core_user :u] [:= :u.id :ere.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
+               (visible-items-clause :exploration.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
                  [:= :exploration.archived_directly true]
                  [:and
@@ -573,7 +597,7 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
+                   (visible-items-clause :c.collection_id archived? {:root-namespace nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -688,7 +712,7 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
+                   (visible-items-clause :d.collection_id archived? {:root-namespace nil})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -735,7 +759,7 @@
   (-> (assoc
        (collection/effective-children-query
         collection
-        {:cte-name :visible_collection_ids}
+        (visible-items-options archived? {:root-namespace collection-namespace})
         [:and
          (collection-types-clause collection-types)
          (when-not include-library?
@@ -792,10 +816,7 @@
    :where  [:and
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
-            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
-            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
+            (visible-items-clause :t.collection_id archived? {:root-namespace nil})
             (perms/visible-table-filter-subquery-clause
              :t.id
              {:user-id       api/*current-user-id*
@@ -811,9 +832,7 @@
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll nil
-                                                            (collection/visible-collection-filter-clause
-                                                             :id
-                                                             {:include-archived-items :all}))
+                                                            (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 
@@ -1113,7 +1132,7 @@
       0))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info archived? search-text] :as options}]
+  [collection models {:keys [sort-info search-text] :as options}]
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
         queries       (for [model models
@@ -1127,13 +1146,8 @@
                         (-> query
                             (update select-clause-type add-missing-columns all-select-columns)
                             (update select-clause-type add-model-ranking model)))
-        viz-config    {:include-archived-items    :all
-                       :archive-operation-id      nil
-                       :permission-level          (if archived? :write :read)
-                       :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
-        rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
+        rows-query    (cond-> {:select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause
@@ -1215,7 +1229,7 @@
   reported: they are not a filterable type."
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
-   {:keys [archived?] :as options} :- CollectionChildrenOptions]
+   options                         :- CollectionChildrenOptions]
   (let [candidates (filterable-models collection restrict-models)
         options    (-> options
                        (dissoc :models :search-text)
@@ -1224,14 +1238,9 @@
     ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
     (if (empty? candidates)
       {:available_models []}
-      (let [viz-config {:include-archived-items    :all
-                        :archive-operation-id      nil
-                        :permission-level          (if archived? :write :read)
-                        :include-trash-collection? archived?}
-            row        (first
+      (let [row        (first
                         (collections.db/collection-filter-metadata-rows
-                         {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                          :select (vec
+                         {:select (vec
                                    (for [model candidates]
                                      [[:exists (-> (collection-children-query model collection options)
                                                    (vary-meta assoc :allow-subquery true))]

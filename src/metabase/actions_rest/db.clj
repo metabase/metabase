@@ -3,8 +3,10 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.actions.schema :as actions.schema]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -24,16 +26,12 @@
                                               [:or
                                                [:and
                                                 [:not= :model_id nil]
-                                                (collection/visible-collection-filter-clause
-                                                 :collection_id
-                                                 {:include-archived-items (if archived :all :exclude)
-                                                  :root-namespace         nil})]
+                                                (perms/visible-collections-filter-clause :action.collection_id (api/current-user-info) {:include-archived-items (if archived :all :exclude)
+                                                                                                                                        :root-namespace         nil})]
                                                [:and
                                                 [:= :model_id nil]
-                                                (collection/visible-collection-filter-clause
-                                                 :collection_id
-                                                 {:include-archived-items (if archived :all :exclude)
-                                                  :root-namespace         collection/data-actions-ns})]])]}))
+                                                (perms/visible-collections-filter-clause :action.collection_id (api/current-user-info) {:include-archived-items (if archived :all :exclude)
+                                                                                                                                        :root-namespace         collection/data-actions-ns})]])]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

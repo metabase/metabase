@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -693,23 +694,30 @@
    [:tenant-collection-ids [:sequential ms/PositiveInt]]
    [:use-tenants?          :boolean]])
 
+(mr/def ::root-objects
+  "The read-and-write and read permission objects of the root Collection a nil collection id stands for."
+  [:map {:closed true}
+   [:write-object :string]
+   [:read-object  :string]])
+
 (def ^:private every-row-clause
   "The clause holding for every row."
   [:= [:inline 1] [:inline 1]])
 
 (defn- user-groups-query
-  "The ids of the groups of the user with `user-id`."
+  "The ids of the groups of the user with `user-id`, inlined like every value of the Collection clauses, as in the data
+  permission clauses they are combined with: H2 loses the parameters of a CTE that another CTE reads."
   [user-id]
   ^:allow-subquery {:select [:group_id]
                     :from   [(t2/table-name :model/PermissionsGroupMembership)]
-                    :where  [:= :user_id user-id]})
+                    :where  [:= :user_id [:inline user-id]]})
 
 (defn- collection-rows-clause
   "Whether a group of the user with `user-id` holds a permission row of the Collection aliased `perms_collection` for
   `permission-level`: a `read-and-write` one for write, and also a `read` one for read, looked up by the Collection id
   the row carries."
   [user-id permission-level]
-  [:exists ^:allow-subquery {:select [1]
+  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                              :from   [[(t2/table-name :model/Permissions) :perms_row]]
                              :where  [:and
                                       [:= :perms_row.collection_id :perms_collection.id]
@@ -719,21 +727,21 @@
                                       [:in :perms_row.group_id (user-groups-query user-id)]]}])
 
 (defn- own-collection-clause
-  "Whether `user` writes the Collection aliased `perms_collection` whatever their groups hold: their personal Collection
-  and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
+  "Whether the user of `user` writes the Collection aliased `perms_collection` whatever their groups hold: their personal
+  Collection and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
   [{:keys [user-id tenant-collection-ids] :as user}]
   (when user-id
     [:or
-     [:= :perms_collection.personal_owner_id user-id]
-     [:exists ^:allow-subquery {:select [1]
+     [:= :perms_collection.personal_owner_id [:inline user-id]]
+     [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                 :from   [[(t2/table-name :model/Collection) :perms_personal]]
                                 :where  [:and
-                                         [:= :perms_personal.personal_owner_id user-id]
-                                         [:like :perms_collection.location [:concat "/" :perms_personal.id "/%"]]]}]
+                                         [:= :perms_personal.personal_owner_id [:inline user-id]]
+                                         [:like :perms_collection.location [:concat (h2x/literal "/") :perms_personal.id (h2x/literal "/%")]]]}]
      (when (seq tenant-collection-ids)
-       [:in :perms_collection.id tenant-collection-ids])
+       [:in :perms_collection.id (mapv (fn [id] [:inline id]) tenant-collection-ids)])
      (when (:is-data-analyst? user)
-       [:= :perms_collection.namespace "transforms"])]))
+       [:= :perms_collection.namespace (h2x/literal "transforms")])]))
 
 (defn- collection-level-clause
   "A HoneySQL clause holding when `user` has `permission-level` on the Collection aliased `perms_collection`."
@@ -745,23 +753,117 @@
      (collection-rows-clause user-id permission-level)]))
 
 (defn- collection-rank-case
-  "A HoneySQL CASE giving, for the Collection aliased `perms_collection`, 2 when `user` writes it, 1 when they only read
-  it, and 0 otherwise."
+  "A HoneySQL CASE giving, for the Collection aliased `perms_collection`, 2 when the user of `user` writes it, 1 when they only
+  read it, and 0 otherwise."
   [user]
   [:case
    (collection-level-clause user :write) [:inline 2]
    (collection-level-clause user :read)  [:inline 1]
-   :else                                 [:inline 0]])
+   :else                                      [:inline 0]])
+
+(defn- trash-clause
+  "Whether the Collection aliased `perms_collection` is the trash."
+  []
+  [:= :perms_collection.type (h2x/literal "trash")])
 
 (defn- listed-collection-clause
-  "Whether the Collection aliased `perms_collection` is listed: not archived, not the trash, and not a shared tenant
-  Collection on an instance without tenants."
-  [{:keys [use-tenants?]}]
+  "The clause over the Collection aliased `perms_collection` applying the criteria of `options` beyond permissions: the trash,
+  archived Collections, shared tenant Collections on an instance without tenants, and an archive operation."
+  [{:keys [use-tenants?]}
+   {:keys [include-trash-collection? include-archived-items archive-operation-id]}]
   [:and
-   [:= :perms_collection.archived false]
-   [:or [:= :perms_collection.type nil] [:not= :perms_collection.type "trash"]]
+   (when-not include-trash-collection?
+     [:or [:= :perms_collection.type nil] [:not= :perms_collection.type (h2x/literal "trash")]])
+   (case include-archived-items
+     :exclude [:= :perms_collection.archived false]
+     ;; the trash is included when viewing archived items only
+     :only    [:or [:= :perms_collection.archived true] (trash-clause)]
+     :all     nil)
    (when-not use-tenants?
-     [:or [:= :perms_collection.namespace nil] [:not= :perms_collection.namespace "shared-tenant-collection"]])])
+     [:or [:= :perms_collection.namespace nil] [:not= :perms_collection.namespace (h2x/literal "shared-tenant-collection")]])
+   (when archive-operation-id
+     ;; the trash is part of every archive operation
+     [:or [:= :perms_collection.archive_operation_id archive-operation-id] (trash-clause)])])
+
+(defn- object-literal
+  "The permission object `object` as a literal when it holds nothing but the characters of a path of a known namespace,
+  and otherwise as it is, for a parameter: a namespace can come from a request."
+  [object]
+  (if (re-matches #"[a-z0-9/_-]+" object)
+    (h2x/literal object)
+    object))
+
+(defn- root-collection-clause
+  "A clause holding when `user` has `permission-level` on the root Collection of `root-namespace`, whose permission
+  objects are `root-objects`, and which nothing archived or archived together lists."
+  [{:keys [user-id is-superuser?] :as user}
+   {:keys [write-object read-object]}
+   {:keys [permission-level include-archived-items archive-operation-id root-namespace]}]
+  (when-not (or (= include-archived-items :only) archive-operation-id)
+    (cond
+      is-superuser?
+      every-row-clause
+
+      (and (= (some-> root-namespace name) "transforms") (:is-data-analyst? user))
+      every-row-clause
+
+      user-id
+      [:exists ^:allow-subquery
+       {:select [[[:inline 1]]]
+        :from   [[(t2/table-name :model/Permissions) :perms_row]]
+        :where  [:and
+                 [:in :perms_row.object (cond-> [(object-literal write-object)]
+                                          (= permission-level :read) (conj (object-literal read-object)))]
+                 [:in :perms_row.group_id (user-groups-query user-id)]]}])))
+
+(defn- visible-collection-where
+  "The HoneySQL where-clause over the Collection aliased `perms_collection` holding when it is listed to the user of
+  `user` with `options` (see `::permissions.schema/collection-filter-options`)."
+  [user options]
+  (let [options (merge {:permission-level :read, :include-archived-items :exclude} options)]
+    [:and
+     [:or
+      (collection-level-clause user (:permission-level options))
+      (when (:include-trash-collection? options) (trash-clause))]
+     (listed-collection-clause user options)]))
+
+(defn- qualified-column?
+  "Whether `column` names its table, as in `:report_card.collection_id`."
+  [column]
+  (and (keyword? column) (str/includes? (name column) ".")))
+
+(def ^:private QualifiedColumn
+  "A column keyword naming its table, so that it can't refer to a column of a table in the clause's subqueries."
+  [:fn {:error/message "a column qualified with its table, such as :report_card.collection_id"} qualified-column?])
+
+(defn- check-qualified-column
+  "Throws unless `column` is qualified with its table, also where schemas aren't checked: a bare `:id` would compare the
+  probed Collection with itself."
+  [column]
+  (when-not (qualified-column? column)
+    (throw (ex-info (str "The column must be qualified with its table: " column) {:column column}))))
+
+(mu/defn visible-collections-filter-clause :- [:fn vector?]
+  "A HoneySQL where-clause holding when `collection-id-field` is a Collection listed to the user of `user` with
+  `options` (see `::permissions.schema/collection-filter-options`), or nil when they have the permission on the root Collection of its namespace. A
+  correlated `EXISTS` probes the Collection of each row, so a query asking about a few rows doesn't work out every
+  visible Collection."
+  [collection-id-field :- QualifiedColumn
+   user                :- ::collection-user
+   root-objects        :- ::root-objects
+   options             :- ::permissions.schema/collection-filter-options]
+  (check-qualified-column collection-id-field)
+  (let [options (merge {:permission-level :read, :include-archived-items :exclude} options)]
+    [:or
+     (when-let [root (root-collection-clause user root-objects options)]
+       [:and [:= collection-id-field nil] root])
+     [:exists
+      ^:allow-subquery
+      {:select [[[:inline 1]]]
+       :from   [[(t2/table-name :model/Collection) :perms_collection]]
+       :where  [:and
+                [:= :perms_collection.id collection-id-field]
+                (visible-collection-where user options)]}]]))
 
 (mu/defn collection-ranks :- [:sequential [:map [:id ms/PositiveInt] [:rank :int]]]
   "For each of the Collections with `collection-ids`, 2 when `user` writes it, 1 when they only read it, and 0
@@ -777,11 +879,9 @@
   [user :- ::collection-user]
   (let [some-collection (fn [permission-level]
                           [:exists ^:allow-subquery
-                           {:select [1]
+                           {:select [[[:inline 1]]]
                             :from   [[(t2/table-name :model/Collection) :perms_collection]]
-                            :where  [:and
-                                     (collection-level-clause user permission-level)
-                                     (listed-collection-clause user)]}])]
+                            :where  (visible-collection-where user {:permission-level permission-level})}])]
     (:rank (t2/query-one {:select [[[:case
                                      (some-collection :write) [:inline 2]
                                      (some-collection :read)  [:inline 1]
