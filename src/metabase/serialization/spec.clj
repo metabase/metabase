@@ -15,7 +15,6 @@
     to nil.
   - `:identity`, the columns whose values make the ref of a row, which finds the row an imported row updates,
     `[:entity_id]` by default (see [[metabase.serialization.protocol/select-by-refs]]).
-  - `:primary-key`, the primary key column of the model, `:id` by default.
   - `:children`, the map from a key to a child model whose rows the rows of this model own, which they export nested
     under that key and load with, deleting the children a loaded entity no longer holds.
   - `:parent`, for a child model, `{:model parent-model :key column :order key-fn :import-only? bool}`: `column` holds
@@ -51,9 +50,9 @@
   (or (:identity (spec model)) [:entity_id]))
 
 (defn primary-key
-  "The primary key column of `model`."
+  "The primary key column of `model`, the first when it has several."
   [model]
-  (or (:primary-key (spec model)) :id))
+  (first (t2.model/primary-keys model)))
 
 (defn parent
   "The `:parent` of the spec of `model`, `{:model parent-model :key column :order key-fn}`, or nil."

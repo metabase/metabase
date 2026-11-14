@@ -712,7 +712,6 @@
 (defmethod serialization/spec :model/QueryAction [_]
   {:schema    ::actions.schema/external-query-action
    :identity  [:action_id]
-   :primary-key :action_id
    :skip      [:legacy_query]
    :parent    {:model :model/Action :key :action_id}
    :transform {:action_id     serialization/import-only-transform
@@ -722,7 +721,6 @@
 (defmethod serialization/spec :model/ImplicitAction [_]
   {:schema    ::actions.schema/external-implicit-action
    :identity  [:action_id]
-   :primary-key :action_id
    :copy      [:kind]
    :parent    {:model :model/Action :key :action_id}
    :transform {:action_id serialization/import-only-transform

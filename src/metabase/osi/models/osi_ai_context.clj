@@ -126,7 +126,6 @@
 (defmethod serialization/spec :model/OsiAiContext [_]
   {:schema    ::osi.schema/external-osi-ai-context
    :identity  [:entity_type :entity_local_id]
-   :primary-key :entity_type
    :copy      [:ai_context :entity_id :entity_type]
    :transform {:entity_local_id {:export (fn [store rows _ _]
                                            (serialization/export-in-bulk store rows walk-export-local-id))
