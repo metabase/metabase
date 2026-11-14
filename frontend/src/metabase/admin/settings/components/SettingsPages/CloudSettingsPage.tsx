@@ -7,7 +7,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Box, Icon } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 
@@ -32,10 +32,7 @@ export const SettingsCloudStoreLink = () => {
         description={t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}
       />
       <Box>
-        <ButtonLink href={url}>
-          {t`Go to the Metabase Store`}
-          <Icon name="external" opacity={0.6} ml="sm" />
-        </ButtonLink>
+        <ButtonLink href={url}>{t`Go to the Metabase Store`}</ButtonLink>
       </Box>
     </SettingsSection>
   );
