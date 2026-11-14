@@ -9,7 +9,8 @@
 
 (p/import-vars
  [metabase.formatter.duration
-  duration-days]
+  duration-days
+  format-duration]
  [metabase.formatter.impl
   ->NumericWrapper
   ->TextWrapper

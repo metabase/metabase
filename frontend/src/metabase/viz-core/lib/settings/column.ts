@@ -4,6 +4,9 @@ import _ from "underscore";
 
 import { getNullDisplayValue } from "metabase/utils/constants";
 import {
+  DEFAULT_DURATION_PRECISION,
+  DEFAULT_DURATION_STYLE,
+  DEFAULT_DURATION_UNIT,
   currency,
   formatDuration,
   formatNumber,
@@ -301,7 +304,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Format`;
     },
     widget: "segmentedControl",
-    // Each option is the same sample value rendered in that style, so the
+    // Each option is a sample value rendered in that style, so the
     // examples reflect the column's separators and currency.
     getProps: (_column, settings) => ({
       options: (
@@ -331,7 +334,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getProps: () => ({
       options: getDurationUnitOptions(),
     }),
-    getDefault: () => "second",
+    getDefault: () => DEFAULT_DURATION_UNIT,
     getHidden: (_column, settings) => settings.number_style !== "duration",
     readDependencies: ["number_style"],
   },
@@ -349,7 +352,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         value: durationStyle,
       })),
     }),
-    getDefault: () => "digital",
+    getDefault: () => DEFAULT_DURATION_STYLE,
     getHidden: (_column, settings) => settings.number_style !== "duration",
     readDependencies: ["number_style"],
   },
@@ -369,7 +372,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         }),
       ),
     }),
-    getDefault: () => "seconds",
+    getDefault: () => DEFAULT_DURATION_PRECISION,
     getHidden: (_column, settings) => settings.number_style !== "duration",
     readDependencies: ["number_style"],
   },

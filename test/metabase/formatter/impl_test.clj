@@ -72,6 +72,13 @@
       (is (= "1:02:03" (fmt-fn 3723.25 {::mb.viz/number-style "duration"
                                         ::mb.viz/decimals     3}))))))
 
+(deftest duration-ignores-percentage-semantic-type-test
+  (is (= "0:01:12"
+         (str ((formatter/number-formatter {:id 1 :name "FOO" :semantic_type :type/Percentage}
+                                           {::mb.viz/column-settings
+                                            {{::mb.viz/column-name "FOO"} {::mb.viz/number-style "duration"}}})
+               72)))))
+
 (deftest duration-global-separators-test
   (mt/with-temporary-setting-values [custom-formatting {:type/Number {:number_separators ",."}}]
     (is (= "1.234:05:06" (format-with-field-id 4442706 {::mb.viz/number-style "duration"})))))

@@ -22,14 +22,27 @@ export function getResponsiveYAxisSegments(height: number) {
   return height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
 }
 
+function getBoundaryGaps(axis: ValueAxisOption): [number, number] {
+  const [lowerGap, upperGap] = Array.isArray(axis.boundaryGap)
+    ? axis.boundaryGap
+    : [];
+
+  return [
+    typeof lowerGap === "number" ? lowerGap : 0,
+    typeof upperGap === "number" ? upperGap : 0,
+  ];
+}
+
 function getValueAxisBounds(extent: Extent, axis: ValueAxisOption): Extent {
   const [dataMin, dataMax] = axis.scale
     ? extent
     : [Math.min(extent[0], 0), Math.max(extent[1], 0)];
+  const [lowerGap, upperGap] = getBoundaryGaps(axis);
+  const span = dataMax - dataMin;
 
   return [
-    typeof axis.min === "number" ? axis.min : dataMin,
-    typeof axis.max === "number" ? axis.max : dataMax,
+    typeof axis.min === "number" ? axis.min : dataMin - span * lowerGap,
+    typeof axis.max === "number" ? axis.max : dataMax + span * upperGap,
   ];
 }
 
@@ -47,12 +60,11 @@ export function getDurationYAxisTicks(
   );
   const min = Math.floor(lower / interval) * interval;
   const max = Math.max(Math.ceil(upper / interval) * interval, min + interval);
-  const hasPaddedMin = axis.boundaryGap != null;
 
   return {
     ...axis,
     interval,
-    min: axis.min ?? (hasPaddedMin ? undefined : min),
+    min: axis.min ?? min,
     max: axis.max ?? max,
   };
 }

@@ -1,7 +1,8 @@
 (ns metabase.formatter.duration-test
   (:require
    [clojure.test :refer :all]
-   [metabase.formatter.duration :as duration]))
+   [metabase.formatter.duration :as duration]
+   [metabase.test :as mt]))
 
 (defn- format-duration
   ([value]
@@ -9,8 +10,7 @@
   ([value options]
    (format-duration value options ".,"))
   ([value options [decimal grouping]]
-   (duration/format-duration value (merge {:unit nil, :style nil, :precision nil, :decimal decimal, :grouping grouping}
-                                          options))))
+   (duration/format-duration value (assoc options :decimal decimal :grouping grouping))))
 
 (deftest ^:parallel digital-style-test
   (testing "seconds format as clock by default"
@@ -48,7 +48,8 @@
     3723.25 {:precision "milliseconds"} "1h 2m 3s 250ms"
     3723.25 {:precision "minutes"}      "1h 2m"
     0       {}                          "0s"
-    10      {:precision "minutes"}      "0m"))
+    10      {:precision "minutes"}      "0m"
+    0.0002  {:precision "milliseconds"} "0ms"))
 
 (deftest ^:parallel negative-value-test
   (is (= "-0:01:12" (format-duration -72)))
@@ -61,7 +62,23 @@
   (is (= "1234:05:06" (format-duration 4442706 {} ".")))
   (is (= "1 000d" (format-duration 86400000 {:style "narrow"} ", "))))
 
+(deftest ^:parallel unknown-options-test
+  (is (= "0:01:12" (format-duration 72 {:unit "seconds", :style "clock", :precision "hours"})))
+  (is (= "0:01:12" (format-duration 72 {:unit nil, :style nil, :precision nil}))))
+
+(deftest ^:parallel large-value-test
+  (is (string? (format-duration 9.3e15)))
+  (is (string? (format-duration Double/POSITIVE_INFINITY)))
+  (is (string? (format-duration Long/MAX_VALUE {:unit "week", :style "narrow"}))))
+
+(deftest narrow-digits-test
+  (mt/with-user-locale "fa"
+    (is (= "1d 6h 4m 5s" (format-duration 108245 {:style "narrow"})))))
+
 (deftest ^:parallel duration-days-test
-  (is (= 1.0 (double (duration/duration-days 86400 nil))))
-  (is (= 1.0 (double (duration/duration-days 24 "hour"))))
-  (is (= 7.0 (double (duration/duration-days 1 "week")))))
+  (is (= 1.0 (duration/duration-days 86400 nil nil)))
+  (is (= 1.0 (duration/duration-days 24 "hour" nil)))
+  (is (= 7.0 (duration/duration-days 1 "week" nil)))
+  (is (= -1.0 (duration/duration-days -86400 nil nil)))
+  (testing "value is rounded to precision"
+    (is (= (/ 1.0 24) (duration/duration-days 3599.5 nil "minutes")))))

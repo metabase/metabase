@@ -20,6 +20,9 @@ export {
   hasHour,
 } from "./datetime-utils";
 export {
+  DEFAULT_DURATION_PRECISION,
+  DEFAULT_DURATION_STYLE,
+  DEFAULT_DURATION_UNIT,
   type FormatDurationOptions,
   duration,
   formatDuration,

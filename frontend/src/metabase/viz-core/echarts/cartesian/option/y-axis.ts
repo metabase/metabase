@@ -2,10 +2,10 @@ import type { YAXisOption } from "echarts/types/dist/shared";
 import { match } from "ts-pattern";
 
 import { isNotNull } from "metabase/utils/types";
+import type { ColumnSettings } from "metabase-types/api";
 
 import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ChartLayout } from "../layout/types";
-import { DEFAULT_Y_AXIS_SPLIT_NUMBER } from "../model/axis";
 import type { BaseCartesianChartModel, YAxisModel } from "../model/types";
 
 import { getGoalLineValue } from "./goal-line";
@@ -65,12 +65,13 @@ function getAxisExtent(
 
 function isDurationAxis(
   axisModel: YAxisModel,
+  columnSettings: ColumnSettings,
   settings: ComputedVisualizationSettings,
 ) {
   return (
     !axisModel.isNormalized &&
     settings["graph.y_axis.scale"] === "linear" &&
-    settings.column?.(axisModel.column)?.number_style === "duration"
+    columnSettings.number_style === "duration"
   );
 }
 
@@ -89,11 +90,10 @@ function getYAxisTicks(
   height: number,
   settings: ComputedVisualizationSettings,
 ): YAXisOption {
-  const durationOptions = settings.column?.(axisModel.column) ?? {};
-  const splitNumber = axisModel.splitNumber ?? DEFAULT_Y_AXIS_SPLIT_NUMBER;
+  const columnSettings = settings.column?.(axisModel.column) ?? {};
 
   return match({
-    isDuration: isDurationAxis(axisModel, settings),
+    isDuration: isDurationAxis(axisModel, columnSettings, settings),
     isResponsive: isResponsiveAxis(axisModel, settings),
   })
     .with({ isDuration: true, isResponsive: true }, () =>
@@ -101,11 +101,16 @@ function getYAxisTicks(
         extent,
         axis,
         getResponsiveYAxisSegments(height),
-        durationOptions,
+        columnSettings,
       ),
     )
     .with({ isDuration: true, isResponsive: false }, () =>
-      getDurationYAxisTicks(extent, axis, splitNumber, durationOptions),
+      getDurationYAxisTicks(
+        extent,
+        axis,
+        axisModel.splitNumber,
+        columnSettings,
+      ),
     )
     .with({ isDuration: false, isResponsive: true }, () =>
       getResponsiveYAxisTicks(extent, axis, height),
@@ -114,7 +119,7 @@ function getYAxisTicks(
     .exhaustive();
 }
 
-export function applyResponsiveYAxisTicks(
+export function applyYAxisTicks(
   axes: YAXisOption[],
   chartModel: ChartAxisModels,
   chartLayout: ChartLayout,

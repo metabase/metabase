@@ -97,6 +97,9 @@
                      ::mb.viz/number-style
                      ::mb.viz/number-separators
                      ::mb.viz/currency-position
+                     ::mb.viz/duration-unit
+                     ::mb.viz/duration-style
+                     ::mb.viz/duration-precision
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
@@ -488,12 +491,27 @@
         new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
     (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
 
-(defn- cell-number-value
-  "Returns the number to write to a cell: scaled, and converted to days when the cell has a duration format."
-  [value {::mb.viz/keys [scale number-style duration-unit]} styles]
-  (cond-> value
-    scale                                    (* scale)
-    (and styles (= number-style "duration")) (formatter/duration-days duration-unit)))
+(defn- duration-cell-value
+  "Returns a duration as a number of days, or as text when it is negative, which Excel cannot show as a time."
+  [value {::mb.viz/keys [duration-unit duration-style duration-precision number-separators]}]
+  (let [days               (formatter/duration-days value duration-unit duration-precision)
+        [decimal grouping] (or number-separators ".,")]
+    (if (neg? days)
+      (formatter/format-duration value {:unit      duration-unit
+                                        :style     duration-style
+                                        :precision duration-precision
+                                        :decimal   decimal
+                                        :grouping  grouping})
+      days)))
+
+(defn- cell-value
+  "Returns the value to write to a cell: numbers are scaled, and durations in formatted cells are converted for Excel."
+  [value {::mb.viz/keys [scale number-style] :as settings} styles]
+  (cond
+    (not (number? value))                    value
+    (and styles (= number-style "duration")) (duration-cell-value (* value (or scale 1)) settings)
+    scale                                    (* value scale)
+    :else                                    value))
 
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
@@ -525,9 +543,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (number? value)
-                              (cell-number-value value settings styles)
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -557,9 +573,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (number? value)
-                              (cell-number-value value settings styles)
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -584,9 +598,7 @@
                  :col   {}})
               ^Cell cell   (.createCell excel-row ^Integer col-idx)
               settings     (streaming.common/viz-settings-for-col col viz-settings)
-              scaled-val   (if (number? value)
-                             (cell-number-value value settings styles)
-                             value)
+              scaled-val   (cell-value value settings styles)
               parsed-value (or (maybe-parse-temporal-value value col)
                                (maybe-parse-coordinate-value value col)
                                scaled-val)]

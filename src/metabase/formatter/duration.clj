@@ -29,17 +29,31 @@
    "seconds"      ms-per-second
    "milliseconds" 1})
 
+(def ^:private narrow-units
+  [{:unit-ms ms-per-day,    :wrap-ms Long/MAX_VALUE, :label #(tru "{0}d" %)}
+   {:unit-ms ms-per-hour,   :wrap-ms ms-per-day,     :label #(tru "{0}h" %)}
+   {:unit-ms ms-per-minute, :wrap-ms ms-per-hour,    :label #(tru "{0}m" %)}
+   {:unit-ms ms-per-second, :wrap-ms ms-per-minute,  :label #(tru "{0}s" %)}
+   {:unit-ms 1,             :wrap-ms ms-per-second,  :label #(tru "{0}ms" %)}])
+
 (def ^:private DurationOptions
   [:map {:closed true}
-   [:unit      [:maybe :string]]
-   [:style     [:maybe :string]]
-   [:precision [:maybe :string]]
-   [:decimal   [:maybe char?]]
-   [:grouping  [:maybe char?]]])
+   [:unit      {:optional true} [:maybe :string]]
+   [:style     {:optional true} [:maybe :string]]
+   [:precision {:optional true} [:maybe :string]]
+   [:decimal   {:optional true} [:maybe char?]]
+   [:grouping  {:optional true} [:maybe char?]]])
 
-(defn- duration->ms
-  [value unit]
-  (* (double value) (get unit->ms unit ms-per-second)))
+(defn- precision-ms
+  [precision]
+  (get precision->ms precision ms-per-second))
+
+(defn- rounded-ms
+  "Returns the absolute value of a duration in milliseconds, rounded to the given precision."
+  [value unit precision]
+  (let [ms   (* (Math/abs (double value)) (double (get unit->ms unit ms-per-second)))
+        step (double (precision-ms precision))]
+    (Math/round (* (Math/floor (+ (/ ms step) 0.5)) step))))
 
 (defn- format-integer
   [n grouping]
@@ -62,36 +76,26 @@
 
 (defn- format-narrow
   [total-ms precision grouping]
-  (let [days    (quot total-ms ms-per-day)
-        hours   (quot (rem total-ms ms-per-day) ms-per-hour)
-        minutes (quot (rem total-ms ms-per-hour) ms-per-minute)
-        seconds (quot (rem total-ms ms-per-minute) ms-per-second)
-        millis  (rem total-ms ms-per-second)
-        parts   (cond-> []
-                  (pos? days)    (conj (tru "{0}d" (format-integer days grouping)))
-                  (pos? hours)   (conj (tru "{0}h" hours))
-                  (pos? minutes) (conj (tru "{0}m" minutes))
-                  (pos? seconds) (conj (tru "{0}s" seconds))
-                  (pos? millis)  (conj (tru "{0}ms" millis)))]
-    (cond
-      (seq parts)             (str/join " " parts)
-      (= precision "minutes") (tru "{0}m" 0)
-      :else                   (tru "{0}s" 0))))
+  (str/join " " (for [{:keys [unit-ms wrap-ms label]} narrow-units
+                      :let  [n (quot (rem total-ms wrap-ms) unit-ms)]
+                      :when (or (pos? n)
+                                (and (zero? total-ms) (= unit-ms (precision-ms precision))))]
+                  (label (format-integer n grouping)))))
 
 (mu/defn format-duration :- :string
   "Formats `value`, a duration in `unit`, as a string in the given style, rounded to the given precision."
   [value                                           :- number?
    {:keys [unit style precision decimal grouping]} :- DurationOptions]
-  (let [precision-ms (get precision->ms precision ms-per-second)
-        ms           (duration->ms value unit)
-        total-ms     (* (Math/round (/ (Math/abs (double ms)) (double precision-ms))) precision-ms)]
-    (str (when (and (neg? ms) (pos? total-ms)) "-")
+  (let [total-ms (rounded-ms value unit precision)]
+    (str (when (and (neg? value) (pos? total-ms)) "-")
          (if (= style "narrow")
            (format-narrow total-ms precision grouping)
            (format-digital total-ms precision (or decimal \.) grouping)))))
 
 (mu/defn duration-days :- number?
-  "Converts `value`, a duration in `unit`, to days."
-  [value :- number?
-   unit  :- [:maybe :string]]
-  (/ (duration->ms value unit) ms-per-day))
+  "Converts `value`, a duration in `unit`, to days, rounded to the given precision."
+  [value     :- number?
+   unit      :- [:maybe :string]
+   precision :- [:maybe :string]]
+  (cond-> (/ (double (rounded-ms value unit precision)) ms-per-day)
+    (neg? value) -))

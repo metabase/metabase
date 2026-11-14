@@ -14,7 +14,7 @@ import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import type { YAxisModel } from "../model/types";
 
 import { buildAxes, createAxisVisibilityOption } from "./axis";
-import { applyResponsiveYAxisTicks } from "./responsive-axis";
+import { applyYAxisTicks } from "./y-axis";
 
 const renderingContext: RenderingContext = {
   getColor: (name) => name,
@@ -70,12 +70,7 @@ function setup({
   );
   return {
     ...axes,
-    yAxis: applyResponsiveYAxisTicks(
-      axes.yAxis,
-      chartModel,
-      chartLayout,
-      settings,
-    ),
+    yAxis: applyYAxisTicks(axes.yAxis, chartModel, chartLayout, settings),
   };
 }
 

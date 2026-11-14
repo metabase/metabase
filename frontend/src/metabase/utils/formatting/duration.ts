@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
 import type {
@@ -70,6 +70,11 @@ export type FormatDurationOptions = {
   number_separators?: string;
 };
 
+export const DEFAULT_DURATION_UNIT: DurationUnit = "second";
+export const DEFAULT_DURATION_STYLE: DurationStyle = "digital";
+export const DEFAULT_DURATION_PRECISION: TimeEnabled = "seconds";
+const DEFAULT_NUMBER_SEPARATORS = ".,";
+
 const MILLISECOND_MS = 1;
 const SECOND_MS = 1000 * MILLISECOND_MS;
 const MINUTE_MS = 60 * SECOND_MS;
@@ -94,6 +99,8 @@ const DURATION_PRECISION_MS: Record<TimeEnabled, number> = {
   milliseconds: MILLISECOND_MS,
 };
 
+const DURATION_PRECISIONS = ["minutes", "seconds", "milliseconds"] as const;
+
 const DURATION_TICK_STEPS_MS = [
   ...[1, 2, 5, 10, 20, 50, 100, 200, 500].map(
     (count) => count * MILLISECOND_MS,
@@ -112,14 +119,34 @@ type NarrowDurationUnit = {
 };
 
 const NARROW_DURATION_UNITS: NarrowDurationUnit[] = [
-  { unitMs: DAY_MS, wrapMs: Infinity, format: (count) => t`${count}d` },
-  { unitMs: HOUR_MS, wrapMs: DAY_MS, format: (count) => t`${count}h` },
-  { unitMs: MINUTE_MS, wrapMs: HOUR_MS, format: (count) => t`${count}m` },
-  { unitMs: SECOND_MS, wrapMs: MINUTE_MS, format: (count) => t`${count}s` },
+  {
+    unitMs: DAY_MS,
+    wrapMs: Infinity,
+    format: (count) => c("Abbreviation for days. {0} is a number").t`${count}d`,
+  },
+  {
+    unitMs: HOUR_MS,
+    wrapMs: DAY_MS,
+    format: (count) =>
+      c("Abbreviation for hours. {0} is a number").t`${count}h`,
+  },
+  {
+    unitMs: MINUTE_MS,
+    wrapMs: HOUR_MS,
+    format: (count) =>
+      c("Abbreviation for minutes. {0} is a number").t`${count}m`,
+  },
+  {
+    unitMs: SECOND_MS,
+    wrapMs: MINUTE_MS,
+    format: (count) =>
+      c("Abbreviation for seconds. {0} is a number").t`${count}s`,
+  },
   {
     unitMs: MILLISECOND_MS,
     wrapMs: SECOND_MS,
-    format: (count) => t`${count}ms`,
+    format: (count) =>
+      c("Abbreviation for milliseconds. {0} is a number").t`${count}ms`,
   },
 ];
 
@@ -128,27 +155,61 @@ const INTEGER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 0,
 });
 
+function getOwn<T>(
+  table: Partial<Record<string, T>>,
+  key: unknown,
+): T | undefined {
+  return typeof key === "string" && Object.hasOwn(table, key)
+    ? table[key]
+    : undefined;
+}
+
+function resolveDurationOptions({
+  duration_unit,
+  duration_style,
+  duration_precision,
+  number_separators,
+}: FormatDurationOptions) {
+  const precision =
+    DURATION_PRECISIONS.find((precision) => precision === duration_precision) ??
+    DEFAULT_DURATION_PRECISION;
+  const separators =
+    typeof number_separators === "string"
+      ? number_separators
+      : DEFAULT_NUMBER_SEPARATORS;
+  const [decimalSeparator = ".", groupingSeparator = ""] = separators.split("");
+
+  return {
+    unitMs:
+      getOwn(DURATION_UNIT_MS, duration_unit) ??
+      DURATION_UNIT_MS[DEFAULT_DURATION_UNIT],
+    style: duration_style === "narrow" ? "narrow" : DEFAULT_DURATION_STYLE,
+    precision,
+    precisionMs: DURATION_PRECISION_MS[precision],
+    decimalSeparator,
+    groupingSeparator,
+  };
+}
+
 export function formatDuration(
   value: number,
-  {
-    duration_unit = "second",
-    duration_style = "digital",
-    duration_precision = "seconds",
-    number_separators = ".,",
-  }: FormatDurationOptions = {},
+  options: FormatDurationOptions = {},
 ): string {
-  const precisionMs = DURATION_PRECISION_MS[duration_precision];
+  const {
+    unitMs,
+    style,
+    precision,
+    precisionMs,
+    decimalSeparator,
+    groupingSeparator,
+  } = resolveDurationOptions(options);
   const totalMs =
-    Math.round(
-      (Math.abs(value) * DURATION_UNIT_MS[duration_unit]) / precisionMs,
-    ) * precisionMs;
+    Math.round((Math.abs(value) * unitMs) / precisionMs) * precisionMs;
   const sign = value < 0 && totalMs > 0 ? "-" : "";
-  const [decimalSeparator = ".", groupingSeparator = ""] =
-    number_separators.split("");
   const formatted =
-    duration_style === "narrow"
+    style === "narrow"
       ? formatNarrowDuration(totalMs, precisionMs, groupingSeparator)
-      : formatDigitalDuration(totalMs, duration_precision, {
+      : formatDigitalDuration(totalMs, precision, {
           decimalSeparator,
           groupingSeparator,
         });
@@ -184,25 +245,14 @@ function formatNarrowDuration(
   precisionMs: number,
   groupingSeparator: string,
 ): string {
-  const units = NARROW_DURATION_UNITS.filter(
-    ({ unitMs }) => unitMs >= precisionMs,
-  );
-  const parts = units
-    .map(({ unitMs, wrapMs, format }) => ({
-      count: Math.floor((totalMs % wrapMs) / unitMs),
-      format,
-    }))
-    .filter(({ count }) => count > 0)
-    .map(({ count, format }) =>
-      format(formatInteger(count, groupingSeparator)),
-    );
-
-  if (parts.length > 0) {
-    return parts.join(" ");
-  }
-
-  const smallestUnit = units[units.length - 1];
-  return smallestUnit.format("0");
+  return NARROW_DURATION_UNITS.map(({ unitMs, wrapMs, format }) => ({
+    count: Math.floor((totalMs % wrapMs) / unitMs),
+    isZeroUnit: totalMs === 0 && unitMs === precisionMs,
+    format,
+  }))
+    .filter(({ count, isZeroUnit }) => count > 0 || isZeroUnit)
+    .map(({ count, format }) => format(formatInteger(count, groupingSeparator)))
+    .join(" ");
 }
 
 function formatInteger(value: number, groupingSeparator: string): string {
@@ -216,16 +266,10 @@ function padDigits(value: number, length: number): string {
 export function getDurationTickInterval(
   span: number,
   maxIntervalCount: number,
-  {
-    duration_unit = "second",
-    duration_precision = "seconds",
-  }: FormatDurationOptions = {},
+  options: FormatDurationOptions = {},
 ): number {
-  const unitMs = DURATION_UNIT_MS[duration_unit];
-  const minStepMs = Math.max(
-    (span * unitMs) / maxIntervalCount,
-    DURATION_PRECISION_MS[duration_precision],
-  );
+  const { unitMs, precisionMs } = resolveDurationOptions(options);
+  const minStepMs = Math.max((span * unitMs) / maxIntervalCount, precisionMs);
   const stepMs =
     DURATION_TICK_STEPS_MS.find((step) => step >= minStepMs) ??
     getDayTickStepMs(minStepMs);

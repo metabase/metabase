@@ -111,6 +111,12 @@ describe("formatDuration", () => {
   it("formats zero in smallest shown unit for narrow style", () => {
     expect(formatDuration(0, { duration_style: "narrow" })).toBe("0s");
     expect(
+      formatDuration(0.0002, {
+        duration_style: "narrow",
+        duration_precision: "milliseconds",
+      }),
+    ).toBe("0ms");
+    expect(
       formatDuration(10, {
         duration_style: "narrow",
         duration_precision: "minutes",
@@ -142,6 +148,48 @@ describe("formatDuration", () => {
         number_separators: ", ",
       }),
     ).toBe("1 000d");
+  });
+});
+
+describe("formatDuration with stored settings outside allowed values", () => {
+  const getStoredOptions = (options: Record<string, unknown>) => options;
+
+  it("falls back to defaults for unknown or null options", () => {
+    expect(
+      formatDuration(
+        72,
+        getStoredOptions({
+          duration_unit: "seconds",
+          duration_style: "clock",
+          duration_precision: "hours",
+          number_separators: null,
+        }),
+      ),
+    ).toBe("0:01:12");
+    expect(
+      formatDuration(
+        72,
+        getStoredOptions({
+          duration_unit: null,
+          duration_style: "narrow",
+          duration_precision: null,
+          number_separators: 5,
+        }),
+      ),
+    ).toBe("1m 12s");
+  });
+
+  it("gives finite tick interval for unknown unit and precision", () => {
+    expect(
+      getDurationTickInterval(
+        3723,
+        4,
+        getStoredOptions({
+          duration_unit: "constructor",
+          duration_precision: "hours",
+        }),
+      ),
+    ).toBe(1200);
   });
 });
 

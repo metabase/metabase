@@ -155,9 +155,10 @@
         currency-after?    (or (= currency-style "name") (= currency-position "after"))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
         relation?          (isa? semantic_type :Relation/*)
-        percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
-        scientific?        (= number-style "scientific")
         duration?          (= number-style "duration")
+        percent?           (and (not duration?)
+                                (or (isa? semantic_type :type/Percentage) (= number-style "percent")))
+        scientific?        (= number-style "scientific")
         [decimal grouping] (or number-separators
                                (get-in (appearance/custom-formatting) [:type/Number :number_separators])
                                ".,")

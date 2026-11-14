@@ -629,6 +629,15 @@
        ::mb.viz/duration-precision "milliseconds"}            "[h]\"h \"m\"m \"s.000\"s\""
       {::mb.viz/prefix "~" ::mb.viz/suffix " total"}          "\"~\"[h]:mm:ss\" total\"")))
 
+(deftest duration-settings-on-other-number-styles-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "leftover duration settings do not change format of other number styles"
+      (is (= (format-string {::mb.viz/number-style "decimal"})
+             (format-string {::mb.viz/number-style       "decimal"
+                             ::mb.viz/duration-unit      "hour"
+                             ::mb.viz/duration-style     "narrow"
+                             ::mb.viz/duration-precision "minutes"}))))))
+
 (deftest duration-export-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (let [cols     [{:id 0, :name "Col"}]
@@ -645,6 +654,13 @@
                                     (settings {::mb.viz/scale         60
                                                ::mb.viz/duration-unit "millisecond"})
                                     [[1200]])))))
+      (testing "value is rounded to precision, as in app"
+        (is (= [#inst "1899-12-31T01:00:00.000-00:00"]
+               (second (xlsx-export cols (settings {::mb.viz/duration-precision "minutes"}) [[3599.5]])))))
+      (testing "negative values are exported as text, since Excel cannot show negative times"
+        (is (= [["-0:01:12"] ["-1m 12s"]]
+               [(second (xlsx-export cols (settings {}) [[-72]]))
+                (second (xlsx-export cols (settings {::mb.viz/duration-style "narrow"}) [[-72]]))])))
       (testing "values stay in duration unit when rows are not formatted"
         (is (= [72.0]
                (second (xlsx-export cols (settings {}) [[72]] :format-rows? false))))))))

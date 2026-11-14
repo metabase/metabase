@@ -6,7 +6,7 @@ import type { YAXisOption } from "echarts/types/dist/shared";
 
 import type { Extent } from "../../../types";
 
-import { getResponsiveYAxisTicks } from "./y-axis-ticks";
+import { getDurationYAxisTicks, getResponsiveYAxisTicks } from "./y-axis-ticks";
 
 echarts.use([LineChart, GridComponent, SVGRenderer]);
 
@@ -119,4 +119,15 @@ it("labels the min and max ticks only below the small plot height", () => {
 
   expect(axis.axisTick?.customValues).toEqual([0, 50, 100]);
   expect(axis.axisLabel?.customValues).toEqual([0, 100]);
+});
+
+it("keeps zero tick on padded duration axis with negative values", () => {
+  const axis = getDurationYAxisTicks(
+    [-99, 3723],
+    { type: "value", boundaryGap: [0.03, 0] },
+    4,
+    {},
+  );
+
+  expect(axis).toMatchObject({ interval: 1200, min: -1200, max: 4800 });
 });
