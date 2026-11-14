@@ -1,13 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}
-                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor :as qp]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -18,11 +18,15 @@
 
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
 (defn- venues-cols-from-query []
-  (-> (mt/run-mbql-query venues
-        {:order-by [[:asc $id]]
-         :limit    1})
-      mt/cols
-      set))
+  (let [mp        (mt/metadata-provider)
+        venues    (lib.metadata/table mp (mt/id :venues))
+        query     (-> (lib/query mp venues)
+                      (lib.tu.notebook/add-order-by "ID")
+                      (lib/limit 1))]
+    (mt/with-native-query-testing-context query
+      (-> (qp/process-query query)
+          mt/cols
+          set))))
 
 (deftest details-only-fields-test
   (mt/test-drivers (mt/normal-drivers)
@@ -40,29 +44,34 @@
 (deftest ^:parallel sensitive-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
-      (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
-               :rows [[1 "Plato Yeshua"]
-                      [2 "Felipinho Asklepios"]
-                      [3 "Kaneonuskatew Eiran"]
-                      [4 "Simcha Yan"]
-                      [5 "Quentin Sören"]
-                      [6 "Shad Ferdynand"]
-                      [7 "Conchúr Tihomir"]
-                      [8 "Szymon Theutrich"]
-                      [9 "Nils Gotam"]
-                      [10 "Frans Hevel"]
-                      [11 "Spiros Teofil"]
-                      [12 "Kfir Caj"]
-                      [13 "Dwight Gresham"]
-                      [14 "Broen Olujimi"]
-                      [15 "Rüstem Hebel"]]}
-              ;; Filter out the timestamps from the results since they're hard to test :/
-              (mt/format-rows-by
-               [int identity]
-               (qp.test-util/rows-and-cols
-                (mt/run-mbql-query users
-                  {:order-by [[:asc $id]]}))))))))
+      (let [mp       (mt/metadata-provider)
+            users    (lib.metadata/table mp (mt/id :users))
+            query    (-> (lib/query mp users)
+                         (lib.tu.notebook/add-order-by "ID"))]
+        (mt/with-native-query-testing-context query
+          (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
+                   :rows [[1 "Plato Yeshua"]
+                          [2 "Felipinho Asklepios"]
+                          [3 "Kaneonuskatew Eiran"]
+                          [4 "Simcha Yan"]
+                          [5 "Quentin Sören"]
+                          [6 "Shad Ferdynand"]
+                          [7 "Conchúr Tihomir"]
+                          [8 "Szymon Theutrich"]
+                          [9 "Nils Gotam"]
+                          [10 "Frans Hevel"]
+                          [11 "Spiros Teofil"]
+                          [12 "Kfir Caj"]
+                          [13 "Dwight Gresham"]
+                          [14 "Broen Olujimi"]
+                          [15 "Rüstem Hebel"]]}
+                  ;; Filter out the timestamps from the results since they're hard to test :/
+                  (mt/format-rows-by
+                   [int identity]
+                   (qp.test-util/rows-and-cols
+                    (qp/process-query query))))))))))
 
+;; TODO(mbql5-migration): builds raw legacy refs to :sensitive columns, which Lib does not offer; keep on the old macro
 (deftest ^:parallel sensitive-field-explicit-ref-test
   (testing "an explicit :field ref to a :sensitive column is rejected, by ID and by name"
     (mt/with-current-user (mt/user->id :rasta)

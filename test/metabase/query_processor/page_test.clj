@@ -1,18 +1,20 @@
 (ns ^:mb/driver-tests metabase.query-processor.page-test
   "Tests for the `:page` clause."
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.page-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]))
 
 (defn- page-is [expected page-num]
-  (let [query (mt/mbql-query categories
-                {:page     {:page page-num, :items 5}
-                 :order-by [[:asc $id]]})]
+  (let [mp         (mt/metadata-provider)
+        categories (lib.metadata/table mp (mt/id :categories))
+        query      (-> (lib/query mp categories)
+                       (lib.tu.notebook/add-order-by "ID")
+                       (lib/with-page {:page page-num, :items 5}))]
     (mt/with-native-query-testing-context query
       (is (= expected
              (mt/formatted-rows
