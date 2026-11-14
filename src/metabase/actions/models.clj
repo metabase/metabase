@@ -37,7 +37,6 @@
 
 (doto :model/Action
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
@@ -292,39 +291,66 @@
       (when collection-id
         (api/check-404 (actions.db/collection-exists? collection-id))))))
 
-(defmethod mi/perms-objects-set :model/Action
-  [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
-  (cond
-    model-id
-    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
-
-    (and (= read-or-write :write)
-         (nil? collection-id)
-         (not (if-let [id (:id action)]
-                (remote-sync/can-write? :model/Action id)
-                (not (remote-sync/read-only?)))))
-    #{"___no-remote-sync-access"}
-
-    (nil? collection-id)
-    (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
-
-    :else
-    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
+(defn- model-less-root?
+  "Whether `action` has neither a model nor a Collection, which puts it in the root of the data actions namespace."
+  [{model-id :model_id, collection-id :collection_id}]
+  (and (nil? model-id) (nil? collection-id)))
 
 (defn- collection-writable?
-  "Whether the current user can write the Collection `action` goes in."
+  "Whether the current user can write the Collection `action` goes in: its own or its model's, the default root for
+  an Action of a model outside one, and otherwise the data actions root, whose Actions remote sync keeps read-only on
+  a read-only instance."
   [{model-id :model_id, :as action}]
-  (let [action (assoc action :collection_id (effective-collection-id action))]
-    (if model-id
-      ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
-      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
+  (let [collection-id (effective-collection-id action)]
+    (if (or model-id collection-id)
+      (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
+      (and (collection/can-write-collection-or-root? nil {:root-namespace collection/data-actions-ns})
+           (not (remote-sync/read-only?))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/Action :can_write]
-  [_model k action]
-  (assoc action k
-         (boolean
-          (and (mi/superuser?)
-               (mi/current-user-has-full-permissions? :write action)))))
+(defn- check-can-read-keys
+  "Throws unless `action` has the columns its `:can_read` and `:can_write` hydrations read."
+  [action]
+  (api/check-500 (contains? action :collection_id) "No :collection_id is set for an Action.")
+  (api/check-500 (contains? action :model_id) "No :model_id is set for an Action."))
+
+(methodical/defmethod t2/batched-hydrate [:model/Action :can_read]
+  "Whether the current user reads each of `actions`, as the content of its Collection, or of the data actions root for
+  an Action with neither a model nor a Collection."
+  [_model _k actions]
+  (run! #(when % (check-can-read-keys %)) actions)
+  (let [rows          (remove nil? actions)
+        readable      (collection/content-readable-collection-ids (map :collection_id (remove model-less-root? rows))
+                                                                  {:root-namespace nil, :audit-rules? false})
+        root-readable (delay (contains? (collection/content-readable-collection-ids
+                                         [nil] {:root-namespace collection/data-actions-ns, :audit-rules? false})
+                                        nil))]
+    (for [action actions]
+      (when action
+        (vary-meta action assoc :can_read (boolean (if (model-less-root? action)
+                                                     @root-readable
+                                                     (contains? readable (:collection_id action)))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Action :can_write]
+  "Whether the current user writes each of `actions`: a superuser, writing its Collection's content, or, for an Action
+  with neither a model nor a Collection, the data actions root on an instance remote sync doesn't keep read-only."
+  [_model _k actions]
+  (run! #(when % (check-can-read-keys %)) actions)
+  (let [rows          (remove nil? actions)
+        superuser?    (mi/superuser?)
+        writable      (if superuser?
+                        (collection/content-writable-collection-ids (map :collection_id (remove model-less-root? rows))
+                                                                    {:root-namespace nil, :audit-rules? false})
+                        #{})
+        root-writable (delay (and (not (remote-sync/read-only?))
+                                  (contains? (collection/content-writable-collection-ids
+                                              [nil] {:root-namespace collection/data-actions-ns, :audit-rules? false})
+                                             nil)))]
+    (for [action actions]
+      (when action
+        (assoc action :can_write (boolean (and superuser?
+                                               (if (model-less-root? action)
+                                                 @root-writable
+                                                 (contains? writable (:collection_id action))))))))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -616,13 +642,15 @@
 
 (mu/defn adhoc-action :- ::actions.schema/action.for-insert
   "The ad-hoc `action`, built without saving it: an implicit one with its parameters derived from its Table, and a query
-  one writing to the database of its query."
+  one writing to the database of its query. It has the `:collection_id` and `:model_id` its checks read, nil when not
+  given."
   [action :- ::actions.schema/action.adhoc]
-  (t2/instance :model/Action
-               (if (= :implicit (keyword (:type action)))
-                 (first (enrich-actions-with-implicit-params
-                         [(merge {:visualization_settings {}} action)]))
-                 (assoc action :database_id (get-in action [:dataset_query :database])))))
+  (let [action (merge {:collection_id nil, :model_id nil} action)]
+    (t2/instance :model/Action
+                 (if (= :implicit (keyword (:type action)))
+                   (first (enrich-actions-with-implicit-params
+                           [(merge {:visualization_settings {}} action)]))
+                   (assoc action :database_id (get-in action [:dataset_query :database]))))))
 
 (mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
   "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the

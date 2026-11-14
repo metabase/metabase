@@ -12,16 +12,13 @@
    [metabase-enterprise.search.semantic.events]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.settings :as semantic.settings]
-   [metabase-enterprise.search.semantic.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
-   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
    [next.jdbc :as jdbc]
@@ -771,193 +768,90 @@
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-sub-coll-id shared-coll-id nil]))))))))
 
-(deftest filter-read-permitted-fast-path-test
+(deftest filter-read-permitted-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "filter-read-permitted routes collection-id-only models through the fast path"
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {readable-coll-id :id} {}
                      :model/Collection {unreadable-coll-id :id} {}]
-        (testing "indexed-entity docs are filtered by denormalized :collection_id"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) readable-coll-id)
+        (testing "indexed-entity docs are filtered by Collection id of their index rows"
           (let [docs [{:id "1:123" :model "indexed-entity" :collection_id readable-coll-id}
                       {:id "2:456" :model "indexed-entity" :collection_id unreadable-coll-id}
                       {:id "3:789" :model "indexed-entity" :collection_id nil}]]
-            (testing "keeps all entities when user has root permissions"
-              (binding [api/*current-user-permissions-set* (atom #{"/"})]
+            (testing "superuser keeps all entities"
+              (mt/with-test-user :crowberto
                 (is (= 3 (count (#'semantic.index/filter-read-permitted docs))))))
-            (testing "drops all entities when user has no permissions"
-              (binding [api/*current-user-permissions-set* (atom #{})]
-                (is (= 0 (count (#'semantic.index/filter-read-permitted docs))))))
-            (testing "keeps only entities in readable collections"
-              (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-                (let [result (#'semantic.index/filter-read-permitted docs)]
-                  (is (= 1 (count result)))
-                  (is (= "1:123" (:id (first result)))))))))
-        (testing "dashboard docs use the same fast path"
-          ;; Fast-path docs are adjudicated from the index row's denormalized `:collection_id` alone, so
-          ;; these fabricated ids never have to correspond to real rows. That is the whole point of the
-          ;; path — and the reason card/metric/dataset, which now take the slow path, need real rows below.
-          (let [docs [{:id 1 :model "dashboard" :collection_id readable-coll-id}
-                      {:id 2 :model "dashboard" :collection_id unreadable-coll-id}
-                      {:id 3 :model "dashboard" :collection_id nil}]]
-            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-              (let [result (#'semantic.index/filter-read-permitted docs)]
-                (is (= [1] (map :id result))
-                    "only the doc whose denormalized collection_id is readable survives")))))
-        (testing "card/metric/dataset docs take the slow path"
-          ;; `:model/Card` left the collection-id-only registry once a Card could be scoped to a Document
-          ;; and gated by it rather than by its collection. The slow path loads the real row and runs
-          ;; `mi/can-read?` on it, so the verdict must still track the *collection* for an ordinary Card —
-          ;; and it must ignore a `:collection_id` on the index row that disagrees with the database.
+            (testing "user keeps only entities in readable Collections"
+              (mt/with-test-user :rasta
+                (is (= ["1:123"] (map :id (#'semantic.index/filter-read-permitted docs))))))))
+        (testing "dashboard docs without rows are filtered by Collection id of their index rows"
+          (mt/with-test-user :rasta
+            (is (= [1]
+                   (map :id (#'semantic.index/filter-read-permitted
+                             [{:id 1 :model "dashboard" :collection_id readable-coll-id}
+                              {:id 2 :model "dashboard" :collection_id unreadable-coll-id}
+                              {:id 3 :model "dashboard" :collection_id nil}]))))))
+        (testing "card, metric and dataset docs are filtered by their rows"
           (doseq [[model card-type] [["card" :question] ["metric" :metric] ["dataset" :model]]]
             (testing (str "model=" model)
               (mt/with-temp [:model/Card {readable-id :id}   {:type card-type :collection_id readable-coll-id}
                              :model/Card {unreadable-id :id} {:type card-type :collection_id unreadable-coll-id}]
-                (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-                  (let [result (#'semantic.index/filter-read-permitted
-                                [{:id readable-id   :model model :collection_id readable-coll-id}
-                                 {:id unreadable-id :model model :collection_id unreadable-coll-id}
-                                 ;; a stale index row claiming a readable collection must not win:
-                                 ;; the slow path reads the live row, not the denormalized copy
-                                 {:id unreadable-id :model model :collection_id readable-coll-id}])]
-                    (is (= [readable-id] (map :id result)))))))))
-        (testing "memoizes permission check per collection_id across docs"
-          (let [calls       (atom 0)
-                real-helper (mt/original-fn #'perms/can-read-via-parent-collection?)]
-            (mt/with-dynamic-fn-redefs [perms/can-read-via-parent-collection? (fn [& args]
-                                                                                (swap! calls inc)
-                                                                                (apply real-helper args))]
-              (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                (#'semantic.index/filter-read-permitted
-                 (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
-                (is (= 1 @calls) "expected one can-read-via-parent-collection? call for the single distinct collection_id")))))
+                (mt/with-test-user :rasta
+                  (is (= [readable-id]
+                         (map :id (#'semantic.index/filter-read-permitted
+                                   [{:id readable-id   :model model :collection_id readable-coll-id}
+                                    {:id unreadable-id :model model :collection_id unreadable-coll-id}
+                                    {:id unreadable-id :model model :collection_id readable-coll-id}])))
+                      "index row claiming readable Collection does not win over stored row"))))))
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
 (deftest filter-read-permitted-document-scoped-cards-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "a card scoped to a document is filtered by that document, though the filter loads only a few columns"
-      (mt/with-temp [:model/Collection {readable-coll :id}   {}
-                     :model/Collection {unreadable-coll :id} {}
-                     :model/Document   {readable-doc :id}    {:name          "Readable"
-                                                              :creator_id    (mt/user->id :rasta)
-                                                              :collection_id readable-coll}
-                     :model/Document   {hidden-doc :id}      {:name          "Hidden"
-                                                              :creator_id    (mt/user->id :rasta)
-                                                              :collection_id unreadable-coll}
-                     :model/Card       {plain :id}           {:collection_id readable-coll}
-                     :model/Card       {other-plain :id}     {:collection_id readable-coll}
-                     :model/Card       {in-readable-doc :id} {:collection_id readable-coll, :document_id readable-doc}
-                     :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll, :document_id hidden-doc}]
-        (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll)})]
-          (let [ids          [plain in-readable-doc in-hidden-doc]
-                filter-cards (fn [ids]
-                               (mapv :id (#'semantic.index/filter-read-permitted
-                                          (for [id ids] {:id id :model "card" :collection_id readable-coll}))))
-                query-count  (fn [ids]
-                               (t2/with-call-count [call-count]
-                                 (filter-cards ids)
-                                 (call-count)))
-                loaded       (atom [])
-                instances    (mt/original-fn #'semantic-search.db/instances)
-                recording    (fn [modelable pks]
-                               (let [rows (instances modelable pks)]
-                                 (swap! loaded into rows)
-                                 rows))
-                filtered-ids (mt/with-dynamic-fn-redefs [semantic-search.db/instances recording]
-                               (filter-cards ids))]
-            (is (= [plain in-readable-doc]
-                   filtered-ids
-                   (into []
-                         (comp (filter mi/can-read?) (map :id))
-                         (t2/hydrate (t2/select :model/Card :id [:in ids] {:order-by [[:id :asc]]}) :can_read)))
-                "the verdicts match mi/can-read? on full rows")
-            (is (= (set queries/card-read-check-columns)
-                   (set (mapcat keys @loaded)))
-                "the filter loads only the read-check columns")
-            (is (= (query-count [plain])
-                   (query-count [plain other-plain]))
-                "cards outside a document add no query each")))))))
-
-(deftest collection-id-only-search-models-derived-correctly-test
-  (testing "derived set includes every collection-id-only search-model plus indexed-entity"
-    ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
-    ;;
-    ;; "card"/"dataset"/"metric" are deliberately absent: a Card scoped to a Document is gated by that
-    ;; Document rather than by its collection (see `metabase.queries.models.card/parent-document-permits?`),
-    ;; so `:model/Card` no longer meets the macro's collection-id-only contract and dropped its
-    ;; registration. Cards take `filter-read-permitted`'s slow path, one batched `t2/select` of the columns
-    ;; their read check uses, which is the price of adjudicating them correctly.
-    (is (= #{"dashboard" "indexed-entity"}
-           @@#'semantic.index/collection-id-only-search-models))))
-
-(deftest collection-based-visibility-search-model-claims-verified-test
-  (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
-    ;; Guards the `:denormalized-from` claim at `define-collection-based-visibility!` call sites against
-    ;; drift. We walk the join equality graph from `:collection-id` and require the claim to be a
-    ;; structural source — not merely any model mentioned in `:joins`. Without this, a stale claim can
-    ;; still pass if the model stays joined for an unrelated field.
-    (let [specs (search/specifications)]
-      (doseq [[search-model denormalized-from] (perms/collection-based-visibility-search-models)]
-        (testing (str search-model " traces :collection-id to " denormalized-from)
-          (let [spec    (get specs search-model)
-                reached (spec-trace/trace-collection-id-source-models spec)]
-            (is (some? spec)
-                (str "no search spec registered for " (pr-str search-model)))
-            (is (contains? reached denormalized-from)
-                (str (pr-str search-model) " claims :denormalized-from " (pr-str denormalized-from)
-                     " but tracing :collection-id through its join equalities only reaches "
-                     reached))))))))
-
-(deftest keyword-form-derived-search-models-trace-to-own-model-test
-  (testing "every keyword-form-derived search-model denormalizes :collection_id from its own t2-model"
-    ;; The string form of `define-collection-based-visibility!` carries an explicit `:denormalized-from`
-    ;; claim verified above. The keyword form has no such claim: sibling specs like "dataset"/"metric"
-    ;; are swept into the fast path purely because their `:model` is a registered t2-model. The fast path
-    ;; checks `can-read-via-parent-collection?` against the index row's `:collection_id`, so this is only
-    ;; correct if the spec's `:collection-id` is its own collection. Assert that structurally — tracing
-    ;; `:collection-id` through join equalities must reach the spec's own registered t2-model — so a future
-    ;; sibling sourcing `:collection-id` from a join (a different collection) fails here instead of
-    ;; silently gaining incorrect read semantics.
-    (let [specs                (search/specifications)
-          registered-t2-models (perms/collection-id-only-read-models)]
-      ;; Guard against a vacuous pass: if the registry is empty the `:when` filter below matches nothing
-      ;; and the only assertion never runs. A future refactor that breaks registry population should fail
-      ;; here rather than silently no-op.
-      (is (seq registered-t2-models)
-          "registry must be populated by search/specifications")
-      (doseq [[search-model spec] specs
-              :let [t2-model (:model spec)]
-              :when (contains? registered-t2-models t2-model)]
-        (testing (str search-model " traces :collection-id to its own model " t2-model)
-          (let [reached (spec-trace/trace-collection-id-source-models spec)]
-            (is (contains? reached t2-model)
-                (str (pr-str search-model) " is derived into the fast path via its registered t2-model "
-                     (pr-str t2-model) " but tracing :collection-id through its join equalities only reaches "
-                     reached " — its denormalized :collection_id is not its own collection"))))))))
-
-(deftest collection-id-only-search-models-cold-start-regression-test
-  (testing "derivation populates correctly even if registry is empty at first access"
-    ;; The derivation must call `search/specifications` before reading either registry — `t2/resolve-model`
-    ;; inside `specifications` loads the model namespaces that populate them.
-    ;; If the order flips, cold start caches an empty set for the JVM lifetime. Both the t2-model registry
-    ;; (dashboard) and the search-model registry (indexed-entity) must be covered.
-    (let [real-specs           (mt/original-fn #'search/specifications)
-          real-t2-registry     (mt/original-fn #'perms/collection-id-only-read-models)
-          real-search-registry (mt/original-fn #'perms/collection-based-visibility-search-models)
-          specs-loaded?        (atom false)]
-      (mt/with-dynamic-fn-redefs [search/specifications (fn []
-                                                          (reset! specs-loaded? true)
-                                                          (real-specs))
-                                  perms/collection-id-only-read-models (fn []
-                                                                         (if @specs-loaded?
-                                                                           (real-t2-registry)
-                                                                           #{}))
-                                  perms/collection-based-visibility-search-models (fn []
-                                                                                    (if @specs-loaded?
-                                                                                      (real-search-registry)
-                                                                                      {}))]
-        (let [result (#'semantic.index/compute-collection-id-only-search-models)]
-          (is (contains? result "dashboard") "keyword-form registry populated")
-          (is (contains? result "indexed-entity") "search-model registry populated"))))))
+    (testing "card scoped to document is filtered by that document, though filter loads only few columns"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {readable-coll :id}   {}
+                       :model/Collection {unreadable-coll :id} {}
+                       :model/Document   {readable-doc :id}    {:name          "Readable"
+                                                                :creator_id    (mt/user->id :crowberto)
+                                                                :collection_id readable-coll}
+                       :model/Document   {hidden-doc :id}      {:name          "Hidden"
+                                                                :creator_id    (mt/user->id :crowberto)
+                                                                :collection_id unreadable-coll}
+                       :model/Card       {plain :id}           {:collection_id readable-coll}
+                       :model/Card       {other-plain :id}     {:collection_id readable-coll}
+                       :model/Card       {in-readable-doc :id} {:collection_id readable-coll, :document_id readable-doc}
+                       :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll, :document_id hidden-doc}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) readable-coll)
+          (mt/with-test-user :rasta
+            (let [ids          [plain in-readable-doc in-hidden-doc]
+                  filter-cards (fn [ids]
+                                 (mapv :id (#'semantic.index/filter-read-permitted
+                                            (for [id ids] {:id id :model "card" :collection_id readable-coll}))))
+                  query-count  (fn [ids]
+                                 (t2/with-call-count [call-count]
+                                   (filter-cards ids)
+                                   (call-count)))
+                  loaded       (atom [])
+                  instances    (mt/original-fn #'semantic-search.db/instances)
+                  recording    (fn [modelable pks]
+                                 (let [rows (instances modelable pks)]
+                                   (swap! loaded into rows)
+                                   rows))
+                  filtered-ids (mt/with-dynamic-fn-redefs [semantic-search.db/instances recording]
+                                 (filter-cards ids))]
+              (is (= [plain in-readable-doc]
+                     filtered-ids
+                     (into []
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (t2/select :model/Card :id [:in ids] {:order-by [[:id :asc]]}) :can_read)))
+                  "verdicts match mi/can-read? on full rows")
+              (is (= (set queries/card-read-check-columns)
+                     (set (mapcat keys @loaded)))
+                  "filter loads only read-check columns")
+              (is (= (query-count [plain])
+                     (query-count [plain other-plain]))
+                  "cards outside document add no query each"))))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"

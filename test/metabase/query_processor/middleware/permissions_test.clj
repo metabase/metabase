@@ -272,8 +272,8 @@
                 ;; Are revoked with DB access blocked: requires EE, see test in
                 ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
                 (testing "are granted with access to the model"
-                  (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
-                            qp.perms/*card-id* model-id]
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+                  (binding [qp.perms/*card-id* model-id]
                     (check! query)))))))))))
 
 (deftest inactive-table-test

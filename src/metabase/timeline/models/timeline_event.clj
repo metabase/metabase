@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -13,9 +14,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -46,11 +45,29 @@
 
 ;;;; permissions
 
-(defmethod mi/perms-objects-set :model/TimelineEvent
-  [event read-or-write]
-  (let [timeline (or (:timeline event)
-                     (timeline.db/timeline (:timeline_id event)))]
-    (mi/perms-objects-set timeline read-or-write)))
+(defn- timeline-permissions
+  "Whether the current user passes `check`, `mi/can-read?` or `mi/can-write?`, on the Timeline of each of `events`, by
+  Timeline id, the Timelines hydrated with `k` together."
+  [k check events]
+  (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
+  (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
+    (if (seq ids)
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-read? events)]
+    (for [event events]
+      (when event
+        (vary-meta event assoc :can_read (boolean (get permissions (:timeline_id event))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_write]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-write? events)]
+    (for [event events]
+      (when event
+        (assoc event :can_write (boolean (get permissions (:timeline_id event))))))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]

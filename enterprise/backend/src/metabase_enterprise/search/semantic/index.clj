@@ -17,8 +17,8 @@
    [metabase-enterprise.search.semantic.settings :as semantic-settings]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -960,29 +960,11 @@
             (let [decoded (decode-pgobject pgo)]
               (cond-> decoded (string? decoded) json/decode+kw)))))
 
-(defn- compute-collection-id-only-search-models
-  "Compute search-models whose read perms are determined fully by their collection id."
-  []
-  ;; `search/specifications` must run before reading the registry: its `t2/resolve-model` calls load the
-  ;; model namespaces that populate it. Otherwise cold start caches an empty set for the JVM lifetime.
-  (let [specs                    (search/specifications)
-        registered-t2-models     (perms/collection-id-only-read-models)
-        registered-search-models (set (keys (perms/collection-based-visibility-search-models)))]
-    ;; Two sources:
-    ;; (1) string-form registrations, whose spec's `:model` is a different t2-model (e.g. ModelIndex)
-    ;;     and wouldn't be picked up by the filter below;
-    ;; (2) every spec whose `:model` was registered via the keyword form — `mi/can-read?` dispatches on
-    ;;     the t2-model, so sibling specs like "dataset"/"metric" that share `:model/Card` are covered
-    ;;     by one registration.
-    (into registered-search-models
-          (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
-                (map key))
-          specs)))
-
 (def ^:private collection-id-only-search-models
-  "Search-models whose read perms are determined fully by their collection id.
-  Wrapped in `delay` so the registry can populate before first read."
-  (delay (compute-collection-id-only-search-models)))
+  "Search-models read exactly when the Collection id their index row carries is readable: a Dashboard, which is read as
+  the content of its Collection, and an indexed entity, which has no row of its own to check and whose
+  `:collection_id` is its model Card's."
+  #{"dashboard" "indexed-entity"})
 
 ;; A Card's after-select transforms normalize its query, metadata and settings, which costs far more than the read
 ;; check itself, and the permission filter loads every candidate a semantic search returns.
@@ -991,22 +973,16 @@
   {:model/Card (into [:model/Card] queries/card-read-check-columns)})
 
 (defn- filter-read-permitted
-  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
+  "Returns the subset of `docs` the current user can read: the docs of [[collection-id-only-search-models]] by the
+  Collection id of their index rows, answered together, and the others by `:can_read` hydrated on their rows, loaded
+  per model."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        fast-set @collection-id-only-search-models
-        {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
-        ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
-        ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
-        ;; t2/select and check perms straight from the denormalized `:collection_id` on the index row.
-        ;; Calling the shared helper means fast and slow paths run the same code for these models.
-        ;; Memoizing dedupes the perm check across docs that share a collection.
-        ;;
-        ;; Trade-off: the indexed `:collection_id` is eventually-consistent, so a moved/deleted row may appear
-        ;; in results until the next reindex. Click-through still enforces live perms.
-        coll-readable? (memoize perms/can-read-via-parent-collection?)
-        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
+        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
+        readable (when (seq fast-docs)
+                   (collection/content-readable-collection-ids (map :collection_id fast-docs) {:root-namespace nil, :audit-rules? true}))
+        fast-filtered (filterv #(contains? readable (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
                                  :let [modelable (get read-check-selects t2-model t2-model)]

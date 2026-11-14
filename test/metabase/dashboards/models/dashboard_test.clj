@@ -259,21 +259,17 @@
 
 (deftest perms-test
   (with-dash-in-collection! [_db collection dash]
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (true?
-             (mi/can-read? (t2/hydrate dash :can_read))))))
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
-                  "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection")
-      (mt/with-full-data-perms-for-all-users!
-        (binding [api/*current-user-permissions-set* (atom #{})]
-          (is (= false
-                 (mi/can-read? (t2/hydrate dash :can_read)))))))
-    (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
-        (mi/can-write? (t2/hydrate dash :can_write))))))
+    (mt/with-test-user :rasta
+      (testing "Dashboard in Collection is not readable without permissions for that Collection"
+        (mt/with-full-data-perms-for-all-users!
+          (is (false? (mi/can-read? (t2/hydrate dash :can_read))))))
+      (testing "Dashboard in Collection is readable, not writable, with read permissions for that Collection"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-read? (t2/hydrate dash :can_read))))
+        (is (false? (mi/can-write? (t2/hydrate dash :can_write)))))
+      (testing "Dashboard in Collection is writable with write permissions for that Collection"
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-write? (t2/hydrate dash :can_write))))))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"

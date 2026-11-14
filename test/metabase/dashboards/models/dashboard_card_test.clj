@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -431,3 +433,33 @@
       (is (=? {:id doc-id, :model "document", :name "Linked document"}
               (-> (t2/hydrate dashcard :dashcard/linkcard-info)
                   (get-in [:visualization_settings :link :entity])))))))
+
+(deftest dashcard-permissions-follow-card-and-series-collections-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection          readable   {}
+                   :model/Collection          unreadable {}
+                   :model/Dashboard           dashboard  {:collection_id (:id readable)}
+                   :model/Card                card       {:collection_id (:id readable)}
+                   :model/Card                hidden     {:collection_id (:id unreadable)}
+                   :model/DashboardCard       plain      {:dashboard_id (:id dashboard) :card_id (:id card)}
+                   :model/DashboardCard       on-hidden  {:dashboard_id (:id dashboard) :card_id (:id hidden)}
+                   :model/DashboardCard       series     {:dashboard_id (:id dashboard) :card_id (:id card)}
+                   :model/DashboardCardSeries _          {:dashboardcard_id (:id series) :card_id (:id hidden) :position 0}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
+      (letfn [(answers [k check]
+                (into {}
+                      (map (juxt :id check))
+                      (t2/hydrate [plain on-hidden series] k)))]
+        (mt/with-test-user :rasta
+          (testing "read needs read on Collections of Card and series Cards"
+            (is (= {(:id plain) true, (:id on-hidden) false, (:id series) false}
+                   (answers :can_read mi/can-read?))))
+          (testing "write needs write on them"
+            (is (= {(:id plain) false, (:id on-hidden) false, (:id series) false}
+                   (answers :can_write mi/can-write?)))
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) readable)
+            (is (= {(:id plain) true, (:id on-hidden) false, (:id series) false}
+                   (answers :can_write mi/can-write?)))))
+        (mt/with-test-user :crowberto
+          (is (= {(:id plain) true, (:id on-hidden) true, (:id series) true}
+                 (answers :can_read mi/can-read?))))))))

@@ -334,8 +334,8 @@
 
 (defmulti ^:private read-entity-rows
   "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
-  For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (they derive
-  `:perms/use-parent-collection-perms`), with projection cols from `common/peer-select-cols`; transform
+  For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (their reads
+  follow their Collection), with projection cols from `common/peer-select-cols`; transform
   readability isn't collection-based, so it selects full rows and additionally filters by `mi/can-read?`."
   {:arglists '([entity-type ids exclude-personal?])}
   (fn [entity-type _ids _excluded] entity-type)

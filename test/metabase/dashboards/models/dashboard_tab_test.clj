@@ -1,9 +1,7 @@
 (ns metabase.dashboards.models.dashboard-tab-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -32,30 +30,20 @@
   `(do-with-dashtab-in-personal-collection (fn [~binding] ~@body)))
 
 (deftest perms-test
-  (with-dashtab-in-personal-collection {:keys [collection dashboard dashtab] :as _dashtab}
+  (with-dashtab-in-personal-collection {:keys [dashboard dashtab] :as _dashtab}
     (testing "dashtab's permission is the permission of dashboard they're on"
       (is (= (mi/perms-objects-set dashtab :read)
              (mi/perms-objects-set dashboard :read)))
       (is (= (mi/perms-objects-set dashtab :write)
              (mi/perms-objects-set dashboard :write))))
-    (testing (str "Check that if a Dashtab of a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
-        (mi/perms-objects-set dashtab :read)
-        (is (true? (mi/can-read? (t2/hydrate dashtab :can_read))))
-        (is (= false (mi/can-write? (t2/hydrate dashtab :can_write))))))
-    (testing "Do we have *write* Permissions for a dashtab if we have *write* Permissions for the Collection it's in?"
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
-        (is (true? (mi/can-read? (t2/hydrate dashtab :can_read))))
-        (is (true? (mi/can-write? (t2/hydrate dashtab :can_write))))))
     (testing "A user that can't see the Collection that the Dashboard is in can't read and write the dashtab"
       (mt/with-current-user (mt/user->id :lucky)
-        (is (= false (mi/can-read? (t2/hydrate dashboard :can_read))))
-        (is (= false (mi/can-write? (t2/hydrate dashboard :can_write))))))
+        (is (= false (mi/can-read? (t2/hydrate dashtab :can_read))))
+        (is (= false (mi/can-write? (t2/hydrate dashtab :can_write))))))
     (testing "A user that can see the Collection that the Dashboard is in can read and write the dashtab"
       (mt/with-current-user (mt/user->id :rasta)
-        (is (true? (mi/can-read? (t2/hydrate dashboard :can_read))))
-        (is (true? (mi/can-write? (t2/hydrate dashboard :can_write))))))))
+        (is (true? (mi/can-read? (t2/hydrate dashtab :can_read))))
+        (is (true? (mi/can-write? (t2/hydrate dashtab :can_write))))))))
 
 (deftest dependency-test
   (testing "Deleting a dashtab should delete the associated dashboardcards"

@@ -87,15 +87,24 @@
                                                                          u/lower-case-en)
                                                               :model_id model-id}) :can_write)))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
-  [_model k models]
+(defn- hydrate-can-set-cache-policy
+  "Sets `k` on the Cards or Dashboards `models` to whether the current user can set the cache policy of each."
+  [k models]
   (mi/instances-with-hydrated-data
    models k
    #(into {}
           (map (juxt :id can-set-cache-policy?))
-          (t2/hydrate (remove nil? models) :collection))
+          (remove nil? models))
    :id
    {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_set_cache_policy]
+  [_model k models]
+  (hydrate-can-set-cache-policy k models))
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_set_cache_policy]
+  [_model k models]
+  (hydrate-can-set-cache-policy k models))
 
 (defn- audit-caching-change! [user-id id prev new]
   (events/publish-event!

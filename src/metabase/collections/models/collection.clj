@@ -368,23 +368,29 @@
             (or (contains? remote-synced-namespaces (some-> collection-namespace keyword))
                 (boolean is_remote_synced)))))
 
+(defn remote-sync-writable-collection-ids
+  "The ids among `collection-ids` of the Collections whose content remote sync leaves writable, a nil id, the root,
+  included: all of them unless the instance is read-only, and then, from one query, those of Collections that aren't
+  synced."
+  [collection-ids]
+  (let [ids (into #{} (remove nil?) collection-ids)]
+    (cond-> (if (and (remote-sync/read-only?) (seq ids))
+              (into #{}
+                    (comp (filter remote-sync-writable?) (map :id))
+                    (collections.db/collection-sync-columns (vec ids)))
+              ids)
+      (some nil? collection-ids) (conj nil))))
+
 (defn- audit-collection-hidden?
   "Whether the Collection with `collection-id` is the audit Collection while the audit app is off, which hides it."
   [collection-id]
   (and (not (premium-features/enable-audit-app?))
        (audit/is-collection-id-audit? collection-id)))
 
-(defn- current-user-info
-  "The `::permissions.schema/collection-user-info` of the current user."
-  []
-  {:user-id          api/*current-user-id*
-   :is-superuser?    (boolean api/*is-superuser?*)
-   :is-data-analyst? (boolean api/*is-data-analyst?*)})
-
 (defn- collection-permissions
   "The current user's permission on each of `collections`, by id."
   [collections]
-  (perms/collection-permissions-for-user (current-user-info) (mapv :id collections) {:root-namespace nil}))
+  (perms/collection-permissions-for-user (api/current-user-info) (mapv :id collections) {:root-namespace nil}))
 
 (defn- root-collection-permission-at-least?
   "Whether the current user has `permission` or more on `root`, a root Collection, which is open to everyone in the
@@ -392,7 +398,7 @@
   [root permission]
   (or (collection.root/unrestricted-snippets? root)
       (perms/collection-permission-at-least?
-       (get (perms/collection-permissions-for-user (current-user-info) [nil] {:root-namespace (:namespace root)}) nil)
+       (get (perms/collection-permissions-for-user (api/current-user-info) [nil] {:root-namespace (:namespace root)}) nil)
        permission)))
 
 (defn- hydrate-can-read
@@ -461,6 +467,51 @@
   "Whether the current user writes `root`, a root Collection."
   [_model k root]
   (assoc root k (boolean (root-collection-permission-at-least? root :read-and-write))))
+
+(defn content-readable-collection-ids
+  "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
+  Collections whose content the current user reads, from one permission query: those they read and, with the
+  `:audit-rules?` option, as for Cards and Dashboards, that aren't the hidden audit Collection."
+  [collection-ids {:keys [audit-rules?] :as options}]
+  (let [permissions (perms/collection-permissions-for-user (api/current-user-info) (vec collection-ids)
+                                                           (select-keys options [:root-namespace]))]
+    (into #{}
+          (filter (fn [id]
+                    (and (perms/collection-permission-at-least? (get permissions id) :read)
+                         (not (and audit-rules? id (audit-collection-hidden? id))))))
+          (keys permissions))))
+
+(defn content-writable-collection-ids
+  "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
+  Collections whose content the current user writes, from one permission query and, on a read-only instance, one
+  more: those they write, that remote sync leaves writable and, with the `:audit-rules?` option, as for Cards and
+  Dashboards, that aren't the audit Collection."
+  [collection-ids {:keys [audit-rules?] :as options}]
+  (let [permissions   (perms/collection-permissions-for-user (api/current-user-info) (vec collection-ids)
+                                                             (select-keys options [:root-namespace]))
+        sync-writable (remote-sync-writable-collection-ids (keys permissions))
+        audit-id      (when audit-rules? (:id (audit/default-audit-collection)))]
+    (into #{}
+          (filter (fn [id]
+                    (and (perms/collection-permission-at-least? (get permissions id) :read-and-write)
+                         (not (and id (= id audit-id)))
+                         (contains? sync-writable id))))
+          (keys permissions))))
+
+(defn can-write-collection-or-root?
+  "Whether the current user can write the Collection with `collection-id`, or, for nil, the root Collection of the
+  `:root-namespace` option."
+  [collection-id {:keys [root-namespace]}]
+  (boolean
+   (mi/can-write? (t2/hydrate (if collection-id
+                                (api/check-404 (collections.db/collection collection-id))
+                                (root-collection-with-ui-details root-namespace))
+                              :can_write))))
+
+(def collection-content-models
+  "The models whose rows live in a Collection, by their `collection_id`."
+  [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Exploration :model/Action
+   :model/ModerationReview])
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels, normalized from their names."
@@ -1467,8 +1518,8 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
-  "Batch hydration for whether an item is in a remote-synced Collection."
+(defn- hydrate-item-is-remote-synced
+  "Sets `k` on `items` of `model` to whether the Collection of each is remote-synced."
   [model k items]
   (mi/instances-with-hydrated-data items k
                                    #(into {}
@@ -1477,14 +1528,20 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
-  "Batch hydration for whether an item is remote synced"
+(defn- hydrate-item-collection-namespace
+  "Sets `k` on `items` of `model` to the namespace of the Collection of each."
   [model k items]
   (mi/instances-with-hydrated-data items k
                                    #(into {}
                                           (collections.db/collection-namespaces-of model (map :id items)))
                                    :id
                                    {:default nil}))
+
+(doseq [model collection-content-models]
+  (methodical/add-primary-method! #'t2/batched-hydrate [model :is_remote_synced]
+                                  (fn [_next-method model k items] (hydrate-item-is-remote-synced model k items)))
+  (methodical/add-primary-method! #'t2/batched-hydrate [model :collection_namespace]
+                                  (fn [_next-method model k items] (hydrate-item-collection-namespace model k items))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |

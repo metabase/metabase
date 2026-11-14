@@ -161,8 +161,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -171,8 +169,7 @@
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -304,24 +301,6 @@
           (permissions.path/collection-readwrite-path collection-or-root)])
         #{})))
 
-(doto :perms/use-parent-collection-perms
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
-(defmethod mi/perms-objects-set :perms/use-parent-collection-perms
-  [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (nil? (:collection_id instance))
-          (remote-sync/can-write? :model/Collection (:collection_id instance)))
-    (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-    #{"___no-remote-sync-access"}))
-
-(defmethod mi/can-create? :perms/use-parent-collection-perms
-  [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/hydrate (api/check-404 (permissions.db/collection collection-id)) :can_write))
-    (mi/can-write? (t2/hydrate collection.root/root-collection :can_write))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -419,110 +398,6 @@
 (def namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
   permissions.db/namespace-clause)
-
-(defn can-read-via-parent-collection?
-  "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
-  Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
-  and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
-  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
-  [coll-id]
-  (and (or (premium-features/enable-audit-app?)
-           (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
-       (mi/current-user-has-full-permissions?
-        #{(permissions.path/collection-read-path
-           (or coll-id
-               {:metabase.collections.models.collection.root/is-root? true
-                :namespace                                            nil}))})))
-
-;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
-(mu/defn can-read-audit-helper
-  "Audit instances should only be readable if audit app is enabled."
-  [model    :- [:= :model/Collection]
-   instance :- [:map {:closed true}
-                [:id        ms/PositiveInt]
-                [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]
-  (if (and (not (premium-features/enable-audit-app?))
-           (case model
-             :model/Collection (audit/is-collection-id-audit? (:id instance))
-             (audit/is-parent-collection-audit? instance)))
-    false
-    (case model
-      :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection (:collection_id instance) :read)))))
-
-;;; ---- Collection-based visibility registration ----
-
-(defonce ^:private collection-based-visibility-registry
-  ;; Registrations from `define-collection-based-visibility!`.
-  ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
-  ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
-  ;; from at index time. The claim is verified against the spec's joins by a contract test; see
-  ;; `metabase-enterprise.search.semantic.index-test`.
-  (atom {:t2-methods {} :search-models {}}))
-
-(defn collection-id-only-read-models
-  "Set of t2 model keywords whose `mi/can-read?` was installed via [[define-collection-based-visibility!]]."
-  []
-  (set (keys (:t2-methods @collection-based-visibility-registry))))
-
-(defn collection-id-only-read-method
-  "The `mi/can-read?` fn [[define-collection-based-visibility!]] installed for `t2-model`, or nil.
-  Exposed so identity-check tests can detect later overrides."
-  [t2-model]
-  (get-in @collection-based-visibility-registry [:t2-methods t2-model]))
-
-(defn collection-based-visibility-search-models
-  "Map of search-model-string → the claimed parent t2-model the `:collection_id` is denormalized from.
-  Registrations come from the string form of [[define-collection-based-visibility!]]."
-  []
-  (:search-models @collection-based-visibility-registry))
-
-(defn register-collection-id-only-read-method!
-  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [t2-model method]
-  (swap! collection-based-visibility-registry assoc-in [:t2-methods t2-model] method))
-
-(defn register-collection-based-visibility-search-model!
-  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [search-model denormalized-from]
-  (swap! collection-based-visibility-registry assoc-in [:search-models search-model] denormalized-from))
-
-(defmacro define-collection-based-visibility!
-  "Register read perms as determined fully by `:collection_id`.
-
-  Normal form — `target` is a t2-model keyword: installs its `:can_read` hydration as a delegate to
-  [[can-read-via-parent-collection?]] and registers the model.
-  If a model later needs richer read perms, remove the macro call and write its own `:can_read` hydration.
-  The identity-check test in `metabase.permissions.models.permissions-test` will flag silent overrides.
-
-  Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
-  from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
-  No hydration is installed; the registration only flags the search-model for the semantic-search
-  fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
-  [target & {:keys [denormalized-from]}]
-  (cond
-    (keyword? target)
-    `(do
-       (methodical/defmethod t2/simple-hydrate [~target :can_read]
-         [~'_model k# instance#]
-         (vary-meta instance# assoc k# (boolean (can-read-via-parent-collection? (:collection_id instance#)))))
-       (register-collection-id-only-read-method!
-        ~target
-        (methodical/primary-method t2/simple-hydrate [~target :can_read])))
-
-    (string? target)
-    ;; Throw unconditionally rather than `assert` — assertions are elided when `*assert*` is false (AOT
-    ;; release builds), and a nil `:denormalized-from` would silently break fast-path derivation.
-    (if denormalized-from
-      `(register-collection-based-visibility-search-model! ~target ~denormalized-from)
-      (throw (IllegalArgumentException.
-              "string form of define-collection-based-visibility! requires :denormalized-from")))
-
-    :else
-    (throw (IllegalArgumentException.
-            "define-collection-based-visibility! target must be a t2-model keyword or search-model string"))))
-
-; Audit permissions helper fns end
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permissions"

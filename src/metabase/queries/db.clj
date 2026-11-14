@@ -65,6 +65,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :document_id :model/Card :id card-id))
 
+(mu/defn card-document-ids
+  "The `:document_id` of each of the Cards with `card-ids`, by Card id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :document_id [:model/Card :id :document_id] :id [:in card-ids]))
+
 (mu/defn card-parameters
   "The `:parameters` of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -119,6 +124,11 @@
   "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
+(mu/defn documents-collection-and-exploration
+  "The Documents with `document-ids` narrowed to `:id`, `:collection_id` and `:exploration_id`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Document :id :collection_id :exploration_id] :id [:in document-ids]))
 
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."

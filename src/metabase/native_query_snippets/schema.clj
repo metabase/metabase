@@ -17,6 +17,7 @@
    [:map {:closed true}
     [:id            ::lib.schema.id/native-query-snippet]
     [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
+    [:can_write     {:optional true} [:maybe :boolean]]
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]]])
 
 (mr/def ::native-query-snippet.update
