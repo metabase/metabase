@@ -37,7 +37,6 @@
    :day-of-week     [:day-of-week-full]        ; Monday; Mon
    :day-of-month    [:day-of-month-d]          ; 7, 23
    :day-of-year     [:day-of-year]             ; 1, 24, 365
-   :week-of-year    [:week-of-year]            ; CLJS: 1st, 42nd; CLJ: 1, 42 (no ordinals)
    :month-of-year   [:month-full]              ; October; Oct
    :quarter-of-year ["Q" :quarter]})           ; Q4
 
