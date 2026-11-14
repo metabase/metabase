@@ -320,6 +320,36 @@ describe("SummarySidebar", () => {
     expect(onQueryChange).not.toHaveBeenCalled();
   });
 
+  it("doesn't count the rows again when a named count is already there", async () => {
+    const { onQueryChange } = setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                name: "Orders",
+                value: { type: "operator", operator: "count" },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    await userEvent.type(screen.getByLabelText("Add a value by name"), "count");
+    const options = await screen.findAllByRole("option");
+    const countOption = options.find(
+      (option) => option.textContent === "Count of rows",
+    );
+    expect(countOption).toBeDefined();
+    if (countOption) {
+      await userEvent.click(countOption);
+    }
+
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
   it("aggregates a column picked in the Summarize by typeahead with its default operator", async () => {
     const { getLastQuery } = setup();
 

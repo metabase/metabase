@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Ellipsified } from "metabase/ui";
+import type { SummaryGeneratedExpression } from "metabase/redux/store";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
@@ -10,17 +11,17 @@ import type {
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
+  SummaryQueryChangeOptions,
   SummaryWellId,
 } from "../types";
 import {
   canDropOnWell,
-  changeDimensionBucket,
   getDimensionItems,
   getValueItems,
   getWellFieldSections,
 } from "../utils";
 
-import { DimensionBucketMenu } from "./DimensionBucketMenu";
+import { DimensionChip } from "./DimensionChip";
 import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
@@ -28,23 +29,24 @@ import {
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
-import { WellChip } from "./WellChip";
 
 type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  generatedExpressions: SummaryGeneratedExpression[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
-  onChange: (nextQuery: Lib.Query) => void;
+  onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
 };
 
 export function SummaryWells({
   query,
   stageIndex,
   sections,
+  generatedExpressions,
   formulaInputs,
   draftFormula,
   draggedItem,
@@ -137,30 +139,15 @@ export function SummaryWells({
           }}
         >
           {dimensionItems.map((item) => (
-            <WellChip
+            <DimensionChip
               key={item.key}
-              drag={{ kind: "dimension", item }}
+              query={query}
+              stageIndex={stageIndex}
+              item={item}
+              generatedExpressions={generatedExpressions}
+              onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
-            >
-              {item.bucketOptions.length > 0 ? (
-                <DimensionBucketMenu
-                  item={item}
-                  onSelect={(option) => {
-                    const nextQuery = changeDimensionBucket(
-                      query,
-                      stageIndex,
-                      item,
-                      option,
-                    );
-                    if (nextQuery !== query) {
-                      onChange(nextQuery);
-                    }
-                  }}
-                />
-              ) : (
-                <Ellipsified fw="inherit">{item.label}</Ellipsified>
-              )}
-            </WellChip>
+            />
           ))}
           {draftFormula?.wellId === "columns" && (
             <DraftFormulaChip {...draftFormula} />

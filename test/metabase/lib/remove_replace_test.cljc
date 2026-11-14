@@ -652,6 +652,175 @@
     (is (=? [[:expression {} "b"]]
             (lib/breakouts edited)))))
 
+(defn- expression-column
+  [query expression-name]
+  (m/find-first (comp #{expression-name} :name) (lib/breakoutable-columns query)))
+
+(defn- next-day-query
+  "Orders with a `Next day` date expression grouped by `unit`."
+  [unit]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Next day" (lib/datetime-add (meta/field-metadata :orders :created-at) 1 :day)))]
+    (lib/breakout query (lib/with-temporal-bucket (expression-column query "Next day") unit))))
+
+(defn- rename-next-day
+  "Replace the `Next day` expression of stage 0 with `replacement`, or with itself, under the name `Tomorrow`."
+  [query replacement]
+  (let [[expr] (lib/expressions query 0)]
+    (lib/replace-clause query 0 expr (lib/with-expression-name (or replacement expr) "Tomorrow"))))
+
+(defn- unbucketed? [options]
+  (not (contains? options :temporal-unit)))
+
+(deftest ^:parallel replace-expression-keeps-bucketing-of-references-test
+  (let [base-query (-> (next-day-query :month)
+                       lib/append-stage
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket (expression-column $q "Next day") :year))))
+        query      (-> base-query
+                       (as-> $q (lib/filter $q 0 (lib/> (lib/with-temporal-bucket (lib/expression-ref $q 0 "Next day") :month)
+                                                        "2026-01-01")))
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket (expression-column $q "Next day") :month-of-year)))
+                       (as-> $q (lib/filter $q (lib/< (expression-column $q "Next day") "2026-03-15"))))
+        renamed    (rename-next-day query nil)
+        retyped    (rename-next-day base-query (lib/+ (meta/field-metadata :orders :total) 1))]
+    (testing "a replacement of the same type keeps the bucketing of each reference, in this and later stages"
+      (is (=? [[:expression {:temporal-unit :month} "Tomorrow"]] (lib/breakouts renamed 0)))
+      (is (=? [[:> {} [:expression {:temporal-unit :month} "Tomorrow"] "2026-01-01"]] (lib/filters renamed 0)))
+      (is (=? [[:field {:temporal-unit :year} "Tomorrow"]
+               [:field {:temporal-unit :month-of-year, :effective-type :type/Integer} "Tomorrow"]]
+              (lib/breakouts renamed 1)))
+      (is (=? [[:< {} [:field unbucketed? "Tomorrow"] "2026-03-15"]] (lib/filters renamed 1))))
+    (testing "a replacement of another type drops the bucketing"
+      (is (=? [[:expression unbucketed? "Tomorrow"]] (lib/breakouts retyped 0)))
+      (is (=? [[:field unbucketed? "Tomorrow"]] (lib/breakouts retyped 1))))))
+
+(deftest ^:parallel replace-expression-with-extraction-unit-test
+  (testing "the extraction unit of this stage is not bucketing of the later stage's references to its integer column"
+    (let [query   (-> (next-day-query :month-of-year)
+                      lib/append-stage
+                      (as-> $q (lib/breakout $q (lib/with-binning (expression-column $q "Next day")
+                                                                  {:strategy :num-bins, :num-bins 4})))
+                      (as-> $q (lib/filter $q (lib/> (expression-column $q "Next day") 3))))
+          renamed (rename-next-day query nil)]
+      (is (=? [[:expression {:temporal-unit :month-of-year, :effective-type :type/Integer} "Tomorrow"]]
+              (lib/breakouts renamed 0)))
+      (is (=? [[:field #(and (unbucketed? %) (= {:strategy :num-bins, :num-bins 4} (:binning %))) "Tomorrow"]]
+              (lib/breakouts renamed 1)))
+      (is (=? [[:> {} [:field unbucketed? "Tomorrow"] 3]] (lib/filters renamed 1))))))
+
+(defn- last-stage-column
+  [query column-name]
+  (m/find-first (comp #{column-name} :name) (lib/breakoutable-columns query)))
+
+(defn- created-at-query
+  "Orders counted by `Created At` with temporal `unit`, with a second stage on top."
+  [unit]
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit))
+      (lib/aggregate (lib/count))
+      lib/append-stage))
+
+(defn- replace-stage-0-breakout
+  "Replace the stage 0 breakout ref of `query` with `(f breakout)`."
+  [query f]
+  (let [[breakout] (lib/breakouts query 0)]
+    (lib/replace-clause query 0 breakout (f breakout))))
+
+(defn- replace-stage-0-unit
+  [query unit]
+  (replace-stage-0-breakout query #(lib/with-temporal-bucket % unit)))
+
+(deftest ^:parallel replace-extraction-breakout-keeps-later-ref-type-test
+  (testing "changing Month of year -> Day of week preserves effective-type on a later stage ref"
+    (let [query (as-> (created-at-query :month-of-year) $q
+                  (lib/filter $q (lib/> (last-stage-column $q "CREATED_AT") 3)))]
+      (is (=? [[:> {} [:field {:effective-type :type/Integer} "CREATED_AT"] 3]]
+              (lib/filters (replace-stage-0-unit query :day-of-week) 1))))))
+
+(deftest ^:parallel replace-breakout-unit-keeps-later-stage-clauses-test
+  (testing "changing Month -> Week keeps the later stage's own unit and its unbucketed filter"
+    (let [query    (as-> (created-at-query :month) $q
+                     (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :quarter))
+                     (lib/filter $q (lib/> (last-stage-column $q "CREATED_AT") "2026-01-01")))
+          replaced (replace-stage-0-unit query :week)]
+      (is (=? [[:field {:temporal-unit :week} (meta/id :orders :created-at)]]
+              (lib/breakouts replaced 0)))
+      (is (=? [[:field {:temporal-unit :quarter, :inherited-temporal-unit :week} "CREATED_AT"]]
+              (lib/breakouts replaced 1)))
+      (is (=? [[:> {} [:field unbucketed? "CREATED_AT"] "2026-01-01"]]
+              (lib/filters replaced 1))))))
+
+(deftest ^:parallel replace-breakout-unit-keeps-clauses-three-stages-test
+  (testing "changing Month -> Week keeps the units of each later stage, and each inherits from the stage before it"
+    (let [query    (as-> (created-at-query :month) $q
+                     (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :quarter))
+                     (lib/aggregate $q (lib/count))
+                     (lib/append-stage $q)
+                     (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :year))
+                     (lib/filter $q (lib/> (last-stage-column $q "CREATED_AT") "2026-01-01")))
+          replaced (replace-stage-0-unit query :week)]
+      (is (=? [[:field {:temporal-unit :quarter, :inherited-temporal-unit :week} "CREATED_AT"]]
+              (lib/breakouts replaced 1)))
+      (is (=? [[:field {:temporal-unit :year, :inherited-temporal-unit :quarter} "CREATED_AT"]]
+              (lib/breakouts replaced 2)))
+      (is (=? [[:> {} [:field unbucketed? "CREATED_AT"] "2026-01-01"]]
+              (lib/filters replaced 2))))))
+
+(deftest ^:parallel replace-joined-breakout-unit-keeps-later-stage-ref-test
+  (testing "changing a joined column's Month -> Quarter keeps the later stage's ref by its stage alias, with its own unit"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                  [(lib/= (meta/field-metadata :orders :product-id)
+                                                          (meta/field-metadata :products :id))]))
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket
+                                                   (m/find-first (comp #{(meta/id :products :created-at)} :id)
+                                                                 (lib/breakoutable-columns $q))
+                                                   :month)))
+                       (lib/aggregate (lib/count))
+                       lib/append-stage
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :year))))
+          replaced (replace-stage-0-unit query :quarter)]
+      (is (=? [[:field {:temporal-unit :year, :inherited-temporal-unit :quarter} "Products__CREATED_AT"]]
+              (lib/breakouts replaced 1))))))
+
+(deftest ^:parallel replace-breakout-unit-drops-finer-later-stage-unit-test
+  (testing "changing Day -> Quarter drops the later stage's Month unit, which is finer than the stage 0 unit"
+    (let [query (as-> (created-at-query :day) $q
+                  (lib/breakout $q (lib/with-temporal-bucket (last-stage-column $q "CREATED_AT") :month)))]
+      (is (=? [[:field #(and (unbucketed? %) (= :quarter (:inherited-temporal-unit %))) "CREATED_AT"]]
+              (lib/breakouts (replace-stage-0-unit query :quarter) 1))))))
+
+(deftest ^:parallel replace-breakout-binning-keeps-later-stage-binning-test
+  (testing "changing 10 bins -> 50 bins keeps the later stage's own binning and its unbinned filter"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/breakout (lib/with-binning (meta/field-metadata :orders :total)
+                                                       {:strategy :num-bins, :num-bins 10}))
+                       (lib/aggregate (lib/count))
+                       lib/append-stage
+                       (as-> $q (lib/breakout $q (lib/with-binning (last-stage-column $q "TOTAL")
+                                                                   {:strategy :num-bins, :num-bins 4})))
+                       (as-> $q (lib/filter $q (lib/> (last-stage-column $q "TOTAL") 20))))
+          replaced (replace-stage-0-breakout query #(lib/with-binning % {:strategy :num-bins, :num-bins 50}))]
+      (is (=? [[:field {:binning {:strategy :num-bins, :num-bins 50}} (meta/id :orders :total)]]
+              (lib/breakouts replaced 0)))
+      (is (=? [[:field {:binning {:strategy :num-bins, :num-bins 4}} "TOTAL"]]
+              (lib/breakouts replaced 1)))
+      (is (=? [[:> {} [:field #(not (contains? % :binning)) "TOTAL"] 20]]
+              (lib/filters replaced 1))))))
+
+(deftest ^:parallel replace-aggregation-keeps-later-stage-binning-test
+  (testing "changing Sum -> Max keeps the later stage's binning of the aggregate column"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                       (lib/breakout (meta/field-metadata :orders :product-id))
+                       lib/append-stage
+                       (as-> $q (lib/breakout $q (lib/with-binning (last-stage-column $q "sum")
+                                                                   {:strategy :num-bins, :num-bins 4}))))
+          replaced (lib/replace-clause query 0 (first (lib/aggregations query 0))
+                                       (lib/max (meta/field-metadata :orders :total)))]
+      (is (=? [[:field {:binning {:strategy :num-bins, :num-bins 4}} "max"]]
+              (lib/breakouts replaced 1))))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"

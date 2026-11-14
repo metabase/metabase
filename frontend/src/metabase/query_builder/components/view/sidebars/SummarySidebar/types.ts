@@ -6,6 +6,7 @@ export type SummaryWellId = "values" | "columns";
 
 export type SummaryQueryChangeOptions = {
   createdFormula?: boolean;
+  renamedFormula?: { name: string; nextName: string };
 };
 
 export type SummaryField =
@@ -38,6 +39,7 @@ export type SummaryValueItem = {
   clause: Lib.AggregationClause;
   key: string;
   label: string;
+  isNamed: boolean;
 } & (
   | { kind: "count" }
   | {
