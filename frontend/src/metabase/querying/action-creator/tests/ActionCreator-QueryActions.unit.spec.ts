@@ -3,13 +3,14 @@ import fetchMock from "fetch-mock";
 
 import { setupActionsEndpoints } from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockQueryAction,
+  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./common";
@@ -186,8 +187,13 @@ describe("ActionCreator > Query Actions", () => {
   describe("Editing Action", () => {
     it("updates the action and closes the editor", async () => {
       const action = createMockQueryAction({
-        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-          query: "DELETE FROM orders WHERE id = {{ id }}",
+        dataset_query: createMockNativeDatasetQuery({
+          native: createMockNativeQuery({
+            query: "DELETE FROM orders WHERE id = {{ id }}",
+            "template-tags": {
+              id: createMockTemplateTag({ name: "id", "display-name": "ID" }),
+            },
+          }),
         }),
       });
       const onClose = jest.fn<void, []>();
