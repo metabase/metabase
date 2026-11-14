@@ -269,6 +269,7 @@ describe("CollectionContent selection", () => {
 
     expect(await screen.findByText("2 items selected")).toBeInTheDocument();
     expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+    expect(screen.getByLabelText("Select all items")).toBePartiallyChecked();
   });
 
   it("should toggle a selected pinned card off", async () => {
@@ -297,6 +298,22 @@ describe("CollectionContent selection", () => {
     ).not.toBePartiallyChecked();
     expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
     expect(getPinnedCard(pinnedQuestion.name)).toBeChecked();
+    for (const item of defaultItems) {
+      expect(getRowSelectionCheckbox(item.name)).toBeChecked();
+    }
+
+    await userEvent.click(getPinnedCard(pinnedQuestion.name));
+    expect(await screen.findByText("3 items selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedQuestion.name)).not.toBeChecked();
+    expect(getRowSelectionCheckbox(tableQuestion.name)).toBeChecked();
+    expect(screen.getByLabelText("Select all items")).toBePartiallyChecked();
+
+    await userEvent.click(getPinnedCard(pinnedQuestion.name));
+    expect(await screen.findByText("4 items selected")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select all items")).toBeChecked();
+    expect(
+      screen.getByLabelText("Select all items"),
+    ).not.toBePartiallyChecked();
   });
 
   it("should select every listed item exactly once with select all from an empty selection", async () => {
@@ -355,6 +372,13 @@ describe("CollectionContent selection", () => {
     expect(await getPinnedSection().findAllByRole("link")).toHaveLength(2);
     expect(getPinnedSection().queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Select all items")).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Select all items"),
+    ).not.toBePartiallyChecked();
+    for (const item of defaultItems) {
+      expect(getRowSelectionCheckbox(item.name)).not.toBeChecked();
+    }
   });
 
   it("should not expose selection in a read-only collection", async () => {
