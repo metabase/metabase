@@ -609,9 +609,11 @@
   applies, i.e. those reached only through a one-to-many join and not joined anyway.
 
   Pinned edges — each constraint's `:via-path` and the caller-supplied `extra-via-path` — are oriented from
-  `source-table-id` and win over graph-search edges to the same `:rhs :table`. Field-ids of pinned constraints are
-  excluded from the graph search. `fk-pairs` are unordered `#{lhs rhs}` pairs the caller knows the expanded card
-  query uses; the deduper prefers an edge whose endpoints match a pair over one picked only from `field-ids`."
+  `source-table-id` and win over graph-search edges to the same `:rhs :table`. A pinned path is kept only when it
+  ends at a Table the query must reach, i.e. a Table of a constraint or of `field-ids` other than the source Table.
+  Field-ids of pinned constraints are excluded from the graph search. `fk-pairs` are unordered `#{lhs rhs}` pairs the
+  caller knows the expanded card query uses; the deduper prefers an edge whose endpoints match a pair over one picked
+  only from `field-ids`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    source-table-id       :- ::lib.schema.id/table
@@ -619,7 +621,15 @@
    field-ids             :- [:set ::lib.schema.id/field]
    extra-via-path        :- [:maybe [:sequential ::join-info]]
    fk-pairs              :- [:maybe [:set ::fk-pair]]]
-  (let [orient               #(orient-via-path source-table-id %)
+  (let [needed-field-ids     (into field-ids (map :field-id) constraints)
+        needed-table-ids     (disj (into #{}
+                                         (map :table-id)
+                                         (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                                     needed-field-ids))
+                                   source-table-id)
+        orient               #(when-let [path (orient-via-path source-table-id %)]
+                                (when (contains? needed-table-ids (get-in (peek path) [:rhs :table]))
+                                  path))
         oriented-constraint  #(-> % :via-path orient)
         pinned-edges         (into (vec (orient extra-via-path))
                                    (mapcat oriented-constraint)
