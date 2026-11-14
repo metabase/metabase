@@ -1,4 +1,10 @@
-import { type JSX, type ReactNode, type Ref, useState } from "react";
+import {
+  type JSX,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
@@ -29,8 +35,22 @@ type ClausePickersProps = {
   onChange?: (query: Lib.Query) => void;
 };
 
+/** Marks a clause's pill, for a row to put focus back on after a pick */
+export const CLAUSE_PILL_ATTRIBUTE = "data-clause-pill";
+
 // A read-only picker's changes go nowhere; its controls are disabled anyway
 const NO_CHANGE = () => undefined;
+
+/**
+ * Opens a picker when someone tabs onto its button. The Tab key comes up on
+ * the button it moved focus to; clicks, and focus coming back after the
+ * picker closes, don't open it again.
+ */
+const openOnTabIn = (onOpen: () => void) => (event: KeyboardEvent) => {
+  if (event.key === "Tab") {
+    onOpen();
+  }
+};
 
 /**
  * A segment's filters as pills that open the filter picker, and a button to
@@ -74,7 +94,7 @@ export function FilterClausePickers({ query, onChange }: ClausePickersProps) {
       ))}
       {onChange != null && (
         <ClausePickerPopover
-          renderTarget={(onToggle) =>
+          renderTarget={(onToggle, onOpen) =>
             filters.length > 0 ? (
               <ActionIcon
                 // The pills' own 20px height, between the xs and sm sizes
@@ -97,6 +117,7 @@ export function FilterClausePickers({ query, onChange }: ClausePickersProps) {
                 variant="subtle"
                 leftSection={<Icon name="add" />}
                 onClick={onToggle}
+                onKeyUp={openOnTabIn(onOpen)}
               >
                 {t`Add filter`}
               </Button>
@@ -134,7 +155,7 @@ export function AggregationClausePicker({
   return (
     <ClausePickerPopover
       readOnly={onChange == null}
-      renderTarget={(onToggle) =>
+      renderTarget={(onToggle, onOpen) =>
         aggregation ? (
           <ClausePill
             kind="aggregation"
@@ -152,6 +173,7 @@ export function AggregationClausePicker({
             variant="subtle"
             leftSection={<Icon name="add" />}
             onClick={onToggle}
+            onKeyUp={openOnTabIn(onOpen)}
           >
             {t`Pick an aggregation`}
           </Button>
@@ -209,6 +231,7 @@ function ClausePill({
       withRemoveButton={onRemove != null}
       removeButtonProps={{ "aria-label": t`Remove` }}
       onRemove={onRemove}
+      {...{ [CLAUSE_PILL_ATTRIBUTE]: true }}
       {...props}
     >
       <ClausePillLabel kind={kind} name={name} />
@@ -224,7 +247,8 @@ function ClausePickerPopover({
 }: {
   /** Shows the picker for looking at only: its inputs and buttons disabled */
   readOnly?: boolean;
-  renderTarget: (onToggle: () => void) => JSX.Element;
+  /** `onOpen` opens it without toggling, for opening on focus */
+  renderTarget: (onToggle: () => void, onOpen: () => void) => JSX.Element;
   renderPicker: (onClose: () => void) => ReactNode;
 }) {
   const [isOpened, setIsOpened] = useState(false);
@@ -242,7 +266,10 @@ function ClausePickerPopover({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        {renderTarget(() => setIsOpened((isOpened) => !isOpened))}
+        {renderTarget(
+          () => setIsOpened((isOpened) => !isOpened),
+          () => setIsOpened(true),
+        )}
       </Popover.Target>
       <Popover.Dropdown>
         {isOpened &&

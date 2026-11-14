@@ -1,4 +1,8 @@
-export { AggregationClausePicker, FilterClausePickers } from "./ClausePickers";
+export {
+  AggregationClausePicker,
+  CLAUSE_PILL_ATTRIBUTE,
+  FilterClausePickers,
+} from "./ClausePickers";
 export {
   ClausePills,
   type QueryClause,

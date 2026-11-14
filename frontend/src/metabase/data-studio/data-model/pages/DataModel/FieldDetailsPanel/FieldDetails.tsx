@@ -214,6 +214,8 @@ export function FieldDetails({
               />
             </DetailsTable>
           </SidebarSection>
+          <CustomFieldSection field={field} table={table} />
+          <FieldSemanticsSection field={field} table={table} />
           {canChangeOverTime && (
             <ChangesOverTimeSection
               field={field}
@@ -221,8 +223,6 @@ export function FieldDetails({
               disabled={readOnly}
             />
           )}
-          <CustomFieldSection field={field} table={table} />
-          <FieldSemanticsSection field={field} table={table} />
         </Stack>
       </Tabs.Panel>
 

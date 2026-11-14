@@ -27,6 +27,22 @@ import { HierarchyLevelPills } from "./HierarchyLevelPills";
 import { HierarchyMenu } from "./HierarchyMenu";
 import { useLevelColumns } from "./use-level-columns";
 
+/**
+ * A recursive hierarchy shows its parent key, depth and path settings rather
+ * than levels, so the column is named for what the table's hierarchies show
+ */
+function getLevelsHeader(hierarchies: TableHierarchy["hierarchy"][]) {
+  const recursiveCount = hierarchies.filter(
+    ({ kind }) => kind === "recursive",
+  ).length;
+  if (recursiveCount === 0) {
+    return t`Levels`;
+  }
+  return recursiveCount === hierarchies.length
+    ? t`Settings`
+    : t`Levels or settings`;
+}
+
 // Fits a ⋯ menu, as in Segments and Measures
 const ACTIONS_WIDTH = 96;
 
@@ -78,7 +94,7 @@ export function HierarchyFlatList({
     },
     {
       id: "levels",
-      header: t`Levels or parent key`,
+      header: getLevelsHeader(items.map(({ hierarchy }) => hierarchy)),
       minWidth: 240,
       cell: ({ row }) => (
         <HierarchyLevelPills

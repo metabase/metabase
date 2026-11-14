@@ -13,6 +13,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { DataModelBreadcrumbs } from "metabase/data-studio/common/components/DataModelBreadcrumbs";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
+import { GroupMemberPills } from "metabase/data-studio/data-model/pages/DataModel/TableSection/GroupMemberList";
 import { useTableSegmentsModel } from "metabase/data-studio/data-model/pages/DataModel/TableSection/table-segments";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import {
@@ -99,7 +100,9 @@ export function SystemSegmentDetailPage({
   const { sendSuccessToast } = useMetadataToasts();
   // `undefined` until someone edits the filters
   const [draft, setDraft] = useState<Lib.Query>();
-  const readOnly = !table.can_write;
+  // A segment made of others changes through them; it has no filters to edit
+  const isComposite = (segment?.memberLabels.length ?? 0) > 0;
+  const readOnly = !table.can_write || isComposite;
   const buildQuestion = useQuestionFromOptsBuilder();
 
   if (!segment) {
@@ -163,12 +166,19 @@ export function SystemSegmentDetailPage({
       />
       <Card withBorder p="xxl">
         <Stack gap="xxl">
-          {query && (
-            <SegmentFilterEditor
-              query={query}
-              onChange={setDraft}
-              readOnly={readOnly}
-            />
+          {isComposite ? (
+            <Stack gap="sm">
+              <Text fw="bold">{t`Made of`}</Text>
+              <GroupMemberPills labels={segment.memberLabels} icon="segment" />
+            </Stack>
+          ) : (
+            query && (
+              <SegmentFilterEditor
+                query={query}
+                onChange={setDraft}
+                readOnly={readOnly}
+              />
+            )
           )}
           <Stack gap="sm">
             <Text fw="bold">{t`Description`}</Text>

@@ -64,5 +64,19 @@ export function useInlineSegmentSaves() {
     return { name: savedName, query };
   };
 
-  return { create, update };
+  /** Archives it, as removing it from its own page does */
+  const remove = async (segment: Segment) => {
+    const { error } = await updateSegment({
+      id: segment.id,
+      archived: true,
+      revision_message: t`Removed from Data Studio`,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to remove segment`);
+    } else {
+      sendSuccessToast(t`Segment removed`);
+    }
+  };
+
+  return { create, update, remove };
 }

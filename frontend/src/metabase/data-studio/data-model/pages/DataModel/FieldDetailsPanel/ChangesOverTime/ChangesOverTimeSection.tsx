@@ -98,7 +98,7 @@ export function ChangesOverTimeSection({
   return (
     <SidebarSection
       title={t`Changes over time`}
-      description={t`Whether old values of ${fieldName} are kept, and which one questions use.`}
+      description={t`Whether old values of ${fieldName} are kept, and which of those values questions should use.`}
     >
       <Stack gap="sm">
         <DetailsTable>

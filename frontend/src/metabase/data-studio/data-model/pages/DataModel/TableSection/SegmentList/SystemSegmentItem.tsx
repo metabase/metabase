@@ -5,6 +5,7 @@ import { getSystemSegmentRoleLabel } from "metabase/metadata/table-segments";
 import { Badge, Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 
 import { ClausePills } from "../ClausePills";
+import { GroupMemberPills } from "../GroupMemberList";
 import type { ResolvedSystemSegment } from "../table-segments";
 
 import { DefaultSegmentBadge } from "./SegmentItem";
@@ -52,7 +53,9 @@ export function SystemSegmentItem({
             {getSystemSegmentRoleLabel(segment.role)}
           </Badge>
         </Flex>
-        {hasFilters ? (
+        {segment.memberLabels.length > 0 ? (
+          <GroupMemberPills labels={segment.memberLabels} icon="segment" />
+        ) : hasFilters ? (
           <ClausePills
             clauses={segment.filterNames.map((name) => ({
               kind: "filter",

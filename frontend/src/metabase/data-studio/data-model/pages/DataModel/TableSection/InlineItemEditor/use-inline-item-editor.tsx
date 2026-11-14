@@ -4,7 +4,11 @@ import * as Lib from "metabase-lib";
 
 import type { TreeItemNode } from "../GroupedItemTree";
 
-import { InlineEditActions, ItemNameInput } from "./InlineItemEditor";
+import {
+  InlineEditActions,
+  ItemDefinition,
+  ItemNameInput,
+} from "./InlineItemEditor";
 
 /** A segment's or measure's name and definition, as a list row edits them */
 export type ItemDraft = { name: string; query: Lib.Query };
@@ -105,6 +109,11 @@ export function useInlineItemEditor() {
       kind === "new" || (draft != null && isDraftChanged(draft, saved));
     const update = (change: Partial<ItemDraft>) =>
       setDraft(key, { ...current, ...change, isSubmitted: false });
+    const canSave = isChanged && options.isValid(current.query);
+    const save = () => saveDraft(options, current);
+    const picker = options.renderPicker(current.query, (query) =>
+      update({ query }),
+    );
 
     return {
       name: current.name,
@@ -119,13 +128,16 @@ export function useInlineItemEditor() {
       ),
       // `Required` drops `undefined` from the node's definition type
       definition:
-        options.renderPicker(current.query, (query) => update({ query })) ??
-        null,
+        picker == null ? null : (
+          <ItemDefinition query={current.query} canSave={canSave} onSave={save}>
+            {picker}
+          </ItemDefinition>
+        ),
       actions: isChanged ? (
         <InlineEditActions
           canSave={options.isValid(current.query)}
           isSaving={savingKey === key}
-          onSave={() => saveDraft(options, current)}
+          onSave={save}
           onCancel={() => discardDraft(key)}
         />
       ) : (

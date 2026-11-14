@@ -131,7 +131,17 @@ export function MeasureTree({
         isValid: hasOneAggregation,
         renderPicker: renderAggregationPicker,
         onSave: (draft) => saves.update(measure, draft),
-        actions: <ItemRowMenu detailsUrl={urls.measure(measure.id)} />,
+        actions: (
+          <ItemRowMenu
+            detailsUrl={urls.measure(measure.id)}
+            removeCopy={{
+              label: t`Remove measure`,
+              title: t`Remove this measure?`,
+              message: t`This measure will be permanently removed.`,
+            }}
+            onRemove={() => saves.remove(measure)}
+          />
+        ),
       }),
     };
   };

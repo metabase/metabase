@@ -130,7 +130,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
           />
         ))}
         {listed.length === 0 && (
-          <ListEmptyItem>{t`No groupings yet`}</ListEmptyItem>
+          <ListEmptyItem>{t`No buckets yet`}</ListEmptyItem>
         )}
       </Stack>
       {editor != null && (

@@ -154,7 +154,17 @@ export function SegmentTree({
         isValid: hasFilters,
         renderPicker: renderFilterPickers,
         onSave: (draft) => saves.update(segment, draft),
-        actions: <ItemRowMenu detailsUrl={urls.segment(segment.id)} />,
+        actions: (
+          <ItemRowMenu
+            detailsUrl={urls.segment(segment.id)}
+            removeCopy={{
+              label: t`Remove segment`,
+              title: t`Remove this segment?`,
+              message: t`This segment will be permanently removed.`,
+            }}
+            onRemove={() => saves.remove(segment)}
+          />
+        ),
       }),
     };
   };
@@ -300,14 +310,17 @@ export function SegmentTree({
       name: segment.label,
       icon: "segment",
       href: urls.systemSegment(segment.role),
-      definition: (
-        <SegmentDefinition
-          clauses={segment.filterNames.map((name) => ({
-            kind: "filter",
-            name,
-          }))}
-        />
-      ),
+      definition:
+        segment.memberLabels.length > 0 ? (
+          <GroupMemberPills labels={segment.memberLabels} icon="segment" />
+        ) : (
+          <SegmentDefinition
+            clauses={segment.filterNames.map((name) => ({
+              kind: "filter",
+              name,
+            }))}
+          />
+        ),
       badges: (
         <>
           {isDefaultSegment(model.defaultSegment, {

@@ -64,5 +64,19 @@ export function useInlineMeasureSaves() {
     return { name: savedName, query };
   };
 
-  return { create, update };
+  /** Archives it, as removing it from its own page does */
+  const remove = async (measure: Measure) => {
+    const { error } = await updateMeasure({
+      id: measure.id,
+      archived: true,
+      revision_message: t`Removed from Data Studio`,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to remove measure`);
+    } else {
+      sendSuccessToast(t`Measure removed`);
+    }
+  };
+
+  return { create, update, remove };
 }

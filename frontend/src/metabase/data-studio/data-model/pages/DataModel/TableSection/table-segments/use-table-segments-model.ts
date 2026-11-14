@@ -11,13 +11,13 @@ import {
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
 import {
+  CONDITION_SEGMENT_ROLES,
   type DefaultSegment,
   type DefaultSegmentInference,
   type FieldCondition,
   type MainDateKind,
   type RequiredFilterInference,
   type ResolvedSegmentSettings,
-  SYSTEM_SEGMENT_ROLES,
   type SystemSegmentInference,
   type SystemSegmentRole,
   getSystemSegmentDescription,
@@ -44,6 +44,11 @@ export type ResolvedSystemSegment = {
   /** The base query with the segment's filters; `undefined` while loading */
   query: Lib.Query | undefined;
   filterNames: string[];
+  /**
+   * The system segments a composite one is made of, like Default rows; empty
+   * for one with its own filters
+   */
+  memberLabels: string[];
   isEdited: boolean;
   inference: SystemSegmentInference;
 };
@@ -275,14 +280,16 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
   const settings = getSegmentSettings(table.db_id, table.schema);
   const generationOffSignal = getGenerationOffSignal(settings);
 
-  // Sync makes a segment only for conditions the table has columns for, plus
-  // their AND; one an admin edited stays, as the admin's version wins
-  const systemSegments: ResolvedSystemSegment[] = SYSTEM_SEGMENT_ROLES.flatMap(
-    (role) => {
-      const inference: SystemSegmentInference =
-        generationOffSignal == null
-          ? inferSystemSegment(fields, role, currentVersion)
-          : { conditions: [], signal: generationOffSignal, confidence: "high" };
+  const getInference = (role: SystemSegmentRole): SystemSegmentInference =>
+    generationOffSignal == null
+      ? inferSystemSegment(fields, role, currentVersion)
+      : { conditions: [], signal: generationOffSignal, confidence: "high" };
+
+  // Sync makes a segment only for conditions the table has columns for; one
+  // an admin edited stays, as the admin's version wins
+  const conditionSegments: ResolvedSystemSegment[] =
+    CONDITION_SEGMENT_ROLES.flatMap((role) => {
+      const inference = getInference(role);
       const definition = overrides.systemSegments[role];
       if (definition == null && inference.conditions.length === 0) {
         return [];
@@ -297,12 +304,46 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
           description: getSystemSegmentDescription(role),
           query,
           filterNames: query ? getFilterNames(query) : [],
+          memberLabels: [],
           isEdited: definition != null,
           inference,
         },
       ];
-    },
-  );
+    });
+
+  // Default rows is made of the other system segments as they stand, so an
+  // edit to one carries into it; it has no filters of its own to edit
+  const defaultScopeQuery =
+    baseQuery &&
+    conditionSegments.reduce(
+      (query, member) =>
+        member.query
+          ? Lib.filters(member.query, STAGE_INDEX).reduce(
+              (nextQuery, filter) => Lib.filter(nextQuery, STAGE_INDEX, filter),
+              query,
+            )
+          : query,
+      baseQuery,
+    );
+  const systemSegments: ResolvedSystemSegment[] = [
+    ...conditionSegments,
+    ...(conditionSegments.length > 0
+      ? [
+          {
+            role: "default_scope" as const,
+            label: getSystemSegmentLabel("default_scope"),
+            description: getSystemSegmentDescription("default_scope"),
+            query: defaultScopeQuery,
+            filterNames: defaultScopeQuery
+              ? getFilterNames(defaultScopeQuery)
+              : [],
+            memberLabels: conditionSegments.map(({ label }) => label),
+            isEdited: false,
+            inference: getInference("default_scope"),
+          },
+        ]
+      : []),
+  ];
 
   const defaultInference: DefaultSegmentInference =
     generationOffSignal == null
