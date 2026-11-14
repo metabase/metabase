@@ -43,21 +43,11 @@ export const StructuredQueryRightSidebar = ({
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
         query={query}
-        generatedExpressions={
-          question.settings()["summary.generated_expressions"]
+        onQueryChange={(nextQuery) =>
+          updateQuestion(question.setQuery(nextQuery).setDefaultDisplay(), {
+            run: true,
+          })
         }
-        onQueryChange={(nextQuery, generatedExpressions) => {
-          let nextQuestion = question.setQuery(nextQuery);
-          if (
-            generatedExpressions.length > 0 ||
-            question.settings()["summary.generated_expressions"]
-          ) {
-            nextQuestion = nextQuestion.updateSettings({
-              "summary.generated_expressions": generatedExpressions,
-            });
-          }
-          updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
-        }}
         stageIndex={summaryStageIndex ?? -1}
       />
     ))

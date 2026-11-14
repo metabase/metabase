@@ -18,6 +18,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getRawSeries,
+  getSummaryGeneratedExpressions,
 } from "../../store/selectors";
 import { reconcileSummaryFormulas } from "../../utils/summary-formulas";
 import { getAdHocQuestionWithVizSettings } from "../../utils/viz-settings";
@@ -96,20 +97,6 @@ export const updateQuestion = (
         shouldStartAdHocQuestion && queryBuilderMode !== "dataset",
     });
 
-    const generatedExpressions =
-      newQuestion.settings()["summary.generated_expressions"];
-    if (generatedExpressions) {
-      const reconciledExpressions = reconcileSummaryFormulas(
-        newQuestion.query(),
-        generatedExpressions,
-      );
-      if (!_.isEqual(generatedExpressions, reconciledExpressions)) {
-        newQuestion = newQuestion.updateSettings({
-          "summary.generated_expressions": reconciledExpressions,
-        });
-      }
-    }
-
     if (!newQuestion.canAutoRun()) {
       run = false;
     }
@@ -142,6 +129,17 @@ export const updateQuestion = (
     }
 
     newQuestion = newQuestion.applyTemplateTagParameters();
+
+    const generatedExpressions = getSummaryGeneratedExpressions(getState());
+    const reconciledExpressions = reconcileSummaryFormulas(
+      newQuestion.query(),
+      generatedExpressions,
+    );
+    if (reconciledExpressions.length !== generatedExpressions.length) {
+      dispatch(
+        setUIControls({ summaryGeneratedExpressions: reconciledExpressions }),
+      );
+    }
 
     await dispatch({
       type: UPDATE_QUESTION,

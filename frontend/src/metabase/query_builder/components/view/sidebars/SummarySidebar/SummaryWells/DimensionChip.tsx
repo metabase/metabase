@@ -1,10 +1,10 @@
 import _ from "underscore";
 
+import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { Ellipsified } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
-import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import { makeSummaryFormula } from "../../../../../utils/summary-formulas";
 import type {

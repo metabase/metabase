@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";

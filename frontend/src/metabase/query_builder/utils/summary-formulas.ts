@@ -1,6 +1,6 @@
+import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
-import type { SummaryGeneratedExpression } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 export function makeSummaryFormula(
