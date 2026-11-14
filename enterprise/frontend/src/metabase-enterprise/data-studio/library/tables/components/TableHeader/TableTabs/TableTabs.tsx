@@ -9,19 +9,24 @@ import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
+import { useTableCustomProperties } from "../../../pages/TablePropertiesPage";
+
 type TableTabsProps = {
   table: Table;
 };
 
 export function TableTabs({ table }: TableTabsProps) {
   const location = useLocation();
-  const tabs = getTabs(table, location);
+  // PROTOTYPE: only tables with custom properties get a Properties tab
+  const hasCustomProperties = useTableCustomProperties(table).kind != null;
+  const tabs = getTabs(table, location, hasCustomProperties);
   return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   table: Table,
   location: Omit<Location, "query" | "action">,
+  hasCustomProperties: boolean,
 ): PillTab[] {
   const tabs: PillTab[] = [];
 
@@ -42,6 +47,13 @@ function getTabs(
       Urls.dataStudioTableFields(table.id),
     ),
   });
+
+  if (hasCustomProperties) {
+    tabs.push({
+      label: t`Properties`,
+      to: Urls.dataStudioTableProperties(table.id),
+    });
+  }
 
   tabs.push({
     label: t`Hierarchies`,

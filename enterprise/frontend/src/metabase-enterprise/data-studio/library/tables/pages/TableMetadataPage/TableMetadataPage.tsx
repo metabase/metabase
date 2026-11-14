@@ -12,7 +12,7 @@ import {
   TableRequiredFilter,
 } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
 import { useParams } from "metabase/router";
-import { Box, Center, Stack, rem } from "metabase/ui";
+import { Box, Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
@@ -49,8 +49,8 @@ export function TableMetadataPage() {
     <PageContainer data-testid="table-metadata-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Box className={S.body} flex={1} px="3.5rem" py="xxl">
-        {/* Left-aligned with the page header, capped so rows stay readable */}
-        <Stack gap="xxxl" maw={rem(800)}>
+        {/* Full width, like the Fields and Properties tabs' lists */}
+        <Stack gap="xxxl">
           <SettingsSection title={t`What this table is`}>
             <SettingsCard>
               <TableSubjectFields table={table} readOnly={readOnly} />

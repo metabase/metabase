@@ -20,6 +20,9 @@ import { ClausePillLabel, type QueryClause } from "./ClausePills";
 
 const STAGE_INDEX = -1;
 
+// A pill's height: its 16px line plus 2px of padding above and below
+const PILL_HEIGHT = 20;
+
 type ClausePickersProps = {
   query: Lib.Query;
   /** Without it, the clauses open to be looked at but can't be changed */
@@ -74,14 +77,19 @@ export function FilterClausePickers({ query, onChange }: ClausePickersProps) {
           renderTarget={(onToggle) =>
             filters.length > 0 ? (
               <ActionIcon
+                // The pills' own 20px height, between the xs and sm sizes
                 size="sm"
+                w={PILL_HEIGHT}
+                h={PILL_HEIGHT}
+                miw={PILL_HEIGHT}
+                mih={PILL_HEIGHT}
                 // Round, like the pills beside it
                 radius="xl"
                 aria-label={t`Add filter`}
                 flex="0 0 auto"
                 onClick={onToggle}
               >
-                <Icon name="add" />
+                <Icon name="add" size={12} />
               </ActionIcon>
             ) : (
               <Button

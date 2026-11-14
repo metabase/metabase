@@ -20,12 +20,12 @@ export function ProposalActions({
       {canAccept && (
         <>
           <Tooltip label={t`Accept`}>
-            <ActionIcon aria-label={t`Accept`} onClick={onAccept}>
+            <ActionIcon size="sm" aria-label={t`Accept`} onClick={onAccept}>
               <Icon name="check" />
             </ActionIcon>
           </Tooltip>
           <Tooltip label={t`Dismiss`}>
-            <ActionIcon aria-label={t`Dismiss`} onClick={onDismiss}>
+            <ActionIcon size="sm" aria-label={t`Dismiss`} onClick={onDismiss}>
               <Icon name="close" />
             </ActionIcon>
           </Tooltip>

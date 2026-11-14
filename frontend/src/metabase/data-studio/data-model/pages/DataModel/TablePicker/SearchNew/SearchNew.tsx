@@ -154,7 +154,6 @@ export function SearchNew({
   // PROTOTYPE: mocked. Structure filters need each table's fields and are
   // applied here, since there's no API for them yet
   const hasStructureFilters =
-    filters.needsReviewOnly === true ||
     filters.hiddenOnly === true ||
     filters.noMainDateOnly === true ||
     filters.noRoleOnly === true;
@@ -175,7 +174,6 @@ export function SearchNew({
         dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
       });
       return (
-        (filters.needsReviewOnly !== true || structure.needsReview) &&
         (filters.noRoleOnly !== true || structure.role == null) &&
         (filters.noMainDateOnly !== true || structure.mainDateField == null) &&
         (filters.hiddenOnly !== true || hiddenReason != null)

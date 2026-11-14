@@ -71,7 +71,9 @@ export function AreaLayout({
       p="0.75rem"
       justify="space-between"
       data-testid={testId}
-      data-brand-icons={hasBrandIcons || undefined}
+      data-brand-icons={
+        hasBrandIcons ? (isNavbarOpened ? "opened" : "collapsed") : undefined
+      }
     >
       <Stack gap="lg" flex={1} mih={0} className={S.upperGroup}>
         <AreaNavbarHeader

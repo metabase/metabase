@@ -93,7 +93,6 @@ export interface FilterState {
   unusedOnly: boolean | null;
   publishedOnly: boolean | null;
   // PROTOTYPE: mocked table structure, applied in the browser
-  needsReviewOnly: boolean | null;
   hiddenOnly: boolean | null;
   noMainDateOnly: boolean | null;
   noRoleOnly: boolean | null;

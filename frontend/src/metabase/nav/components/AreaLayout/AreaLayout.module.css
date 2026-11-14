@@ -2,9 +2,14 @@
   border-right: 1px solid var(--mb-color-border-neutral);
   overflow: auto;
 
-  /* Items read it, including ones plugins render, so all icons agree */
-  &[data-brand-icons] {
+  /* Items read it, including ones plugins render, so all icons agree. Brand
+     blue while open; collapsed, only the selected icon is, so it stands out */
+  &[data-brand-icons="opened"] {
     --area-nav-icon-color: var(--mb-color-core-brand);
+  }
+
+  &[data-brand-icons="collapsed"] {
+    --area-nav-icon-color: var(--mb-color-icon-secondary);
   }
 }
 

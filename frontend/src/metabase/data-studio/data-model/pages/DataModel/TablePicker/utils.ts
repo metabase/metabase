@@ -138,7 +138,6 @@ export function getFiltersCount(filters: FilterState): number {
     filters.ownerEmail != null || filters.ownerUserId != null,
     filters.unusedOnly === true,
     filters.publishedOnly === true,
-    filters.needsReviewOnly === true,
     filters.hiddenOnly === true,
     filters.noMainDateOnly === true,
     filters.noRoleOnly === true,

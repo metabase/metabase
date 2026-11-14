@@ -51,7 +51,6 @@ export type TableStructure = {
   role: TableRole | null;
   inference: RoleInference;
   isRoleOverridden: boolean;
-  needsReview: boolean;
   grainDescription: string;
   rowIdentity: RowIdentity;
   periodGranularity: PeriodGranularity;
@@ -195,11 +194,6 @@ export function useTableStructures() {
         role,
         inference,
         isRoleOverridden: overrides.role != null,
-        // A weak guess needs confirming; no guess at all is its own to-do
-        needsReview:
-          overrides.role == null &&
-          inference.role != null &&
-          inference.confidence === "low",
         grainDescription: overrides.grainDescription ?? "",
         rowIdentity: inferRowIdentity(fields),
         periodGranularity:

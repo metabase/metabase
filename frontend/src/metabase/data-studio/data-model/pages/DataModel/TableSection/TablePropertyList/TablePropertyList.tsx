@@ -25,6 +25,7 @@ import {
   Skeleton,
   Stack,
   Text,
+  TextInput,
   Tooltip,
   UnstyledButton,
   rem,
@@ -92,7 +93,20 @@ function PropertyListSkeleton() {
   );
 }
 
-export function TablePropertyList({ table }: { table: Table }) {
+/**
+ * `drawer` is Connected data's compact list; `page` matches the Library
+ * Fields tab: a full-size search and 72px cards
+ */
+type PropertyListVariant = "drawer" | "page";
+
+export function TablePropertyList({
+  table,
+  variant = "drawer",
+}: {
+  table: Table;
+  variant?: PropertyListVariant;
+}) {
+  const isPage = variant === "page";
   const state = usePropertyRegistry(table);
   const noun = getEntityNoun(useEavBinding(table).entityTable);
   const { selectedPropertyName, setSelectedPropertyName } =
@@ -123,19 +137,34 @@ export function TablePropertyList({ table }: { table: Table }) {
 
   return (
     <Stack gap="lg">
-      <Text size="sm" c="text-secondary">
-        {state.registry.hasDefinitions
-          ? t`Labels and types come from the definitions table. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`
-          : t`There's no definitions table, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`}
-      </Text>
-      <Group gap="sm" wrap="nowrap">
-        <Input
-          flex="1"
-          leftSection={<Icon name="search" />}
-          placeholder={t`Search custom properties`}
-          value={search}
-          onChange={(event) => setSearch(event.currentTarget.value)}
-        />
+      {/* On a page, "How they're stored" and the cards' tooltips say this */}
+      {!isPage && (
+        <Text size="sm" c="text-secondary">
+          {state.registry.hasDefinitions
+            ? t`Labels and types come from the definitions table. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`
+            : t`There's no definitions table, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`}
+        </Text>
+      )}
+      <Group gap={isPage ? "lg" : "sm"} wrap="nowrap">
+        {isPage ? (
+          <TextInput
+            flex="1"
+            bdrs="sm"
+            leftSection={<Icon name="search" />}
+            placeholder={t`Search custom properties`}
+            aria-label={t`Search custom properties`}
+            value={search}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+          />
+        ) : (
+          <Input
+            flex="1"
+            leftSection={<Icon name="search" />}
+            placeholder={t`Search custom properties`}
+            value={search}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+          />
+        )}
         <Popover
           width={rem(280)}
           position="bottom-end"
@@ -195,6 +224,7 @@ export function TablePropertyList({ table }: { table: Table }) {
               totalEntityCount={state.registry.entityCount}
               entityPlural={noun.plural}
               active={property.key === selectedPropertyName}
+              isTall={isPage}
               onSelect={() => setSelectedPropertyName(property.key)}
             />
           ))}
@@ -265,6 +295,7 @@ function PropertyItem({
   totalEntityCount,
   entityPlural,
   active,
+  isTall,
   onSelect,
 }: {
   property: RegistryProperty;
@@ -272,6 +303,8 @@ function PropertyItem({
   totalEntityCount: number;
   entityPlural: string;
   active: boolean;
+  /** 72px like the Library's field cards, the card's border included */
+  isTall: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -292,13 +325,15 @@ function PropertyItem({
       <UnstyledButton
         className={S.button}
         aria-label={property.displayName}
-        mih={rem(40)}
+        mih={isTall ? rem(69) : rem(40)}
+        display="flex"
+        style={{ alignItems: "center" }}
         px="lg"
         py={rem(12)}
         w="100%"
         onClick={onSelect}
       >
-        <Group gap={0} wrap="nowrap">
+        <Group gap={0} wrap="nowrap" w="100%">
           <Icon
             className={S.icon}
             flex="0 0 auto"

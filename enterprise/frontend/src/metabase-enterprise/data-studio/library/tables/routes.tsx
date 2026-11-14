@@ -35,6 +35,11 @@ const tableMetadataPage = () =>
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableMetadataPage"
   ).then(({ TableMetadataPage }) => ({ Component: TableMetadataPage }));
 
+const tablePropertiesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TablePropertiesPage"
+  ).then(({ TablePropertiesPage }) => ({ Component: TablePropertiesPage }));
+
 const tableFieldsPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableFieldsPage"
@@ -156,6 +161,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/metadata" lazy={tableMetadataPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />
+      <Route path=":tableId/properties" lazy={tablePropertiesPage} />
       <Route path=":tableId/hierarchies" lazy={tableHierarchiesPage} />
       <Route path=":tableId/hierarchies/new" element={<IsAdmin />}>
         <Route index lazy={tableHierarchyPage} />

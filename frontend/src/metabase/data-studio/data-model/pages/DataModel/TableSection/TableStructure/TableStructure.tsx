@@ -144,10 +144,7 @@ export function TableStructure({
           <SettingsRow>
             <PreviousValuesSection table={table} disabled={readOnly} />
           </SettingsRow>
-          <SettingsRow>{customPropertiesReveal}</SettingsRow>
-          <SettingsRow>
-            <EntityCustomPropertiesSection table={table} />
-          </SettingsRow>
+          {/* A published table's custom properties have their own tab */}
         </SettingsCard>
       </Box>
     );

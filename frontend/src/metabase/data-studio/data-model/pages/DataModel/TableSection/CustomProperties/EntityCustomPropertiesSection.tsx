@@ -25,8 +25,15 @@ import { formatPropertyValue, pivotSampleRows } from "./pivot-preview";
 
 const SHOWN_PROPERTY_COUNT = 8;
 
-export function EntityCustomPropertiesSection({ table }: { table: Table }) {
-  const { tables: schemaTables } = useSchemaTables(table);
+/**
+ * The custom-property table that stores this table's records' custom
+ * properties, if one in its schema points at it
+ */
+export function useCustomPropertyValueTable(table: Table): {
+  valueTable: Table | undefined;
+  isLoading: boolean;
+} {
+  const { tables: schemaTables, isLoading } = useSchemaTables(table);
   const { getTableStructure } = useTableStructures();
   const valueTable = schemaTables.find((candidate) => {
     const { role, eav } = getTableStructure(candidate);
@@ -38,6 +45,11 @@ export function EntityCustomPropertiesSection({ table }: { table: Table }) {
     );
     return findTargetTable(entityKeyField, schemaTables)?.id === table.id;
   });
+  return { valueTable, isLoading };
+}
+
+export function EntityCustomPropertiesSection({ table }: { table: Table }) {
+  const { valueTable } = useCustomPropertyValueTable(table);
   return valueTable ? (
     <EntityCustomProperties table={table} valueTable={valueTable} />
   ) : null;

@@ -104,16 +104,6 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
         <Stack gap="md">
           <Text fw="bold">{t`Structure`}</Text>
           <Checkbox
-            label={t`Needs review`}
-            checked={form.needsReviewOnly === true}
-            onChange={(e) =>
-              setForm((form) => ({
-                ...form,
-                needsReviewOnly: e.target.checked,
-              }))
-            }
-          />
-          <Checkbox
             label={t`No role`}
             checked={form.noRoleOnly === true}
             onChange={(e) =>
