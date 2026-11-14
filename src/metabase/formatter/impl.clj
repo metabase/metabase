@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
+   [metabase.formatter.duration :as duration]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
@@ -140,7 +141,8 @@
                                  (= (::mb.viz/number-style viz-settings) "currency"))
 
         {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency-position currency]} global-settings
+                        prefix suffix currency-style currency-position currency
+                        duration-unit duration-style duration-precision]} global-settings
         currency           (when currency?
                              (keyword (or currency "USD")))
         currency-label     (when currency?
@@ -155,6 +157,7 @@
         relation?          (isa? semantic_type :Relation/*)
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?        (= number-style "scientific")
+        duration?          (= number-style "duration")
         [decimal grouping] (or number-separators
                                (get-in (appearance/custom-formatting) [:type/Number :number_separators])
                                ".,")
@@ -207,9 +210,15 @@
                (.append sb currency-label)
                (when (= currency-style "code")
                  (.append sb \space)))
-             (.append sb (cond-> (.format ^DecimalFormat fmtr scaled-value)
-                           (and (not currency?) (not decimals))
-                           (strip-trailing-zeroes decimal)))
+             (.append sb (if duration?
+                           (duration/format-duration scaled-value {:unit      duration-unit
+                                                                   :style     duration-style
+                                                                   :precision duration-precision
+                                                                   :decimal   decimal
+                                                                   :grouping  grouping})
+                           (cond-> (.format ^DecimalFormat fmtr scaled-value)
+                             (and (not currency?) (not decimals))
+                             (strip-trailing-zeroes decimal))))
              (when percent?
                (.append sb "%"))
              (when (and inline-currency? currency-after?)

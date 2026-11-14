@@ -101,6 +101,14 @@
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
 
+(defn- duration-format-string
+  "Returns the format string for a duration column, whose cells hold the duration in days."
+  [{::mb.viz/keys [duration-precision]}]
+  (case duration-precision
+    "minutes"      "[h]:mm"
+    "milliseconds" "[h]:mm:ss.000"
+    "[h]:mm:ss"))
+
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
   The first value in the returned list should be used for integers, or numbers that round to integers.
@@ -126,6 +134,9 @@
 
             "decimal"
             base-strings
+
+            "duration"
+            (repeat 2 (duration-format-string format-settings))
 
             (if (and (= number-style "currency")
                      (false? currency-in-header))
@@ -470,6 +481,13 @@
         new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
     (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
 
+(defn- cell-number-value
+  "Returns the number to write to a cell: scaled, and converted to days when the cell has a duration format."
+  [value {::mb.viz/keys [scale number-style duration-unit]} styles]
+  (cond-> value
+    scale                                    (* scale)
+    (and styles (= number-style "duration")) (formatter/duration-days duration-unit)))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -500,8 +518,8 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                              (* value (::mb.viz/scale settings))
+               scaled-val   (if (number? value)
+                              (cell-number-value value settings styles)
                               value)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
@@ -532,8 +550,8 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                              (* value (::mb.viz/scale settings))
+               scaled-val   (if (number? value)
+                              (cell-number-value value settings styles)
                               value)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
@@ -559,8 +577,8 @@
                  :col   {}})
               ^Cell cell   (.createCell excel-row ^Integer col-idx)
               settings     (streaming.common/viz-settings-for-col col viz-settings)
-              scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                             (* value (::mb.viz/scale settings))
+              scaled-val   (if (number? value)
+                             (cell-number-value value settings styles)
                              value)
               parsed-value (or (maybe-parse-temporal-value value col)
                                (maybe-parse-coordinate-value value col)
