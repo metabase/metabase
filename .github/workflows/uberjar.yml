@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       build_editions: ${{ steps.matrix.outputs.build_editions }}
+      reuse: ${{ steps.reuse.outputs.reuse }}
+      content_key: ${{ steps.content-key.outputs.key }}
       java_version: ${{ steps.dependencies.outputs.java_version }}
       node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
@@ -68,6 +70,64 @@ jobs:
 
             core.setOutput('build_editions', JSON.stringify(editions));
 
+      # A commit that changes nothing the uberjar is built from (tests, e2e, docs, most CI files) gets the same content
+      # key as an earlier commit, so `build` reuses that commit's JAR instead of building it again.
+      - name: Compute the uberjar content key
+        id: content-key
+        if: ${{ !contains(github.ref, 'release-x') }}
+        run: echo "key=$(.github/scripts/uberjar-content-key.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Look for a JAR built from the same content
+        id: reuse
+        if: ${{ steps.content-key.outputs.key != '' }}
+        continue-on-error: true
+        uses: actions/github-script@v9
+        env:
+          CONTENT_KEY: ${{ steps.content-key.outputs.key }}
+          # Must match the `build` job's env: these change the JAR or the artifacts that come with it.
+          SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+          EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+            const { data: repository } = await github.rest.repos.get({ owner, repo });
+            const reuse = {};
+
+            for (const edition of ['ee', 'oss']) {
+              const name = `uberjar-content-${edition}-licenses-${process.env.SKIP_LICENSES !== 'true'}-stats-${process.env.EMIT_BUNDLE_STATS}-${process.env.CONTENT_KEY}`;
+              const { data } = await github.rest.actions.listArtifactsForRepo({ owner, repo, name, per_page: 20 });
+
+              // Only trust markers from runs on this repository's own branches. A fork's pull request runs its own
+              // copy of the workflow, so it could upload a marker for content its JAR wasn't built from.
+              const markers = (data.artifacts ?? []).filter(
+                (artifact) => !artifact.expired && artifact.workflow_run?.head_repository_id === repository.id,
+              );
+
+              for (const marker of markers) {
+                const { data: runArtifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                  owner,
+                  repo,
+                  run_id: marker.workflow_run.id,
+                  per_page: 100,
+                });
+                const live = runArtifacts.artifacts.filter((artifact) => !artifact.expired);
+                const jar = live.find((artifact) => new RegExp(`^metabase-${edition}-.+-uberjar$`).test(artifact.name));
+                if (!jar) {
+                  continue;
+                }
+                const stats = live.find((artifact) => artifact.name.startsWith(`metabase-bundle-stats-${edition}-`));
+                reuse[edition] = { jar: String(jar.id), stats: stats ? String(stats.id) : '' };
+                core.info(`${edition}: reuse ${jar.name} from run ${marker.workflow_run.id}`);
+                break;
+              }
+
+              if (!reuse[edition]) {
+                core.info(`${edition}: no JAR built from content ${process.env.CONTENT_KEY}`);
+              }
+            }
+
+            core.setOutput('reuse', JSON.stringify(reuse));
+
       - name: Prepare release scripts
         if: ${{ contains(github.ref, 'release-x') }}
         uses: ./.github/actions/prepare-release-scripts
@@ -103,12 +163,60 @@ jobs:
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
+      CONTENT_KEY: ${{ needs.setup.outputs.content_key }}
+      REUSE_JAR_ID: ${{ fromJson(needs.setup.outputs.reuse || '{}')[matrix.edition].jar || '' }}
+      REUSE_STATS_ID: ${{ fromJson(needs.setup.outputs.reuse || '{}')[matrix.edition].stats || '' }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.commit }}
+      # Reuse the JAR of an earlier commit with the same content key (see `setup`). If anything goes wrong, the steps
+      # below build it as usual.
+      - name: Reuse a JAR built from the same content
+        id: reuse
+        if: ${{ env.REUSE_JAR_ID != '' }}
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const download = async (artifact_id, file) => {
+              const { data } = await github.rest.actions.downloadArtifact({ owner, repo, artifact_id, archive_format: 'zip' });
+              fs.writeFileSync(file, Buffer.from(data));
+            };
+            await download(Number(process.env.REUSE_JAR_ID), 'reused-jar.zip');
+            if (process.env.REUSE_STATS_ID && process.env.EMIT_BUNDLE_STATS === 'true') {
+              await download(Number(process.env.REUSE_STATS_ID), 'reused-stats.zip');
+            }
+      - name: Unpack the reused JAR and stamp it with this commit
+        id: reuse-unpack
+        if: ${{ steps.reuse.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: | # bash
+          set -euo pipefail
+          rm -rf reused && mkdir reused && unzip -q reused-jar.zip -d reused
+          mkdir -p target/uberjar
+          mv "$(find reused -name metabase.jar | head -1)" target/uberjar/metabase.jar
+          if [ -f reused-stats.zip ]; then
+            mkdir -p target/bundle-stats && unzip -q -o reused-stats.zip -d target/bundle-stats
+          fi
+
+          # `version.properties` carries the commit hash and date (bin/build/src/build/version_properties.clj).
+          rm -rf version-stamp && mkdir version-stamp && cd version-stamp
+          unzip -q ../target/uberjar/metabase.jar version.properties
+          hash=$(git show-ref --head --hash=7 head || echo '?')
+          date=$(git log -1 --pretty=%ad --date=short || echo '?')
+          sed -i -e "s/^hash=.*/hash=${hash}/" -e "s/^date=.*/date=${date}/" version.properties
+          zip -q ../target/uberjar/metabase.jar version.properties
+          cat version.properties
+      - name: Decide whether to build
+        id: plan
+        run: echo "build=${{ steps.reuse-unpack.outcome == 'success' && 'false' || 'true' }}" >> "$GITHUB_OUTPUT"
       - name: Prepare front-end environment
+        if: ${{ steps.plan.outputs.build == 'true' }}
         uses: ./.github/actions/prepare-frontend
         with:
           node-version: "${{ needs.setup.outputs.node_version || '22' }}"
@@ -117,6 +225,7 @@ jobs:
         with:
           java-version: "${{ needs.setup.outputs.java_version || 25 }}"
       - name: Build
+        if: ${{ steps.plan.outputs.build == 'true' }}
         run: ./bin/build.sh
       - name: Upload bundle stats
         if: ${{ matrix.edition == 'ee' && env.EMIT_BUNDLE_STATS == 'true' }}
@@ -160,6 +269,20 @@ jobs:
       - name: Wait for Metabase to start
         timeout-minutes: 5
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      # Marks this run's JAR as built from `CONTENT_KEY`, so `setup` can reuse it for later commits with the same key.
+      # Only once Metabase has started, so a JAR that doesn't start is never reused.
+      - name: Record the content the JAR was built from
+        if: ${{ env.CONTENT_KEY != '' }}
+        continue-on-error: true
+        shell: bash
+        run: echo "${{ env.CONTENT_KEY }}" > uberjar-content-key.txt
+      - name: Upload the content marker
+        if: ${{ env.CONTENT_KEY != '' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: uberjar-content-${{ matrix.edition }}-licenses-${{ env.SKIP_LICENSES != 'true' }}-stats-${{ env.EMIT_BUNDLE_STATS }}-${{ env.CONTENT_KEY }}
+          path: uberjar-content-key.txt
       - name: Delete the JAR artifact if Metabase did not start
         if: ${{ (failure() || cancelled()) && steps.upload-jar.outputs.artifact-id != '' }}
         env:
