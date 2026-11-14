@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { Global, css } from "@emotion/react";
 import { type JSX, useMemo } from "react";
 
 import "metabase/css/core/base.css";
@@ -11,6 +9,7 @@ import {
 } from "metabase/embedding/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { getFontFamilyValue } from "metabase/utils/fonts";
@@ -32,14 +31,9 @@ export const GlobalStyles = (): JSX.Element => {
   }, [theme, whitelabelColors]);
 
   const styles = useMemo(() => {
-    return css`
-      ${cssVariables}
-      :root {
-        --mb-default-font-family: ${getFontFamilyValue(font)};
-      }
-
-      ${fontFiles?.map(
-        (file) => css`
+    const fontFaces = (fontFiles ?? [])
+      .map(
+        (file) => `
           @font-face {
             font-family: "Custom";
             src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
@@ -48,16 +42,27 @@ export const GlobalStyles = (): JSX.Element => {
             font-display: swap;
           }
         `,
-      )}
+      )
+      .join("\n");
+
+    return `
+      ${cssVariables}
+      :root {
+        --mb-default-font-family: ${getFontFamilyValue(font)};
+      }
+
+      ${fontFaces}
       ${getSaveDomImageStyles(isEmbeddingSdk())}
-    body {
+      body {
         font-size: 0.875em;
-        ${isStaticEmbedding() || isPublicEmbedding()
-          ? ""
-          : `color-scheme: ${colorScheme};`}
+        ${
+          isStaticEmbedding() || isPublicEmbedding()
+            ? ""
+            : `color-scheme: ${colorScheme};`
+        }
       }
     `;
   }, [cssVariables, font, fontFiles, colorScheme]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 };

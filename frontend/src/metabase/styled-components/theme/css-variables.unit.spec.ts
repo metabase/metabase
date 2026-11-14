@@ -38,7 +38,7 @@ describe("getThemeSpecificCssVariables", () => {
       },
     } as MantineTheme;
 
-    const styles = getThemeSpecificCssVariables(theme).styles;
+    const styles = getThemeSpecificCssVariables(theme);
 
     expect(styles).toContain("--mb-color-bg-dashboard: red;");
     expect(styles).toContain("--mb-color-bg-dashboard-card: purple;");
@@ -51,7 +51,7 @@ describe("getMetabaseSdkCssVariables", () => {
       theme: createSdkTheme({ "core-brand": "#DF75E9" }),
       font: "Lato",
       forceDynamicBrandRamp: true,
-    }).styles;
+    });
 
     expect(styles).toContain(`--mb-color-text-brand: ${TEXT_BRAND_RAMP};`);
     expect(styles).not.toContain(`--mb-color-text-brand: ${TEXT_BRAND_OCEAN};`);
@@ -61,7 +61,7 @@ describe("getMetabaseSdkCssVariables", () => {
     const styles = getMetabaseSdkCssVariables({
       theme: createSdkTheme({}),
       font: "Lato",
-    }).styles;
+    });
 
     expect(styles).toContain(`--mb-color-text-brand: ${TEXT_BRAND_OCEAN};`);
   });

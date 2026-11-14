@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { css } from "@emotion/react";
 import Color from "color";
 
 import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
@@ -70,7 +68,7 @@ export function getIsDarkThemeFromColors(
  * Dynamically-generated CSS variables based on the theme.
  * These colors are derived from the palette, with a configured tint and shade percentage.
  */
-export function getDynamicCssVariables(theme: MantineTheme) {
+export function getDynamicCssVariables(theme: MantineTheme): string {
   const isDarkTheme = getIsDarkThemeFromPalette(theme);
 
   const mappings = Object.entries(DYNAMIC_CSS_VARIABLES)
@@ -104,5 +102,5 @@ export function getDynamicCssVariables(theme: MantineTheme) {
     })
     .map(([cssVar, value]) => (value ? `${cssVar}: ${value};` : ""));
 
-  return css(mappings);
+  return mappings.join("\n");
 }
