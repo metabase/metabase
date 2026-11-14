@@ -1942,6 +1942,19 @@
                 (get collections (:entity_id coll))))
         entities))
 
+(def ^:private library-stored-names
+  "The names that the system-created Library collections are stored and serialized with, by entity id."
+  {library-entity-id            "Library"
+   library-data-entity-id       "Data"
+   library-metrics-entity-id    "Metrics"
+   library-dashboards-entity-id "Dashboards"})
+
+(defn- stored-names
+  "A transform fn exporting and importing the system-created Library collections with their stored names, which a select translates."
+  [_store collections names _opts]
+  (mapv (fn [collection collection-name] (get library-stored-names (:entity_id collection) collection-name))
+        collections names))
+
 (defn- import-parent-locations
   "A transform fn importing parent Collection entity ids as the locations of their children."
   [store _entities parent-eids opts]
@@ -1953,8 +1966,10 @@
 (defmethod serialization/spec :model/Collection [_]
   {:schema    ::collections.schema/external-collection
    :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :name :namespace :slug :type]
-   :transform {:location          {:as     :parent_id
+               :is_remote_synced :is_sample :namespace :slug :type]
+   :transform {:name              {:export stored-names
+                                   :import stored-names}
+               :location          {:as     :parent_id
                                    :export (fn [store _ locations _]
                                              (serialization/column-refs store :model/Collection
                                                                         (map location-path->parent-id locations)))
