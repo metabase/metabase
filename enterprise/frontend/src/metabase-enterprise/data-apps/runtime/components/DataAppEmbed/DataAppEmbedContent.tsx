@@ -17,6 +17,7 @@ type Props = {
   path: string;
 
   onProviderPropsLoaded: (props: DataAppMetabaseProviderProps) => void;
+  onPathChange: (path: string) => void;
   navigationRequest: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
 };
 
@@ -25,6 +26,7 @@ export function DataAppEmbedContent({
   path,
 
   onProviderPropsLoaded,
+  onPathChange,
   navigationRequest,
 }: Props) {
   const loginStatus = useSdkSelector(getLoginStatus);
@@ -46,6 +48,7 @@ export function DataAppEmbedContent({
       slug={slug}
       path={path}
       navigationRequest={navigationRequest}
+      onPathChange={onPathChange}
       onProviderPropsLoaded={onProviderPropsLoaded}
     />
   );
@@ -55,11 +58,12 @@ function DataAppEmbedAuthenticatedView({
   slug,
   path,
   navigationRequest,
+  onPathChange,
   onProviderPropsLoaded,
 }: Props) {
   const { data, failed, error } = useDataAppBundle(slug, { embedded: true });
 
-  useDataAppPathNavigation({ slug, path, navigationRequest });
+  useDataAppPathNavigation({ slug, path, navigationRequest, onPathChange });
 
   useEffect(() => {
     if (data) {

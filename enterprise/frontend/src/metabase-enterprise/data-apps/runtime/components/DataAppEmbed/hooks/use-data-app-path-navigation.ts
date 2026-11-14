@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-import { navigate } from "embedding-sdk-package/lib/private/data-app-routing";
+import {
+  getBasename,
+  navigate,
+  subscribeToDataAppRouting,
+} from "embedding-sdk-package/lib/private/data-app-routing";
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
@@ -10,27 +14,41 @@ import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embedd
 import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 
 /**
- * Updates the current path of the data app router
- * when the `path` prop changes.
+ * Keeps the data app router and the host's `path` in sync.
+ *
+ * Navigates the router when `path` or `navigationRequest` changes, and calls
+ * `onPathChange` for every other change of the app's page.
  **/
 export function useDataAppPathNavigation({
   slug,
   path,
   navigationRequest = null,
+  onPathChange,
 }: {
   slug: string;
   path: string;
   navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
+  onPathChange?: (path: string) => void;
 }) {
+  // True while navigating to the host's `path`, so that navigation is not reported back through `onPathChange`.
+  const isNavigatingToHostPathRef = useRef(false);
+
   useEffect(() => {
-    const currentUrl = new URL(window.location.href);
+    if (!onPathChange) {
+      return;
+    }
 
-    // Added by embed.js for loading iframes in parallel.
-    // We don't need it for path comparison.
-    currentUrl.searchParams.delete(
-      EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
-    );
+    return subscribeToDataAppRouting(() => {
+      const currentPath = getCurrentDataAppPath(slug);
 
+      if (!isNavigatingToHostPathRef.current && currentPath !== null) {
+        onPathChange(currentPath);
+      }
+    });
+  }, [slug, onPathChange]);
+
+  useEffect(() => {
+    const currentUrl = getCurrentUrl();
     const normalizedPath = normalizeDataAppPath(path);
 
     const targetUrl = getDataAppEmbedUrl(
@@ -41,9 +59,46 @@ export function useDataAppPathNavigation({
     if (currentUrl.href !== targetUrl.href) {
       const route = normalizedPath.slice(slug.length);
 
-      navigate(route.startsWith("/") ? route : `/${route}`, {
-        replace: true,
-      });
+      isNavigatingToHostPathRef.current = true;
+
+      try {
+        navigate(route.startsWith("/") ? route : `/${route}`, {
+          replace: true,
+        });
+      } finally {
+        isNavigatingToHostPathRef.current = false;
+      }
     }
   }, [slug, path, navigationRequest]);
+}
+
+function getCurrentUrl(): URL {
+  const url = new URL(window.location.href);
+
+  // Added by embed.js for loading iframes in parallel.
+  // It is not part of the app's path. `delete` re-encodes the whole query,
+  // so only call it when the parameter is there.
+  if (url.searchParams.has(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME)) {
+    url.searchParams.delete(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME);
+  }
+
+  return url;
+}
+
+/**
+ * The current location in the same format as the host's `path`,
+ * or `null` when the router left this app.
+ */
+function getCurrentDataAppPath(slug: string): string | null {
+  const basename = getBasename();
+
+  if (!basename.endsWith(`/${slug}`)) {
+    return null;
+  }
+
+  const { pathname, search, hash } = getCurrentUrl();
+  const route = pathname.slice(basename.length);
+
+  // The host's `path` for the app root is the bare slug.
+  return `${slug}${route === "/" ? "" : route}${search}${hash}`;
 }

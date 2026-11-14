@@ -4,7 +4,8 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import userEvent from "@testing-library/user-event";
+import { type ReactNode, useState } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
@@ -76,6 +77,23 @@ const message = (
       }),
     ),
   );
+
+const pathChangeMessage = (iframe: HTMLIFrameElement, path: unknown) =>
+  message(iframe, "metabase.embed.dataAppPathChange", {
+    data: { type: "metabase.embed.dataAppPathChange", data: { path } },
+  });
+
+function HostWithPathState() {
+  const [path, setPath] = useState("boba-hq");
+
+  return (
+    <>
+      <p data-testid="host-path">{path}</p>
+      <button onClick={() => setPath("boba-hq")}>Home</button>
+      <DataApp path={path} onPathChange={setPath} />
+    </>
+  );
+}
 
 function setup(props: DataAppProps = { path: "boba-hq" }) {
   const view = render(<DataApp {...props} />);
@@ -271,6 +289,92 @@ describe("DataApp", () => {
       settingsMessage("boba-hq/orders"),
       ORIGIN,
     );
+  });
+
+  it("lets the host navigate back after the user navigates inside the app", async () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders/42?tab=items");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/42?tab=items",
+    );
+
+    // the reported path is sent back, so the iframe's settings match the host
+    expect(postMessage).toHaveBeenLastCalledWith(
+      settingsMessage("boba-hq/orders/42?tab=items"),
+      ORIGIN,
+    );
+
+    postMessage.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Home" }));
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      settingsMessage("boba-hq"),
+      ORIGIN,
+    );
+  });
+
+  it.each(["boba-hq/customers/acme%2Feu", "boba-hq/notes#a\\b", "other-app"])(
+    "ignores a reported path that `path` rejects or that names another app: %s",
+    (reportedPath) => {
+      render(<HostWithPathState />);
+
+      const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+
+      message(iframe, "metabase.embed.iframeReady");
+      pathChangeMessage(iframe, reportedPath);
+
+      expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    },
+  );
+
+  it.each([
+    { name: "with onPathChange", onPathChange: jest.fn<void, [string]>() },
+    { name: "without onPathChange", onPathChange: undefined },
+  ])(
+    "sends a page the app reported when the host goes back to it after navigating elsewhere ($name)",
+    ({ onPathChange }) => {
+      const { iframe, postMessage, rerender } = setup({
+        path: "boba-hq",
+        onPathChange,
+      });
+
+      message(iframe, "metabase.embed.iframeReady");
+      pathChangeMessage(iframe, "boba-hq/orders");
+      rerender(<DataApp path="boba-hq/products" onPathChange={onPathChange} />);
+      postMessage.mockClear();
+
+      rerender(<DataApp path="boba-hq/orders" onPathChange={onPathChange} />);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        settingsMessage("boba-hq/orders"),
+        ORIGIN,
+      );
+    },
+  );
+
+  it("does not call onPathChange for a path change message without a string path", () => {
+    const onPathChange = jest.fn<void, [string]>();
+    const onError = jest.fn((event: ErrorEvent) => event.preventDefault());
+    window.addEventListener("error", onError);
+
+    try {
+      const { iframe } = setup({ path: "boba-hq", onPathChange });
+
+      pathChangeMessage(iframe, 42);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onPathChange).not.toHaveBeenCalled();
   });
 
   it("keeps the same iframe when a leading slash is added", () => {

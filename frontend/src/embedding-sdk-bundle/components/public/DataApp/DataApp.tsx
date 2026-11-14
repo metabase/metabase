@@ -15,14 +15,36 @@ import { DataAppFrame } from "./DataAppFrame";
 
 /** @category DataApp */
 export interface DataAppProps {
-  // TODO(DAT-115): add `onPathChange` so the host can navigate back after the user navigates inside the app.
   /**
    * App slug and optional route/query, such as `my-store/orders?active=true`.
    *
    * Changing only the route or query navigates within the app.
    * Changing the app slug remounts the iframe.
+   *
+   * To navigate back to a page after the user navigates inside the app,
+   * keep `path` in state and update it with `onPathChange`.
    **/
   path: string;
+
+  /**
+   * Called with the new path whenever the app's page changes, for example
+   * when the user clicks a `DataAppLink`.
+   *
+   * The path has the same format as `path`, such as `my-store/orders/42?tab=items`.
+   *
+   * It is not called when the host changes the `path` prop manually.
+   *
+   * @example
+   * ```tsx
+   * const [path, setPath] = useState("my-store/orders");
+   *
+   * <>
+   *   <button onClick={() => setPath("my-store/orders")}>Orders</button>
+   *   <DataApp path={path} onPathChange={setPath} />
+   * </>
+   * ```
+   **/
+  onPathChange?: (path: string) => void;
 
   className?: string;
   style?: CSSProperties;
