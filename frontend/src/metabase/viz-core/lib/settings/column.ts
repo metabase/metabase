@@ -5,6 +5,7 @@ import _ from "underscore";
 import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   currency,
+  formatDuration,
   formatNumber,
   getCurrency,
   getCurrencyNarrowSymbol,
@@ -40,6 +41,7 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DatetimeUnit,
+  DurationUnit,
   Series,
   TimeEnabled,
   VisualizationSettings,
@@ -266,6 +268,21 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const DURATION_SAMPLE_SECONDS = 3723.25;
+
+function getDurationUnitOptions(): { name: string; value: DurationUnit }[] {
+  return [
+    { name: t`Nanoseconds`, value: "nanosecond" },
+    { name: t`Microseconds`, value: "microsecond" },
+    { name: t`Milliseconds`, value: "millisecond" },
+    { name: t`Seconds`, value: "second" },
+    { name: t`Minutes`, value: "minute" },
+    { name: t`Hours`, value: "hour" },
+    { name: t`Days`, value: "day" },
+    { name: t`Weeks`, value: "week" },
+  ];
+}
+
 export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   number_style: {
     get title() {
@@ -275,21 +292,81 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     // Each option is the same sample value rendered in that style, so the
     // examples reflect the column's separators and currency.
     getProps: (_column, settings) => ({
-      options: (["decimal", "percent", "currency", "scientific"] as const).map(
-        (numberStyle) => ({
-          name: formatNumber(1.23, {
-            number_style: numberStyle,
-            number_separators: settings.number_separators,
-            currency: settings.currency,
-            currency_style: "symbol",
-            currency_position: settings.currency_position,
+      options: [
+        ...(["decimal", "percent", "currency", "scientific"] as const).map(
+          (numberStyle) => ({
+            name: formatNumber(1.23, {
+              number_style: numberStyle,
+              number_separators: settings.number_separators,
+              currency: settings.currency,
+              currency_style: "symbol",
+              currency_position: settings.currency_position,
+            }),
+            value: numberStyle,
           }),
-          value: numberStyle,
-        }),
-      ),
+        ),
+        {
+          name: formatDuration(DURATION_SAMPLE_SECONDS, {
+            number_separators: settings.number_separators,
+          }),
+          value: "duration",
+        },
+      ],
     }),
     getDefault: getDefaultNumberStyle,
     readDependencies: ["currency"],
+  },
+  duration_unit: {
+    get title() {
+      return t`Unit of duration`;
+    },
+    widget: "select",
+    getProps: () => ({
+      options: getDurationUnitOptions(),
+    }),
+    getDefault: () => "second",
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_style: {
+    get title() {
+      return t`Duration style`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["digital", "narrow"] as const).map((durationStyle) => ({
+        name: formatDuration(DURATION_SAMPLE_SECONDS, {
+          duration_style: durationStyle,
+          duration_precision: settings.duration_precision,
+          number_separators: settings.number_separators,
+        }),
+        value: durationStyle,
+      })),
+    }),
+    getDefault: () => "digital",
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_precision: {
+    get title() {
+      return t`Duration precision`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["minutes", "seconds", "milliseconds"] as const).map(
+        (durationPrecision) => ({
+          name: formatDuration(DURATION_SAMPLE_SECONDS, {
+            duration_style: settings.duration_style,
+            duration_precision: durationPrecision,
+            number_separators: settings.number_separators,
+          }),
+          value: durationPrecision,
+        }),
+      ),
+    }),
+    getDefault: () => "seconds",
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
   },
   currency: {
     get title() {
@@ -400,6 +477,8 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       min: 0,
       max: 20,
     }),
+    getHidden: (_column, settings) => settings.number_style === "duration",
+    readDependencies: ["number_style"],
   },
   scale: {
     get title() {
