@@ -30,9 +30,23 @@
   font-weight: bold;
 }
 
-.ModalTextArea {
-  display: block;
+.ModalTextAreaRoot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.ModalTextAreaWrapper {
+  flex: 1;
+}
+
+.ModalTextAreaInput {
+  height: 100%;
   resize: none;
+
+  &[readonly] {
+    background-color: var(--mb-color-background_page-secondary);
+  }
 }
 
 .ModalHelpMessage {
