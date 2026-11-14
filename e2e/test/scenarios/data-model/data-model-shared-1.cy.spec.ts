@@ -35,6 +35,21 @@ areas.forEach((area) => {
       getInterceptsForArea(area);
     });
 
+    describe("Data loading", () => {
+      // The message comes from the backend's 404 response for the table
+      // metadata; the Jest tests mock that response.
+      it("should show 404 if table does not exist", () => {
+        visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: 12345,
+          skipWaiting: true,
+        });
+
+        H.DataModel.get().findByText("Not found.").should("be.visible");
+      });
+    });
+
     describe("Table picker", () => {
       describe(
         "mutliple databases, with single and multiple schemas",
