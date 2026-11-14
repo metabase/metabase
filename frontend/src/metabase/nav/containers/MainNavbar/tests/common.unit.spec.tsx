@@ -1,5 +1,10 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupCreateCollectionEndpoint,
+  setupUnauthorizedCollectionEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
@@ -7,6 +12,7 @@ import * as Urls from "metabase/urls";
 import {
   createMockBookmark,
   createMockCard,
+  createMockCollection,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
@@ -435,6 +441,49 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.queryByRole("button", { name: "Create a new collection" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should create a collection in the personal collection for a user without collection access", async () => {
+      // Registered before `setup` so it wins: the API 403s the root collection
+      // for a user without any collection access.
+      setupUnauthorizedCollectionEndpoints(
+        createMockCollection(ROOT_COLLECTION),
+      );
+      setupCreateCollectionEndpoint(
+        createMockCollection({ id: 42, name: "Foo" }),
+      );
+      const { router } = await setup({
+        route: "*",
+        canCurateRootCollection: false,
+      });
+
+      const button = screen.getByRole("button", {
+        name: "Create a new collection",
+      });
+      expect(button).toBeInTheDocument();
+      await userEvent.click(button);
+
+      const modal = await screen.findByTestId("new-collection-modal");
+      await userEvent.type(within(modal).getByLabelText("Name"), "Foo");
+      await waitFor(() =>
+        expect(
+          within(modal).getByTestId("collection-picker-button"),
+        ).toHaveTextContent(PERSONAL_COLLECTION_BASE.name),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Create" }),
+      );
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/collection/42-foo"),
+      );
+      const request = fetchMock.callHistory.lastCall("create-collection");
+      expect(
+        await new Request(request?.url ?? "", request?.options).json(),
+      ).toMatchObject({
+        name: "Foo",
+        parent_id: PERSONAL_COLLECTION_BASE.id,
+      });
     });
 
     it("should move focus through the new collection modal with Tab (#83338)", async () => {
