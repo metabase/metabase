@@ -1,18 +1,19 @@
-(ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
+(ns ^:mb/app-db-migrations-test metabase.permissions.data-permissions-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
@@ -23,136 +24,19 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
-(deftest ^:parallel ranks->most-permissive-value-test
-  (testing "reconstructs coalesce from a bucket's [min max] value ranks"
-    ;; :perms/create-queries values: [:query-builder-and-native :query-builder :no]
-    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/create-queries pair))
-      :query-builder-and-native [0 2]
-      :query-builder            [1 1]
-      :no                       [2 2]
-      nil                       nil))
-  (testing ":perms/view-data's special rule: a :blocked row overrides :legacy-no-self-service but not :unrestricted"
-    ;; :perms/view-data values: [:unrestricted :legacy-no-self-service :blocked]
-    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/view-data pair))
-      :unrestricted           [0 2]
-      :blocked                [1 2]
-      :legacy-no-self-service [1 1]
-      :blocked                [2 2])))
-
-(deftest ^:parallel combine-rank-pairs-test
-  (is (= [0 2] (#'data-perms/combine-rank-pairs [1 2] [0 1])))
-  (is (= [1 1] (#'data-perms/combine-rank-pairs nil [1 1])))
-  (is (nil? (#'data-perms/combine-rank-pairs nil nil))))
-
-(deftest db-permission-cache-loads-per-database-test
-  (let [user-id 1
-        loads   (atom [])
-        cache   (atom {:db-ids #{} :perms {}})]
-    (binding [api/*current-user-id*                user-id
-              data-perms/*db-permission-cache*     cache
-              data-perms/*all-db-permission-cache* (atom {})]
-      (mt/with-dynamic-fn-redefs [data-perms/load-database-perms
-                                  (fn [_user-id db-ids]
-                                    (swap! loads conj (some-> db-ids set))
-                                    {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
-                                                             11 {:database :no  :every-table :no  :any-table :no}}
-                                     :perms/create-queries  {10 {:every-table :query-builder
-                                                                 :any-table   :query-builder-and-native}}})]
-        (testing "one load per database serves all three of its values"
-          (is (true? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 10)))
-          (is (= :query-builder
-                 (data-perms/full-database-permission-for-user user-id :perms/create-queries 10)))
-          (is (= :query-builder-and-native
-                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
-          (is (= [#{10}] @loads)))
-        (testing "a different database is its own load"
-          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 11)))
-          (is (= [#{10} #{11}] @loads)))
-        (testing "priming a list of databases takes them in one go, skipping those already loaded"
-          (reset! loads [])
-          (data-perms/prime-database-perms-cache {:db-ids #{10 12 13}})
-          (is (= [#{12 13}] @loads)))
-        (testing "a database with no rows still counts as loaded, and is not re-queried"
-          (reset! loads [])
-          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 12)))
-          (is (= [] @loads)))
-        (testing "the all-databases question uses its own cache, loaded whole"
-          (reset! loads [])
-          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (= [nil] @loads) "loaded with no database scope")
-          (reset! loads [])
-          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (= [] @loads) "and only once"))
-        (testing "exclude-db-ids is honoured"
-          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
-                                                              :exclude-db-ids [10]))))))))
-
-(deftest table-permission-cache-scope-test
-  (let [user-id 1
-        loads   (atom [])
-        cache   (atom {:db-ids #{} :table-ids #{} :perms {}})]
-    (binding [api/*current-user-id*               user-id
-              data-perms/*table-permission-cache* cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-table-permission-perms
-                                  (fn [_user-id scope]
-                                    (swap! loads conj scope)
-                                    {:perms/view-data {10 {100 :unrestricted}}})]
-        (testing "priming by table loads exactly those tables, and does not mark their database loaded"
-          (data-perms/prime-table-perms-cache {:table-ids #{100 101}})
-          (is (= [{:table-ids #{100 101}}] @loads))
-          (is (= #{100 101} (:table-ids @cache)))
-          (is (= #{} (:db-ids @cache))))
-        (testing "tables already loaded are not re-requested"
-          (data-perms/prime-table-perms-cache {:table-ids #{100 102}})
-          (is (= [{:table-ids #{100 101}} {:table-ids #{102}}] @loads)))
-        (testing "a table nobody primed loads on its own, not its whole database"
-          (#'data-perms/cached-table-perms user-id 10 999)
-          (is (= {:table-ids #{999}} (last @loads)))
-          (is (contains? (:table-ids @cache) 999)))
-        (testing "an already-loaded table is answered from cache"
-          (reset! loads [])
-          (#'data-perms/cached-table-perms user-id 10 100)
-          (is (= [] @loads)))
-        (testing "priming by database covers every table in it, including ones never named"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {:db-ids #{11}})
-          (is (= [{:db-ids #{11}}] @loads))
-          (is (contains? (:db-ids @cache) 11))
-          (reset! loads [])
-          (#'data-perms/cached-table-perms user-id 11 55555)
-          (is (= [] @loads)))
-        (testing "an already-loaded database is not re-requested"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {:db-ids #{11}})
-          (is (= [] @loads)))
-        (testing "priming with neither key is a no-op"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {})
-          (is (= [] @loads)))))))
-
-(deftest table-permission-cache-batches-large-table-id-sets-test
-  (testing "a table-id set larger than the parameter budget is split across queries rather than failing"
-    (let [user-id    1
-          batch-size @#'data-perms/max-ids-per-query
-          table-ids  (set (range 1 (+ 1 (* 2 batch-size) 10)))
-          loads      (atom [])]
-      (binding [api/*current-user-id*               user-id
-                data-perms/*table-permission-cache* (atom {:db-ids #{} :table-ids #{} :perms {}})]
-        (mt/with-dynamic-fn-redefs [data-perms/load-table-permission-perms
-                                    (fn [_user-id scope]
-                                      (swap! loads conj (count (:table-ids scope)))
-                                      {})]
-          (data-perms/prime-table-perms-cache {:table-ids table-ids})
-          (is (= 3 (count @loads)))
-          (is (every? #(<= % batch-size) @loads))
-          (is (= (count table-ids) (reduce + @loads))))))))
-
-(deftest merge-table-perms-unions-tables-test
-  (testing "re-loading a database unions its table map instead of replacing it"
-    (is (= {:perms/view-data {10 {100 :unrestricted, 101 :blocked}}}
-           (#'data-perms/merge-table-perms
-            {:perms/view-data {10 {100 :unrestricted}}}
-            {:perms/view-data {10 {101 :blocked}}})))))
+(deftest ^:parallel coalesce-ranks-test
+  (testing "coalesces the values ranked mn and mx"
+    (are [expected mn mx] (= expected (#'data-perms/coalesce-ranks :perms/create-queries mn mx))
+      :query-builder-and-native 0   2
+      :query-builder            1   1
+      :no                       2   2
+      nil                       nil nil))
+  (testing ":blocked overrides :legacy-no-self-service but not :unrestricted"
+    (are [expected mn mx] (= expected (#'data-perms/coalesce-ranks :perms/view-data mn mx))
+      :unrestricted           0 2
+      :blocked                1 2
+      :legacy-no-self-service 1 1
+      :blocked                2 2)))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
@@ -216,23 +100,6 @@
         (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
       (testing "an empty seq does not throw"
         (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
-
-(deftest cache-miss-error-names-its-prime-function-test
-  (testing "the miss error points at the prime function for the kind of check, and names the entity"
-    (binding [data-perms/*perms-cache-misses-are-errors?* true]
-      ;; ids past the thousands, so a regression to formatting them as numbers -- "1,234,567" -- is caught
-      (doseq [[kind id expected-fn] [[:table    1234567    "prime-table-perms-cache"]
-                                     [:schema   #{7654321} "prime-schema-perms-cache"]
-                                     [:database 9876543    "prime-database-perms-cache"]]]
-        (testing kind
-          (let [cache (atom {})
-                miss! #(#'data-perms/cache-miss! kind id cache)]
-            (testing "a handful of misses is allowed"
-              (dotimes [_ 4] (is (nil? (miss!)))))
-            (let [e (is (thrown? ExceptionInfo (miss!)))]
-              (is (str/includes? (ex-message e) (str "[[" expected-fn "]]")))
-              (is (str/includes? (ex-message e) (str id)))
-              (is (= {:kind kind :id id} (ex-data e))))))))))
 
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
@@ -420,30 +287,12 @@
       (testing "`database-permission-for-user` coalesces permissions from all groups a user is in"
         (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :yes)
         (data-perms/set-database-permission! group-id-2 database-id-1 :perms/manage-database :no)
-        (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1))))
+        (is (= :yes (get (data-perms/database-permissions-for-user (data-perms/user-info user-id) :perms/manage-database [database-id-1]) database-id-1))))
       (testing "`database-permission-for-user` falls back to the least permissive value if no value exists for the user"
         (t2/delete! :model/DataPermissions :db_id database-id-2)
-        (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2))))
+        (is (= :no (get (data-perms/database-permissions-for-user (data-perms/user-info user-id) :perms/manage-database [database-id-2]) database-id-2))))
       (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/manage-database database-id-2)))))
-    (testing "caching works as expected"
-      (binding [api/*current-user-id* user-id]
-        (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-          (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :yes)
-          (data-perms/with-relevant-permissions-for-user user-id
-            ;; Fetch the perms once to populate the cache for this DB
-            (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)
-            ;; make the cache wrong
-            (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :no)
-            ;; the cached value is used
-            (t2/with-call-count [call-count]
-              (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
-              (is (zero? (call-count))))
-            (testing "a different database is a cache miss"
-              (binding [data-perms/*perms-cache-misses-are-errors?* false]
-                (t2/with-call-count [call-count]
-                  (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
-                  (is (pos? (call-count))))))))))))
+        (is (= :yes (get (data-perms/database-permissions-for-user (data-perms/user-info (mt/user->id :crowberto)) :perms/manage-database [database-id-2]) database-id-2)))))))
 
 (deftest table-permission-for-user-absent-table-still-sees-database-grant-test
   (testing "a check against a table that doesn't exist still sees the database-level grant"
@@ -458,7 +307,7 @@
         (mt/with-restored-data-perms-for-group! group-id
           (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
           (is (= :query-builder
-                 (data-perms/table-permission-for-user user-id :perms/create-queries db-id 0))))))))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {0 db-id}) 0))))))))
 
 (deftest table-permission-for-user-uses-database-level-grant-test
   (testing "a permission stored as a single database-level row applies to every table in that database"
@@ -472,12 +321,12 @@
         (mt/with-restored-data-perms-for-group! group-id
           (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
           (is (= :query-builder
-                 (data-perms/table-permission-for-user user-id :perms/create-queries db-id table-id))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {table-id db-id}) table-id))
               "the database-level row must be loaded alongside the table's own rows")
           (testing "and a table-level grant still overrides it"
             (data-perms/set-table-permission! group-id table-id :perms/create-queries :no)
             (is (= :no
-                   (data-perms/table-permission-for-user user-id :perms/create-queries db-id table-id)))))))))
+                   (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {table-id db-id}) table-id)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -497,27 +346,13 @@
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/create-queries :no)
-          (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1))))
+          (is (= :query-builder (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {table-id-1 database-id}) table-id-1))))
         (testing "`table-permission-for-user` falls back to the least permissive value if no value exists for the user"
           (t2/delete! :model/DataPermissions :db_id database-id)
-          (is (= :no (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-2))))
+          (is (= :no (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {table-id-2 database-id}) table-id-2))))
         (testing "Admins always have the most permissive value, regardless of group membership"
-          (is (= :query-builder-and-native (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/create-queries database-id table-id-2))))
-        (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-          (testing "caching works as expected"
-            (binding [api/*current-user-id* user-id]
-              (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
-              (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
-              (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
-              (data-perms/with-relevant-permissions-for-user user-id
-                ;; Fetch the perms once to populate the cache
-                (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)
-                ;; make the cache wrong
-                (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
-                ;; the cached value is used
-                (t2/with-call-count [call-count]
-                  (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
-                  (is (zero? (call-count))))))))))))
+          (is (= :query-builder-and-native (get (data-perms/table-permissions-for-user (data-perms/user-info (mt/user->id :crowberto)) :perms/create-queries {table-id-2 database-id}) table-id-2))))
+        (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2])))))
 
 (deftest inactive-table-permission-test
   (testing "An inactive table appears as if it has no permissions, and is not cached"
@@ -532,17 +367,44 @@
         (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
         (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
         (is (= :unrestricted
-               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+               (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id-1 database-id}) table-id-1)))
         (t2/update! :model/Table :id table-id-1 {:active false})
         (testing "Deactivated table has minimum permissions when reading straight from DB"
-          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
+          (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id-1 database-id}) table-id-1))))
         (testing "Deactivated table has minimum permissions when reading from cache"
-          (data-perms/with-relevant-permissions-for-user user-id
-            (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))
+          (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id-1 database-id}) table-id-1))))
         (testing "Reactivating the table allows the perms to be read again"
           (t2/update! :model/Table :id table-id-1 {:active true})
           (is (= :unrestricted
-                 (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id-1 database-id}) table-id-1))))))))
+
+(deftest most-permissive-permission-across-databases-test
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id}      {}
+                 :model/User                       {user-id :id}       {}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                        :group_id group-id}
+                 :model/Database                   {database-id :id}   {}
+                 :model/Table                      {table-id-1 :id}    {:db_id database-id}
+                 :model/Table                      {table-id-2 :id}    {:db_id database-id}
+                 :model/Database                   {database-id-2 :id} {}]
+    (mt/with-no-data-perms-for-all-users!
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+      (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+      (data-perms/set-database-permission! group-id database-id-2 :perms/create-queries :no)
+      (testing "per-table grant on one database wins over others"
+        (is (= :query-builder
+               (data-perms/some-table-permission-for-user (data-perms/user-info user-id) :perms/create-queries)))
+        (is (false? (data-perms/user-has-highest-permission-anywhere? (data-perms/user-info user-id) :perms/create-queries))))
+      (testing "database-level grant on another database wins over per-table grants"
+        (data-perms/set-database-permission! group-id database-id-2 :perms/create-queries :query-builder-and-native)
+        (is (= :query-builder-and-native
+               (data-perms/some-table-permission-for-user (data-perms/user-info user-id) :perms/create-queries)))
+        (is (true? (data-perms/user-has-highest-permission-anywhere? (data-perms/user-info user-id) :perms/create-queries)))
+        (is (false? (data-perms/user-has-highest-permission-anywhere? (data-perms/user-info user-id) :perms/create-queries :exclude-db-ids [database-id-2]))))
+      (testing "view-data needs database"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a database"
+                              (data-perms/some-table-permission-for-user (data-perms/user-info user-id) :perms/view-data)))))))
 
 (deftest inactive-table-grants-ignored-test
   (testing "a grant that exists only on an inactive table does not count for value-aggregating checks"
@@ -557,15 +419,15 @@
         (letfn [(check! [has-any? most-permissive]
                   (testing "\nreading straight from the DB"
                     (is (= has-any?
-                           (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                           (data-perms/user-has-highest-permission-anywhere? (data-perms/user-info user-id) :perms/manage-table-metadata)))
                     (is (= most-permissive
-                           (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))
+                           (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/manage-table-metadata [database-id]) database-id))))
                   (testing "\nreading from the request cache"
                     (mt/with-current-user user-id
                       (is (= has-any?
-                             (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                             (data-perms/user-has-highest-permission-anywhere? (data-perms/user-info user-id) :perms/manage-table-metadata)))
                       (is (= most-permissive
-                             (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))))]
+                             (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/manage-table-metadata [database-id]) database-id))))))]
           (testing "\na grant on an active table counts"
             (check! true :yes))
           (testing "\nthe same grant does not count once the table is deactivated"
@@ -734,7 +596,7 @@
                                                         :db-id database-id-1
                                                         :perm-type :perms/view-data)))))))
 
-(deftest full-schema-permission-for-user-test
+(deftest every-table-in-schema-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/User                       {user-id-1 :id}     {}
                  :model/PermissionsGroupMembership {}                  {:user_id  user-id-1
@@ -753,15 +615,13 @@
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :query-builder)
-          (is (= :query-builder (data-perms/full-schema-permission-for-user
-                                 user-id-1 :perms/create-queries database-id-1 "schema_1"))))
+          (is (= :query-builder (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info user-id-1) :perms/create-queries database-id-1 "schema_1"))))
         (testing "Dropping permission for one table means we lose full schema permissions"
           (data-perms/set-table-permission! all-users-group-id table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :no)
-          (is (= :no (data-perms/full-schema-permission-for-user
-                      user-id-1 :perms/create-queries database-id-1 "schema_1"))))
+          (is (= :no (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info user-id-1) :perms/create-queries database-id-1 "schema_1"))))
         (testing "Permissions don't merge across groups"
           ;; even if a user has `unrestricted` access to all tables in a schema, that doesn't count as `unrestricted`
           ;; access to the schema unless it was granted to a *single group*.
@@ -769,23 +629,20 @@
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :query-builder)
-          (is (= :no (data-perms/full-schema-permission-for-user
-                      user-id-1 :perms/create-queries database-id-1 "schema_1"))))
+          (is (= :no (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info user-id-1) :perms/create-queries database-id-1 "schema_1"))))
         (testing "A schema with no table-level rows falls back to the database-level grant"
           (data-perms/set-database-permission! all-users-group-id database-id-1 :perms/create-queries :no)
           (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder)
-          (is (= :query-builder (data-perms/full-schema-permission-for-user
-                                 user-id-1 :perms/create-queries database-id-1 "schema_with_no_tables"))))
+          (is (= :query-builder (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info user-id-1) :perms/create-queries database-id-1 "schema_with_no_tables"))))
         (testing "A database-level grant is combined with the schema's own table rows, per group"
           ;; group-1 keeps the db-level :query-builder from above, but one table in schema_1 is restricted, so the
           ;; schema as a whole is not fully accessible for that group.
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :no)
-          (is (= :no (data-perms/full-schema-permission-for-user
-                      user-id-1 :perms/create-queries database-id-1 "schema_1"))))))))
+          (is (= :no (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info user-id-1) :perms/create-queries database-id-1 "schema_1"))))))))
 
-(deftest schema-permission-for-user-test
-  (testing "schema-permission-for-user returns the most permissive table-level value within the schema"
+(deftest some-table-in-schema-permission-for-user-test
+  (testing "some-table-in-schema-permission-for-user returns the most permissive table-level value within the schema"
     (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
                    :model/User                       {user-id :id}      {}
                    :model/PermissionsGroupMembership {}                  {:user_id  user-id
@@ -799,8 +656,7 @@
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
           (is (= :query-builder
-                 (data-perms/schema-permission-for-user
-                  user-id :perms/create-queries database-id "schema_1")))))))
+                 (data-perms/some-table-in-schema-permission-for-user (data-perms/user-info user-id) :perms/create-queries database-id "schema_1")))))))
   (testing "databases whose tables have Table.schema = NULL (regression for #46542)"
     (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
                    :model/User                       {user-id :id}      {}
@@ -815,14 +671,12 @@
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
         (testing "called with nil schema-name"
           (is (= :query-builder
-                 (data-perms/schema-permission-for-user
-                  user-id :perms/create-queries database-id nil))))
+                 (data-perms/some-table-in-schema-permission-for-user (data-perms/user-info user-id) :perms/create-queries database-id nil))))
         (testing "called with empty-string schema-name (nil and \"\" are equivalent)"
           (is (= :query-builder
-                 (data-perms/schema-permission-for-user
-                  user-id :perms/create-queries database-id ""))))))))
+                 (data-perms/some-table-in-schema-permission-for-user (data-perms/user-info user-id) :perms/create-queries database-id ""))))))))
 
-(deftest most-permissive-database-permission-for-user-test
+(deftest some-table-in-database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/User                       {user-id-1 :id}     {}
                  :model/PermissionsGroupMembership {}                  {:user_id  user-id-1
@@ -839,18 +693,16 @@
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :query-builder)
-          (is (= :query-builder (data-perms/most-permissive-database-permission-for-user
-                                 user-id-1 :perms/create-queries database-id-1))))
+          (is (= :query-builder (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id-1) :perms/create-queries [database-id-1]) database-id-1))))
         (testing "Dropping permission for one table has no effect"
           (data-perms/set-table-permission! all-users-group-id table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! all-users-group-id table-id-2 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :no)
-          (is (= :query-builder (data-perms/most-permissive-database-permission-for-user
-                                 user-id-1 :perms/create-queries database-id-1))))))))
+          (is (= :query-builder (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id-1) :perms/create-queries [database-id-1]) database-id-1))))))))
 
-(deftest most-permissive-database-permission-for-user-multiple-groups-test
-  (testing "most-permissive-database-permission-for-user with multiple groups"
+(deftest some-table-in-database-permission-for-user-multiple-groups-test
+  (testing "some-table-in-database-permission-for-user with multiple groups"
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {}
                    :model/PermissionsGroup {group-id-2 :id} {}
                    :model/PermissionsGroup {group-id-3 :id} {}
@@ -884,8 +736,7 @@
           (data-perms/set-table-permission! group-id-3 table-id-3 :perms/create-queries :no)
           ;; Should return the most permissive permission found across all tables and groups
           (is (= :query-builder-and-native
-                 (data-perms/most-permissive-database-permission-for-user
-                  user-id :perms/create-queries database-id))))
+                 (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/create-queries [database-id]) database-id))))
         (testing "Coalesces permissions correctly for :perms/view-data"
           ;; Group 1: blocked for all tables
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :blocked)
@@ -901,23 +752,20 @@
           (data-perms/set-table-permission! group-id-3 table-id-3 :perms/view-data :legacy-no-self-service)
           ;; Should return :unrestricted (most permissive) as per coalesce logic
           (is (= :unrestricted
-                 (data-perms/most-permissive-database-permission-for-user
-                  user-id :perms/view-data database-id))))
+                 (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/view-data [database-id]) database-id))))
         (testing "Returns correct permission when all groups have same level"
           ;; All groups have query-builder permission
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id-3 table-id-1 :perms/create-queries :query-builder)
           (is (= :query-builder
-                 (data-perms/most-permissive-database-permission-for-user
-                  user-id :perms/create-queries database-id))))
+                 (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/create-queries [database-id]) database-id))))
         (testing "Returns least permissive value when no permissions are granted"
           ;; Remove all permissions
           (doseq [group-id [group-id-1 group-id-2 group-id-3]]
             (t2/delete! :model/DataPermissions :group_id group-id))
           (is (= :no
-                 (data-perms/most-permissive-database-permission-for-user
-                  user-id :perms/create-queries database-id))))))))
+                 (get (data-perms/some-table-in-database-permissions-for-user (data-perms/user-info user-id) :perms/create-queries [database-id]) database-id))))))))
 
 (deftest set-new-database-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -1248,8 +1096,8 @@
                                :group_id group-id :db_id db-id :perm_type :perms/view-data
                                :table_id [:not= nil]))))
         (testing "effective permission for the new table is still :blocked"
-          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-2)))
-          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-1))))))))
+          (is (= :blocked (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {table-id-2 db-id}) table-id-2)))
+          (is (= :blocked (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {table-id-1 db-id}) table-id-1))))))))
 
 (deftest set-default-table-permissions!-simple-insert-test
   (testing "When group is already table-granular, new table gets a simple insert"
@@ -1456,20 +1304,20 @@
         (mt/with-restored-data-perms-for-group! group-id
           (data-perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
-            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id))))))
+            (is (= :unrestricted (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id))))))
       ;; `legacy-no-self-service` is deprecated and is only different from `unrestricted` in its coalescing behavior
       (testing "normal coalesce logic applies, so e.g. `:blocked` will override `:legacy-no-self-service`"
         (mt/with-restored-data-perms-for-group! group-id
           (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
-          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+          (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id)))
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :legacy-no-self-service
-            (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id))))))
+            (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id))))))
       (testing "... but WILL NOT override `:unrestricted`"
         (mt/with-restored-data-perms-for-group! group-id
           (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
-          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+          (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id)))
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
-            (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))))))))
+            (is (= :unrestricted (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id)))))))))
 
 (deftest blocked-tables-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
@@ -1492,7 +1340,7 @@
       (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
       (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
-      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id)))
       (migrate! :down 49)
       (is (contains?
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
@@ -1527,29 +1375,139 @@
       (migrate!)
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
-      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (is (= :blocked (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-id db-id}) table-id)))
       (migrate! :down 49)
       (is (contains?
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
            (str "/block/db/" db-id "/"))))))
 
-(deftest use-cache?-test
-  (testing "use-cache? returns true only when both cache is enabled and user is current user"
-    (let [current-user-id 1
-          other-user-id 2]
-      (binding [api/*current-user-id* current-user-id]
-        (testing "cache enabled, current user"
-          (binding [data-perms/*use-perms-cache?* true]
-            (is (#'data-perms/use-cache? current-user-id))))
-        (testing "cache enabled, different user"
-          (binding [data-perms/*use-perms-cache?* true]
-            (is (not (#'data-perms/use-cache? other-user-id)))))
-        (testing "cache disabled, current user"
-          (binding [data-perms/*use-perms-cache?* false]
-            (is (not (#'data-perms/use-cache? current-user-id)))))
-        (testing "cache disabled, different user"
-          (binding [data-perms/*use-perms-cache?* false]
-            (is (not (#'data-perms/use-cache? other-user-id)))))))))
+(def ^:private table-level-values
+  "The values of each Table-level permission type, most permissive first, at Database and at Table level."
+  {:perms/view-data             [[:unrestricted :legacy-no-self-service :blocked] [:unrestricted :blocked]]
+   :perms/create-queries        [[:query-builder-and-native :query-builder :no] [:query-builder-and-native :query-builder :no]]
+   :perms/download-results      [[:one-million-rows :ten-thousand-rows :no] [:one-million-rows :ten-thousand-rows :no]]
+   :perms/manage-table-metadata [[:yes :no] [:yes :no]]})
+
+(def ^:private permission-setups
+  "Permission setups of two groups, each `[db-rank table-rank]`, a rank indexing the values of [[table-level-values]]
+  from the most permissive and capped at the least, and a nil `table-rank` keeping the Database's value."
+  [[[0 nil] [0 nil]]
+   [[2 nil] [2 nil]]
+   [[2 0]   [2 nil]]
+   [[0 2]   [2 nil]]
+   [[1 nil] [2 0]]
+   [[2 1]   [2 0]]
+   [[1 0]   [1 2]]
+   [[2 nil] [0 2]]])
+
+(defn- set-permissions!
+  "Give `group-id` the value of `db-rank` for each Table-level permission type on the Database with `db-id`, and the
+  value of `table-rank`, when there is one, on the Table with `table-id`."
+  [group-id db-id table-id [db-rank table-rank]]
+  (doseq [[perm-type [db-values table-values]] table-level-values
+          :let [value (fn [values rank] (nth values (min rank (dec (count values)))))]]
+    (data-perms/set-database-permission! group-id db-id perm-type (value db-values db-rank))
+    (when table-rank
+      (data-perms/set-table-permission! group-id table-id perm-type (value table-values table-rank)))))
+
+(deftest table-permissions-together-match-one-by-one-test
+  (testing "permissions answered for several Tables together equal the ones answered for each alone"
+    (mt/with-temp [:model/PermissionsGroup           {group-1 :id}  {}
+                   :model/PermissionsGroup           {group-2 :id}  {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-1}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-2}
+                   :model/Database                   {db-id :id}    {}
+                   :model/Table                      {table-1 :id}  {:db_id db-id}
+                   :model/Table                      {table-2 :id}  {:db_id db-id}
+                   :model/Table                      {inactive :id} {:db_id db-id :active false}]
+      (let [table-ids  [table-1 table-2 inactive]
+            user-info  {:user-id user-id :is-superuser? false :is-data-analyst? false}
+            answers    (fn [perm-type table-ids]
+                         (let [table-id->db-id (zipmap table-ids (repeat db-id))]
+                           [(data-perms/table-permissions-for-user user-info perm-type table-id->db-id)
+                            (data-perms/table-permissions-for-groups #{group-1 group-2} perm-type table-id->db-id)]))
+            one-by-one (fn [perm-type]
+                         (apply mapv merge (map #(answers perm-type [%]) table-ids)))]
+        (doseq [[g1 g2]  permission-setups
+                table-id [table-1 inactive]]
+          (testing (str "groups " [g1 g2] " overriding table " table-id)
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-group! group-1
+                (mt/with-restored-data-perms-for-group! group-2
+                  (set-permissions! group-1 db-id table-id g1)
+                  (set-permissions! group-2 db-id table-id g2)
+                  (doseq [perm-type (keys table-level-values)]
+                    (testing perm-type
+                      (is (= (one-by-one perm-type)
+                             (answers perm-type table-ids)))
+                      (is (= (t2/with-call-count [call-count] (answers perm-type [table-1]) (call-count))
+                             (t2/with-call-count [call-count] (answers perm-type table-ids) (call-count)))
+                          "more Tables cost no more queries"))))))))))))
+
+(deftest database-permissions-together-match-one-by-one-test
+  (testing "permissions answered for several Databases together equal the ones answered for each alone"
+    (mt/with-temp [:model/PermissionsGroup           {group-1 :id} {}
+                   :model/PermissionsGroup           {group-2 :id} {}
+                   :model/User                       {user-id :id} {}
+                   :model/PermissionsGroupMembership {}            {:user_id user-id :group_id group-1}
+                   :model/PermissionsGroupMembership {}            {:user_id user-id :group_id group-2}
+                   :model/Database                   {db-1 :id}    {}
+                   :model/Database                   {db-2 :id}    {}
+                   :model/Table                      {table-1 :id} {:db_id db-1}
+                   :model/Table                      {table-2 :id} {:db_id db-2}]
+      (let [db-ids     [db-1 db-2]
+            user-info  {:user-id user-id :is-superuser? false :is-data-analyst? false}
+            answers    (fn [db-ids]
+                         {:database (mapv #(data-perms/database-permissions-for-user user-info % db-ids)
+                                          [:perms/manage-database :perms/transforms])
+                          :every    (mapv #(data-perms/every-table-in-database-permissions-for-user user-info % db-ids)
+                                          (keys table-level-values))
+                          :some     (mapv #(data-perms/some-table-in-database-permissions-for-user user-info % db-ids)
+                                          (keys table-level-values))})
+            one-by-one (fn []
+                         (apply merge-with #(mapv merge %1 %2) (map #(answers [%]) db-ids)))]
+        (doseq [[[g1 g2] [g1' g2']] (map vector permission-setups (rest (cycle permission-setups)))]
+          (testing (str "groups " [g1 g2] " on one Database and " [g1' g2'] " on the other")
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-group! group-1
+                (mt/with-restored-data-perms-for-group! group-2
+                  (set-permissions! group-1 db-1 table-1 g1)
+                  (set-permissions! group-2 db-1 table-1 g2)
+                  (set-permissions! group-1 db-2 table-2 g1')
+                  (set-permissions! group-2 db-2 table-2 g2')
+                  (data-perms/set-database-permission! group-1 db-1 :perms/manage-database :yes)
+                  (data-perms/set-database-permission! group-2 db-2 :perms/transforms :yes)
+                  (is (= (one-by-one)
+                         (answers db-ids)))
+                  (is (= (t2/with-call-count [call-count] (answers [db-1]) (call-count))
+                         (t2/with-call-count [call-count] (answers db-ids) (call-count)))
+                      "more Databases cost no more queries"))))))))))
+
+(deftest table-permission-with-other-database-test
+  (testing "a table checked with a Database that isn't its own counts only that Database's rows, before or after its own"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-id}
+                   :model/Database                   {db-a :id}     {}
+                   :model/Database                   {db-b :id}     {}
+                   :model/Table                      {table-b :id}  {:db_id db-b}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-restored-data-perms-for-group! group-id
+          (doseq [db-id [db-a db-b]]
+            (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :no))
+          (data-perms/set-table-permission! group-id table-b :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! group-id table-b :perms/create-queries :query-builder)
+          (binding [api/*current-user-id* user-id
+                    api/*is-superuser?*   false]
+            (doseq [order [[db-a db-b] [db-b db-a]]]
+              (testing (str "checking databases " order)
+                (is (= {db-a [:blocked :no]
+                        db-b [:unrestricted :query-builder]}
+                       (into {} (for [db-id order]
+                                  [db-id [(get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/view-data {table-b db-id}) table-b)
+                                          (get (data-perms/table-permissions-for-user (data-perms/user-info user-id) :perms/create-queries {table-b db-id}) table-b)]]))))))))))))
 
 (deftest race-conditions-test
   ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but

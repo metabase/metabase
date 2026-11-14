@@ -169,10 +169,10 @@
             (perms/set-table-permission! group orders-id :perms/view-data :blocked)
             (perms/set-table-permission! group orders-id :perms/create-queries :no)
             (let [effective (fn [schema]
-                              {:orders-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id orders-id)
-                               :people-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id people-id)
+                              {:orders-view   (get (perms/table-permissions-for-user (perms/user-info (:id user)) :perms/view-data {orders-id db-id}) orders-id)
+                               :people-view   (get (perms/table-permissions-for-user (perms/user-info (:id user)) :perms/view-data {people-id db-id}) people-id)
                                ;; what GET /api/database/:id/schemas visibility keys on
-                               :schema-create (perms/schema-permission-for-user (:id user) :perms/create-queries db-id schema)})
+                               :schema-create (perms/some-table-in-schema-permission-for-user (perms/user-info (:id user)) :perms/create-queries db-id schema)})
                   before    (effective "PUBLIC")]
               (is (= {:orders-view   :blocked
                       :people-view   :unrestricted

@@ -17,23 +17,16 @@
    read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
 
-(defenterprise can-read?
-  "Can the current User read this `snippet`?"
+(defenterprise permitted-snippet-ids
+  "The ids of the `snippets` the current User can read or write, by `read-or-write`: none for a sandboxed User or one
+  without native query permissions for any database, asked once for them all, and otherwise those in a Collection
+  they have the permission on."
   :feature :snippet-collections
-  [snippet]
-  (and
-   (not (perms/sandboxed-user?))
-   (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? snippet :read)))
-
-(defenterprise can-write?
-  "Can the current User edit this `snippet`?"
-  :feature :snippet-collections
-  [snippet]
-  (and
-   (not (perms/sandboxed-user?))
-   (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? snippet :write)))
+  [snippets read-or-write]
+  (if (and (not (perms/sandboxed-user?))
+           (snippets/has-any-native-permissions?))
+    (into #{} (comp (filter #(has-parent-collection-perms? % read-or-write)) (map :id)) snippets)
+    #{}))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"

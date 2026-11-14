@@ -1178,10 +1178,9 @@
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
    _body]
   (with-dashboard-load-id dashboard-load-id
-    (perms/with-relevant-permissions-for-user api/*current-user-id*
-      (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
-            dashboard (get-dashboard resolved-id)]
-        (queries/batch-fetch-dashboard-metadata [dashboard])))))
+    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+          dashboard (get-dashboard resolved-id)]
+      (queries/batch-fetch-dashboard-metadata [dashboard]))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

@@ -315,63 +315,56 @@
   (u/prog1 table
     (set-new-table-permissions! table)))
 
-(methodical/defmethod t2/simple-hydrate [:model/Table :can_read]
-  ;; Check if user can see this table's metadata.
-  ;; True if user has:
-  ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
-  ;; - Metadata management permission (manage-table-metadata :yes), OR
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (or
-               ;; Has data access permissions
-               (and (perms/user-has-permission-for-table?
-                     api/*current-user-id*
-                     :perms/view-data
-                     :unrestricted
-                     (:db_id instance)
-                     (:id instance))
-                    (or
-                     (perms/user-has-permission-for-table?
-                      api/*current-user-id*
-                      :perms/create-queries
-                      :query-builder
-                      (:db_id instance)
-                      (:id instance))
-                     ;; Can access via published collection (EE feature)
-                     (perms/can-access-via-collection? instance)))
-               ;; Has manage-table-metadata permission (allows viewing metadata without data access)
-               (perms/user-has-permission-for-table?
-                api/*current-user-id*
-                :perms/manage-table-metadata
-                :yes
-                (:db_id instance)
-                (:id instance))))))
+(defn- check-permission-keys
+  "Throws unless `table` has the columns its permission hydrations read."
+  [table]
+  (api/check-500 (some? (:id table)) "No :id is set for a Table.")
+  (api/check-500 (some? (:db_id table)) "No :db_id is set for a Table."))
 
-(methodical/defmethod t2/simple-hydrate [:model/Table :can_query]
-  ;; Check if user can execute queries against this table.
-  ;; True if user has:
-  ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
-  [_model k instance]
-  (assoc instance k
-         (boolean
-          (boolean
-           ;; Has both view-data and create-queries permissions
-           (and (perms/user-has-permission-for-table?
-                 api/*current-user-id*
-                 :perms/view-data
-                 :unrestricted
-                 (:db_id instance)
-                 (:id instance))
-                (or
-                 (perms/user-has-permission-for-table?
-                  api/*current-user-id*
-                  :perms/create-queries
-                  :query-builder
-                  (:db_id instance)
-                  (:id instance))
-                 ;; Can access via published collection (EE feature)
-                 (perms/can-access-via-collection? instance)))))))
+(defn- table-permissions
+  "The current user's `perm-type` value on each of `tables`, as `{table-id value}`, from one bulk question."
+  [perm-type tables]
+  (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                    perm-type
+                                    (into {} (map (juxt :id :db_id)) tables)))
+
+(defn- queryable-table-ids
+  "The ids of the `tables` the current user can query: those with unrestricted view-data on which they can create
+  queries, which on EE a Table published into a Collection they read also grants."
+  [tables]
+  (let [view-data      (table-permissions :perms/view-data tables)
+        create-queries (table-permissions :perms/create-queries tables)]
+    (into #{}
+          (comp (map :id)
+                (filter #(and (= :unrestricted (get view-data %))
+                              (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
+          tables)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_read]
+  "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
+  they manage."
+  [_model k tables]
+  (let [rows (into [] (remove nil?) tables)]
+    (run! check-permission-keys rows)
+    (let [queryable (queryable-table-ids rows)
+          others    (into [] (remove #(contains? queryable (:id %))) rows)
+          manage    (if (seq others)
+                      (table-permissions :perms/manage-table-metadata others)
+                      {})]
+      (for [table tables]
+        (when table
+          (vary-meta table assoc k (boolean (or (contains? queryable (:id table))
+                                                (= :yes (get manage (:id table)))))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_query]
+  "Whether the current user can run queries against each of `tables`."
+  [_model k tables]
+  (let [rows (into [] (remove nil?) tables)]
+    (run! check-permission-keys rows)
+    (let [queryable (queryable-table-ids rows)]
+      (for [table tables]
+        (when table
+          (assoc table k (contains? queryable (:id table))))))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
@@ -382,9 +375,12 @@
        (mi/superuser?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Batched hydration for :can_write on tables."
+  "Whether the current user can change the metadata of each of `tables`."
   [_model k tables]
-  (mi/instances-with-hydrated-data tables k #(u/index-by :id (comp boolean current-user-can-write-table?) tables) :id {:default false}))
+  (for [table tables]
+    (when table
+      (check-permission-keys table)
+      (assoc table k (boolean (current-user-can-write-table? table))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.

@@ -178,7 +178,6 @@
            events
            lib.schema
            models
-           permissions
            util
            util.config}
    :model-imports #{:model/Card
@@ -2698,7 +2697,6 @@
            lib
            lib.be
            models
-           permissions
            segments
            segments.schema
            util
@@ -3666,7 +3664,6 @@
            lib.schema
            lib.types
            models
-           permissions
            queries
            query-permissions
            query-processor
@@ -4870,7 +4867,6 @@
    :uses #{api
            lib.schema
            models
-           permissions
            premium-features
            upload
            util}
@@ -4883,7 +4879,6 @@
    :uses #{api
            lib.schema
            models
-           permissions
            util
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}

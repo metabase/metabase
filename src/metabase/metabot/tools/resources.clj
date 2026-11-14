@@ -88,7 +88,6 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -571,7 +570,6 @@
 
 (defn- fetch-databases-list [query-params]
   (let [all (metabot.db/non-audit-databases)
-        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (#(t2/hydrate % :can_read))
                  (filter mi/can-read?)
@@ -631,7 +629,6 @@
 (defn- fetch-database-tables [id-str query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        _      (perms/prime-table-perms-cache {:db-ids #{db-id}})
         tables (->> (metabot.db/active-tables-for-database db-id)
                     (#(t2/hydrate % :can_read))
                     (filter mi/can-read?)
@@ -649,8 +646,7 @@
   "The schemas of the Database with `db-id` that hold at least one curated active Table the current user can read.
    Readable first, then curated, so the listing reveals nothing about a Table the user cannot read."
   [db-id]
-  (let [_       (perms/prime-table-perms-cache {:db-ids #{db-id}})
-        tables  (filter mi/can-read? (t2/hydrate (metabot.db/active-tables-for-database db-id) :can_read))
+  (let [tables  (filter mi/can-read? (t2/hydrate (metabot.db/active-tables-for-database db-id) :can_read))
         curated (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))]
     (into #{}
           (comp (filter (fn [{:keys [id]}] (contains? curated ["table" id])))

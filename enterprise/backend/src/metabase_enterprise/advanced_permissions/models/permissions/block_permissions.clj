@@ -26,12 +26,11 @@
   :feature :none
   [{database-id :database :as query}]
   (or
-   (not= :blocked (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
+   (not= :blocked (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/view-data [database-id]) database-id))
    (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
-     (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
      (= #{:unrestricted}
-        (into #{}
-              (map (partial perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id))
-              table-ids)))
+        (set (vals (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                     :perms/view-data
+                                                     (zipmap table-ids (repeat database-id)))))))
    (throw-block-permissions-exception))
   true)

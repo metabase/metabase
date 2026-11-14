@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.test :as qp]

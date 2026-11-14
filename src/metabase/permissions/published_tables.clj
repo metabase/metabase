@@ -10,11 +10,13 @@
 
 ;;; ---------------------------------------- Permission Check Functions ------------------------------------------------
 
-(defenterprise user-published-table-permission
-  "Returns `:query-builder` permission if table is published and user has collection access.
-  OSS implementation always returns nil - published tables only grant access in EE."
+(defenterprise published-table-permissions
+  "The `perm-type` value that publishing grants the user of `user-info` on each of the Tables with `table-ids`, as
+  `{table-id value}` holding only the Tables it grants one: `:query-builder` for `:perms/create-queries` on a Table
+  published into a Collection they read. OSS implementation returns nil, since published Tables grant access on EE
+  only."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_user-id _perm-type _table-id]
+  [_user-info _perm-type _table-ids]
   nil)
 
 (defenterprise user-has-any-published-table-permission?

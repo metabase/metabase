@@ -110,12 +110,11 @@
                                         (when (routes-user? attribute-name)
                                           db-id)))
                                 (database-routing.db/all-router-user-attributes))]
-       (perms/prime-database-perms-cache {:db-ids routing-db-ids})
-       (some (fn [db-id]
-               (not= :blocked
-                     (perms/most-permissive-database-permission-for-user
-                      api/*current-user-id* :perms/view-data db-id)))
-             routing-db-ids))
+       (boolean
+        (some #(not= :blocked %)
+              (vals (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                       :perms/view-data
+                                                                       routing-db-ids)))))
      ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
      ;; returning `false` for users who should actually be routed.
      (throw (ex-info (str (tru "No current user found"))

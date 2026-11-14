@@ -105,61 +105,71 @@
    (fn [db-id]
      (warehouses.db/router-database-id db-id))))
 
-(methodical/defmethod t2/simple-hydrate [:model/Database :can_read]
-  ;; Check if user can see this database's metadata.
-  ;; True if user has:
-  ;; - Query builder access (create-queries permission), OR
-  ;; - Metadata management permissions (manage-table-metadata or manage-database), OR
-  ;; - Access to a published table in this database (EE feature)
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (let [database-id (u/the-id instance)]
-                (cond
-                  (should-read-audit-db? database-id) false
-                  (db-id->router-db-id database-id) (mi/can-read? (t2/hydrate (t2/instance :model/Database {:id (db-id->router-db-id database-id)}) :can_read))
-                  :else (or
-                         ;; Has query builder access
-                         (contains? #{:query-builder :query-builder-and-native}
-                                    (perms/most-permissive-database-permission-for-user
-                                     api/*current-user-id*
-                                     :perms/create-queries
-                                     database-id))
-                         ;; Has manage-database permission
-                         (perms/user-has-permission-for-database?
-                          api/*current-user-id*
-                          :perms/manage-database
-                          :yes
-                          database-id)
-                         ;; Has manage-table-metadata permission for any table in the database
-                         (= :yes (perms/most-permissive-database-permission-for-user
-                                  api/*current-user-id*
-                                  :perms/manage-table-metadata
-                                  database-id))
-                         ;; Has published table access
-                         (perms/user-has-published-table-permission-for-database? database-id)))))))
+(defn- check-permission-keys
+  "Throws unless `database` has the `:id` its permission hydrations read."
+  [database]
+  (api/check-500 (some? (:id database)) "No :id is set for a Database."))
 
-(methodical/defmethod t2/simple-hydrate [:model/Database :can_query]
-  ;; Check if user can execute queries against this database.
-  ;; True if user has:
-  ;; - Query builder access (create-queries permission), OR
-  ;; - Access to a published table in this database (EE feature)
-  [_model k instance]
-  (assoc instance k
-         (boolean
-          (let [database-id (u/the-id instance)]
-            (cond
-              (should-read-audit-db? database-id) false
-              (db-id->router-db-id database-id) (mi/can-query? (t2/hydrate (t2/instance :model/Database {:id (db-id->router-db-id database-id)}) :can_query))
-              :else (or
-                     ;; Has query builder access
-                     (contains? #{:query-builder :query-builder-and-native}
-                                (perms/most-permissive-database-permission-for-user
-                                 api/*current-user-id*
-                                 :perms/create-queries
-                                 database-id))
-                     ;; Has published table access
-                     (perms/user-has-published-table-permission-for-database? database-id)))))))
+(defn- permission-database-id
+  "The id of the Database whose permissions answer for the Database with `database-id`: its router's for a
+  destination Database, and its own otherwise."
+  [database-id]
+  (or (db-id->router-db-id database-id) database-id))
+
+(defn- queryable-database-ids
+  "The ids among `database-ids` of the Databases the current user can query: those with query builder access on some
+  Table, and, on EE, those with a published Table in a Collection they read."
+  [database-ids]
+  (let [create-queries (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                          :perms/create-queries
+                                                                          (vec database-ids))]
+    (into #{}
+          (filter #(or (contains? #{:query-builder :query-builder-and-native} (get create-queries %))
+                       (perms/user-has-published-table-permission-for-database? %)))
+          database-ids)))
+
+(defn- readable-database-ids
+  "The ids among `database-ids` of the Databases whose metadata the current user can see: those they can query, and
+  those they manage or whose Table metadata they manage."
+  [database-ids]
+  (let [user-info       (perms/user-info api/*current-user-id*)
+        database-ids    (vec database-ids)
+        manage-database (perms/database-permissions-for-user user-info :perms/manage-database database-ids)
+        manage-metadata (perms/some-table-in-database-permissions-for-user user-info :perms/manage-table-metadata
+                                                                           database-ids)
+        managed         (into #{}
+                              (filter #(or (= :yes (get manage-database %)) (= :yes (get manage-metadata %))))
+                              database-ids)]
+    (into managed (queryable-database-ids (remove managed database-ids)))))
+
+(defn- hydrate-database-permission
+  "Sets the flag `k` on each of `databases`: whether its permission Database, never the audit Database while the audit
+  app is off, is among the ids `allowed-ids`, a function of the candidate ids, returns."
+  [k databases allowed-ids]
+  (let [rows       (into [] (remove nil?) databases)
+        _          (run! check-permission-keys rows)
+        candidates (into #{}
+                         (comp (map :id) (remove should-read-audit-db?) (map permission-database-id)
+                               (remove should-read-audit-db?))
+                         rows)
+        allowed    (if (seq candidates) (allowed-ids candidates) #{})]
+    (for [database databases]
+      (when database
+        (let [answer (boolean (and (not (should-read-audit-db? (:id database)))
+                                   (contains? allowed (permission-database-id (:id database)))))]
+          (if (= k :can_read)
+            (vary-meta database assoc k answer)
+            (assoc database k answer)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_read]
+  "Whether the current user can see the metadata of each of `databases`."
+  [_model k databases]
+  (hydrate-database-permission k databases readable-database-ids))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_query]
+  "Whether the current user can run queries against each of `databases`."
+  [_model k databases]
+  (hydrate-database-permission k databases queryable-database-ids))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -181,15 +191,20 @@
       (and (not= db-id audit/audit-db-id)
            (current-user-can-write-db? db-id))))
 
-(methodical/defmethod t2/simple-hydrate [:model/Database :can_write]
-  ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
-  ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
-  [_model k instance]
-  (assoc instance k
-         (boolean
-          (let [{:keys [is_attached_dwh] :as instance} instance]
-            (and (can-write? (u/the-id instance))
-                 (not is_attached_dwh))))))
+(defn- database-writable?
+  "Whether the current user can change `database`, which nobody can for an attached data warehouse."
+  [{:keys [is_attached_dwh] :as database}]
+  (boolean (and (can-write? (u/the-id database))
+                (not is_attached_dwh))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_write]
+  "Whether the current user can change each of `databases`."
+  [_model k databases]
+  (for [database databases]
+    (when database
+      (check-permission-keys database)
+      (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database.")
+      (assoc database k (database-writable? database)))))
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
@@ -668,7 +683,7 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db (if (not (mi/can-write? (t2/hydrate db :can_write)))
+     (let [db (if (not (database-writable? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
                     (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")

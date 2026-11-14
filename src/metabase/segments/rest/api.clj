@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -81,13 +80,8 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (let [segments  (segments.db/unarchived-segments)
-        table-ids (into #{} (keep :table_id) segments)]
-    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (segments.db/table-database-ids table-ids))
-                                    :table-ids table-ids})
-    (-> (filterv mi/can-read? (t2/hydrate segments :can_read))
-        (t2/hydrate :creator :definition_description))))
+  (-> (filterv mi/can-read? (t2/hydrate (segments.db/unarchived-segments) :can_read))
+      (t2/hydrate :creator :definition_description)))
 
 (defn write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate

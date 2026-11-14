@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.data-permissions.sql
+(ns metabase.permissions.data-permissions.sql
   "Helper functions for models using data permissions to construct `visisble-query` methods from."
   (:require
    [metabase.permissions.published-tables :as published-tables]

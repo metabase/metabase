@@ -152,7 +152,6 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.types.core :as types]
@@ -398,15 +397,14 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (let [fields (field/with-targets
-                 (xrays.db/active-fk-fields-for-table (u/the-id table)))]
-    (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
-    (let [readable (into #{}
-                         (comp (filter mi/can-read?) (map :id))
-                         (t2/hydrate (into [] (keep :target) fields) :can_read))]
-      (for [{:keys [id target]} fields
-            :when (contains? readable (:id target))]
-        (-> target field/table (assoc :link id))))))
+  (let [fields   (field/with-targets
+                   (xrays.db/active-fk-fields-for-table (u/the-id table)))
+        readable (into #{}
+                       (comp (filter mi/can-read?) (map :id))
+                       (t2/hydrate (into [] (keep :target) fields) :can_read))]
+    (for [{:keys [id target]} fields
+          :when (contains? readable (:id target))]
+      (-> target field/table (assoc :link id)))))
 
 (defn- source->db [source]
   (let [db-id (or ((some-fn :db_id :database_id) source)
@@ -941,9 +939,6 @@
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
          tables              (load-tables-with-enhanced-table-stats (u/the-id database) schema)]
-     ;; the readable check below runs once per table, so load their permissions in one go
-     (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                     :table-ids (into #{} (map :id) tables)})
      (->> tables
           (#(t2/hydrate % :can_read))
           (filter mi/can-read?)

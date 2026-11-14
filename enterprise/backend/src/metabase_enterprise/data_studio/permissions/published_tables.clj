@@ -3,20 +3,28 @@
   Provides query access to published tables via collection permissions."
   (:require
    [metabase-enterprise.data-studio.db :as data-studio.db]
-   [metabase.models.interface :as mi]
+   [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
-(defenterprise user-published-table-permission
-  "Returns :query-builder permission if table is published and user has collection access.
-  Tables published into the root collection (collection_id=nil) are accessible to all users."
+(defenterprise published-table-permissions
+  "The `perm-type` value that publishing grants the user of `user-info` on each of the Tables with `table-ids`, as
+  `{table-id value}` holding only the Tables it grants one: `:query-builder` for `:perms/create-queries` on a Table
+  published into a Collection they read, from one query for the published Tables and one for their Collections."
   :feature :library
-  [user-id perm-type table-id]
-  (when (and (= perm-type :perms/create-queries)
-             (data-studio.db/published-table-visible-to-user? table-id user-id (perms/is-superuser? user-id)))
-    :query-builder))
+  [user-info perm-type table-ids]
+  (when (and (= perm-type :perms/create-queries) (seq table-ids))
+    (let [table-id->collection-id (data-studio.db/published-table-collection-ids (vec table-ids))
+          permissions             (perms/collection-permissions-for-user user-info
+                                                                         (vec (distinct (vals table-id->collection-id)))
+                                                                         {:root-namespace nil})]
+      (into {}
+            (keep (fn [[table-id collection-id]]
+                    (when (perms/collection-permission-at-least? (get permissions collection-id) :read)
+                      [table-id :query-builder])))
+            table-id->collection-id))))
 
 (defenterprise user-has-any-published-table-permission?
   "Returns true if user has access to any published table via collection permissions."
@@ -35,7 +43,12 @@
   :feature :library
   [table]
   (when (:is_published table)
-    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection (:collection_id table) :read))))
+    (perms/collection-permission-at-least?
+     (get (perms/collection-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                 [(:collection_id table)]
+                                                 {:root-namespace nil})
+          (:collection_id table))
+     :read)))
 
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are

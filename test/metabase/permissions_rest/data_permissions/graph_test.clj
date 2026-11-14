@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -626,7 +626,7 @@
                    {:groups {group-id {db-id {:view-data :unrestricted
                                               :create-queries :query-builder-and-native
                                               :transforms :yes}}}})))
-        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/transforms db-id))))
+        (is (= :yes (get (data-perms/database-permissions-for-user (data-perms/user-info (mt/user->id :crowberto)) :perms/transforms [db-id]) db-id))))
       (testing "transforms:yes together with create-queries:query-builder is rejected"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Query builder and native"

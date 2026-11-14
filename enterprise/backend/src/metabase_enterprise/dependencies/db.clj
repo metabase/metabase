@@ -98,7 +98,7 @@
                                                                                                                                                                                  :root-namespace         root-namespace}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
-                                         (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
+                                         (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries))))
                         [:and
                          [:= entity-type-field (name entity-type)]
                          [:in entity-id-field

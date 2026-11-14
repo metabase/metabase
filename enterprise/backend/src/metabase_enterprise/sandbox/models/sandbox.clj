@@ -295,7 +295,7 @@
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
-    (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
+    (when (= (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id) :query-builder-and-native)
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table (normalize-sandbox-attribute-remappings gtap))))

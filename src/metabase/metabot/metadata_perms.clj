@@ -48,7 +48,6 @@
                  (fn [ids]
                    (let [tables (cond-> (into [] (keep (table-rows ids)) ids)
                                   hydration (t2/hydrate hydration))]
-                     (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
                      (into {} (comp (filter pred) (map (juxt :id (constantly true)))) tables)))
                  false)
        (into #{} (keep (fn [[id permitted?]] (when permitted? id))))))
@@ -60,9 +59,7 @@
 
 (defn- data-accessible?
   [table]
-  (perms/user-has-permission-for-table? api/*current-user-id*
-                                        :perms/view-data :unrestricted
-                                        (:db_id table) (:id table)))
+  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(:id table) (:db_id table)}))
 
 (defn data-accessible-table-ids
   "Returns the subset of `table-ids` the current user has unrestricted view-data access to."

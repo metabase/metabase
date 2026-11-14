@@ -15,7 +15,7 @@
 
 (defmethod download-perms-level* :mbql.stage/native
   [{database-id :database, :as _query} user-id]
-  (perms/native-download-permission-for-user user-id database-id))
+  (get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/download-results [database-id]) database-id))
 
 (mu/defmethod download-perms-level* :mbql.stage/mbql
   [{db-id :database, :as query} :- ::lib.schema/query user-id]
@@ -23,12 +23,10 @@
         perms (if (or native? (lib/any-native-stage-not-introduced-by-sandbox? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
-                #{(perms/native-download-permission-for-user user-id db-id)}
-                (do
-                  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids table-ids})
-                  (set (map (fn table-perms-lookup [table-id]
-                              (perms/table-permission-for-user user-id :perms/download-results db-id table-id))
-                            table-ids))))]
+                #{(get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/download-results [db-id]) db-id)}
+                (set (vals (perms/table-permissions-for-user (perms/user-info user-id)
+                                                             :perms/download-results
+                                                             (zipmap table-ids (repeat db-id))))))]
     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
     (or (perms :no)
         (perms :ten-thousand-rows)

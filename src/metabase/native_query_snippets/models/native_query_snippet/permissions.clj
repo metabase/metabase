@@ -9,19 +9,16 @@
 (defn has-any-native-permissions?
   "Checks whether the current user has native query permissions for any database."
   []
-  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/create-queries))
+  (perms/user-has-highest-permission-anywhere? (perms/user-info api/*current-user-id*) :perms/create-queries))
 
-(defenterprise can-read?
-  "Can the current User read this `snippet`?"
+(defenterprise permitted-snippet-ids
+  "The ids of the `snippets` the current User can read or write, by `read-or-write`: all of them with native query
+  permissions for at least one database, asked once for them all."
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
-  [_snippet]
-  (has-any-native-permissions?))
-
-(defenterprise can-write?
-  "Can the current User edit this `snippet`?"
-  metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
-  [_snippet]
-  (has-any-native-permissions?))
+  [snippets _read-or-write]
+  (if (has-any-native-permissions?)
+    (into #{} (map :id) snippets)
+    #{}))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"

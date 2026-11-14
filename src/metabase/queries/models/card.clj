@@ -197,7 +197,7 @@
                                  (if-let [snapshots (summary-card-snapshots card document)]
                                    (and (contains? @summary-readable (:collection_id document))
                                         (every? cached-result/viewer-can-view-cached-result? snapshots))
-                                   (mi/can-read? document))))))))))))
+                                   (mi/can-read? (t2/hydrate document :can_read)))))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
   "Whether the current user writes each of `cards`: its Collection's content, and, for a Card of a Document, the
@@ -217,7 +217,7 @@
                        (or (nil? id)
                            (when-let [document (get documents id)]
                              (and (nil? (:exploration_id document))
-                                  (mi/can-write? document))))))))))))
+                                  (mi/can-write? (t2/hydrate document :can_write)))))))))))))
 
 (defmethod mi/can-create? :model/Card
   [_model {collection-id :collection_id}]
@@ -292,7 +292,7 @@
    (fn [card]
      (assoc card
             :can_manage_db
-            (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
    cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]

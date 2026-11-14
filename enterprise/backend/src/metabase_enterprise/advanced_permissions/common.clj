@@ -19,34 +19,20 @@
     (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
-           (perms/user-has-permission-for-table?
-            api/*current-user-id*
-            :perms/manage-table-metadata
-            :yes
-            db-id
-            (:table_id instance))))))
+           (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) db-id})))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
   in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
-  (perms/user-has-permission-for-schema?
-   api/*current-user-id*
-   :perms/manage-table-metadata
-   :yes
-   db-id
-   schema-name))
+  (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
 (defenterprise current-user-can-write-db?
   "Enterprise version. Returns a boolean whether the current user can write the given db"
   :feature :advanced-permissions
   [db-id]
-  (perms/user-has-permission-for-database?
-   api/*current-user-id*
-   :perms/manage-database
-   :yes
-   db-id))
+  (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [db-id]))
 
 (defenterprise current-user-can-write-table?
   "Enterprise version: whether the current user can manage the metadata of `table`, which nobody can when a read-only
@@ -54,12 +40,7 @@
   :feature :advanced-permissions
   [table]
   (and (remote-sync/can-write? :model/TableUserSettings (:id table))
-       (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        (:db_id table)
-        (:id table))))
+       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:id table) (:db_id table)})))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
@@ -67,19 +48,17 @@
   [user]
   (let [permissions-set       @api/*current-user-permissions-set*
         user-id               api/*current-user-id*
-        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)]
+        can-access-data-model (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-table-metadata)]
     (update user :permissions assoc
             :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model   can-access-data-model
-            :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
+            :can_access_db_details   (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-database)
             :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
-                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
-                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+                                                                  (perms/user-has-highest-permission-anywhere? (perms/user-info api/*current-user-id*) :perms/transforms :exclude-db-ids [audit/audit-db-id])))
             :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
-                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
-                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+                                                                  (perms/user-has-highest-permission-anywhere? (perms/user-info api/*current-user-id*) :perms/view-data :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
@@ -107,17 +86,10 @@
   [tables]
   (if api/*is-superuser?*
     tables
-    (do
-      (perms/prime-table-perms-cache {:db-ids (into #{} (map :db_id) tables)})
-      (filter
-       (fn [{table-id :id db-id :db_id}]
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/manage-table-metadata
-          :yes
-          db-id
-          table-id))
-       tables))))
+    (filter
+     (fn [{table-id :id db-id :db_id}]
+       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {table-id db-id}))
+     tables)))
 
 (defenterprise filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
@@ -127,12 +99,7 @@
     schema
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (perms/user-has-permission-for-schema?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        db-id
-        schema))
+       (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema) :yes))
      schema)))
 
 (defenterprise filter-databases-by-data-model-perms
@@ -145,7 +112,7 @@
     dbs
     (reduce
      (fn [result {db-id :id tables :tables :as db}]
-       (if (= (perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id)
+       (if (= (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata [db-id]) db-id)
               :yes)
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))

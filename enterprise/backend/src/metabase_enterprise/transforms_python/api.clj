@@ -45,7 +45,7 @@
    body :- [:map {:closed true}
             [:source :string]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
-  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+  (api/check-403 (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))
   (api/check-403 (not (remote-sync/read-only?)))
   (python-library/update-python-library-source! path (:source body)))
 
@@ -74,7 +74,7 @@
   (let [table-ids (map :table_id source_tables)
         db-ids    (transforms-python.db/table-database-ids table-ids)]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
+    (api/check-403 (perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) (first db-ids)))
     (let [tables (t2/hydrate (transforms-python.db/tables (vec table-ids)) :can_query)]
       (api/check-403 (= (count tables) (count (distinct table-ids))))
       (api/check-403 (every? mi/can-query? tables))))
