@@ -145,6 +145,18 @@ describe("NewModals > shared tenant collections", () => {
       namespace: "user_acknowledgement",
       value: false,
     });
+    // `mockSettings` sets the token features that the plugins read when they
+    // initialize, so it has to run first.
+    const storeInitialState = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+      settings: mockSettings({
+        "use-tenants": true,
+        "token-features": createMockTokenFeatures({
+          official_collections: true,
+          tenants: true,
+        }),
+      }),
+    });
     setupEnterpriseOnlyPlugin("collections");
     setupEnterpriseOnlyPlugin("tenants");
 
@@ -170,16 +182,7 @@ describe("NewModals > shared tenant collections", () => {
       {
         withRouter: true,
         initialRoute: `/collection/${collection.id}`,
-        storeInitialState: createMockState({
-          currentUser: createMockUser({ is_superuser: true }),
-          settings: mockSettings({
-            "use-tenants": true,
-            "token-features": createMockTokenFeatures({
-              official_collections: true,
-              tenants: true,
-            }),
-          }),
-        }),
+        storeInitialState,
       },
     );
   };
@@ -196,6 +199,13 @@ describe("NewModals > shared tenant collections", () => {
       ),
     );
     return screen.findByTestId("new-collection-modal");
+  };
+
+  // The button stays disabled until the picker has loaded the picked item.
+  const clickSelect = async (picker: HTMLElement) => {
+    const button = within(picker).getByRole("button", { name: "Select" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
   };
 
   it.each([
@@ -254,10 +264,10 @@ describe("NewModals > shared tenant collections", () => {
       within(modal).getByTestId("collection-picker-button"),
     );
     const picker = await screen.findByTestId("entity-picker-modal");
+    // The picker opens on the current parent; let it load before navigating.
+    await within(picker).findByText(sharedSubCollection.name);
     await userEvent.click(await within(picker).findByText("Our analytics"));
-    await userEvent.click(
-      within(picker).getByRole("button", { name: "Select" }),
-    );
+    await clickSelect(picker);
 
     await waitFor(() =>
       expect(
@@ -292,15 +302,15 @@ describe("NewModals > shared tenant collections", () => {
         within(modal).getByTestId("collection-picker-button"),
       );
       const picker = await screen.findByTestId("entity-picker-modal");
+      // The picker opens on the current parent; let it load before navigating.
+      await within(picker).findByText(regularCollection.name);
       await userEvent.click(
         await within(picker).findByText("Shared collections"),
       );
       for (const collection of path) {
         await userEvent.click(await within(picker).findByText(collection.name));
       }
-      await userEvent.click(
-        within(picker).getByRole("button", { name: "Select" }),
-      );
+      await clickSelect(picker);
 
       const target = path[path.length - 1];
       await waitFor(() =>
