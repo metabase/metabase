@@ -13,7 +13,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -340,7 +339,7 @@
 (defn- check-worktrees-supported!
   "Throws a 400 unless the app DB keeps worktrees apart: Postgres, with a role that row-level security applies to."
   []
-  (api/check-400 (= :postgres (mdb/db-type))
+  (api/check-400 (remote-sync.settings/remote-sync-worktrees-enabled)
                  (tru "Worktrees need a PostgreSQL application database."))
   (api/check-400 (not (remote-sync.db/row-level-security-bypassed?))
                  (tru "Worktrees need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")))

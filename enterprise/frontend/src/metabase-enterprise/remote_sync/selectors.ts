@@ -17,3 +17,10 @@ export function getIsRemoteSyncVisible(state: State): boolean {
     getSetting(state, "remote-sync-type") === "read-write"
   );
 }
+
+export function getIsWorktreesVisible(state: State): boolean {
+  return (
+    getIsRemoteSyncVisible(state) &&
+    Boolean(getSetting(state, "remote-sync-worktrees-enabled"))
+  );
+}

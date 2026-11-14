@@ -38,10 +38,10 @@ import type { Worktree, WorktreeId } from "metabase-types/api";
 
 import { CreateWorktreeModal } from "../../components/CreateWorktreeModal";
 import { useWorktreeCheckout } from "../../hooks/use-worktree-checkout";
-import { getIsRemoteSyncVisible } from "../../selectors";
+import { getIsWorktreesVisible } from "../../selectors";
 
 export function WorktreeListPage() {
-  const isVisible = useSelector(getIsRemoteSyncVisible);
+  const isVisible = useSelector(getIsWorktreesVisible);
 
   if (!isVisible) {
     return <NotFound />;

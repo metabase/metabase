@@ -43,6 +43,17 @@
               (remote-sync.db/update-worktree! worktree-id {:branch branch})
               (setting/set-value-of-type! :string :remote-sync-branch branch))))
 
+(defsetting remote-sync-worktrees-enabled
+  (deferred-tru "Whether worktrees are available, which they are on a PostgreSQL application database.")
+  :feature :remote-sync
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :setter :none
+  :getter (fn [] (= :postgres (mdb/db-type)))
+  :audit :never
+  :doc false)
+
 (defsetting remote-sync-token
   (deferred-tru "An access token for the git repository, such as a personal access token.")
   :feature :remote-sync
