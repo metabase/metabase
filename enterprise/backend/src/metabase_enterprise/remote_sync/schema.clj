@@ -193,7 +193,6 @@
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:progress                {:optional true} [:maybe number?]]
    [:cancelled               {:optional true} [:maybe :boolean]]

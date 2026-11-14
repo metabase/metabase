@@ -21,7 +21,7 @@
 
 (t2/define-after-select :model/TableUserSettings
   [table-user-settings]
-  (dissoc table-user-settings :worktree_id_helper))
+  (dissoc table-user-settings :worktree_id :worktree_id_helper))
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword

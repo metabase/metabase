@@ -12,7 +12,7 @@
 
 (t2/define-after-select :model/Glossary
   [glossary]
-  (dissoc glossary :worktree_id_helper))
+  (dissoc glossary :worktree_id :worktree_id_helper))
 
 (doto :model/Glossary
   (derive :metabase/model)

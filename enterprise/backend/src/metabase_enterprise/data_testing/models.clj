@@ -24,7 +24,7 @@
 
 (t2/define-after-select :model/TransformTest
   [transform-test]
-  (dissoc transform-test :worktree_id_helper))
+  (dissoc transform-test :worktree_id :worktree_id_helper))
 
 ;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest

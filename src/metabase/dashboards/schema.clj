@@ -60,7 +60,6 @@
 (mr/def ::dashboard.update
   "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:name                    {:optional true} [:maybe :string]]
@@ -117,7 +116,6 @@
 (mr/def ::dashboard-card.update
   "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:size_x                 {:optional true} [:maybe :int]]
@@ -157,7 +155,6 @@
 (mr/def ::dashboard-tab.update
   "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:name         {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]

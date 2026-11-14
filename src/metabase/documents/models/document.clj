@@ -498,7 +498,7 @@
 
 (t2/define-after-select :model/Document
   [document]
-  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled (dissoc document :worktree_id_helper)))
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled (dissoc document :worktree_id :worktree_id_helper)))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

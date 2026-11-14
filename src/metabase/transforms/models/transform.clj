@@ -234,7 +234,7 @@
 
 (t2/define-after-select :model/Transform
   [transform]
-  (let [{:keys [source] :as transform} (dissoc transform :worktree_id_helper)]
+  (let [{:keys [source] :as transform} (dissoc transform :worktree_id :worktree_id_helper)]
     (cond-> transform
       source (assoc :source_type (transforms-base.u/transform-source-type source)))))
 

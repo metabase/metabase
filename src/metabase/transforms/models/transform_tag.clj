@@ -68,7 +68,7 @@
     {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
-  (let [tag (dissoc tag :worktree_id_helper)]
+  (let [tag (dissoc tag :worktree_id :worktree_id_helper)]
     (cond-> tag
       (some? (:built_in_type tag)) (merge (translate-name tag)))))
 

@@ -13,7 +13,7 @@
 
 (t2/define-after-select :model/TransformTransformTag
   [transform-transform-tag]
-  (dissoc transform-transform-tag :worktree_id_helper))
+  (dissoc transform-transform-tag :worktree_id :worktree_id_helper))
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)

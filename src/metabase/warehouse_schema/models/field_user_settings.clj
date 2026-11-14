@@ -20,7 +20,7 @@
 
 (t2/define-after-select :model/FieldUserSettings
   [field-user-settings]
-  (dissoc field-user-settings :worktree_id_helper))
+  (dissoc field-user-settings :worktree_id :worktree_id_helper))
 
 (t2/deftransforms :model/FieldUserSettings
   {:effective_type    field/transform-field-effective-type

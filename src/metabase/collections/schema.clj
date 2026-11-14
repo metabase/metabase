@@ -155,7 +155,6 @@
    [:namespace            {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id            {:optional true} [:maybe :string]]
-   [:worktree_id          {:optional true} [:maybe pos-int?]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:is_sample            {:optional true} [:maybe :boolean]]

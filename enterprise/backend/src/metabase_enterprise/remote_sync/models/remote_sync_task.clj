@@ -22,7 +22,7 @@
 
 (t2/define-after-select :model/RemoteSyncTask
   [remote-sync-task]
-  (dissoc remote-sync-task :worktree_id_helper))
+  (dissoc remote-sync-task :worktree_id :worktree_id_helper))
 
 (derive :model/RemoteSyncTask :metabase/model)
 

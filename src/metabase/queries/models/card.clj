@@ -867,7 +867,7 @@
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
   ;; |   See [[current-card-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
-  (let [card (dissoc card :worktree_id_helper)]
+  (let [card (dissoc card :worktree_id :worktree_id_helper)]
     (-> card
         (dissoc :dataset_query_metrics_v2_migration_backup)
         (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))

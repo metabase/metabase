@@ -199,7 +199,6 @@
                                                                          [:sequential ::card.result-metadata.model-override]]]]
    [:collection_position                       {:optional true} [:maybe [:or :int [:tuple [:enum :+ :-] [:= :collection_position] [:= 1]]]]]
    [:entity_id                                 {:optional true} [:maybe :string]]
-   [:worktree_id                               {:optional true} [:maybe pos-int?]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
    [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
    [:metabase_version                          {:optional true} [:maybe :string]]

@@ -24,8 +24,8 @@
   [timeline]
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
-  (update (dissoc timeline :worktree_id_helper) :icon (fn [icon]
-                                                        (if (= icon "balloons") timeline-event/default-icon icon))))
+  (update (dissoc timeline :worktree_id :worktree_id_helper) :icon (fn [icon]
+                                                                     (if (= icon "balloons") timeline-event/default-icon icon))))
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))

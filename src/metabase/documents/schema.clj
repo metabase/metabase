@@ -33,7 +33,6 @@
 (mr/def ::document.update
   "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:name                {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:document            {:optional true} [:maybe ::document.document]]

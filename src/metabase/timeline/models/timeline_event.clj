@@ -41,8 +41,8 @@
   [timeline-event]
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
-  (update (dissoc timeline-event :worktree_id_helper) :icon (fn [icon]
-                                                              (if (= icon "balloons") default-icon icon))))
+  (update (dissoc timeline-event :worktree_id :worktree_id_helper) :icon (fn [icon]
+                                                                           (if (= icon "balloons") default-icon icon))))
 
 ;;;; permissions
 

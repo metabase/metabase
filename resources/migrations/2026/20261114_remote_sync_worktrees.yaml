@@ -161,33 +161,33 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: |
-              ALTER TABLE action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE card_test ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_card_test_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE collection ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_collection_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE dashboard_tab ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_dashboard_tab_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE data_app ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_data_app_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE dimension ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_dimension_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE document ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_document_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE glossary ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_glossary_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE implicit_action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_implicit_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE measure ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_measure_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_mb_field_user_settings_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_mb_table_indexes_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_mb_table_user_settings_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE native_query_snippet ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_native_query_snippet_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE python_library ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_python_library_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE query_action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_query_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE remote_sync_task ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_remote_sync_task_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE report_card ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_report_card_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE report_dashboard ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_report_dashboard_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_report_dashboardcard_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE segment ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_segment_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE timeline ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_timeline_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE timeline_event ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_timeline_event_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE transform ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_transform_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE transform_tag ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_transform_tag_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE transform_test ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_transform_test_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
-              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED NOT NULL, ADD CONSTRAINT fk_transform_transform_tag_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE card_test ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_card_test_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE collection ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_collection_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_dashboard_tab_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE data_app ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_data_app_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE dimension ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_dimension_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE document ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_document_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE glossary ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_glossary_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE implicit_action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_implicit_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE measure ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_measure_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_mb_field_user_settings_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_mb_table_indexes_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_mb_table_user_settings_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_native_query_snippet_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE python_library ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_python_library_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE query_action ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_query_action_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE remote_sync_task ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_remote_sync_task_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE report_card ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_report_card_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_report_dashboard_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_report_dashboardcard_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE segment ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_segment_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE timeline ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_timeline_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE timeline_event ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_timeline_event_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE transform ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_transform_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE transform_tag ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_transform_tag_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE transform_test ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_transform_test_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id INTEGER, ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (COALESCE(worktree_id, 0)) STORED, ADD CONSTRAINT fk_transform_transform_tag_worktree_id FOREIGN KEY (worktree_id) REFERENCES worktree (id);
         - sql:
             dbms: h2
             sql: |
@@ -785,8 +785,6 @@ databaseChangeLog:
               PREPARE stmt FROM @s;
               EXECUTE stmt;
               DEALLOCATE PREPARE stmt;
-              ALTER TABLE metabase_field_user_settings DROP PRIMARY KEY, ADD PRIMARY KEY (field_id, worktree_id_helper);
-              ALTER TABLE metabase_table_user_settings DROP PRIMARY KEY, ADD PRIMARY KEY (table_id, worktree_id_helper);
         - sql:
             dbms: h2
             sql: |
@@ -857,59 +855,59 @@ databaseChangeLog:
             dbms: postgresql
             sql: |
               ALTER TABLE action DROP CONSTRAINT uq_action_entity_id_worktree;
-              ALTER TABLE action ADD UNIQUE (entity_id);
+              ALTER TABLE action ADD CONSTRAINT action_entity_id_key UNIQUE (entity_id);
               ALTER TABLE card_test DROP CONSTRAINT uq_card_test_entity_id_worktree;
-              ALTER TABLE card_test ADD UNIQUE (entity_id);
+              ALTER TABLE card_test ADD CONSTRAINT card_test_entity_id_key UNIQUE (entity_id);
               ALTER TABLE collection DROP CONSTRAINT uq_collection_entity_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (entity_id);
+              ALTER TABLE collection ADD CONSTRAINT collection_entity_id_key UNIQUE (entity_id);
               ALTER TABLE dashboard_tab DROP CONSTRAINT uq_dashboard_tab_entity_id_worktree;
-              ALTER TABLE dashboard_tab ADD UNIQUE (entity_id);
+              ALTER TABLE dashboard_tab ADD CONSTRAINT dashboard_tab_entity_id_key UNIQUE (entity_id);
               ALTER TABLE data_app DROP CONSTRAINT uq_data_app_entity_id_worktree;
-              ALTER TABLE data_app ADD UNIQUE (entity_id);
+              ALTER TABLE data_app ADD CONSTRAINT uq_data_app_entity_id UNIQUE (entity_id);
               ALTER TABLE dimension DROP CONSTRAINT uq_dimension_entity_id_worktree;
-              ALTER TABLE dimension ADD UNIQUE (entity_id);
+              ALTER TABLE dimension ADD CONSTRAINT dimension_entity_id_key UNIQUE (entity_id);
               ALTER TABLE document DROP CONSTRAINT uq_document_entity_id_worktree;
-              ALTER TABLE document ADD UNIQUE (entity_id);
+              ALTER TABLE document ADD CONSTRAINT document_entity_id_key UNIQUE (entity_id);
               ALTER TABLE glossary DROP CONSTRAINT uq_glossary_entity_id_worktree;
-              ALTER TABLE glossary ADD UNIQUE (entity_id);
+              ALTER TABLE glossary ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id);
               ALTER TABLE measure DROP CONSTRAINT uq_measure_entity_id_worktree;
-              ALTER TABLE measure ADD UNIQUE (entity_id);
+              ALTER TABLE measure ADD CONSTRAINT measure_entity_id_key UNIQUE (entity_id);
               ALTER TABLE native_query_snippet DROP CONSTRAINT uq_native_query_snippet_entity_id_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (entity_id);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_entity_id_key UNIQUE (entity_id);
               ALTER TABLE python_library DROP CONSTRAINT uq_python_library_entity_id_worktree;
-              ALTER TABLE python_library ADD UNIQUE (entity_id);
+              ALTER TABLE python_library ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id);
               ALTER TABLE report_card DROP CONSTRAINT uq_report_card_entity_id_worktree;
-              ALTER TABLE report_card ADD UNIQUE (entity_id);
+              ALTER TABLE report_card ADD CONSTRAINT report_card_entity_id_key UNIQUE (entity_id);
               ALTER TABLE report_dashboard DROP CONSTRAINT uq_report_dashboard_entity_id_worktree;
-              ALTER TABLE report_dashboard ADD UNIQUE (entity_id);
+              ALTER TABLE report_dashboard ADD CONSTRAINT report_dashboard_entity_id_key UNIQUE (entity_id);
               ALTER TABLE report_dashboardcard DROP CONSTRAINT uq_report_dashboardcard_entity_id_worktree;
-              ALTER TABLE report_dashboardcard ADD UNIQUE (entity_id);
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT report_dashboardcard_entity_id_key UNIQUE (entity_id);
               ALTER TABLE segment DROP CONSTRAINT uq_segment_entity_id_worktree;
-              ALTER TABLE segment ADD UNIQUE (entity_id);
+              ALTER TABLE segment ADD CONSTRAINT segment_entity_id_key UNIQUE (entity_id);
               ALTER TABLE timeline DROP CONSTRAINT uq_timeline_entity_id_worktree;
-              ALTER TABLE timeline ADD UNIQUE (entity_id);
+              ALTER TABLE timeline ADD CONSTRAINT timeline_entity_id_key UNIQUE (entity_id);
               ALTER TABLE timeline_event DROP CONSTRAINT uq_timeline_event_entity_id_worktree;
-              ALTER TABLE timeline_event ADD UNIQUE (entity_id);
+              ALTER TABLE timeline_event ADD CONSTRAINT uq_timeline_event_entity_id UNIQUE (entity_id);
               ALTER TABLE transform DROP CONSTRAINT uq_transform_entity_id_worktree;
-              ALTER TABLE transform ADD UNIQUE (entity_id);
+              ALTER TABLE transform ADD CONSTRAINT transform_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_tag DROP CONSTRAINT uq_transform_tag_entity_id_worktree;
-              ALTER TABLE transform_tag ADD UNIQUE (entity_id);
+              ALTER TABLE transform_tag ADD CONSTRAINT transform_tag_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_test DROP CONSTRAINT uq_transform_test_entity_id_worktree;
-              ALTER TABLE transform_test ADD UNIQUE (entity_id);
+              ALTER TABLE transform_test ADD CONSTRAINT transform_test_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_transform_tag DROP CONSTRAINT uq_transform_transform_tag_entity_id_worktree;
-              ALTER TABLE transform_transform_tag ADD UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT transform_transform_tag_entity_id_key UNIQUE (entity_id);
               ALTER TABLE collection DROP CONSTRAINT uq_collection_personal_owner_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (personal_owner_id);
+              ALTER TABLE collection ADD CONSTRAINT unique_collection_personal_owner_id UNIQUE (personal_owner_id);
               ALTER TABLE data_app DROP CONSTRAINT uq_data_app_slug_worktree;
-              ALTER TABLE data_app ADD UNIQUE (slug);
+              ALTER TABLE data_app ADD CONSTRAINT data_app_name_key UNIQUE (slug);
               ALTER TABLE dimension DROP CONSTRAINT uq_dimension_field_id_worktree;
-              ALTER TABLE dimension ADD UNIQUE (field_id);
+              ALTER TABLE dimension ADD CONSTRAINT unique_dimension_field_id UNIQUE (field_id);
               ALTER TABLE glossary DROP CONSTRAINT uq_glossary_term_worktree;
-              ALTER TABLE glossary ADD UNIQUE (term);
+              ALTER TABLE glossary ADD CONSTRAINT glossary_term_key UNIQUE (term);
               ALTER TABLE native_query_snippet DROP CONSTRAINT uq_native_query_snippet_name_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (name);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name);
               ALTER TABLE python_library DROP CONSTRAINT uq_python_library_path_worktree;
-              ALTER TABLE python_library ADD UNIQUE (path);
+              ALTER TABLE python_library ADD CONSTRAINT uk_python_library_path UNIQUE (path);
               ALTER TABLE metabase_field_user_settings DROP CONSTRAINT metabase_field_user_settings_pkey;
               ALTER TABLE metabase_field_user_settings ADD CONSTRAINT metabase_field_user_settings_pkey PRIMARY KEY (field_id);
               ALTER TABLE metabase_table_user_settings DROP CONSTRAINT metabase_table_user_settings_pkey;
@@ -917,92 +915,90 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: |
-              ALTER TABLE action ADD UNIQUE (entity_id), DROP INDEX uq_action_entity_id_worktree;
-              ALTER TABLE card_test ADD UNIQUE (entity_id), DROP INDEX uq_card_test_entity_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (entity_id), DROP INDEX uq_collection_entity_id_worktree;
-              ALTER TABLE dashboard_tab ADD UNIQUE (entity_id), DROP INDEX uq_dashboard_tab_entity_id_worktree;
-              ALTER TABLE data_app ADD UNIQUE (entity_id), DROP INDEX uq_data_app_entity_id_worktree;
-              ALTER TABLE dimension ADD UNIQUE (entity_id), DROP INDEX uq_dimension_entity_id_worktree;
-              ALTER TABLE document ADD UNIQUE (entity_id), DROP INDEX uq_document_entity_id_worktree;
-              ALTER TABLE glossary ADD UNIQUE (entity_id), DROP INDEX uq_glossary_entity_id_worktree;
-              ALTER TABLE measure ADD UNIQUE (entity_id), DROP INDEX uq_measure_entity_id_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (entity_id), DROP INDEX uq_native_query_snippet_entity_id_worktree;
-              ALTER TABLE python_library ADD UNIQUE (entity_id), DROP INDEX uq_python_library_entity_id_worktree;
-              ALTER TABLE report_card ADD UNIQUE (entity_id), DROP INDEX uq_report_card_entity_id_worktree;
-              ALTER TABLE report_dashboard ADD UNIQUE (entity_id), DROP INDEX uq_report_dashboard_entity_id_worktree;
-              ALTER TABLE report_dashboardcard ADD UNIQUE (entity_id), DROP INDEX uq_report_dashboardcard_entity_id_worktree;
-              ALTER TABLE segment ADD UNIQUE (entity_id), DROP INDEX uq_segment_entity_id_worktree;
-              ALTER TABLE timeline ADD UNIQUE (entity_id), DROP INDEX uq_timeline_entity_id_worktree;
-              ALTER TABLE timeline_event ADD UNIQUE (entity_id), DROP INDEX uq_timeline_event_entity_id_worktree;
-              ALTER TABLE transform ADD UNIQUE (entity_id), DROP INDEX uq_transform_entity_id_worktree;
-              ALTER TABLE transform_tag ADD UNIQUE (entity_id), DROP INDEX uq_transform_tag_entity_id_worktree;
-              ALTER TABLE transform_test ADD UNIQUE (entity_id), DROP INDEX uq_transform_test_entity_id_worktree;
-              ALTER TABLE transform_transform_tag ADD UNIQUE (entity_id), DROP INDEX uq_transform_transform_tag_entity_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (personal_owner_id), DROP INDEX uq_collection_personal_owner_id_worktree;
-              ALTER TABLE data_app ADD UNIQUE (slug), DROP INDEX uq_data_app_slug_worktree;
-              ALTER TABLE dimension ADD UNIQUE (field_id), DROP INDEX uq_dimension_field_id_worktree;
-              ALTER TABLE glossary ADD UNIQUE (term), DROP INDEX uq_glossary_term_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (name), DROP INDEX uq_native_query_snippet_name_worktree;
-              ALTER TABLE python_library ADD UNIQUE (path), DROP INDEX uq_python_library_path_worktree;
-              ALTER TABLE metabase_field_user_settings DROP PRIMARY KEY, ADD PRIMARY KEY (field_id);
-              ALTER TABLE metabase_table_user_settings DROP PRIMARY KEY, ADD PRIMARY KEY (table_id);
+              ALTER TABLE action ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_action_entity_id_worktree;
+              ALTER TABLE card_test ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_card_test_entity_id_worktree;
+              ALTER TABLE collection ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_collection_entity_id_worktree;
+              ALTER TABLE dashboard_tab ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_dashboard_tab_entity_id_worktree;
+              ALTER TABLE data_app ADD UNIQUE KEY uq_data_app_entity_id (entity_id), DROP INDEX uq_data_app_entity_id_worktree;
+              ALTER TABLE dimension ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_dimension_entity_id_worktree;
+              ALTER TABLE document ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_document_entity_id_worktree;
+              ALTER TABLE glossary ADD UNIQUE KEY uq_glossary_entity_id (entity_id), DROP INDEX uq_glossary_entity_id_worktree;
+              ALTER TABLE measure ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_measure_entity_id_worktree;
+              ALTER TABLE native_query_snippet ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_native_query_snippet_entity_id_worktree;
+              ALTER TABLE python_library ADD UNIQUE KEY unique_python_library_entity_id (entity_id), DROP INDEX uq_python_library_entity_id_worktree;
+              ALTER TABLE report_card ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_report_card_entity_id_worktree;
+              ALTER TABLE report_dashboard ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_report_dashboard_entity_id_worktree;
+              ALTER TABLE report_dashboardcard ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_report_dashboardcard_entity_id_worktree;
+              ALTER TABLE segment ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_segment_entity_id_worktree;
+              ALTER TABLE timeline ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_timeline_entity_id_worktree;
+              ALTER TABLE timeline_event ADD UNIQUE KEY uq_timeline_event_entity_id (entity_id), DROP INDEX uq_timeline_event_entity_id_worktree;
+              ALTER TABLE transform ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_transform_entity_id_worktree;
+              ALTER TABLE transform_tag ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_transform_tag_entity_id_worktree;
+              ALTER TABLE transform_test ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_transform_test_entity_id_worktree;
+              ALTER TABLE transform_transform_tag ADD UNIQUE KEY entity_id (entity_id), DROP INDEX uq_transform_transform_tag_entity_id_worktree;
+              ALTER TABLE collection ADD UNIQUE KEY unique_collection_personal_owner_id (personal_owner_id), DROP INDEX uq_collection_personal_owner_id_worktree;
+              ALTER TABLE data_app ADD UNIQUE KEY data_app_name_key (slug), DROP INDEX uq_data_app_slug_worktree;
+              ALTER TABLE dimension ADD UNIQUE KEY unique_dimension_field_id (field_id), DROP INDEX uq_dimension_field_id_worktree;
+              ALTER TABLE glossary ADD UNIQUE KEY term (term), DROP INDEX uq_glossary_term_worktree;
+              ALTER TABLE native_query_snippet ADD UNIQUE KEY name (name), DROP INDEX uq_native_query_snippet_name_worktree;
+              ALTER TABLE python_library ADD UNIQUE KEY uk_python_library_path (path), DROP INDEX uq_python_library_path_worktree;
         - sql:
             dbms: h2
             sql: |
               ALTER TABLE action DROP CONSTRAINT uq_action_entity_id_worktree;
-              ALTER TABLE action ADD UNIQUE (entity_id);
+              ALTER TABLE action ADD CONSTRAINT action_entity_id_key UNIQUE (entity_id);
               ALTER TABLE card_test DROP CONSTRAINT uq_card_test_entity_id_worktree;
-              ALTER TABLE card_test ADD UNIQUE (entity_id);
+              ALTER TABLE card_test ADD CONSTRAINT card_test_entity_id_key UNIQUE (entity_id);
               ALTER TABLE collection DROP CONSTRAINT uq_collection_entity_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (entity_id);
+              ALTER TABLE collection ADD CONSTRAINT collection_entity_id_key UNIQUE (entity_id);
               ALTER TABLE dashboard_tab DROP CONSTRAINT uq_dashboard_tab_entity_id_worktree;
-              ALTER TABLE dashboard_tab ADD UNIQUE (entity_id);
+              ALTER TABLE dashboard_tab ADD CONSTRAINT dashboard_tab_entity_id_key UNIQUE (entity_id);
               ALTER TABLE data_app DROP CONSTRAINT uq_data_app_entity_id_worktree;
-              ALTER TABLE data_app ADD UNIQUE (entity_id);
+              ALTER TABLE data_app ADD CONSTRAINT uq_data_app_entity_id UNIQUE (entity_id);
               ALTER TABLE dimension DROP CONSTRAINT uq_dimension_entity_id_worktree;
-              ALTER TABLE dimension ADD UNIQUE (entity_id);
+              ALTER TABLE dimension ADD CONSTRAINT dimension_entity_id_key UNIQUE (entity_id);
               ALTER TABLE document DROP CONSTRAINT uq_document_entity_id_worktree;
-              ALTER TABLE document ADD UNIQUE (entity_id);
+              ALTER TABLE document ADD CONSTRAINT document_entity_id_key UNIQUE (entity_id);
               ALTER TABLE glossary DROP CONSTRAINT uq_glossary_entity_id_worktree;
-              ALTER TABLE glossary ADD UNIQUE (entity_id);
+              ALTER TABLE glossary ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id);
               ALTER TABLE measure DROP CONSTRAINT uq_measure_entity_id_worktree;
-              ALTER TABLE measure ADD UNIQUE (entity_id);
+              ALTER TABLE measure ADD CONSTRAINT measure_entity_id_key UNIQUE (entity_id);
               ALTER TABLE native_query_snippet DROP CONSTRAINT uq_native_query_snippet_entity_id_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (entity_id);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_entity_id_key UNIQUE (entity_id);
               ALTER TABLE python_library DROP CONSTRAINT uq_python_library_entity_id_worktree;
-              ALTER TABLE python_library ADD UNIQUE (entity_id);
+              ALTER TABLE python_library ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id);
               ALTER TABLE report_card DROP CONSTRAINT uq_report_card_entity_id_worktree;
-              ALTER TABLE report_card ADD UNIQUE (entity_id);
+              ALTER TABLE report_card ADD CONSTRAINT report_card_entity_id_key UNIQUE (entity_id);
               ALTER TABLE report_dashboard DROP CONSTRAINT uq_report_dashboard_entity_id_worktree;
-              ALTER TABLE report_dashboard ADD UNIQUE (entity_id);
+              ALTER TABLE report_dashboard ADD CONSTRAINT report_dashboard_entity_id_key UNIQUE (entity_id);
               ALTER TABLE report_dashboardcard DROP CONSTRAINT uq_report_dashboardcard_entity_id_worktree;
-              ALTER TABLE report_dashboardcard ADD UNIQUE (entity_id);
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT report_dashboardcard_entity_id_key UNIQUE (entity_id);
               ALTER TABLE segment DROP CONSTRAINT uq_segment_entity_id_worktree;
-              ALTER TABLE segment ADD UNIQUE (entity_id);
+              ALTER TABLE segment ADD CONSTRAINT segment_entity_id_key UNIQUE (entity_id);
               ALTER TABLE timeline DROP CONSTRAINT uq_timeline_entity_id_worktree;
-              ALTER TABLE timeline ADD UNIQUE (entity_id);
+              ALTER TABLE timeline ADD CONSTRAINT timeline_entity_id_key UNIQUE (entity_id);
               ALTER TABLE timeline_event DROP CONSTRAINT uq_timeline_event_entity_id_worktree;
-              ALTER TABLE timeline_event ADD UNIQUE (entity_id);
+              ALTER TABLE timeline_event ADD CONSTRAINT uq_timeline_event_entity_id UNIQUE (entity_id);
               ALTER TABLE transform DROP CONSTRAINT uq_transform_entity_id_worktree;
-              ALTER TABLE transform ADD UNIQUE (entity_id);
+              ALTER TABLE transform ADD CONSTRAINT transform_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_tag DROP CONSTRAINT uq_transform_tag_entity_id_worktree;
-              ALTER TABLE transform_tag ADD UNIQUE (entity_id);
+              ALTER TABLE transform_tag ADD CONSTRAINT transform_tag_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_test DROP CONSTRAINT uq_transform_test_entity_id_worktree;
-              ALTER TABLE transform_test ADD UNIQUE (entity_id);
+              ALTER TABLE transform_test ADD CONSTRAINT transform_test_entity_id_key UNIQUE (entity_id);
               ALTER TABLE transform_transform_tag DROP CONSTRAINT uq_transform_transform_tag_entity_id_worktree;
-              ALTER TABLE transform_transform_tag ADD UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT transform_transform_tag_entity_id_key UNIQUE (entity_id);
               ALTER TABLE collection DROP CONSTRAINT uq_collection_personal_owner_id_worktree;
-              ALTER TABLE collection ADD UNIQUE (personal_owner_id);
+              ALTER TABLE collection ADD CONSTRAINT unique_collection_personal_owner_id UNIQUE (personal_owner_id);
               ALTER TABLE data_app DROP CONSTRAINT uq_data_app_slug_worktree;
-              ALTER TABLE data_app ADD UNIQUE (slug);
+              ALTER TABLE data_app ADD CONSTRAINT data_app_name_key UNIQUE (slug);
               ALTER TABLE dimension DROP CONSTRAINT uq_dimension_field_id_worktree;
-              ALTER TABLE dimension ADD UNIQUE (field_id);
+              ALTER TABLE dimension ADD CONSTRAINT unique_dimension_field_id UNIQUE (field_id);
               ALTER TABLE glossary DROP CONSTRAINT uq_glossary_term_worktree;
-              ALTER TABLE glossary ADD UNIQUE (term);
+              ALTER TABLE glossary ADD CONSTRAINT glossary_term_key UNIQUE (term);
               ALTER TABLE native_query_snippet DROP CONSTRAINT uq_native_query_snippet_name_worktree;
-              ALTER TABLE native_query_snippet ADD UNIQUE (name);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name);
               ALTER TABLE python_library DROP CONSTRAINT uq_python_library_path_worktree;
-              ALTER TABLE python_library ADD UNIQUE (path);
+              ALTER TABLE python_library ADD CONSTRAINT uk_python_library_path UNIQUE (path);
               ALTER TABLE metabase_field_user_settings DROP CONSTRAINT fk_field_user_setting_field_id;
               ALTER TABLE metabase_field_user_settings DROP PRIMARY KEY;
               ALTER TABLE metabase_field_user_settings ADD PRIMARY KEY (field_id);
@@ -1016,9 +1012,9 @@ databaseChangeLog:
       id: wtr2pz
       author: ranquild
       comment: Show a connection only the rows of the worktree its metabase.worktree_id setting names, 0 for the main app, or every row when it is unset
+      dbms: postgresql
       changes:
         - sql:
-            dbms: postgresql
             splitStatements: false
             sql: |
               CREATE FUNCTION metabase_worktree_id() RETURNS INTEGER LANGUAGE sql STABLE AS
@@ -1133,7 +1129,6 @@ databaseChangeLog:
               CREATE POLICY worktree ON transform_transform_tag USING (metabase_worktree_id() IS NULL OR worktree_id_helper = metabase_worktree_id());
       rollback:
         - sql:
-            dbms: postgresql
             splitStatements: false
             sql: |
               DROP POLICY worktree ON action;

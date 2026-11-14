@@ -16,7 +16,6 @@
 (mr/def ::glossary.update
   "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:entity_id  {:optional true} [:maybe ms/NonBlankString]]
    [:term       {:optional true} [:maybe :string]]
    [:definition {:optional true} [:maybe :string]]

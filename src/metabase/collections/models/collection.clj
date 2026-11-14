@@ -325,7 +325,7 @@
     collection))
 
 (t2/define-after-select :model/Collection [collection]
-  (maybe-localize-system-collection-name (dissoc collection :worktree_id_helper)))
+  (maybe-localize-system-collection-name (dissoc collection :worktree_id :worktree_id_helper)))
 
 (doto :model/Collection
   (derive :metabase/model)
@@ -431,7 +431,6 @@
    [:namespace             {:optional true} [:maybe [:or :keyword :string]]]
    [:authority_level       {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id             {:optional true} :string]
-   [:worktree_id           {:optional true} [:maybe pos-int?]]
    [:created_at            {:optional true} ms/TemporalInstant]
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:is_sample             {:optional true} :boolean]

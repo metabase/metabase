@@ -26,7 +26,7 @@
 
 (t2/define-after-select :model/NativeQuerySnippet
   [native-query-snippet]
-  (dissoc native-query-snippet :worktree_id_helper))
+  (dissoc native-query-snippet :worktree_id :worktree_id_helper))
 
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)

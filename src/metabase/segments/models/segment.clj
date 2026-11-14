@@ -199,7 +199,7 @@
 
 (t2/define-after-select :model/Segment
   [segment]
-  (let [{:keys [definition] :as segment} (dissoc segment :worktree_id_helper)]
+  (let [{:keys [definition] :as segment} (dissoc segment :worktree_id :worktree_id_helper)]
     (cond-> segment
       (some? definition) (assoc :definition (maybe-migrated-segment-definition segment)))))
 

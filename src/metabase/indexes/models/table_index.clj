@@ -23,7 +23,7 @@
 
 (t2/define-after-select :model/TableIndex
   [table-index]
-  (dissoc table-index :worktree_id_helper))
+  (dissoc table-index :worktree_id :worktree_id_helper))
 
 (doto :model/TableIndex
   (derive :metabase/model)

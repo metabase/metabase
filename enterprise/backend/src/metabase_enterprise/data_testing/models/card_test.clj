@@ -22,7 +22,7 @@
 
 (t2/define-after-select :model/CardTest
   [card-test]
-  (dissoc card-test :worktree_id_helper))
+  (dissoc card-test :worktree_id :worktree_id_helper))
 
 (doto :model/CardTest
   (derive :metabase/model)

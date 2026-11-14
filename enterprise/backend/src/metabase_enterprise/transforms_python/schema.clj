@@ -22,7 +22,6 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:is_default {:optional true} [:maybe :boolean]]])
 
 (mr/def ::external-python-library

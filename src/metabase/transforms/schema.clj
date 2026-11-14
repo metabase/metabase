@@ -175,7 +175,6 @@
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:name                  {:optional true} [:maybe :string]]
    [:description           {:optional true} [:maybe :string]]
    [:source                {:optional true} [:maybe ::transform.source]]
@@ -336,7 +335,6 @@
 (mr/def ::transform-tag.update
   "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
@@ -353,7 +351,6 @@
 (mr/def ::transform-transform-tag.update
   "What an update (or insert) of a TransformTransformTag accepts: every column of `:transform_transform_tag` except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]
    [:tag_id       {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id    {:optional true} [:maybe :string]]
