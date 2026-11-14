@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.api.custom-expression :as custom-expression]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -265,6 +266,29 @@
                    (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
             (finally
               (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
+
+(deftest summary-formula-call-logs-its-own-source-test
+  (testing "summary formula LLM calls are logged under the summary_formula source"
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (mut/mock-llm-response
+                                                                       [{:type :tool-input :id "call-1" :function "json"
+                                                                         :arguments {:expression "Average([Total])"
+                                                                                     :name       "Average total"}}
+                                                                        {:type :usage :id "msg-1"
+                                                                         :usage {:promptTokens     700
+                                                                                 :completionTokens 20}}]))]
+          (mt/with-temp [:model/User {user-id :id} {}]
+            (is (= {:expression "Average([Total])" :name "Average total"}
+                   (mt/with-current-user user-id
+                     (#'custom-expression/summary-formula {:mode        "aggregation"
+                                                           :prompt      "average total"
+                                                           :columns     [{:name "[Total]" :type "number"}]
+                                                           :database_id (mt/id)}))))
+            (is (= ["summary_formula"]
+                   (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id)))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -591,9 +615,11 @@
           sources  (disj @#'ee.usage/known-sources "user-intent-classification")
           profiles @#'ee.usage/known-profile-ids]
       (doseq [[view expected] {"ai_usage_log"          sources
-                               ;; v_metabot_conversations maps both the source and the profile id, and never takes
-                               ;; a conversation's source from its title call
-                               "metabot_conversations" (into (disj sources "conversation_title") profiles)}
+                               ;; v_metabot_conversations maps both the source and the profile id, never takes a
+                               ;; conversation's source from its title call, and never sees summary formula calls,
+                               ;; which belong to no conversation
+                               "metabot_conversations" (into (disj sources "conversation_title" "summary_formula")
+                                                             profiles)}
               :let [dir       (latest-view-version-dir view)
                     sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
                                       (.listFiles dir))]]

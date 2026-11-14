@@ -288,9 +288,7 @@
    nil
    max-formula-tokens
    {:request-id          (str (random-uuid))
-    ;; a new ai_usage_log source needs new analytics views and a migration, so usage is logged as "unknown"; `:tag`
-    ;; still names it in traces
-    :source              "unknown"
+    :source              "summary_formula"
     :tag                 "summary-formula"
     :required-permission required-permission}))
 
