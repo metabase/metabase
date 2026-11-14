@@ -9,7 +9,7 @@ import {
 import { PLOT_HEIGHT_BREAKPOINTS } from "../../../shared/constants/layout";
 import type { Extent } from "../../../types";
 
-type ValueAxisOption = Extract<YAXisOption, { type?: "value" }>;
+export type ValueAxisOption = Extract<YAXisOption, { type?: "value" }>;
 
 /** Lets ECharts include zero after applying boundary gaps, as native axes do. */
 class ValueAxisScaleModel extends Model<ValueAxisOption> {
@@ -22,17 +22,24 @@ export function getResponsiveYAxisSegments(height: number) {
   return height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
 }
 
+function getValueAxisBounds(extent: Extent, axis: ValueAxisOption): Extent {
+  const [dataMin, dataMax] = axis.scale
+    ? extent
+    : [Math.min(extent[0], 0), Math.max(extent[1], 0)];
+
+  return [
+    typeof axis.min === "number" ? axis.min : dataMin,
+    typeof axis.max === "number" ? axis.max : dataMax,
+  ];
+}
+
 export function getDurationYAxisTicks(
   extent: Extent,
   axis: ValueAxisOption,
   maxSegments: number,
   durationOptions: FormatDurationOptions,
 ) {
-  const [dataMin, dataMax] = axis.scale
-    ? extent
-    : [Math.min(extent[0], 0), Math.max(extent[1], 0)];
-  const lower = typeof axis.min === "number" ? axis.min : dataMin;
-  const upper = typeof axis.max === "number" ? axis.max : dataMax;
+  const [lower, upper] = getValueAxisBounds(extent, axis);
   const interval = getDurationTickInterval(
     upper - lower,
     maxSegments,
