@@ -88,6 +88,9 @@ export const getQueryStatus = (state: QueryBuilderStoreState) =>
 export const getLoadingControls = (state: QueryBuilderStoreState) =>
   state.qb.loadingControls;
 
+export const getSummaryGeneratedExpressions = (state: QueryBuilderStoreState) =>
+  getUiControls(state).summaryGeneratedExpressions;
+
 export const getIsShowingTemplateTagsEditor = (state: QueryBuilderStoreState) =>
   getUiControls(state).isShowingTemplateTagsEditor;
 export const getIsShowingSnippetSidebar = (state: QueryBuilderStoreState) =>
