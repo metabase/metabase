@@ -1,7 +1,10 @@
-import { provideRemoteSyncContentTags } from "metabase/api/tags";
+import {
+  invalidateRemoteSyncContentTags,
+  provideRemoteSyncContentTags,
+} from "metabase/api/tags";
 import type {
-  CreateRemoteSyncBranchRequest,
-  CreateRemoteSyncBranchResponse,
+  CreateBranchRequest,
+  CreateBranchResponse,
   CreateWorktreeRequest,
   ExportChangesRequest,
   ExportChangesResponse,
@@ -182,18 +185,18 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           listTag("remote-sync-worktree"),
           idTag("remote-sync-worktree", id),
+          tag("current-user"),
+          tag("session-properties"),
+          ...invalidateRemoteSyncContentTags(),
         ]),
     }),
-    createRemoteSyncBranch: builder.mutation<
-      CreateRemoteSyncBranchResponse,
-      CreateRemoteSyncBranchRequest
-    >({
+    createBranch: builder.mutation<CreateBranchResponse, CreateBranchRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/remote-sync/branch",
+        url: "/api/ee/remote-sync/create-branch",
         body,
       }),
-      invalidatesTags: (_branch, error) =>
+      invalidatesTags: (_response, error) =>
         invalidateTags(error, [tag("remote-sync-branches")]),
     }),
     testRemoteSyncConnection: builder.mutation<
@@ -227,5 +230,5 @@ export const {
   useGetWorktreeQuery,
   useCreateWorktreeMutation,
   useDeleteWorktreeMutation,
-  useCreateRemoteSyncBranchMutation,
+  useCreateBranchMutation,
 } = remoteSyncApi;

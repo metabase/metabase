@@ -83,9 +83,6 @@ function WorktreeList() {
       onConfirm: async () => {
         try {
           await deleteWorktree(worktree.id).unwrap();
-          if (worktree.id === currentWorktreeId) {
-            window.location.reload();
-          }
         } catch (error) {
           sendToast({
             message: getErrorMessage(error, t`Couldn't delete the worktree`),

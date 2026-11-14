@@ -394,26 +394,32 @@
   (remote-sync.db/delete-worktree! id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/branch" :- [:map {:closed true} [:name ms/NonBlankString]]
-  "Create the branch `name` in the repository at the tip of the synced branch."
+(api.macros/defendpoint :post "/create-branch" :- [:map {:closed true}
+                                                   [:status [:= "success"]]
+                                                   [:message :string]]
+  "Create the branch `name` in the repository at the tip of the main app's branch, whichever worktree the request works
+  in."
   [_route
    _query
-   {branch-name :name} :- [:map {:closed true}
-                           [:name ms/NonBlankString]]]
+   {branch-name :name} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
   (check-configured!)
-  (check-read-write!)
-  (let [repo (remote-sync.settings/repository)]
-    (protocol/fetch! repo)
+  (let [repo        (remote-sync.settings/repository)
+        _           (protocol/fetch! repo)
+        base-branch (setting/get-value-of-type :string :remote-sync-branch)
+        base        (api/check-400 (protocol/version repo base-branch) (tru "Base commit not found"))]
     (api/check-400 (nil? (protocol/version repo branch-name))
                    (tru "The branch {0} already exists in the repository." branch-name))
-    (let [base (api/check-400 (protocol/version repo (setting/get :remote-sync-branch))
-                              (tru "The synced branch doesn''t exist in the repository any more."))]
-      (try
-        (protocol/create-branch! repo branch-name base)
-        (catch Exception e
-          (throw (ex-info (tasks/error-message e) {:status-code 400} e))))
-      {:name branch-name})))
+    (try
+      (protocol/create-branch! repo branch-name base)
+      (events/publish-event! :event/remote-sync-create-branch
+                             {:details {:branch_name branch-name
+                                        :base_branch base-branch}
+                              :user-id api/*current-user-id*})
+      {:status  "success"
+       :message (tru "Branch ''{0}'' created from ''{1}''" branch-name base-branch)}
+      (catch Exception e
+        (throw (ex-info (tasks/error-message e) {:status-code 400} e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

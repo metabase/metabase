@@ -361,10 +361,11 @@ export type CreateWorktreeRequest = {
   branch: string;
 };
 
-export type CreateRemoteSyncBranchRequest = {
+export type CreateBranchRequest = {
   name: string;
 };
 
-export type CreateRemoteSyncBranchResponse = {
-  name: string;
+export type CreateBranchResponse = {
+  status: "success";
+  message: string;
 };

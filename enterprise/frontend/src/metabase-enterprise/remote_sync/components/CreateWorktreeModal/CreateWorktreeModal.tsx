@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getErrorMessage } from "metabase/api/utils";
 import { Button, Group, Modal, Select, Stack, Text } from "metabase/ui";
 import {
-  useCreateRemoteSyncBranchMutation,
+  useCreateBranchMutation,
   useCreateWorktreeMutation,
   useGetRemoteSyncBranchesQuery,
 } from "metabase-enterprise/api";
@@ -42,7 +42,7 @@ type SelectedBranch = {
 
 function CreateWorktreeForm({ onCreate, onClose }: CreateWorktreeFormProps) {
   const { data, isLoading } = useGetRemoteSyncBranchesQuery();
-  const [createBranch] = useCreateRemoteSyncBranchMutation();
+  const [createBranch] = useCreateBranchMutation();
   const [createWorktree] = useCreateWorktreeMutation();
   const [searchValue, setSearchValue] = useState("");
   const [selected, setSelected] = useState<SelectedBranch | null>(null);
