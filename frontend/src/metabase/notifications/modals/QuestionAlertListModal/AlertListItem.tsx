@@ -11,6 +11,7 @@ import {
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { useCronLibraries } from "metabase/utils/cron";
 import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
@@ -44,6 +45,8 @@ export const AlertListItem = ({
   onUnsubscribe,
   onDelete,
 }: AlertListItemProps) => {
+  // Custom (cron) schedules are explained once the cron libraries load.
+  useCronLibraries();
   const user = useSelector(getUser);
 
   const { emailHandler, slackHandler, hookHandlers } =

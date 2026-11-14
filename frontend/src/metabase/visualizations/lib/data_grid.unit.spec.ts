@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { loadDayjsLocale } from "metabase/dayjs";
 import {
   type LocaleDataWithLanguage,
   setLocalization,
@@ -985,7 +986,9 @@ describe("data_grid", () => {
         setLocalization(ENGLISH);
       });
 
-      it("formats a date breakout once, in the active locale (metabase#23076)", () => {
+      it("formats a date breakout once, in the active locale (metabase#23076)", async () => {
+        // In the app, `loadLocaleCatalog` loads the dayjs locale before `setLocalization` runs.
+        await loadDayjsLocale("de");
         setLocalization(GERMAN);
 
         const { leftHeaderItems } = multiLevelPivotForIndexes(

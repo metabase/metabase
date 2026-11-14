@@ -13,6 +13,7 @@ import {
 } from "metabase/ui";
 import {
   getScheduleExplanation,
+  useCronLibraries,
   validateCronExpression,
 } from "metabase/utils/cron";
 
@@ -32,6 +33,7 @@ export function CronExpressionInput({
   getExplainMessage,
   ...flexProps
 }: CronExpressionInputProps) {
+  useCronLibraries();
   const [error, setError] = useState<string | null>(null);
   const handleChange = (cronExpression: string) => {
     // We don't allow to specify "seconds" and "year" components,
@@ -146,9 +148,11 @@ function CustomScheduleExplainer({
   getExplainMessage,
   ...props
 }: ScheduleExplanationProps & TextProps) {
+  const isCronLibrariesLoaded = useCronLibraries();
   const explanation = useMemo(
-    () => getScheduleExplanation(cronExpression),
-    [cronExpression],
+    () =>
+      isCronLibrariesLoaded ? getScheduleExplanation(cronExpression) : null,
+    [cronExpression, isCronLibrariesLoaded],
   );
 
   if (!explanation) {
