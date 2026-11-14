@@ -504,15 +504,20 @@
 (deftest effective-location-path-test
   (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
     (testing "valid input"
-      (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
-                                             ["/10/20/30/" #{10 30}]    "/10/30/"
-                                             ["/10/20/30/" #{}]         "/"
-                                             ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
-        (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
-          (is (= expected
-                 (binding [api/*current-user-permissions-set*
-                           (delay (into #{} (map perms/collection-read-path) visible-ids))]
-                   (collection/effective-location-path {:location path})))))))
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {a :id} {}
+                       :model/Collection {b :id} {:location (format "/%d/" a)}
+                       :model/Collection {c :id} {:location (format "/%d/%d/" a b)}]
+          (let [path (format "/%d/%d/%d/" a b c)]
+            (doseq [[visible-ids expected] {[a b]   (format "/%d/%d/" a b)
+                                            [a c]   (format "/%d/%d/" a c)
+                                            []      "/"
+                                            [a b c] path}]
+              (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
+                (t2/delete! :model/Permissions :collection_id [:in [a b c]])
+                (with-current-user-perms-for-collections! visible-ids
+                  (is (= expected
+                         (collection/effective-location-path {:location path}))))))))))
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
         (testing (format "path '%s'" path)
@@ -837,63 +842,65 @@
     (set (for [perms-path perms-set]
            (replace-ids-with-names perms-path)))))
 
+(defn- collection-ids->names
+  "The names of the Collections of `collections`, a map of test Collections, with `collection-ids`."
+  [collections collection-ids]
+  (let [id->name (into {} (map (juxt :id :name)) (vals collections))]
+    (into #{} (map id->name) collection-ids)))
+
 ;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
 
 (deftest perms-for-archiving-test
   (with-collection-hierarchy! [{:keys [a b c d], :as collections}]
     (testing "To Archive A, you should need *write* perms for A and all of its descendants, but NOT the Root Collection"
-      (is (= #{"/collection/A/"
-               "/collection/B/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
-             (->> (collection/perms-for-archiving a)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"A"
+               "B"
+               "C"
+               "D"
+               "E"
+               "F"
+               "G"}
+             (collection-ids->names collections (collection/collection-ids-for-archiving a)))))
     (testing (str "Now let's move down a level. To archive B, you should need permissions for B only, since B doesn't "
                   "have any descendants and we don't need parent permissions")
-      (is (= #{"/collection/B/"}
-             (->> (collection/perms-for-archiving b)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"B"}
+             (collection-ids->names collections (collection/collection-ids-for-archiving b)))))
     (testing "but for C, you should need perms for C and D, E, F, and G (descendants) but NOT A (parent)"
-      (is (= #{"/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
-             (->> (collection/perms-for-archiving c)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"C"
+               "D"
+               "E"
+               "F"
+               "G"}
+             (collection-ids->names collections (collection/collection-ids-for-archiving c)))))
     (testing "For D you should need D and E (descendant) but NOT C (parent)"
-      (is (= #{"/collection/D/"
-               "/collection/E/"}
-             (->> (collection/perms-for-archiving d)
-                  (perms-path-ids->names collections)))))))
+      (is (= #{"D"
+               "E"}
+             (collection-ids->names collections (collection/collection-ids-for-archiving d)))))))
 
 (deftest perms-for-archiving-exceptions-test
   (testing "If you try to calculate permissions to archive the Root Collection, throw an Exception!"
     (is (thrown-with-msg?
          Exception
          #"You cannot operate on the Root Collection."
-         (collection/perms-for-archiving collection/root-collection))))
+         (collection/collection-ids-for-archiving collection/root-collection))))
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (mt/with-temp [:model/Collection cr-collection {}]
       (mt/with-dynamic-fn-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot operate on the Custom Reports Collection."
-             (collection/perms-for-archiving cr-collection))))))
+             (collection/collection-ids-for-archiving cr-collection))))))
   (testing "Let's make sure we get an Exception when we try to archive a Personal Collection"
     (is (thrown-with-msg?
          Exception
          #"You cannot operate on a Personal Collection."
-         (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
+         (collection/collection-ids-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
   (testing "invalid input"
     (doseq [input [nil {} 1]]
       (testing (format "input = %s" (pr-str input))
         (is (thrown?
              Exception
-             (collection/perms-for-archiving input)))))))
+             (collection/collection-ids-for-archiving input)))))))
 
 (deftest perms-for-archiving-excludes-archived-descendants-test
   (testing "Archived descendants should be excluded from permission requirements"
@@ -903,10 +910,9 @@
                                                              (:f collections) (:g collections)])]}
                   {:archived true})
       ;; Now archiving A should only require perms for A and B (not C, D, E, F, G which are archived)
-      (is (= #{"/collection/A/"
-               "/collection/B/"}
-             (->> (collection/perms-for-archiving a)
-                  (perms-path-ids->names collections)))))))
+      (is (= #{"A"
+               "B"}
+             (collection-ids->names collections (collection/collection-ids-for-archiving a)))))))
 
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
@@ -924,10 +930,9 @@
       ;;           |                           |
       ;;           +-> F -> G                  +-> F -> G
 
-      (is (= #{"/collection/B/"
-               "/collection/C/"}
-             (->> (collection/perms-for-moving b c)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"B"
+               "C"}
+             (collection-ids->names collections (collection/collection-ids-for-moving b c)))))
     (testing "Ok, now let's try moving something with descendants."
       ;; If we move C into B, we need perms for C and all its
       ;; descendants, and B, since it's the new parent
@@ -938,58 +943,53 @@
       ;; A -+-> C -+-> D -> E  ===>  A -> B* -> C* -+-> D* -> E*
       ;;           |                                 |
       ;;           +-> F -> G                        +-> F* -> G*
-      (is (= #{"/collection/B/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
-             (->> (collection/perms-for-moving c b)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"B"
+               "C"
+               "D"
+               "E"
+               "F"
+               "G"}
+             (collection-ids->names collections (collection/collection-ids-for-moving c b)))))
     (testing "Ok, now how about moving B into the Root Collection?"
-      ;;    +-> B                    B* [and Root*]
+      ;;    +-> B                    B*
       ;;    |
       ;; A -+-> C -+-> D -> E  ===>  A -> C -+-> D -> E
       ;;           |                          |
       ;;           +-> F -> G                 +-> F -> G
-      (is (= #{"/collection/root/"
-               "/collection/B/"}
-             (->> (collection/perms-for-moving b collection/root-collection)
-                  (perms-path-ids->names collections)))))
+      (is (= #{"B"}
+             (collection-ids->names collections (collection/collection-ids-for-moving b collection/root-collection)))))
     (testing "How about moving C into the Root Collection?"
       ;;    +-> B                    A -> B
       ;;    |
-      ;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
+      ;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E*
       ;;           |                     |
       ;;           +-> F -> G            +-> F* -> G*
-      (is (= #{"/collection/root/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
-             (->> (collection/perms-for-moving c collection/root-collection)
-                  (perms-path-ids->names collections)))))))
+      (is (= #{"C"
+               "D"
+               "E"
+               "F"
+               "G"}
+             (collection-ids->names collections (collection/collection-ids-for-moving c collection/root-collection)))))))
 
 (deftest perms-for-moving-exceptions-test
   (with-collection-hierarchy! [{:keys [a b], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
-           (collection/perms-for-moving collection/root-collection a))))
+           (collection/collection-ids-for-moving collection/root-collection a))))
     (testing "You should also see an Exception if you try to move a Collection into itself or into one its descendants..."
       (testing "B -> B"
         (is (thrown?
              Exception
-             (collection/perms-for-moving b b))))
+             (collection/collection-ids-for-moving b b))))
       (testing "A -> B"
         (is (thrown?
              Exception
-             (collection/perms-for-moving a b)))))
+             (collection/collection-ids-for-moving a b)))))
     (testing "Let's make sure we get an Exception when we try to *move* a Personal Collection"
       (is (thrown?
            Exception
-           (collection/perms-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))))
+           (collection/collection-ids-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))))
   (testing "invalid input"
     (doseq [[collection new-parent] [[{:location "/"} nil]
                                      [{:location "/"} {}]
@@ -997,10 +997,10 @@
                                      [nil {:location "/"}]
                                      [{}  {:location "/"}]
                                      [1   {:location "/"}]]]
-      (testing (pr-str (list 'perms-for-moving collection new-parent))
+      (testing (pr-str (list 'collection-ids-for-moving collection new-parent))
         (is (thrown?
              Exception
-             (collection/perms-for-moving collection new-parent)))))))
+             (collection/collection-ids-for-moving collection new-parent)))))))
 
 (deftest perms-for-moving-excludes-archived-descendants-test
   (testing "Archived descendants should be excluded from permission requirements"
@@ -1013,10 +1013,8 @@
       (mt/with-temp [:model/Collection destination {:name "Destination"}]
         ;; Now moving A to destination should only require perms for A, B (non-archived descendant), and destination
         ;; Not C, D, E, F, G which are archived
-        (is (= #{(perms/collection-readwrite-path a)
-                 (perms/collection-readwrite-path b)
-                 (perms/collection-readwrite-path destination)}
-               (collection/perms-for-moving a destination)))))))
+        (is (= #{(u/the-id a) (u/the-id b) (u/the-id destination)}
+               (collection/collection-ids-for-moving a destination)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
