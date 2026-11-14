@@ -35,6 +35,7 @@ describe("ProviderTypeIcon", () => {
     "azure",
     "bedrock",
     "ollama",
+    "litellm",
   ] as const)("renders the vendor logo for %s", (type) => {
     renderWithProviders(<ProviderTypeIcon type={type} />);
 
