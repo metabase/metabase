@@ -352,6 +352,8 @@
                               (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
                               (tru "Invalid impersonated native query. Must be a single select statement.")))
            (cond-> {:type                 qp.error-type/invalid-query
+                    ;; a 4xx keeps the message visible to the restricted users who are refused
+                    :status-code          400
                     :impersonation/result result
                     :sql                  sql}
              reason (assoc :reason reason))))

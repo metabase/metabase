@@ -7,6 +7,7 @@
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -141,6 +142,26 @@
                 (is (not (re-find #"Error executing Action" (:error row)))
                     "the row holds the driver message, not the wrapper added after the audited span")
                 (is (= 0 (:result_rows row)))))))))))
+
+(deftest failure-logging-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions [{:keys [action-id]} {:type          :query
+                                             :parameters    []
+                                             :dataset_query (mt/native-query
+                                                             {:query "UPDATE categories SET name = 'x' WHERE id = 1"})}]
+        (mt/with-test-user :crowberto
+          (let [execute (fn [ex]
+                          (mt/with-dynamic-fn-redefs [qp/execute-write-query! (fn [& _] (throw ex))]
+                            (mt/with-log-messages-for-level [messages [metabase.actions.execution :error]]
+                              (is (thrown? ExceptionInfo
+                                           (actions.execution/execute-action! (action/select-action :id action-id) {})))
+                              (mapv :level (messages)))))]
+            (testing "a failed action is logged"
+              (is (= [:error] (execute (ex-info "Error executing query" {})))))
+            (testing "a failure the query processor already logged is not logged again"
+              (is (= [] (execute (ex-info "An error occurred while running the query."
+                                          {:query/error-logged? true})))))))))))
 
 (deftest permission-denial-audit-trail-test
   (testing "a permission denial is audited, and still raises a 403"

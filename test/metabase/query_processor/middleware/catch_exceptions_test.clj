@@ -2,17 +2,20 @@
   "There are additional tests in [[metabase.query-processor.failure-test]]."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.catch-exceptions-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
     :as catch-exceptions]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -219,7 +222,7 @@
                                                                  :log/keys   #{:field-id :field-name}})))))]
             (is (=? [{:level :error, :message "Error processing query: inner"}]
                     (messages)))
-            (is (contains? (set @contexts) {:card-id 2, :field-id 1, :field-name "PASSWORD"}))
+            (is (=? {:card-id 2, :field-id 1, :field-name "PASSWORD"} (last @contexts)))
             (is (not (re-find #"hunter2" (pr-str @contexts))))
             (is (not (re-find #"PASSWORD|field-id|card-id" (pr-str (dissoc result :stacktrace :via)))))
             (is (not-any? :ex-data (:via result))))))))
@@ -282,7 +285,7 @@
                        (qp/process-query
                         (qp/userland-query
                          (mt/mbql-query venues {:fields [!month.id]}))))]
-          (is (=? {:native nil, :preprocessed map?}
+          (is (=? {:native nil, :preprocessed nil}
                   result))
           (testing "nor the SQL a driver put in its ex-data"
             (is (not-any? (comp :sql :ex-data) (cons result (:via result)))))))
@@ -301,3 +304,171 @@
                   result))
           (testing "but not the SQL a driver put in its ex-data, which is server-side detail"
             (is (not-any? (comp :sql :ex-data) (cons result (:via result))))))))))
+
+(def ^:private compiled-sql
+  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" FROM (SELECT * FROM VENUES WHERE \"TIER\" = 1) AS \"__mb_source\"")
+
+(defn- throw-driver-error
+  "Throw what the SQL JDBC driver throws when the database rejects `compiled-sql`."
+  []
+  (let [message (str "Column \"PUBLIC.SHOPS.PRICE\" not found; SQL statement:\n" compiled-sql)]
+    (throw (ex-info (str "Error executing query: " message)
+                    {:type qp.error-type/invalid-query, :sql [compiled-sql]}
+                    (SQLException. message)))))
+
+(defn- throw-schema-error
+  "Throw what a failed `mu/defn` output check throws in dev and test: a message and ex-data holding the whole value."
+  []
+  (let [value {:lib/stage-metadata {:columns [{:name "SECRET_NUM", :fingerprint {:type {:max 42.0}}}]}}]
+    (throw (ex-info (str "Invalid output: " (pr-str value))
+                    {:type :metabase.util.malli.fn/invalid-output, :error {:value value}, :value value}))))
+
+(defn- internal-detail
+  "The server-internal detail found anywhere in `result`."
+  [result]
+  (let [s (pr-str result)]
+    (filterv #(str/includes? s %) ["SELECT" "TIER" "SHOPS" "fingerprint" "stage-metadata" "SECRET_NUM"])))
+
+(defn- every-error [result]
+  (map :error (cons result (:via result))))
+
+(deftest ^:synchronized error-log-query-context-test
+  (testing "the error log line has ids that tie it to the query and to the user's report, and no query text or values"
+    (let [contexts (atom [])
+          log-ctx  (fn [run query]
+                     (reset! contexts [])
+                     (mt/with-dynamic-fn-redefs [log/with-thread-context-fn (fn [context-map f]
+                                                                              (swap! contexts conj context-map)
+                                                                              (f))]
+                       (catch-exceptions run query))
+                     (last @contexts))
+          query    {:database (mt/id), :info {:card-id 3, :dashboard-id 4, :context :question}}]
+      (mt/with-test-user :rasta
+        (with-redefs-fn {#'perms/routing-token-for-db (constantly nil)}
+          (fn []
+            (testing "an unrestricted user"
+              (let [ctx (log-ctx throw-driver-error query)]
+                (is (=? {:user-id      (mt/user->id :rasta)
+                         :database-id  (mt/id)
+                         :card-id      3
+                         :dashboard-id 4
+                         :context      :question}
+                        ctx))
+                (is (not (contains? ctx :response-restricted)))
+                (is (not (re-find #"SELECT|TIER|PRICE" (pr-str ctx))))))
+            (testing "ids the query does not have are left out"
+              (is (= #{:user-id :database-id :context}
+                     (set (keys (log-ctx throw-driver-error {:database (mt/id), :info {:context :ad-hoc}}))))))
+            (testing "ex-data `:log/keys` from the throw site are still there"
+              (is (=? {:field-id 1, :card-id 3}
+                      (log-ctx (fn [] (throw (ex-info "boom" {:field-id 1, :log/keys #{:field-id}}))) query))))
+            (doseq [[restriction redefs]
+                    {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
+                     :impersonation {#'perms/impersonation-enforced-for-db? (constantly true)}
+                     :routing       {#'perms/routing-token-for-db (constantly {:destination-db-id 2})}
+                     :unknown       {#'perms/sandboxed-user-for-db? (fn [_] (throw (ex-info "lookup failed" {})))}}]
+              (testing (str "a row-restricted user: " restriction)
+                (with-redefs-fn redefs
+                  (fn []
+                    (let [ctx (log-ctx throw-driver-error query)]
+                      (is (=? {:response-restricted restriction, :card-id 3} ctx))
+                      (is (not (re-find #"SELECT|TIER|PRICE" (pr-str ctx)))))))))))))))
+
+(deftest ^:synchronized row-restricted-user-error-response-test
+  (let [generic "An error occurred while running the query."]
+    (mt/with-test-user :rasta
+      (doseq [[restriction redefs]
+              {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
+               :impersonation {#'perms/impersonation-enforced-for-db?                 (constantly true)
+                               #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}
+               :routing       {#'perms/routing-token-for-db                          (constantly {:destination-db-id 2})
+                               #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}}]
+        (testing restriction
+          (with-redefs-fn (merge {#'perms/routing-token-for-db (constantly nil)} redefs)
+            (fn []
+              (testing "a database error"
+                (let [result (catch-exceptions throw-driver-error {:database (mt/id)})]
+                  (is (=? {:status :failed, :error generic, :error_type :invalid-query} result))
+                  (is (every? #{generic} (every-error result)))
+                  (is (= [] (internal-detail result)))
+                  (is (nil? (:preprocessed result)))
+                  (is (nil? (:native result)))))
+              (testing "a schema error"
+                (let [result (catch-exceptions throw-schema-error {:database (mt/id)})]
+                  (is (every? #{generic} (every-error result)))
+                  (is (= [] (internal-detail result)))))
+              (testing "a message written for the user is kept"
+                (is (=? {:error "You'll need to pick a value for 'Price' before this query can run."}
+                        (catch-exceptions
+                         (fn [] (throw (ex-info "You'll need to pick a value for 'Price' before this query can run."
+                                                {:type qp.error-type/missing-required-parameter})))
+                         {:database (mt/id)}))))
+              (testing "but not when it repeats a hidden message"
+                (is (= [] (internal-detail
+                           (catch-exceptions
+                            (fn [] (try
+                                     (throw-driver-error)
+                                     (catch Exception e
+                                       (throw (ex-info (str "Timed out: " (ex-message (ex-cause e)))
+                                                       {:type qp.error-type/timed-out}
+                                                       e)))))
+                            {:database (mt/id)})))))
+              (testing "a message thrown with a 4xx status code is kept"
+                (is (=? {:error "Field PASSWORD is not available for querying."}
+                        (catch-exceptions
+                         (fn [] (throw (ex-info "Field PASSWORD is not available for querying."
+                                                {:type qp.error-type/invalid-query, :status-code 400})))
+                         {:database (mt/id)}))))
+              (testing "a permission error is kept"
+                (is (=? {:error "You do not have permissions to run this query."}
+                        (catch-exceptions
+                         (fn [] (throw (ex-info "You do not have permissions to run this query."
+                                                {:type qp.error-type/missing-required-permissions})))
+                         {:database (mt/id)}))))
+              (testing "a non-userland query throws the generic message, without the original as its cause"
+                (let [qp (catch-exceptions/catch-exceptions (fn [_query _rff] (throw-driver-error)))
+                      e  (try
+                           (driver/with-driver :h2
+                             (qp {:type :query, :database (mt/id)} qp.reducible/default-rff))
+                           (catch Exception e
+                             e))]
+                  (is (= generic (ex-message e)))
+                  (testing "marked as logged, since the query processor logged the original message"
+                    (is (= {:type :invalid-query, :query/error-logged? true} (ex-data e))))
+                  (is (nil? (ex-cause e))))))))))
+    (testing "control: an unrestricted user sees every message"
+      (mt/with-test-user :rasta
+        (mt/with-dynamic-fn-redefs [perms/routing-token-for-db (constantly nil)]
+          (is (str/includes? (:error (catch-exceptions throw-driver-error {:database (mt/id)})) compiled-sql))
+          (is (str/includes? (:error (catch-exceptions throw-schema-error {:database (mt/id)})) "fingerprint")))))
+    (testing "an impersonated user who may run native queries still sees the database's message"
+      (mt/with-test-user :rasta
+        (mt/with-dynamic-fn-redefs [perms/routing-token-for-db                           (constantly nil)
+                                    perms/impersonation-enforced-for-db?                 (constantly true)
+                                    qp.perms/current-user-has-adhoc-native-query-perms? (constantly true)]
+          (let [result (catch-exceptions throw-driver-error {:database (mt/id)})]
+            (is (str/starts-with? (:error result) "Column \"PUBLIC.SHOPS.PRICE\" not found"))
+            (is (nil? (:preprocessed result))))
+          (is (= [] (internal-detail (catch-exceptions throw-schema-error {:database (mt/id)})))))))
+    (testing "control: an admin sees every message"
+      (mt/with-test-user :crowberto
+        (mt/with-dynamic-fn-redefs [perms/sandboxed-user-for-db? (constantly true)]
+          (is (str/includes? (:error (catch-exceptions throw-driver-error {:database (mt/id)})) compiled-sql))
+          (is (str/includes? (:error (catch-exceptions throw-schema-error {:database (mt/id)})) "fingerprint")))))
+    (testing "control: with no current user, every message is kept"
+      (is (str/includes? (:error (catch-exceptions throw-driver-error {:database (mt/id)})) compiled-sql)))))
+
+(deftest ^:synchronized user-visible-message-test
+  (let [driver-error (try (throw-driver-error) (catch Exception e e))
+        written      (ex-info "You do not have permissions to run this query."
+                              {:type qp.error-type/missing-required-permissions})]
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [perms/routing-token-for-db (constantly nil)]
+        (testing "an unrestricted user gets the message itself"
+          (is (= (ex-message driver-error) (catch-exceptions/user-visible-message driver-error (mt/id)))))
+        (mt/with-dynamic-fn-redefs [perms/sandboxed-user-for-db? (constantly true)]
+          (testing "a row-restricted user gets the generic message in place of one not written for them"
+            (is (= "An error occurred while running the query."
+                   (catch-exceptions/user-visible-message driver-error (mt/id)))))
+          (testing "a row-restricted user still gets a message written for them"
+            (is (= (ex-message written) (catch-exceptions/user-visible-message written (mt/id))))))))))
