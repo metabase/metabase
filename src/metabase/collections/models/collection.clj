@@ -166,17 +166,6 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
-(defn clear-remote-synced-collection!
-  "Marks any remote-synced-collection as non-remote-synced"
-  []
-  (binding [*clearing-remote-sync* true]
-    (collections.db/clear-remote-synced-flags!)))
-
-(defn has-remote-synced-collection?
-  "Return true if any collections are marked remote-sync"
-  []
-  (pos-int? (collections.db/remote-synced-collection-count)))
-
 (defn library-collection
   "Get the 'library' collection, if it exists."
   []
@@ -258,24 +247,38 @@
   (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
   (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
 
+(defn clear-remote-synced-collection!
+  "Stops syncing every collection except the Library and its descendants, which always sync, returning how many
+  collections changed."
+  []
+  (binding [*clearing-remote-sync* true]
+    (if-let [{:keys [id]} (library-collection)]
+      (t2/with-transaction [_conn]
+        (+ (collections.db/clear-remote-synced-flags! id (str "/" id "/"))
+           (collections.db/set-subtree-remote-synced-flags! id (str "/" id "/") true)))
+      (collections.db/clear-remote-synced-flags!))))
+
 (defn create-library-collection!
-  "Create the Library collection. Returns Created collection. Throws if it already exists."
+  "Create the Library collection, which always syncs. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Semantic layer already exists" {})))
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
+  (let [library       (collections.db/insert-collection! {:name             "Library"
+                                                          :type             library-collection-type
+                                                          :location         "/"
+                                                          :entity_id        library-entity-id
+                                                          :is_remote_synced true})
         base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
+        data          (collections.db/insert-collection! {:name             "Data"
+                                                          :type             library-data-collection-type
+                                                          :location         base-location
+                                                          :entity_id        library-data-entity-id
+                                                          :is_remote_synced true})
+        metrics       (collections.db/insert-collection! {:name             "Metrics"
+                                                          :type             library-metrics-collection-type
+                                                          :location         base-location
+                                                          :entity_id        library-metrics-entity-id
+                                                          :is_remote_synced true})]
     (run! grant-library-collection-permissions! [library data metrics])
     library))
 
@@ -1648,6 +1651,10 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
+                (and (not (contains? collection :is_remote_synced))
+                     (some-> (:location collection) location-path->parent-id collections.db/collection-remote-synced?))
+                (assoc :is_remote_synced true)
+
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
     (assert-valid-remote-synced-parent <>)))
 
@@ -1947,6 +1954,18 @@
                 (get collections (:entity_id coll))))
         entities))
 
+(def ^:private library-stored-names
+  "The names the system-created Library collections are stored and serialized with, by entity id."
+  {library-entity-id            "Library"
+   library-data-entity-id       "Data"
+   library-metrics-entity-id    "Metrics"
+   library-dashboards-entity-id "Dashboards"})
+
+(defn- export-names
+  "A transform fn exporting the stored names of the system-created Library collections, which select localizes."
+  [_store rows names _opts]
+  (mapv (fn [row collection-name] (get library-stored-names (:entity_id row) collection-name)) rows names))
+
 (defn- import-parent-locations
   "A transform fn importing parent Collection entity ids as the locations of their children."
   [store _entities parent-eids opts]
@@ -1958,8 +1977,10 @@
 (defmethod serialization/spec :model/Collection [_]
   {:schema    ::collections.schema/external-collection
    :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :name :namespace :slug :type]
-   :transform {:location          {:as     :parent_id
+               :is_remote_synced :is_sample :namespace :slug :type]
+   :transform {:name              {:export export-names
+                                   :import (fn [_store _entities names _opts] names)}
+               :location          {:as     :parent_id
                                    :export (fn [store _ locations _]
                                              (serialization/column-refs store :model/Collection
                                                                         (map location-path->parent-id locations)))

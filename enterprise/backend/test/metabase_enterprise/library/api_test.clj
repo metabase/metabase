@@ -27,6 +27,25 @@
          (is (= "Semantic layer already exists"
                 (mt/user-http-request :crowberto :post 400 "ee/library"))))))))
 
+(deftest create-library-syncs-test
+  (testing "POST /ee/library syncs the Library and its collections without remote sync"
+    (mt/with-premium-features #{:library}
+      (mt/with-model-cleanup [:model/Collection]
+        (mt/with-discard-model-updates! [:model/Collection]
+          (without-library
+           (mt/user-http-request :crowberto :post 200 "ee/library")
+           (is (= {collection/library-collection-type         true
+                   collection/library-data-collection-type    true
+                   collection/library-metrics-collection-type true}
+                  (t2/select-fn->fn :type :is_remote_synced :model/Collection
+                                    :type [:in [collection/library-collection-type
+                                                collection/library-data-collection-type
+                                                collection/library-metrics-collection-type]])))
+           (testing "and the collections created in it"
+             (let [data-id     (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)
+                   {:keys [id]} (mt/user-http-request :crowberto :post 200 "collection" {:name "Sales" :parent_id data-id})]
+               (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id id)))))))))))
+
 (deftest get-library-test
   (mt/with-premium-features #{:library}
     (mt/with-discard-model-updates! [:model/Collection]

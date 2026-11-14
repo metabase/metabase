@@ -22,9 +22,8 @@
   (remote-sync.task/supersede-stale-tasks!)
   (cond
     (nil? (setting/get-raw-value :remote-sync-url))
-    (when (collections/has-remote-synced-collection?)
-      (log/info "Remote sync is off: no collection is synced any more")
-      (collections/clear-remote-synced-collection!))
+    (when (pos? (collections/clear-remote-synced-collection!))
+      (log/info "Remote sync is off: only the Library syncs"))
 
     (remote-sync/read-only?)
     (let [branch (setting/get :remote-sync-branch)]

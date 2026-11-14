@@ -14,6 +14,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1290,6 +1291,25 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
+
+(deftest library-collection-name-round-trip-test
+  (testing "Library collections export and load with their stored names, not their localized ones"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (collections/create-library-collection!)
+          (mt/with-mock-i18n-bundles! {"zz" {:messages {"Library" "LIBRARY" "Data" "DATA" "Metrics" "METRICS"}}}
+            (mt/with-user-locale "zz"
+              (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                              (storage.files/file-writer dump-dir)))))
+        (let [^File file (m/find-first #(= "library.yaml" (.getName ^File %)) (file-seq (io/file dump-dir)))]
+          (is (=? {:name "Library"} (yaml/from-file file))))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (= #{"Library" "Data" "Metrics"}
+                 (t2/select-fn-set :name :collection :entity_id [:in ["librarylibrarylibrary"
+                                                                      "librarylibrarydatadat"
+                                                                      "librarylibrarymetrics"]]))))))))
 
 (deftest transform-test-round-trip-test
   (testing "A transform test is exported under its transform's path and imported with its transform"
