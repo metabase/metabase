@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import "metabase/css/core/base.css";
 import "metabase/css/core/fonts.css";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { PortalContainer, ThemeProvider } from "metabase/ui";
@@ -127,11 +127,9 @@ const lokiStyles = window.loki?.isRunning
 const globalStyles = css`
   body {
     font-size: 0.875em;
-    ${rootStyle}
   }
 
   ${getSaveDomImageStyles(false)}
-  ${baseStyle}
   ${lokiStyles}
 `;
 

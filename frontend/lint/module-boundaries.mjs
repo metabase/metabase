@@ -389,7 +389,6 @@ const elements = [
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/AppComponent.unit.spec.tsx",
-    "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",

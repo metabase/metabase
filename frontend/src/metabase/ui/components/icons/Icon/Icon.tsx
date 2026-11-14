@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import styled from "@emotion/styled";
 import { Box, type BoxProps, type FloatingPosition } from "@mantine/core";
 import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
@@ -11,6 +9,7 @@ import type { IconName } from "metabase-types/api";
 
 import { Tooltip } from "../../overlays/Tooltip";
 
+import S from "./Icon.module.css";
 import { Icons } from "./icons";
 
 const PALETTE_KEYS = new Set<string>(ALL_COLOR_NAMES);
@@ -85,6 +84,10 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 });
 
 /** An icon that does not shrink when its container is too narrow **/
-export const FixedSizeIcon = styled(Icon)`
-  flex-shrink: 0;
-`;
+export const FixedSizeIcon = forwardRef<SVGSVGElement, IconProps>(
+  function FixedSizeIcon({ className, ...restProps }: IconProps, ref) {
+    return (
+      <Icon ref={ref} className={cx(S.fixedSize, className)} {...restProps} />
+    );
+  },
+);

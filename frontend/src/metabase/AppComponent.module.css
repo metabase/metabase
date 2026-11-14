@@ -1,0 +1,9 @@
+@media print {
+  .printFullHeight {
+    height: 100%;
+  }
+
+  .printOverflowVisible {
+    overflow: visible !important;
+  }
+}
