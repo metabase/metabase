@@ -6,6 +6,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, within } from "__support__/ui";
+import { delay } from "__support__/utils";
 import type { Collection, CollectionType } from "metabase-types/api";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
@@ -205,7 +206,13 @@ describe("collection cleanup", () => {
     });
 
     expect(screen.getByTestId("collection-menu")).toBeVisible();
+    // no request is expected here, so let any request the menu would make start
+    // and settle before asserting that the menu stays hidden
+    await delay(0);
     await fetchMock.callHistory.flush(true);
+    expect(
+      fetchMock.callHistory.calls("path:/api/collection/5/items"),
+    ).toHaveLength(0);
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
