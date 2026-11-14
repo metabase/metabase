@@ -29,7 +29,8 @@
    [metabase.util.malli :as mu]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (set! *warn-on-reflection* true)
 
@@ -206,15 +207,101 @@
                               (ex-data e)
                               e)))))))))
 
+(def ^:private card-columns-a-non-admin-may-change
+  "The Card columns a non-admin may change on a Card in the sandbox dependency set. The sandbox rewrite reads only a
+  Card's query and result metadata, but other code treats a Card differently by its `:type` (model persistence and
+  metadata, metric semantics), its source and table columns, and by the Dashboard or Document it is saved in (deleting
+  one deletes its Cards), so this is an allow-list of the columns that only change how the Card itself is shown,
+  organized, cached, or shared, plus server-maintained bookkeeping. Every other change by a non-admin is refused."
+  #{;; presentation
+    :name :description :display :visualization_settings
+    ;; placement in a Collection
+    :collection_id :collection_position :collection_preview
+    ;; filters for running the Card itself; a Card used as a source does not apply them
+    :parameters :parameter_mappings
+    ;; caching of the Card's own results; cache keys include sandbox filters
+    :cache_ttl :cache_invalidated_at
+    ;; static embedding and public links, which are admin-only
+    :enable_embedding :embedding_params :embedding_type :public_uuid :public_uuid_prefix :made_public_by_id
+    ;; metric dimensions, reconciled when they are read; queries that use the Card do not read them
+    :dimensions :dimension_mappings
+    ;; bookkeeping
+    :view_count :last_used_at :initially_published_at :updated_at :metabase_version
+    :metabot_conversation_id :metabot_chart_id
+    ;; not a column: the caller vouches for the `:result_metadata` it sends, which is itself checked
+    :verified-result-metadata?})
+
+(def card-columns-only-an-admin-may-change
+  "The Card columns only an admin may change on a Card in the sandbox dependency set. The guard refuses every column
+  not in [[card-columns-a-non-admin-may-change]], so this list does not change what it does: it records the decision
+  for each column, and a test checks that every Card column is in one of the two lists."
+  #{;; what the sandbox reads
+    :dataset_query :result_metadata :legacy_query :dataset_query_metrics_v2_migration_backup :card_schema :query_type
+    ;; what the Card is, and what it is built on
+    :type :database_id :table_id :source_card_id
+    ;; its lifecycle: archiving it, or deleting the Dashboard or Document it is saved in, removes it
+    :archived :archived_directly :dashboard_id :document_id
+    ;; identity, which nobody changes
+    :id :entity_id :creator_id :created_at})
+
+(def ^:private snippet-columns-a-non-admin-may-change
+  "The snippet columns a non-admin may change on a snippet in the sandbox dependency set; see
+  [[card-columns-a-non-admin-may-change]]. Snippets are spliced in by name, so `:name` is not one of them."
+  #{:description :collection_id :updated_at})
+
+(def snippet-columns-only-an-admin-may-change
+  "The snippet columns only an admin may change; see [[card-columns-only-an-admin-may-change]]."
+  #{:content :template_tags :name :archived :id :entity_id :creator_id :created_at})
+
+(def ^:private segment-columns-a-non-admin-may-change
+  "The Segment columns a non-admin may change on a Segment in the sandbox dependency set; see
+  [[card-columns-a-non-admin-may-change]]."
+  #{:name :description :caveats :points_of_interest :show_in_getting_started :updated_at})
+
+(def segment-columns-only-an-admin-may-change
+  "The Segment columns only an admin may change; see [[card-columns-only-an-admin-may-change]]."
+  #{:definition :table_id :archived :id :entity_id :creator_id :created_at})
+
+(def ^:private measure-columns-a-non-admin-may-change
+  "The Measure columns a non-admin may change on a Measure in the sandbox dependency set; see
+  [[card-columns-a-non-admin-may-change]]."
+  #{:name :description :dimensions :dimension_mappings :updated_at})
+
+(def measure-columns-only-an-admin-may-change
+  "The Measure columns only an admin may change; see [[card-columns-only-an-admin-may-change]]."
+  #{:definition :table_id :archived :id :entity_id :creator_id :created_at})
+
+(defn- value-changes?
+  "Whether `v` is a new value for column `k` of `instance`. `v` is first sent through the model's `:in` and `:out` type
+  transforms, so an unchanged value in another form, such as `\"question\"` for a stored `:question`, does not count.
+  Without an original to compare with, or if a transform throws, every value counts as a change."
+  [instance k v]
+  (let [original (t2/original instance)]
+    (or (nil? original)
+        (try
+          (let [{:keys [in out]} (get (t2.transformed/transforms (t2/model instance)) k)]
+            (not= (get original k ::not-found)
+                  (cond-> v
+                    (and in (some? v))  in
+                    (and out (some? v)) out)))
+          (catch Exception _
+            true)))))
+
+(defn- check-non-admin-changes-allowed!
+  "Throws a 403 if `changes` to `instance`, an `entity-kind` entity, give a column outside `allowed-columns` a new
+  value, the entity is in the sandbox dependency set, and the current user is not an admin."
+  [entity-kind instance allowed-columns changes]
+  (when (some (fn [[k v]] (and (not (allowed-columns k)) (value-changes? instance k v))) changes)
+    (check-non-admin-cannot-affect-sandboxing! entity-kind (:id instance))))
+
 (defenterprise pre-update-check-sandbox-constraints
-  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
-  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
-  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
-  change types vs. the original Table)."
+  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches a column outside
+  [[card-columns-a-non-admin-may-change]], such as `:dataset_query`, `:result_metadata` (for a Card-backed sandbox,
+  the column allow-list), `:archived`, or `:type`. If the result metadata changes, also checks that it does not
+  violate the constraints placed on sandboxes (the Card cannot add fields or change types vs. the original Table)."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived :result_metadata])
-    (check-non-admin-cannot-affect-sandboxing! :card card-id))
+  [{new-result-metadata :result_metadata, card-id :id, :as card} changes]
+  (check-non-admin-changes-allowed! :card card card-columns-a-non-admin-may-change changes)
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
 
@@ -225,12 +312,11 @@
   (check-non-admin-cannot-affect-sandboxing! :card card-id))
 
 (defenterprise pre-update-check-sandbox-constraints-for-snippet
-  "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches `:content`, `:name`,
-  or `:archived`."
+  "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches a column outside
+  [[snippet-columns-a-non-admin-may-change]], such as `:content`, `:name`, or `:archived`."
   :feature :sandboxes
-  [{snippet-id :id} changes]
-  (when (some #(contains? changes %) [:content :name :archived])
-    (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id)))
+  [snippet changes]
+  (check-non-admin-changes-allowed! :snippet snippet snippet-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-snippet
   "Refuses a non-admin's deletion of a snippet in the sandbox dependency set."
@@ -239,12 +325,11 @@
   (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id))
 
 (defenterprise pre-update-check-sandbox-constraints-for-segment
-  "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches `:definition` or
-  `:archived`."
+  "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches a column outside
+  [[segment-columns-a-non-admin-may-change]], such as `:definition` or `:archived`."
   :feature :sandboxes
-  [{segment-id :id} changes]
-  (when (some #(contains? changes %) [:definition :archived])
-    (check-non-admin-cannot-affect-sandboxing! :segment segment-id)))
+  [segment changes]
+  (check-non-admin-changes-allowed! :segment segment segment-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-segment
   "Refuses a non-admin's deletion of a Segment in the sandbox dependency set."
@@ -253,12 +338,11 @@
   (check-non-admin-cannot-affect-sandboxing! :segment segment-id))
 
 (defenterprise pre-update-check-sandbox-constraints-for-measure
-  "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches `:definition` or
-  `:archived`."
+  "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches a column outside
+  [[measure-columns-a-non-admin-may-change]], such as `:definition` or `:archived`."
   :feature :sandboxes
-  [{measure-id :id} changes]
-  (when (some #(contains? changes %) [:definition :archived])
-    (check-non-admin-cannot-affect-sandboxing! :measure measure-id)))
+  [measure changes]
+  (check-non-admin-changes-allowed! :measure measure measure-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-measure
   "Refuses a non-admin's deletion of a Measure in the sandbox dependency set."
