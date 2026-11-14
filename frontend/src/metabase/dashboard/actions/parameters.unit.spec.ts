@@ -5,13 +5,21 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
+import { getDashboardDrillParameters } from "metabase/dashboard/click-behavior/dashboard-click-drill";
 import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type {
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
+  createMockDashboard,
   createMockDashboardCard,
   createMockField,
   createMockParameter,
@@ -488,4 +496,111 @@ describe("setOrUnsetParameterValues", () => {
     const state = store.getState();
     expect(state.dashboard.parameterValues["123"]).toBe(null);
   });
+
+  it("should not reset any value when only some mapped values match the current values (metabase#59049)", async () => {
+    const store = setupWithParameterValues({
+      parameters: [
+        createMockParameter({ id: "category" }),
+        createMockParameter({ id: "vendor" }),
+      ],
+      parameterValues: { category: ["Gadget"], vendor: null },
+    });
+
+    await store.dispatch(
+      setOrUnsetParameterValues([
+        ["category", ["Gadget"]],
+        ["vendor", ["Price, Schultz and Daniel"]],
+      ]),
+    );
+
+    expect(store.getState().dashboard.parameterValues).toMatchObject({
+      category: ["Gadget"],
+      vendor: ["Price, Schultz and Daniel"],
+    });
+
+    await store.dispatch(
+      setOrUnsetParameterValues([
+        ["category", ["Gadget"]],
+        ["vendor", ["Price, Schultz and Daniel"]],
+      ]),
+    );
+
+    expect(store.getState().dashboard.parameterValues).toMatchObject({
+      category: null,
+      vendor: null,
+    });
+  });
+
+  it("should set and then reset a number filter when the same column value is clicked twice (metabase#56716)", async () => {
+    const parameter = createMockParameter({
+      id: "number-param",
+      slug: "number",
+      type: "number/=",
+    });
+    const store = setupWithParameterValues({
+      parameters: [parameter],
+      parameterValues: {},
+    });
+    const getClickedPairs = () =>
+      getDashboardDrillParameters({
+        column: createMockColumn({ name: "RATING" }),
+        value: 4.6,
+        data: [
+          {
+            col: createMockColumn({
+              name: "RATING",
+              base_type: "type/Float",
+              effective_type: "type/Float",
+            }),
+            value: 4.6,
+          },
+        ],
+        settings: {
+          click_behavior: {
+            type: "crossfilter",
+            parameterMapping: {
+              [parameter.id]: {
+                id: parameter.id,
+                source: { type: "column", id: "RATING", name: "Rating" },
+                target: { type: "parameter", id: parameter.id },
+              },
+            },
+          },
+        },
+        extraData: {
+          dashboard: createMockDashboard({ id: 1, parameters: [parameter] }),
+          parameters: [parameter],
+        },
+      });
+
+    await store.dispatch(setOrUnsetParameterValues(getClickedPairs()));
+    expect(store.getState().dashboard.parameterValues[parameter.id]).toEqual([
+      4.6,
+    ]);
+
+    await store.dispatch(setOrUnsetParameterValues(getClickedPairs()));
+    expect(store.getState().dashboard.parameterValues[parameter.id]).toBe(null);
+  });
 });
+
+interface SetupWithParameterValuesOpts {
+  parameters: Parameter[];
+  parameterValues: Record<ParameterId, ParameterValueOrArray | null>;
+}
+
+function setupWithParameterValues({
+  parameters,
+  parameterValues,
+}: SetupWithParameterValuesOpts) {
+  return setup(
+    createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: 1,
+        dashboards: {
+          "1": createMockStoreDashboard({ id: 1, parameters }),
+        },
+        parameterValues,
+      }),
+    }),
+  );
+}
