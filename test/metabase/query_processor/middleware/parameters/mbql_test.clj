@@ -182,6 +182,22 @@
                    :target [:dimension [:field (meta/id :users :last-login) nil]]
                    :value  value}))))))))
 
+(deftest ^:parallel before-after-date-parameters-test
+  (testing "before and after parameters keep the time"
+    (are [value op unit expected-value] (=? (expanded-query-with-filter
+                                             [op [:field (meta/id :users :last-login) {:temporal-unit unit}] expected-value])
+                                            (expand-parameters
+                                             (query-with-parameters
+                                              {:id     "abc123"
+                                               :name   "foo"
+                                               :type   :date/all-options
+                                               :target [:dimension [:field (meta/id :users :last-login) nil]]
+                                               :value  value})))
+      "~2014-05-10"          :< :day    "2014-05-10"
+      "2014-05-10~"          :> :day    "2014-05-10"
+      "~2014-05-10T09:30:00" :< :minute "2014-05-10T09:30:00"
+      "2014-05-10T09:30:00~" :> :minute "2014-05-10T09:30:00")))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
