@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -554,3 +555,22 @@
                                         [:crowberto "ee/apps/missing/bundle" 404]]]
               (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
                                 [:headers policy-header]))))))))))
+
+(deftest api-key-bundle-access-follows-group-assignments-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/user->id :crowberto)
+      (mt/with-temp [:model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"
+                                         :bundle (.getBytes "BUNDLE" "UTF-8")}
+                     :model/PermissionsGroup group {}]
+        (mt/with-model-cleanup [:model/ApiKey :model/User]
+          (let [{api-key :unmasked_key key-id :id}
+                (mt/user-http-request :crowberto :post 200 "api-key"
+                                      {:group_id (:id group) :name (str (random-uuid))})
+                request-options {:request-options {:headers {"x-api-key"         api-key
+                                                             "x-metabase-client" "data-app"}}}]
+            (client/client :get 403 "ee/apps/birds/bundle" request-options)
+            (group-access/add-groups! app [(:id group)])
+            (is (= "BUNDLE" (client/client :get 200 "ee/apps/birds/bundle" request-options)))
+            (mt/user-http-request :crowberto :delete 204 (str "api-key/" key-id))
+            (client/client :get 401 "ee/apps/birds/bundle" request-options)))))))

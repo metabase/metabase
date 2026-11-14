@@ -1,4 +1,7 @@
-import type { EmbeddedDataApp } from "e2e/support/helpers";
+import type {
+  BaseEmbedTestPageOptions,
+  EmbeddedDataApp,
+} from "e2e/support/helpers";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { MetabaseDataAppElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 
@@ -6,9 +9,15 @@ const { H } = cy;
 
 const APP_FRAME = "iframe[data-metabase-embed]";
 
-const loadDataApp = (path: string) =>
+const loadDataApp = (
+  path: string,
+  options: Pick<BaseEmbedTestPageOptions, "metabaseConfig"> & {
+    origin?: string;
+  } = {},
+) =>
   cy.get<EmbeddedDataApp>("@app").then(({ slug }) =>
     H.loadSdkIframeEmbedTestPage({
+      ...options,
       elements: [
         { component: "metabase-data-app", attributes: { path: slug + path } },
       ],
@@ -89,5 +98,46 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
           .should("eq", response?.body.id);
       },
     );
+  });
+});
+
+describe("scenarios > embedding > metabase-data-app web component > local API key (DAT-18)", () => {
+  beforeEach(() => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
+    H.createEmbeddedDataApp().as("app");
+
+    cy.intercept("POST", "/api/dataset").as("ordersQuery");
+  });
+
+  it("runs the app on an API key from localhost and refuses the key from a production host", () => {
+    cy.get<string>("@apiKey").then((apiKey) => {
+      cy.log("a localhost page runs the app on the key");
+      loadDataApp("/orders", { metabaseConfig: { apiKey } });
+
+      H.getSimpleEmbedIframeContent()
+        .findByLabelText("Order count", { timeout: 30_000 })
+        .should("have.text", "18760");
+
+      cy.wait("@ordersQuery")
+        .its("request.headers.x-api-key")
+        .should("eq", apiKey);
+
+      cy.log("restore the current page's domain");
+      cy.visit("http://localhost:4000");
+
+      cy.log("a production page shows why the key is refused");
+      loadDataApp("/orders", {
+        origin: "http://example.com",
+        metabaseConfig: { apiKey },
+      });
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("Using an API key in production is not allowed.")
+        .should("be.visible");
+
+      H.getSimpleEmbedIframeContent()
+        .findByLabelText("Order count")
+        .should("not.exist");
+    });
   });
 });

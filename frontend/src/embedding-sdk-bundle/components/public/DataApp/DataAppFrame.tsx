@@ -82,11 +82,16 @@ export function DataAppFrame({
           path,
           instanceUrl: authConfig.metabaseInstanceUrl,
           locale,
+          ...(authConfig.apiKey && { apiKey: authConfig.apiKey }),
           _embedReferrer: window.location.href,
         },
       });
 
     const authenticate = async () => {
+      if (authConfig.apiKey) {
+        return;
+      }
+
       try {
         const sessionToken =
           await PLUGIN_EMBEDDING_SDK_AUTH.getOrRefreshSession(
