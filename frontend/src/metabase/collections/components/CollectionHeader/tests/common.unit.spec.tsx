@@ -260,6 +260,74 @@ describe("CollectionHeader", () => {
     });
   });
 
+  describe("root and personal collections", () => {
+    const PERSONAL_COLLECTION = {
+      name: "Robert Tableton's Personal Collection",
+      personal_owner_id: 1,
+      is_personal: true,
+      can_write: true,
+    };
+
+    it("should only offer to edit permissions of the root collection to admins", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: true,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      await userEvent.click(screen.getByLabelText("ellipsis icon"));
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit permissions/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Move/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    it("should not offer a collection menu for the root collection to non-admins with curate access", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: false,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      expect(
+        await screen.findByRole("button", { name: "More info" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+
+    it.each([true, false])(
+      "should not offer a collection menu for a personal collection (isAdmin: %s)",
+      async (isAdmin) => {
+        setup({ collection: PERSONAL_COLLECTION, isAdmin });
+
+        expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+          PERSONAL_COLLECTION.name,
+        );
+        expect(
+          await screen.findByRole("button", { name: "More info" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByLabelText("ellipsis icon"),
+        ).not.toBeInTheDocument();
+      },
+    );
+  });
+
   describe("new collection button", () => {
     it("should have a new collection button with the curate permissions", async () => {
       const collection = { can_write: true };
