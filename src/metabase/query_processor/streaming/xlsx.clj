@@ -103,11 +103,12 @@
 
 (defn- duration-format-string
   "Returns the format string for a duration column, whose cells hold the duration in days."
-  [{::mb.viz/keys [duration-precision]}]
-  (case duration-precision
-    "minutes"      "[h]:mm"
-    "milliseconds" "[h]:mm:ss.000"
-    "[h]:mm:ss"))
+  [{::mb.viz/keys [duration-style duration-precision]}]
+  (let [narrow? (= duration-style "narrow")]
+    (case duration-precision
+      "minutes"      (if narrow? "[h]\"h \"m\"m\"" "[h]:mm")
+      "milliseconds" (if narrow? "[h]\"h \"m\"m \"s.000\"s\"" "[h]:mm:ss.000")
+      (if narrow? "[h]\"h \"m\"m \"s\"s\"" "[h]:mm:ss"))))
 
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.

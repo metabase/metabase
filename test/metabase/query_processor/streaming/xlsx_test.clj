@@ -622,7 +622,11 @@
       {}                                                      "[h]:mm:ss"
       {::mb.viz/duration-precision "minutes"}                 "[h]:mm"
       {::mb.viz/duration-precision "milliseconds"}            "[h]:mm:ss.000"
-      {::mb.viz/duration-style "narrow"}                      "[h]:mm:ss"
+      {::mb.viz/duration-style "narrow"}                      "[h]\"h \"m\"m \"s\"s\""
+      {::mb.viz/duration-style     "narrow"
+       ::mb.viz/duration-precision "minutes"}                 "[h]\"h \"m\"m\""
+      {::mb.viz/duration-style     "narrow"
+       ::mb.viz/duration-precision "milliseconds"}            "[h]\"h \"m\"m \"s.000\"s\""
       {::mb.viz/prefix "~" ::mb.viz/suffix " total"}          "\"~\"[h]:mm:ss\" total\"")))
 
 (deftest duration-export-test
