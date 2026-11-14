@@ -199,10 +199,10 @@
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
         (mt/with-premium-features #{:advanced-permissions}
-          (is (true? (mi/can-write? measure))))
+          (is (true? (mi/can-write? (t2/hydrate measure :can_write)))))
         (testing "including without the advanced-permissions feature"
           (mt/with-premium-features #{}
-            (is (true? (mi/can-write? measure)))))))))
+            (is (true? (mi/can-write? (t2/hydrate measure :can_write))))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write measures"
@@ -218,10 +218,10 @@
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
-             (is (mi/can-write? measure))))
+             (is (mi/can-write? (t2/hydrate measure :can_write)))))
           (testing "but not once the advanced-permissions feature is gone"
             (mt/with-premium-features #{}
-              (is (not (mi/can-write? measure))))))))))
+              (is (not (mi/can-write? (t2/hydrate measure :can_write)))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write measures"
@@ -232,7 +232,7 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (session/with-current-user analyst-id
-          (is (false? (mi/can-write? measure))))))))
+          (is (false? (mi/can-write? (t2/hydrate measure :can_write)))))))))
 
 (deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write measures"
@@ -241,7 +241,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? measure)))))))
+        (is (false? (mi/can-write? (t2/hydrate measure :can_write))))))))
 
 (deftest can-read?-superuser-test
   (testing "Superusers can read measures"
@@ -250,7 +250,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-read? measure)))))))
+        (is (true? (mi/can-read? (t2/hydrate measure :can_read))))))))
 
 (deftest can-read?-with-view-data-and-query-builder-test
   (testing "Users with view-data :unrestricted and create-queries :query-builder can read measures"
@@ -265,7 +265,7 @@
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
         (session/with-current-user user-id
-          (is (true? (mi/can-read? measure))))))))
+          (is (true? (mi/can-read? (t2/hydrate measure :can_read)))))))))
 
 (deftest can-read?-with-manage-table-metadata-test
   (testing "Users with manage-table-metadata :yes can read measures"
@@ -279,7 +279,7 @@
         (perms/add-user-to-group! user-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/manage-table-metadata :yes)
         (session/with-current-user user-id
-          (is (true? (mi/can-read? measure))))))))
+          (is (true? (mi/can-read? (t2/hydrate measure :can_read)))))))))
 
 (deftest can-read?-without-permissions-test
   (testing "Users with no table permissions cannot read measures"
@@ -290,7 +290,7 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (session/with-current-user user-id
-          (is (false? (mi/can-read? measure))))))))
+          (is (false? (mi/can-read? (t2/hydrate measure :can_read)))))))))
 
 (deftest can-read?-view-data-only-not-enough-test
   (testing "Users with only view-data :unrestricted (no query builder perms) cannot read measures"
@@ -304,7 +304,7 @@
         (perms/add-user-to-group! user-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user user-id
-          (is (false? (mi/can-read? measure))))))))
+          (is (false? (mi/can-read? (t2/hydrate measure :can_read)))))))))
 
 (deftest can-create?-superuser-test
   (testing "Superusers can create measures"

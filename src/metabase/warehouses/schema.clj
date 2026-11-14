@@ -49,6 +49,8 @@
     [:features                    {:optional true} [:maybe [:set :keyword]]]
     [:can-manage                  {:optional true} [:maybe :boolean]]
     [:can_upload                  {:optional true} [:maybe :boolean]]
+    [:can_write                   {:optional true} [:maybe :boolean]]
+    [:can_query                   {:optional true} [:maybe :boolean]]
     [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
     [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
     [:router_user_attribute       {:optional true} [:maybe :string]]

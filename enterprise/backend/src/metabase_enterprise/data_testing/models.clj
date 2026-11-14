@@ -86,7 +86,7 @@
   "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
   [transform-id :- ::lib.schema.id/transform]
   (let [transform (data-testing.db/transform transform-id)]
-    (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
+    (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
 
 (mu/defn can-run-test? :- :boolean
   "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
@@ -95,24 +95,13 @@
   (let [transform (data-testing.db/transform transform-id)]
     (boolean
      (and transform
-          (mi/can-read? transform)
+          (mi/can-read? (t2/hydrate transform :can_read))
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
-(defmethod mi/can-read? :model/TransformTest
-  ([instance]
-   (mi/can-read? :model/Transform (:transform_id instance)))
-  ([_model pk]
-   (when-let [transform-test (data-testing.db/transform-test pk)]
-     (mi/can-read? transform-test))))
-
-(defmethod mi/can-write? :model/TransformTest
-  ([instance]
-   (and (remote-sync/can-write? :model/TransformTest (:id instance))
-        (can-save? (:transform_id instance))))
-  ([_model pk]
-   (when-let [transform-test (data-testing.db/transform-test pk)]
-     (mi/can-write? transform-test))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
   "Add whether the current user can write each transform test, loading their transforms at once and checking each
@@ -155,7 +144,7 @@
 
 (defmethod revision/revision-readable? :model/TransformTest
   [_model object]
-  (mi/can-read? (t2/instance :model/TransformTest object)))
+  (mi/can-read? (t2/hydrate (t2/instance :model/TransformTest object) :can_read)))
 
 (defmethod revision/check-revert-available ::saved-test
   [_model]

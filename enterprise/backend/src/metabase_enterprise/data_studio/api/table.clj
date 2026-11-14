@@ -12,7 +12,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -156,7 +157,7 @@
   table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
   lack of query permissions."
   [table]
-  (and (mi/can-write? table) (mi/can-query? table)))
+  (and (mi/can-write? (t2/hydrate table :can_write)) (mi/can-query? (t2/hydrate table :can_query))))
 
 (defn- can-publish-all-tables?
   "This function returns `true` iff you have permission to publish every table passed."

@@ -866,7 +866,9 @@
                                (filter-cards ids))]
             (is (= [plain in-readable-doc]
                    filtered-ids
-                   (filter #(mi/can-read? (t2/select-one :model/Card :id %)) ids))
+                   (into []
+                         (comp (filter mi/can-read?) (map :id))
+                         (t2/hydrate (t2/select :model/Card :id [:in ids] {:order-by [[:id :asc]]}) :can_read)))
                 "the verdicts match mi/can-read? on full rows")
             (is (= (set queries/card-read-check-columns)
                    (set (mapcat keys @loaded)))

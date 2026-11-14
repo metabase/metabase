@@ -187,9 +187,9 @@
           :read  (if-let [snapshots (summary-card-snapshots card document)]
                    (and (mi/current-user-has-full-permissions? :read document)
                         (every? cached-result/viewer-can-view-cached-result? snapshots))
-                   (mi/can-read? document))
+                   (mi/can-read? (t2/hydrate document :can_read)))
           :write (and (nil? (:exploration_id document))
-                      (mi/can-write? document)))))))
+                      (mi/can-write? (t2/hydrate document :can_write))))))))
 
 (def card-read-check-columns
   "The columns `mi/can-read?` reads from a Card.
@@ -206,27 +206,27 @@
 ;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead,
 ;; which loads every candidate before pagination with only [[card-read-check-columns]]. Add a column there if
 ;; this method starts reading another one.
-(defmethod mi/can-read? :model/Card
-  ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
-        (parent-document-permits? instance :read)))
-  ([_ pk]
-   (mi/can-read? (queries.db/card pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Card :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (and (perms/can-read-via-parent-collection? (:collection_id instance))
+                   (parent-document-permits? instance :read)))))
 
-(defmethod mi/can-write? :model/Card
-  ([instance]
-   ;; Cards in audit collection should not be writable.
-   (and
-    (not (and
-          ;; We want to make sure there's an existing audit collection before doing the equality check below.
-          ;; If there is no audit collection, this will be nil:
-          (some? (:id (audit/default-audit-collection)))
-          ;; Is a direct descendant of audit collection
-          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-    (parent-document-permits? instance :write)))
-  ([_ pk]
-   (mi/can-write? (queries.db/card pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Card :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          ;; Cards in audit collection should not be writable.
+          (and
+           (not (and
+                 ;; We want to make sure there's an existing audit collection before doing the equality check below.
+                 ;; If there is no audit collection, this will be nil:
+                 (some? (:id (audit/default-audit-collection)))
+                 ;; Is a direct descendant of audit collection
+                 (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+           (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
+           (parent-document-permits? instance :write)))))
 
 (defn model?
   "Returns true if `card` is a model."
@@ -324,7 +324,7 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (->> (queries.db/metric-cards-for-source-cards (map :id cards))
+              (->> (t2/hydrate (queries.db/metric-cards-for-source-cards (map :id cards)) :can_read)
                    (filter mi/can-read?)))
    :id))
 

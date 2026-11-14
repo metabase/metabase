@@ -52,6 +52,7 @@
         writable-db-ids (when (seq db-ids)
                           (perms/prime-database-perms-cache {:db-ids db-ids})
                           (->> (model-persistence.db/databases db-ids)
+                               (#(t2/hydrate % :can_write))
                                (filter mi/can-write?)
                                (map :id)
                                set))

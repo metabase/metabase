@@ -26,15 +26,13 @@
 ;;;
 ;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.
 
-(defmethod mi/can-read? :model/WorkspaceDatabase
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean api/*is-superuser?*)))
 
-(defmethod mi/can-write? :model/WorkspaceDatabase
-  ([_instance]
-   api/*is-superuser?*)
-  ([_model _pk]
-   api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/WorkspaceDatabase
   [_model _instance]

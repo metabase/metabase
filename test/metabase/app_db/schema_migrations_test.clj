@@ -5001,3 +5001,31 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
+
+(deftest backfill-collection-permission-columns-test
+  (impl/test-migrations ["fonded" "fonder"] [migrate!]
+    (let [group-id      (t2/select-one-fn :id :permissions_group {:order-by [[:id :asc]]})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Backfill collection"
+                                                              :slug      "backfill_collection"
+                                                              :entity_id "backfillcollectionxxx"})
+          write-id      (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/" collection-id)})
+          read-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/read/" collection-id)})
+          root-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   "/collection/namespace/backfill/root/"})
+          row           #(t2/select-one [:permissions :collection_id :perm_type :perm_value] :id %)]
+      (migrate!)
+      (testing "write row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read-and-write"}
+               (row write-id))))
+      (testing "read row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read"}
+               (row read-id))))
+      (testing "row of no Collection"
+        (is (= {:collection_id nil :perm_type nil :perm_value nil}
+               (row root-id))))
+      (testing "Trash rows"
+        (let [trash-id (t2/select-one-fn :id :collection :type "trash")]
+          (is (pos? (t2/count :permissions :collection_id trash-id :perm_value "read-and-write")))
+          (is (zero? (t2/count :permissions :collection_id nil :object (format "/collection/%d/" trash-id)))))))))

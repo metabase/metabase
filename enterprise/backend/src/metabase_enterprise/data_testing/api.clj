@@ -26,7 +26,7 @@
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (data-testing.db/transform-tests {:transform-id transform-id}))
+  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/transform-tests {:transform-id transform-id}) :can_read))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/transform-test.response

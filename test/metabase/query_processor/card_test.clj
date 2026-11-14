@@ -304,16 +304,16 @@
                                     (let [info (assoc info :query-hash (byte-array 0))]
                                       (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
-                (is (not (mi/can-read? disallowed-collection)))
-                (is (not (mi/can-read? parent-card)))
+                (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"\QYou don't have permissions to do that.\E"
                      (process-query-for-card parent-card))))
               (testing "Should not be able to run the child Card either, since it reads the parent"
-                (is (not (mi/can-read? parent-card)))
-                (is (mi/can-read? allowed-collection))
-                (is (mi/can-read? child-card))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                (is (mi/can-read? (t2/hydrate child-card :can_read)))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to view Card"

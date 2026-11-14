@@ -364,10 +364,10 @@
   ;; source tables) - the collection clause alone would leak transform names to collection-granted
   ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
   ;; is cheap.
-  (filter mi/can-read? (cd.db/transforms
-                        (readable-entities-where ids exclude-personal?
-                                                 {:visibility-config archived-inclusive-visibility
-                                                  :exclude-archived? false}))))
+  (filter mi/can-read? (t2/hydrate (cd.db/transforms
+                                    (readable-entities-where ids exclude-personal?
+                                                             {:visibility-config archived-inclusive-visibility
+                                                              :exclude-archived? false})) :can_read)))
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>

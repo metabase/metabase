@@ -9,7 +9,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- attached-dwh-tables
   "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
@@ -33,7 +34,7 @@
     (map #(update % :schema str) tables)
     (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                         :table-ids (into #{} (map :id) tables)}) tables)
-    (filter mi/can-read? tables)
+    (filter mi/can-read? (t2/hydrate tables :can_read))
     (sort-by :name tables) ;; Re-sort because we concat'ed data
     (vec tables)))
 

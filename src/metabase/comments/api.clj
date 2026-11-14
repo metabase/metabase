@@ -145,7 +145,7 @@
     (->> (comments.db/active-user-ids mention-ids)
          (filterv (fn [user-id]
                     (request/with-current-user user-id
-                      (mi/can-read? entity)))))))
+                      (mi/can-read? (t2/hydrate entity :can_read))))))))
 
 (defn notify-comment!
   "Send a notification about comment"

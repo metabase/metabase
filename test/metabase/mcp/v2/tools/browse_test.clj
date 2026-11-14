@@ -751,7 +751,7 @@
       (t2/update! :model/Table :id b-orders {:db_id tenant-b})
       (mt/with-full-data-perms-for-all-users!
         (mt/with-test-user :rasta
-          (is (mi/can-read? (t2/select-one :model/Database :id tenant-b))
+          (is (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id tenant-b) :can_read))
               "precondition: the caller CAN read the destination — so a refusal below is the routing
                guard collapsing it into not-found, not an ordinary permission denial")
           (testing "happy path — the router database is fully browsable"
@@ -1074,8 +1074,8 @@
         (testing "precondition — the fixture built the actor, not some other user"
           (mt/with-test-user :rasta
             (let [table (t2/select-one :model/Table :id t-id)]
-              (is (mi/can-read? table) "metadata permission alone satisfies can-read?")
-              (is (not (mi/can-query? table)) "...and does not satisfy can-query?"))))
+              (is (mi/can-read? (t2/hydrate table :can_read)) "metadata permission alone satisfies can-read?")
+              (is (not (mi/can-query? (t2/hydrate table :can_query))) "...and does not satisfy can-query?"))))
         (testing "the REST endpoint that serves these values refuses this caller"
           (mt/user-http-request :rasta :get 403 (format "field/%d/values" f-id)))
         (testing "so get_fields must refuse them too"

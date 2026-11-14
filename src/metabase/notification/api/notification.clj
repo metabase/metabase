@@ -73,7 +73,7 @@
   "Validate that an inline `:channel` or `:channel_id` handler requires the same permission as creating one."
   [handlers]
   (when (some #(or (:channel %) (:channel_id %)) handlers)
-    (api/check-403 (mi/can-write? :model/Channel))))
+    (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/Channel {}) :can_write)))))
 
 (defn- handler-touches-template?
   [{:keys [template template_id]}]
@@ -90,7 +90,7 @@
    (check-no-resource-templates! handlers)
    (when (or (some handler-touches-template? handlers)
              (some handler-touches-template? existing-handlers))
-     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
+     (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
 
 (defn get-notification
   "Get a notification by id."
@@ -116,9 +116,9 @@
          ;; legacy-active and legacy-user-id only used by alert api, will be removed soon
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
-       (into [] (comp
-                 (map t2.realize/realize)
-                 (filter mi/can-read?)))
+       (into [] (map t2.realize/realize))
+       (#(t2/hydrate % :can_read))
+       (filterv mi/can-read?)
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

@@ -578,7 +578,7 @@
   [notification]
   (case (:payload_type notification)
     :notification/card
-    (mi/can-read? :model/Card (-> notification :payload :card_id))
+    (some-> (notification.db/card (-> notification :payload :card_id)) (t2/hydrate :can_read) mi/can-read?)
 
     :notification/system-event
     (mi/superuser?)
@@ -601,14 +601,14 @@
   [notification]
   (= (:creator_id notification) (mi/current-user-id)))
 
-(defmethod mi/can-read? :model/Notification
-  ([notification]
-   (or
-    (mi/superuser?)
-    (current-user-is-creator? notification)
-    (current-user-is-recipient? notification)))
-  ([_ pk]
-   (mi/can-read? (notification.db/notification pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Notification :can_read]
+  [_model k notification]
+  (vary-meta notification assoc k
+             (boolean
+              (or
+               (mi/superuser?)
+               (current-user-is-creator? notification)
+               (current-user-is-recipient? notification)))))
 
 (defmethod mi/can-create? :model/Notification
   [_ notification]
@@ -638,19 +638,19 @@
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
 
-(defmethod mi/can-write? :model/Notification
+(methodical/defmethod t2/simple-hydrate [:model/Notification :can_write]
   ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
-  ([notification]
-   (or
-    (mi/superuser?)
-    (and
-     (current-user-is-creator? notification)
-     (or
-      (not (premium-features/enable-advanced-permissions?))
-      (perms/current-user-has-application-permissions? :subscription))
-     (current-user-can-read-payload? notification))))
-  ([_model pk]
-   (mi/can-write? (notification.db/notification pk))))
+  [_model k notification]
+  (assoc notification k
+         (boolean
+          (or
+           (mi/superuser?)
+           (and
+            (current-user-is-creator? notification)
+            (or
+             (not (premium-features/enable-advanced-permissions?))
+             (perms/current-user-has-application-permissions? :subscription))
+            (current-user-can-read-payload? notification))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;

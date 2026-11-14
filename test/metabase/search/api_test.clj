@@ -1801,7 +1801,7 @@
                                                      {:archived true}))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
-          (is (not (mi/can-write? :model/Collection collection-id)))))
+          (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))
       (is (= ["card test card is returned"]
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data

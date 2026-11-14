@@ -39,7 +39,7 @@
                     {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
                      (actions/select-actions-for-ids action-ids))]
-    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
+    (t2/hydrate (filterv mi/can-read? (t2/hydrate actions :can_read)) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."

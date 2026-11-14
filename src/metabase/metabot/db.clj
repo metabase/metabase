@@ -429,6 +429,11 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one columns :id database-id))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
@@ -503,7 +508,7 @@
   user whose access comes through that path."
   [table-id]
   (when-let [table (t2/select-one :model/Table :id table-id :active true)]
-    (when (mi/can-read? table)
+    (when (mi/can-read? (t2/hydrate table :can_read))
       (:db_id table))))
 
 (mu/defn tables-by-id
@@ -852,6 +857,20 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
+(mu/defn cards-with-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn tables-with-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table :id [:in table-ids])
+    []))
+
 (mu/defn cards-for-read-check
   "The unarchived Cards with `card-ids`, with only the columns `mi/can-read?` needs to check a Card without another
   query."
@@ -960,7 +979,8 @@
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
   Restricted to top-level Collections unless `include-nested?`."
   [include-nested? :- :boolean]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
@@ -971,7 +991,8 @@
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              :location location
              :archived false
              {:order-by [[:%lower.name :asc]]}))

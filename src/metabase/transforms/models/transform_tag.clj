@@ -25,22 +25,19 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod mi/can-read? :model/TransformTag
-  ([_instance]
-   (api/entitled-data-analyst?))
-  ([_model _pk]
-   (api/entitled-data-analyst?)))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (api/entitled-data-analyst?))))
 
-(defmethod mi/can-write? :model/TransformTag
-  ([instance]
-   (and (remote-sync/can-write? :model/TransformTag (:id instance))
-        (or api/*is-superuser?*
-            (and (api/entitled-data-analyst?)
-                 (let [transforms (transform/transforms-with-tags [(:id instance)])]
-                   (every? mi/can-write? transforms))))))
-  ([_model pk]
-   (when-let [tag (transforms.db/tag pk)]
-     (mi/can-write? tag))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (and (remote-sync/can-write? :model/TransformTag (:id instance))
+               (or api/*is-superuser?*
+                   (and (api/entitled-data-analyst?)
+                        (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                          (every? mi/can-write? (t2/hydrate transforms :can_write)))))))))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
@@ -95,7 +92,7 @@
           ;; Fetch transforms and check can-write? for each
           transforms (when (seq transform-ids)
                        (transforms.db/transforms transform-ids))
-          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
+          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))
           ;; Build tag-id -> can_run map
           tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
                                           (update acc tag_id (fnil conj #{}) transform_id))

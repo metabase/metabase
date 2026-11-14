@@ -94,26 +94,10 @@
    (and (remote-sync/can-write? :model/Transform (:id instance))
         (transform-writable? instance models-cache))))
 
-(defmethod mi/can-read? :model/Transform
-  ([instance]
-   (transform-readable? instance))
-  ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
-     (mi/can-read? transform))))
-
-(defmethod mi/can-write? :model/Transform
-  ([instance]
-   (transform-deletable? instance))
-  ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
-     (mi/can-write? transform))))
-
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
-(defmethod mi/can-query? :model/Transform
-  ([instance]
-   (mi/can-read? instance))
-  ([model pk]
-   (mi/can-read? model pk)))
+(methodical/defmethod t2/simple-hydrate [:model/Transform :can_query]
+  [_model k instance]
+  (assoc instance k (boolean (mi/can-read? (t2/hydrate instance :can_read)))))
 
 (defmethod mi/can-update? :model/Transform
   [instance changes]
@@ -238,27 +222,24 @@
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
-(mu/defn- hydrate-permission :- [:sequential ::instance]
+(mu/defn- hydrate-permission
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
    (`transform-readable?`/`transform-writable?`) with a `models-cache` prefetched once for the whole
    list, so checking N transforms doesn't issue a query per transform."
   [k          :- :keyword
    transforms :- [:sequential ::instance]
    pred       :- [:=> [:cat ::instance ::transforms.u/source-models] [:maybe :boolean]]]
-  (let [models-cache (transforms.u/prefetch-source-models transforms)]
-    (mi/instances-with-hydrated-data
-     transforms k
-     #(into {}
-            (map (fn [{:keys [id] :as transform}]
-                   [id (pred transform models-cache)]))
-            transforms)
-     :id
-     {:default false})))
+  (let [models-cache (transforms.u/prefetch-source-models (into [] (remove nil?) transforms))]
+    (for [transform transforms]
+      (when transform
+        (assoc transform k (boolean (pred transform models-cache)))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
   [_model k transforms]
-  (hydrate-permission k transforms transform-readable?))
+  (for [transform (hydrate-permission k transforms transform-readable?)]
+    (when transform
+      (vary-meta transform assoc k (boolean (get transform k))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."

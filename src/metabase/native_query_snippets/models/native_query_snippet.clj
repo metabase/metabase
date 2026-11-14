@@ -128,17 +128,9 @@
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
-(defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
-
-(defmethod mi/can-write? :model/NativeQuerySnippet
-  ([snippet]
-   (and (snippet.perms/can-write? snippet)
-        (remote-sync/can-write? :model/NativeQuerySnippet (:id snippet))))
-  ([model id]
-   (and (snippet.perms/can-write? model id)
-        (remote-sync/can-write? :model/NativeQuerySnippet id))))
+(methodical/defmethod t2/simple-hydrate [:model/NativeQuerySnippet :can_read]
+  [_model k snippet]
+  (vary-meta snippet assoc k (boolean (snippet.perms/can-read? snippet))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
   [model snippet]

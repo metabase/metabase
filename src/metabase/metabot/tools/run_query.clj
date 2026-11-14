@@ -28,7 +28,8 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -246,13 +247,13 @@
   (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
         source-card (when (= :card kind) (metabot.db/card card-id))]
     (cond
-      (some-> source-card mi/can-read?)
+      (some-> source-card (t2/hydrate :can_read) mi/can-read?)
       {:card-type (:type source-card)
        :entity-id (:entity_id source-card)}
 
       ;; Reading the metric is collection-based and does not imply querying its table.
       (and (= :table kind)
-           (some->> table-id (mi/can-query? :model/Table)))
+           (some-> table-id metabot.db/table (t2/hydrate :can_query) mi/can-query?))
       :base-table
 
       :else
@@ -273,7 +274,7 @@
                          parsed))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
-      (when (some-> card mi/can-read?)
+      (when (some-> card (t2/hydrate :can_read) mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
         ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
@@ -343,8 +344,8 @@
   "Whether `database-id` names a database that exists and the current user can read. `can-read?` alone holds for any
    id when the user is an admin, so it can't tell a deleted database from a live one."
   [database-id]
-  (and (existing-database? database-id)
-       (mi/can-read? :model/Database database-id)))
+  (and (pos-int? database-id)
+       (boolean (some-> (metabot.db/database database-id) (t2/hydrate :can_read) mi/can-read?))))
 
 (defn- token
   "`x`'s name as the query normalizer reads a key or marker: namespace kept, lowercased, `_` read as `-`. nil for
@@ -530,7 +531,8 @@
         ;; Every refusal past this point says something about the SQL of the questions the query reads, and
         ;; compiling expands that SQL, so only a user who can read each of them gets that far. Anyone else gets
         ;; the refusal the QP would give them for a question they can't read.
-        (when (and (or inline-sql? sql-card?) (not-every? #(some-> % mi/can-read?) cards))
+        (when (and (or inline-sql? sql-card?) (or (some nil? cards)
+                                                  (not-every? mi/can-read? (t2/hydrate (into [] cards) :can_read))))
           (no-permission! {:query-id query-id}))
         (when sql-card?
           (check-sql-runnable! query-id (:database normalized) true allow-non-sql?))

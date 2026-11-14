@@ -47,8 +47,8 @@
 (defn- check-destination-collection-perms!
   "When `updates` moves the exploration to a different `collection_id`, verify the current
   user has write perms on the destination (collection or root). Source-side perms are already
-  enforced by the parent `api/write-check` against the exploration itself, which via
-  `:perms/use-parent-collection-perms` requires write on the source collection."
+  enforced by the parent `api/write-check` against the exploration itself, whose write check
+  requires write on the source collection."
   [{old-coll :collection_id} updates]
   (when (and (contains? updates :collection_id)
              (not= old-coll (:collection_id updates)))
@@ -793,7 +793,7 @@
 
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
+  `api/write-check` against the exploration itself, which reads its Collection.
   Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
   `archived` cascades to the same document (skipping any that were directly user-archived,
   mirroring the dashboard / dashboard-question cascade)."

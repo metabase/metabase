@@ -14,7 +14,7 @@
 
 (defn- nil-if-unreadable
   [instance]
-  (when (and instance (mi/can-read? instance))
+  (when (and instance (mi/can-read? (t2/hydrate instance :can_read)))
     instance))
 
 (defn present-table
@@ -51,7 +51,7 @@
   Uses can-read? which checks data permissions, metadata management permissions,
   and collection permissions for published tables."
   [table]
-  (mi/can-read? table))
+  (mi/can-read? (t2/hydrate table :can_read)))
 
 (defn sensitive-fields-table-ids
   "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
@@ -209,7 +209,7 @@
                                    (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (filter mi/can-query? tables)
+                                           filtered-tables (filter mi/can-query? (t2/hydrate tables :can_query))
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -238,7 +238,8 @@
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
-                                     (filter mi/can-read? candidate-tables))
+                                     (filter mi/can-read? (t2/hydrate candidate-tables :can_read)))
+                            can-query? (#(t2/hydrate % :can_query))
                             can-query? (filter mi/can-query?))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)

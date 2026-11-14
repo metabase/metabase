@@ -83,32 +83,31 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Segment
-  ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (segments.db/segment pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Segment :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (let [table (:table (t2/hydrate instance :table))]
+                (mi/can-read? (t2/hydrate table :can_read))))))
 
 ;; Segments can be written by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
 ;; but not on a read-only instance that syncs their table
-(defmethod mi/can-write? :model/Segment
-  ([instance]
-   (let [table (or (:table instance)
-                   (segments.db/table (:table_id instance)))]
-     (and (or (mi/superuser?)
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
-  ([_model pk]
-   (mi/can-write? (segments.db/segment pk))))
+(defn- segment-writable?
+  "Whether the current user can write `instance`, a Segment with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (segments.db/table (:table_id instance)))]
+    (and (or (mi/superuser?)
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
+         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -133,7 +132,7 @@
   [_model k segments]
   (mi/instances-with-hydrated-data
    segments k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? segments) :table))
+   #(u/index-by :id (comp boolean segment-writable?) (t2/hydrate (remove nil? segments) :table))
    :id
    {:default false}))
 

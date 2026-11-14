@@ -120,10 +120,10 @@
           tables)
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
-        (filter mi/can-read? tables))
+        (filter mi/can-read? (t2/hydrate tables :can_read)))
       (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
-            tables))))
+            (cond-> tables can-query (t2/hydrate :can_query))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -255,7 +255,7 @@
   (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Semantic layer/Data collections."))
-    (api/check-403 (every? mi/can-query? tables))))
+    (api/check-403 (every? mi/can-query? (t2/hydrate tables :can_query)))))
 
 (defn- update-tables!
   [ids {:keys [collection_id visibility_type] :as body}]
@@ -344,8 +344,7 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
-          :let [origin-field (t2/hydrate origin-field [:table :db])]
+    (for [origin-field (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
           :when (and (-> origin-field :table :active)
                      (mi/can-read? origin-field))
           :let [origin-field (update origin-field :table schema.table/present-table)]]

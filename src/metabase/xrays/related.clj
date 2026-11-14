@@ -13,7 +13,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.db :as xrays.db]))
+   [metabase.xrays.db :as xrays.db]
+   [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -107,7 +108,7 @@
                              (= (qp.util/normalize-token visibility_type) :normal))
                          (not archived)
                          (not= active false)
-                         (mi/can-read? instance)))))
+                         (mi/can-read? (t2/hydrate instance :can_read))))))
 
 (defn- metrics-for-table
   [table]

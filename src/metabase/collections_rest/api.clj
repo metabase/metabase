@@ -90,13 +90,14 @@
                                              :personal-only                  personal-only
                                              :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
-          (mi/can-read? root)
-          (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
+          (mi/can-read? (t2/hydrate root :can_read))
+          (cons (t2/hydrate root :can_write :is_personal :can_delete :is_remote_synced :parent_id)))))
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
@@ -231,7 +232,7 @@
       collections.children/prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
-                  [:effective_ancestors :can_write]
+                  :effective_ancestors
                   :can_write
                   :is_personal
                   :can_restore
@@ -416,7 +417,7 @@
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (collections.children/visible-model-kwds root-collection model-set)
         restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
-                                  (not (mi/can-read? root-collection)))
+                                  (not (mi/can-read? (t2/hydrate root-collection :can_read))))
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)

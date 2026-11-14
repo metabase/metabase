@@ -316,21 +316,11 @@
     (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
     #{"___no-remote-sync-access"}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
-  [_model k models]
-  (mi/instances-with-hydrated-data
-   models k
-   #(into {}
-          (map (juxt :id mi/can-write?))
-          (t2/hydrate (remove nil? models) :collection))
-   :id
-   {:default false}))
-
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (permissions.db/collection collection-id))
-    (mi/can-write? collection.root/root-collection)))
+    (mi/can-write? (t2/hydrate (api/check-404 (permissions.db/collection collection-id)) :can_write))
+    (mi/can-write? (t2/hydrate collection.root/root-collection :can_write))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -500,23 +490,25 @@
 (defmacro define-collection-based-visibility!
   "Register read perms as determined fully by `:collection_id`.
 
-  Normal form — `target` is a t2-model keyword: installs `mi/can-read?` as a delegate to
+  Normal form — `target` is a t2-model keyword: installs its `:can_read` hydration as a delegate to
   [[can-read-via-parent-collection?]] and registers the model.
-  If a model later needs richer read perms, remove the macro call and write a plain `defmethod`.
+  If a model later needs richer read perms, remove the macro call and write its own `:can_read` hydration.
   The identity-check test in `metabase.permissions.models.permissions-test` will flag silent overrides.
 
   Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
   from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
-  No `mi/can-read?` is installed; the registration only flags the search-model for the semantic-search
+  No hydration is installed; the registration only flags the search-model for the semantic-search
   fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
   [target & {:keys [denormalized-from]}]
   (cond
     (keyword? target)
     `(do
-       (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
-       (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
+       (methodical/defmethod t2/simple-hydrate [~target :can_read]
+         [~'_model k# instance#]
+         (vary-meta instance# assoc k# (boolean (can-read-via-parent-collection? (:collection_id instance#)))))
+       (register-collection-id-only-read-method!
+        ~target
+        (methodical/primary-method t2/simple-hydrate [~target :can_read])))
 
     (string? target)
     ;; Throw unconditionally rather than `assert` — assertions are elided when `*assert*` is false (AOT

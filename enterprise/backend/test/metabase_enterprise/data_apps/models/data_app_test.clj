@@ -121,17 +121,17 @@
     (testing "a superuser can read, write, and create"
       (mt/with-premium-features #{:data-apps}
         (binding [api/*is-superuser?* true]
-          (is (mi/can-read? :model/DataApp id))
-          (is (mi/can-write? :model/DataApp id))
+          (is (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read)))
+          (is (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write)))
           (is (mi/can-create? :model/DataApp {})))))
     (testing "without the data apps feature, a superuser cannot read"
       (mt/with-premium-features #{}
         (binding [api/*is-superuser?* true]
-          (is (not (mi/can-read? :model/DataApp id))))))
+          (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read)))))))
     (testing "a user without access to the app's collection cannot read, write, or create"
       (binding [api/*is-superuser?* false]
-        (is (not (mi/can-read? :model/DataApp id)))
-        (is (not (mi/can-write? :model/DataApp id)))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read))))
+        (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))
         (is (not (mi/can-create? :model/DataApp {})))))))
 
 (deftest two-data-apps-cannot-share-collection-test

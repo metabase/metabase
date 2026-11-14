@@ -105,7 +105,7 @@
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (measures.db/table-database-ids table-ids))
                                     :table-ids table-ids})
-    (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
+    (->> (t2/hydrate (filterv mi/can-read? (t2/hydrate measures :can_read)) :creator :definition_description)
          (mapv with-api-dimensions))))
 
 (defn write-check-and-update-measure!

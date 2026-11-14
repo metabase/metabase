@@ -473,13 +473,13 @@
   (with-dashboard-subscription-in-collection! [_ collection dashboard subscription]
     (testing "An admin has read and write access to any dashboard subscription"
       (binding [api/*is-superuser?* true]
-        (is (mi/can-read? subscription))
-        (is (mi/can-write? subscription))))
+        (is (mi/can-read? (t2/hydrate subscription :can_read)))
+        (is (mi/can-write? (t2/hydrate subscription :can_write)))))
     (mt/with-current-user (mt/user->id :rasta)
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (testing "A non-admin has read and write access to a subscription they created"
-          (is (mi/can-read? subscription))
-          (is (mi/can-write? subscription)))
+          (is (mi/can-read? (t2/hydrate subscription :can_read)))
+          (is (mi/can-write? (t2/hydrate subscription :can_write))))
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
           (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
@@ -488,14 +488,14 @@
                          :model/PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
                          :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
                                                                               :user_id (mt/user->id :rasta)}]
-            (is (mi/can-read? subscription))
-            (is (not (mi/can-write? subscription)))))
+            (is (mi/can-read? (t2/hydrate subscription :can_read)))
+            (is (not (mi/can-write? (t2/hydrate subscription :can_write))))))
         (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
           (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
                                                     :dashboard_id  (u/the-id dashboard)
                                                     :creator_id    (mt/user->id :crowberto)}]
-            (is (not (mi/can-read? subscription)))
-            (is (not (mi/can-write? subscription)))))))))
+            (is (not (mi/can-read? (t2/hydrate subscription :can_read))))
+            (is (not (mi/can-write? (t2/hydrate subscription :can_write))))))))))
 
 (deftest create-permissions-test
   (when config/ee-available?

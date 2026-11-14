@@ -1768,24 +1768,24 @@
                                   audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
-            (is (not (mi/can-write? audit-collection))
+            (is (not (mi/can-write? (t2/hydrate audit-collection :can_write)))
                 "Admin isn't able to write to audit collection")
-            (is (not (mi/can-write? audit-card))
+            (is (not (mi/can-write? (t2/hydrate audit-card :can_write)))
                 "Admin isn't able to write to audit collection card")
-            (is (not (mi/can-write? audit-dashboard))
+            (is (not (mi/can-write? (t2/hydrate audit-dashboard :can_write)))
                 "Admin isn't able to write to audit collection dashboard"))
           (mt/with-premium-features #{}
-            (is (not (mi/can-read? audit-collection))
+            (is (not (mi/can-read? (t2/hydrate audit-collection :can_read)))
                 "Admin isn't able to read audit collection when audit app isn't enabled")
-            (is (not (mi/can-read? audit-card))
+            (is (not (mi/can-read? (t2/hydrate audit-card :can_read)))
                 "Admin isn't able to read audit collection card when audit app isn't enabled")
-            (is (not (mi/can-read? audit-dashboard))
+            (is (not (mi/can-read? (t2/hydrate audit-dashboard :can_read)))
                 "Admin isn't able to read audit collection dashboard when audit app isn't enabled")
-            (is (not (mi/can-read? cr-collection))
+            (is (not (mi/can-read? (t2/hydrate cr-collection :can_read)))
                 "Admin isn't able to read custom reports collection when audit app isn't enabled")
-            (is (not (mi/can-read? cr-card))
+            (is (not (mi/can-read? (t2/hydrate cr-card :can_read)))
                 "Admin isn't able to read custom reports card when audit app isn't enabled")
-            (is (not (mi/can-read? cr-dashboard))
+            (is (not (mi/can-read? (t2/hydrate cr-dashboard :can_read)))
                 "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
 
 (deftest collection-insert-updates-permission-graph-revision-test
@@ -1934,11 +1934,33 @@
   (testing "Only administrators write a collection of the data apps namespace"
     (mt/with-temp [:model/Collection collection {:namespace "data-apps"}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? collection)))
-        (is (true? (mi/can-write? :model/Collection (:id collection)))))
+        (is (true? (mi/can-write? (t2/hydrate collection :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id collection)) :can_write)))))
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? collection)))
-        (is (false? (mi/can-write? :model/Collection (:id collection))))))))
+        (is (false? (mi/can-write? (t2/hydrate collection :can_write))))
+        (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id collection)) :can_write))))))))
+
+(deftest collection-check-hydration-test
+  (mt/with-temp [:model/Collection collection {}]
+    (mt/with-test-user :rasta
+      (testing "check throws on Collection without hydrated answer"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_read is hydrated on a Collection"
+                              (#'mi/can-read? collection)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_write is hydrated on a Collection"
+                              (#'mi/can-write? collection))))
+      (testing "`:can_read` is kept out of row"
+        (let [hydrated (t2/hydrate collection :can_read)]
+          (is (true? (mi/can-read? hydrated)))
+          (is (= collection hydrated))
+          (is (= (keys collection) (keys hydrated)))))
+      (testing "`:can_write` is set on row"
+        (let [hydrated (t2/hydrate collection :can_write)]
+          (is (true? (:can_write hydrated)))
+          (is (true? (mi/can-write? hydrated)))))
+      (testing "hydration throws without columns it reads"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :namespace is set for a Collection"
+                              (t2/hydrate (t2/select-one [:model/Collection :id :type] :id (:id collection))
+                                          :can_read)))))))
 
 (deftest create-library
   (mt/with-empty-h2-app-db!
@@ -1947,13 +1969,12 @@
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
-          (binding [api/*current-user*                 (mt/user->id :rasta)
-                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
-            (is (true? (mi/can-read? library)))
-            (is (false? (mi/can-write? library)))
-            (doseq [sub (collection/descendants library)]
-              (is (true? (mi/can-read? sub)))
-              (is (false? (mi/can-write? sub))))))))
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Collection :id (:id library)) :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id library)) :can_write))))
+            (doseq [{sub-id :id} (collection/descendants library)]
+              (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Collection :id sub-id) :can_read))))
+              (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id sub-id) :can_write)))))))))
     (testing "Creating a Layer when one already exists throws an exception"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries

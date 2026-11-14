@@ -68,7 +68,9 @@
         pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
                                                                  :dashboard-id dashboard-id
                                                                  :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                  (filter (if creator-or-recipient mi/can-read? mi/can-write?))
+                                  (#(if creator-or-recipient
+                                      (filter mi/can-read? (t2/hydrate % :can_read))
+                                      (filter mi/can-write? (t2/hydrate % :can_write))))
                                   models.pulse/maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
                                (map models.pulse/maybe-strip-sensitive-metadata pulses)
@@ -226,7 +228,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
-    (api/check-403 (mi/can-read? pulse))
+    (api/check-403 (mi/can-read? (t2/hydrate pulse :can_read)))
     (-> pulse
         models.pulse/maybe-filter-pulse-recipients
         models.pulse/maybe-strip-sensitive-metadata

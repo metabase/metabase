@@ -21,7 +21,8 @@
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,9 +122,8 @@
   [ids]
   (when (seq ids)
     (into {}
-          (comp (filter mi/can-read?)
-                (map (juxt :id :name)))
-          (mcp.db/collections-for-read-check ids))))
+          (map (juxt :id :name))
+          (filterv mi/can-read? (t2/hydrate (mcp.db/collections-for-read-check ids) :can_read)))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -418,7 +418,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
+  (let [readable (filter mi/can-read? (t2/hydrate (mcp.db/snippets-by-archived-state archived) :can_read))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]

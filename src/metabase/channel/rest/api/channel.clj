@@ -16,12 +16,13 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- remove-details-if-needed
   "Remove the details field if the current user does not have write permissions for the channel."
   [channel]
-  (if (mi/can-write? channel)
+  (if (mi/can-write? (t2/hydrate channel :can_write))
     channel
     (dissoc channel :details)))
 
@@ -38,6 +39,7 @@
   (->> (if include_inactive
          (channel.db/channels)
          (channel.db/active-channels))
+       (#(t2/hydrate % :can_read))
        (filter mi/can-read?)
        (map remove-details-if-needed)))
 

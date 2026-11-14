@@ -319,13 +319,12 @@
       ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
       (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
 
-(defmethod mi/can-write? :model/Action
-  ([action]
-   (and (mi/superuser?)
-        (mi/current-user-has-full-permissions? :write action)))
-  ([model pk]
-   (and (mi/superuser?)
-        (mi/current-user-has-full-permissions? :write model pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Action :can_write]
+  [_model k action]
+  (assoc action k
+         (boolean
+          (and (mi/superuser?)
+               (mi/current-user-has-full-permissions? :write action)))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -334,7 +333,7 @@
 
 (defmethod mi/can-update? :model/Action
   [action changes]
-  (and (mi/can-write? action)
+  (and (mi/can-write? (t2/hydrate action :can_write))
        (collection-writable? (merge action changes))))
 
 (def ^:private action-columns

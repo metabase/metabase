@@ -43,7 +43,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
@@ -679,7 +680,7 @@
   (when-let [card (cond
                     (string? ref)                           (metabot.db/card-by-entity-id ref)
                     repr.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
-    (when (mi/can-read? card)
+    (when (mi/can-read? (t2/hydrate card :can_read))
       card)))
 
 (defn- check-curated-portable-sources!
@@ -1188,7 +1189,7 @@
                        (into {}
                              (comp (filter mi/can-query?)
                                    (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
-                             (metabot.db/table-schema-rows (vec source-table-ids))))
+                             (t2/hydrate (metabot.db/table-schema-rows (vec source-table-ids)) :can_query)))
         describe     (fn [metric-id]
                        (let [r        (get required-by-metric-id metric-id)
                              eid      (when (= :card (:kind r))

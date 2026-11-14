@@ -25,7 +25,8 @@
    [metabase.models.interface :as mi]
    [metabase.query-permissions.core :as query-perms]
    [metabase.serialization.protocol.mp :as serialization.protocol.mp]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,7 +83,7 @@
     api/*current-user-id*   (try
                               (if (and audited? *audit-refusals?*)
                                 (api/read-check row)
-                                (do (api/check-403 (mi/can-read? row)) row))
+                                (do (api/check-403 (mi/can-read? (t2/hydrate row :can_read))) row))
                               (catch clojure.lang.ExceptionInfo e
                                 (if (= 403 (:status-code (ex-data e)))
                                   (do (reset! *last-lookup-refused?* true)
@@ -173,16 +174,16 @@
 (defn- readable?
   "Whether the current user can read the row; with `audited?` a refusal leaves the
   [[api/read-check]] audit trail."
-  [audited? model id]
+  [audited? card-id]
   (if audited?
     (try
-      (api/read-check model id)
+      (api/read-check :model/Card card-id)
       true
       (catch clojure.lang.ExceptionInfo e
         (if (= 403 (:status-code (ex-data e)))
           false
           (throw e))))
-    (mi/can-read? model id)))
+    (mi/can-read? (t2/hydrate (api/check-404 (metabot.db/card card-id)) :can_read))))
 
 (defn- runnable-normalized-query
   "`resolved` normalized, when the current user may run it and see every table and field it
@@ -205,7 +206,7 @@
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
-                 (every? #(readable? audited? :model/Card %) card)
+                 (every? #(readable? audited? %) card)
                  ;; throw on a calculation failure, so it lands in the catch below as a check we
                  ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))

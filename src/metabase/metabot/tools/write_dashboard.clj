@@ -444,7 +444,7 @@
   (when dashboard_id
     (let [dashboard (tools/with-entity {:kind :dashboard, :id dashboard_id}
                       (api/read-check :model/Dashboard dashboard_id))]
-      (when-not (mi/can-write? dashboard)
+      (when-not (mi/can-write? (t2/hydrate dashboard :can_write))
         (dashboard-not-writable! {:dashboard-id dashboard_id}))
       (check-not-trashed! dashboard args)
       dashboard)))
@@ -521,11 +521,11 @@
   [ops]
   (when (shared/curated-only?)
     (when-let [card-ids (seq (placed-card-ids ops))]
-      (let [curated (curation/curated-ids (map #(vector "card" %) card-ids))
-            refused (into []
-                          (filter #(and (not (contains? curated ["card" %]))
-                                        (some-> (metabot.db/card %) mi/can-read?)))
-                          card-ids)]
+      (let [curated   (curation/curated-ids (map #(vector "card" %) card-ids))
+            uncurated (into [] (remove #(contains? curated ["card" %])) card-ids)
+            refused   (into []
+                            (comp (filter mi/can-read?) (map :id))
+                            (t2/hydrate (metabot.db/cards-with-ids uncurated) :can_read))]
         (when (seq refused)
           (cards-not-curated! {:card-ids refused}))))))
 
@@ -538,7 +538,7 @@
   (when-let [card-ids (seq (placed-card-ids ops))]
     (when-let [foreign (seq (filter #(and (not= (:dashboard_id %) (:id dashboard))
                                           (mi/can-read? %))
-                                    (metabot.db/dashboard-questions (vec card-ids))))]
+                                    (t2/hydrate (metabot.db/dashboard-questions (vec card-ids)) :can_read)))]
       (let [shown   (into #{}
                           (mapcat (fn [{:keys [card_id series]}] (cons card_id (map :id series))))
                           (some-> dashboard (t2/hydrate [:dashcards :series]) :dashcards))
@@ -683,23 +683,27 @@
 
 (defn- card-shown-fn
   "A predicate on the cards of `dashcards`: whether the result may show a card's id, name and display.
-  The user must be able to read it. Under [[shared/curated-only?]] it must also be curated, or saved from a chart of
-  this conversation: one in `saved-charts`, or one an earlier call saved. Such a card isn't curated: its id and name
-  are shown because this conversation saved them, and a tool that later uses the card judges it again."
+  The user must be able to read it, which is answered for the cards together. Under [[shared/curated-only?]] it must
+  also be curated, or saved from a chart of this conversation: one in `saved-charts`, or one an earlier call saved.
+  Such a card isn't curated: its id and name are shown because this conversation saved them, and a tool that later
+  uses the card judges it again."
   [dashcards saved-charts]
-  (if-not (shared/curated-only?)
-    mi/can-read?
-    (let [card-ids        (into #{} (keep (comp :id :card)) dashcards)
-          curated         (if (seq card-ids)
-                            (curation/curated-ids (map #(vector "card" %) card-ids))
-                            #{})
-          charts          (into #{} (map :card-id) saved-charts)
-          conversation-id (shared/current-conversation-id)]
-      (fn [{card-id :id :as card}]
-        (and (mi/can-read? card)
-             (or (contains? charts card-id)
-                 (and conversation-id (= conversation-id (:metabot_conversation_id card)))
-                 (contains? curated ["card" card-id])))))))
+  (let [readable (into #{}
+                       (comp (filter mi/can-read?) (map :id))
+                       (t2/hydrate (into [] (keep :card) dashcards) :can_read))]
+    (if-not (shared/curated-only?)
+      #(contains? readable (:id %))
+      (let [card-ids        (into #{} (keep (comp :id :card)) dashcards)
+            curated         (if (seq card-ids)
+                              (curation/curated-ids (map #(vector "card" %) card-ids))
+                              #{})
+            charts          (into #{} (map :card-id) saved-charts)
+            conversation-id (shared/current-conversation-id)]
+        (fn [{card-id :id :as card}]
+          (and (contains? readable card-id)
+               (or (contains? charts card-id)
+                   (and conversation-id (= conversation-id (:metabot_conversation_id card)))
+                   (contains? curated ["card" card-id]))))))))
 
 (defn- dashcard-xml
   "One dashcard of a saved dashboard. A card that `card-shown?` refuses shows its slot only."

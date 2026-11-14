@@ -31,6 +31,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -42,7 +43,8 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -281,7 +283,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
    spins up."
   [database-id]
   (v2.queries/check-execute-sql-enabled! "execute_sql")
-  (when-not (mi/can-read? :model/Database database-id)
+  (when-not (some-> (mcp.db/database database-id) (t2/hydrate :can_read) mi/can-read?)
     (common/throw-not-found :model/Database database-id))
   ;; For an admin, this check says yes on the audit database. The QP refuses SQL there for all users
   ;; (`check-audit-db-permissions` in EE `audit-app.permissions`), so the caller gets that refusal later. Metabot's

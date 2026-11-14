@@ -1199,11 +1199,11 @@
                      :model/Card       card       {:collection_id (:id collection)}]
         (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read? card)))
-            (is (false? (mi/can-write? card))))
+            (is (false? (mi/can-read? (t2/hydrate card :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate card :can_write)))))
           (mt/with-test-user :crowberto
-            (is (false? (mi/can-read? card)))
-            (is (false? (mi/can-write? card)))))))))
+            (is (false? (mi/can-read? (t2/hydrate card :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate card :can_write))))))))))
 
 (deftest card-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write a card in a collection of the data apps namespace"
@@ -1211,12 +1211,12 @@
                    :model/Card       card                {:collection_id collection-id
                                                           :dataset_query (mt/mbql-query venues)}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? card)))
-        (is (true? (mi/can-write? :model/Card (:id card))))
-        (is (true? (:can_write (t2/hydrate card :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate card :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate card :can_write))))
         (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? card)))
+        (is (false? (mi/can-write? (t2/hydrate card :can_write))))
         (is (false? (mi/can-create? :model/Card {:collection_id collection-id})))))))
 
 (defn- venues-query
@@ -1988,10 +1988,10 @@
         (testing user-kw
           (testing "control: a card in an ordinary document in the same collection is writable"
             (is (true? (mt/with-current-user (mt/user->id user-kw)
-                         (mi/can-write? (t2/select-one :model/Card :id doc-card))))))
+                         (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id doc-card) :can_write))))))
           (testing "through mi/can-write?"
             (is (false? (mt/with-current-user (mt/user->id user-kw)
-                          (mi/can-write? (t2/select-one :model/Card :id summary-card))))))
+                          (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id summary-card) :can_write))))))
           (testing "through PUT /api/card/:id"
             (mt/user-http-request user-kw :put 403 (str "card/" summary-card) {:name "Renamed"})
             (is (not= "Renamed" (t2/select-one-fn :name :model/Card :id summary-card)))))))))

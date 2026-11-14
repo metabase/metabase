@@ -37,7 +37,7 @@
     ;; Check for permissions and throw 403 if we don't have them...
     (if include-editable-data-model?
       (schema.table/check-data-model-perms (:table field))
-      (api/check-403 (mi/can-read? field)))
+      (api/check-403 (mi/can-read? (t2/hydrate field :can_read))))
     ;; ...but if we do, return the Field <3
     field))
 
@@ -53,7 +53,7 @@
   (when (seq ids)
     (let [fields (warehouse-schema.db/fields ids)]
       (prime-table-perms-for-fields! fields)
-      (-> (filter mi/can-read? fields)
+      (-> (filter mi/can-read? (t2/hydrate fields :can_read))
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
 
 (defn field-ids->table-ids
@@ -62,6 +62,7 @@
   (->> (when (seq ids)
          (u/prog1 (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table)
            (prime-table-perms-for-fields! <>)))
+       (#(t2/hydrate % :can_read))
        (filter mi/can-read?)
        (keep :table_id)
        set

@@ -15,6 +15,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
@@ -139,7 +140,7 @@
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
     (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
-      (api/check-403 (mi/can-write? (merge instance (:object revision)))))
+      (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
     ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
     (when (contains? #{:model/Segment :model/Measure} model)
@@ -147,8 +148,8 @@
                              not-empty
                              lib-be/normalize-query
                              lib/primary-source-table-id)]
-        (api/check-403 (mi/can-write? (cond-> (merge instance (:object revision))
-                                        table-id (assoc :table_id table-id))))))
+        (api/check-403 (mi/can-write? (t2/hydrate (cond-> (merge instance (:object revision))
+                                                    table-id (assoc :table_id table-id)) :can_write)))))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))

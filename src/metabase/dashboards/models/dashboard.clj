@@ -52,18 +52,18 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-write? :model/Dashboard
-  ([instance]
-   ;; Dashboards in audit collection should be read only
-   (and (not (and
-              ;; We want to make sure there's an existing audit collection before doing the equality check below.
-              ;; If there is no audit collection, this will be nil:
-              (some? (:id (audit/default-audit-collection)))
-              ;; Is a direct descendant of audit collection
-              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
-  ([_ pk]
-   (mi/can-write? (dashboards.db/dashboard pk))))
+(methodical/defmethod t2/simple-hydrate [:model/Dashboard :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          ;; Dashboards in audit collection should be read only
+          (and (not (and
+                     ;; We want to make sure there's an existing audit collection before doing the equality check below.
+                     ;; If there is no audit collection, this will be nil:
+                     (some? (:id (audit/default-audit-collection)))
+                     ;; Is a direct descendant of audit collection
+                     (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+               (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))))
 
 (perms/define-collection-based-visibility! :model/Dashboard)
 

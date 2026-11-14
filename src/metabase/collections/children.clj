@@ -892,19 +892,23 @@
               ;; when fetching root collection, we might have personal collection
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
-    (for [row (annotate-collections parent-collection rows options)]
-      (let [type-value (:type row)]
-        (-> (t2/instance :model/Collection row)
-            collection/maybe-localize-system-collection-name
-            collection/maybe-localize-tenant-collection-name
-            collection/maybe-mark-collection-as-library-root
-            (update :archived api/bit->boolean)
-            (update :is_remote_synced api/bit->boolean)
-            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
-            (dissoc :collection_position :display :moderated_status :icon
-                    :dataset_query :table_id :query_type :is_upload)
-            (assoc :type type-value)
-            update-personal-collection)))))
+    (let [rows        (annotate-collections parent-collection rows options)
+          collections (for [row rows]
+                        (-> (t2/instance :model/Collection row)
+                            collection/maybe-localize-system-collection-name
+                            collection/maybe-localize-tenant-collection-name
+                            collection/maybe-mark-collection-as-library-root
+                            (update :archived api/bit->boolean)
+                            (update :is_remote_synced api/bit->boolean)))]
+      (map (fn [row collection]
+             (-> collection
+                 (dissoc :collection_position :display :moderated_status :icon
+                         :dataset_query :table_id :query_type :is_upload)
+                 (assoc :type (:type row))
+                 update-personal-collection))
+           rows
+           (t2/hydrate collections :can_write :effective_location :can_restore :can_delete
+                       :is_shared_tenant_collection)))))
 
 (defmethod post-process-collection-children :table
   [_ {:keys [models]} _collection rows]
@@ -1246,7 +1250,7 @@
   because you might not be able to see the top-level collections
   but be able to see, children of those invisible top-level collections."
   [root-collection model-set]
-  (if (mi/can-read? root-collection)
+  (if (mi/can-read? (t2/hydrate root-collection :can_read))
     model-set
     (if (or (empty? model-set) (contains? model-set :collection))
       #{:collection}

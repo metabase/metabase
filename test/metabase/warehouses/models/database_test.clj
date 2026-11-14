@@ -1190,7 +1190,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-database-permission-test
   (testing "User with manage-database permission can read database"
@@ -1203,7 +1203,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-table-metadata-on-any-table-test
   (testing "User with manage-table-metadata on any table can read database"
@@ -1216,7 +1216,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -1230,10 +1230,10 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query)))))
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? :model/Database db-id)))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest database-can-query?-manage-database-does-not-grant-query-access-test
   (testing "manage-database alone does NOT grant query access"
@@ -1246,7 +1246,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id)))))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest router-database-id-is-immutable-test
   (testing "updating a database's router_database_id throws"

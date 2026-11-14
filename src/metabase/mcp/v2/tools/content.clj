@@ -84,9 +84,9 @@
   (try
     (let [ids (lib/all-source-card-ids-recursive query)]
       (or (empty? ids)
-          (let [cards (mcp.db/select-by-ids :model/Card ids)]
+          (let [cards (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read)]
             (and (= (count cards) (count ids))
-                 (every? mi/can-read? cards)))))
+                 (every? mi/can-read? (t2/hydrate cards :can_read))))))
     (catch Exception _ false)))
 
 (def ^:private max-native-summary-length
@@ -414,7 +414,7 @@
     (common/throw-teaching-error
      (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
-    (when-not (and notification (mi/can-read? notification))
+    (when-not (and notification (mi/can-read? (t2/hydrate notification :can_read)))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
      (redaction/hydrate-and-redact-notification notification))))
@@ -441,12 +441,12 @@
   (let [pulse-id (subscription-pulse-id id-or-eid)]
     (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
-        (if (and pulse-row (mi/can-read? pulse-row))
+        (if (and pulse-row (mi/can-read? (t2/hydrate pulse-row :can_read)))
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
             (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
-              (when (and notification (mi/can-read? notification))
+              (when (and notification (mi/can-read? (t2/hydrate notification :can_read)))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
           (common/throw-not-found :subscription id-or-eid)))))

@@ -523,7 +523,7 @@
                                                  :active     true
                                                  :created_at :%now
                                                  :updated_at :%now})]
-          (with-redefs [mi/can-read? (constantly true)]
+          (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "table" :id table-id}]})]
               (is (not (str/includes? result "destination-table"))))))))))
@@ -540,7 +540,7 @@
                                                            :database_id destination-id}
                      :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric
                                                            :database_id destination-id}]
-        (with-redefs [mi/can-read? (constantly true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
           (testing "model"
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "model" :id model-id}]})]
@@ -584,7 +584,7 @@
           (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
                                        :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
-            (is (not (mi/can-query? :model/Database (mt/id))))
+            (is (not (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_query))))
             (is (some? (shared.content-store/query-for-export query false))))))
       (testing "and not exportable when the card is not readable"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -617,8 +617,8 @@
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
                                      :perms/manage-table-metadata :yes)
         (mt/with-test-user :rasta
-          (is (mi/can-read? :model/Database (mt/id)))
-          (is (not (mi/can-query? :model/Database (mt/id))))
+          (is (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+          (is (not (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_query))))
           (let [out (user-context/format-viewing-context viewing)]
             (is (str/includes? out "notebook editor"))
             (is (not (str/includes? out "source-table")))

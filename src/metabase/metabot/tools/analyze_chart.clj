@@ -15,7 +15,8 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.util.quoting :as quoting]
-   [tech.v3.resource :as resource]))
+   [tech.v3.resource :as resource]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,7 +83,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                                id))
                            (:user_is_viewing (shared/current-context)))]
     (let [card (metabot.db/card card-id)]
-      (when (and (#{:question :model} (:type card)) (mi/can-read? card))
+      (when (and (#{:question :model} (:type card)) (mi/can-read? (t2/hydrate card :can_read)))
         {:id card-id :type (name (:type card))}))))
 
 (defn- read-values-steps

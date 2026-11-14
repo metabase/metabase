@@ -246,7 +246,7 @@
 (defn- redact-dashcard!
   "The dashcard as [[redaction/redact-dashboard]] returns it to a caller who can read every card except `hidden-ids`."
   [dashcard hidden-ids]
-  (with-redefs [mi/can-read? (fn [card] (not (contains? hidden-ids (:id card))))]
+  (mt/with-dynamic-fn-redefs [mi/can-read? (fn [card] (not (contains? hidden-ids (:id card))))]
     (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))
 
 (deftest unreadable-dashcard-loses-its-card-describing-settings-test
@@ -279,7 +279,7 @@
       (testing "readable: nothing is stripped"
         (is (= dashcard (redact-dashcard! dashcard #{}))))
       (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
-        (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
+        (let [dc (mt/with-dynamic-fn-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
                    (first (:dashcards (redaction/redact-dashboard
                                        {:dashcards [(assoc dashcard
                                                            :card   {:id 12}

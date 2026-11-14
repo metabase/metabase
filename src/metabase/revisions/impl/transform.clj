@@ -14,4 +14,4 @@
   [_model object]
   ;; A transform is readable only to callers entitled to the source database it reads from, so each historical
   ;; revision is authorized against the source *it* recorded, not the current one.
-  (mi/can-read? (t2/instance :model/Transform object)))
+  (mi/can-read? (t2/hydrate (t2/instance :model/Transform object) :can_read)))
