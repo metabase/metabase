@@ -19,6 +19,7 @@ import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -43,6 +44,7 @@ import {
   fetchDashboardCardData,
   reloadDashboardCards,
 } from "./data-fetching";
+import { setParameterValue } from "./parameters";
 
 type SetupOpts = {
   dashboards?: Dashboard[];
@@ -634,10 +636,7 @@ describe("fetchDashboardCardData", () => {
 describe("fetchCardDataAction", () => {
   it("should not rerun a query when the last result lists the same parameters in another order (metabase#39863)", async () => {
     const dashboardId = 400;
-    // This depends on the backend possibly returning `json_query.parameters`
-    // in a different order than they were sent (Clojure stops keeping map
-    // order at 9 or more entries). The mock below simulates that by reversing
-    // them, and the frontend must compare the parameters regardless of order.
+    // Clojure maps stop preserving insertion order at nine entries.
     const parameters = _.range(1, 10).map((index) =>
       createMockParameter({
         id: String(index),
@@ -677,28 +676,61 @@ describe("fetchCardDataAction", () => {
     });
 
     const queryUrl = `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${card.id}/query`;
-    fetchMock.post(queryUrl, ({ options }) => {
-      const body: unknown = JSON.parse(String(options.body));
-      const requestParameters =
-        body != null &&
-        typeof body === "object" &&
-        "parameters" in body &&
-        Array.isArray(body.parameters)
-          ? body.parameters
-          : [];
-      return createMockDataset({
-        json_query: {
-          ...card.dataset_query,
-          parameters: [...requestParameters].reverse(),
-        },
-      });
-    });
+    fetchMock.post(
+      queryUrl,
+      ({ options }) => {
+        const body: unknown = JSON.parse(String(options.body));
+        const requestParameters =
+          body != null &&
+          typeof body === "object" &&
+          "parameters" in body &&
+          Array.isArray(body.parameters)
+            ? body.parameters
+            : [];
+        return createMockDataset({
+          json_query: {
+            ...card.dataset_query,
+            parameters: [...requestParameters].reverse(),
+          },
+        });
+      },
+      { delay: 100 },
+    );
+    const getLastQueryBody = () => {
+      const call = checkNotNull(fetchMock.callHistory.lastCall(queryUrl));
+      const body: unknown = JSON.parse(String(call.options.body));
+      return body;
+    };
+    const expectedParameters = parameters.map((parameter, index) => ({
+      id: parameter.id,
+      type: "number/<=",
+      target: ["dimension", ["field", index + 1, null]],
+      value: [10],
+    }));
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({ parameters: expectedParameters }),
+    );
 
     await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
 
+    await store.dispatch(setParameterValue(parameters[0].id, [20]));
     await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
-    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({
+        parameters: expectedParameters.map((parameter, index) => ({
+          ...parameter,
+          value: index === 0 ? [20] : [10],
+        })),
+      }),
+    );
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
   });
 });
 

@@ -101,15 +101,19 @@ const HEADING_CARD = createMockVirtualCard({ display: "heading" });
 
 type SetupOpts = {
   dashboard: Partial<Dashboard>;
+  dashboardFetchDelay?: number;
 };
 
-async function setup({ dashboard: dashboardOpts }: SetupOpts) {
+async function setup({
+  dashboard: dashboardOpts,
+  dashboardFetchDelay,
+}: SetupOpts) {
   const dashboard = createMockDashboard({ id: DASHBOARD_ID, ...dashboardOpts });
   const database = createSampleDatabase();
 
   setupNotificationChannelsEndpoints({});
   setupDatabasesEndpoints([database]);
-  setupDashboardEndpoints(dashboard);
+  setupDashboardEndpoints(dashboard, { delay: dashboardFetchDelay });
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata({ databases: [database] }),
@@ -317,6 +321,7 @@ describe("DashboardApp > tabs", () => {
       dashboard: {
         dashcards: [createHeadingDashcard({ id: 1, text: "Existing heading" })],
       },
+      dashboardFetchDelay: 300,
     });
 
     await startEditing();
@@ -327,13 +332,13 @@ describe("DashboardApp > tabs", () => {
       await screen.findByRole("button", { name: "Discard changes" }),
     );
 
-    await waitFor(() =>
-      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
-    );
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument();
+      expect(screen.queryAllByRole("tab")).toHaveLength(0);
+      expect(screen.getByText("Existing heading")).toBeInTheDocument();
+      expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
+    });
     expect(screen.queryByText(/There's nothing here/)).not.toBeInTheDocument();
-    expect(await screen.findByText("Existing heading")).toBeInTheDocument();
-    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
 
     await startEditing();
     await userEvent.click(screen.getByLabelText("Add a heading or text box"));
