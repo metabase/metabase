@@ -86,8 +86,8 @@
 
 .badgeOverlay {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
+  top: -0.125rem;
+  right: -0.125rem;
 }
 
 .upperGroup {
