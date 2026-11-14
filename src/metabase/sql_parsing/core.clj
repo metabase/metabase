@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
+   (java.util IdentityHashMap)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -501,9 +502,18 @@
 
       :else error)))
 
+(defn cached-by-identity!
+  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`."
+  [^IdentityHashMap cache k compute]
+  (if (.containsKey cache k)
+    (.get cache k)
+    (let [result (compute)]
+      (.put cache k result)
+      result)))
+
 (defn- convert-field
-  "Convert a field spec from Python format to Clojure format."
-  [field]
+  "Convert a field spec from Python format to Clojure format. `cache` holds the composite fields converted so far."
+  [cache field]
   (when field
     (let [field-type (some-> (or (:type field) (get field "type")) convert-field-type)]
       (case field-type
@@ -512,7 +522,7 @@
          :column (or (:column field) (get field "column"))
          :alias (or (:alias field) (get field "alias"))
          :source-columns (mapv (fn [scope]
-                                 (mapv convert-field scope))
+                                 (mapv #(convert-field cache %) scope))
                                (or (:source-columns field)
                                    (:source_columns field)
                                    (get field "source_columns")
@@ -533,21 +543,20 @@
 
         :custom-field
         {:type :custom-field
-         :alias (or (:alias field) (get field "alias"))
-         :used-fields (set (map convert-field
-                                (or (:used-fields field)
-                                    (:used_fields field)
-                                    (get field "used_fields")
-                                    [])))}
+         :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
-        {:type :composite-field
-         :alias (or (:alias field) (get field "alias"))
-         :member-fields (mapv convert-field
-                              (or (:member-fields field)
-                                  (:member_fields field)
-                                  (get field "member_fields")
-                                  []))}
+        (cached-by-identity!
+         cache
+         field
+         (fn []
+           {:type          :composite-field
+            :alias         (or (:alias field) (get field "alias"))
+            :member-fields (mapv #(convert-field cache %)
+                                 (or (:member-fields field)
+                                     (:member_fields field)
+                                     (get field "member_fields")
+                                     []))}))
 
         :unknown-columns
         {:type :unknown-columns}
@@ -570,7 +579,6 @@
    - :alias - column alias (nil if none)
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
    - :member-fields - list of fields (for composite-field)
 
    On timeout, returns an error map instead of throwing, consistent with the
@@ -580,9 +588,10 @@
     (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-          errors (or (:errors raw) (get raw "errors") [])]
-      {:used-fields (set (map convert-field used-fields))
-       :returned-fields (vec (map convert-field returned-fields))
+          errors (or (:errors raw) (get raw "errors") [])
+          cache (IdentityHashMap.)]
+      {:used-fields (set (map #(convert-field cache %) used-fields))
+       :returned-fields (vec (map #(convert-field cache %) returned-fields))
        :errors (set (map convert-error errors))})
     (catch TimeoutException e
       {:used-fields #{}
