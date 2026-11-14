@@ -94,23 +94,20 @@ export function applyResponsiveYAxisTicks(
     if (axisModel == null || axis.type !== "value") {
       return axis;
     }
-    const isResponsive = axisModel.hasResponsiveTicks && !hasCustomSplitNumber;
-    const durationOptions = getDurationOptions(axisModel, settings);
-    if (!isResponsive && durationOptions == null) {
-      return axis;
-    }
     const extent = getAxisExtent(
       axisModel,
       chartModel,
       settings,
       isSplitPanels || index === 0,
     );
+    const isResponsive = axisModel.hasResponsiveTicks && !hasCustomSplitNumber;
+    const durationOptions = getDurationOptions(axisModel, settings);
     if (durationOptions != null) {
       const maxSegments = isResponsive
         ? getResponsiveYAxisSegments(height)
-        : (axis.splitNumber ?? DEFAULT_Y_AXIS_SPLIT_NUMBER);
+        : (axisModel.splitNumber ?? DEFAULT_Y_AXIS_SPLIT_NUMBER);
       return getDurationYAxisTicks(extent, axis, maxSegments, durationOptions);
     }
-    return getResponsiveYAxisTicks(extent, axis, height);
+    return isResponsive ? getResponsiveYAxisTicks(extent, axis, height) : axis;
   });
 }

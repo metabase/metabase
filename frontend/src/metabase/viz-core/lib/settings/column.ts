@@ -270,6 +270,18 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 const DURATION_SAMPLE_SECONDS = 3723.25;
 
+function formatDurationSample({
+  duration_style,
+  duration_precision,
+  number_separators,
+}: ColumnSettings) {
+  return formatDuration(DURATION_SAMPLE_SECONDS, {
+    duration_style,
+    duration_precision,
+    number_separators,
+  });
+}
+
 function getDurationUnitOptions(): { name: string; value: DurationUnit }[] {
   return [
     { name: t`Nanoseconds`, value: "nanosecond" },
@@ -292,26 +304,21 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     // Each option is the same sample value rendered in that style, so the
     // examples reflect the column's separators and currency.
     getProps: (_column, settings) => ({
-      options: [
-        ...(["decimal", "percent", "currency", "scientific"] as const).map(
-          (numberStyle) => ({
-            name: formatNumber(1.23, {
-              number_style: numberStyle,
-              number_separators: settings.number_separators,
-              currency: settings.currency,
-              currency_style: "symbol",
-              currency_position: settings.currency_position,
-            }),
-            value: numberStyle,
-          }),
-        ),
-        {
-          name: formatDuration(DURATION_SAMPLE_SECONDS, {
+      options: (
+        ["decimal", "percent", "currency", "scientific", "duration"] as const
+      ).map((numberStyle) => ({
+        name: formatNumber(
+          numberStyle === "duration" ? DURATION_SAMPLE_SECONDS : 1.23,
+          {
+            number_style: numberStyle,
             number_separators: settings.number_separators,
-          }),
-          value: "duration",
-        },
-      ],
+            currency: settings.currency,
+            currency_style: "symbol",
+            currency_position: settings.currency_position,
+          },
+        ),
+        value: numberStyle,
+      })),
     }),
     getDefault: getDefaultNumberStyle,
     readDependencies: ["currency"],
@@ -335,10 +342,9 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "radio",
     getProps: (_column, settings) => ({
       options: (["digital", "narrow"] as const).map((durationStyle) => ({
-        name: formatDuration(DURATION_SAMPLE_SECONDS, {
+        name: formatDurationSample({
+          ...settings,
           duration_style: durationStyle,
-          duration_precision: settings.duration_precision,
-          number_separators: settings.number_separators,
         }),
         value: durationStyle,
       })),
@@ -355,10 +361,9 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getProps: (_column, settings) => ({
       options: (["minutes", "seconds", "milliseconds"] as const).map(
         (durationPrecision) => ({
-          name: formatDuration(DURATION_SAMPLE_SECONDS, {
-            duration_style: settings.duration_style,
+          name: formatDurationSample({
+            ...settings,
             duration_precision: durationPrecision,
-            number_separators: settings.number_separators,
           }),
           value: durationPrecision,
         }),
