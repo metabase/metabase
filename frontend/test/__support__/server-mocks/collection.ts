@@ -407,10 +407,32 @@ export function setupDashboardQuestionCandidatesEndpoint(
   });
 }
 
-export function setupStaleItemsEndpoint(total: number) {
-  fetchMock.get("express:/api/ee/stale/:id", {
-    total,
-  });
+/**
+ * Mocks the stale item count request (`GET /api/ee/stale/:id?limit=0`). When
+ * `collectionId` or `beforeDate` is given, a request for another collection or
+ * cutoff date gets a total of 0.
+ */
+export function setupStaleItemsEndpoint(
+  total: number,
+  {
+    collectionId,
+    beforeDate,
+  }: { collectionId?: CollectionId; beforeDate?: string } = {},
+) {
+  fetchMock.get(
+    "express:/api/ee/stale/:id",
+    ({ url, expressParams }) => {
+      const params = new URL(url).searchParams;
+      const isMatch =
+        (collectionId === undefined ||
+          expressParams?.id === String(collectionId)) &&
+        (beforeDate === undefined ||
+          params.get("before_date") === beforeDate) &&
+        params.get("limit") === "0";
+      return { data: [], total: isMatch ? total : 0, limit: 0, offset: 0 };
+    },
+    { name: "stale-items" },
+  );
 }
 
 export function setupCreateCollectionEndpoint(

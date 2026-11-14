@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupStaleItemsEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, within } from "__support__/ui";
-import type { CollectionType } from "metabase-types/api";
+import { delay } from "__support__/utils";
+import type { Collection, CollectionType } from "metabase-types/api";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { setup } from "./setup";
@@ -151,5 +157,72 @@ describe("Official Collections Header", () => {
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
     expect(queryIcon("official_collection")).not.toBeInTheDocument();
+  });
+});
+
+describe("collection cleanup", () => {
+  const setupCleanup = ({
+    collection,
+    isAdmin,
+  }: {
+    collection: Partial<Collection>;
+    isAdmin: boolean;
+  }) => {
+    fetchMock.get(`path:/api/collection/${collection.id}/items`, {
+      data: [],
+      total: 10,
+    });
+    setupStaleItemsEndpoint(10);
+    setupUserKeyValueEndpoints({
+      key: "clean-stale-items",
+      namespace: "user_acknowledgement",
+      value: false,
+    });
+    setup({
+      collection,
+      isAdmin,
+      enterprisePlugins: ["clean_up"],
+      tokenFeatures: { collection_cleanup: true },
+    });
+  };
+
+  it("should show the collection menu to users with write access", async () => {
+    setupCleanup({
+      collection: { id: 5, can_write: true },
+      isAdmin: false,
+    });
+
+    expect(screen.getByTestId("collection-menu")).toBeVisible();
+    await userEvent.click(getIcon("ellipsis"));
+    expect(
+      await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the collection menu to users without write access", async () => {
+    setupCleanup({
+      collection: { id: 5, can_write: false },
+      isAdmin: false,
+    });
+
+    expect(screen.getByTestId("collection-menu")).toBeVisible();
+    // no request is expected here, so let any request the menu would make start
+    // and settle before asserting that the menu stays hidden
+    await delay(0);
+    await fetchMock.callHistory.flush(true);
+    expect(
+      fetchMock.callHistory.calls("path:/api/collection/5/items"),
+    ).toHaveLength(0);
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should not show the collection actions in a trashed collection", () => {
+    setupCleanup({
+      collection: { id: 5, can_write: true, archived: true },
+      isAdmin: true,
+    });
+
+    expect(screen.queryByTestId("collection-menu")).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 });

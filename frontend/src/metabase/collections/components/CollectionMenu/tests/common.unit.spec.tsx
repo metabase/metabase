@@ -127,6 +127,20 @@ describe("CollectionMenu", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should not offer to clear out unused items without the enterprise plugin", async () => {
+    setup({
+      collection: createMockCollection({ can_write: true }),
+      isAdmin: true,
+      numberOfStaleItems: 10,
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(await screen.findByText("Edit permissions")).toBeVisible();
+    expect(
+      screen.queryByText("Clear out unused items"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should not show 'Move questions into their dashboards' option if there's no dashboard question candidates", async () => {
     setup({
       collection: createMockCollection({ can_write: true }),

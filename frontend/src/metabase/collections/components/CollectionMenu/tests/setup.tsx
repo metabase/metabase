@@ -10,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import type {
   Collection,
@@ -23,6 +24,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionMenu } from "../CollectionMenu";
+
+const THREE_MONTHS_AGO = dayjs()
+  .startOf("day")
+  .subtract(3, "months")
+  .format("YYYY-MM-DD");
 
 export interface SetupOpts {
   collection?: Collection;
@@ -53,9 +59,17 @@ export const setup = ({
 }: SetupOpts) => {
   // We need a mock to get the total number of items in a collection, but we don't need to
   // access the data - only the total
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
-    total: numberOfCollectionItems,
-  });
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    ({ url }) => ({
+      data: [],
+      total:
+        new URL(url).searchParams.get("limit") === "0"
+          ? numberOfCollectionItems
+          : 0,
+    }),
+    { name: "collection-item-count" },
+  );
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
   setupUserKeyValueEndpoints({
     namespace: "indicator-menu",
@@ -83,7 +97,10 @@ export const setup = ({
   const onUpdateCollection = jest.fn();
 
   if (enterprisePlugins) {
-    setupStaleItemsEndpoint(numberOfStaleItems);
+    setupStaleItemsEndpoint(numberOfStaleItems, {
+      collectionId: collection.id,
+      beforeDate: THREE_MONTHS_AGO,
+    });
     enterprisePlugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
   }
 
