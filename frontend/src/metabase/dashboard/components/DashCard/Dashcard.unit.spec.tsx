@@ -472,6 +472,13 @@ describe("DashCard", () => {
     );
   });
 
+  it("should show a warning icon when the card query fails", async () => {
+    setup({ dashcardData: erroringDashcardData });
+
+    expect(await screen.findByText("My Card")).toBeVisible();
+    expect(getIcon("warning")).toBeInTheDocument();
+  });
+
   it("should show a text card", () => {
     const textCard = createMockTextDashboardCard({ text: "Hello, world!" });
     setup({

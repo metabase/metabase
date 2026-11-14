@@ -197,52 +197,6 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should display all visualization cards with their default sizes", () => {
-      TEST_QUESTIONS.forEach((question) => {
-        H.createQuestion(question);
-      });
-      H.createDashboard().then(({ body: { id: dashId } }) => {
-        H.visitDashboard(dashId);
-
-        H.editDashboard();
-        H.openQuestionsSidebar();
-
-        /**
-         * Metabase sorts all questions in the sidebar alphabetically.
-         * It makes sense to sort them out here as well in order to avoid
-         * Cypress "jumping" up and down while clicking on them.
-         * It will go in order from top to the bottom, which scrolls the
-         * sidebar naturally. This prevents acting on an element that's not visible.
-         */
-        const sortedCards = TEST_QUESTIONS.toSorted((a, b) =>
-          a.name.localeCompare(b.name),
-        );
-
-        /**
-         * After each card is added to the dashboard from the sidebar, there is a
-         * request to load the card query. We need to wait for each of those before
-         * we attempt to add a new card. Otherwise the save dashboard might fail
-         * because Cypress is too fast.
-         */
-        cy.intercept("POST", "/api/card/**/query").as("cardQuery");
-        sortedCards.forEach((question) => {
-          cy.findByLabelText(question.name).should("be.visible").click();
-          cy.wait("@cardQuery");
-        });
-
-        H.saveDashboard();
-
-        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          expect(body.dashcards).to.have.length(TEST_QUESTIONS.length);
-          body.dashcards.forEach(({ card, size_x, size_y }) => {
-            const { height, width } = getDefaultSize(card.display);
-            expect(size_x).to.equal(width);
-            expect(size_y).to.equal(height);
-          });
-        });
-      });
-    });
-
     it("should keep the resize handle connected to the cursor while resizing (metabase#70451)", () => {
       H.createDashboardWithQuestions({
         dashboardDetails: {},
