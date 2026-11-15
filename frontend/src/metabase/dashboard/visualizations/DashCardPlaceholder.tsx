@@ -2,11 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import {
-  QuestionPickerModal,
-  isInCollectionTree,
-} from "metabase/common/components/Pickers";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
+import { isQuestionPickerItemDisabled } from "metabase/dashboard/utils/question-picker";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -44,19 +42,8 @@ function DashCardPlaceholderInner({
 
   const pointerEvents = isEditingParameter ? "none" : "all";
 
-  const shouldDisableItem = (item: OmniPickerItem) => {
-    // don't allow adding items that are already saved in a different dashboard
-    // proably only applicable to search and recents
-    if (isInCollectionTree(item) && item.dashboard_id) {
-      if (item.dashboard_id !== dashboard.id) {
-        return true;
-      }
-    }
-    if (item.model === "dashboard" && item.id !== dashboard.id) {
-      return true;
-    }
-    return false;
-  };
+  const shouldDisableItem = (item: OmniPickerItem) =>
+    isQuestionPickerItemDisabled(item, dashboard.id);
 
   return (
     <>
