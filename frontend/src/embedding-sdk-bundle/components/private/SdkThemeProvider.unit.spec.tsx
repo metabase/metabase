@@ -130,9 +130,7 @@ describe("SdkThemeProvider", () => {
 
     // We need to check what was actually injected into page, thus
     // direct query (unlike other tests that use SdkCssVariablesTester).
-    // Emotion inserts rules through the CSSOM (`sheet.insertRule`), which
-    // leaves `textContent` empty, so read the applied rules off each sheet
-    // and fall back to `textContent` for any tag written as plain text.
+    // Read the parsed rules off each sheet, falling back to `textContent` when a sheet has none.
     const styleTagText = (element: HTMLStyleElement) => {
       const rules = element.sheet?.cssRules;
       if (rules && rules.length > 0) {
@@ -142,7 +140,7 @@ describe("SdkThemeProvider", () => {
     };
 
     const emittedStyles = () =>
-      // eslint-disable-next-line testing-library/no-node-access -- emotion writes these <style> tags; there is no Testing Library query for them
+      // eslint-disable-next-line testing-library/no-node-access -- the style sheets live in <style> tags; there is no Testing Library query for them
       [...document.querySelectorAll("style")].map(styleTagText).join("\n");
 
     const setup = async (
