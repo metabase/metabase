@@ -27,19 +27,17 @@
 (deftest ^:parallel every-feature-is-classified-test
   (let [{:keys [internal] :as cfg} (config)
         classified (concat (row-features cfg) internal)]
-    (testing "every driver feature is on the page or marked internal, so a new one can't silently go missing"
-      (is (= #{} (into (sorted-set) (remove (set classified)) driver/features))
-          (str "Add these features to a section of src/metabase/cmd/resources/driver-features.edn, or to its"
-               " :internal set if the page shouldn't show them.")))
+    ;; a new feature can't silently go missing, and a typo can't render a column of ❌: namespaced features skip the
+    ;; dispatch check in `driver/database-supports?`, so an unknown one would quietly answer false
+    (testing "the curated file classifies every driver feature, and names no other"
+      (is (= (set driver/features) (set classified))
+          (str "Add each new feature to a section of src/metabase/cmd/resources/driver-features.edn, or to its"
+               " :internal set if the page shouldn't show it. Remove each feature that no longer exists.")))
     (testing "no feature is classified twice"
       (is (= [] (for [[k n] (frequencies classified) :when (> n 1)] k))))))
 
-(deftest ^:parallel every-curated-feature-exists-test
-  (let [{:keys [internal] :as cfg} (config)]
-    (testing "the curated file names only real features, so a typo can't render a column of ❌"
-      ;; namespaced features skip the dispatch check in `driver/database-supports?`, so an unknown one would quietly
-      ;; answer false
-      (is (= #{} (into (sorted-set) (remove driver/features) (concat (row-features cfg) internal)))))
+(deftest ^:parallel every-note-is-for-a-row-test
+  (let [cfg (config)]
     (testing "every note is keyed by a feature row on the page"
       (let [row-keys (set (map :feature (mapcat :features (:sections cfg))))]
         (is (= #{} (into #{}
@@ -65,9 +63,10 @@
   (testing "a vector row is supported when any of its features is"
     (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") [:nested-fields :nested-field-columns])))))
 
-(driver/register! ::versioned, :parent :postgres)
+;;; abstract, so other tests' lists of available drivers can't see it; an abstract driver can't have a concrete parent
+(driver/register! ::versioned, :abstract? true)
 
-;;; a PostgreSQL whose `:percentile-aggregations` depends on the version, as SQL Server's does
+;;; a driver whose `:percentile-aggregations` depends on the version, as SQL Server's does
 (defmethod driver/database-supports? [::versioned :percentile-aggregations]
   [_driver _feature db]
   (>= (get-in db [:dbms-version :semantic-version 0]) 2))
@@ -86,7 +85,7 @@
     (testing "the section opens with its heading"
       (is (= "## Aggregations" (first lines))))
     (testing "a feature row links to its docs, and marks each database"
-      (is (some #(re-find #"^\| \[Full outer join\]\(join\.md\) +\| ✅ +\| ❌ +\| ✅ +\|$" %) lines)))
+      (is (some #(re-find #"^\| \[Full outer join\]\(join\.md\) +\| ✅ +\| ❌ +\| ❌ +\|$" %) lines)))
     (testing "a version-dependent cell points to a numbered note below the table"
       (is (some #(re-find #"^\| Percentile +\| ✅ +\| ❌ +\| ✅ \(1\) +\|$" %) lines))
       (is (= "1. Versioned 2.0 and later." (last lines))))))

@@ -48,16 +48,14 @@
   {:driver :vertica            :label "Vertica"}]
 
  :sections
- [{:title    "Joins"
-   :features [{:feature :left-join  :label "Left outer join"  :doc "../questions/query-builder/join.md"}
-              {:feature :right-join :label "Right outer join" :doc "../questions/query-builder/join.md"}
-              {:feature :inner-join :label "Inner join"       :doc "../questions/query-builder/join.md"}
-              {:feature :full-join  :label "Full outer join"  :doc "../questions/query-builder/join.md"}]}
-
-  {:title    "Query builder"
+ [{:title    "Query builder"
    :features [{:feature :nested-queries
                :label   "Saved questions and models as data sources"
                :doc     "../questions/query-builder/editor.md#pick-data"}
+              {:feature :left-join  :label "Left outer join"  :doc "../questions/query-builder/join.md"}
+              {:feature :right-join :label "Right outer join" :doc "../questions/query-builder/join.md"}
+              {:feature :inner-join :label "Inner join"       :doc "../questions/query-builder/join.md"}
+              {:feature :full-join  :label "Full outer join"  :doc "../questions/query-builder/join.md"}
               {:feature :expressions
                :label   "Custom columns"
                :doc     "../questions/query-builder/editor.md#custom-columns"}
@@ -72,7 +70,7 @@
 
   {:title    "Aggregations"
    :features [{:feature :basic-aggregations
-               :label   "Count, sum, average, min, and max"
+               :label   "Count, Sum, Average, Min, and Max"
                :doc     "../questions/query-builder/expressions-list.md#aggregations"}
               {:feature :standard-deviation-aggregations
                :label   "StandardDeviation and Variance"
@@ -97,12 +95,16 @@
               {:feature :regex
                :label   "regexExtract"
                :doc     "../questions/query-builder/expressions/regexextract.md"}
+              ;; the URL and email functions are what need lookaheads and lookbehinds
               {:feature :regex/lookaheads-and-lookbehinds
-               :label   "Lookaheads and lookbehinds in regexExtract"
-               :doc     "../questions/query-builder/expressions/regexextract.md"}
+               :label   "domain, subdomain, host, and path"
+               :doc     "../questions/query-builder/expressions-list.md#domain"}
               {:feature :split-part
                :label   "splitPart"
                :doc     "../questions/query-builder/expressions-list.md#splitpart"}
+              ;; no `:doc` until expressions-list.md documents `collate`
+              {:feature :collate
+               :label   "collate"}
               {:feature :expressions/integer
                :label   "integer"
                :doc     "../questions/query-builder/expressions-list.md#integer"}
@@ -198,7 +200,6 @@
  :internal
  #{:actions/custom
    :atomic-renames
-   :collate
    :connection-impersonation-requires-role
    :connection/multiple-databases
    :create-or-replace-table
