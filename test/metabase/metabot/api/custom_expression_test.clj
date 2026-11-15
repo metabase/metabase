@@ -664,3 +664,88 @@
   (testing "summary-formula reports that AI is off before it looks at the database"
     (mt/with-temporary-setting-values [metabot-enabled? false]
       (check-error 403 "AI features are not enabled." {:database_id Integer/MAX_VALUE}))))
+
+;;; -------------------------------------------------- Metrics ---------------------------------------------------
+
+(defn- check-metrics!
+  "Check that a request with `overrides` gets `status` and records `requests` requests and one error with `reason`.
+  A nil `reason` checks that no error was recorded."
+  [status requests reason overrides]
+  (mt/with-prometheus-system! [_ system]
+    (let [body   (request-body overrides)
+          labels {:mode (:mode body)}]
+      (mt/user-http-request :rasta :post status endpoint body)
+      (is (== requests (mt/metric-value system :metabase-metabot/summary-formula-requests labels)))
+      (doseq [r @#'custom-expression/summary-formula-error-reasons]
+        (testing r
+          (is (== (if (= r reason) 1 0)
+                  (mt/metric-value system :metabase-metabot/summary-formula-errors (assoc labels :reason r)))))))))
+
+(deftest summary-formula-success-metrics-test
+  (testing "summary-formula counts a successful request by mode, with no error"
+    (do-with-llm
+     {:expression "year([Created At])" :name "Year created"}
+     (fn [_calls]
+       (check-metrics! 200 1 nil {:mode "expression" :metrics nil :measures nil})))))
+
+(deftest summary-formula-invalid-input-metrics-test
+  (testing "summary-formula counts a request without enough inputs as an invalid-input error"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [_calls]
+       (check-metrics! 400 1 "invalid-input" {:columns [] :metrics [] :measures []})))))
+
+(deftest summary-formula-unavailable-metrics-test
+  (testing "summary-formula counts a request while Metabot is off as a metabot-disabled error"
+    (mt/with-temporary-setting-values [metabot-enabled? false]
+      (check-metrics! 403 1 "metabot-disabled" {}))))
+
+(deftest summary-formula-unknown-unavailable-reason-metrics-test
+  (testing "summary-formula counts an unavailable reason it doesn't know as an unavailable error"
+    (mt/with-dynamic-fn-redefs [metabot.self/llm-call-unavailable-reason (constantly :some-new-reason)]
+      (check-metrics! 503 1 "unavailable" {}))))
+
+(deftest summary-formula-managed-lock-metrics-test
+  (testing "summary-formula counts a request blocked by the managed AI lock as a managed-limit error"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [_calls]
+       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+         (check-metrics! 402 1 "managed-limit" {}))))))
+
+(deftest summary-formula-database-access-metrics-test
+  (testing "summary-formula counts a request for an unknown database as a database-access error"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [_calls]
+       (check-metrics! 404 1 "database-access" {:database_id Integer/MAX_VALUE})))))
+
+(deftest summary-formula-usage-limit-during-call-metrics-test
+  (testing "summary-formula counts an LLM call that hits the usage limit as a usage-limit error"
+    (do-with-llm
+     (ex-info "Over the limit" {:type :metabot/usage-limit-reached :message "Over the limit"})
+     (fn [_calls]
+       (check-metrics! 429 1 "usage-limit" {})))))
+
+(deftest summary-formula-llm-error-metrics-test
+  (testing "summary-formula counts a failed LLM call as an llm-error"
+    (do-with-llm
+     (provider-api-error 529)
+     (fn [_calls]
+       (check-metrics! 503 1 "llm-error" {})))))
+
+(deftest summary-formula-no-match-metrics-test
+  (testing "summary-formula counts an LLM answer with no expression as a no-match error"
+    (do-with-llm
+     {:expression "" :name "Whatever"}
+     (fn [_calls]
+       (check-metrics! 422 1 "no-match" {})))))
+
+(deftest summary-formula-unexpected-error-metrics-test
+  (testing "summary-formula counts an untagged exception as an unexpected error"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [_calls]
+       (mt/with-dynamic-fn-redefs [custom-expression/clean-expression (fn [_] (throw (ex-info "boom" {})))]
+         (mt/with-log-level [metabase.server.middleware.log :fatal]
+           (check-metrics! 500 1 "unexpected" {})))))))

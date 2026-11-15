@@ -5,6 +5,7 @@
   for compiling and validating the generated expressions."
   (:require
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -20,6 +21,20 @@
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private required-permission :permission/metabot-nlq)
+
+(def ^:private summary-formula-error-reasons
+  "The `:reason` labels for the summary formula errors metric."
+  #{"database-access"
+    "invalid-input"
+    "llm-error"
+    "managed-limit"
+    "metabot-disabled"
+    "no-llm"
+    "no-match"
+    "permission-denied"
+    "unavailable"
+    "unexpected"
+    "usage-limit"})
 
 (def ^:private max-prompt-chars
   "Limit the length of a request's natural-language prompt, in characters."
@@ -228,7 +243,9 @@
   "Throw a 400 unless `request` has the columns, metrics and measures its mode needs."
   [{:keys [mode columns metrics measures]}]
   (let [invalid! (fn [field message]
-                   (throw (ex-info message {:status-code 400 :errors {field message}})))]
+                   (throw (ex-info message {:status-code   400
+                                            :errors        {field message}
+                                            ::error-reason "invalid-input"})))]
     (case mode
       "expression"  (cond
                       (seq metrics)
@@ -252,7 +269,10 @@
                                                             (tru "The AI usage limit has been reached."))]
                                 :permission-denied [403 (tru "You don''t have access to AI features.")]
                                 [503 (tru "AI features aren''t available right now.")])]
-    (ex-info message {:status-code status-code})))
+    (ex-info message {:status-code   status-code
+                      ::error-reason (if (#{:metabot-disabled :no-llm :usage-limit :permission-denied} reason)
+                                       (name reason)
+                                       "unavailable")})))
 
 (defn- provider-status->response-code
   "Map a provider's HTTP `status` to the response status."
@@ -266,18 +286,27 @@
   "Return an HTTP exception for the LLM call's exception `e`."
   [e]
   (let [{:keys [status-code type status]} (ex-data e)
-        [response-code message]
+        [response-code reason message]
         (case type
-          :metabot/usage-limit-reached [429 (ex-message e)]
-          :metabot/permission-denied   [403 (tru "You don''t have access to AI features.")]
+          :metabot/usage-limit-reached [429 "usage-limit" (ex-message e)]
+          :metabot/permission-denied   [403 "permission-denied" (tru "You don''t have access to AI features.")]
           [(provider-status->response-code status)
+           "llm-error"
            (or (:message (metabot.self/provider-error e))
                ;; An adapter's own HTTP error, like a missing connection or a failed credential refresh, explains a
                ;; setup problem that only an admin can fix.
                (when (and status-code api/*is-superuser?*)
                  (ex-message e))
                (tru "The AI provider couldn''t draft a formula. Please try again."))])]
-    (ex-info message {:status-code response-code} e)))
+    (ex-info message {:status-code response-code ::error-reason reason} e)))
+
+(defn- with-error-reason
+  "Call `thunk`, tagging an `ExceptionInfo` it throws with `reason` for the errors metric."
+  [reason thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) ::error-reason reason) e)))))
 
 (defn- call-llm
   [messages]
@@ -325,8 +354,8 @@
     (check-inputs! request)
     (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
       (throw (unavailable-error reason)))
-    (metabot.usage/check-metabase-managed-free-limit!)
-    (api/query-check :model/Database database_id)
+    (with-error-reason "managed-limit" metabot.usage/check-metabase-managed-free-limit!)
+    (with-error-reason "database-access" #(api/query-check :model/Database database_id))
     (let [{:keys [expression name]} (try
                                       (call-llm (llm-messages request))
                                       (catch Exception e
@@ -336,7 +365,7 @@
           ;; a usable expression is still worth returning when its name cleans to blank
           name       (or (clean-name name) (clean-name prompt))]
       (when-not (and expression name)
-        (throw (ex-info (tru "Nothing in this data matches that.") {:status-code 422})))
+        (throw (ex-info (tru "Nothing in this data matches that.") {:status-code 422 ::error-reason "no-match"})))
       {:expression expression :name name})))
 
 (api.macros/defendpoint :post "/summary-formula" :- ::response-schema
@@ -344,7 +373,16 @@
   [_route-params
    _query-params
    body :- ::request-schema]
-  (summary-formula body))
+  (let [labels {:mode (:mode body)}]
+    (analytics/inc! :metabase-metabot/summary-formula-requests labels)
+    (try
+      (summary-formula body)
+      (catch Exception e
+        (analytics/inc! :metabase-metabot/summary-formula-errors
+                        (assoc labels :reason (get summary-formula-error-reasons
+                                                   (::error-reason (ex-data e))
+                                                   "unexpected")))
+        (throw e)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/custom-expression` routes."
