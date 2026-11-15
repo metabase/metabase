@@ -119,8 +119,8 @@
   (if (str/includes? file "/metabase_enterprise/")
     []
     (set (match/match-all (z/of-node (parse-file-all file))
-           {:tag :list, :children [{:string-value "defenterprise-schema"} & _]}
-           ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+           {:tag :list, :children (cs :guard (= (:string-value (first cs)) "defenterprise-schema"))}
+           ;; grabbing it naively should be OK, since the linter enforces there's a docstring
            (some->> &match z/of-node z/down z/right z/right z/right z/right z/right z/sexpr)))))
 
 (comment

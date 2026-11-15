@@ -3479,7 +3479,7 @@
             (literal :guard (or (not (string? literal)) (parseable-temporal-literal? literal)))
             _]
            [(op :guard (= (u/lower-case-en op) "during")) #'map? _ _ _]
-           [(op :guard (= (u/lower-case-en op) "value")) {"unit" &truthy} _])
+           [(op :guard (= (u/lower-case-en op) "value")) {"unit" _} _])
       (err &match))))
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
