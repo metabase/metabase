@@ -405,7 +405,7 @@ describe("DataModel (data studio, enterprise)", () => {
       ).toBeInTheDocument();
       expect(await findTreeItem("database", MYSQL_DB.name)).toBeInTheDocument();
 
-      await userEvent.click(getTableTreeItem(MYSQL_REVIEWS_TABLE.id));
+      await userEvent.click(await findTableTreeItem(MYSQL_REVIEWS_TABLE.id));
       expect(await findTableNameInput()).toHaveValue("Reviews");
       expect(getPathname()).toBe(
         `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/${MYSQL_REVIEWS_TABLE.id}`,
@@ -629,7 +629,9 @@ describe("DataModel (data studio, enterprise)", () => {
       await userEvent.click(await screen.findByRole("tab", { name: /Fields/ }));
 
       expect(
-        await within(getTableSection()).findByText("This table has no fields"),
+        await findInTableSection((section) =>
+          within(section).getByText("This table has no fields"),
+        ),
       ).toBeInTheDocument();
       expect(
         within(getTableSection()).queryByRole("button", { name: /Sorting/ }),
@@ -637,12 +639,12 @@ describe("DataModel (data studio, enterprise)", () => {
 
       // positive control: a table with fields can be sorted
       await userEvent.click(await findTreeItem("schema", "Wild"));
-      await userEvent.click(getTableTreeItem(WILD_ANIMALS_TABLE.id));
+      await userEvent.click(await findTableTreeItem(WILD_ANIMALS_TABLE.id));
       await userEvent.click(await screen.findByRole("tab", { name: /Fields/ }));
       expect(
-        await within(getTableSection()).findByRole("button", {
-          name: /Sorting/,
-        }),
+        await findInTableSection((section) =>
+          within(section).getByRole("button", { name: /Sorting/ }),
+        ),
       ).toBeInTheDocument();
       expect(
         within(getTableSection()).queryByText("This table has no fields"),
@@ -715,7 +717,7 @@ async function expectStoredAfterReopen({
 }) {
   await userEvent.click(await findTreeItem("table", otherTableName));
   expect(await findTableNameInput(otherTableName)).toBeInTheDocument();
-  await userEvent.click(getTableTreeItem(tableId));
+  await userEvent.click(await findTableTreeItem(tableId));
   await assert();
 }
 
@@ -727,6 +729,16 @@ function queryNotFound() {
   return within(getDataModel()).queryByText(/Not found/);
 }
 
+/**
+ * Runs the query against the current table section on every retry: switching
+ * tables replaces the section once the new metadata arrives.
+ */
+async function findInTableSection(
+  query: (section: HTMLElement) => HTMLElement,
+) {
+  return await waitFor(() => query(getTableSection()));
+}
+
 function getTableSection() {
   return screen.getByTestId("table-section");
 }
@@ -736,14 +748,11 @@ function getFieldSection() {
 }
 
 async function findTableNameInput(value?: string) {
-  if (value != null) {
-    return await within(
-      await screen.findByTestId("table-section"),
-    ).findByDisplayValue(value);
-  }
-  return await within(
-    await screen.findByTestId("table-section"),
-  ).findByPlaceholderText("Give this table a name");
+  return await findInTableSection((section) =>
+    value != null
+      ? within(section).getByDisplayValue(value)
+      : within(section).getByPlaceholderText("Give this table a name"),
+  );
 }
 
 function getTableDescriptionInput() {
@@ -753,16 +762,17 @@ function getTableDescriptionInput() {
 }
 
 async function clickTableSectionField(name: string) {
-  const field = await within(getTableSection()).findByRole("listitem", {
-    name,
-  });
+  const field = await findInTableSection((section) =>
+    within(section).getByRole("listitem", { name }),
+  );
   await userEvent.click(within(field).getByRole("img"));
 }
 
 async function findFieldDataType(value: string) {
   return await waitFor(() => {
     const dataType = within(getFieldSection()).getByLabelText("Data type");
-    expect(dataType).toHaveTextContent(value);
+    // anchored: the data type must be the whole text, not a part of it
+    expect(dataType).toHaveTextContent(new RegExp(`^${value}$`));
     return dataType;
   });
 }
@@ -808,9 +818,11 @@ async function findTreeItem(type: TreeItemType, name: string) {
   });
 }
 
-function getTableTreeItem(tableId: TableId) {
-  const item = queryTreeItems("table").find(
-    (item) => item.getAttribute("data-table-id") === String(tableId),
-  );
-  return checkNotNull(item);
+async function findTableTreeItem(tableId: TableId) {
+  return await waitFor(() => {
+    const item = queryTreeItems("table").find(
+      (item) => item.getAttribute("data-table-id") === String(tableId),
+    );
+    return checkNotNull(item);
+  });
 }
