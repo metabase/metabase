@@ -18,7 +18,6 @@ import {
   Icon,
   SortableHeaderPill,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import type { SpacingScaleKey } from "metabase/ui/theme";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -72,12 +71,13 @@ function RunEntityName({ run }: { run: TransformGraphRun }) {
     return <Ellipsified fw="bold">{name}</Ellipsified>;
   }
   return (
-    <Ellipsified>
-      <Tooltip label={t`${name} has been deleted`}>
-        <Text c="text-disabled" component="span" display="inline" fs="italic">
-          {name}
-        </Text>
-      </Tooltip>
+    <Ellipsified
+      c="text-disabled"
+      fs="italic"
+      tooltip={t`${name} has been deleted`}
+      alwaysShowTooltip
+    >
+      {name}
     </Ellipsified>
   );
 }

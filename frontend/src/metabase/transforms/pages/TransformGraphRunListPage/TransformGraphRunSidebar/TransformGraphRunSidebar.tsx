@@ -278,7 +278,7 @@ function TransformGraphRunSidebarHeader({
       gap="sm"
       data-testid="transform-graph-run-sidebar-header"
     >
-      <Title order={3}>
+      <Title order={3} miw={0}>
         <RunName run={run} gap="sm" />
       </Title>
       <Group gap="xxs" wrap="nowrap">
