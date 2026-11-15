@@ -175,9 +175,13 @@ function createInitialTables(): Table[] {
   ];
 }
 
-/** Values that the fake backend returns for a column of the preview query. */
+/**
+ * Values that the fake backend returns for a column of the preview query, in
+ * ascending order of the table's primary key.
+ */
 const COLUMN_VALUES: Partial<Record<FieldId, RowValue[]>> = {
-  [ORDERS.TAX]: [2.07, 6.1, 2.9, 6.01, 7.03],
+  // six values, so a preview that shows more or fewer than five rows is seen
+  [ORDERS.TAX]: [2.07, 6.1, 2.9, 6.01, 7.03, 4.13],
   [ORDERS.QUANTITY]: [2, 3, 5],
   [ORDERS.PRODUCT_ID]: [14, 123, 105],
 };
@@ -349,9 +353,14 @@ function setupBackend({
         0,
         ...fieldIds.map((id) => COLUMN_VALUES[id]?.length ?? 0),
       );
-      const rows = Array.from({ length: rowCount }, (_, index) =>
+      const rowsInPkOrder = Array.from({ length: rowCount }, (_, index) =>
         fieldIds.map((id) => COLUMN_VALUES[id]?.[index] ?? null),
       );
+      const rows = getOrderBy(body).some(
+        ({ direction }) => direction === "desc",
+      )
+        ? rowsInPkOrder.reverse()
+        : rowsInPkOrder;
       return {
         status: "completed",
         row_count: rows.length,
@@ -797,12 +806,18 @@ describe.each(AREAS)("data model field section > %s", (area) => {
       await openPreview();
       const preview = within(getPreviewSection());
       expect(await preview.findByText("6.1")).toBeInTheDocument();
-      expect(preview.getByText("Tax")).toBeInTheDocument();
-      expect(preview.getByText("2.9")).toBeInTheDocument();
+      expect(
+        preview.getAllByTestId("cell-data").map((cell) => cell.textContent),
+      ).toEqual(["Tax", "2.07", "6.1", "2.9", "6.01", "7.03"]);
       expect(
         preview.queryByText("This field is hidden"),
       ).not.toBeInTheDocument();
+      expect(getDatasetSourceTableIds()).toEqual([ORDERS_ID]);
       expect(getDatasetFieldIds()).toEqual([[ORDERS.TAX]]);
+      expect(getDatasetBodies().map(getOrderBy)).toEqual([
+        [{ direction: "asc", fieldId: ORDERS.ID }],
+      ]);
+      expect(getDatasetLimits()).toEqual([50]);
 
       await userEvent.click(preview.getByLabelText("Detail"));
       expect(await preview.findByText("2.07")).toBeInTheDocument();
@@ -953,6 +968,23 @@ function getDatasetBodies(): unknown[] {
 
 function getDatasetFieldIds() {
   return getDatasetBodies().map(getQueriedFieldIds);
+}
+
+function getOrderBy(body: unknown) {
+  const orderBy = JSON.stringify(body).match(/"order-by":\[(.*?)\]\]\]/);
+  if (!orderBy) {
+    return [];
+  }
+  return Array.from(
+    orderBy[1].matchAll(/"(asc|desc)",\{[^}]*\},\["field",\{[^}]*\},(\d+)/g),
+  ).map((match) => ({ direction: match[1], fieldId: Number(match[2]) }));
+}
+
+function getDatasetLimits() {
+  return getDatasetBodies().map((body) => {
+    const match = JSON.stringify(body).match(/"limit":(\d+)/);
+    return match ? Number(match[1]) : undefined;
+  });
 }
 
 function getDatasetSourceTableIds() {
