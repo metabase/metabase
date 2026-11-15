@@ -33,8 +33,11 @@ To change which region your Metabase is hosted in:
 3. In the instance you want to change, click **Settings**.
 4. Find the **Hosting region** section.
 5. Select the region you want:
-    - US West (Oregon)
-    - Europe (Frankfurt)
+   - US East (N. Virginia)
+   - Europe (Frankfurt)
+   - Asia Pacific (Singapore)
+   - South America (São Paulo)
+   - Asia Pacific (Sydney)
 6. Click **Change region**.
 
 ## Add the relevant IP addresses to your whitelist
