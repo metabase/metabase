@@ -191,11 +191,11 @@
 (defn- do-with-uncomputable-dependencies!
   "Call `f` while computing the dependencies of `card` throws."
   [card f]
-  (let [calculate-deps deps.calculation/calculate-deps]
-    (with-redefs [deps.calculation/calculate-deps (fn [entity-type entity]
-                                                    (if (and (= :card entity-type) (= (:id card) (:id entity)))
-                                                      (throw (ex-info "Dependencies broke" {}))
-                                                      (calculate-deps entity-type entity)))]
+  (let [calculate-deps (mt/original-fn #'deps.calculation/calculate-deps)]
+    (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [entity-type entity]
+                                                                  (if (and (= :card entity-type) (= (:id card) (:id entity)))
+                                                                    (throw (ex-info "Dependencies broke" {}))
+                                                                    (calculate-deps entity-type entity)))]
       (f))))
 
 (deftest ^:synchronized uncomputable-dependencies-fail-test
@@ -246,11 +246,11 @@
        (deps.test/synchronously-run-dependency-job!)
        (let [entered      (promise)
              release      (promise)
-             check-entity deps.analysis/check-entity]
-         (with-redefs [deps.analysis/check-entity (fn [& args]
-                                                    (deliver entered true)
-                                                    @release
-                                                    (apply check-entity args))]
+             check-entity (mt/original-fn #'deps.analysis/check-entity)]
+         (mt/with-dynamic-fn-redefs [deps.analysis/check-entity (fn [& args]
+                                                                  (deliver entered true)
+                                                                  @release
+                                                                  (apply check-entity args))]
            (let [batch (future (task.analysis-finding/run-batch-in-place!))]
              (is (true? (deref entered 10000 false)))
              (let [report (future (lint-report))]
