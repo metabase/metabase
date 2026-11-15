@@ -1318,49 +1318,77 @@ describe("CollectionItemsTable", () => {
       return new URL(calls[calls.length - 1].url).searchParams;
     }
 
+    function getEntryNames() {
+      return screen
+        .queryAllByTestId("collection-entry-name")
+        .map((cell) => cell.textContent);
+    }
+
+    const FIRST_PAGE_NAMES = pagedItems
+      .slice(0, PAGE_SIZE)
+      .map((item) => item.name);
+    const SECOND_PAGE_NAMES = pagedItems
+      .slice(PAGE_SIZE)
+      .map((item) => item.name);
+
     it("pages back and forth and returns to the first page when the sort changes on another page", async () => {
       setup({ collectionItems: pagedItems, showFilterBar: false });
+      // The page label changes before the response replaces the rows, so the
+      // assertions must wait for the returned rows, not the label.
+      fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+        delay: 500,
+      });
 
-      expect(await screen.findByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
       expect(screen.getByTestId("pagination-total")).toHaveTextContent(
         String(TOTAL),
       );
-      expect(screen.getAllByTestId("collection-entry")).toHaveLength(PAGE_SIZE);
 
       await userEvent.click(screen.getByRole("button", { name: "Next page" }));
-      expect(
-        await screen.findByText(`${PAGE_SIZE + 1} - ${TOTAL}`),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(SECOND_PAGE_NAMES);
+      });
       expect(getLastItemsParams().get("offset")).toBe(String(PAGE_SIZE));
+      expect(
+        screen.getByText(`${PAGE_SIZE + 1} - ${TOTAL}`),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("pagination-total")).toHaveTextContent(
         String(TOTAL),
-      );
-      expect(screen.getAllByTestId("collection-entry")).toHaveLength(
-        TOTAL - PAGE_SIZE,
       );
       expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
 
       await userEvent.click(
         screen.getByRole("button", { name: "Previous page" }),
       );
-      expect(await screen.findByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
       expect(screen.getByTestId("pagination-total")).toHaveTextContent(
         String(TOTAL),
       );
-      expect(screen.getAllByTestId("collection-entry")).toHaveLength(PAGE_SIZE);
 
       await userEvent.click(screen.getByRole("button", { name: "Next page" }));
-      expect(
-        await screen.findByText(`${PAGE_SIZE + 1} - ${TOTAL}`),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(SECOND_PAGE_NAMES);
+      });
 
+      const callsBeforeSort = getItemsCalls().length;
       await userEvent.click(screen.getByText("Last edited at"));
 
-      expect(await screen.findByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(getItemsCalls()).toHaveLength(callsBeforeSort + 1);
+      });
       const sortedParams = getLastItemsParams();
       expect(sortedParams.get("sort-column")).toBe("last_edited_at");
       expect(sortedParams.get("offset")).toBe("0");
-      expect(screen.getAllByTestId("collection-entry")).toHaveLength(PAGE_SIZE);
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
     });
   });
 

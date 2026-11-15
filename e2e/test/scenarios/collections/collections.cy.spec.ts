@@ -544,6 +544,40 @@ describe("scenarios > collection items listing", () => {
       .and("not.contain", "Revenue dashboard")
       .and("not.contain", "Question 1");
   });
+
+  it("should show a tooltip for a last editor email that the real column truncates", () => {
+    // Jest covers the email fallback and the tooltip logic with simulated
+    // widths; only a browser can tell whether the column's CSS truncates it.
+    const LONG_EMAIL = "averyverylongemail@veryverylongdomain.com";
+
+    cy.intercept(
+      "GET",
+      "/api/collection/root/items?models=dashboard**",
+      (req) => {
+        req.on("response", (res) => {
+          const data = [...res.body.data];
+          data[0] = {
+            ...data[0],
+            "last-edit-info": {
+              id: 1,
+              first_name: null,
+              last_name: null,
+              email: LONG_EMAIL,
+              timestamp: "2022-07-05T07:31:09.054-07:00",
+            },
+          };
+          res.send({ ...res.body, data });
+        });
+      },
+    ).as("getCollectionItems");
+    cy.visit("/collection/root");
+    cy.wait("@getCollectionItems");
+
+    cy.findByTestId("collection-table")
+      .findByText(LONG_EMAIL)
+      .trigger("mouseenter");
+    cy.findByRole("tooltip").should("be.visible").and("contain", LONG_EMAIL);
+  });
 });
 
 describe("scenarios > collections > entity id support", () => {
