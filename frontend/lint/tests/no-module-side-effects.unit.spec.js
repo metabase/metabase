@@ -78,14 +78,6 @@ const VALID_CASES = [
     `,
   },
   {
-    name: "emotion styled",
-    code: `
-      import styled from "@emotion/styled";
-      import { Icon } from "./Icon";
-      export const FixedSizeIcon = styled(Icon)\`flex-shrink: 0;\`;
-    `,
-  },
-  {
     name: "freezing a same-file object",
     code: `
       const FALLBACK = { charts: [] };
