@@ -12,12 +12,12 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,12 +69,7 @@
 (defn- ordered->plain
   "snakeyaml's parsed maps are ordered/lazy; re-walk into plain Clojure maps."
   [x]
-  (walk/postwalk
-   (fn [form]
-     (if (map? form)
-       (into {} form)
-       form))
-   x))
+  (match/replace-all x #'map? (into {} &match)))
 
 (defn- resolve-db [db-name]
   (or (advanced-config.db/database-by-name db-name)
