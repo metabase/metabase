@@ -618,4 +618,15 @@ export const segmentIsValid = (
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };
 
+/**
+ * Returns the segment with `min` and `max` in ascending order. A segment
+ * that is already ordered is returned as is.
+ */
+export const fixSwappedMinMax = <T extends { min: number; max: number }>(
+  segment: T,
+): T =>
+  segment.min > segment.max
+    ? { ...segment, min: segment.max, max: segment.min }
+    : segment;
+
 export const DATA_IMAGE_URI_PATTERN: RegExp = data_image_uri_pattern;

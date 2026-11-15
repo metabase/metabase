@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { segmentIsValid } from "metabase/viz-core";
+import { fixSwappedMinMax, segmentIsValid } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -71,7 +71,9 @@ function GaugeComponent({
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
   const gaugeSegments = settings["gauge.segments"];
   const segments = isGaugeSegmentsArray(gaugeSegments)
-    ? gaugeSegments.filter((segment) => segmentIsValid(segment))
+    ? gaugeSegments
+        .filter((segment) => segmentIsValid(segment))
+        .map(fixSwappedMinMax)
     : [];
 
   // value to angle in radians, clamped
