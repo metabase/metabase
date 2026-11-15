@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
-import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
+import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import * as Lib from "metabase-lib";
 
@@ -78,7 +78,7 @@ export function MeasureAggregationPicker({
         items={aggregations}
         initialAddText={t`Pick an aggregation function`}
         readOnly={readOnly}
-        color="summarize"
+        color="core-summarize"
         isLastOpened={false}
         hasAddButton={hasAddButton}
         hasRemoveButton={hasRemoveButton}

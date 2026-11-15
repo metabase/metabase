@@ -1,17 +1,73 @@
 (ns metabase.transforms.execute
   (:require
-   [metabase.transforms.interface :as transforms.i]))
+   [metabase.indexes.models.table-index :as table-index]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.query-impl :as transforms.query-impl]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn execute!
+(mu/defn- resolve-target :- ::transforms-base.schema/transform
+  "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
+  instance for `(:database target)`, the hook rewrites `:schema` to the workspace
+  output schema and records a TableRemapping for the canonical (schema, name).
+  Off-workspace and OSS: no-op pass-through.
+
+  Lives at the dispatch wrapper so every transform type (`:query`, `:python`, and
+  any future kind registered via `transforms.i/execute!`) inherits the gate. The
+  hook must run before per-type execution begins, since callees consume
+  `(:target transform)` to decide where to write.
+
+  When `target-db-id` returns nil (no per-type impl, or transform shape doesn't
+  identify a target DB), the hook is skipped — workspace rewriting requires a
+  known DB id to look up `db-workspace-namespace`.
+
+  Also hydrates the declared indexes and their request ids onto the target so the base reads them off
+  `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam, and stashes
+  `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
+  [transform :- ::transforms.schema/transform]
+  (let [requests (table-index/select-applicable-for-transform (:id transform))]
+    (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
+          (assoc transform :target
+                 (transforms.query-impl/resolve-transform-target db-id (:target transform)))
+          transform)
+        (assoc-in [:target :indexes] (mapv :structured requests))
+        (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
+        (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
+
+(mu/defn execute! :- :nil
   "Run `transform` and sync its target table.
 
-  This is executing synchronously, but supports being kicked off in the background
-  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
-  in the database."
-  ([transform]
+  Executes synchronously, but the start is observable: once the run row is booked in the database,
+  `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
+  `[:started run-id]`. A throw before that point delivers the throwable to the promise instead, so
+  callers awaiting the start never hang."
+  ([transform :- ::transforms.schema/transform]
    (execute! transform nil))
-  ([transform opts]
-   #_{:clj-kondo/ignore [:discouraged-var]}
-   (transforms.i/execute! transform opts)))
+  ([transform :- ::transforms.schema/transform
+    {:keys [start-promise on-start] :as opts} :- [:maybe ::transforms.schema/execute-options]]
+   (let [opts (merge opts
+                     {:on-start (fn [run-id]
+                                  (when start-promise
+                                    (deliver start-promise [:started run-id]))
+                                  (when on-start
+                                    (on-start run-id)))})]
+     (try
+       ;; the executors log their own failures at ERROR; this one happens before any executor runs
+       (transforms.i/execute! (try (resolve-target transform)
+                                   (catch Throwable t
+                                     (log/errorf "Could not resolve the target of transform %s: %s"
+                                                 (pr-str (:id transform)) (ex-message t))
+                                     (throw t)))
+                              opts)
+       (catch Throwable t
+         ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
+         ;; a no-op when the run had already started and the promise was delivered
+         (when start-promise (deliver start-promise t))
+         (throw t)))
+     nil)))

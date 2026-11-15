@@ -1,0 +1,4 @@
+.formLauncher:hover,
+.formLauncher:focus-visible {
+  color: var(--mb-color-core-brand);
+}

@@ -1,161 +1,152 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type {
+  ExportPreflightResponse,
+  GetBranchesResponse,
+  HasRemoteChangesResponse,
+  RemoteSyncDirtyItem,
+  RemoteSyncTask,
+  RemoteSyncTaskId,
+  RemoteSyncUnsyncedDependenciesErrorData,
+  UpdateRemoteSyncSettingsResponse,
+} from "metabase-types/api";
+import {
+  createMockExportChangesResponse,
+  createMockExportPreflightResponse,
+  createMockGetBranchesResponse,
+  createMockHasRemoteChangesResponse,
+  createMockImportChangesResponse,
+  createMockRemoteSyncChangesResponse,
+  createMockRemoteSyncIsDirtyResponse,
+  createMockStashChangesResponse,
+  createMockTestRemoteSyncConnectionResponse,
+  createMockUpdateRemoteSyncSettingsResponse,
+} from "metabase-types/api/mocks";
 
-export interface RemoteSyncDirtyResponse {
-  dirty: RemoteSyncEntity[];
-  changedCollections: Record<number, boolean>;
+const REMOTE_SYNC_SETTINGS_ROUTE = "remote-sync-settings";
+
+export function setupRemoteSyncBranchesEndpoint(
+  response: GetBranchesResponse = createMockGetBranchesResponse(),
+) {
+  fetchMock.get("path:/api/ee/remote-sync/branches", response);
 }
 
-/**
- * Setup the remote-sync dirty endpoint
- */
-export const setupRemoteSyncDirtyEndpoint = ({
-  dirty = [],
-  changedCollections = {},
-}: Partial<RemoteSyncDirtyResponse> = {}) => {
-  fetchMock.removeRoute("remote-sync-dirty");
+export function setupRemoteSyncDirtyEndpoint(
+  dirty: RemoteSyncDirtyItem[] = [],
+) {
   fetchMock.get(
     "path:/api/ee/remote-sync/dirty",
-    { dirty, changedCollections },
-    { name: "remote-sync-dirty" },
+    createMockRemoteSyncChangesResponse({ dirty }),
   );
-};
-
-/**
- * Setup the remote-sync branches endpoint
- */
-export const setupRemoteSyncBranchesEndpoint = (
-  branches: string[] = ["main", "develop"],
-) => {
-  fetchMock.removeRoute("remote-sync-branches");
   fetchMock.get(
-    "path:/api/ee/remote-sync/branches",
-    { items: branches },
-    { name: "remote-sync-branches" },
+    "path:/api/ee/remote-sync/is-dirty",
+    createMockRemoteSyncIsDirtyResponse({ is_dirty: dirty.length > 0 }),
   );
-};
-
-/**
- * Setup the remote-sync current-task endpoint
- */
-const setupRemoteSyncCurrentTaskEndpoint = (
-  status: "idle" | "running" | "completed" = "idle",
-) => {
-  fetchMock.removeRoute("remote-sync-current-task");
-  fetchMock.get(
-    "path:/api/ee/remote-sync/current-task",
-    { status },
-    { name: "remote-sync-current-task" },
-  );
-};
-
-export interface RemoteSyncSettingsResponse {
-  success: boolean;
-  task_id?: number;
 }
 
-/**
- * Setup the remote-sync settings PUT endpoint
- */
-export const setupRemoteSyncSettingsEndpoint = ({
-  success = true,
-  task_id,
-  error,
-}: Partial<RemoteSyncSettingsResponse> & {
-  error?: { status: number; message: string };
-} = {}) => {
-  fetchMock.removeRoute("remote-sync-settings");
-  if (error) {
-    fetchMock.put(
-      "path:/api/ee/remote-sync/settings",
-      { status: error.status, body: { message: error.message } },
-      { name: "remote-sync-settings" },
-    );
-  } else {
-    fetchMock.put(
-      "path:/api/ee/remote-sync/settings",
-      { success, ...(task_id !== undefined && { task_id }) },
-      { name: "remote-sync-settings" },
-    );
-  }
-};
+export function setupRemoteSyncHasRemoteChangesEndpoint(
+  response: HasRemoteChangesResponse = createMockHasRemoteChangesResponse(),
+) {
+  fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", response);
+}
 
-/**
- * Setup the remote-sync import POST endpoint
- */
-export const setupRemoteSyncImportEndpoint = ({
-  status = "running",
-  task_id = 456,
-}: { status?: string; task_id?: number } = {}) => {
-  fetchMock.removeRoute("remote-sync-import");
+export function setupRemoteSyncCurrentTaskEndpoint(
+  task: RemoteSyncTask | null = null,
+) {
+  fetchMock.get("path:/api/ee/remote-sync/current-task", task ?? 204);
+}
+
+export function setupRemoteSyncCancelTaskEndpoint() {
+  fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", 200);
+}
+
+export function setupRemoteSyncExportPreflightEndpoint(
+  response: ExportPreflightResponse = createMockExportPreflightResponse(),
+) {
+  fetchMock.get("path:/api/ee/remote-sync/export-preflight", response);
+}
+
+export function setupRemoteSyncImportEndpoint() {
   fetchMock.post(
     "path:/api/ee/remote-sync/import",
-    { status, task_id },
-    { name: "remote-sync-import" },
+    createMockImportChangesResponse(),
   );
-};
+}
 
-/**
- * Setup the remote-sync cancel task endpoint
- */
-export const setupRemoteSyncCancelTaskEndpoint = ({
-  status = 200,
-  body = {},
-  delay = 0,
-}: { status?: number; body?: any; delay?: number } = {}) => {
-  fetchMock.removeRoute("remote-sync-cancel-task");
-  if (status === 200) {
-    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", body, {
-      name: "remote-sync-cancel-task",
-      delay,
-    });
-  } else {
-    fetchMock.post(
-      "path:/api/ee/remote-sync/current-task/cancel",
-      { status, body },
-      { name: "remote-sync-cancel-task", delay },
-    );
-  }
-};
+export function setupRemoteSyncExportEndpoint() {
+  fetchMock.post(
+    "path:/api/ee/remote-sync/export",
+    createMockExportChangesResponse(),
+  );
+}
 
-/**
- * Setup all remote-sync endpoints at once
- */
-export const setupRemoteSyncEndpoints = ({
-  branches = ["main", "develop"],
-  dirty = [],
-  changedCollections = {},
-  hasRemoteChanges = false,
-  hasRemoteChangesDelay = 0,
-  hasRemoteChangesError = false,
-  settingsResponse = { success: true },
-}: {
-  branches?: string[];
-  dirty?: RemoteSyncEntity[];
-  changedCollections?: Record<number, boolean>;
+export function setupRemoteSyncStashEndpoint() {
+  fetchMock.post(
+    "path:/api/ee/remote-sync/stash",
+    createMockStashChangesResponse(),
+  );
+}
+
+export function setupRemoteSyncSettingsEndpoint(
+  response: UpdateRemoteSyncSettingsResponse = createMockUpdateRemoteSyncSettingsResponse(),
+) {
+  fetchMock.removeRoute(REMOTE_SYNC_SETTINGS_ROUTE);
+  fetchMock.put("path:/api/ee/remote-sync/settings", response, {
+    name: REMOTE_SYNC_SETTINGS_ROUTE,
+  });
+}
+
+export function setupRemoteSyncSettingsEndpointError(
+  error: RemoteSyncUnsyncedDependenciesErrorData,
+) {
+  fetchMock.removeRoute(REMOTE_SYNC_SETTINGS_ROUTE);
+  fetchMock.put(
+    "path:/api/ee/remote-sync/settings",
+    { status: 400, body: error },
+    { name: REMOTE_SYNC_SETTINGS_ROUTE },
+  );
+}
+
+export function setupRemoteSyncTestConnectionEndpoint() {
+  fetchMock.post(
+    "path:/api/ee/remote-sync/test-connection",
+    createMockTestRemoteSyncConnectionResponse(),
+  );
+}
+
+type SetupRemoteSyncEndpointsOpts = {
+  dirty?: RemoteSyncDirtyItem[];
   hasRemoteChanges?: boolean;
-  hasRemoteChangesDelay?: number;
-  hasRemoteChangesError?: boolean;
-  settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
-    error?: { status: number; message: string };
-  };
-} = {}) => {
-  setupRemoteSyncBranchesEndpoint(branches);
-  setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
-  setupRemoteSyncCurrentTaskEndpoint("idle");
-  setupRemoteSyncImportEndpoint();
-  setupRemoteSyncSettingsEndpoint(settingsResponse);
-  fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
-  fetchMock.get(
-    "path:/api/ee/remote-sync/has-remote-changes",
-    hasRemoteChangesError
-      ? 401
-      : {
-          has_changes: hasRemoteChanges,
-        },
-    {
-      delay: hasRemoteChangesDelay,
-    },
-  );
+  currentTask?: RemoteSyncTask | null;
+  settingsTaskId?: RemoteSyncTaskId;
 };
+
+export function setupRemoteSyncEndpoints({
+  dirty = [],
+  hasRemoteChanges = false,
+  currentTask = null,
+  settingsTaskId,
+}: SetupRemoteSyncEndpointsOpts = {}) {
+  setupRemoteSyncBranchesEndpoint(
+    createMockGetBranchesResponse({ items: ["main", "develop"] }),
+  );
+  setupRemoteSyncDirtyEndpoint(dirty);
+  setupRemoteSyncHasRemoteChangesEndpoint(
+    createMockHasRemoteChangesResponse({
+      has_changes: hasRemoteChanges,
+      local_version: hasRemoteChanges ? "local" : "remote",
+    }),
+  );
+  setupRemoteSyncCurrentTaskEndpoint(currentTask);
+  setupRemoteSyncCancelTaskEndpoint();
+  setupRemoteSyncExportPreflightEndpoint();
+  setupRemoteSyncImportEndpoint();
+  setupRemoteSyncExportEndpoint();
+  setupRemoteSyncStashEndpoint();
+  setupRemoteSyncSettingsEndpoint(
+    createMockUpdateRemoteSyncSettingsResponse(
+      settingsTaskId != null ? { task_id: settingsTaskId } : {},
+    ),
+  );
+  setupRemoteSyncTestConnectionEndpoint();
+}

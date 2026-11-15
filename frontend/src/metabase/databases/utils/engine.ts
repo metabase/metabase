@@ -24,8 +24,9 @@ const isEngineVisible = (
   const isSelected = engineKey === selectedEngineKey;
   const isSuperseded = engine["superseded-by"] != null;
   const isSuperseding = engine["superseded-by"] === selectedEngineKey;
+  const isCreatable = engine["creatable?"] !== false;
 
-  return isSelected || !isSuperseded || isSuperseding;
+  return isSelected || ((!isSuperseded || isSuperseding) && isCreatable);
 };
 
 const getEngineOption = (engineKey: string, engine: Engine) => {
@@ -39,8 +40,7 @@ const getEngineOption = (engineKey: string, engine: Engine) => {
 };
 
 export const getEngineLogo = (engine: string): string | undefined => {
-  const logo = ENGINE_LOGO[engine];
-  return logo ? `app/assets/img/drivers/${logo}` : undefined;
+  return ENGINE_LOGO[engine];
 };
 
 export const getDefaultEngineKey = (engines: Record<string, Engine>) => {
@@ -58,6 +58,7 @@ export function getEngineNativeType(engine?: string): "sql" | "json" {
 }
 
 export function getNativeQueryLanguage(engine?: string) {
+  // Unjustified type cast. FIXME
   return getEngineNativeType(engine).toUpperCase() as "SQL" | "JSON";
 }
 

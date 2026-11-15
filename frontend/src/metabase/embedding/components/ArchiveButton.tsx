@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { canArchiveItem } from "metabase/collections/utils";
-import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
+import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
+import { canArchiveItem } from "metabase/common/collections/utils";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -21,6 +21,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
   const archive = useSetArchive();
 
   const handleArchive = () => {
+    // Unjustified type cast. FIXME
     archive(item as ArchivableItem, true);
     dropdownActions.close();
   };

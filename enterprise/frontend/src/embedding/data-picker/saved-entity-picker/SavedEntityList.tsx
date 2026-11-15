@@ -1,33 +1,35 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, Collection, DatabaseId } from "metabase-types/api";
+import type { CollectionId, DatabaseId } from "metabase-types/api";
+
+import type { SavedEntityType } from "../types";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
-  type: Extract<CardType, "model" | "question">;
-  selectedId: string;
-  databaseId: DatabaseId;
-  collection?: Collection;
-  onSelect: (tableOrModelId: string) => void;
+  type: SavedEntityType;
+  selectedSource?: DataSource;
+  databaseId?: DatabaseId | null;
+  collectionId?: CollectionId;
+  onSelect: (source: DataSource) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
-  selectedId,
+  selectedSource,
   databaseId,
-  collection,
+  collectionId,
   onSelect,
 }: SavedEntityListProps): JSX.Element => {
   const tc = useTranslateContent();
@@ -37,15 +39,15 @@ const SavedEntityList = ({
     </Box>
   );
 
-  const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
+  const isVirtualCollection = collectionId === PERSONAL_COLLECTIONS.id;
 
   const { data, error, isFetching } = useListCollectionItemsQuery(
-    collection && !isVirtualCollection
+    collectionId != null && !isVirtualCollection
       ? {
-          id: collection.id,
+          id: collectionId,
           models: [CARD_INFO[type].model],
-          sort_column: "name",
-          sort_direction: "asc",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );
@@ -60,13 +62,14 @@ const SavedEntityList = ({
       <SelectList className={SavedEntityListS.SavedEntityListRoot}>
         <LoadingAndErrorWrapper
           className={SavedEntityListS.LoadingWrapper}
-          loading={!collection || isFetching}
+          loading={collectionId == null || isFetching}
           error={error}
         >
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
-              const virtualTableId = getQuestionVirtualTableId(id);
+              const source: DataSource =
+                type === "table" ? { type: "table", id } : { type: "card", id };
 
               return (
                 <SelectList.Item
@@ -76,14 +79,17 @@ const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === virtualTableId}
+                  isSelected={
+                    selectedSource?.type === source.type &&
+                    selectedSource.id === source.id
+                  }
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(virtualTableId)}
+                  onSelect={() => onSelect(source)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}
@@ -98,6 +104,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedEntityList;

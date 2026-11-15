@@ -1,23 +1,28 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { getCollectionIcon } from "metabase/entities/collections/utils";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getCollectionIcon } from "metabase/common/collections/utils";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
+import type { RemoteSyncChangesTarget } from "metabase/plugins";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Collection, CollectionId, Transform } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  DatabaseId,
+  Transform,
+} from "metabase-types/api";
 
 import {
   type TreeNode,
   getCollectionNodeId,
   getTransformNodeId,
+  isCollectionNode,
 } from "./types";
 
 export function getIncrementalWarning(
   transform: Transform,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ): string | undefined {
   const isIncremental = transform.target.type === "table-incremental";
   if (!isIncremental) {
@@ -26,9 +31,9 @@ export function getIncrementalWarning(
 
   const isNative = transform.source_type === "native";
   if (isNative) {
-    const libQuery = getLibQuery(transform.source, metadata);
+    const libQuery = getLibQuery(transform.source, getMetadataProvider);
     const hasTableTag = libQuery
-      ? Object.values(Lib.templateTags(libQuery)).some(
+      ? Lib.templateTags(libQuery).some(
           (tag) => tag.type === "table" && tag["table-id"] != null,
         )
       : false;
@@ -65,24 +70,24 @@ function areTransformWarningsEqual(
 }
 
 export function useGetTransformWarnings(transforms: Transform[] | undefined) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const computedWarningsByTransformId = useMemo(() => {
     const warnings = new Map<number, string>();
     for (const transform of transforms ?? []) {
-      const warning = getIncrementalWarning(transform, metadata);
+      const warning = getIncrementalWarning(transform, getMetadataProvider);
       if (warning) {
         warnings.set(transform.id, warning);
       }
     }
     return warnings;
-  }, [transforms, metadata]);
+  }, [transforms, getMetadataProvider]);
 
   // Reuse the previous Map reference when the content is unchanged so that
   // `columnDefs` (and therefore the TanStack TreeTable's column model) stays
   // stable across `metadata` reference churn. Without this, fetching a single
   // collection (e.g. opening the edit-collection modal) recomputes `metadata`,
-  // which propagates a new column reference, remounts row cells, and tears
-  // down any modal that lives inside `CollectionRowMenu`.
+  // which propagates a new column reference, remounts row cells, and closes
+  // any open row menu.
   const warningsRef = useRef(computedWarningsByTransformId);
   if (
     warningsRef.current !== computedWarningsByTransformId &&
@@ -115,11 +120,13 @@ export function buildTreeData(
 
   function buildCollectionNode(collection: Collection): TreeNode {
     const childFolders = (collection.children ?? []).map(buildCollectionNode);
+    // Unjustified type cast. FIXME
     const childTransforms = (
       transformsByCollectionId.get(collection.id as number) ?? []
     ).map(buildTransformNode);
 
     return {
+      // Unjustified type cast. FIXME
       id: getCollectionNodeId(collection.id as number),
       name: collection.name,
       nodeType: "folder",
@@ -140,7 +147,7 @@ export function buildTreeData(
       owner: transform.owner,
       owner_email: transform.owner_email,
       transformId: transform.id,
-      source_readable: transform.source_readable,
+      can_read: transform.can_read,
     };
   }
 
@@ -164,9 +171,38 @@ export function getDefaultExpandedIds(
   const ancestors = targetCollection.effective_ancestors ?? [];
 
   for (const ancestor of ancestors.slice(1)) {
+    // Unjustified type cast. FIXME
     expandedIds[getCollectionNodeId(ancestor.id as number)] = true;
   }
   expandedIds[getCollectionNodeId(targetCollectionId)] = true;
 
   return expandedIds;
+}
+
+export function getDescendantCollectionIds(node: TreeNode): Set<number> {
+  const ids = new Set<number>();
+  const visit = (current: TreeNode) => {
+    if (isCollectionNode(current)) {
+      // Unjustified type cast. FIXME
+      ids.add(current.collection.id as number);
+    }
+    current.children?.forEach(visit);
+  };
+  visit(node);
+  return ids;
+}
+
+export function getRemoteSyncChangesTarget(
+  node: TreeNode,
+): RemoteSyncChangesTarget | undefined {
+  if (node.nodeType === "transform" && node.transformId != null) {
+    return { type: "transform", id: node.transformId };
+  }
+  if (node.nodeType === "library") {
+    return { type: "area", area: "python-library" };
+  }
+  if (isCollectionNode(node)) {
+    return { type: "collection", id: node.collection.id };
+  }
+  return undefined;
 }

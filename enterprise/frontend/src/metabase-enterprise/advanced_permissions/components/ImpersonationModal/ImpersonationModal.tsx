@@ -1,45 +1,48 @@
-import type { Location } from "history";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-import { useAsyncFn, useMount } from "react-use";
+import { useMount } from "react-use";
+import { t } from "ttag";
 
-import { updateDataPermission } from "metabase/admin/permissions/permissions";
-import { DataPermissionType } from "metabase/admin/permissions/types";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDatabaseQuery } from "metabase/common/hooks";
-import { getParentPath } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { updateDataPermission } from "metabase/permissions";
 import { useDispatch } from "metabase/redux";
+import { Modal } from "metabase/ui";
+import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
   ImpersonationModalParams,
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
-import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import {
+  getImpersonatedDatabaseId,
+  impersonatesUsers,
+} from "metabase-enterprise/advanced_permissions/utils";
+import { useGetImpersonationQuery } from "metabase-enterprise/api";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
-import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
-  type Impersonation,
+  type Database,
   type UserAttributeKey,
 } from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
-interface ImpersonationModalProps {
-  params: ImpersonationModalParams;
-  location: Location;
-  route: {
-    path: string;
-  };
-}
+const getImpersonationModalTitle = (database: Database) =>
+  impersonatesUsers(database)
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+      t`Map a Metabase user attribute to database users`
+    : t`Map a user attribute to database roles`;
 
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
-  const groupId = parseInt(params.groupId);
+  // NaN preserves the pre-conversion parseInt behavior for the
+  // route-guaranteed param
+  const groupId = parseIntParam(params.groupId) ?? NaN;
   const databaseId = getImpersonatedDatabaseId(params);
 
   return {
@@ -48,53 +51,36 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   };
 };
 
-const ImpersonationModalInner = ({
-  route,
+export const ImpersonationModal = ({
   params,
-  location,
-}: ImpersonationModalProps) => {
-  const [
-    {
-      loading: isImpersonationLoading,
-      value: impersonation,
-      error: impersonationError,
-    },
-    fetchImpersonation,
-  ] = useAsyncFn(
-    async (
-      groupId: number,
-      databaseId: number,
-    ): Promise<Impersonation | undefined> =>
-      ImpersonationApi.get({
-        db_id: databaseId,
-        group_id: groupId,
-      }),
-    [],
-  );
-
+  onClose,
+}: ModalComponentProps) => {
   const { groupId, databaseId } = parseParams(params);
 
   const {
     data: database,
     isLoading: isDatabaseLoading,
     error,
-  } = useDatabaseQuery({
-    id: databaseId,
-  });
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
 
   const attributes = useEnterpriseSelector(getUserAttributes);
   const draftImpersonation = useEnterpriseSelector(
     getImpersonation(databaseId, groupId),
   );
 
+  const {
+    data: impersonation,
+    isLoading: isImpersonationLoading,
+    error: impersonationError,
+  } = useGetImpersonationQuery(
+    { db_id: databaseId, group_id: groupId },
+    { skip: Boolean(draftImpersonation) },
+  );
+
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
 
   const dispatch = useDispatch();
-
-  const close = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
@@ -121,44 +107,41 @@ const ImpersonationModalInner = ({
         );
       }
 
-      close();
+      onClose();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [onClose, databaseId, dispatch, groupId, selectedAttribute],
   );
-
-  const handleCancel = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());
-
-    if (!draftImpersonation) {
-      fetchImpersonation(groupId, databaseId);
-    }
   });
 
-  const isLoading =
-    isDatabaseLoading || isImpersonationLoading || !attributes || !database;
-
-  if (isLoading) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error ?? impersonationError}
-      />
-    );
-  }
+  const isReady =
+    !isDatabaseLoading &&
+    !isImpersonationLoading &&
+    attributes != null &&
+    database != null;
+  const loadError = error ?? impersonationError;
 
   return (
-    <ImpersonationModalView
-      selectedAttribute={selectedAttribute}
-      attributes={attributes}
-      database={database}
-      onSave={handleSave}
-      onCancel={handleCancel}
-    />
+    <Modal
+      opened
+      density="relaxed"
+      withCloseButton={!isReady && loadError != null}
+      title={database ? getImpersonationModalTitle(database) : undefined}
+      onClose={onClose}
+    >
+      {isReady ? (
+        <ImpersonationModalView
+          selectedAttribute={selectedAttribute}
+          attributes={attributes}
+          database={database}
+          onSave={handleSave}
+          onCancel={onClose}
+        />
+      ) : (
+        <LoadingAndErrorWrapper loading error={loadError} />
+      )}
+    </Modal>
   );
 };
-
-export const ImpersonationModal = withRouter(ImpersonationModalInner);

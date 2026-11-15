@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
+   [metabase.sso.schema :as sso.schema]
    [metabase.util.i18n :refer [tru]]
    [saml20-clj.core :as saml]))
 
@@ -19,7 +20,7 @@
   "Update SAML related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:saml-identity-provider-issuer      {:optional true} :string]
                 [:saml-identity-provider-uri         {:optional true} :string]
                 [:saml-identity-provider-certificate {:optional true} :string]
@@ -27,7 +28,8 @@
                 [:saml-attribute-email               {:optional true} [:maybe :string]]
                 [:saml-attribute-firstname           {:optional true} [:maybe :string]]
                 [:saml-attribute-group               {:optional true} [:maybe :string]]
-                [:saml-attribute-group-mappings      {:optional true} [:maybe :map]]
+                [:saml-group-mappings                {:optional true} [:maybe ::sso.schema/group-mappings]]
+                [:saml-attribute-tenant              {:optional true} [:maybe :string]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]
                 [:saml-enabled                       {:optional true} [:maybe :boolean]]
                 [:saml-group-sync                    {:optional true} [:maybe :boolean]]

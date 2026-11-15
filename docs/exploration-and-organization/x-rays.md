@@ -1,5 +1,6 @@
 ---
 title: X-rays
+summary: Get automatically generated charts and summaries of a table, model, or data point.
 redirect_from:
   - /docs/latest/users-guide/14-x-rays
 ---
@@ -10,7 +11,7 @@ X-rays are a way to get automatic insights and explorations of your data.
 
 ## Get automatic insights when clicking on a chart
 
-One great way to explore your data in general in Metabase is to click on points of interest in charts and selecting **Automatic insights**.
+One great way to explore your data in general in Metabase is to click on points of interest in charts and select **Automatic insights**.
 
 ![Automatic insights in the drill-through menu](./images/automatic-insights.png)
 
@@ -64,4 +65,4 @@ If for some reason X-rays aren't a good fit for your team or your data, administ
 
 If you pin any dashboards in the "Our Analytics" collection, Metabase will hide the X-ray suggestions that appear on the homepage.
 
-Admins can also manually remove these suggestions by clicking on the **Customize** button in the upper right and selecting a dashboard as your homepage. [Changing the home page](../configuring-metabase/settings.md#custom-homepage) won't disable the X-ray features in the rest of Metabase.
+Admins can also manually remove these suggestions by clicking on the **Customize** button in the upper right and selecting a dashboard as your homepage. [Changing the home page](../configuring-metabase/settings.md#homepage) won't disable the X-ray features in the rest of Metabase.

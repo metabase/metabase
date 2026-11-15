@@ -7,13 +7,17 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text
@@ -62,7 +66,7 @@
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
     (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
-      (with-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
         ;; make sure Postgres driver is initialized before trying to get its connection properties.
         (driver/the-initialized-driver :postgres)
         (let [connection-props (-> (driver.u/available-drivers-info)
@@ -73,11 +77,11 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database
-                                 :details details}))
+                                 :id       1
+                                 :details  details}))
       {}                      true
       {:json-unfolding nil}   true
       {:json-unfolding true}  true
@@ -127,7 +131,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows with all basic types correctly"
               (let [data-source {:type :rows :data data}
                     _ (driver/insert-from-source! driver db-id
@@ -135,14 +138,15 @@
                                                    :columns columns}
                                                   data-source)]
                 (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
-                                              (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
-                                                                                              :schema schema-name}))]
+                                              (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name table-name
+                                                                                                                                     :schema schema-name}))]
                   (is (= (count data) (count inserted-rows)) "Should insert all test rows including nulls"))))
             (finally
               (driver/drop-table! driver db-id qualified-table-name))))))))
 
 (deftest insert-from-jsonl-file-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+  ;; TODO: give this driver set a name, or use features here. what are we selecting for?
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse}
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
@@ -158,7 +162,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows from JSONL file correctly"
               (let [temp-file (java.io.File/createTempFile "test-data" ".jsonl")
                     col-names (map :name columns)
@@ -167,19 +170,17 @@
                                      (into {} (map vector col-names row)))
                                    data)]
                 (try
-
                   (with-open [writer (java.io.FileWriter. temp-file)]
                     (doseq [row json-rows]
                       (.write writer (str (json/encode row) "\n"))))
-
                   (let [data-source {:type :jsonl-file :file temp-file}
                         _ (driver/insert-from-source! driver db-id
                                                       {:name qualified-table-name
                                                        :columns columns}
                                                       data-source)]
                     (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
-                                                  (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
-                                                                                                  :schema schema-name}))]
+                                                  (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name table-name
+                                                                                                                                         :schema schema-name}))]
                       (is (= (count data) (count inserted-rows))
                           "Should insert all test rows from JSONL file including nulls")))
                   (finally

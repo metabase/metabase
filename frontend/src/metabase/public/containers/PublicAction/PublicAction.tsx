@@ -2,19 +2,16 @@ import { useCallback, useState } from "react";
 
 import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
+import { publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import { PublicApi } from "metabase/services";
+import { Stack, Title } from "metabase/ui";
 import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-
-import {
-  FormContainer,
-  FormResultMessage,
-  FormTitle,
-} from "./PublicAction.styled";
 
 interface Props {
   action: WritebackAction;
@@ -23,6 +20,7 @@ interface Props {
 }
 
 function PublicAction({ action, publicId, onError }: Props) {
+  const dispatch = useDispatch();
   const [isSubmitted, setSubmitted] = useState(false);
   const successMessage = getSuccessMessage(action);
 
@@ -31,24 +29,43 @@ function PublicAction({ action, publicId, onError }: Props) {
   const handleSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
       try {
-        await PublicApi.executeAction({ uuid: publicId, parameters });
+        await runRtkEndpoint(
+          { uuid: publicId, parameters },
+          dispatch,
+          publicApi.endpoints.executePublicAction,
+        );
         setSubmitted(true);
       } catch (error) {
+        // Unjustified type cast. FIXME
         onError(error as AppErrorDescriptor);
       }
     },
-    [publicId, onError],
+    [publicId, onError, dispatch],
   );
 
   if (isSubmitted) {
-    return <FormResultMessage>{successMessage}</FormResultMessage>;
+    return (
+      <Title order={1} size="h4" c="text-primary" ta="center">
+        {successMessage}
+      </Title>
+    );
   }
 
   return (
-    <FormContainer>
-      <FormTitle>{action.name}</FormTitle>
-      <ActionForm action={action} onSubmit={handleSubmit} />
-    </FormContainer>
+    <Stack
+      gap={0}
+      w={{ base: "100%", sm: "26.875rem" }}
+      px={{ base: "sm", sm: 0 }}
+    >
+      <Title order={1} size="h4" c="text-primary" mb="xl">
+        {action.name}
+      </Title>
+      <ActionForm
+        action={action}
+        submitButtonFullWidth
+        onSubmit={handleSubmit}
+      />
+    </Stack>
   );
 }
 

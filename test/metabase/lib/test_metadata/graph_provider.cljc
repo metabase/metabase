@@ -17,17 +17,17 @@
                 (:tables metadata-graph)))
 
 (defn- graph-metadatas
-  [metadata-graph {metadata-type :lib/type, :keys [table-id], :as metadata-spec}]
+  [metadata-graph {metadata-type :lib/type, :keys [table-ids], :as metadata-spec}]
   (let [objects (case metadata-type
                   :metadata/table   (:tables metadata-graph)
-                  :metadata/column  (if table-id
-                                      (:fields (find-table metadata-graph table-id))
+                  :metadata/column  (if table-ids
+                                      (mapcat #(:fields (find-table metadata-graph %)) table-ids)
                                       (mapcat :fields (:tables metadata-graph)))
-                  :metadata/metric  (if table-id
-                                      (:metrics (find-table metadata-graph table-id))
+                  :metadata/metric  (if table-ids
+                                      (mapcat #(:metrics (find-table metadata-graph %)) table-ids)
                                       (mapcat :metrics (:tables metadata-graph)))
-                  :metadata/segment (if table-id
-                                      (:segments (find-table metadata-graph table-id))
+                  :metadata/segment (if table-ids
+                                      (mapcat #(:segments (find-table metadata-graph %)) table-ids)
                                       (mapcat :segments (:tables metadata-graph)))
                   #_else
                   ;; not implemented for the simple graph metadata provider.

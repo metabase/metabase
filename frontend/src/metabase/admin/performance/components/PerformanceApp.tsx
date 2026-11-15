@@ -3,14 +3,14 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PerformanceTabId } from "metabase/plugins";
+import { Outlet } from "metabase/router";
 
-import { PerformanceTabId } from "../types";
 import { getPerformanceTabName } from "../utils";
 
-export const PerformanceApp = ({ children }: { children: React.ReactNode }) => (
+export const PerformanceApp = () => (
   <AdminSettingsLayout
-    maw="60rem"
+    fullWidth
     sidebar={
       <AdminNavWrapper>
         <AdminNavItem
@@ -35,6 +35,6 @@ export const PerformanceApp = ({ children }: { children: React.ReactNode }) => (
       </AdminNavWrapper>
     }
   >
-    {children}
+    <Outlet />
   </AdminSettingsLayout>
 );

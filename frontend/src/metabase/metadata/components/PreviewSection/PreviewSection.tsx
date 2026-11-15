@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
@@ -39,7 +38,7 @@ const PreviewSectionBase = ({
   onPreviewTypeChange,
   onClose,
 }: PreviewSectionBaseProps) => {
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const tableId = table.id;
   const databaseId = table.db_id;
   const data = useMemo(() => getPreviewTypeData(), []);
@@ -53,18 +52,14 @@ const PreviewSectionBase = ({
       className={className}
       data-testid="preview-section"
       h="100%"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       withBorder
     >
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 
-        <ActionIcon
-          color="text-primary"
-          variant="transparent"
-          onClick={onClose}
-        >
+        <ActionIcon variant="subtle" onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>
       </Group>
@@ -104,12 +99,7 @@ const PreviewSectionBase = ({
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
-            /**
-             * Make sure internal component state is reset when changing any field settings.
-             * This is because use***Filter hooks cache some parts of state internally on mount
-             * and do not account for all prop changes during their lifecycle.
-             */
-            key={JSON.stringify(field)}
+            key={getFilteringPreviewKey(field)}
             table={table}
           />
         )}
@@ -117,5 +107,17 @@ const PreviewSectionBase = ({
     </Card>
   );
 };
+
+function getFilteringPreviewKey(field: Field) {
+  return [
+    field.id,
+    field.base_type,
+    field.effective_type,
+    field.semantic_type,
+    field.fk_target_field_id,
+    field.visibility_type,
+    field.has_field_values,
+  ].join(":");
+}
 
 export const PreviewSection = memo(PreviewSectionBase);

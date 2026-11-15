@@ -1,18 +1,22 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
+  tableApi,
   useDismissDatabaseSyncSpinnerMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { isDbModifiable } from "metabase/common/utils/database";
-import { Tables } from "metabase/entities/tables";
+import {
+  getDbNotModifiableMessage,
+  isDbModifiable,
+} from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
-import { Button, Flex, Tooltip } from "metabase/ui";
-import { isSyncCompleted } from "metabase/utils/syncing";
+import { useNavigate } from "metabase/router";
+import { Alert, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { isSyncAborted, isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
@@ -31,14 +35,15 @@ export const DatabaseConnectionInfoSection = ({
   const isSynced = isSyncCompleted(database);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
   const [dismissSyncSpinner] = useDismissDatabaseSyncSpinnerMutation();
 
   const handleSyncDatabaseSchema = async () => {
     await syncDatabaseSchema(database.id).unwrap();
-    // FIXME remove when MetadataEditor uses RTK query directly to load tables
-    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+    // refresh any table lists now that the schema may have changed
+    dispatch(tableApi.util.invalidateTags([listTag("table")]));
   };
 
   const handleDismissSyncSpinner = useCallback(
@@ -47,21 +52,21 @@ export const DatabaseConnectionInfoSection = ({
   );
 
   const openDbDetailsModal = useCallback(() => {
-    dispatch(push(`/admin/databases/${database.id}/edit`));
-  }, [database.id, dispatch]);
+    navigate(`/admin/databases/${database.id}/edit`);
+  }, [database.id, navigate]);
 
   return (
     <DatabaseInfoSection
-      condensed
+      condensed={!database.is_stub}
       name={t`Connection and sync`}
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       data-testid="database-connection-info-section"
     >
-      <Flex align="center" justify="space-between" gap="lg">
+      <Flex align="center" justify="space-between" gap="xl">
         <DatabaseConnectionHealthInfo databaseId={database.id} />
         <Tooltip
           disabled={isDbModifiable(database)}
-          label={t`This database is managed by Metabase Cloud and cannot be modified.`}
+          label={getDbNotModifiableMessage(database)}
         >
           <Button
             onClick={openDbDetailsModal}
@@ -71,9 +76,21 @@ export const DatabaseConnectionInfoSection = ({
         </Tooltip>
       </Flex>
 
-      <DatabaseInfoSectionDivider condensed />
+      {!database.is_stub && <DatabaseInfoSectionDivider condensed />}
 
-      {!database.is_attached_dwh && (
+      {isSyncAborted(database) && database.initial_sync_error && (
+        <Alert
+          size="compact"
+          color="error"
+          icon={<Icon name="warning" />}
+          title={t`Sync failed`}
+          mb="md"
+        >
+          {database.initial_sync_error}
+        </Alert>
+      )}
+
+      {!database.is_attached_dwh && !database.is_stub && (
         <Flex gap="sm" wrap="wrap">
           {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
           <ActionButton

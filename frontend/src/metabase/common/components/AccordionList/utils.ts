@@ -1,7 +1,8 @@
 import { shallowEqual } from "@mantine/hooks";
-import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
+
+import { getAtPath } from "metabase/utils/get-at-path";
 
 import type { Item, Row, SearchProps, Section } from "./types";
 
@@ -160,6 +161,7 @@ export function searchFilter<
 >({
   sections,
   searchText,
+  // Unjustified type cast. FIXME
   searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
 }: FilterOptions<TItem, TSection>) {
   const strategy = searchStrategy({
@@ -221,8 +223,9 @@ const searchSubstring = memoize(function <TItem extends Item>({
     score(item: TItem) {
       let score = 1;
       for (const prop of searchProps) {
-        const path = prop.split(".");
-        const itemText = String(getIn(item, path) || "");
+        // `SearchProp` may resolve to a non-string `keyof` type, so normalize to a string key
+        const path = String(prop).split(".");
+        const itemText = String(getAtPath(item, path) || "");
         const match = itemText.toLowerCase().includes(searchText.toLowerCase());
         score = Math.min(score, match ? 0 : 1);
       }

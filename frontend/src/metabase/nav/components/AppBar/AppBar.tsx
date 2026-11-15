@@ -1,22 +1,22 @@
+import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { DetailViewState } from "metabase/redux/store";
-import type { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
-import AppBarLarge from "./AppBarLarge";
-import AppBarSmall from "./AppBarSmall";
+import { AppBarLarge } from "./AppBarLarge";
+import { AppBarSmall } from "./AppBarSmall";
 
 export interface AppBarProps {
-  currentUser: User;
+  currentUser: User | null;
   collectionId?: CollectionId;
   detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
-  isCommentSidebarOpen?: boolean;
   isDocumentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
@@ -26,16 +26,20 @@ export interface AppBarProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   isMetricsViewer?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
-const AppBar = (props: AppBarProps): JSX.Element => {
+export const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
     <header
-      className={S.AppBarRoot}
+      className={S.appBarRoot}
       data-element-id="app-bar"
       data-testid="app-bar"
       data-with-border={props.detailView != null}
@@ -51,6 +55,3 @@ const AppBar = (props: AppBarProps): JSX.Element => {
     </header>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBar;

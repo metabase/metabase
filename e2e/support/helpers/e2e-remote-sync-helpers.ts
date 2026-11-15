@@ -1,12 +1,13 @@
 import yaml from "js-yaml";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, RemoteSyncTask } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
   collectionTable,
   entityPickerModal,
   entityPickerModalItem,
+  modal,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -16,9 +17,11 @@ export const LOCAL_GIT_PATH =
 export const SYNCED_COLLECTION_FIXTURE_PATH =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_synced_collection";
-export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
+export const SYNCED_LIBRARY_FIXTURE_PATH =
+  Cypress.config("projectRoot") + "/e2e/support/assets/example_synced_library";
+export const SYNCED_STUB_DATABASE_FIXTURE_PATH =
   Cypress.config("projectRoot") +
-  "/e2e/support/assets/example_synced_transforms_collection";
+  "/e2e/support/assets/example_synced_stub_database";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
@@ -27,10 +30,18 @@ export const copySyncedCollectionFixture = () => {
     destination: LOCAL_GIT_PATH,
   });
 };
-// Copy the sample synced transforms collection from the fixture folder to the working directory
-export const copySyncedTransformsCollectionFixture = () => {
+// Copy the sample remote-synced Library (with one glossary entry) from the fixture folder to the working directory
+export const copySyncedLibraryFixture = () => {
   cy.task("copyDirectory", {
-    source: SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH,
+    source: SYNCED_LIBRARY_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+
+// Copy a synced collection whose card references a database the instance doesn't have
+export const copySyncedStubDatabaseFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_STUB_DATABASE_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
@@ -55,15 +66,23 @@ export const commitToRepo = (
 export function configureGit(
   syncType: "read-write" | "read-only",
   syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
-  collections?: Record<number, boolean>,
+  collections?: Record<string, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
     "remote-sync-url": syncUrl,
-    "remote-sync-enabled": true,
     ...(collections && { collections }),
   });
+}
+
+// Push the synced content via the API and wait for the export
+export function pushChangesWithApi(message = "Push") {
+  cy.request("POST", "/api/ee/remote-sync/export", {
+    branch: "main",
+    message,
+  });
+  pollForTask({ taskName: "export" });
 }
 
 // Setup remote sync via the API and wait for/trigger the initial import
@@ -77,8 +96,11 @@ export function configureGitAndPullChanges(
     // Read-only mode automatically triggers an import, just wait for it
     pollForTask({ taskName: "import" });
   } else {
-    // Read-write mode needs manual import trigger
-    cy.request("POST", "/api/ee/remote-sync/import", {});
+    // Read-write mode needs manual import trigger. expected_branch asserts the client's view of the
+    // active branch against the setting (configureGit sets it to "main").
+    cy.request("POST", "/api/ee/remote-sync/import", {
+      expected_branch: "main",
+    });
     pollForTask({ taskName: "import" });
   }
 }
@@ -124,6 +146,7 @@ export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();
   cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
     cy.wrap(
+      // Unjustified type cast. FIXME
       (files as string[]).filter(
         (file: string) => !file.includes(".git") && file.includes(".yaml"),
       ),
@@ -161,6 +184,7 @@ export const updateRemoteQuestion = (
 ) => {
   wrapSyncedCollectionFiles();
   cy.get("@syncedCollectionFiles").then((syncedCollectionFiles) => {
+    // Unjustified type cast. FIXME
     const questionFilePath = (
       syncedCollectionFiles as unknown as string[]
     ).find((file) => file.includes("remote_sync_test_question.yaml"));
@@ -168,6 +192,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
+      // Unjustified type cast. FIXME
       const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
@@ -212,30 +237,39 @@ export const goToSyncedCollection = (
     .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
-// Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-const ensureGitSyncMenuOpen = () => {
-  getGitSyncControls().then(($btn) => {
-    if ($btn.attr("data-expanded") !== "true") {
-      cy.wrap($btn).click();
-    }
+const openGitSyncMenu = () => getGitSyncControls().click();
+
+const MENU_STATUS_TIMEOUT = 20000;
+
+const getPullOption = () => {
+  openGitSyncMenu();
+  return popover()
+    .findByRole("menuitem", { name: /Pull changes/ })
+    .should("be.enabled", { timeout: MENU_STATUS_TIMEOUT });
+};
+
+const getPushOption = () => {
+  openGitSyncMenu();
+  return popover()
+    .findByRole("menuitem", { name: /Push changes/ })
+    .should("be.enabled", { timeout: MENU_STATUS_TIMEOUT });
+};
+
+export const clickPullOption = () => getPullOption().click();
+
+export const clickPushOption = () => getPushOption().click();
+
+export const visitRemoteSyncSettings = () =>
+  cy.visit("/admin/settings/remote-sync");
+
+export const pushChanges = (message = "Local changes") => {
+  clickPushOption();
+  modal().within(() => {
+    cy.findByLabelText("Commit message").type(message);
+    cy.button("Push").click();
   });
-};
-
-export const getPullOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
-};
-
-export const getPushOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
-};
-
-export const getSwitchBranchOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Switch branch/ });
 };
 
 // Enable tenants feature for testing
@@ -255,53 +289,62 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+// An import's first native SQL parse starts the Python parser, which on a slow runner takes longer than the
+// fifteen seconds thirty polls allow. Giving up while the import still runs is worse than waiting: a retry
+// restores the app DB under the live import, which then dies on a closed connection.
+const TASK_POLL_LIMIT = 120;
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
+    return cy.wrap(body);
   });
 };
 
-// Poll for task completion by actively querying the endpoint
-// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+// Poll for a task's terminal state by actively querying the endpoint; `until` is the expected status.
+// Use this when the app isn't loaded yet, or to confirm server-side settling independently of the UI.
 export const pollForTask = (
-  { taskName }: { taskName: "import" | "export" },
+  {
+    taskName,
+    until = "successful",
+  }: { taskName: "import" | "export"; until?: "successful" | "conflict" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 30) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
 
   return cy
-    .request("GET", "/api/ee/remote-sync/current-task")
+    .request<RemoteSyncTask | null>("GET", "/api/ee/remote-sync/current-task")
     .then((response) => {
       const { body } = response;
 
       // No task exists yet, keep waiting
       if (!body) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
       // Wrong task type, keep waiting
       if (body.sync_task_type !== taskName) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Task hasn't completed successfully yet
-      if (body.status !== "successful") {
-        // Check if it errored
+      // Task hasn't reached the expected terminal status yet
+      if (body.status !== until) {
         if (body.status === "errored") {
           throw Error(
             `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
@@ -314,11 +357,23 @@ export const pollForTask = (
           );
         }
 
+        if (body.status === "successful") {
+          throw Error(
+            `Task ${taskName} completed without the expected ${until}`,
+          );
+        }
+
+        if (body.status === "cancelled" || body.status === "timed-out") {
+          throw Error(
+            `Task ${taskName} ended with status ${body.status}: ${body.error_message || "Unknown error"}`,
+          );
+        }
+
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Success!
+      // Reached the expected terminal status!
       return cy.wrap(body);
     });
 };

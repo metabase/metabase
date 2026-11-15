@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,8 +8,9 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   Collection,
   DashboardQuestionCandidate,
@@ -34,6 +34,10 @@ export interface SetupOpts {
   moveToDashboard?: boolean;
   numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
+  /**
+   * The badges that the user has already seen in the collection menu.
+   */
+  seenBadges?: string[];
 }
 
 export const setup = ({
@@ -45,6 +49,7 @@ export const setup = ({
   moveToDashboard = false,
   numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
+  seenBadges = [],
 }: SetupOpts) => {
   // We need a mock to get the total number of items in a collection, but we don't need to
   // access the data - only the total
@@ -55,7 +60,7 @@ export const setup = ({
   setupUserKeyValueEndpoints({
     namespace: "indicator-menu",
     key: "collection-menu",
-    value: [],
+    value: seenBadges,
   });
 
   setupUserKeyValueEndpoints({
@@ -86,13 +91,13 @@ export const setup = ({
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <CollectionMenu
             collection={collection}
             isAdmin={isAdmin}
             onUpdateCollection={onUpdateCollection}
           />
-        )}
+        }
       />
     </>,
     { storeInitialState: state, initialRoute: "/", withRouter: true },
@@ -102,11 +107,11 @@ export const setup = ({
 };
 
 export const assertIndicatorVisible = async () => {
-  await waitFor(async () =>
+  await waitFor(() =>
     expect(
-      (await screen.findByTestId("menu-indicator-root")).querySelector(
-        "[class*=indicator]",
-      ),
+      screen
+        .getByTestId("menu-indicator-root")
+        .querySelector("[class*=indicator]"),
     ).toBeInTheDocument(),
   );
 };

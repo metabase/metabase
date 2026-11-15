@@ -7,7 +7,7 @@
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut]
-   [metabase.util.performance :refer [postwalk]])
+   [metabase.util.match :as match])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -20,13 +20,10 @@
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (postwalk
-   (fn [form]
-     (cond-> form
-       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
-       str))
-   x))
+  (match/replace-all x
+    (re :guard (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) re)) (str re)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache-miss-hook*
   "A hook that is called whenever there is a cache miss, for side effects.
   This is used in tests or to monitor cache misses."
@@ -57,13 +54,17 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (let [schema-key (schema-cache-key schema)]
-    (or (some-> (get (get @cache k) schema-key) (deref-entry value-thunk)) ; get-in is terribly inefficient
-        (let [v (value-thunk)]
-          (when *cache-miss-hook*
-            (*cache-miss-hook* k schema v))
-          (swap! cache assoc-in [k schema-key] (cache-entry v))
-          v))))
+  (let [cache-map (get @cache k)]
+    ;; First, try looking up schema in the cache as is.
+    (or (some-> (get cache-map schema) (deref-entry value-thunk))
+        ;; If that fails, ensure that schema doesn't contain non-= elements and try again.
+        (let [schema-key (schema-cache-key schema)]
+          (or (some-> (get cache-map schema-key) (deref-entry value-thunk))
+              (let [v (value-thunk)]
+                (when *cache-miss-hook*
+                  (*cache-miss-hook* k schema v))
+                (swap! cache assoc-in [k schema-key] (cache-entry v))
+                v))))))
 
 (defn- cached-schema [schema]
   (if (mc/-reference? schema)
@@ -76,6 +77,7 @@
   [schema]
   (letfn [(make-validator* []
             (try
+              ;; this is the sanctioned caching wrapper; it must call raw malli once to build the cached fn
               #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator (cached-schema schema))
               (catch #?(:clj Throwable :cljs :default) e
@@ -104,6 +106,7 @@
   [schema]
   (letfn [(make-explainer []
             (try
+              ;; this is the sanctioned caching wrapper; it must call raw malli once to build the cached fn
               #_{:clj-kondo/ignore [:discouraged-var]}
               (let [validator* (validator schema)
                     explainer* (mc/explainer (cached-schema schema))]
@@ -222,9 +225,9 @@
      ([type docstring schema]
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
-           :clj `(-with-doc ~schema ~docstring)
-           ;; Ignore docstring for CLJS.
-           :cljs schema)))))
+            :clj `(-with-doc ~schema ~docstring)
+            ;; Ignore docstring for CLJS.
+            :cljs schema)))))
 
 (defn- deref-all-preserving-properties
   "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."

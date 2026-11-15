@@ -16,7 +16,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
-  isShowingAIQuestionAnalysisSidebar: false,
+  focusedTimelineEventIds: null,
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
@@ -30,7 +30,6 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,
-  modalContext: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
   nativeEditorSelectedRange: [],
@@ -56,8 +55,8 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
-  isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
+  focusedTimelineEventIds: null,
   isShowingQuestionInfoSidebar: false,
   isShowingDataReference: false,
 };
@@ -68,4 +67,5 @@ export const CLOSED_NATIVE_EDITOR_SIDEBARS: Partial<QueryBuilderUIControls> = {
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
   isShowingTimelineSidebar: false,
+  focusedTimelineEventIds: null,
 };

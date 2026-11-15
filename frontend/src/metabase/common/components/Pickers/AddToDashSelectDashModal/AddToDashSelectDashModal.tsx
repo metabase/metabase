@@ -1,18 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { DashboardPickerModal } from "../DashboardPicker";
-import { type OmniPickerItem, isInDbTree } from "../EntityPicker";
+import { type OmniPickerItem, isInCollectionTree } from "../EntityPicker";
 import { getCollectionType } from "../EntityPicker/utils";
 
-import { useMostRecentlyViewedDashboard } from "./hooks";
 import { isInPersonalCollection } from "./utils";
 
 const getTitle = ({ type }: Card) => {
@@ -44,7 +44,7 @@ export const AddToDashSelectDashModal = ({
 }: AddToDashSelectDashModalProps) => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const { data: mostRecentlyViewedDashboard } =
-    useMostRecentlyViewedDashboard();
+    useGetMostRecentlyViewedDashboardQuery();
 
   const onDashboardSelected = (
     selectedDashboard?: Pick<Dashboard, "id" | "name">,
@@ -87,7 +87,7 @@ export const AddToDashSelectDashModal = ({
 
   const shouldDisable = useCallback(
     (item: OmniPickerItem) => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 

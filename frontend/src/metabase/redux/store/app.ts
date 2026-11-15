@@ -1,6 +1,15 @@
-import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
-import type { Table } from "metabase-types/api";
+import type { Card, Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
+
+export type ChecklistItemValue =
+  | "database"
+  | "invite"
+  | "ai"
+  | "query"
+  | "dashboard"
+  | "alert"
+  | "data-studio"
+  | "permissions";
 
 export interface AppErrorDescriptor {
   status: number;
@@ -9,6 +18,7 @@ export interface AppErrorDescriptor {
     message?: string;
   };
   context?: string;
+  message?: string;
 }
 
 export interface AppBreadCrumbs {
@@ -30,11 +40,21 @@ export type TempStorageKey = keyof TempStorage;
 export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
   TempStorage[Key];
 
-export interface DetailViewState {
+export type TableDetailViewState = {
+  type: "table";
   rowName: string;
   table: Table;
   collectionId: CollectionId | null;
-}
+};
+
+export type ModelDetailViewState = {
+  type: "model";
+  rowName: string;
+  card: Card;
+  collectionId: CollectionId | null;
+};
+
+export type DetailViewState = TableDetailViewState | ModelDetailViewState;
 
 export interface AppState {
   detailView: DetailViewState | null;

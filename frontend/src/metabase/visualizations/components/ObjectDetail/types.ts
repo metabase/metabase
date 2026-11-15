@@ -1,12 +1,11 @@
 import type Question from "metabase-lib/v1/Question";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
+  DashboardCard,
   DatasetData,
-  QuestionDashboardCard,
+  ForeignKey,
   RowValue,
+  Table,
 } from "metabase-types/api";
 
 export type ObjectId = number | string;
@@ -26,9 +25,8 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
-  metadata?: Metadata;
   card?: Card;
-  dashcard?: QuestionDashboardCard;
+  dashcard?: DashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: RowValue[] | undefined;
@@ -43,16 +41,17 @@ export interface ObjectDetailProps {
   canZoomNextRow?: boolean;
   isDataApp?: boolean;
   showControls?: boolean;
-  showRelations?: boolean;
   showHeader?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
-  fetchTableFks: (id: number) => void;
-  loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
-  followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
-  closeObjectDetail: () => void;
+  // Host-injected (query builder modal path). Omitted on dashboards/embedding,
+  // where the registered "object" viz is purely presentational.
+  fetchTableFks?: (id: number) => void;
+  loadObjectDetailFKReferences?: (opts: { objectId: ObjectId }) => void;
+  followForeignKey?: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
+  viewPreviousObjectDetail?: () => void;
+  viewNextObjectDetail?: () => void;
+  closeObjectDetail?: () => void;
   onActionSuccess?: () => void;
   className?: string;
   isDashboard: boolean;

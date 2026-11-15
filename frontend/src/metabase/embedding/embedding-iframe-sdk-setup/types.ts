@@ -1,32 +1,22 @@
 import type {
   BrowserEmbedOptions,
-  DashboardEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
-  QuestionEmbedOptions,
+  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedAuthTypeSettings,
   SdkIframeEmbedBaseSettings,
+  SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import type { BaseRecentItem } from "metabase-types/api";
+import type {
+  BaseRecentItem,
+  SdkIframeEmbedSetupTheme,
+} from "metabase-types/api";
 
-/**
- * Wizard-scoped theme: either an inline MetabaseTheme or a reference to a
- * saved EmbeddingTheme via `id`. The preview resolves `id` back to an inline
- * theme before handing it to embed.js.
- */
-export type SdkIframeEmbedSetupTheme = MetabaseTheme & { id?: number };
-
-export type SdkIframeEmbedSetupExperience =
-  | "dashboard"
-  | "chart"
-  | "exploration"
-  | "browser"
-  | "metabot";
+export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
-  | "select-embed-resource"
   | "select-embed-options"
   | "get-code";
 
@@ -43,20 +33,15 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
 export type SdkIframeEmbedSetupGuestEmbedSettings =
   SdkIframeEmbedAuthTypeSettings;
 
-export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
-  lockedParameters?: string[];
-};
-
-export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
-  lockedParameters?: string[];
-};
-
 export type SdkIframeEmbedSetupTemplateSettings =
   | SdkIframeDashboardEmbedSettings
   | SdkIframeQuestionEmbedSettings
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  // Data apps does not support theme overrides.
+  // Keep the wizard's saved theme when switching experiences only.
+  | Omit<DataAppEmbedOptions, "theme">;
 
 /**
  * Settings used by the embed setup route.

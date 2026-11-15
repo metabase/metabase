@@ -19,7 +19,7 @@ export function TablePicker({ path, onChange }: Props) {
 
   return (
     <Stack data-testid="table-picker" mih={rem(200)}>
-      <Box p="xl" pb={0}>
+      <Box p="xxl" pb={0}>
         <Input
           leftSection={<Icon name="search" />}
           placeholder={t`Search tables`}

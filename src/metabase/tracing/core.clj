@@ -18,6 +18,8 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
+   [metabase.global-system.system :as system]
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
@@ -28,6 +30,7 @@
    [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
    (io.opentelemetry.api.trace Span SpanContext)
+   (io.opentelemetry.sdk OpenTelemetrySdk)
    (io.opentelemetry.sdk.trace IdGenerator)
    (java.time Duration)
    (org.apache.logging.log4j ThreadContext)))
@@ -176,7 +179,7 @@
       (catch ClassNotFoundException _
         nil)
       (catch Exception e
-        (log/debug e "Could not resolve PyroscopeAsyncProfiler")
+        (log/debugf "Could not resolve PyroscopeAsyncProfiler: %s" (ex-message e))
         nil))))
 
 ;; AsyncProfiler.setTracingContext(long spanId, long spanNameId)
@@ -230,7 +233,7 @@
                                      (Long/valueOf span-name-id)]))
         (.setAttribute span "pyroscope.profile.id" span-id-hex))
       (catch Exception e
-        (log/debug e "Error setting Pyroscope profiling context")))))
+        (log/debugf "Error setting Pyroscope profiling context: %s" (ex-message e))))))
 
 (defn clear-pyroscope-context!
   "Clear profiling context for current thread. No-op if Pyroscope is not available."
@@ -242,6 +245,38 @@
       (catch Exception _))))
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *span-attrs*
+  "Atom of attrs already written to the active `with-span`. Used by [[add-span-attrs!]] to detect duplicate writes; nil outside a `with-span`."
+  nil)
+
+(defn- merge-attrs-and-detect-duplicates!
+  "Merge `attrs` into `*span-attrs*` and return the subset that should be written to the active span. Any key already in the atom is a duplicate: throws in dev/test, drops with a `log/warn` in prod. Returns `attrs` unchanged when `*span-attrs*` is unbound (outside `with-span`)."
+  [attrs]
+  (if-let [span-attrs *span-attrs*]
+    (let [snapshot   @span-attrs
+          duplicates (filterv #(contains? snapshot %) (keys attrs))
+          new-attrs  (apply dissoc attrs duplicates)]
+      (when (seq duplicates)
+        (if (or config/is-dev? config/is-test?)
+          (throw (ex-info (format "Span attribute already set: %s" (pr-str duplicates))
+                          {:duplicates duplicates
+                           :existing   (select-keys snapshot duplicates)
+                           :new        (select-keys attrs duplicates)}))
+          (log/warnf "Span attribute already set, dropping duplicate writes: %s"
+                     (pr-str duplicates))))
+      (swap! span-attrs merge new-attrs)
+      new-attrs)
+    attrs))
+
+(defn add-span-attrs!
+  "Enrich the active OTel span with `attrs` mid-execution. No-op if `group` is disabled or `attrs` is empty. Re-writing a key already on the span is a duplicate: throws in dev/test, dropped (with `log/warn`) in prod."
+  [group attrs]
+  (when (and (group-enabled? group) (seq attrs))
+    (let [new-attrs (merge-attrs-and-detect-duplicates! attrs)]
+      (when (seq new-attrs)
+        (span/add-span-data! {:attributes new-attrs})))))
 
 (defmacro with-span
   "Create an OTel span if tracing is enabled for `group`.
@@ -263,27 +298,29 @@
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
-     (let [prev-trace-id# (ThreadContext/get "trace_id")
+     (let [attrs#         ~attrs
+           prev-trace-id# (ThreadContext/get "trace_id")
            prev-span-id#  (ThreadContext/get "span_id")
            root-span?#    (nil? prev-span-id#)]
-       (span/with-span! {:name ~span-name :attributes ~attrs}
-         (inject-trace-id-into-mdc!)
-         ;; For root spans (no parent in MDC), set Pyroscope profiling context.
-         ;; Nested child spans skip this — the root's context covers all samples.
-         (when root-span?#
-           (let [^Span span#                   (Span/current)
-                 ^SpanContext ctx#              (.getSpanContext span#)
-                 span-id#                       (.getSpanId ctx#)]
-             (set-pyroscope-context! span# span-id# ~span-name)))
-         (try
-           ~@body
-           (finally
-             (when root-span?#
-               (clear-pyroscope-context!))
-             (if prev-trace-id#
-               (do (ThreadContext/put "trace_id" prev-trace-id#)
-                   (ThreadContext/put "span_id" prev-span-id#))
-               (clear-trace-id-from-mdc!))))))
+       (binding [*span-attrs* (atom attrs#)]
+         (span/with-span! {:name ~span-name :attributes attrs#}
+           (inject-trace-id-into-mdc!)
+           ;; For root spans (no parent in MDC), set Pyroscope profiling context.
+           ;; Nested child spans skip this — the root's context covers all samples.
+           (when root-span?#
+             (let [^Span span#                   (Span/current)
+                   ^SpanContext ctx#              (.getSpanContext span#)
+                   span-id#                       (.getSpanId ctx#)]
+               (set-pyroscope-context! span# span-id# ~span-name)))
+           (try
+             ~@body
+             (finally
+               (when root-span?#
+                 (clear-pyroscope-context!))
+               (if prev-trace-id#
+                 (do (ThreadContext/put "trace_id" prev-trace-id#)
+                     (ThreadContext/put "span_id" prev-span-id#))
+                 (clear-trace-id-from-mdc!)))))))
      (do ~@body)))
 
 ;;; -------------------------------------------- SDK Lifecycle -------------------------------------------------
@@ -291,8 +328,9 @@
 ;;; span exporter for pushing traces to a collector. Has no database dependency — can be
 ;;; initialized very early in the startup process.
 
-;; Holds the initialized OpenTelemetrySdk instance for manual shutdown.
-(defonce ^:private otel-sdk-instance (atom nil))
+;; The initialized OpenTelemetrySdk, or nil. Started by [[init!]] and stopped with the global system.
+(def ^:private otel-sdk-component
+  (system/mutable-component-handle ::otel-sdk (constantly nil)))
 
 (defn- make-id-generator
   "Create an IdGenerator that respects forced trace IDs from frontend traceparent
@@ -308,6 +346,42 @@
       (generateSpanId [_]
         (.generateSpanId default-gen)))))
 
+(defn build-otel-sdk
+  "Build an OTel SDK with an OTLP HTTP span exporter. Touches no global state: the SDK is neither
+   installed as clj-otel's default nor registered globally, so tests can exercise the exact
+   SDK + exporter wiring [[init!]] uses. The caller owns the returned SDK and must `.close` it."
+  ^OpenTelemetrySdk [{:keys [endpoint service-name queue-size timeout-ms delay-ms]}]
+  (otel-sdk/init-otel-sdk!
+   service-name
+   {:set-as-default         false
+    :register-shutdown-hook false  ;; we manage shutdown ourselves
+    :tracer-provider
+    {:id-generator    (make-id-generator)
+     :span-processors [{:exporters        [(otlp-http/span-exporter {:endpoint endpoint})]
+                        :max-queue-size   queue-size
+                        :exporter-timeout (Duration/ofMillis timeout-ms)
+                        :schedule-delay   (Duration/ofMillis delay-ms)}]}}))
+
+(defn- set-default-sdk!
+  "Make `otel` clj-otel's default SDK, or clear the default when nil.
+  clj-otel caches the tracer its first span gets, and setting the default SDK does not clear that cache, so the tracer
+  is set here too. A tracer cached before this, from a closed SDK or from the no-op global one, would drop every span."
+  [otel]
+  (otel/set-default-otel! otel)
+  (span/set-default-tracer! (when otel (span/get-tracer {:open-telemetry otel}))))
+
+(defn- stop-otel-sdk!
+  "Stop tracing groups, then close `otel`, flushing any pending spans, and clear it as the default."
+  [otel]
+  (log/info "Shutting down OpenTelemetry tracing...")
+  (shutdown-groups!)
+  (try
+    (otel-sdk/close-otel-sdk! otel)
+    (catch Exception e
+      (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
+  (set-default-sdk! nil)
+  (log/info "OpenTelemetry tracing shut down"))
+
 (defn init!
   "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
    Should be called as early as possible in startup — has no database dependency."
@@ -321,37 +395,37 @@
             log-level-str (tracing.settings/tracing-log-level)
             queue-size    (tracing.settings/tracing-max-queue-size)
             timeout-ms    (tracing.settings/tracing-export-timeout-ms)
-            delay-ms      (tracing.settings/tracing-schedule-delay-ms)
-            exporter      (otlp-http/span-exporter {:endpoint endpoint})]
-        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
-                   service-name endpoint groups-str log-level-str)
-        (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
-                   queue-size timeout-ms delay-ms)
-        (let [otel (otel-sdk/init-otel-sdk!
-                    service-name
-                    {:set-as-default        true
-                     :register-shutdown-hook false  ;; we manage shutdown ourselves
-                     :tracer-provider
-                     {:id-generator    (make-id-generator)
-                      :span-processors [{:exporters        [exporter]
-                                         :max-queue-size   queue-size
-                                         :exporter-timeout (Duration/ofMillis timeout-ms)
-                                         :schedule-delay   (Duration/ofMillis delay-ms)}]}})]
-          (reset! otel-sdk-instance otel)
-          (init-enabled-groups! groups-str log-level-str)
-          (log/info "OpenTelemetry tracing initialized successfully")))
+            delay-ms      (tracing.settings/tracing-schedule-delay-ms)]
+        (system/ensure-started!
+         otel-sdk-component
+         (fn []
+           ;; logged here, so a second call, which starts nothing, does not log config that is not in effect
+           (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
+                      service-name endpoint groups-str log-level-str)
+           (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
+                      queue-size timeout-ms delay-ms)
+           (let [otel (build-otel-sdk {:endpoint     endpoint
+                                       :service-name service-name
+                                       :queue-size   queue-size
+                                       :timeout-ms   timeout-ms
+                                       :delay-ms     delay-ms})]
+             ;; spans start once a group is enabled, so the SDK must be the default by then. A failed start closes the SDK
+             ;; and clears the default, leaving no running SDK behind.
+             (try
+               (set-default-sdk! otel)
+               (init-enabled-groups! groups-str log-level-str)
+               (catch Throwable e
+                 (stop-otel-sdk! otel)
+                 (throw e)))
+             (log/info "OpenTelemetry tracing initialized successfully")
+             otel))
+         stop-otel-sdk!))
       (catch Exception e
-        (log/error e "Failed to initialize OpenTelemetry tracing — tracing will be disabled")))))
+        (log/errorf "Failed to initialize OpenTelemetry tracing — tracing will be disabled: %s" (ex-message e))))))
 
 (defn shutdown!
-  "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown."
+  "Shut down the OTel SDK, flushing any pending spans.
+   Called during application shutdown; halting the global system shuts it down too."
   []
-  (when-let [otel @otel-sdk-instance]
-    (log/info "Shutting down OpenTelemetry tracing...")
-    (try
-      (otel-sdk/close-otel-sdk! otel)
-      (catch Exception e
-        (log/warn e "Error shutting down OpenTelemetry SDK")))
-    (reset! otel-sdk-instance nil)
-    (shutdown-groups!)
-    (log/info "OpenTelemetry tracing shut down")))
+  (system/stop! otel-sdk-component)
+  nil)

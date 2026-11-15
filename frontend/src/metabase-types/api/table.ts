@@ -8,22 +8,14 @@ import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId, UserInfo } from "./user";
 
-export type ConcreteTableId = number;
-export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
-export type TableId = ConcreteTableId | VirtualTableId;
-export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
+export type TableEntityType = string;
 
-export function isConcreteTableId(
-  id: TableId | undefined,
-): id is ConcreteTableId {
-  return typeof id === "number";
-}
+export type TableId = number;
+export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export type TableVisibilityType =
   | null
-  | "details-only"
   | "hidden"
-  | "normal"
   | "retired"
   | "sensitive"
   | "technical"
@@ -46,7 +38,7 @@ export type Table = {
   name: string;
   display_name: string;
   description: string | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
 
   db_id: DatabaseId;
   db?: Database;
@@ -74,21 +66,27 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
-  owner?: TableOwner | null;
+  owner?: TableOwner | { email: string } | null;
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
-  transform?: Transform;
+  transform?: Transform | null;
 
   collection_id: CollectionId | null;
   is_published: boolean;
   collection?: Collection;
+  can_write?: boolean;
 };
 
 export type TableOwner = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"
 >;
+
+export type TablePublishingInfo = {
+  published_at: string;
+  published_by: Pick<UserInfo, "id" | "common_name"> | null;
+};
 
 export type SchemaName = string;
 
@@ -109,7 +107,7 @@ export interface TableMetadataQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableListQuery {
+export type TableListQuery = {
   dbId?: DatabaseId;
   schemaName?: string;
   include_hidden?: boolean;
@@ -125,7 +123,8 @@ export interface TableListQuery {
   "owner-email"?: string | null;
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
-}
+  "published-only"?: boolean | null;
+};
 
 export interface ForeignKey {
   origin?: Field;
@@ -159,7 +158,7 @@ export interface UpdateTableRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
   collection_id?: CollectionId | null;
@@ -176,7 +175,7 @@ export interface UpdateTableListRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
@@ -196,7 +195,7 @@ export interface EditTablesRequest {
   data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
 }
 
 export interface SyncTablesSchemaRequest {
@@ -277,3 +276,13 @@ export interface BulkTableSelectionInfo {
 export interface PublishTablesResponse {
   target_collection: Collection | null;
 }
+
+export type TableUserSettings = {
+  table_id: TableId;
+  display_name: string | null;
+  description: string | null;
+  collection_id: CollectionId | null;
+  is_published: boolean;
+  table?: Table;
+  collection?: Collection | null;
+};

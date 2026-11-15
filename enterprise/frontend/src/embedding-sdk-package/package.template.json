@@ -1,6 +1,10 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.62.0-alpha",
+  "version": "0.66.0-alpha.0",
+  "sdkRelease": {
+    "distTag": "66-alpha",
+    "tagAsLatest": false
+  },
   "description": "Metabase Embedding SDK for React",
   "bin": "./dist/cli.js",
   "repository": {
@@ -19,6 +23,24 @@
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
     },
+    "./data-app": {
+      "types": "./dist/data-app.d.ts",
+      "require": "./dist/data-app.cjs",
+      "import": "./dist/data-app.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "require": "./dist/testing.cjs",
+      "import": "./dist/testing.js"
+    },
+    "./data-app-dev": {
+      "types": "./dist/data-app-dev.d.ts",
+      "import": "./dist/data-app-dev.js"
+    },
+    "./data-app-dev/config": {
+      "types": "./dist/data-app-dev.config.d.ts",
+      "import": "./dist/data-app-dev.config.mjs"
+    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
@@ -28,7 +50,7 @@
   },
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "react": ">=18 <=19",
-    "react-dom": ">=18 <=19"
+    "react": "^19",
+    "react-dom": "^19"
   }
 }

@@ -19,7 +19,7 @@ export const ExpandButton = memo(function ExpandButton({
   if (isLoading) {
     return (
       <Center w={16} h={16} className={S.wrapper} aria-hidden="true">
-        <Loader size="xs" color="brand" aria-label={t`Loading`} />
+        <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
       </Center>
     );
   }
@@ -37,11 +37,12 @@ export const ExpandButton = memo(function ExpandButton({
 
   return (
     <ActionIcon
+      variant="subtle"
       aria-expanded={isExpanded}
       aria-label={isExpanded ? t`Collapse` : t`Expand`}
       className={cx(S.wrapper, S.button, className)}
       onClick={onClick}
-      size="1rem"
+      size="xs"
       tabIndex={-1}
     >
       <Icon

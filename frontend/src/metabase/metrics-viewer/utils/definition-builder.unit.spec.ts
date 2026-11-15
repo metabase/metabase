@@ -234,7 +234,7 @@ describe("buildExecutableDefinition", () => {
     });
   });
 
-  it("preserves global filters when tab-level filter targets the same dimension", () => {
+  it("preserves global filters when dimensionBreakout-level filter targets the same dimension", () => {
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
     const dimensions = LibMetric.projectionableDimensions(definition);
     const categoryDimension = dimensions.find(

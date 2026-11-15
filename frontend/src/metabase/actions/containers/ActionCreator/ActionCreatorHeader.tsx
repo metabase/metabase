@@ -1,62 +1,48 @@
 import { t } from "ttag";
 
-import type { WritebackActionType } from "metabase-types/api";
+import { EditableText } from "metabase/common/components/EditableText";
+import { Box, Flex } from "metabase/ui";
 
-import {
-  ActionButtons,
-  CompactSelect,
-  Container,
-  EditableText,
-  LeftHeader,
-} from "./ActionCreatorHeader.styled";
+import S from "./ActionCreatorHeader.module.css";
 
-type Props = {
+type ActionCreatorHeaderProps = {
   name: string;
-  type: WritebackActionType;
   isEditable: boolean;
   canRename: boolean;
   onChangeName: (name: string) => void;
-  onChangeType?: (type: WritebackActionType) => void;
   actionButtons: React.ReactElement[];
 };
 
-const OPTS = [
-  {
-    value: "query",
-    get name() {
-      return t`Query`;
-    },
-    disabled: true,
-  },
-];
-
-const ActionCreatorHeader = ({
+export function ActionCreatorHeader({
   name = t`New Action`,
   isEditable,
   canRename,
-  type,
   onChangeName,
-  onChangeType,
   actionButtons,
-}: Props) => {
+}: ActionCreatorHeaderProps) {
   return (
-    <Container>
-      <LeftHeader>
-        <EditableText
-          initialValue={name}
-          onChange={onChangeName}
-          isDisabled={!isEditable || !canRename}
-        />
-        {!!onChangeType && (
-          <CompactSelect options={OPTS} value={type} onChange={onChangeType} />
-        )}
-      </LeftHeader>
+    <Flex
+      className={S.borderBottom}
+      flex="0 0 auto"
+      align="center"
+      justify="space-between"
+      w="100%"
+      py="lg"
+      px="xxl"
+      bg="background_page-primary"
+    >
+      <EditableText
+        initialValue={name}
+        onChange={onChangeName}
+        isDisabled={!isEditable || !canRename}
+        fz="lg"
+        fw="bold"
+        c="text-secondary"
+      />
       {actionButtons.length > 0 && (
-        <ActionButtons>{actionButtons}</ActionButtons>
+        // The buttons are borderless, so the negative margin lines them up with the edge
+        <Box mr="-sm">{actionButtons}</Box>
       )}
-    </Container>
+    </Flex>
   );
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionCreatorHeader;
+}

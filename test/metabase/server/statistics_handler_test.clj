@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer [deftest is]]
-   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [GET]]
+   [compojure.core :as compojure :refer [GET]]
    [compojure.route :as route]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.server.instance :as server.instance]
@@ -14,6 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- routes [started continue]
+  ;; throwaway Jetty test handler; no OpenAPI spec needed
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    (GET "/route" []

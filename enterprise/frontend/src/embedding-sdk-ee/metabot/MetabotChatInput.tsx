@@ -24,17 +24,17 @@ export function MetabotChatInput() {
 
   return (
     <Flex
-      gap="xs"
-      px="md"
+      gap="xxs"
+      px="lg"
       align="center"
       justify="center"
-      style={{ borderTop: "1px solid var(--mb-color-border)" }}
+      style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
     >
       <Flex justify="center" align="center" style={{ flexShrink: 0 }}>
         {metabot.isDoingScience ? (
           <Loader size="sm" />
         ) : (
-          <Icon name="ai" c="brand" size="1rem" />
+          <Icon name="ai" c="core-brand" size="1rem" />
         )}
       </Flex>
 
@@ -47,6 +47,7 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
+        // Unjustified type cast. FIXME
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
@@ -71,7 +72,7 @@ export function MetabotChatInput() {
         }}
       />
 
-      <Flex align="center" justify="center" gap="xs">
+      <Flex align="center" justify="center" gap="xxs">
         {metabot.isDoingScience && (
           <UnstyledButton
             onClick={metabot.cancelRequest}
@@ -107,7 +108,7 @@ export function MetabotChatInput() {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={metabot.resetConversation}
+              onClick={metabot.createNewConversation}
             >
               {t`Start new chat`}
             </Menu.Item>

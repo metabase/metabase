@@ -3,14 +3,15 @@ import userEvent, {
 } from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import Field from "metabase-lib/v1/metadata/Field";
+import type * as Lib from "metabase-lib";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 
 import { ParameterWidget } from "./ParameterWidget";
 
 interface SetupOpts {
-  connectedField?: Field;
+  connectedField?: Lib.ParameterFieldInfo;
 }
 
 function setup({ connectedField }: SetupOpts = {}) {
@@ -72,7 +73,7 @@ describe("ParameterWidget", () => {
   });
 
   it("should not be able to submit empty value when parameter has connected field (metabase#15462)", async () => {
-    const field = new Field(
+    const field = getParameterFieldInfo(
       createMockField({
         id: 1,
         base_type: "type/Text",

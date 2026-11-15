@@ -17,18 +17,20 @@
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.custom-migrations.llm-providers :as llm-providers]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.quartz]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
-   [metabase.task.bootstrap]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -43,9 +45,7 @@
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)
-   (org.mindrot.jbcrypt BCrypt)))
+   (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +56,7 @@
   The same problem has been fixed for forward changes in Liquibase
   but for rollback it has not."
   []
-  (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
+  (.equals Boolean/TRUE (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
@@ -125,26 +125,30 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
-(def ^:private encrypted-json-in
-  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+(defn- encrypted-json-in
+  "Serialize `v` to replace `stored`, the encrypted-json column value it was derived from, keeping the column as it
+  was: encrypted when `stored` decrypts with the current key, plaintext otherwise. A migration that rewrites a row
+  never changes whether it is encrypted at rest; the startup sweep does that, with a warning."
+  [stored v]
+  (cond-> (json-in v)
+    (encryption/decryptable-string? stored) encryption/encrypt))
 
 (defn- encrypted-json-out
-  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
+  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
-    (try
-      (json/decode+kw decrypted)
-      (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
-        v))))
+  (try
+    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (catch Throwable e
+      (if (or (encryption/possibly-encrypted-string? v)
+              (encryption/possibly-encrypted-bytes? v))
+        (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+      v)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -161,7 +165,6 @@
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
     ;; and construct new v2 paths by adding prefixes to the base path.
     [(str "/data" base-path) (str "/query" base-path)]
-
     ;; For the specific v1 path that grants full data access but no native query access, we add a
     ;; /schema/ suffix to the corresponding v2 query permission path.
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
@@ -389,7 +392,7 @@
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
-                               ;; sort by tab position
+                       ;; sort by tab position
                        (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
@@ -541,11 +544,11 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                 ;; only include cards with field refs in column_settings
+                                                    ;; only include cards with field refs in column_settings
                                                     [:or
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                 ;; only include cards with joins
+                                                    ;; only include cards with joins
                                                     [:like :object "%joins%"]
                                                     [:= :model "Card"]]})))
   ;; Reverse migration
@@ -724,9 +727,10 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (encrypted-json-out settings)
+                      (let [stored       settings
+                            settings     (encrypted-json-out settings)
                             options      (json-out options true)
-                            new-settings (encrypted-json-in (merge settings options))]
+                            new-settings (encrypted-json-in stored (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -737,12 +741,13 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (encrypted-json-out settings)
+                        (let [stored   settings
+                              settings (encrypted-json-out settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
-                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in stored (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -778,13 +783,13 @@
                                                    (m/map-vals
                                                     #(select-keys % ["click_behavior"])
                                                     column_settings)))
-                             ;; select click behavior top level and in column settings
+                              ;; select click behavior top level and in column settings
                               (select-keys ["column_settings" "click_behavior"])
                               (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
                           (if (= (get toplevel "click") "link")
                             (assoc toplevel
-                                  ;; add new shape top level
+                                   ;; add new shape top level
                                    "click_behavior"
                                    {"type"         (get toplevel "click")
                                     "linkType"     "url"
@@ -794,11 +799,11 @@
                           (reduce-kv
                            (fn [m col field-settings]
                              (assoc m col
-                                   ;; add the click stuff under the new click_behavior entry or keep the
-                                   ;; field settings as is
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
-                                     ;; remove old shape and add new shape under click_behavior
+                                      ;; remove old shape and add new shape under click_behavior
                                       (assoc field-settings
                                              "click_behavior"
                                              {"type"             (get field-settings "view_as")
@@ -810,26 +815,22 @@
                            column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
                               (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                             ;; behavior added
+                              ;; behavior added
                               (fix-top-level card))
                             (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                           ;; the settings tree
+                            ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
-        final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                            ;; doesn't have link text
-                             (walk/postwalk (fn [form]
-                                              (if (map? form)
-                                                (into {} (for [[k v] form
-                                                               :when (if (seqable? v)
-                                                                      ;; remove keys with empty maps. must be postwalk
-                                                                       (seq v)
-                                                                      ;; remove nils
-                                                                       (some? v))]
-                                                           [k v]))
-                                                form))))]
+        final-settings  (match/replace-all (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
+                          ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                          ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                          ;; doesn't have link text
+                          #'map? (m/filter-vals #(if (seqable? %)
+                                                   ;; remove keys with empty maps. must be bottom-up (replace-all)
+                                                   (seq %)
+                                                   ;; remove nils
+                                                   (some? %))
+                                                &match))]
     (when (not= final-settings dashcard)
       {:id                     id
        :visualization_settings final-settings})))
@@ -852,7 +853,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (t2/update! :report_dashboardcard id
+                (t2/update! :report_dashboardcard :id id
                             {:visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
@@ -943,7 +944,8 @@
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
-                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                   ;; databasechangelog_first_run copies the changelog's dateexecuted, so it keeps the same type
+                   (or (#{:databasechangelog :databasechangeloglock :databasechangelog_first_run} table_name)
                        ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))
@@ -1059,7 +1061,6 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1116,44 +1117,36 @@
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
-(defn- hash-bcrypt
-  "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
-  [password]
-  (BCrypt/hashpw password (BCrypt/gensalt)))
-
 (defn- internal-user-exists? []
   (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
-  ;; exists already.
+  ;; exists already. It has no password: it is inactive and can never log in, and a password would be copied into
+  ;; `auth_identity` bare by the v58 SQL changesets.
   (when (not (internal-user-exists?))
-    (let [salt     (str (random-uuid))
-          password (hash-bcrypt (str salt (random-uuid)))
-          user     {;; we insert the internal user ID directly because it's
-                    ;; deliberately high enough to not conflict with any other
-                    :id               config/internal-mb-user-id
-                    :password_salt    salt
-                    :password         password
-                    :email            "internal@metabase.com"
-                    :first_name       "Metabase"
-                    :locale           nil
-                    :last_login       nil
-                    :is_active        false
-                    :settings         nil
-                    :type             "internal"
-                    :is_qbnewb        true
-                    :updated_at       nil
-                    :reset_triggered  nil
-                    :is_superuser     false
-                    :login_attributes nil
-                    :reset_token      nil
-                    :last_name        "Internal"
-                    :date_joined      :%now
-                    :sso_source       nil
-                    :is_datasetnewb   true}]
+    (let [user {;; we insert the internal user ID directly because it's
+                ;; deliberately high enough to not conflict with any other
+                :id               config/internal-mb-user-id
+                :password_salt    nil
+                :password         nil
+                :email            "internal@metabase.com"
+                :first_name       "Metabase"
+                :locale           nil
+                :last_login       nil
+                :is_active        false
+                :settings         nil
+                :type             "internal"
+                :is_qbnewb        true
+                :updated_at       nil
+                :reset_triggered  nil
+                :is_superuser     false
+                :login_attributes nil
+                :reset_token      nil
+                :last_name        "Internal"
+                :date_joined      :%now
+                :sso_source       nil
+                :is_datasetnewb   true}]
       (t2/query {:insert-into :core_user :values [user]}))
     (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
           perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
@@ -1176,6 +1169,7 @@
   []
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
    load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
@@ -1183,7 +1177,7 @@
   true)
 
 (define-migration CreateSampleContent)
-  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1211,7 +1205,8 @@
             example-dashboard-id  1
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
+            dbs                   (map #(update % :details encryption/maybe-encrypt)
+                                       (table-name->rows table-name->raw-rows :metabase_database))
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
@@ -1241,9 +1236,10 @@
                                           :perm_type     "perms/collection-access"
                                           :perm_value    "read-and-write"
                                           :collection_id example-collection-id}]}))
+              ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
-                                        :value (str example-dashboard-id)}]})))))))
+                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1257,6 +1253,7 @@
   (defn- pretty-spit [file-name data]
     (with-open [writer (io/writer file-name)]
       (binding [*out* writer]
+        ;; REPL recipe in (comment): pprints EDN into a file writer, not the console
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pprint/pprint data))))
 
@@ -1332,6 +1329,10 @@
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
+;; No-op. The SQLite <-> H2 sample database engine swap is handled in place at startup
+;; (metabase.sample-data.impl). Kept because a shipped v63 build ran a delete-based rollback here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade nil nil)
+
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
 ;; 2. when series settings exist, remove the display key from each map in the series_settings list
@@ -1403,7 +1404,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -1486,7 +1487,7 @@
 (defn- json-column-key-like-clause
   [key column]
   [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
-       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
    [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings
@@ -1756,13 +1757,14 @@
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
 ;; - And then on startup new send notification triggers are created by running
-;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+;; [[metabase.notification.task.send-trigger/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
   (let [update-one! (fn [{:keys [id details]}]
-                      (let [decrypted-details (encrypted-json-out details)
+                      (let [stored details
+                            decrypted-details (encrypted-json-out details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
                             dbname (:dbname decrypted-details)
@@ -1774,7 +1776,7 @@
                                                {:db-filters-type db-filters-type}
                                                (when-not scan-all-databases?
                                                  {:db-filters-patterns db-filters-patterns}))
-                            encrypted-details (encrypted-json-in new-details)]
+                            encrypted-details (encrypted-json-in stored new-details)]
                         (t2/query {:update :metabase_database
                                    :set    {:details encrypted-details}
                                    :where  [:= :id id]})))]
@@ -1782,12 +1784,13 @@
                                            :from   [:metabase_database]
                                            :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
-                        (let [decrypted-details (encrypted-json-out details)
+                        (let [stored details
+                              decrypted-details (encrypted-json-out details)
                               new-details (dissoc decrypted-details
                                                   :enable-multiple-db
                                                   :db-filters-type
                                                   :db-filters-patterns)
-                              encrypted-details (encrypted-json-in new-details)]
+                              encrypted-details (encrypted-json-in stored new-details)]
                           (t2/query {:update :metabase_database
                                      :set    {:details encrypted-details}
                                      :where  [:= :id id]})))]
@@ -2213,3 +2216,137 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillMfaConfirmedAt
+  ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
+  ;; rest when MB_ENCRYPTION_SECRET_KEY is set, and therefore invisible to SQL. Lift it into the
+  ;; new auth_identity.confirmed_at column so enrollment state is queryable (admin visibility of
+  ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
+  ;; written by older code; new code writes only the column.
+  (run! (fn [{:keys [id credentials]}]
+          (let [creds        (encrypted-json-out credentials)
+                confirmed-at (when (map? creds)
+                               (try
+                                 (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
+                                 (catch Exception _ nil)))]
+            (when confirmed-at
+              (t2/query {:update :auth_identity
+                         :set    {:confirmed_at confirmed-at}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :credentials]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :provider "totp"]
+                                      [:= :confirmed_at nil]]})))
+
+(define-reversible-migration MigrateLlmProviderSettings
+  (llm-providers/migrate-up!)
+  (llm-providers/migrate-down!))
+
+(define-migration BackfillExampleDashboardIdValueWithAad
+  ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
+  ;; Integer settings are `:encryption :no`, and versions before 0.58 wrote this row as the plaintext dashboard ID even
+  ;; with a key set, so a numeric `value` is taken as-is; anything else must be the encrypted form newer versions write.
+  (when-let [value (:value (t2/query-one {:select [:value]
+                                          :from   [:setting]
+                                          :where  [:and [:= :key "example-dashboard-id"] [:= :value_with_aad nil]]}))]
+    (let [plain (if (re-matches #"\d+" value)
+                  value
+                  (encryption/maybe-decrypt value))]
+      (t2/query {:update :setting
+                 :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
+                 :where  [:= :key "example-dashboard-id"]}))))
+
+;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
+;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
+;;; instead, and no legacy scope satisfies any v2 scope. The MCP endpoint refuses a token with no v2 scope
+;;; with a 401 `invalid_token`, so the client re-authorizes; that re-authorization only validates if the
+;;; client's registered scope snapshot includes the v2 scopes.
+;;;
+;;; The scope strings are literals rather than a read of `metabase.mcp.scope/v2-surface-scopes`: a
+;;; migration's behaviour must be frozen against later edits to that vector.
+
+(def ^:private ^:no-doc mcp-v2-scopes
+  ["agent:content:read"
+   "agent:content:write"
+   "agent:query:run"
+   "agent:sql:run"
+   "agent:delivery:write"
+   "agent:resource:read"])
+
+(defn- json-array-out
+  "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
+   for anything that isn't an array — including unparseable JSON — so a malformed row is skipped
+   rather than rewritten."
+  [v]
+  (let [parsed (cond
+                 (string? v) (try (json/decode v) (catch Exception _ nil))
+                 (coll? v)   v)]
+    (when (sequential? parsed)
+      (vec parsed))))
+
+(define-migration WidenDynamicOAuthClientScopesForMcpV2
+  ;; Raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
+  ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
+  ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
+  ;; grants nothing on its own: consent still happens per-authorization.
+  (run! (fn [{:keys [id scopes]}]
+          (when-let [existing (json-array-out scopes)]
+            (let [widened (into existing (remove (set existing)) mcp-v2-scopes)]
+              (when-not (= widened existing)
+                (t2/query {:update :oauth_client
+                           :set    {:scopes (json/encode widened)}
+                           :where  [:= :id id]})))))
+        (t2/reducible-query {:select [:id :scopes]
+                             :from   [:oauth_client]
+                             :where  [:= :registration_type "dynamic"]})))
+
+(define-migration RevokeLegacyMcpOAuthTokens
+  ;; Kept as a no-op. The MCP endpoint refuses legacy-scoped tokens with a 401 `invalid_token`, so the
+  ;; client re-authorizes and revoking the tokens adds nothing. The changeset stays so that instances
+  ;; which already ran it can still roll back past it.
+  nil)
+
+(define-migration MoveDataAppResourceCollectionsToTheirNamespace
+  ;; Every data app owns a resource collection, a root collection of the `data-apps` namespace, from its insert
+  ;; on (see `metabase-enterprise.data-apps.models.data-app`). Collections created before the namespace existed sit
+  ;; in the default namespace; an app whose collection was deleted has none. Both are brought to the invariant here.
+  (t2/query {:update :collection
+             :set    {:namespace "data-apps"}
+             :where  [:exists ^:allow-subquery {:select [1]
+                                                :from   [:data_app]
+                                                :where  [:= :data_app.resource_collection_id :collection.id]}]})
+  (run! (fn [{:keys [id name]}]
+          (let [collection-name (str "Data App: " name)
+                ;; slugified as the Collection model does (`collection-slug-max-length`), so a later rename changes nothing
+                collection-id   (t2/insert-returning-pk! :collection {:name       collection-name
+                                                                      :slug       (u/slugify collection-name {:max-length 510})
+                                                                      :location   "/"
+                                                                      :namespace  "data-apps"
+                                                                      :entity_id  (u/generate-nano-id)
+                                                                      :created_at :%now})]
+            (t2/query {:update :data_app
+                       :set    {:resource_collection_id collection-id}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:id :name]
+                             :from   [:data_app]
+                             :where  [:= :resource_collection_id nil]})))
+
+(define-migration DeleteDataAppDrafts
+  ;; A draft reserved a data app's slug and resources before the app existed, for the SDK's query sync, which is
+  ;; gone. A draft has no bundle and can never be served, so the row goes, with the permission group made for it,
+  ;; as deleting an app deletes both. Its collection goes too when nothing was put in it; one that holds content
+  ;; stays for an admin to look at.
+  (doseq [{:keys [id resource_collection_id permission_group_id]} (t2/select :data_app :draft true)]
+    (t2/query {:delete-from :data_app :where [:= :id id]})
+    (when permission_group_id
+      (t2/query {:delete-from :permissions_group :where [:= :id permission_group_id]}))
+    (when resource_collection_id
+      (let [in-collection (fn [table] (t2/exists? table :collection_id resource_collection_id))
+            location      (str "/" resource_collection_id "/")]
+        (when-not (or (some in-collection [:report_card :action :report_dashboard :document :timeline :pulse
+                                           :native_query_snippet :metabase_table :transform])
+                      (t2/exists? :collection :location [:like (str location "%")]))
+          (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
+          (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))

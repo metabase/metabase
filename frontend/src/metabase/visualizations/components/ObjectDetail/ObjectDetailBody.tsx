@@ -1,10 +1,13 @@
+import type { JSX } from "react";
+
+import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
+import S from "./ObjectDetailBody.module.css";
 import { DetailsTable } from "./ObjectDetailsTable";
 import type { OnVisualizationClickType } from "./types";
 
@@ -26,7 +29,7 @@ export function ObjectDetailBody({
   isDashboard,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <ObjectDetailBodyWrapper>
+    <Box flex={1} className={S.body}>
       <DetailsTable
         columns={columns}
         zoomedRow={zoomedRow}
@@ -35,6 +38,6 @@ export function ObjectDetailBody({
         visualizationIsClickable={visualizationIsClickable}
         isDashboard={isDashboard}
       />
-    </ObjectDetailBodyWrapper>
+    </Box>
   );
 }

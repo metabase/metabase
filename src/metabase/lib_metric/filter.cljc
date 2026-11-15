@@ -323,7 +323,7 @@
                 ;; Standard operators with values in positions 3+
                 {:operator  operator
                  :dimension dimension
-                 :values    (vec (drop 3 filter-clause))}))))))))
+                 :values    (perf/dropv 3 filter-clause)}))))))))
 
 ;;; -------------------------------------------------- String Filters --------------------------------------------------
 
@@ -370,7 +370,7 @@
                 ;; Equality operators
                 {:operator  operator
                  :dimension dimension
-                 :values    (vec (drop 3 filter-clause))
+                 :values    (perf/dropv 3 filter-clause)
                  :options   {}}))))))))
 
 ;;; -------------------------------------------------- Coordinate Filters --------------------------------------------------
@@ -421,7 +421,7 @@
                 {:operator            operator
                  :dimension           dimension
                  :longitude-dimension nil
-                 :values              (vec (drop 3 filter-clause))}))))))))
+                 :values              (perf/dropv 3 filter-clause)}))))))))
 
 ;;; -------------------------------------------------- Specific Date Filters --------------------------------------------------
 
@@ -581,7 +581,7 @@
                   {:operator  operator
                    :dimension dimension
                    :unit      unit
-                   :values    (vec (drop 3 filter-clause))})))))))))
+                   :values    (perf/dropv 3 filter-clause)})))))))))
 
 ;;; -------------------------------------------------- Time Filters --------------------------------------------------
 
@@ -594,7 +594,7 @@
      (case operator
        (:is-null :not-null) [operator {} (dimension-ref dimension)]
        :between             [:between {} (dimension-ref dimension) (first values) (second values)]
-     ;; Standard operators: >, <
+       ;; Standard operators: >, <
        [operator {} (dimension-ref dimension) (first values)]))))
 
 (defn time-filter-parts

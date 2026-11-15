@@ -1,30 +1,24 @@
-import type { Location } from "history";
-import { useMemo, useState } from "react";
+import { type JSX, useMemo, useState } from "react";
 import { useAsync } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
+import {
+  useUndoUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromPulseMutation,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUnsubscribeFromPulseMutation,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSelector } from "metabase/redux";
+import { useSearchParams } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import {
-  NotificationUnsubscribeApi,
-  PulseUnsubscribeApi,
-} from "metabase/services";
-import { Center, Stack, Text } from "metabase/ui";
+import { Box, Button, Center, Flex, Icon, Stack, Text } from "metabase/ui";
 
-import {
-  CheckmarkIcon,
-  LayoutBody,
-  LayoutCard,
-  LayoutIllustration,
-  LayoutRoot,
-  StyledMetabotLogo,
-} from "./Unsubscribe.styled";
+import S from "./Unsubscribe.module.css";
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",
@@ -37,17 +31,16 @@ const SUBSCRIPTION = {
 
 type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
-export const UnsubscribePage = ({
-  location,
-}: UnsubscribeProps): JSX.Element => {
-  const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
-    SUBSCRIPTION.UNSUBSCRIBE,
-  );
+export const UnsubscribePage = (): JSX.Element => {
+  const [searchParams] = useSearchParams();
+  const [subscriptionChange, setSubscriptionChange] =
+    useState<Subscription | null>(null);
 
-  const hash = location?.query?.hash;
-  const email = location?.query?.email;
-  const pulseId = location?.query?.["pulse-id"];
-  const notificationHandlerId = location?.query?.["notification-handler-id"];
+  const hash = searchParams.get("hash") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
+  const pulseId = searchParams.get("pulse-id") ?? undefined;
+  const notificationHandlerId =
+    searchParams.get("notification-handler-id") ?? undefined;
 
   const { data, isLoading, error } = useUnsubscribeRequest({
     hash,
@@ -77,18 +70,37 @@ export const UnsubscribePage = ({
     );
   }
 
+  if (subscriptionChange === null) {
+    return (
+      <UnsubscribeRoot>
+        <Stack align="center">
+          <Text fw={700} c="text-secondary" ta="center">
+            {t`Unsubscribe from these emails?`}
+          </Text>
+          <Text c="text-secondary" ta="center">
+            {email}
+          </Text>
+          <Button
+            variant="filled"
+            onClick={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
+          >
+            {t`Confirm unsubscribe`}
+          </Button>
+        </Stack>
+      </UnsubscribeRoot>
+    );
+  }
+
   return (
     <UnsubscribeRoot>
       {subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE ? (
         <SuccessfulUnsubscribe
-          email={email}
-          alertTitle={data?.title}
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.RESUBSCRIBE)}
         />
       ) : (
         <SuccessfulResubscribe
-          email={email}
-          alertTitle={data?.title}
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
         />
       )}
@@ -96,36 +108,28 @@ export const UnsubscribePage = ({
   );
 };
 
-function SuccessfulUnsubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulUnsubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`You've unsubscribed ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} from the "${alertTitle}" alert.`}
+      text={
+        title
+          ? t`You've unsubscribed from "${title}".`
+          : t`You've unsubscribed.`
+      }
       buttonText={t`Undo`}
       action={action}
     />
   );
 }
 
-function SuccessfulResubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulResubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`Okay, ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} is subscribed to the "${alertTitle}" alert again.`}
+      text={
+        title
+          ? t`You're subscribed to "${title}" again.`
+          : t`You're subscribed again.`
+      }
       buttonText={t`Unsubscribe`}
       action={action}
     />
@@ -139,11 +143,13 @@ function SuccessfulRequestWrapper({
 }: SubscriptionWrapperProps) {
   return (
     <Stack align="center">
-      <CheckmarkIcon name="check" size={30} />
+      <Center bg="background_surface-brand-subtle" p="lg" bdrs="100%">
+        <Icon name="check" size={30} c="core-brand" />
+      </Center>
       <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
-      <Button primary onClick={action}>
+      <Button variant="filled" onClick={action}>
         {buttonText}
       </Button>
     </Stack>
@@ -181,6 +187,13 @@ function useUnsubscribeRequest({
     return undefined;
   }, [hash, email, pulseId, notificationHandlerId]);
 
+  const [unsubscribeFromPulse] = useUnsubscribeFromPulseMutation();
+  const [undoUnsubscribeFromPulse] = useUndoUnsubscribeFromPulseMutation();
+  const [unsubscribeFromNotification] =
+    useUnsubscribeFromNotificationByEmailMutation();
+  const [undoUnsubscribeFromNotification] =
+    useUndoUnsubscribeFromNotificationByEmailMutation();
+
   const {
     value: data,
     loading: isLoading,
@@ -190,17 +203,31 @@ function useUnsubscribeRequest({
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
-    const api = notificationHandlerId
-      ? NotificationUnsubscribeApi
-      : PulseUnsubscribeApi;
+    if (subscriptionChange === null) {
+      return;
+    }
 
-    const method =
-      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
-        ? api.unsubscribe
-        : api.undo_unsubscribe;
+    const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
-    return await method(params);
-  }, [params, subscriptionChange]);
+    const triggers = notificationHandlerId
+      ? {
+          unsubscribe: unsubscribeFromNotification,
+          undo: undoUnsubscribeFromNotification,
+        }
+      : { unsubscribe: unsubscribeFromPulse, undo: undoUnsubscribeFromPulse };
+
+    const unsubscribe = isUnsubscribe ? triggers.unsubscribe : triggers.undo;
+
+    return await unsubscribe(params).unwrap();
+  }, [
+    params,
+    subscriptionChange,
+    notificationHandlerId,
+    unsubscribeFromPulse,
+    undoUnsubscribeFromPulse,
+    unsubscribeFromNotification,
+    undoUnsubscribeFromNotification,
+  ]);
 
   return { data, isLoading, error };
 }
@@ -208,32 +235,52 @@ function useUnsubscribeRequest({
 function UnsubscribeRoot({ children }: { children: JSX.Element }) {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
   return (
-    <LayoutRoot>
+    <Flex pos="relative" mih="100%" bg="background_page-secondary">
       {loginPageIllustration &&
         (loginPageIllustration.isDefault ? (
           <LighthouseIllustration />
         ) : (
-          <LayoutIllustration
+          <Box
             data-testid="unsubscribe-page-illustration"
-            backgroundImageSrc={loginPageIllustration.src}
+            pos="absolute"
+            inset={0}
+            bgsz="100% auto"
+            bgr="no-repeat"
+            bgp="right bottom"
+            style={{ backgroundImage: `url("${loginPageIllustration.src}")` }}
           />
         ))}
-      <LayoutBody>
+      <Box pos="relative" flex={1}>
         <Center mih={"100%"} miw={"100%"}>
           <Stack>
             <LogoIcon height={65}></LogoIcon>
-            <LayoutCard>{children}</LayoutCard>
+            <Flex
+              className={S.shadow}
+              direction="column"
+              align="center"
+              justify="center"
+              w={{ base: "100%", sm: "30.875rem" }}
+              miw="35rem"
+              mih="20rem"
+              mt="xl"
+              py="xxxl"
+              px={{ base: "xl", sm: "3.5rem" }}
+              bg="background_page-primary"
+              bdrs="xs"
+            >
+              {children}
+            </Flex>
           </Stack>
         </Center>
-      </LayoutBody>
-    </LayoutRoot>
+      </Box>
+    </Flex>
   );
 }
 
 function ErrorDisplay() {
   return (
-    <Stack align="center" gap="xs" aria-label="error message">
-      <StyledMetabotLogo variant="sad" />
+    <Stack align="center" gap="xxs" aria-label="error message">
+      <MetabotLogo className={S.logo} variant="sad" />
       <Text
         fw={700}
         fz="md"
@@ -244,20 +291,8 @@ function ErrorDisplay() {
   );
 }
 
-type UnsubscribeQueryString = Partial<{
-  hash: string;
-  email: string;
-  "pulse-id": string;
-  "notification-handler-id": string;
-}>;
-
-interface UnsubscribeProps {
-  location: Location<UnsubscribeQueryString>;
-}
-
 interface SubscriptionDetailProps {
-  email: string;
-  alertTitle: string | undefined;
+  title: string | undefined;
   action: () => void;
 }
 
@@ -272,7 +307,7 @@ interface UseUnsubscribeProps {
   email: string | undefined;
   pulseId: string | undefined;
   notificationHandlerId: string | undefined;
-  subscriptionChange: Subscription;
+  subscriptionChange: Subscription | null;
 }
 
 interface UseUnsubscribeResult {

@@ -1,17 +1,11 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Icon } from "metabase/ui";
+import { Box, Button, Icon, Popover, Stack, UnstyledButton } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
-import {
-  AddMorePrompt,
-  ErrorMessage,
-  OptionEditorContainer,
-  TextArea,
-} from "./OptionEditor.styled";
+import S from "./OptionEditor.module.css";
 
 const optionsToText = (options: FieldValueOptions) => options.join("\n");
 export const textToOptions = (text: string): FieldValueOptions => {
@@ -59,6 +53,7 @@ export const OptionPopover = ({
 }: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
+  const [isOpened, { open, close, toggle }] = useDisclosure(false);
 
   const hasOptions = text.length > 0;
   const isDirty = text !== optionsToText(options);
@@ -82,7 +77,7 @@ export const OptionPopover = ({
     }
   };
 
-  const handleSave = (closePopover: () => void) => {
+  const handleSave = () => {
     setError(null);
 
     const nextOptions = transformOptionsIfNeeded(
@@ -95,37 +90,43 @@ export const OptionPopover = ({
       setError(error);
     } else {
       onChange(nextOptions);
-      closePopover();
+      close();
     }
   };
 
   return (
-    <TippyPopoverWithTrigger
-      placement="bottom-end"
-      triggerContent={
-        <Icon name="list" size={20} tooltip={t`Change options`} />
-      }
-      maxWidth={400}
-      popoverContent={({ closePopover }) => (
-        <OptionEditorContainer>
-          <TextArea
+    <Popover
+      opened={isOpened}
+      onChange={(nextOpened) => (nextOpened ? open() : close())}
+      position="bottom-end"
+      trapFocus
+    >
+      <Popover.Target>
+        <UnstyledButton onClick={toggle}>
+          <Icon name="list" size={20} tooltip={t`Change options`} />
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown maw={400}>
+        <Stack p="lg" gap="sm">
+          <textarea
+            className={S.textarea}
             value={text}
             onChange={handleTextChange}
             placeholder={t`Enter one option per line`}
           />
-          <AddMorePrompt isVisible={hasOptions}>
+          <Box className={S.addMorePrompt} opacity={hasOptions ? 1 : 0}>
             {t`Press enter to add another option`}
-          </AddMorePrompt>
-          {hasError && <ErrorMessage>{error}</ErrorMessage>}
-          <Button
-            disabled={!canSave}
-            onClick={() => handleSave(closePopover)}
-            small
-          >
+          </Box>
+          {hasError && (
+            <Box ta="center" fz="md" c="feedback-negative">
+              {error}
+            </Box>
+          )}
+          <Button disabled={!canSave} onClick={handleSave}>
             {t`Save`}
           </Button>
-        </OptionEditorContainer>
-      )}
-    />
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 };

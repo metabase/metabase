@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import {
@@ -7,7 +8,7 @@ import {
   useUnpersistModelMutation,
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { Switch, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -50,6 +51,7 @@ export function ModelCacheToggle({
     isLoading: isLoadingDb,
     error: dbError,
   } = useGetDatabaseQuery(
+    // Unjustified type cast. FIXME
     model.databaseId() ? { id: model.databaseId() as number } : skipToken,
   );
 
@@ -82,7 +84,6 @@ export function ModelCacheToggle({
         <div>
           <Switch
             label={t`Persist model data`}
-            size="sm"
             checked={isPersisted}
             disabled
           />
@@ -98,7 +99,6 @@ export function ModelCacheToggle({
   return (
     <Switch
       label={t`Persist model data`}
-      size="sm"
       checked={isPersisted}
       onChange={toggleModelPersistence}
       disabled={false}

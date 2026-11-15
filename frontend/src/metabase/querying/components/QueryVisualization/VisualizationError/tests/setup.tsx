@@ -1,12 +1,19 @@
+import type { ReactNode } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
-import type { Card, Database, TokenFeatures } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  Database,
+  DatasetError,
+  DatasetErrorType,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -18,17 +25,27 @@ import { VisualizationError } from "../VisualizationError";
 export interface SetupOpts {
   database?: Database;
   card?: Card;
+  // `DatasetError` doesn't model it, but at runtime the component is also handed
+  // thrown `Error` instances (network/stream failures), so allow them here too.
+  error?: DatasetError | Error;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  errorType?: DatasetErrorType;
+  errorAction?: ReactNode;
+  duration?: number;
 }
 
 export const setup = ({
   database = createMockDatabase(),
   card = createMockCard(),
+  error = "An error occurred",
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
+  errorType,
+  errorAction,
+  duration = 0,
 }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -41,8 +58,6 @@ export const setup = ({
     }),
   });
 
-  setupUserMetabotPermissionsEndpoint();
-
   enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
   });
@@ -51,14 +66,16 @@ export const setup = ({
     questions: [card],
     databases: [database],
   });
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
 
   renderWithProviders(
     <VisualizationError
       question={question}
-      duration={0}
-      error="An error occurred"
-      via={[]}
+      duration={duration}
+      // Unjustified type cast. FIXME
+      error={error as DatasetError}
+      errorType={errorType}
+      errorAction={errorAction}
     />,
     { storeInitialState: state },
   );

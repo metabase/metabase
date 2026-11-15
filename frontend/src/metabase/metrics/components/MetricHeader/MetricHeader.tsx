@@ -3,12 +3,11 @@ import type { ReactNode } from "react";
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Flex, Group } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../types";
 
 import { MetricNameInput } from "./MetricNameInput";
 import { MetricTabs } from "./MetricTabs";
@@ -49,16 +48,14 @@ export function MetricHeader({
       }
       icon="metric"
       tabs={<MetricTabs card={card} urls={urls} />}
-      actions={
-        <Group wrap="nowrap" align="center">
-          {actions}
-          <MetricToolbar
-            card={card}
-            urls={urls}
-            showDataStudioLink={showDataStudioLink}
-          />
-        </Group>
+      menu={
+        <MetricToolbar
+          card={card}
+          urls={urls}
+          showDataStudioLink={showDataStudioLink}
+        />
       }
+      actions={actions}
       breadcrumbs={breadcrumbs}
     />
   );

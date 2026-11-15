@@ -1,4 +1,4 @@
-import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
+import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
 
 export function QuestionAlertsButton() {
   return <PLUGIN_NOTIFICATIONS_SDK.QuestionAlertsButton />;

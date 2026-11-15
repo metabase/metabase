@@ -52,6 +52,7 @@ export const SdkIframeGuestEmbedStatusBar = () => {
         isPublished={resource.enable_embedding}
         isFetching={isFetching}
         hasSettingsChanges={hasParamsChanged}
+        isReadOnly={!resource.can_write}
         onSave={handleSave}
         onUnpublish={handleUnpublish}
         onDiscard={handleDiscard}

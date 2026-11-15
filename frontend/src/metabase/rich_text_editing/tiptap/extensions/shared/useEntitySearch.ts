@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo } from "react";
 
 import {
@@ -5,7 +6,7 @@ import {
   useListRecentsQuery,
   useSearchQuery,
 } from "metabase/api";
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type {
   MentionableUser,
   RecentItem,
@@ -27,7 +28,10 @@ import {
 } from "./suggestionHooks";
 import { buildUserMenuItems, filterRecents } from "./suggestionUtils";
 
-export type EntitySearchOptions = Omit<SearchRequest, "q" | "models" | "limit">;
+export type EntitySearchOptions = Omit<
+  SearchRequest,
+  "q" | "models" | "limit" | "context"
+>;
 
 interface UseEntitySearchOptions {
   query: string;
@@ -81,6 +85,7 @@ export function useEntitySearch({
         (model): model is SearchModel => model !== "user",
       ),
       limit: LINK_SEARCH_LIMIT,
+      context: "document",
       ...searchOptions,
     },
     {

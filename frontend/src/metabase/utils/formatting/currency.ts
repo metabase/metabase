@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { currency as currencyCljs } from "cljs/metabase.util.currency";
+import type { CurrencyPosition, CurrencyStyle } from "metabase-types/api";
 
 export const currency: [Currency["symbol"], Currency][] = currencyCljs;
 
@@ -19,11 +21,26 @@ export interface CurrencyOption {
   value: string;
 }
 
-export type CurrencyStyle = Intl.NumberFormatOptionsCurrencyDisplay;
-
 export interface CurrencyStyleOption {
   name: string;
   value: CurrencyStyle;
+}
+
+export function getCurrencyPositionOptions(): {
+  name: string;
+  value: CurrencyPosition;
+}[] {
+  return [
+    { name: t`Before amount`, value: "before" },
+    { name: t`After amount`, value: "after" },
+  ];
+}
+
+export function getEffectiveCurrencyPosition(
+  currencyStyle?: string,
+  currencyPosition?: CurrencyPosition,
+): CurrencyPosition {
+  return currencyStyle === "name" ? "after" : (currencyPosition ?? "before");
 }
 
 export interface CompactCurrencyOptions {

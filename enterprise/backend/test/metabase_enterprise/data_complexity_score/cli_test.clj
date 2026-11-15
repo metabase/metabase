@@ -11,6 +11,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -44,31 +45,48 @@
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
       (testing "library score matches the hand-derived total"
-        (is (= {:total      215
-                :components {:entity-count      {:measurement 6.0 :score 60}
-                             :name-collisions   {:measurement 1.0 :score 100}
-                             :synonym-pairs     {:measurement 1.0 :score 50}
-                             :field-count       {:measurement 3.0 :score 3}
-                             :repeated-measures {:measurement 1.0 :score 2}}}
+        ;;  size  = 60 (entity) + 3 (field) = 63
+        ;;  amb   = 100 (collisions) + 50 (synonyms) + 2 (repeated-measures) = 152
+        ;;  total = 215
+        (is (= {:score      215
+                :components {:size      {:score      63
+                                         :components {:entity-count {:measurement 6.0 :score 60}
+                                                      :field-count  {:measurement 3.0 :score 3}}}
+                             :ambiguity {:score      152
+                                         :components {:name-collisions   {:measurement 1.0 :score 100}
+                                                      :synonym-pairs     {:measurement 1.0 :score 50}
+                                                      :repeated-measures {:measurement 1.0 :score 2}}}}}
                (:library result))))
       (testing "universe score matches the hand-derived total"
-        (is (= {:total      409
-                :components {:entity-count      {:measurement 10.0 :score 100}
-                             :name-collisions   {:measurement 2.0  :score 200}
-                             :synonym-pairs     {:measurement 2.0  :score 100}
-                             :field-count       {:measurement 5.0  :score 5}
-                             :repeated-measures {:measurement 2.0  :score 4}}}
+        ;;  size  = 100 (entity) + 5 (field) = 105
+        ;;  amb   = 200 (collisions) + 100 (synonyms) + 4 (repeated-measures) = 304
+        ;;  total = 409
+        (is (= {:score      409
+                :components {:size      {:score      105
+                                         :components {:entity-count {:measurement 10.0 :score 100}
+                                                      :field-count  {:measurement 5.0  :score 5}}}
+                             :ambiguity {:score      304
+                                         :components {:name-collisions   {:measurement 2.0  :score 200}
+                                                      :synonym-pairs     {:measurement 2.0  :score 100}
+                                                      :repeated-measures {:measurement 2.0  :score 4}}}}}
                (:universe result))))
-      (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
+      (testing "meta has formula-version + format-version + threshold + weights but no :embedding-model (offline mode)"
+        ;; Literal 1/1 here is intentional — flags accidental version bumps that would invalidate the
+        ;; emitted fingerprint without an explicit code-change reviewer call.
         (is (= {:formula-version   1
+                :format-version    1
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
-               (:meta result))))))
+               (:meta result)))))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-2
   (testing "the schema-less widgets table (under databases/<db>/tables/, no schema dir) loads into :universe"
     (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)]
       (is (some #(= "widgets" (:name %)) universe)
-          "schema-less Table directory should be picked up by the loader")))
+          "schema-less Table directory should be picked up by the loader"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-3
   (testing "audit-DB content (is_audit: true) is excluded from :universe — both Tables and Cards"
     ;; Mirrors the live appdb scorer's `[:not= audit/audit-db-id]` filter. The fixture has
     ;; `databases/audit_database/...` (`is_audit: true`) with a `query_log` Table and a
@@ -79,7 +97,9 @@
       (is (not (contains? names "query_log"))
           "Table in is_audit DB must not appear in :universe")
       (is (not (contains? names "Audit Metric"))
-          "Card whose database_id is the audit DB must not appear in :universe")))
+          "Card whose database_id is the audit DB must not appear in :universe"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-4
   (testing "FieldValues side-car YAMLs (`*___fieldvalues.yaml`) under fields/ do not inflate :field-count"
     ;; The fixture's `events/fields/event_id___fieldvalues.yaml` is a real-shape serdes side-car
     ;; sitting next to a Field YAML. `load-yamls-of-model` must skip it; otherwise the events Table
@@ -89,7 +109,7 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-json-test
+(deftest ^:synchronized run-cli-writes-readable-json-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
@@ -97,13 +117,13 @@
   (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
     (testing "without --output, stdout gets single-line JSON"
       (let [stdout (with-out-str (#'cli/write-result! result nil))]
-        (is (= 215 (-> stdout (json/decode true) :library :total)))
+        (is (= 215 (-> stdout (json/decode true) :library :score)))
         (is (not (re-find #"\n.+" stdout)) "stdout JSON should be single-line")))
     (testing "with --output, the file gets pretty JSON and stdout stays silent"
       (let [tmp    (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)
             stdout (with-out-str (#'cli/write-result! result (.getAbsolutePath tmp)))]
         (is (= "" stdout))
-        (is (= 215 (-> (slurp tmp) (json/decode true) :library :total)))))))
+        (is (= 215 (-> (slurp tmp) (json/decode true) :library :score)))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
@@ -134,7 +154,7 @@
                                    []
                                    (embedders/file-embedder embeddings)
                                    {})
-                                  [:library :components :synonym-pairs :measurement]))]
+                                  [:library :components :ambiguity :components :synonym-pairs :measurement]))]
         (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
           (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
                                    "beta"  [0.5 0.866]}))))
@@ -255,7 +275,7 @@
         (is (true? (:cli-validation (ex-data ex))))
         (is (re-find #"must be a directory" (ex-message ex)))))))
 
-(deftest ^:sequential main-translates-validation-errors-to-fail-test
+(deftest ^:synchronized main-translates-validation-errors-to-fail-test
   (testing "-main converts ex-info {:cli-validation true} from run-cli into fail! + exit 1"
     (let [fail-calls (atom [])]
       (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
@@ -266,7 +286,7 @@
       (is (= 1 (count @fail-calls)) "fail! should be invoked exactly once")
       (is (re-find #"does not exist" (ffirst @fail-calls))))))
 
-(deftest ^:sequential main-converts-missing-embeddings-to-fail-test
+(deftest ^:synchronized main-converts-missing-embeddings-to-fail-test
   (testing "-main translates a missing --embeddings override into a one-line fail! + exit 1"
     (let [fail-calls (atom [])]
       (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
@@ -304,7 +324,7 @@
       (is (true? (:cli-validation (ex-data ex))))
       (is (re-find #"--source appdb does not accept" (ex-message ex))))))
 
-(deftest ^:sequential run-cli-representation-mode-default-does-not-write-test
+(deftest ^:synchronized run-cli-representation-mode-default-does-not-write-test
   (testing "representation mode with no --write-to-appdb flag never calls record-score! or bootstrap"
     (let [persisted?     (atom false)
           bootstrapped?  (atom false)]
@@ -314,7 +334,7 @@
         (is (false? @persisted?)   "representation+no-write must not persist anything")
         (is (false? @bootstrapped?) "representation+no-write must not boot the appdb at all")))))
 
-(deftest ^:sequential run-cli-representation-mode-with-write-stamps-representation-source-test
+(deftest ^:synchronized run-cli-representation-mode-with-write-stamps-representation-source-test
   (testing "representation + --write-to-appdb true persists a row stamped 'representation:<digest>' and does not advance the cron fingerprint"
     (let [calls          (atom [])
           advance-calls  (atom 0)]
@@ -334,7 +354,7 @@
         (is (zero? @advance-calls)
             "representation-derived rows must never advance the cron's last-fingerprint setting")))))
 
-(deftest ^:sequential run-cli-appdb-mode-defaults-to-writing-test
+(deftest ^:synchronized run-cli-appdb-mode-defaults-to-writing-test
   (testing "appdb mode with no --write-to-appdb flag defaults to writing (true) but doesn't advance the cron fingerprint"
     ;; CLI runs disable Snowplow, so they can't legitimately advance
     ;; `data-complexity-scoring-last-fingerprint` — that setting is the cron's
@@ -357,7 +377,7 @@
         (is (zero? @advance-calls)
             "CLI must not advance the cron's last-fingerprint setting")))))
 
-(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
+(deftest ^:synchronized run-cli-appdb-mode-respects-explicit-no-write-test
   (testing "appdb + --write-to-appdb false scores but never persists"
     (let [persisted? (atom false)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
@@ -367,6 +387,22 @@
                                   data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))]
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
         (is (false? @persisted?))))))
+
+(deftest ^:synchronized run-cli-appdb-mode-registers-in-process-provider-test
+  (testing "appdb mode registers the in-process embedding provider before it scores"
+    ;; The standalone CLI skips `metabase.core.core/init!`, where the server registers the provider. Without
+    ;; this a synonym axis configured for `in-process` fails with `:provider-not-registered`.
+    (let [order (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!               (fn [])
+                                  embeddings.startup/ensure-in-process-provider! (fn [] (swap! order conj :register))
+                                  complexity/complexity-scores                   (fn [& _]
+                                                                                   (swap! order conj :score)
+                                                                                   {:meta {}})
+                                  synonym-source/complexity-scores-opts          (constantly {})
+                                  metabot-scope/internal-metabot-scope           (constantly {})
+                                  data-complexity-score/record-score!            (fn [& _])]
+        (#'cli/run-cli {:source "appdb" :write-to-appdb false})
+        (is (= [:register :score] @order))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
   (testing "dir-digest produces the same value for the same content"

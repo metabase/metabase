@@ -21,27 +21,6 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   });
 };
 
-export type DashboardAccessedVia =
-  | "internal"
-  | "public-link"
-  | "static-embed"
-  | "interactive-iframe-embed"
-  | "sdk-embed";
-
-export const trackExportDashboardToPDF = ({
-  dashboardId,
-  dashboardAccessedVia,
-}: {
-  dashboardId?: DashboardId;
-  dashboardAccessedVia: DashboardAccessedVia;
-}) => {
-  trackSchemaEvent("dashboard", {
-    event: "dashboard_pdf_exported",
-    dashboard_id: getDashboardId(dashboardId),
-    dashboard_accessed_via: dashboardAccessedVia,
-  });
-};
-
 export const trackDashboardWidthChange = (
   dashboardId: DashboardId,
   width: DashboardWidth,
@@ -186,5 +165,44 @@ export const trackDashboardBookmarked = () => {
     event: "bookmark_added",
     event_detail: "dashboard",
     triggered_from: "dashboard_header",
+  });
+};
+
+export const trackDashboardEventsShown = (dashboardId: DashboardId) => {
+  trackSimpleEvent({
+    event: "dashboard_events_shown",
+    target_id: getDashboardId(dashboardId),
+  });
+};
+
+export type DashboardEventsPanelLocation =
+  | "chart"
+  | "dashcard_menu"
+  | "dashboard_menu";
+
+export const trackDashboardEventsPanelOpened = (
+  dashboardId: DashboardId | undefined,
+  location: DashboardEventsPanelLocation,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_events_panel_opened",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: location,
+  });
+};
+
+export type DashboardEventsVisibilityLocation = "dashboard" | "dashcard";
+export type DashboardEventsVisibilityChange = "shown" | "hidden";
+
+export const trackDashboardEventsVisibilityChanged = (
+  dashboardId: DashboardId | undefined,
+  location: DashboardEventsVisibilityLocation,
+  change: DashboardEventsVisibilityChange,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_events_visibility_changed",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: location,
+    event_detail: change,
   });
 };

@@ -2,14 +2,18 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hiccup.core :refer [html]]
+   [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.js.color :as js.color]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.match :as match]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -20,41 +24,12 @@
     {:row row-values
      :bar-width nil}))
 
-(defn- postwalk-collect
-  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
-  results."
-  [pred collect-fn form]
-  (let [results (atom [])]
-    (mt/postwalk-pred pred
-                      (fn [node]
-                        (when-let [result (collect-fn node)]
-                          (swap! results conj result))
-                        node)
-                      form)
-    @results))
-
-(defn- find-table-body
-  "Given the hiccup data structure, find the table body and return it"
-  [results]
-  (postwalk-collect (every-pred vector? #(= :tbody (first %)))
-                    ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
-                    second
-                    results))
-
-(defn- style-map->background-color
-  "Finds the background color in the style string of a Hiccup style map"
-  [{:keys [style]}]
-  (let [[_ color-str] (re-find #".*background-color: ([^;]*);" style)]
-    color-str))
-
 (defn- cell-value->background-color
   "Returns a map of cell values to background colors of the pulse table found in the hiccup `results` data
   structure. This only includes the data cell values, not the header values."
   [results]
-  (into {} (postwalk-collect (every-pred vector? #(= :td (first %)))
-                             (fn [[_ style-map cell-value]]
-                               [cell-value (style-map->background-color style-map)])
-                             results)))
+  (into {} (match/match-all results
+             [:td {:style style} cell-value & _] [cell-value (second (re-find #"background-color: ([^;]*);" style))])))
 
 ;; Smoke test for background color selection. Background color decided by some shared javascript code. It's being
 ;; invoked and included in the cell color of the pulse table. This is somewhat fragile code as the only way to find
@@ -83,13 +58,14 @@
             "9"       "rgba(0, 0, 255, 0.75)"
             "1.001,5" "rgba(0, 0, 255, 0.75)"
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
-           (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
+           (-> (select-keys query-results [:cols :rows])
                (#'table/render-table {:col-names             ["a" "b" "c"]
-                                      :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns nil nil)
-               find-table-body
+                                      :cols-for-color-lookup ["a" "b" "c"]}
+                                     (query-results->header+rows query-results) columns
+                                     (:visualization_settings render.tu/test-card) nil)
                cell-value->background-color)))))
 
-(deftest header-truncation-test []
+(deftest header-truncation-test
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)
                                                    (tree-seq vector? rest)
@@ -233,6 +209,47 @@
                    (map #(first (:content %)) td-els))
                 "Body should include row indices as first column")))))))
 
+(deftest table-striped-rows-test
+  (mt/dataset test-data
+    (let [q (str "SELECT 1 AS A, 2 AS B"
+                 " UNION ALL SELECT 3 AS A, 4 AS B"
+                 " UNION ALL SELECT 5 AS A, 6 AS B"
+                 " UNION ALL SELECT 7 AS A, 8 AS B")
+          body-row-backgrounds
+          (fn [viz]
+            (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query q}}
+                                                      :visualization_settings viz}]
+              (let [doc     (render.tu/render-card-as-hickory! card-id)
+                    tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                    rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)]
+                (mapv (fn [row-el]
+                        (->> (hik.s/select (hik.s/tag :td) row-el)
+                             (mapv #(get-in % [:attrs :style]))
+                             (every? (fn [style]
+                                       (str/includes? (or style "")
+                                                      (str "background-color: " style/color-row-stripe-bg))))))
+                      rows))))]
+      (testing "Alternating rows are shaded when table.striped is enabled"
+        (is (= [false true false true]
+               (body-row-backgrounds {:table.striped true}))))
+      (testing "Row index column also gets the stripe background"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query q}}
+                                                  :visualization_settings {:table.striped   true
+                                                                           :table.row_index true}}]
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)
+                second-row-first-cell (first (hik.s/select (hik.s/tag :td) (second rows)))]
+            (is (str/includes? (get-in second-row-first-cell [:attrs :style])
+                               (str "background-color: " style/color-row-stripe-bg))))))
+      (testing "No rows are shaded when table.striped is disabled or absent"
+        (is (every? false? (body-row-backgrounds {:table.striped false})))
+        (is (every? false? (body-row-backgrounds {})))))))
+
 (deftest table-minibar-test
   (mt/dataset test-data
     (let [q                 (str "SELECT 5 AS A, 5 AS B"
@@ -263,8 +280,38 @@
         (testing "Minibar handles 0 gracefully"
           (is (some? (render.tu/render-card-as-hickory! card-id2))))))))
 
-(defn- render-table [dashcard results]
-  (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+(deftest table-minibar-missing-fingerprint-test
+  (testing "A minibar column whose fingerprint lacks numeric range stats renders the plain value
+            instead of crashing notification delivery (#74007)"
+    ;; A column can be numeric yet have no `:type/Number` fingerprint stats (an unsynced or
+    ;; computed column), leaving `min`/`max` nil. The bug surfaced only during notification
+    ;; delivery because `render-pulse-card` returns lazy hiccup: the NPE escaped its try/catch
+    ;; and fired later when the hiccup was realized into HTML. So we realize it here too.
+    (let [data    {:cols             [{:name "A" :display_name "A" :base_type :type/Integer :semantic_type nil}]
+                   :rows             [[5] [10]]
+                   :format-rows?     true
+                   :results_metadata {:columns [{:name "A" :display_name "A" :base_type :type/Integer
+                                                 :fingerprint {:global {:distinct-count 2}}}]}
+                   :viz-settings     {::mb.viz/column-settings
+                                      {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
+          ;; render-pulse-card returns lazy hiccup, so realize it into HTML (as delivery does)
+          ;; before parsing; this is the step that throws on the unfixed code.
+          doc        (-> (channel.render/render-pulse-card :inline "UTC" render.tu/test-card nil {:data data})
+                         :content
+                         html
+                         hik/parse
+                         hik/as-hickory)
+          body-cells (hik.s/select (hik.s/descendant (hik.s/tag :tbody) (hik.s/tag :td)) doc)]
+      (testing "no minibar is rendered in any data cell - it falls back to the plain value"
+        (is (not-any? (fn [cell] (seq (hik.s/select (hik.s/tag :table) cell))) body-cells)))
+      (testing "the cell values are still rendered"
+        (is (seq (hik.s/select (hik.s/find-in-text #"^5$") doc)))
+        (is (seq (hik.s/select (hik.s/find-in-text #"^10$") doc)))))))
+
+(defn- render-table [viz-settings results]
+  (channel.render/render-pulse-card :attachment "America/Los_Angeles"
+                                    (update render.tu/test-card :visualization_settings merge viz-settings)
+                                    nil results))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]
@@ -277,8 +324,7 @@
       (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
-                           {:visualization_settings {:table.columns
-                                                     [{:name "a" :enabled true}]}}
+                           {:table.columns [{:name "a" :enabled true}]}
                            {:data {:cols [{:name         "a",
                                            :display_name "a",
                                            :base_type    :type/BigInteger
@@ -286,3 +332,52 @@
                                    :rows (repeat 200 ["I will keep default limits."])}})
                           :content
                           (render.tu/nodes-with-text "I will keep default limits.")))))))))
+
+(deftest ^:parallel text-wrapping-fallback-width-test
+  (testing "a text-wrapping column with no explicit table.column_widths (UXW-4714)"
+    (let [columns    [{:name "desc"}]
+          viz        {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}}
+          styles-for #(get (table/column->viz-setting-styles columns viz) "desc")]
+      (testing "defaults to a fixed fallback width, so email/Slack clients (which don't auto-wrap) wrap"
+        (let [s (styles-for)]
+          (is (= "normal" (:white-space s)))
+          (is (= "780px" (:width s)))
+          (is (= "780px !important" (:max-width s)))))
+      (testing "binding *text-wrapping-fallback-width* to nil omits the fixed width, so an auto-wrapping renderer (the PDF) sizes the column to the table"
+        (binding [table/*text-wrapping-fallback-width* nil]
+          (let [s (styles-for)]
+            (is (= "normal" (:white-space s)))
+            (is (not (contains? s :width)))
+            (is (not (contains? s :max-width))))))))
+  (testing "an explicit table.column_widths gives min-width and ignores the fallback var entirely"
+    (let [columns [{:name "desc"}]
+          viz     {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}
+                   :table.column_widths [200]}]
+      (binding [table/*text-wrapping-fallback-width* nil]
+        (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
+          (is (contains? s :min-width))
+          (is (not (contains? s :width))))))))
+
+(deftest view-as-image-only-renders-http-urls-test
+  (testing "a `view_as: image` cell only becomes an <img> when it holds an http(s) URL"
+    (let [columns       [{:name "url"}]
+          query-results {:cols columns
+                         :rows [["https://example.com/a.png"]
+                                ["http://example.com/b.png"]
+                                ["file:///etc/passwd"]
+                                ["javascript:alert(1)"]
+                                ["data:text/html,<script>alert(1)</script>"]]}
+          viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} {::mb.viz/view-as "image"}}}
+          rendered      (#'table/render-table (select-keys query-results [:cols :rows])
+                                              {:col-names ["url"] :cols-for-color-lookup ["url"]}
+                                              (query-results->header+rows query-results)
+                                              columns viz-settings nil)]
+      (testing "the http(s) cells, and only those, are images"
+        (is (= ["https://example.com/a.png" "http://example.com/b.png"]
+               (match/match-all rendered [:img {:src src}] src))))
+      (testing "the other cells render as escaped text instead"
+        (is (= ["file:///etc/passwd"
+                "javascript:alert(1)"
+                "data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;"]
+               (match/match-all rendered
+                 [:td _ (content :guard (and (string? content) (not (str/starts-with? content "http"))))] content)))))))

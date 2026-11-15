@@ -17,7 +17,7 @@ function createQueryWithFilter() {
             type: "operator",
             operator: ">",
             args: [
-              { type: "column", sourceName: "ORDERS", name: "TOTAL" },
+              { type: "column", name: "TOTAL" },
               { type: "literal", value: 20 },
             ],
           },
@@ -38,7 +38,7 @@ function setup(step = createMockNotebookStep()) {
       step={step}
       stageIndex={step.stageIndex}
       query={step.query}
-      color="filter"
+      color="core-filter"
       isLastOpened={false}
       reportTimezone="UTC"
       updateQuery={updateQuery}

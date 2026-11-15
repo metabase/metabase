@@ -11,6 +11,10 @@ const {
   COMPRESSION_CONFIG,
 } = require("./frontend/build/shared/rspack/compression");
 
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -23,6 +27,7 @@ const SCRIPT_TAG_PATH = path.resolve(
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -42,14 +47,17 @@ module.exports = {
     // otherwise the path conflicts and the output bundle will not appear.
     path: OUT_TEMP_PATH,
     filename: OUT_FILE_NAME,
-    library: "metabase.embed",
-    libraryTarget: "umd",
+    library: {
+      name: ["metabase", "embed"],
+      type: "umd",
+    },
     globalObject: "this",
     publicPath: `http://localhost:${DEV_PORT}/app`,
   },
   devServer: { hot: false },
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(ts|js)$/,
         use: [
@@ -63,7 +71,7 @@ module.exports = {
               },
               sourceMaps: false,
               minify: false,
-              env: { targets: ["defaults"] },
+              env: {},
             },
           },
         ],
@@ -87,6 +95,7 @@ module.exports = {
       metabase: SRC_PATH,
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
       "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-script-plugins",
       ),

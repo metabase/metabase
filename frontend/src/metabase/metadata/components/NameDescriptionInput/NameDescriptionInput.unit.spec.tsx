@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { NameDescriptionInput } from "./NameDescriptionInput";
 
@@ -8,12 +8,14 @@ interface SetupOpts {
   description: string;
   name: string;
   namePrefix?: string;
+  readOnly?: boolean;
 }
 
 function setup({
   description = "",
   name = "",
   namePrefix,
+  readOnly,
 }: Partial<SetupOpts> = {}) {
   const onDescriptionChange = jest.fn();
   const onNameChange = jest.fn();
@@ -26,6 +28,7 @@ function setup({
       nameIcon="table2"
       namePlaceholder="Enter name"
       namePrefix={namePrefix}
+      readOnly={readOnly}
       onDescriptionChange={onDescriptionChange}
       onNameChange={onNameChange}
     />,
@@ -43,7 +46,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}".repeat(3));
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -53,7 +58,9 @@ describe("NameDescriptionInput", () => {
 
     const descriptionInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(descriptionInput, "{backspace}".repeat(3));
-    descriptionInput.blur();
+    act(() => {
+      descriptionInput.blur();
+    });
 
     expect(onDescriptionChange.mock.calls).toEqual([[""]]);
     expect(descriptionInput).toHaveValue("");
@@ -64,7 +71,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -74,7 +83,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -83,5 +94,17 @@ describe("NameDescriptionInput", () => {
     setup({ namePrefix: "prefix" });
 
     expect(screen.getByText("prefix:")).toBeInTheDocument();
+  });
+
+  it("shows the name icon and makes both inputs read-only when read-only", () => {
+    setup({ name: "Orders", description: "All orders", readOnly: true });
+
+    expect(screen.getByLabelText("table2 icon")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter name")).toHaveAttribute(
+      "readonly",
+    );
+    expect(screen.getByPlaceholderText("Enter description")).toHaveAttribute(
+      "readonly",
+    );
   });
 });

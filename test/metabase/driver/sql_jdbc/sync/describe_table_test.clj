@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -26,6 +27,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- uses-default-describe-table? [driver]
   (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
@@ -49,7 +52,7 @@
   (mt/test-driver :h2
     (assert (uses-default-describe-table? :h2)
             "Make sure H2 uses the default `describe-table` implementation")
-    (is (= {:name "VENUES",
+    (is (= {:name "VENUES"
             :fields
             #{{:name                       "ID"
                :database-type              "BIGINT"
@@ -112,7 +115,7 @@
                :database-is-nullable       true
                :jdbc-type                  java.sql.Types/INTEGER
                :json-unfolding             false}}}
-           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
+           (driver/describe-table :h2 (lib.metadata/database (mt/metadata-provider)) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
@@ -126,7 +129,7 @@
                          "CREATE TABLE \"employee_counter\" (\"id\" INTEGER AUTO_INCREMENT PRIMARY KEY, \"count\" INTEGER AUTO_INCREMENT, \"rank\" INTEGER NOT NULL)"
                          "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (= {:fields #{{:base-type                  :type/Integer
                          :database-is-auto-increment true
                          :database-is-generated      false
@@ -159,10 +162,11 @@
                          :name                       "rank"
                          :json-unfolding             false}}
               :name "employee_counter"}
-             (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
+             (sql-jdbc.describe-table/describe-table :h2 (lib.metadata/database (mt/metadata-provider)) {:name "employee_counter"}))))))
 
 (defn- describe-fields-for-table [db table]
-  (let [driver (driver.u/database->driver db)]
+  (let [driver (driver.u/database->driver db)
+        db     (driver.u/ensure-lib-database db)]
     (sort-by :database-position
              (if (driver.u/supports? driver :describe-fields db)
                (vec (m/mapply driver/describe-fields
@@ -183,7 +187,7 @@
     [_driver _feature _database]
     true))
 
-(deftest describe-fields-shared-attributes-test
+(deftest ^:parallel describe-fields-shared-attributes-test
   (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (is (=?
@@ -199,7 +203,10 @@
                        :database-required
                        :database-is-auto-increment
                        (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
+
+(deftest ^:parallel describe-fields-shared-attributes-test-2
+  (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
            [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
@@ -216,9 +223,9 @@
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
-    (let [org-result-set-seq jdbc/result-set-seq]
-      (with-redefs [jdbc/result-set-seq (fn [& args]
-                                          (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+    (let [org-result-set-seq (mt/original-fn #'jdbc/result-set-seq)]
+      (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [& args]
+                                                        (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
         (is (= #{{:name "longitude"   :base-type :type/Float}
                  {:name "category_id" :base-type :type/Integer}
                  {:name "price"       :base-type :type/Integer}
@@ -284,11 +291,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (sql-jdbc.execute/do-with-connection-with-options
      driver/*driver*
-     (mt/db)
+     (mt/id)
      nil
      (fn [conn]
        (is (= ["id"]
-              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table (mt/id :venues)))))))))
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table :id (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
@@ -300,7 +307,7 @@
           (let [table (t2/select-one :model/Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
-             (mt/db)
+             (mt/id)
              nil
              (fn [^java.sql.Connection conn]
                (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
@@ -318,12 +325,12 @@
       (is (= types (#'sql-jdbc.describe-table/json-map->types row)))))
   (testing "JSON json-map->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")})}]
-      (is (= #{{:name              "zlob → blob",
-                :database-type     "decimal",
-                :base-type         :type/BigInteger,
-                :database-position 0,
+      (is (= #{{:name              "zlob → blob"
+                :database-type     "decimal"
+                :base-type         :type/BigInteger
+                :database-position 0
                 :json-unfolding    false
-                :visibility-type   :normal,
+                :visibility-type   :normal
                 :nfc-path          [:zlob "blob"]}}
              (-> int-row
                  (#'sql-jdbc.describe-table/json-map->types)
@@ -335,77 +342,77 @@
       (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing"
           (is (= [:type/JSON :type/SerializedJSON]
-                 (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
+                 (->> (sql-jdbc.sync/describe-table driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name "json"})
                       :fields
                       (filter #(= (:name %) "json_bit"))
                       first
                       ((juxt :base-type :semantic-type)))))
-          (is (= #{{:name "json_bit → 1234123412314",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+          (is (= #{{:name "json_bit → 1234123412314"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "1234123412314"]}
-                   {:name "json_bit → boop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → boop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "boop"]}
-                   {:name "json_bit → genres",
-                    :database-type "text",
-                    :base-type :type/Array,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → genres"
+                    :database-type "text"
+                    :base-type :type/Array
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "genres"]}
-                   {:name "json_bit → 1234",
-                    :database-type "decimal",
-                    :base-type :type/Integer,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → 1234"
+                    :database-type "decimal"
+                    :base-type :type/Integer
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "1234"]}
-                   {:name "json_bit → doop",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → doop"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "doop"]}
-                   {:name "json_bit → noop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → noop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "noop"]}
-                   {:name "json_bit → zoop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → zoop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "zoop"]}
-                   {:name "json_bit → published",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → published"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "published"]}
-                   {:name "json_bit → title",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → title"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
-                  (mt/db)
+                  (lib.metadata/database (mt/metadata-provider))
                   {:name "json" :id (mt/id "json")}))))))))
 
 (deftest json-columns-with-values-are-not-object-test
@@ -417,14 +424,12 @@
                      [{:field-name "array_col" :base-type :type/JSON}
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
-
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
-                      (mt/db)
+                      (lib.metadata/database (mt/metadata-provider))
                       {:name "json_table" :id (mt/id "json_table")}))))
-
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
                      :base_type :type/Integer}
@@ -455,12 +460,12 @@
                  (count
                   (sql-jdbc.sync/describe-nested-field-columns
                    driver/*driver*
-                   (mt/db)
+                   (lib.metadata/database (mt/metadata-provider))
                    {:name "big_json_table" :id (mt/id "big_json_table")}))))
           (mt/with-log-messages-for-level [messages :warn]
             (sql-jdbc.sync/describe-nested-field-columns
              driver/*driver*
-             (mt/db)
+             (lib.metadata/database (mt/metadata-provider))
              {:name "big_json_table" :id (mt/id "big_json_table")})
             (is (str/includes?
                  (-> (messages) first :message)
@@ -474,14 +479,14 @@
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          driver/*driver*
-                         (mt/db)
+                         (lib.metadata/database (mt/metadata-provider))
                          {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (mt/defdataset long-json
   [["long_json_table"
-     ;; `short_json` and `long_json` have the same schema,
-     ;; in the first row, both have an "a" key.
-     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    ;; `short_json` and `long_json` have the same schema
+    ;; in the first row, both have an "a" key.
+    ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/encode {:a "x"}) (json/encode {:a "x"})]
@@ -494,8 +499,8 @@
         (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
                                            (dec (count (json/encode {:b (apply str (repeat 10 "y"))})))]
           (mt/dataset long-json
-            (sync/sync-database! (mt/db) {:scan :schema})
-            (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                   table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
                   json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
                   pks         ["id"]
@@ -506,14 +511,24 @@
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
-                (letfn [(do-with-removed-method [thunk]
-                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
-                            (if (= original-method (get-method driver.sql/json-field-length :default))
-                              (thunk)
-                              (do (remove-method driver.sql/json-field-length driver/*driver*)
-                                  (thunk)
-                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                                    (original-method driver field))))))]
+                (letfn [(registered-dispatch-value [driver]
+                          ;; remove-method needs the registered dispatch value. A child such as
+                          ;; :motherduck can inherit its method from :postgres. Search the driver
+                          ;; and then its parents, returning nil if no method is registered there.
+                          (loop [dispatch-values [driver]]
+                            (when (seq dispatch-values)
+                              (or (m/find-first #(contains? (methods driver.sql/json-field-length) %) dispatch-values)
+                                  (recur (into [] (mapcat #(parents driver/hierarchy %)) dispatch-values))))))
+                        (do-with-removed-method [thunk]
+                          (if-let [dispatch-value (registered-dispatch-value driver/*driver*)]
+                            (let [original-method (get-method driver.sql/json-field-length dispatch-value)]
+                              (remove-method driver.sql/json-field-length dispatch-value)
+                              (try
+                                (thunk)
+                                (finally
+                                  (defmethod driver.sql/json-field-length dispatch-value [driver field]
+                                    (original-method driver field)))))
+                            (thunk)))]
                   (do-with-removed-method
                    (fn []
                      (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
@@ -540,7 +555,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json-unwrap-bigint-and-boolean
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
@@ -564,7 +579,7 @@
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
-                  (mt/db)
+                  (lib.metadata/database (mt/metadata-provider))
                   (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
@@ -606,7 +621,7 @@
                     table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
               (is (= [{:name              "json_col → int_turn_string"
                        :database-type     "text"
@@ -617,7 +632,7 @@
                        :nfc-path          [:json_col "int_turn_string"]}]
                      (into [] (sql-jdbc.sync/describe-nested-field-columns
                                driver/*driver*
-                               (mt/db)
+                               (lib.metadata/database (mt/metadata-provider))
                                (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
@@ -629,7 +644,7 @@
                          :nfc-path          [:json_col "int_turn_string"]}]
                        (into [] (sql-jdbc.sync/describe-nested-field-columns
                                  driver/*driver*
-                                 (mt/db)
+                                 (lib.metadata/database (mt/metadata-provider))
                                  (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (defn- describe-table-indexes
@@ -645,10 +660,10 @@
             (comp
              (map (fn [{:keys [field-name]}] {:type :normal-column-index :value field-name}))
              (map lowercase-value))
-            (driver/describe-indexes driver database {:table-names [(:name table)]}))
+            (driver/describe-indexes driver (driver.u/ensure-lib-database database) {:table-names [(:name table)]}))
       (into #{}
             (map lowercase-value)
-            (driver/describe-table-indexes driver database table)))))
+            (driver/describe-table-indexes driver (driver.u/ensure-lib-database database) table)))))
 
 (deftest describe-table-indexes-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
@@ -665,15 +680,14 @@
       (testing "single column indexes are synced correctly"
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :single_index))))))
       (testing "for composite indexes, we only care about the 1st column"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "first"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :composite_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::unique-index]
   [_driver _feature _database]
@@ -692,11 +706,11 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "unique index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :unique_index)))))))))
 
 (deftest describe-table-indexes-hashed-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
@@ -706,11 +720,11 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "hashed index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :hashed_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::clustered-index]
   [_driver _feature _database]
@@ -728,13 +742,13 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "clustered index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        "CLUSTER clustered_index USING idx_clustered_index_column;")
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :clustered_index)))))))))
 
 ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
 ;; for those indexes so we can't filter those out.
@@ -754,14 +768,14 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "conditional index are ignored"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
         (is (= #{{:type :normal-column-index :value "id"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :conditional_index)))))))))
 
 (deftest describe-fields-are-sorted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
-    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (mt/db)))
+    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (lib.metadata/database (mt/metadata-provider))))
           sorted-fields (sort-by (juxt :table-schema :table-name :database-position) returned-fields)]
       (is (= sorted-fields
              returned-fields)))))
@@ -776,7 +790,6 @@
 
 (doseq [driver [:presto-jdbc
                 :h2 ;; TODO
-                :druid
                 :druid-jdbc]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
@@ -786,7 +799,6 @@
                 :h2 ;; TODO
                 :snowflake ;; Requires enterprise account
                 :presto-jdbc
-                :druid
                 :druid-jdbc
                 :mysql
                 :sqlserver
@@ -824,7 +836,7 @@
           (testing (if materialized? "Materialized View" "View")
             (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
             (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
-            (sync/sync-database! (mt/db) {:scan :schema})
+            (sync/sync-database! (mt/id) {:scan :schema})
             (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
                   view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
                   orders-m-id (:id view-instance)
@@ -838,7 +850,7 @@
                                :model/Field
                                :table_id orders-m-id
                                {:order-by [:database_position]})]
-              (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+              (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))
                              (:name view-instance)))
               (is (some? orders-m-id))
               (is (some? orders-id))
@@ -849,3 +861,81 @@
             (log/error e "Exception occurred."))
           (finally
             (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})))))))
+
+(deftest ^:parallel describe-fks-with-jdbc-metadata-test
+  (testing "Make sure the fallback default JDBC-metadata-based implementation of `describe-fks` works correctly"
+    (are [options] (= #{{:fk-table-schema "PUBLIC"
+                         :fk-table-name   "ORDERS"
+                         :fk-column-name  "USER_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PEOPLE"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "CHECKINS"
+                         :fk-column-name  "VENUE_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "VENUES"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "ORDERS"
+                         :fk-column-name  "PRODUCT_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PRODUCTS"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "VENUES"
+                         :fk-column-name  "CATEGORY_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "CATEGORIES"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "REVIEWS"
+                         :fk-column-name  "PRODUCT_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PRODUCTS"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "CHECKINS"
+                         :fk-column-name  "USER_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "USERS"
+                         :pk-column-name  "ID"}}
+                      (into
+                       #{}
+                       (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+                        :h2
+                        (lib.metadata/database (mt/metadata-provider))
+                        options)))
+      {}
+      {:schema-names ["PUBLIC"]}
+      {:schema-names ["PUBLIC" "PUBLIC2"]})
+    (testing "Filter by schema/table name that does not exist, should return nothing"
+      (are [options] (= #{}
+                        (into
+                         #{}
+                         (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+                          :h2
+                          (lib.metadata/database (mt/metadata-provider))
+                          options)))
+        {:schema-names ["PUBLIC2"]}
+        {:schema-names ["PUBLIC2"], :table-names ["CHECKINS"]}
+        {:table-names ["CHECKINS2"]}))
+    (testing "Filter by table name"
+      (is (= #{{:fk-table-schema "PUBLIC"
+                :fk-table-name   "CHECKINS"
+                :fk-column-name  "VENUE_ID"
+                :pk-table-schema "PUBLIC"
+                :pk-table-name   "VENUES"
+                :pk-column-name  "ID"}
+               {:fk-table-schema "PUBLIC"
+                :fk-table-name   "CHECKINS"
+                :fk-column-name  "USER_ID"
+                :pk-table-schema "PUBLIC"
+                :pk-table-name   "USERS"
+                :pk-column-name  "ID"}}
+             (into
+              #{}
+              (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+               :h2
+               (lib.metadata/database (mt/metadata-provider))
+               {:table-names ["CHECKINS"]})))))))

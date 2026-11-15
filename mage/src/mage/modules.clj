@@ -1,15 +1,19 @@
 (ns mage.modules
   (:require
-   ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [dev.module-explorer :as module-explorer]
+   [hooks.common.modules :as modules]
+   [mage.be-dev :as be-dev]
    [mage.color :as c]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
@@ -19,39 +23,66 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python enterprise/workspaces})
+     enterprise/transforms enterprise/transforms.python enterprise/workspaces})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
-(defn- file->module [filename]
+(defn- file->ns-symbol [filename]
+  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
+    (-> filename
+        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+        (str/replace #"\.[^./]+$" "")
+        (str/replace "/" ".")
+        (str/replace "_" "-")
+        symbol)))
+
+(defn- file->module [prefix->module filename]
   (or
+   (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
+   ;; otherwise a file inside a directory belongs to the (undeclared) module that directory names
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))))
 
+(defn- read-modules-config []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
+
 (defn- updated-files->updated-modules [updated-files]
-  (into (sorted-set)
-        (keep file->module)
-        updated-files))
+  (let [prefix->module (modules/build-prefix->module (read-modules-config))]
+    (into (sorted-set)
+          (keep #(file->module prefix->module %))
+          updated-files)))
 
-(defn- updated-modules [git-ref]
-  (let [git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules updated-files)))
+(def ^:private backend-test-source-file-extensions
+  [".clj" ".cljc"])
 
-(defn- module->test-directory
-  [module]
-  (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (str/replace (name module) #"-" "_"))
-    nil (str "test/metabase/" (str/replace (name module) #"-" "_"))))
+(defn- module->test-paths [modules-config module]
+  (let [prefix->module (modules/build-prefix->module modules-config)
+        path-prefix    (modules/module-dir modules-config module "test")
+        test-dir       (io/file path-prefix)
+        test-files     (concat
+                        (for [extension backend-test-source-file-extensions
+                              :let      [file (io/file (str path-prefix "_test" extension))]
+                              :when     (.isFile file)]
+                          file)
+                        (when (.isDirectory test-dir)
+                          (for [file (file-seq test-dir)
+                                :when (and (.isFile ^java.io.File file)
+                                           (some #(str/ends-with? (str file) %)
+                                                 backend-test-source-file-extensions))]
+                            file)))]
+    (into (sorted-set)
+          (comp (filter #(= module (file->module prefix->module (str %))))
+                (map str))
+          test-files)))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
   []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
+  (let [config (-> (read-modules-config)
                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
                    (dissoc 'connection-pool))]
     (into (sorted-map)
@@ -86,72 +117,118 @@
       acc
       new-deps))))
 
-(def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
+(def driver-test-exemptions
+  "Modules whose changes don't count as reaching the driver-test triggers, though the triggers depend on them.
+  An exemption covers the module's submodules too, except those in [[driver-test-opt-ins]]."
   '#{analytics
-     analytics-interface
      api
-     api-scope
      api-keys
+     api-scope
      appearance
      audit-app
-     auth-identity
      auth-provider
      batch-processing
      channel
-     classloader
      collections
-     config
      content-verification
-     custom-viz-plugin
+     core.initialization-status
+     core.version
      dashboards
+     data-apps
+     dependencies
      documents
-     eid-translation
      embedding
-     enterprise/api
-     enterprise/scim
-     enterprise/serialization
-     enterprise/sso
      enterprise/transforms
-     enterprise/transforms-inspector
      events
+     explorations
      formatter
-     initialization-status
+     funnysql
+     geojson
+     indexed-entities
      interestingness
-     internal-stats
-     llm
-     login-history
-     mcp
+     lib.types
+     measures
      metabot
+     mq
      notification
-     oauth-server
      permissions
      premium-features
      public-sharing
      pulse
      remote-sync
      request
+     sample-data
      search
-     secrets
+     segments
      server
      session
      settings
      setup
-     slackbot
      sso
+     staleness
      startup
      system
      task
-     task-history
+     tiles
      timeline
      tracing
-     types
+     transforms.feature-gating
      users
      util
-     version
-     view-log
-     warehouse-schema
-     workspaces})
+     warehouses.schema
+     warehouses.secrets
+     workspaces
+     xrays})
+
+(def driver-test-opt-ins
+  "Submodules of [[driver-test-exemptions]] that their exemption doesn't cover, so their changes count again.
+  An opt-in covers the module's own submodules too."
+  '#{users.tenants
+     util.graph})
+
+(def ^:private driver-test-rules
+  "The trigger, exemption and opt-in sets that [[driver-deps-affected?]] uses by default."
+  {:triggers   (set/union default-modules-which-trigger-drivers modules-triggering-cloud-drivers)
+   :exemptions driver-test-exemptions
+   :opt-ins    driver-test-opt-ins})
+
+(defn- listed-decision
+  "How `rules`, shaped like [[driver-test-rules]], list `module` itself.
+  Returns `:exempt` for an exemption, `:included` for an opt-in or a trigger, and nil for an unlisted module."
+  [{:keys [triggers exemptions opt-ins]} module]
+  ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
+  ;; `enterprise/transforms`, stays exempt.
+  (cond
+    (contains? exemptions module)                               :exempt
+    (or (contains? opt-ins module) (contains? triggers module)) :included))
+
+(defn- driver-exempt?
+  "Whether `rules`, shaped like [[driver-test-rules]], leave changes to `module` out of [[driver-deps-affected?]].
+  The nearest listed module among `module` and its ancestors decides."
+  [deps rules module]
+  (= :exempt (some #(listed-decision rules %) (modules/lineage deps module))))
+
+(defn driver-test-rule-problems
+  "Mistakes in `rules`, shaped like [[driver-test-rules]], against the module graph `deps`.
+  Returns one map per mistake, with the `:module` and a `:type`.
+  The type is `:undeclared` for an exemption or opt-in missing from `deps`.
+  It is `:redundant-exemption` or `:redundant-opt-in` for an entry that its module's decision doesn't need."
+  [deps {:keys [exemptions opt-ins] :as rules}]
+  ;; Comparing [[driver-exempt?]] with and without the entry covers a module listed more than once, such as a trigger
+  ;; that is also an exemption.
+  (let [redundant? (fn [rule-set module]
+                     (= (driver-exempt? deps rules module)
+                        (driver-exempt? deps (update rules rule-set disj module) module)))]
+    (concat
+     (for [module (sort-by str (concat exemptions opt-ins))
+           :when  (not (contains? deps module))]
+       {:type :undeclared, :module module})
+     (for [module (sort-by str exemptions)
+           :when  (redundant? :exemptions module)]
+       {:type :redundant-exemption, :module module})
+     (for [module (sort-by str opt-ins)
+           :when  (redundant? :opt-ins module)]
+       {:type :redundant-opt-in, :module module}))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -163,7 +240,7 @@
           modules)))
 
 (defn- unaffected-modules
-  "Return the set of modules that are unaffected "
+  "Set of modules in `deps` that changes to `modules` do not affect."
   [deps modules]
   (set/difference
    (into (sorted-set) (keys deps))
@@ -172,7 +249,54 @@
 (comment
   (unaffected-modules (dependencies) '#{enterprise/billing}))
 
-(defn- print-updated-and-unaffected-modules [deps updated driver-deps-affected?]
+(defn driver-deps-affected?
+  "Returns true if any trigger in `rules` is affected by the changed `modules`.
+  Changed modules that [[driver-exempt?]] exempts are left out.
+  The 1-arity and 2-arity use [[driver-test-rules]].
+  Throws when a trigger is not a declared module."
+  ([modules]
+   (driver-deps-affected? (dependencies) modules))
+  ([deps modules]
+   (driver-deps-affected? deps modules driver-test-rules))
+  ([deps modules {:keys [triggers] :as rules}]
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) triggers))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
+   (let [affected (affected-modules deps (remove #(driver-exempt? deps rules %) modules))]
+     (boolean (some affected triggers)))))
+
+(defn unreached-driver-test-exemptions
+  "Exemptions in `rules`, shaped like [[driver-test-rules]], that skip no driver tests in the module graph `deps`.
+  No trigger depends on such a module, or on a submodule that its exemption covers.
+  These are warnings rather than [[driver-test-rule-problems]], so that dropping a dependency never fails a build."
+  [deps {:keys [exemptions triggers] :as rules}]
+  (let [decider  (fn [module]
+                   (some #(when (listed-decision rules %) %) (modules/lineage deps module)))
+        covered  (group-by decider (keys deps))
+        reached? (fn [module]
+                   (some (affected-modules deps [module]) triggers))]
+    (for [module (sort-by str exemptions)
+          :when  (and (contains? deps module)
+                      (not-any? reached? (covered module)))]
+      module)))
+
+(defn- changes-important-file-for-drivers?
+  "Whether we should always run driver tests because `updated-files` touches something important like
+  `deps.edn`."
+  [updated-files]
+  (some (fn [filename]
+          (when (or (str/includes? filename "deps.edn")
+                    (str/includes? filename "modules/drivers/"))
+            (when-not *github-output-only?*
+              (println (str "Running driver tests because " (pr-str filename) " was changed")))
+            filename))
+        updated-files))
+
+(declare driver-tests-needed?)
+
+(defn- print-updated-and-unaffected-modules [deps updated needed?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
     (println)
@@ -183,50 +307,395 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println (if driver-deps-affected?
+    (println (if needed?
                (c/red "Driver tests " (c/bold "MUST be run") ".")
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
+  "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [deps (dependencies)
-        updated (updated-modules git-ref)
-        affected (affected-modules deps updated)
-        driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
-    (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
+  (let [modules-config (read-modules-config)
+        deps           (dependencies)
+        updated-files  (u/updated-files (or git-ref "master"))
+        updated        (updated-files->updated-modules updated-files)
+        affected       (affected-modules deps updated)]
+    (print-updated-and-unaffected-modules deps updated (driver-tests-needed? deps updated-files updated))
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
     (println)
     (println)
-    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
     (u/exit 0)))
 
-(defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
-  `deps.edn`."
-  [git-ref]
-  (some (fn [filename]
-          (when (or (str/includes? filename "deps.edn")
-                    (str/includes? filename "modules/drivers/"))
-            (when-not *github-output-only?*
-              (println (str "Running driver tests because " (pr-str filename) " was changed")))
-            filename))
-        (u/updated-files (or git-ref "master"))))
+;;;; =============================================================================
+;;;; CODEOWNERS
+;;;; =============================================================================
 
-(defn driver-deps-affected?
-  "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
-  ([modules]
-   (driver-deps-affected? (dependencies) modules))
-  ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
-  ([deps modules trigger-modules]
-   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
-     (boolean
-      (some #(not (contains? unaffected %)) trigger-modules)))))
+;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers.
+;;;; Its lines come from [[codeowners-entries]].
+;;;; Its text depends only on config.edn and team.json; the one disk read refuses an opted-in module with no code.
+;;;; Lines outside the markers are hand-maintained.
+
+(def ^:private codeowners-path ".github/CODEOWNERS")
+(def ^:private team-config-path ".github/team.json")
+
+(def ^:private codeowners-begin-marker
+  "# ===== BEGIN generated module ownership (./bin/mage update-codeowners) =====")
+
+(def ^:private codeowners-end-marker
+  "# ===== END generated module ownership =====")
+
+(def ^:private tree->root-file-suffix
+  "Each tree an opted-in module owns => the suffix added to the module's directory to match its root namespace file.
+  Examples: `src/metabase/driver.*` and `test/metabase/driver_test.*`."
+  (array-map "src"  ".*"
+             "test" "_test.*"))
+
+(defn- read-team->codeowner
+  "Team name => the `codeowner` value in team.json, for each team that has the field, whatever its value."
+  []
+  (into {}
+        (keep (fn [{:keys [name] :as team}]
+                (when (contains? team :codeowner)
+                  [name (:codeowner team)])))
+        (:teams (json/parse-string (slurp team-config-path) true))))
+
+(defn- valid-codeowner?
+  "Whether `value` is one GitHub handle, such as `@metabase/metabot` or `@someone`, and nothing else."
+  [value]
+  (and (string? value)
+       (some? (re-matches #"@[A-Za-z0-9-]+(?:/[A-Za-z0-9._-]+)?" value))))
+
+(defn- has-source?
+  "Whether `src-dir` exists as a directory, or a root namespace file sits next to where it would be."
+  [src-dir]
+  (or (.isDirectory (io/file ^String src-dir))
+      (some #(.isFile (io/file (str src-dir %))) [".clj" ".cljc"])))
+
+(defn- path-within?
+  "Whether `path` is `dir` or sits inside it."
+  [dir path]
+  (or (= dir path)
+      (str/starts-with? path (str dir "/"))))
+
+(defn- opts-in?
+  "Whether `module` sets `:codeowners true`."
+  [modules-config module]
+  (true? (get-in modules-config [module :codeowners])))
+
+(defn- codeowners-entries
+  "One entry per module the block must name, in block order.
+  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`.
+  A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
+  Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle.
+  An opted-in module always gets an entry.
+  Another module gets one only where the nearest entry around it would give its code a different owner.
+  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
+  [modules-config team->codeowner]
+  ;; config.edn's `codeowners` section states this rule for module authors; change the two together.
+  (reduce
+   (fn [entries module]
+     (let [team      (modules/module-team modules-config module)
+           src-dir   (modules/module-dir modules-config module "src")
+           ;; Entries come parent first, so the last one around `src-dir` is the nearest.
+           around    (filter #(path-within? (:src-dir %) src-dir) entries)
+           owners    (filter :opted-in? around)
+           opted-in? (opts-in? modules-config module)
+           handle    (when (or opted-in? (some #(= team (:team %)) owners))
+                       (get team->codeowner team))]
+       (cond-> entries
+         (or opted-in?
+             (and (seq owners) (not= handle (:handle (last around)))))
+         (conj {:module    module
+                :src-dir   src-dir
+                :team      team
+                :handle    handle
+                :opted-in? opted-in?
+                :patterns  (for [[tree suffix] tree->root-file-suffix
+                                 :let          [dir (modules/module-dir modules-config module tree)]
+                                 pattern       [dir (str dir suffix)]]
+                             pattern)}))))
+   []
+   ;; CODEOWNERS applies the last matching pattern, so a nested module's entry must follow its parent's. Sorting by
+   ;; source path does that, and the test tree mirrors the source tree.
+   (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
+
+(defn- codeowners-config-problems
+  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, all of them in one run.
+  Each module problem has `:module`.
+  An `:unknown-value` adds `:value`, a `:no-codeowner` adds `:team`, and a `:no-source` adds `:src-dir`.
+  A team whose codeowner is not one GitHub handle gives a single `:bad-codeowner` (`:team`, `:value`, `:modules`).
+  The predicate `source?` takes a module's src directory and says whether its code is there."
+  [modules-config team->codeowner source?]
+  (let [modules (for [[module cfg] (sort-by key modules-config)
+                      :when        (contains? cfg :codeowners)]
+                  module)]
+    (concat
+     (for [module  modules
+           :let    [team    (modules/module-team modules-config module)
+                    src-dir (modules/module-dir modules-config module "src")]
+           problem (cond-> []
+                     (not (opts-in? modules-config module))
+                     (conj {:type :unknown-value, :module module, :value (get-in modules-config [module :codeowners])})
+
+                     (not (contains? team->codeowner team))
+                     (conj {:type :no-codeowner, :module module, :team team})
+
+                     (not (source? src-dir))
+                     (conj {:type :no-source, :module module, :src-dir src-dir}))]
+       problem)
+     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %) modules))
+           :let                [handle (get team->codeowner team)]
+           :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
+       {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)}))))
+
+(defn- pattern-covers?
+  "Whether CODEOWNERS `pattern`, a directory or a `<path>.*` root-file glob from the block, matches `path`."
+  [pattern path]
+  (if (str/ends-with? pattern ".*")
+    (let [stem (subs pattern 0 (dec (count pattern)))]
+      (and (str/starts-with? path stem)
+           (not (str/includes? (subs path (count stem)) "/"))))
+    (path-within? pattern path)))
+
+(defn- shadowed-lines
+  "Rule lines above the generated block in `existing` whose path falls inside one of `patterns`.
+  With no block, every line counts as above it.
+  Paths with wildcards are compared as literal text, so they are found only when the text matches."
+  [existing patterns]
+  (let [above (subs existing 0 (or (str/index-of existing codeowners-begin-marker) (count existing)))]
+    (for [line  (str/split-lines above)
+          :let  [path (some-> (re-find #"^\s*([^#\s]\S*)" line) second (str/replace #"^/" ""))]
+          :when (and path (some #(pattern-covers? % path) patterns))]
+      (str/trim line))))
+
+(defn- markers-problem
+  "A `:broken-markers` problem (`:begin`, `:end`), or nil when the markers are sound.
+  Sound means no marker at all, or each marker exactly once with BEGIN before END."
+  [existing]
+  (let [begin (str/index-of existing codeowners-begin-marker)
+        end   (str/index-of existing codeowners-end-marker)]
+    (when-not (or (= nil begin end)
+                  (and begin
+                       end
+                       ;; A marker is there once when its first and last positions match.
+                       (= begin (str/last-index-of existing codeowners-begin-marker))
+                       (= end (str/last-index-of existing codeowners-end-marker))
+                       (< begin end)))
+      {:type :broken-markers, :begin begin, :end end})))
+
+(defn- codeowners-file-problems
+  "Problems with the `existing` CODEOWNERS text for the block's `entries`, as maps keyed by `:type`.
+  Broken markers give a [[markers-problem]].
+  Otherwise, lines above the block inside its paths give a `:shadowed-lines` problem listing them under `:lines`.
+  Lines are not checked while the markers are broken, since the block's position is then unknown."
+  [existing entries]
+  (if-let [markers (markers-problem existing)]
+    [markers]
+    (when-let [shadowed (seq (shadowed-lines existing (mapcat :patterns entries)))]
+      [{:type :shadowed-lines, :lines (vec shadowed)}])))
+
+(defn- codeowners-problem-message
+  "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
+  [{:keys [module] :as problem}]
+  (case (:type problem)
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, or leave it out."
+                            module (pr-str (:value problem)))
+    :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
+                            module (pr-str (:team problem)) team-config-path)
+    :bad-codeowner  (format (str "Team %s has \"codeowner\" %s in %s. Use one GitHub handle, such as"
+                                 " \"@metabase/metabot\", so that %s can opt in.")
+                            (pr-str (:team problem)) (pr-str (:value problem)) team-config-path
+                            (str/join ", " (:modules problem)))
+    :no-source      (format (str "Module %s sets :codeowners, but has no code at %s. The generator does not handle"
+                                 " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
+                            module (:src-dir problem))
+    :shadowed-lines (str "These lines in " codeowners-path " sit above the generated block but inside paths it owns,"
+                         " so the block overrides them. Move them below the END marker:\n  "
+                         (str/join "\n  " (:lines problem)))
+    :broken-markers (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
+                         " marker, in that order. Fix the markers by hand.")))
+
+(defn- codeowners-stanza-lines
+  "Lines for one entry: a `# module (team)` header, with `, not opted in` after the team when it did not opt in.
+  Then one `pattern handle` line per pattern, or the bare pattern when the entry is unowned."
+  [{:keys [module team handle opted-in? patterns]}]
+  (into [(format "# %s (%s%s)" module team (if opted-in? "" ", not opted in"))]
+        (map #(cond-> % handle (str " " handle)))
+        patterns))
+
+(defn- codeowners-block
+  "Generated block as one string, marker to marker, rendering `entries` in order."
+  [entries]
+  (str/join
+   "\n"
+   (concat
+    [codeowners-begin-marker
+     "#"
+     "# Generated by `./bin/mage update-codeowners` from .clj-kondo/config/modules/config.edn. Do not edit by hand."
+     "# The `codeowners` section at the top of that file says which modules are owned, and by whom."
+     "# Each team's handle is its \"codeowner\" in .github/team.json."
+     "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
+     "#"]
+    (mapcat #(cons "" (codeowners-stanza-lines %)) entries)
+    [""
+     codeowners-end-marker])))
+
+(defn- splice-codeowners
+  "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when no marker is there.
+  Returns text ending in one newline.
+  Throws on a [[markers-problem]]."
+  [existing block]
+  ;; Callers check the markers first, but splicing a bad file would put the block in the wrong place.
+  (when-let [problem (markers-problem existing)]
+    (throw (ex-info (codeowners-problem-message problem) problem)))
+  (if-let [begin (str/index-of existing codeowners-begin-marker)]
+    (let [end (str/index-of existing codeowners-end-marker)]
+      (str (str/trimr (subs existing 0 begin))
+           "\n\n" block
+           (str/trimr (subs existing (+ end (count codeowners-end-marker))))
+           "\n"))
+    (str (str/trimr existing) "\n\n" block "\n")))
+
+(defn- codeowners-outcome
+  "What `update-codeowners` should do with the `existing` CODEOWNERS text, as a map keyed by `:status`.
+  The statuses are `:problems`, `:up-to-date`, `:stale` (only with `check?`) and `:write`.
+  A `:problems` outcome carries `:problems`, and a `:write` outcome carries the `:desired` text."
+  [existing modules-config team->codeowner source? check?]
+  (let [entries  (codeowners-entries modules-config team->codeowner)
+        problems (into (vec (codeowners-config-problems modules-config team->codeowner source?))
+                       (codeowners-file-problems existing entries))
+        desired  (when (empty? problems)
+                   (splice-codeowners existing (codeowners-block entries)))]
+    (cond
+      (seq problems)       {:status :problems, :problems problems}
+      (= existing desired) {:status :up-to-date}
+      check?               {:status :stale}
+      :else                {:status :write, :desired desired})))
+
+(defn cli-update-codeowners
+  "Regenerate the module-ownership block in `.github/CODEOWNERS`.
+  With `--check`, exit non-zero when the file is stale instead of writing it.
+  Exits non-zero, printing each problem, when [[codeowners-outcome]] finds any."
+  [cli-args]
+  (let [outcome (codeowners-outcome (slurp codeowners-path)
+                                    (read-modules-config)
+                                    (read-team->codeowner)
+                                    has-source?
+                                    (get-in cli-args [:options :check]))]
+    (case (:status outcome)
+      :problems
+      (do (doseq [problem (:problems outcome)]
+            (println (c/red (codeowners-problem-message problem))))
+          (u/exit 1))
+
+      :up-to-date
+      (do (println (c/green "CODEOWNERS module ownership is up to date."))
+          (u/exit 0))
+
+      :stale
+      (do (println (c/red "CODEOWNERS module ownership is out of date. Run ./bin/mage update-codeowners."))
+          (u/exit 1))
+
+      :write
+      (do (spit codeowners-path (:desired outcome))
+          (println (c/green (str "Updated " codeowners-path ".")))
+          (u/exit 0)))))
+
+;;;; =============================================================================
+;;;; Module tree
+;;;; =============================================================================
+
+(defn- module-display-tree
+  "Build the nested map consumed by [[tree-node-lines]].
+
+  Grouping nodes that are not modules omit `:module`."
+  [modules-config]
+  (reduce (fn [tree module]
+            (update-in tree
+                       (into []
+                             (mapcat (fn [segment] [:children segment]))
+                             (module-explorer/module->tree-path modules-config module))
+                       assoc :module module))
+          {}
+          (keys modules-config)))
+
+(defn- sorted-children
+  "Sort child nodes alphabetically, with enterprise nodes last."
+  [node]
+  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
+                                      (str/starts-with? segment "enterprise/"))
+                                1
+                                0)
+                              segment])
+           (:children node)))
+
+(defn- tree-node-lines
+  "Render a tree node and its descendants.
+
+  Dashes show depth. Grouping nodes are dimmed. Modules with a custom prefix
+  show `*`, or the prefix itself when `show-prefixes?` is true."
+  [modules-config show-prefixes? path node]
+  (let [depth   (dec (count path))
+        module  (:module node)
+        display (str/join "." path)
+        line    (str (when (pos? depth)
+                       (str (apply str (repeat depth "-")) " "))
+                     (if module display (c/dark display))
+                     (when-let [prefix (and module (module-explorer/explicit-ns-prefix modules-config module))]
+                       (if show-prefixes?
+                         (str " " (c/yellow (str "(" prefix ")")))
+                         (str " " (c/yellow "*")))))]
+    (into [line]
+          (mapcat (fn [[segment child]]
+                    (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
+          (sorted-children node))))
+
+(defn- write-explorer!
+  "Write the HTML explorer, or with `:json` the data it shows, to `output` or to stdout, and exit."
+  [modules-config {:keys [output no-stats json]}]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        text (if json (json/generate-string data) (module-explorer/page data))]
+    (if output
+      (do (spit output text)
+          (println (c/green (str "Wrote " output))))
+      (do (print text)
+          ;; u/exit throws for bb to catch, which skips the flush at shutdown
+          (flush)))
+    (u/exit 0)))
+
+(defn cli-print-module-tree
+  "Print the module tree, nesting enterprise extensions under their OSS module.
+
+  Marks modules whose namespace prefix differs from their name.
+  With `--html`, writes the interactive explorer instead, and with `--json` the data it shows.
+  Exits with an error when given both, or given `--output` or `--no-stats` without either."
+  [{:keys [options] :as _parsed}]
+  (let [{:keys [html json output no-stats]} options]
+    (cond
+      (and html json)      (u/exit "Give only one of --html, --json." 1)
+      (or html json)       (write-explorer! (read-modules-config) options)
+      (or output no-stats) (u/exit "Give --output and --no-stats only with --html or --json." 1)))
+  (let [modules-config (read-modules-config)
+        tree           (module-display-tree modules-config)
+        roots          (cond->> (sorted-children tree)
+                         (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
+        starred        (count (keep #(module-explorer/explicit-ns-prefix modules-config %) (keys modules-config)))]
+    (doseq [[segment node] roots
+            line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
+      (println line))
+    (println)
+    (println (c/dark (str (count modules-config) " modules, "
+                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                          " enterprise"
+                          (when (pos? starred)
+                            (str ", " starred " custom prefixes ("
+                                 (if (:prefixes options) "shown in parentheses" "marked with *")
+                                 ")")))))
+    (u/exit 0)))
 
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
@@ -235,17 +704,39 @@
 
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
-  (let [deps (dependencies)
-        git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        drivers-affected? (driver-deps-affected? deps updated)]
+  (let [deps          (dependencies)
+        updated-files (u/updated-files (or git-ref "master"))
+        updated       (updated-files->updated-modules updated-files)
+        needed?       (driver-tests-needed? deps updated-files updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-    (print-updated-and-unaffected-modules deps updated drivers-affected?)
-    (u/exit (cond
-              (changes-important-file-for-drivers? git-ref) 1
-              drivers-affected? 1
-              :else 0))))
+    (print-updated-and-unaffected-modules deps updated needed?)
+    (u/exit (if needed? 1 0))))
+
+;;;; =============================================================================
+;;;; Fix modules config
+;;;; =============================================================================
+(defn cli-fix-config
+  "Regenerate `.clj-kondo/config/modules/config.edn` so it passes `metabase.core.modules-test`.
+
+  Fast path: evaluate in the running dev nREPL (a few seconds). Fallback: spawn a cold JVM (~25s) when no
+  dev REPL is running."
+  [{:keys [options] :as _parsed}]
+  (let [port  (some-> (:port options) str str/trim parse-long)
+        timer (u/start-timer)
+        exit  (be-dev/eval-or-spawn
+               {:port       port
+                :nrepl-ns   "dev.modules-config"
+                :nrepl-code "(update-config!)"
+                :jvm-args   ["-X:dev" "dev.modules-config/fix-config!"]
+                :nrepl-msg  (c/green "Regenerating modules config via the running dev REPL...")
+                :jvm-msg    (c/yellow "No dev REPL found — starting a JVM (slower; start your dev REPL for ~5s runs)...")})]
+    ;; Reported here because a change to the module graph is what leaves an exemption unreached.
+    (doseq [module (unreached-driver-test-exemptions (dependencies) driver-test-rules)]
+      (println (format "WARNING: no driver-test trigger depends on %s -- remove it from driver-test-exemptions in mage.modules"
+                       module)))
+    (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
+    (flush)
+    (u/exit (or exit 0))))
 
 ;;;; =============================================================================
 ;;;; Driver test decisions - consolidated logic for which drivers to run
@@ -254,7 +745,7 @@
 (def cloud-drivers
   "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
   since they need round trip times, so we skip them on PRs unless specifically needed."
-  #{:athena :bigquery :databricks :redshift :snowflake})
+  #{:athena :bigquery :databricks :motherduck :redshift :snowflake})
 
 (def ^:private all-drivers
   "All driver test jobs in drivers.yml, in order."
@@ -263,11 +754,11 @@
    :bigquery
    :clickhouse
    :databricks
-   :druid
    :druid-jdbc
    :mongo
    :mongo-ssl
    :mongo-sharded-cluster
+   :motherduck
    :mysql-mariadb
    :oracle
    :postgres
@@ -277,6 +768,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :starburst
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -286,49 +778,44 @@
    "bigquery-cloud-sdk" [:bigquery]
    "clickhouse" [:clickhouse]
    "databricks" [:databricks]
-   "druid" [:druid]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
+   "motherduck" [:motherduck]
    "oracle" [:oracle]
    "presto-jdbc" [:presto-jdbc]
    "redshift" [:redshift]
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
-   "sqlite" [:sqlite]
    "sqlserver" [:sqlserver]
-   ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
+   "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes
   "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
-  [git-ref]
-  (let [updated-files (u/updated-files (or git-ref "master"))]
-    (into #{}
-          (mapcat (fn [filename]
-                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
-                      (get driver-directory->drivers dir-name))))
-          updated-files)))
-
-;;; driver quarantine
-
-(def ^:private ci-test-config-url
-  "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
-
-(defn- read-ci-test-config []
-  (json/parse-string (slurp ci-test-config-url) keyword))
-
-(defn- quarantined-drivers []
-  (-> (read-ci-test-config)
-      (get-in [:ignored :drivers] [])
-      (->> (mapcat #(or (get driver-directory->drivers %)
-                        [(keyword %)])))
-      (set)))
+  [updated-files]
+  (into #{}
+        (mapcat (fn [filename]
+                  (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                    (get driver-directory->drivers dir-name))))
+        updated-files))
 
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
   (= (str/lower-case (str s)) "true"))
+
+(defn- parse-only-driver
+  "Parse the `--only-driver` CLI arg into a driver keyword, or nil when unset.
+
+  Throws on an unknown driver: a typo would otherwise read as `nil` and quietly run the normal decisions
+  instead of the one job that was asked for."
+  [s]
+  (when-not (str/blank? s)
+    (let [driver (keyword (str/trim s))]
+      (when-not (contains? (set all-drivers) driver)
+        (throw (ex-info (str "Unknown driver: " (str/trim s))
+                        {:driver driver, :known-drivers (mapv name all-drivers)})))
+      driver)))
 
 (defn- parse-labels
   "Parse comma-separated labels string into a set of label strings."
@@ -337,10 +824,9 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
-  (str "break-quarantine-" (name driver)))
-
-(defn run-driver-label [driver]
+(defn run-driver-label
+  "PR label string that opts `driver`'s test job into a given CI run."
+  [driver]
   (str "ci:run-" (name driver)))
 
 (defn- driver-decision
@@ -355,24 +841,38 @@
    The driver module is considered affected when:
    - Files in modules/drivers/* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed"
+   - A module that a driver-test trigger depends on is changed, unless [[driver-exempt?]] exempts it"
   [driver
-   {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
+   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
-   quarantined-drivers
    updated]
   (cond
-    ;; Priority 1: Global skip (no backend changes)
+    ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
+    ;; that driver and nothing else -- not even H2/Postgres, since asking for a job by name is a
+    ;; stronger signal than any rule below.
+    only-driver
+    (if (= driver only-driver)
+      {:should-run true
+       :reason     (str "requested via --only-driver=" (name only-driver))}
+      {:should-run false
+       :reason     (str "--only-driver=" (name only-driver) " requested instead")})
+
+    ;; Priority 1: Global force-run. Every driver runs.
+    force-run
+    {:should-run true
+     :reason "force-run (master/release branch or ci:run-all label)"}
+
+    ;; Priority 2: Global skip (no backend changes)
     skip
     {:should-run false
      :reason "workflow skip (no backend changes)"}
 
-    ;; Priority 2: H2 and Postgres always run when backend tests run
+    ;; Priority 3: H2 and Postgres always run when backend tests run
     (#{:h2 :postgres} driver)
     {:should-run true
      :reason "H2/Postgres always run"}
 
-    ;; Priority 3: ci:run-all-drivers or ci:run-<driver> label
+    ;; Priority 4: ci:run-all-drivers or ci:run-<driver> label
     (or (contains? pr-labels "ci:run-all-drivers")
         (contains? pr-labels (run-driver-label driver)))
     {:should-run true
@@ -380,60 +880,76 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers (respected even on master/release)
-    (contains? quarantined-drivers driver)
-    (do
-      (when verbose?
-        (println "Driver" (name driver) "is quarantined; checking for '" (break-quarantine-label driver) "' label...."))
-      (if (contains? pr-labels (break-quarantine-label driver))
-        {:should-run true
-         :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
-        {:should-run false
-         :reason "driver is quarantined"}))
-
-    ;; Priority 5: Master/release branch - all (non-quarantined) drivers run
-    is-master-or-release
+    ;; Priority 5: The driver's own source changed - the change is exactly what needs testing.
+    (contains? particular-driver-changed? driver)
     {:should-run true
-     :reason "master/release branch"}
+     :reason "driver files changed"}
 
-    ;; Priority 6: Cloud driver + ci:all-cloud-drivers label
+    ;; Priority 6: Cloud driver + ci:run-all-cloud-drivers label
     (and (contains? cloud-drivers driver)
-         (contains? pr-labels "ci:all-cloud-drivers"))
+         (contains? pr-labels "ci:run-all-cloud-drivers"))
     {:should-run true
-     :reason "ci:all-cloud-drivers label"}
+     :reason "ci:run-all-cloud-drivers label"}
 
-    ;; Priority 7: Cloud driver + its files changed
-    (and (contains? cloud-drivers driver)
-         (contains? particular-driver-changed? driver))
-    {:should-run true
-     :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
-
-    ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
+    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
          (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 9: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
     (and (contains? cloud-drivers driver)
          driver-deps-affected?)
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 10: Cloud driver, no relevant changes → skip
+    ;; Priority 9: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 11: Driver deps affected by shared code changes
+    ;; Priority 10: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 12: Self-hosted driver, not affected
+    ;; Priority 11: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
+
+(defn- change-analysis
+  "What [[driver-decision]] needs to know about a change to `updated-files`, whose modules are `updated`.
+  Returns a map of `:updated`, `:driver-affected?`, `:important-file-changed?` and `:particular-driver-changed?`."
+  [deps updated-files updated]
+  {:updated                    (into (sorted-set) updated)
+   :driver-affected?           (driver-deps-affected? deps updated)
+   :important-file-changed?    (boolean (changes-important-file-for-drivers? updated-files))
+   :particular-driver-changed? (drivers-with-file-changes updated-files)})
+
+(defn- driver-decisions
+  "One [[driver-decision]] per driver in [[all-drivers]], each with its `:driver`.
+  Takes the `ctx` of [[driver-decision]] without `:particular-driver-changed?`, and a [[change-analysis]] or nil."
+  [ctx {:keys [updated driver-affected? important-file-changed? particular-driver-changed?]}]
+  (let [ctx (assoc ctx :particular-driver-changed? (or particular-driver-changed? #{}))]
+    (mapv (fn [driver]
+            (assoc (driver-decision driver
+                                    ctx
+                                    ;; module dependency check combines both conditions
+                                    (boolean (or driver-affected? important-file-changed?))
+                                    (or updated #{}))
+                   :driver driver))
+          all-drivers)))
+
+(defn driver-tests-needed?
+  "Whether `-driver-decisions` runs any driver beyond H2 and Postgres for a change to `updated-files`.
+  The `updated` modules are the ones those files belong to.
+  PR labels are not considered."
+  [deps updated-files updated]
+  (boolean
+   (some (fn [{:keys [driver should-run]}]
+           (and should-run (not (#{:h2 :postgres} driver))))
+         (driver-decisions {:pr-labels #{}} (change-analysis deps updated-files updated)))))
 
 (defn- cli-driver-decisions
   "Determine which driver tests should run based on PR context.
@@ -444,58 +960,41 @@
    Usage:
      ./bin/mage -driver-decisions \\
        --git-ref=master \\
-       --is-master-or-release=false \\
-       --pr-labels=ci:all-cloud-drivers,other-label \\
-       --skip=false"
+       --force-run=false \\
+       --pr-labels=ci:run-all-cloud-drivers,other-label \\
+       --skip=false \\
+       --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
-        ;; Detect file changes for ALL drivers via git diff
-        particular-driver-changed? (drivers-with-file-changes git-ref)
+        force-run (parse-bool (:force-run options))
+        only-driver (parse-only-driver (:only-driver options))
+        ;; force-run and --only-driver each decide every driver on their own, so the change
+        ;; analysis is not consulted there.
+        analysis (when-not (or force-run only-driver)
+                   (let [updated-files (u/updated-files git-ref)]
+                     (change-analysis (dependencies) updated-files (updated-files->updated-modules updated-files))))
+        {:keys [particular-driver-changed? updated driver-affected? important-file-changed?]} analysis
         ctx {:git-ref git-ref
-             :is-master-or-release (parse-bool (:is-master-or-release options))
+             :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? particular-driver-changed?
-             :verbose? (not github-output-only?)}
-        quarantined (quarantined-drivers)
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        driver-affected? (driver-deps-affected? updated)
-        important-file-changed? (changes-important-file-for-drivers? git-ref)
-        ;; For module dependency check, combine both conditions
-        effective-driver-affected? (or driver-affected? important-file-changed?)
-        decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
-                                 :driver driver))
-                        all-drivers)
-        ;; Check for quarantined drivers with file changes but no break-quarantine label
-        quarantined-with-changes (into #{}
-                                       (filter (fn [driver]
-                                                 (and (contains? quarantined driver)
-                                                      (contains? particular-driver-changed? driver)
-                                                      (not (contains? (:pr-labels ctx)
-                                                                      (break-quarantine-label driver))))))
-                                       all-drivers)]
-
+             :only-driver only-driver}
+        decisions (driver-decisions ctx analysis)]
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
-      (do
-        (doseq [{:keys [driver should-run]} decisions]
-          (println (str (name driver) "-should-run=" should-run)))
-        (doseq [driver quarantined-with-changes]
-          (println (str (name driver) "-quarantine-conflict=true"))))
-
+      (doseq [{:keys [driver should-run]} decisions]
+        (println (str (name driver) "-should-run=" should-run)))
       (do
         ;; Print module analysis summary
+        (when analysis
+          (println "")
+          (println "=== Module Analysis ===")
+          (println "Changed modules:" (pr-str updated))
+          (println "Driver module affected:" driver-affected?)
+          (println "Important file changed:" important-file-changed?)
+          (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
         (println "")
-        (println "=== Module Analysis ===")
-        (println "Changed modules:" (pr-str updated))
-        (println "Driver module affected:" driver-affected?)
-        (println "Important file changed:" (boolean important-file-changed?))
-        (println "Drivers with file changes:" (pr-str particular-driver-changed?))
-        (println "")
-
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
         (doseq [{:keys [driver should-run reason]} decisions]
@@ -504,7 +1003,6 @@
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
                            reason)))
         (println "")
-
         ;; Print GITHUB_OUTPUT preview with colors
         (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
           (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
@@ -512,17 +1010,7 @@
             (println (str (name driver) "-should-run=true")))
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
-            (println (str (name driver) "-should-run=false"))))
-
-        ;; Output quarantine conflict warnings with colors
-        (when (seq quarantined-with-changes)
-          (println "")
-          (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
-          (println (c/red "=== Quarantine Conflicts ==="))
-          (doseq [driver quarantined-with-changes]
-            (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
-            (println (str (name driver) "-quarantine-conflict=true"))))))
-
+            (println (str (name driver) "-should-run=false"))))))
     (u/exit 0)))
 
 (defn -main

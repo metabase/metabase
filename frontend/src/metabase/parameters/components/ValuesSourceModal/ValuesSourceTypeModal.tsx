@@ -1,27 +1,30 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, JSX, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
-import { Button } from "metabase/common/components/Button";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCardQueryMetadataQuery,
+} from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
-import type { RadioOption } from "metabase/common/components/Radio";
-import { Radio } from "metabase/common/components/Radio";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
-import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Radio,
+  Select,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -33,6 +36,8 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  Card,
+  CardId,
   FieldReference,
   Parameter,
   ParameterValue,
@@ -71,8 +76,9 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalQuestionProps {
-  question: Question | undefined;
+interface ModalCardProps {
+  card: Card | undefined;
+  query: Lib.Query | undefined;
 }
 
 interface ModalDispatchProps {
@@ -81,11 +87,17 @@ interface ModalDispatchProps {
   ) => Promise<ParameterValues>;
 }
 
-type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalCardProps & ModalDispatchProps;
+
+type ModalLoaderProps = ModalOwnProps & {
+  /** Hides the modal's panel but keeps it open, along with its backdrop. */
+  isContentHidden?: boolean;
+};
 
 const ValuesSourceTypeModal = ({
   parameter,
-  question,
+  card,
+  query,
   sourceType,
   sourceConfig,
   onFetchParameterValues,
@@ -93,21 +105,9 @@ const ValuesSourceTypeModal = ({
   onChangeSourceConfig,
   onChangeCard,
   onSubmit,
-  onClose,
 }: ModalProps): JSX.Element => {
   return (
-    <ModalContent
-      title={t`Selectable values for ${parameter.name}`}
-      footer={[
-        <Button
-          key="submit"
-          primary
-          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
-          onClick={onSubmit}
-        >{t`Done`}</Button>,
-      ]}
-      onClose={onClose}
-    >
+    <>
       {sourceType === null ? (
         <FieldSourceModal
           // if sourceType === null the parameter must have fields
@@ -121,7 +121,8 @@ const ValuesSourceTypeModal = ({
       ) : sourceType === "card" ? (
         <CardSourceModal
           parameter={parameter}
-          question={question}
+          card={card}
+          query={query}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
@@ -138,7 +139,14 @@ const ValuesSourceTypeModal = ({
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : null}
-    </ModalContent>
+      <Modal.Footer>
+        <Button
+          variant="filled"
+          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
+          onClick={onSubmit}
+        >{t`Done`}</Button>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -150,6 +158,24 @@ interface SourceTypeOptionsProps {
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
+
+type SourceTypeOption = {
+  name: string;
+  value: ValuesSourceType;
+};
+
+// Mantine's Radio.Group only handles string values, so the null source type
+// ("From connected fields") is mapped to a sentinel string.
+const CONNECTED_FIELDS_SENTINEL_VALUE = "connected-fields";
+
+const serializeSourceType = (sourceType: ValuesSourceType): string =>
+  sourceType ?? CONNECTED_FIELDS_SENTINEL_VALUE;
+
+const deserializeSourceType = (value: string): ValuesSourceType =>
+  value === CONNECTED_FIELDS_SENTINEL_VALUE
+    ? null
+    : // Unjustified type cast. FIXME
+      (value as ValuesSourceType);
 
 const SourceTypeOptions = ({
   parameter,
@@ -176,12 +202,20 @@ const SourceTypeOptions = ({
   );
 
   return (
-    <Radio
-      value={sourceType}
-      options={sourceTypeOptions}
-      vertical
-      onChange={handleSourceTypeChange}
-    />
+    <Radio.Group
+      value={serializeSourceType(sourceType)}
+      onChange={(value) => handleSourceTypeChange(deserializeSourceType(value))}
+    >
+      <Stack gap="sm">
+        {sourceTypeOptions.map((option) => (
+          <Radio
+            key={serializeSourceType(option.value)}
+            value={serializeSourceType(option.value)}
+            label={option.name}
+          />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 };
 
@@ -239,7 +273,12 @@ const FieldSourceModal = ({
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -248,7 +287,8 @@ const FieldSourceModal = ({
 
 interface CardSourceModalProps {
   parameter: Parameter;
-  question: Question | undefined;
+  card: Card | undefined;
+  query: Lib.Query | undefined;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
@@ -261,7 +301,8 @@ interface CardSourceModalProps {
 
 const CardSourceModal = ({
   parameter,
-  question,
+  card,
+  query,
   sourceType,
   sourceConfig,
   onFetchParameterValues,
@@ -269,19 +310,25 @@ const CardSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
-  const query = useMemo(() => {
-    return question != null ? getQuestionBasedQuery(question) : undefined;
-  }, [question]);
-
   const columns = useMemo(() => {
     return query != null ? getSupportedColumns(query, parameter) : [];
   }, [query, parameter]);
+
+  const labelColumns = useMemo(() => {
+    return query != null ? getLabelColumns(query) : [];
+  }, [query]);
 
   const selectedField = useMemo(() => {
     return query != null && sourceConfig.value_field != null
       ? getColumnByReference(query, columns, sourceConfig.value_field)
       : undefined;
   }, [query, columns, sourceConfig.value_field]);
+
+  const selectedLabelField = useMemo(() => {
+    return query != null && sourceConfig.label_field != null
+      ? getColumnByReference(query, labelColumns, sourceConfig.label_field)
+      : undefined;
+  }, [query, labelColumns, sourceConfig.label_field]);
 
   const { values, isError } = useParameterValues({
     parameter,
@@ -290,19 +337,32 @@ const CardSourceModal = ({
     onFetchParameterValues,
   });
 
-  const valuesText = useMemo(
-    () => getValuesText(getSourceValues(values)),
-    [values],
+  const valuesText = useMemo(() => getValuesText(values), [values]);
+
+  const handleValueFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
+      if (query == null || column == null) {
+        return;
+      }
+      onChangeSourceConfig({
+        ...sourceConfig,
+        value_field: Lib.legacyRef(query, STAGE_INDEX, column),
+      });
+    },
+    [query, sourceConfig, onChangeSourceConfig],
   );
 
-  const handleFieldChange = useCallback(
-    (event: SelectChangeEvent<Lib.ColumnMetadata>) => {
+  const handleLabelFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
       if (query == null) {
         return;
       }
       onChangeSourceConfig({
         ...sourceConfig,
-        value_field: Lib.legacyRef(query, STAGE_INDEX, event.target.value),
+        label_field:
+          column != null
+            ? Lib.legacyRef(query, STAGE_INDEX, column)
+            : undefined,
       });
     },
     [query, sourceConfig, onChangeSourceConfig],
@@ -325,55 +385,123 @@ const CardSourceModal = ({
         <ModalSection>
           <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
           <SelectButton onClick={onChangeCard}>
-            {question ? question.displayName() : t`Pick a model or question…`}
+            {card ? card.name : t`Pick a model or question…`}
           </SelectButton>
         </ModalSection>
-        {question && (
-          <ModalSection>
-            <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-            {query != null && columns.length ? (
-              <Select
-                value={selectedField}
+        {card && query != null && (
+          <>
+            <ColumnSelect
+              query={query}
+              columns={columns}
+              selectedColumn={selectedField}
+              label={t`Column to supply the values`}
+              placeholder={t`Pick a column…`}
+              emptyMessage={
+                <>
+                  {getErrorMessage(card, parameter)}{" "}
+                  {t`Please pick a different model or question.`}
+                </>
+              }
+              onChange={handleValueFieldChange}
+            />
+            {selectedField != null && labelColumns.length > 0 && (
+              <ColumnSelect
+                query={query}
+                columns={labelColumns}
+                selectedColumn={selectedLabelField}
+                label={t`Column to supply the labels`}
                 placeholder={t`Pick a column…`}
-                onChange={handleFieldChange}
-              >
-                {columns.map((column, index) => (
-                  <Option
-                    key={index}
-                    name={
-                      Lib.displayInfo(query, STAGE_INDEX, column).displayName
-                    }
-                    value={column}
-                  />
-                ))}
-              </Select>
-            ) : (
-              <ModalErrorMessage>
-                {getErrorMessage(question, parameter)}{" "}
-                {t`Please pick a different model or question.`}
-              </ModalErrorMessage>
+                withNoneOption
+                onChange={handleLabelFieldChange}
+              />
             )}
-          </ModalSection>
+          </>
         )}
       </ModalPane>
       <ModalMain>
-        {!question ? (
+        {!card ? (
           <ModalEmptyState>{t`Pick a model or question`}</ModalEmptyState>
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : isError ? (
           <ModalEmptyState>{t`An error occurred in your query`}</ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
   );
 };
 
-const getErrorMessage = (question: Question, parameter: Parameter) => {
-  const parameterType = getParameterType(parameter);
-  const type = question.type();
+interface ColumnSelectProps {
+  query: Lib.Query;
+  columns: Lib.ColumnMetadata[];
+  selectedColumn: Lib.ColumnMetadata | undefined;
+  label: string;
+  placeholder: string;
+  emptyMessage?: ReactNode;
+  withNoneOption?: boolean;
+  onChange: (column: Lib.ColumnMetadata | undefined) => void;
+}
+
+const NONE_VALUE = "none";
+
+const ColumnSelect = ({
+  query,
+  columns,
+  selectedColumn,
+  label,
+  placeholder,
+  emptyMessage,
+  withNoneOption,
+  onChange,
+}: ColumnSelectProps) => {
+  const value = (() => {
+    const selectedIndex =
+      selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
+    if (selectedIndex >= 0) {
+      return String(selectedIndex);
+    }
+    return withNoneOption ? NONE_VALUE : null;
+  })();
+
+  const handleChange = (newValue: string | null) => {
+    const isColumnSelected = newValue !== null && newValue !== NONE_VALUE;
+    onChange(isColumnSelected ? columns[Number(newValue)] : undefined);
+  };
+
+  return (
+    <ModalSection>
+      <ModalLabel>{label}</ModalLabel>
+      {columns.length > 0 ? (
+        <Select
+          value={value}
+          placeholder={placeholder}
+          data={[
+            ...(withNoneOption ? [{ value: NONE_VALUE, label: t`None` }] : []),
+            ...columns.map((column, index) => ({
+              value: String(index),
+              label: Lib.displayInfo(query, STAGE_INDEX, column).displayName,
+            })),
+          ]}
+          onChange={handleChange}
+        />
+      ) : emptyMessage != null ? (
+        <ModalErrorMessage>{emptyMessage}</ModalErrorMessage>
+      ) : null}
+    </ModalSection>
+  );
+};
+
+const getErrorMessage = (card: Card, parameter: Parameter) => {
+  // avoids using the sectionId to determine the parameter type
+  const parameterType = getParameterType(parameter.type);
+  const { type } = card;
 
   if (parameterType === "number") {
     if (type === "question") {
@@ -393,7 +521,7 @@ const getErrorMessage = (question: Question, parameter: Parameter) => {
     return t`This model doesn’t have any text columns.`;
   }
 
-  throw new Error(`Unsupported or unknown question.type(): ${type}`);
+  throw new Error(`Unsupported or unknown card type: ${type}`);
 };
 
 const getLabel = (value: string | ParameterValue): string | undefined =>
@@ -468,8 +596,8 @@ function ModelHint() {
   );
 
   return (
-    <Box mt="lg" p="md" className={S.info}>
-      <Flex gap="md" align="center">
+    <Box mt="xl" p="lg" className={S.info}>
+      <Flex gap="lg" align="center">
         <Icon name="info" c="text-primary" className={S.icon} />
         <div>
           {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
@@ -483,9 +611,15 @@ const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
 };
 
-const getQuestionBasedQuery = (question: Question) => {
-  const adhocQuestion = question.composeQuestion();
-  return adhocQuestion.query();
+const getCardQuery = (
+  metadataProvider: Lib.MetadataProvider,
+  cardId: CardId,
+): Lib.Query | undefined => {
+  const cardMetadata = Lib.cardMetadata(metadataProvider, cardId);
+  if (cardMetadata == null) {
+    return undefined;
+  }
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, cardMetadata);
 };
 
 const getColumnByReference = (
@@ -500,7 +634,8 @@ const getColumnByReference = (
 };
 
 const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
-  const type = getParameterType(parameter);
+  // avoids using the sectionId to determine the parameter type
+  const type = getParameterType(parameter.type);
   return Lib.fieldableColumns(query, 0).filter((column) => {
     if (type === "number") {
       return Lib.isNumeric(column);
@@ -509,13 +644,18 @@ const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
   });
 };
 
+// Labels used for remapping are always text, regardless of the parameter type.
+const getLabelColumns = (query: Lib.Query) => {
+  return Lib.fieldableColumns(query, 0).filter((column) =>
+    Lib.isStringOrStringLike(column),
+  );
+};
+
 /**
  * if !hasFields(parameter) then exclude the option to set the source type to
  * "From connected fields" i.e. values_source_type=null
  */
-const getSourceTypeOptions = (
-  parameter: UiParameter,
-): RadioOption<ValuesSourceType>[] => {
+const getSourceTypeOptions = (parameter: UiParameter): SourceTypeOption[] => {
   return [
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
@@ -567,7 +707,7 @@ const useParameterValues = ({
   }, [isValidSource, handleFetchValues]);
 
   return {
-    values: value?.values ?? [],
+    values: isValidSource && !loading ? (value?.values ?? []) : [],
     isLoading: loading,
     isError: !!error,
   };
@@ -577,18 +717,57 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Tables.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
-      card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  Questions.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  connect(null, mapDispatchToProps),
+const ValuesSourceTypeModalConnected = connect(
+  null,
+  mapDispatchToProps,
 )(ValuesSourceTypeModal);
+
+function ValuesSourceTypeModalLoader({
+  isContentHidden = false,
+  ...props
+}: ModalLoaderProps) {
+  const { card_id } = props.sourceConfig;
+  const {
+    data: card,
+    isFetching: isCardFetching,
+    error: cardError,
+  } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
+  const {
+    data: cardMetadata,
+    isFetching: isMetadataFetching,
+    error: metadataError,
+  } = useGetCardQueryMetadataQuery(card_id ?? skipToken);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
+  const query = useMemo(
+    () =>
+      card != null && cardMetadata != null
+        ? getCardQuery(metadataProvider, card.id)
+        : undefined,
+    [metadataProvider, card, cardMetadata],
+  );
+
+  return (
+    <Modal
+      opened
+      size="65%"
+      density="relaxed"
+      title={t`Selectable values for ${props.parameter.name}`}
+      classNames={{ content: isContentHidden ? S.hiddenContent : undefined }}
+      // The picker is outside this modal's React tree, so a lock here would
+      // treat it as outside the modal and cancel its wheel and touch scrolling
+      lockScroll={!isContentHidden}
+      onClose={props.onClose}
+    >
+      <ModalLoadingAndErrorWrapper
+        loading={isMetadataFetching || isCardFetching}
+        error={metadataError ?? cardError}
+        noWrapper
+      >
+        <ValuesSourceTypeModalConnected {...props} card={card} query={query} />
+      </ModalLoadingAndErrorWrapper>
+    </Modal>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ValuesSourceTypeModalLoader;

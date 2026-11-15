@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import {
   normalizeBooleanParameterValue,
   normalizeDateParameterValue,
@@ -6,7 +7,6 @@ import {
   normalizeTemporalUnitParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -116,18 +116,18 @@ function parseParameterValueForNumber(
 function parseParameterValueForFields(
   type: ParameterType,
   value: ParameterValueOrArray,
-  fields: Field[],
+  fields: Lib.ParameterFieldInfo[],
 ): ParameterValueOrArray {
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every((f) => f.isNumeric() && !f.isDate())) {
+  if (fields.every((field) => field.isNumeric && !field.isDate)) {
     return normalizeNumberParameterValue(type, value);
   }
 
-  if (fields.every((f) => f.isBoolean())) {
+  if (fields.every((field) => field.isBoolean)) {
     return normalizeBooleanParameterValue(value);
   }
 
-  if (fields.every((f) => f.isString() || f.isStringLike())) {
+  if (fields.every((field) => field.isString)) {
     return normalizeStringParameterValue(value);
   }
 

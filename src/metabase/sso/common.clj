@@ -3,10 +3,16 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.sso.db :as sso.db]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.default-implementation :as ldap.impl]
+   [metabase.sso.ldap.settings :as ldap.settings]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn- excluded-group-ids
   []
@@ -35,32 +41,52 @@
     (try
       (perms/add-user-to-group! user-or-id group-or-id)
       (catch Throwable e
-        (log/errorf e "Error adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))))))
+        ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
+        ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),
+        ;; so fail the login loudly instead. A nil :group-is-tenant? means the group doesn't exist —
+        ;; that stays on the log-and-continue path like any other bogus group id.
+        (if (some (comp some? :group-is-tenant?) (:bad-user-group-pairs (ex-data e)))
+          (throw e)
+          (log/errorf "Error adding user %s to group %s: %s" (u/the-id user-or-id) (u/the-id group-or-id) (ex-message e)))))))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
-  only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
+   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
-   (let [current-group-ids  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                              {:where
-                                               [:and
-                                                [:= :user_id  (u/the-id user-or-id)]
-                                                [:not-in :group_id (excluded-group-ids)]]})
+   (let [excluded           (excluded-group-ids)
+         current-group-ids  (sso.db/user-group-ids-excluding (u/the-id user-or-id) excluded)
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
-                                                                         (excluded-group-ids)))]
-
+                                                                         excluded))]
      (sync-group-memberships*! user-or-id to-remove to-add)))
   ([user-or-id new-groups-or-ids mapped-groups-or-ids]
-   (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
+   (let [excluded           (excluded-group-ids)
+         mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
-                              (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                {:where
-                                                 [:and
-                                                  [:= :user_id (u/the-id user-or-id)]
-                                                  [:in :group_id mapped-group-ids]
-                                                  [:not-in :group_id (excluded-group-ids)]]}))
+                              (sso.db/user-group-ids-among (u/the-id user-or-id) mapped-group-ids excluded))
          new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
                                 (set/intersection mapped-group-ids)
-                                (set/difference (excluded-group-ids)))
+                                (set/difference excluded))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))
+
+(mu/defn ldap-directory-user :- [:maybe ldap.impl/UserInfo]
+  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, so that callers
+  treat `username` as a local user, also when the lookup fails (for example, when the LDAP server is unavailable)."
+  [username :- :string]
+  (when (ldap.settings/ldap-enabled)
+    (try
+      (ldap/find-user username)
+      (catch Throwable e
+        (log/warnf "LDAP user lookup failed: %s" (ex-message e))
+        nil))))
+
+(mu/defn sso-only-user? :- :boolean
+  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their SSO provider is enabled
+  and they have no used password, or their LDAP directory finds them."
+  [user-id    :- ::lib.schema.id/user
+   email      :- :string
+   sso-source :- [:maybe [:or :keyword :string]]]
+  (boolean (or (and (some? sso-source)
+                    (sso.settings/sso-source-enabled? sso-source)
+                    (not (sso.db/used-password-exists? user-id)))
+               (ldap-directory-user email))))

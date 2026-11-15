@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
@@ -66,31 +66,32 @@ export function MetricsFilterPillPopover({
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             {metricName && (
               <Flex align="center">
-                <Text component="span" fw={700} c="inherit" fz="inherit">
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                   {metricName}
                 </Text>
                 {(metricCount ?? 0) > 1 && (
                   <Badge
                     circle
-                    color="filter"
+                    color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
-                    ml="xs"
+                    ml="xxs"
+                    variant="light"
                   >
                     {metricCount}
                   </Badge>
                 )}
-                <Text component="span" fw={700} c="inherit" fz="inherit">
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                   {", "}
                 </Text>
               </Flex>
             )}
             {displayParts.label}
             {displayParts.value && (
-              <Text component="span" fw={700} c="inherit" fz="inherit">
+              <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                 {" "}
                 {displayParts.value}
               </Text>

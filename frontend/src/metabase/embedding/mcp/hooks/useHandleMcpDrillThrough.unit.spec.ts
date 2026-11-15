@@ -2,30 +2,33 @@ import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { useHandleMcpDrillThrough } from "./useHandleMcpDrillThrough";
 
 const NEXT_CARD = createMockCard({
-  dataset_query: {
-    type: "query",
-    database: 1,
-    query: { "source-table": 2 },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+    }),
+  ),
 });
 
 describe("useHandleMcpDrillThrough", () => {
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     (window as any).metabaseConfig = {
       instanceUrl: "https://metabase.example",
-      sessionToken: "session-token",
-      mcpSessionId: "mcp-session-id",
     };
 
     fetchMock.post("path:/api/embed-mcp/drills", { handle: "drill-handle" });
   });
 
   afterEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any).metabaseConfig;
   });
 
@@ -37,7 +40,13 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
-    const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
+    const { result } = renderHook(() =>
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
+    );
 
     await result.current(
       { drillName: "fk-details", nextCard: NEXT_CARD },
@@ -65,7 +74,13 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
-    const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
+    const { result } = renderHook(() =>
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
+    );
 
     await result.current(
       { drillName: "fk-details", nextCard: NEXT_CARD },

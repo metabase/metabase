@@ -15,6 +15,8 @@ on:
 jobs:
   set-milestone:
     name: Automatically set milestone
+    # Only run set-milestone in https://github.com/metabase/metabase since this is the only place milestones are used.
+    if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     permissions:
@@ -22,7 +24,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -56,7 +58,7 @@ jobs:
       # `github.event.created` is a documented top-level field on the push
       # webhook payload (true iff the push created the ref). See:
       # https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         if: ${{ github.event_name == 'push' && github.event.created != true }}
         name: Set milestone for single commit
         with:
@@ -87,7 +89,7 @@ jobs:
           npm i -g tsx
           tsx release/src/release-branch-commits.ts ${{ steps.version.outputs.major }} > commit-messages.json
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
         name: Backfill milestones for release branch
         env:
@@ -115,17 +117,3 @@ jobs:
               commitMessages: commitMessages,
               ignoreExistingMilestones: true,
             });
-
-      # Fresh-cut only: now that the milestone is populated, dispatch
-      # release-notes-preview to post the markdown to #writing.
-      # Manual workflow_dispatch backfills skip this — they're for catching
-      # missed commits, not for pinging writers again.
-      - name: Trigger release notes preview for the writing team
-        if: ${{ github.event_name == 'push' && github.event.created == true }}
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          gh workflow run release-notes-preview.yml \
-            -f version=v0.${{ steps.version.outputs.major }}.0 \
-            -f slackChannel=writing \
-            --repo "${{ github.repository }}"

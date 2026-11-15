@@ -1,103 +1,115 @@
 (ns metabase.metabot.tools.charts
-  "Chart tool wrappers."
+  "The `create_chart` and `edit_chart` tools."
   (:require
-   [medley.core :as m]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
 
 (set! *warn-on-reflection* true)
 
 (defn- format-chart-output
   [{:keys [chart-id] :as structured}]
-  (let [chart-xml (llm-rep/chart->xml structured)]
+  (let [chart-xml (llm-shape/chart->xml structured)]
     (str "<result>\n" chart-xml "\n</result>\n"
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
-   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
-   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+  (into [:enum] shared/chart-types))
 
 (def ^:private create-chart-schema
   [:map {:closed true}
    [:data_source [:map {:closed true}
                   [:query_id :string]]]
    [:viz_settings [:map {:closed true}
-                   [:chart_type chart-type-enum]]]])
+                   [:chart_type chart-type-enum]]]
+   [:title :string]
+   [:description :string]])
 
-(mu/defn ^{:tool-name "create_chart"
-           :scope     scope/agent-viz-create}
-  create-chart-tool
-  "Create a chart from a query.
+(defrecord CreateChartTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "create_chart"
+     :description (str "Create a chart from a query.\n\n"
+                       "Provide a query_id in data_source, a chart_type in viz_settings, and a short, "
+                       "human-friendly `title` shown above the chart. Also provide a concise one- or two-sentence "
+                       "`description` explaining what the chart shows (the metric, the grouping, and any notable "
+                       "filter); if the chart is saved, it becomes the description of the saved question.")
+     :scope       scope/agent-viz-create
+     :args        create-chart-schema})
 
-  Provide a query_id in data_source and a chart_type in viz_settings."
-  [{:keys [data_source viz_settings]} :- create-chart-schema]
-  (try
+  (handle [_ {:keys [data_source viz_settings title description]} _ctx]
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
                        :chart-type    (keyword (get viz_settings :chart_type))
                        :queries-state (shared/current-queries-state)})
-          reactions  (:reactions result)
-          structured (assoc (dissoc result :reactions) :result-type :chart)]
-      (-> {:output            (format-chart-output structured)
-           :structured-output structured}
-          (m/assoc-some :reactions (not-empty reactions))))
-    (catch Exception e
-      (log/error e "Error creating chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
+          structured (assoc (dissoc result :results-url) :result-type :chart)]
+      {:output            (format-chart-output structured)
+       :structured-output structured
+       :data-parts        [(streaming/viz-part
+                            {:entity-id   (:chart-id result)
+                             :query-id    (:query-id result)
+                             :query       (links/->frontend-query (:query result))
+                             :display     (:chart-type result)
+                             :title       title
+                             :description description})]})))
+
+(def create-chart-tool
+  "`create_chart`: chart a query that this conversation holds."
+  (->CreateChartTool))
 
 (def ^:private edit-chart-schema
   [:map {:closed true}
    [:chart_id :string]
    [:new_viz_settings [:map {:closed true}
-                       [:chart_type chart-type-enum]]]])
+                       [:chart_type chart-type-enum]]]
+   [:title :string]
+   [:description :string]])
 
-(mu/defn ^{:tool-name "edit_chart"
-           :scope     scope/agent-viz-edit}
-  edit-chart-tool
-  "Edit an existing chart's visualization type.
+(defrecord EditChartTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "edit_chart"
+     :description (str "Edit an existing chart's visualization type.\n\n"
+                       "Provide a new chart_type in new_viz_settings and a short, human-friendly `title` shown above "
+                       "the chart. Also provide a concise `description` of what the chart shows; if the chart is saved, it "
+                       "becomes the description of the saved question.")
+     :scope       scope/agent-viz-edit
+     :args        edit-chart-schema})
 
-  Provide a new chart_type in new_viz_settings."
-  [{:keys [chart_id new_viz_settings]} :- edit-chart-schema]
-  (try
+  (handle [_ {:keys [chart_id new_viz_settings title description]} _ctx]
     (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
-          queries (:queries chart)
-          query (first queries)
+          query (or (get (shared/current-queries-state) (:query_id chart))
+                    (first (:queries chart)))
 
           {:keys [new-chart-data result]}
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
-            :charts-state (shared/current-charts-state)})
+            :charts-state (shared/current-charts-state)
+            :query query})
 
           structured (assoc result :result-type :chart)]
-
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
       (when (and (:chart_id new-chart-data) shared/*memory-atom*)
-        (swap! shared/*memory-atom* assoc-in [:state :charts (:chart_id new-chart-data)]
-               new-chart-data))
-
-      {:output (format-chart-output structured)
+        (swap! shared/*memory-atom* memory/set-chart (:chart_id new-chart-data) new-chart-data))
+      {:output            (format-chart-output structured)
        :structured-output structured
-       :data-parts [(streaming/navigate-to-part
-                     (links/pseudo-card->link
-                      {:dataset_query query
-                       :display new-viz
-                       :displayIsLocked true}))]})
+       :data-parts [(streaming/viz-part
+                     {:entity-id   (or (:chart_id new-chart-data) chart_id)
+                      :query-id    (or (:query_id new-chart-data) (str (random-uuid)))
+                      :query       (links/->frontend-query query)
+                      :display     new-viz
+                      :title       title
+                      :description description})]})))
 
-    (catch Exception e
-      (log/error e "Error editing chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
+(def edit-chart-tool
+  "`edit_chart`: give a chart from this conversation a new chart type, as a new chart."
+  (->EditChartTool))

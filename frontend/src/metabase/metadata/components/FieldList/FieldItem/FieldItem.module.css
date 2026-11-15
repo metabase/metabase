@@ -4,13 +4,13 @@
 
   &:hover {
     &:not(.active) {
-      background-color: var(--mb-color-background-hover) !important;
+      background-color: var(--mb-color-background_surface-hover) !important;
     }
   }
 }
 
 .active {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--mb-color-core-brand) !important;
 }
 
 .link {
@@ -18,7 +18,7 @@
 }
 
 .icon {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .input {
@@ -26,7 +26,7 @@
   line-height: var(--mantine-line-height) !important;
 
   &:focus-within {
-    border-color: var(--mb-color-brand) !important;
+    border-color: var(--mb-color-core-brand) !important;
   }
 
   textarea {
@@ -34,7 +34,7 @@
 
     &:focus {
       color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-background-primary);
+      background-color: var(--mb-color-background_page-primary);
     }
   }
 
@@ -42,7 +42,7 @@
     textarea {
       &:focus,
       &:hover {
-        background-color: var(--mb-color-background-primary);
+        background-color: var(--mb-color-background_page-primary);
       }
     }
   }

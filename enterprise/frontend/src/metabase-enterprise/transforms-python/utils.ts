@@ -10,7 +10,7 @@ export function getPythonSourceValidationResult(
   source: PythonTransformSourceDraft,
 ): PythonTransformSourceValidationResult {
   if (!source["source-database"]) {
-    return { isValid: false, errorMessage: t`Select a source a database` };
+    return { isValid: false, errorMessage: t`Select a source database` };
   }
 
   if (source.body.trim() === "") {
@@ -34,4 +34,13 @@ export function isPythonTransformSource(
   source: PythonTransformSourceDraft,
 ): source is PythonTransformSource {
   return source.type === "python" && source["source-database"] !== undefined;
+}
+
+export function canRunPythonTransformSource(
+  source: PythonTransformSourceDraft,
+): source is PythonTransformSource {
+  return (
+    isPythonTransformSource(source) &&
+    getPythonSourceValidationResult(source).isValid
+  );
 }

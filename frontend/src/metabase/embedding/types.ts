@@ -2,6 +2,9 @@ import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type {
   Card,
   Dashboard,
+  DashboardId,
+  EmbedResourceDownloadOptions,
+  EmbeddingParameters,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
@@ -23,20 +26,9 @@ export type EmbedResourceParameter = {
   default?: ParameterValueOrArray | null;
 };
 
-export type EmbedResourceDownloadOptions = {
-  pdf?: boolean;
-  results?: boolean;
-};
-
-export type EmbeddingType = "static-legacy" | "guest-embed";
-
-export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
-
-export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
-
 export type EmbeddingParametersValues = Record<
   string,
-  number | string | string[] | null | undefined
+  ParameterValueOrArray | null | undefined
 >;
 
 /**
@@ -94,3 +86,25 @@ export type ServerCodeSampleConfig = {
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  isGuest?: boolean;
+  useExistingUserSession?: boolean;
+};
+
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration"
+  | "browser"
+  | "metabot"
+  | "data-app";
+
+export type LegacyStaticEmbeddingModalProps = {
+  experience: SdkIframeEmbedSetupExperience;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
+  parentInitialState: SdkIframeEmbedSetupModalInitialState;
+};

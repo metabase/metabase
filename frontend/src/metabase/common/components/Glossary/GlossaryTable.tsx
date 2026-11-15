@@ -1,239 +1,229 @@
-import cx from "classnames";
+import type { AriaAttributes, KeyboardEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
-import type { GlossaryItem } from "metabase/api";
+import type {
+  CreateGlossaryRequest,
+  UpdateGlossaryRequest,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useMetabotName } from "metabase/metabot/hooks";
 import {
-  ActionIcon,
   Box,
   Button,
+  Card,
   Center,
-  Group,
+  Flex,
   Icon,
-  Text,
-  Tooltip,
+  SortableHeaderPill,
+  Stack,
+  TextInput,
 } from "metabase/ui";
-import type { SortDirection } from "metabase-types/api";
+import type { GlossaryItem, SortDirection } from "metabase-types/api";
+
+import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
-import { GlossaryRowEditor } from "./GlossaryRowEditor";
+import { GlossaryNewRow } from "./GlossaryNewRow";
+import { GlossaryRow } from "./GlossaryRow";
+import type { GlossaryField, GlossarySort } from "./types";
+import { getNextSort, getVisibleItems, isDuplicateTerm } from "./utils";
+
+const TERM_COLUMN_WIDTH = "22.5%";
+const ACTIONS_COLUMN_WIDTH = "4rem";
+const COLUMN_COUNT = 3;
+
+const EMPTY_DRAFT: CreateGlossaryRequest = { term: "", definition: "" };
+
+const ARIA_SORT = {
+  asc: "ascending",
+  desc: "descending",
+} as const satisfies Record<SortDirection, AriaAttributes["aria-sort"]>;
 
 export type GlossaryTableProps = {
-  className?: string;
   glossary: GlossaryItem[];
-  onCreate: (term: string, definition: string) => Promise<void> | void;
-  onEdit: (
-    id: number,
-    term: string,
-    definition: string,
-  ) => Promise<void> | void;
-  onDelete: (id: number) => Promise<void> | void;
+  readOnly?: boolean;
+  /** Resolves to whether the term was saved; the new row reopens with the draft when it was not. */
+  onCreate: (draft: CreateGlossaryRequest) => Promise<boolean>;
+  onEdit: (request: UpdateGlossaryRequest) => void;
+  onDelete: (id: GlossaryItem["id"]) => Promise<void>;
 };
 
 export function GlossaryTable({
-  className,
   glossary,
+  readOnly = false,
   onCreate,
   onEdit,
   onDelete,
 }: GlossaryTableProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const metabotName = useMetabotName();
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<
-    "term" | "definition" | null
-  >(null);
+  const [newRowDraft, setNewRowDraft] = useState<CreateGlossaryRequest | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sort, setSort] = useState<GlossarySort | null>(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
-  const [sortColumnName, setSortColumnName] = useState<
-    keyof GlossaryItem | null
-  >(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const sortedRows = useMemo(() => {
-    if (!sortColumnName) {
-      return [
-        ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
-        ...glossary,
-      ];
+  const trimmedSearchQuery = searchQuery.trim();
+  const visibleItems = useMemo(
+    () => getVisibleItems(glossary, trimmedSearchQuery, sort),
+    [glossary, trimmedSearchQuery, sort],
+  );
+
+  const handleSort = (field: GlossaryField) => {
+    setSort((sort) => getNextSort(sort, field));
+  };
+
+  const handleCreate = async (draft: CreateGlossaryRequest) => {
+    // Close at once so the optimistic entry does not flag the open row's term as a duplicate
+    setNewRowDraft(null);
+    const isSaved = await onCreate(draft);
+    if (!isSaved) {
+      setNewRowDraft((currentDraft) => currentDraft ?? draft);
     }
-    const data = glossary.toSorted((a, b) => {
-      const ak = a[sortColumnName] ?? "";
-      const bk = b[sortColumnName] ?? "";
-      const cmp = String(ak).localeCompare(String(bk));
-      return sortDirection === "asc" ? cmp : -cmp;
-    });
-    return [
-      ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
-      ...data,
-    ];
-  }, [isCreating, glossary, sortColumnName, sortDirection]);
+  };
+
+  const handleDelete = async () => {
+    if (deletingItem) {
+      await onDelete(deletingItem.id);
+      setDeletingItem(null);
+    }
+  };
 
   return (
-    <>
-      <Group justify="space-between" mb="xs">
-        <Text>
-          {t`Define terms to help your team and ${metabotName} understand your data.`}
-        </Text>
-        <Button
-          variant="default"
-          size="sm"
-          leftSection={<Icon name="add" />}
-          onClick={() => {
-            if (editingId) {
-              setEditingId(null);
-              setEditingField(null);
-            }
-            setIsCreating(true);
-          }}
-        >
-          {t`New term`}
-        </Button>
-      </Group>
-      <CommonTable
-        className={cx(S.table, className)}
-        columns={[
-          { name: t`Term`, key: "term", sortable: true },
-          { name: t`Definition`, key: "definition", sortable: true },
-          { name: "", key: "actions", sortable: false },
-        ]}
-        rows={sortedRows}
-        cols={
-          <>
-            <col style={{ width: "22.5%" }} />
-            <col style={{ width: "65%" }} />
-            <col style={{ width: "5rem" }} />
-          </>
-        }
-        emptyBody={
-          <Center>
-            <EmptyState
-              message={t`No terms yet`}
-              illustrationElement={<NoObjectError mb="-1.5rem" />}
-            />
-          </Center>
-        }
-        sortColumnName={sortColumnName}
-        sortDirection={sortDirection}
-        onSort={(column, dir) => {
-          setSortColumnName(column as keyof GlossaryItem);
-          setSortDirection(dir);
-        }}
-        rowRenderer={(row) => {
-          // Create row
-          if ("kind" in row && row.kind === "create") {
-            const existingTerms = glossary.map((g) => g.term);
-            return (
-              <tr className={cx(S.row, S.rowEditor)}>
-                <GlossaryRowEditor
-                  item={{ term: "", definition: "" }}
-                  existingTerms={existingTerms}
-                  onCancel={() => setIsCreating(false)}
-                  onSave={async (term, definition) => {
-                    await onCreate(term, definition);
-                    setIsCreating(false);
-                  }}
+    <Stack flex={1} mih={0}>
+      <Flex gap="lg">
+        <TextInput
+          placeholder={t`Search...`}
+          leftSection={<Icon name="search" />}
+          bdrs="sm"
+          flex="1"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+        {!readOnly && (
+          <Button
+            size="lg"
+            leftSection={<Icon name="add" />}
+            onClick={() => setNewRowDraft(EMPTY_DRAFT)}
+          >
+            {t`New term`}
+          </Button>
+        )}
+      </Flex>
+      <Card withBorder shadow="none" p={0} mih={0}>
+        <Box className={S.scrollArea}>
+          <table className={S.table}>
+            <colgroup>
+              <col style={{ width: TERM_COLUMN_WIDTH }} />
+              <col />
+              <col style={{ width: ACTIONS_COLUMN_WIDTH }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <SortableHeaderCell
+                  name={t`Term`}
+                  field="term"
+                  sort={sort}
+                  onSort={handleSort}
                 />
+                <SortableHeaderCell
+                  name={t`Definition`}
+                  field="definition"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+                <th aria-label={readOnly ? undefined : t`Actions`} />
               </tr>
-            );
-          }
-
-          const item = row as GlossaryItem;
-          const isEditing = editingId === item.id;
-
-          return (
-            <tr className={cx(S.row, { [S.rowEditor]: isEditing })}>
-              {isEditing ? (
-                <GlossaryRowEditor
-                  item={item}
-                  autoFocusField={editingField ?? "term"}
-                  existingTerms={glossary
-                    .filter((g) => g.id !== item.id)
-                    .map((g) => g.term)}
-                  onCancel={() => setEditingId(null)}
-                  onSave={async (newTerm, newDefinition) => {
-                    await onEdit(item.id, newTerm, newDefinition);
-                    setEditingId(null);
-                    setEditingField(null);
-                  }}
+            </thead>
+            <tbody>
+              {newRowDraft != null && (
+                <GlossaryNewRow
+                  initialDraft={newRowDraft}
+                  isTermTaken={(term) => isDuplicateTerm(glossary, term)}
+                  onSave={handleCreate}
+                  onCancel={() => setNewRowDraft(null)}
                 />
-              ) : (
-                <>
-                  <Box
-                    component="td"
-                    valign="top"
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
-
-                      setEditingId(item.id);
-                      setEditingField("term");
-                    }}
-                  >
-                    <Text lh="1.2" fw="bold" pt="xs">
-                      {item.term}
-                    </Text>
-                  </Box>
-                  <Box
-                    component="td"
-                    valign="top"
-                    style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
-                      setEditingId(item.id);
-                      setEditingField("definition");
-                    }}
-                  >
-                    <Text lh="1.2" pt="xs">
-                      {item.definition}
-                    </Text>
-                  </Box>
-
-                  <Box
-                    component="td"
-                    valign="top"
-                    align="center"
-                    p="sm"
-                    w="25px"
-                  >
-                    <Tooltip label={t`Delete`}>
-                      <ActionIcon
-                        aria-label={t`Delete`}
-                        variant="subtle"
-                        c="text-tertiary"
-                        className={cx(S.action)}
-                        onClick={() => setDeletingItem(item)}
-                      >
-                        <Icon name="trash" />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Box>
-                </>
               )}
-            </tr>
-          );
-        }}
-      />
+              {visibleItems.map((item) => {
+                // The API gives an entry a negative id until the server confirms it
+                const isPending = item.id < 0;
+                return (
+                  <GlossaryRow
+                    key={item.id}
+                    item={item}
+                    readOnly={readOnly || isPending}
+                    isTermTaken={(term) =>
+                      isDuplicateTerm(glossary, term, item.id)
+                    }
+                    onEdit={onEdit}
+                    onDeleteClick={setDeletingItem}
+                  />
+                );
+              })}
+              {newRowDraft == null && visibleItems.length === 0 && (
+                <tr>
+                  <td colSpan={COLUMN_COUNT}>
+                    <Center mb="lg">
+                      <EmptyState
+                        message={
+                          trimmedSearchQuery
+                            ? t`No results for "${trimmedSearchQuery}"`
+                            : t`No terms yet`
+                        }
+                        illustrationElement={<NoObjectError mb="-1.5rem" />}
+                      />
+                    </Center>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Box>
+      </Card>
       <ConfirmModal
         opened={deletingItem != null}
         title={t`Delete “${deletingItem?.term}”?`}
         confirmButtonText={t`Delete`}
         message={t`This can't be undone.`}
         onClose={() => setDeletingItem(null)}
-        onConfirm={async () => {
-          if (deletingItem) {
-            await onDelete(deletingItem.id);
-            setDeletingItem(null);
-          }
-        }}
+        onConfirm={handleDelete}
       />
-    </>
+    </Stack>
+  );
+}
+
+type SortableHeaderCellProps = {
+  name: string;
+  field: GlossaryField;
+  sort: GlossarySort | null;
+  onSort: (field: GlossaryField) => void;
+};
+
+function SortableHeaderCell({
+  name,
+  field,
+  sort,
+  onSort,
+}: SortableHeaderCellProps) {
+  const direction = sort?.column === field ? sort.direction : undefined;
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSort(field);
+    }
+  };
+
+  return (
+    <th
+      aria-sort={direction && ARIA_SORT[direction]}
+      tabIndex={0}
+      onClick={() => onSort(field)}
+      onKeyDown={handleKeyDown}
+    >
+      <Flex>
+        <SortableHeaderPill name={name} sort={direction} />
+      </Flex>
+    </th>
   );
 }

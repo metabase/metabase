@@ -3,46 +3,46 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
-    (is (#'table/valid-field-order? (mt/id :venues)
-                                    [(mt/id :venues :name)
-                                     (mt/id :venues :category_id)
-                                     (mt/id :venues :latitude)
-                                     (mt/id :venues :longitude)
-                                     (mt/id :venues :price)
-                                     (mt/id :venues :id)])))
+    (is (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                  [(mt/id :venues :name)
+                                                   (mt/id :venues :category_id)
+                                                   (mt/id :venues :latitude)
+                                                   (mt/id :venues :longitude)
+                                                   (mt/id :venues :price)
+                                                   (mt/id :venues :id)])))
   (testing "Field ordering is invalid if some fields are missing"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :venues :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :venues :id)]))))
   (testing "Field ordering is invalid if some fields are from a differnt table"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :name)
-                                             (mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :checkins :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :name)
+                                                           (mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
@@ -58,14 +58,14 @@
                               "('California Gull', 'Steven Seagull'), "
                               "('Chicken', 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)
-                                       (mt/id :birds :example_name)]))
+      (sync/sync-database! (mt/id))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)
+                                                     (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
-      (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)])))))
+      (sync/sync-database! (mt/id))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)])))))
 
 (deftest slashes-in-schema-names-test
   (testing "Schema names should allow forward or back slashes (#8693, #12450)"
@@ -78,15 +78,6 @@
         (mt/with-temp [:model/Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
-
-(deftest identity-hash-test
-  (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-      (let [db-hash (serdes/identity-hash db)]
-        (is (= "0395fe49"
-               (serdes/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes/identity-hash table)))))))
 
 (deftest set-new-table-permissions!-test
   (testing "New permissions are set appropriately for a new table, for all groups"
@@ -108,7 +99,6 @@
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
                (data-perms.graph/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
-
         ;; A new group starts with the same perms as All Users
         (is (partial=
              {group-id
@@ -119,7 +109,6 @@
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
              (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))
-
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id table-id-1 :perms/download-results :no)
@@ -158,7 +147,7 @@
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/download-results :one-million-rows)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/manage-table-metadata :yes)
     (is (true? (t2/exists? :model/DataPermissions :table_id table-id-1)))
-    (t2/delete! :model/Table table-id-1)
+    (t2/delete! :model/Table :id table-id-1)
     (testing "Table-level permissions are deleted when we delete the table"
       (is (false? (t2/exists? :model/DataPermissions :table_id table-id-1))))))
 
@@ -167,16 +156,24 @@
   ;; Manually activate Field values since they are not created during sync (#53387)
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
-          (-> (t2/select-one :model/Table (mt/id :venues))
+          (-> (t2/select-one :model/Table :id (mt/id :venues))
               (t2/hydrate :field_values)
-              :field_values))))
+              :field_values)))
+  (testing "batched hydration of several tables"
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+    (is (=? {(mt/id :venues)     {(mt/id :venues :price)    (mt/malli=? [:sequential {:min 1} :any])
+                                  (mt/id :venues :name)     (mt/malli=? [:sequential {:min 1} :any])}
+             (mt/id :categories) {(mt/id :categories :name) (mt/malli=? [:sequential {:min 1} :any])}}
+            (->> (t2/select :model/Table :id [:in [(mt/id :venues) (mt/id :categories)]])
+                 (#(t2/hydrate % :field_values))
+                 (map (juxt :id :field_values))
+                 (into {}))))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)
-         (-> (t2/select-one :model/Table (mt/id :venues))
+         (-> (t2/select-one :model/Table :id (mt/id :venues))
              (t2/hydrate :pk_field)
              :pk_field))))
 
@@ -498,26 +495,38 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :transform}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source nil}))))))
-
+             (t2/update! :model/Table :id table-id {:data_source nil}))))))
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source :ingested})))
         (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
       (testing "can also change it to nil"
-        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
-        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source nil})))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
+  (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
+    (testing "can set data_source to metabase-transform on an existing synced table"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
+        (binding [mi/*deserializing?* true]
+          (is (some? (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
+        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
+    (testing "reverse direction stays blocked even during deserialization"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+        (binding [mi/*deserializing?* true]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot change data_source from metabase-transform"
+               (t2/update! :model/Table :id table-id {:data_source nil}))))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
@@ -587,7 +596,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-read?-with-view-data-permission-test
   (testing "User with view-data and create-queries permission can read table"
@@ -600,7 +609,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table table-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table :id table-id)))))))))
 
 (deftest table-can-read?-with-manage-table-metadata-permission-test
   (testing "User with manage-table-metadata permission can read table"
@@ -613,7 +622,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-read?-without-permissions-test
   (testing "User with neither permission cannot read table"
@@ -625,7 +634,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (false? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -641,11 +650,11 @@
       ;; Only view-data - not enough
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table table-id)))))
+        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id)))))
       ;; Add create-queries - now can query
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-query?-manage-table-metadata-does-not-grant-query-access-test
   (testing "manage-table-metadata alone does NOT grant query access"
@@ -658,7 +667,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
 
 ;;; ---------------------------------------- can_query hydration test ----------------------------------------
 
@@ -676,61 +685,39 @@
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
 
-(deftest serdes-descendants-includes-fields-and-segments-test
-  (testing "Table descendants includes Fields and Segments"
-    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
-                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
-                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
-                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
-                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
-      (let [descendants (serdes/descendants "Table" table-id {})]
-        (testing "Fields are included"
-          (is (contains? descendants ["Field" field1-id]))
-          (is (contains? descendants ["Field" field2-id])))
-        (testing "Segments are included"
-          (is (contains? descendants ["Segment" segment-id]))))))
-  (testing "Table with no fields or segments returns empty map"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
-                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
-      (is (= {} (serdes/descendants "Table" table-id {}))))))
-
-(deftest serdes-descendants-skip-archived-segments-test
-  (testing "Table descendants respects skip-archived option for Segments"
-    (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
-                   :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}
-                   :model/Field    {field-id :id}        {:name "Test Field" :table_id table-id :base_type :type/Integer}
-                   :model/Segment  {active-seg-id :id}   {:name "Active Segment" :table_id table-id :definition {} :archived false}
-                   :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
-      (testing "archived segments are excluded when skip-archived: true"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
-          (is (contains? descendants ["Field" field-id])
-              "Fields are still included")
-          (is (contains? descendants ["Segment" active-seg-id])
-              "Active segments are included")
-          (is (not (contains? descendants ["Segment" archived-seg-id]))
-              "Archived segments are excluded")))
-      (testing "archived segments are included when skip-archived: false"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived false})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id]))))
-      (testing "archived segments are included when skip-archived is not specified"
-        (let [descendants (serdes/descendants "Table" table-id {})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id])))))))
-
 (deftest data-layer-legacy-serdes-round-trip-test
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
       (let [table      (t2/select-one :model/Table :id table-id)
-            extracted  (serdes/extract-one "Table" {} table)]
+            extracted  (first (serialization/export-batch :model/Table [table]))]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"
                                          "silver" "final"
                                          "gold"   "final"}]
           (testing (format "legacy data_layer %s -> %s" legacy-value expected)
             ;; simulate a v58 export by substituting the legacy value
-            (let [ingested (assoc extracted :data_layer legacy-value)]
-              (serdes/load-one! ingested table)
+            (let [entity (assoc extracted :data_layer legacy-value)]
+              (serialization/load :model/Table [entity])
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
+
+(deftest curation-column-defaults-test
+  (testing "a new table gets consistent non-null data_layer and data_authority defaults"
+    (testing "via the model before-insert (the path sync uses)"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}]
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority] :id table-id)))))
+    (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
+      ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (t2/query-one {:insert-into :metabase_table
+                       :values      [{:name       "raw-insert-probe"
+                                      :db_id      db-id
+                                      :active     true
+                                      :created_at :%now
+                                      :updated_at :%now}]})
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority]
+                               :name "raw-insert-probe" :db_id db-id)))))))

@@ -1,0 +1,184 @@
+import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import type {
+  EntityPickerOptions,
+  FilterItemsInPersonalCollection,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useLocation, useParams } from "metabase/router";
+import { Button, Modal, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import type { Collection, CollectionNamespace } from "metabase-types/api";
+
+import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelField";
+
+const COLLECTION_SCHEMA = Yup.object({
+  name: Yup.string()
+    .required(Errors.required)
+    .max(100, Errors.maxLength)
+    .default(""),
+  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+
+  authority_level: Yup.mixed().oneOf(["official", null]).default(null),
+  parent_id: Yup.number().nullable(),
+});
+
+export interface CreateCollectionProperties {
+  name: string;
+  description: string | null;
+  parent_id: Collection["id"] | null;
+  namespace?: CollectionNamespace;
+}
+
+export interface CreateCollectionFormOwnProps {
+  collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
+  initialCollectionId?: Collection["id"];
+  onSubmit: (collection: CreateCollectionProperties) => void;
+  onCancel?: () => void;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
+  showCollectionPicker?: boolean;
+  pickerOptions?: EntityPickerOptions;
+  namespaces?: CollectionNamespace[];
+  showAuthorityLevelPicker?: boolean;
+}
+
+type Props = CreateCollectionFormOwnProps;
+
+function CreateCollectionForm({
+  collectionId,
+  initialCollectionId: explicitInitialCollectionId,
+  onSubmit,
+  onCancel,
+  filterPersonalCollections,
+  showCollectionPicker = true,
+  pickerOptions,
+  namespaces,
+  showAuthorityLevelPicker = true,
+}: Props) {
+  const location = useLocation();
+  const params = useParams();
+  const defaultInitialCollectionId = useInitialCollectionId({
+    collectionId,
+    location,
+    params,
+  });
+  const isNamespacedOnly = namespaces != null && !namespaces.includes(null);
+  // The user's default collection is outside the namespace, so start from the namespace root
+  const initialCollectionId =
+    explicitInitialCollectionId ??
+    (isNamespacedOnly ? null : defaultInitialCollectionId);
+  const initialValues = useMemo(
+    () => ({
+      ...COLLECTION_SCHEMA.getDefault(),
+      parent_id: initialCollectionId,
+    }),
+    [initialCollectionId],
+  );
+
+  const { data: initialCollection } = useGetCollectionQuery(
+    initialCollectionId != null ? { id: initialCollectionId } : skipToken,
+  );
+
+  const [selectedParentCollection, setSelectedParentCollection] =
+    useState<OmniPickerItem | null>(null);
+
+  const handleSubmit = useCallback(
+    (values: CreateCollectionProperties) => {
+      const parentCollection = selectedParentCollection ?? initialCollection;
+      const parentNamespace =
+        parentCollection && "namespace" in parentCollection
+          ? parentCollection.namespace
+          : null;
+      const namespace = parentNamespace ?? namespaces?.[0];
+
+      onSubmit({
+        ...values,
+        namespace: namespace ?? undefined,
+      });
+    },
+    [initialCollection, namespaces, onSubmit, selectedParentCollection],
+  );
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      enableReinitialize
+      validationSchema={COLLECTION_SCHEMA}
+      onSubmit={handleSubmit}
+    >
+      {({ dirty }) => {
+        const parentCollection = selectedParentCollection ?? initialCollection;
+
+        // Hide the authority level picker if the parent is a tenant collection.
+        const isParentTenantCollection =
+          parentCollection && "namespace" in parentCollection
+            ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
+            : false;
+
+        return (
+          <Form>
+            <Stack gap="xl">
+              <FormTextInput
+                name="name"
+                label={t`Name`}
+                placeholder={t`My new fantastic collection`}
+                data-autofocus
+              />
+              <FormTextarea
+                name="description"
+                label={t`Description`}
+                placeholder={t`It's optional but oh, so helpful`}
+                minRows={5}
+                nullable
+              />
+              {showCollectionPicker && (
+                <FormCollectionPicker
+                  collectionPickerModalProps={{
+                    options: pickerOptions,
+                    namespaces,
+                  }}
+                  entityType="collection"
+                  filterPersonalCollections={filterPersonalCollections}
+                  name="parent_id"
+                  onCollectionSelect={setSelectedParentCollection}
+                  title={t`Collection it's saved in`}
+                />
+              )}
+              {showAuthorityLevelPicker && !isParentTenantCollection && (
+                <FormAuthorityLevelField />
+              )}
+            </Stack>
+            <Modal.Footer>
+              <FormErrorMessage flex={1} />
+              {!!onCancel && (
+                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+              )}
+              <FormSubmitButton
+                label={t`Create`}
+                disabled={!dirty}
+                variant="filled"
+              />
+            </Modal.Footer>
+          </Form>
+        );
+      }}
+    </FormProvider>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default CreateCollectionForm;

@@ -1,7 +1,6 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
-import registerVisualizations from "metabase/visualizations/register";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
-  MaybeTranslatedSeries,
   Series,
   SeriesSettings,
   SingleSeries,
@@ -15,6 +14,7 @@ import {
 import { leaveUntranslated } from "./use-translate-content";
 import {
   translateColumnDisplayName,
+  translateDisplayNames,
   translateFieldValuesInSeries,
   translateSeriesNames,
 } from "./utils";
@@ -34,6 +34,7 @@ const mockTranslateWithoutTranslations: ContentTranslationFunction =
 describe("translateFieldValuesInSeries", () => {
   it("should return original series when translation function has no translations", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -53,6 +54,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should return original series item when it has no data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         card: { name: "Test Chart" },
       } as SingleSeries,
@@ -71,6 +73,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should translate field values in regular series data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -84,7 +87,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_apple", 10],
@@ -100,6 +103,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle mixed data types in rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -112,7 +116,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_text", 123, null, true],
@@ -123,6 +127,7 @@ describe("translateFieldValuesInSeries", () => {
   describe("for pies", () => {
     it("should handle pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -147,7 +152,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 10],
@@ -159,6 +164,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -175,7 +181,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_apple", 10],
@@ -199,6 +205,7 @@ describe("translateFieldValuesInSeries", () => {
       };
 
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -218,7 +225,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -229,6 +236,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO series_settings visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -246,7 +254,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -258,11 +266,13 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle multiple series", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["apple", 10]],
         },
       } as SingleSeries,
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["banana", 20]],
@@ -272,7 +282,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result).toHaveLength(2);
     expect(result[0].data?.rows).toEqual([["translated_apple", 10]]);
@@ -281,6 +291,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle empty rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: createMockDatasetData({
           rows: [],
@@ -290,7 +301,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([]);
     expect(result[0].data?.untranslatedRows).toEqual([]);
@@ -827,5 +838,47 @@ describe("translateSeriesNames", () => {
       result[0].card.visualization_settings.series_settings?.non_metric;
     expect(nonMetric?.title).toBe("Other");
     expect(nonMetric?.color).toBe("#00ff00");
+  });
+});
+
+describe("translateDisplayNames", () => {
+  it("translates display names in nested objects and arrays", () => {
+    const obj = {
+      cols: [{ display_name: "Count", name: "count" }],
+      other: { displayName: "Total" },
+    };
+    expect(
+      translateDisplayNames({
+        obj,
+        tc: mockTranslateWithTranslations,
+        locale: "de",
+      }),
+    ).toEqual({
+      cols: [{ display_name: "translated_Count", name: "count" }],
+      other: { displayName: "translated_Total" },
+    });
+  });
+
+  it("returns the same objects when nothing is translated", () => {
+    const nested = { name: "count" };
+    const obj = { nested, value: 1 };
+    const result = translateDisplayNames({
+      obj,
+      tc: mockTranslateWithTranslations,
+      locale: "de",
+    });
+    expect(result).toBe(obj);
+    expect(result.nested).toBe(nested);
+  });
+
+  it("returns the input when there are no translations", () => {
+    const obj = { display_name: "Count" };
+    expect(
+      translateDisplayNames({
+        obj,
+        tc: mockTranslateWithoutTranslations,
+        locale: "de",
+      }),
+    ).toBe(obj);
   });
 });

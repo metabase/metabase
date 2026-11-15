@@ -3,32 +3,284 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
+import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
-  it("shows the embed experience step as the first step", () => {
+  it("shows the embed experience step as the first step", async () => {
     setup();
 
     expect(
-      screen.getByText("Select your embed experience"),
+      await screen.findByText("Select your embed experience"),
     ).toBeInTheDocument();
   });
 
-  it("selects the dashboard experience by default", () => {
+  it("selects the dashboard experience by default", async () => {
     setup();
 
-    const dashboardRadio = screen.getByRole("radio", { name: /Dashboard/ });
+    const dashboardRadio = await screen.findByRole("radio", {
+      name: /Dashboard/,
+    });
     expect(dashboardRadio).toBeChecked();
+  });
+});
+
+describe("Embed flow > enabling embedding from the Guest option", () => {
+  const guestSetup = (
+    options: Parameters<typeof setup>[0] & { hasLicense: boolean },
+  ) => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => options.hasLicense;
+
+    setup({ ...options, initialState: { isGuest: true } });
+  };
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("states the modular embedding terms on EE with a license", async () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
+    });
+
+    await waitForRequestsToSettle();
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable modular embedding and agree to the usage conditions.",
+    );
+  });
+
+  it("only asks to enable on EE with a license once the terms are accepted", async () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: false,
+    });
+
+    await waitForRequestsToSettle();
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "Enable modular embedding to get started.",
+    );
+  });
+
+  it("states the guest embedding terms on EE without a license", async () => {
+    guestSetup({
+      hasLicense: false,
+      modularEmbeddingEnabled: false,
+      showStaticEmbedTerms: true,
+    });
+
+    await waitForRequestsToSettle();
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable embedding and agree to the usage conditions.",
+    );
+  });
+});
+
+describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("renders a Site URL mismatch error in the preview area when the configured Site URL origin doesn't match the current host", async () => {
+    setup({
+      modularEmbeddingEnabled: true,
+      siteUrl: "http://different-host.example:9999",
+      initialState: {
+        resourceType: "dashboard",
+        resourceId: 1,
+        isGuest: false,
+        useExistingUserSession: true,
+      },
+    });
+
+    expect(
+      await screen.findByTestId("sdk-iframe-embed-site-url-mismatch-error"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/Site URL doesn't match the host/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("http://different-host.example:9999"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the Site URL mismatch error when origins match", async () => {
+    setup({
+      modularEmbeddingEnabled: true,
+      siteUrl: window.location.origin,
+      initialState: {
+        resourceType: "dashboard",
+        resourceId: 1,
+        isGuest: false,
+        useExistingUserSession: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("sdk-iframe-embed-setup-modal-content"),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("sdk-iframe-embed-site-url-mismatch-error"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Embed flow > custom visualizations", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("automatically allows the custom visualization used by a question opened from sharing", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({
+      id: 456,
+      display: "custom:calendar",
+    });
+
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({ databases: [mockDatabase] }),
+    );
+
+    setup({
+      modularEmbeddingEnabled: true,
+      initialState: {
+        resourceType: "question",
+        resourceId: mockCard.id,
+      },
+    });
+
+    await waitFor(() => {
+      expect(window.metabaseConfig?.allowedCustomVisualizations).toEqual([
+        "custom:calendar",
+      ]);
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /"allowedCustomVisualizations": \[\s+"custom:calendar"\s+\]/,
+      ),
+    );
+  });
+
+  it("automatically allows the custom visualizations used by a dashboard opened from the setup guide", async () => {
+    const dashboard = createMockDashboard({
+      enable_embedding: true,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          card: createMockCard({ display: "custom:calendar" }),
+        }),
+        createMockDashboardCard({
+          id: 2,
+          card: createMockCard({ display: "custom:thumbs" }),
+        }),
+      ],
+    });
+
+    setup({ modularEmbeddingEnabled: true, dashboard });
+
+    await waitFor(() => {
+      expect(window.metabaseConfig?.allowedCustomVisualizations).toEqual([
+        "custom:calendar",
+        "custom:thumbs",
+      ]);
+    });
+  });
+});
+
+describe("Embed flow > Get Code Snippet", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("copies the SSO code snippet with only instanceUrl in the config", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    setup({
+      modularEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: false },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    const [copiedSnippet] = jest.mocked(navigator.clipboard.writeText).mock
+      .calls[0];
+
+    // defineMetabaseConfig accepts a config object
+    const metabaseConfigObjectRegex = /defineMetabaseConfig\((\{.*?\})\);/s;
+    const [, config] = copiedSnippet.match(metabaseConfigObjectRegex) ?? [];
+
+    // fields like `useExistingUserSession` should not exist
+    expect(JSON.parse(config)).toStrictEqual({
+      instanceUrl: window.location.origin,
+    });
+  });
+
+  it("tracks embed_wizard_code_copied when the snippet is copied without the button (EMB-2309)", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+    setup({
+      modularEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    // A keyboard or context-menu copy never reaches the Copy code button, so
+    // the card tracks the snippet's own `copy` event too.
+    fireEvent.copy(await screen.findByTestId("embed-code-snippet"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "embed_wizard_code_copied",
+      event_detail:
+        "experience=dashboard,snippetType=frontend,authSubType=user-session",
+    });
   });
 });
 
@@ -42,7 +294,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates forward through the embed flow", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     expect(screen.getByText("Authentication")).toBeInTheDocument();
 
@@ -50,14 +302,17 @@ describe("Embed flow > forward and backward navigation", () => {
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // The resource picker is part of the first step
     expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
+    expect(
+      screen.getByTestId("embed-browse-entity-button"),
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Get code" }),
     ).toBeInTheDocument();
@@ -73,47 +328,157 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates backward to the previous step", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
-    // Select embed type > select resource > select embed options
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // First step (experience + resource) > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
 
-    // Back to select resource
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
-
-    // Back to select embed type
+    // Back to first step
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Back" }),
     ).not.toBeInTheDocument();
   });
 
-  it("skips the 'select resource' step for exploration", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+  it("hides the resource picker for exploration on the first step", async () => {
+    setup({ modularEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
-    // Clicking next skips "select resource" and go directly to "select embed options"
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Behavior")).toBeInTheDocument();
-    expect(screen.getByText("Appearance")).toBeInTheDocument();
-
+    // The resource picker is not shown for the exploration experience
     expect(
       screen.queryByText("Select a dashboard to embed"),
     ).not.toBeInTheDocument();
+
+    // Clicking next goes directly to "select embed options"
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 
-  it("disables next and back buttons when simple embedding is disabled", () => {
-    setup({ simpleEmbeddingEnabled: false });
+  it("hides the authentication and resource cards when Exploration is selected", async () => {
+    setup({ modularEmbeddingEnabled: true });
 
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select initial collection"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the authentication card but keeps the resource card (as a collection picker) when Browser is selected", async () => {
+    setup({ modularEmbeddingEnabled: true });
+
+    expect(screen.getByText("Authentication")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Browser/ }));
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a dashboard to embed"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change initial collection" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the SSO radio above the Guest radio in the authentication card", async () => {
+    setup({ modularEmbeddingEnabled: true });
+
+    const radios = await screen.findAllByRole("radio");
+    const ssoIndex = radios.findIndex((r) => r.getAttribute("value") === "sso");
+    const guestIndex = radios.findIndex(
+      (r) => r.getAttribute("value") === "guest-embed",
+    );
+
+    expect(ssoIndex).toBeGreaterThanOrEqual(0);
+    expect(guestIndex).toBeGreaterThanOrEqual(0);
+    expect(ssoIndex).toBeLessThan(guestIndex);
+  });
+
+  it("selects Guest when initialState.isGuest is true, even with SSO configured", async () => {
+    setup({
+      modularEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { isGuest: true, useExistingUserSession: true },
+    });
+
+    expect(await screen.findByDisplayValue("guest-embed")).toBeChecked();
+    expect(screen.getByDisplayValue("sso")).not.toBeChecked();
+  });
+
+  describe("SSO not configured warnings", () => {
+    const warningText =
+      /This embed will only work for local testing\. To get production ready code, configure/;
+
+    it("shows a warning on the authentication card when SSO is selected but not configured", async () => {
+      setup({ modularEmbeddingEnabled: true, jwtReady: false });
+
+      expect(await screen.findByDisplayValue("sso")).toBeChecked();
+      expect(screen.getByText("Authentication")).toBeInTheDocument();
+      expect(screen.getByText(warningText)).toBeInTheDocument();
+    });
+
+    it("hides the warning when Guest is selected", async () => {
+      setup({ modularEmbeddingEnabled: true, jwtReady: false });
+
+      await userEvent.click(screen.getByRole("radio", { name: "Guest" }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it("hides the warning when SSO is configured", async () => {
+      setup({ modularEmbeddingEnabled: true, jwtReady: true });
+
+      // The card has to be on screen before the absence of its warning means
+      // anything.
+      await screen.findAllByRole("radio");
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+
+    it.each(["Exploration", "Browser"])(
+      "shows a warning on the experience card when %s is selected and SSO is not configured",
+      async (experienceLabel) => {
+        setup({ modularEmbeddingEnabled: true, jwtReady: false });
+
+        await userEvent.click(
+          screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
+        );
+
+        expect(screen.getByText(warningText)).toBeInTheDocument();
+        // Authentication card is hidden so its warning is gone
+        expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+      },
+    );
+
+    it("hides the experience card warning when Exploration is selected and SSO is configured", async () => {
+      setup({ modularEmbeddingEnabled: true, jwtReady: true });
+
+      await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
+
+      expect(screen.queryByText(warningText)).not.toBeInTheDocument();
+    });
+  });
+
+  it("disables next and back buttons when simple embedding is disabled", async () => {
+    setup({ modularEmbeddingEnabled: false });
+
+    expect(await screen.findByRole("button", { name: "Next" })).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: "Back" }),
     ).not.toBeInTheDocument();
@@ -123,7 +488,6 @@ describe("Embed flow > forward and backward navigation", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -133,7 +497,7 @@ describe("Embed flow > forward and backward navigation", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       initialState: {
         resourceType: "question",
         resourceId: 456,
@@ -141,7 +505,7 @@ describe("Embed flow > forward and backward navigation", () => {
     });
 
     // Starts at the "select embed options" step.
-    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(await screen.findByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
 
     expect(
@@ -151,11 +515,10 @@ describe("Embed flow > forward and backward navigation", () => {
 });
 
 describe("Embed flow > Pro feature upsell indicators", () => {
-  it("disables Pro checkboxes for OSS users (question)", () => {
+  it("disables Pro checkboxes for OSS users (question)", async () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -165,7 +528,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: false,
+      modularEmbeddingEnabled: false,
       initialState: {
         resourceType: "question",
         resourceId: 456,
@@ -174,7 +537,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
 
     // All Pro-gated checkboxes should be disabled
     expect(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: "Allow people to drill through on data points",
       }),
     ).toBeDisabled();
@@ -197,7 +560,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -207,7 +569,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       hasEmailSetup: true,
       initialState: {
         resourceType: "question",
@@ -238,10 +600,8 @@ describe("Embed flow > Pro feature upsell indicators", () => {
   });
 
   it("disables Pro checkboxes for OSS users (dashboard)", () => {
-    setupDatabasesEndpoints([createMockDatabase()]);
-
     setup({
-      simpleEmbeddingEnabled: false,
+      modularEmbeddingEnabled: false,
       initialState: {
         resourceType: "dashboard",
         resourceId: 1,
@@ -265,12 +625,11 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       hasEmailSetup: true,
     });
 
-    // Navigate to options step: Next (experience) → Next (resource)
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Navigate to options step: Next (combined experience + resource step)
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(
@@ -288,5 +647,36 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     });
 
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+});
+
+describe("Embed flow > Metabot", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("toggles the save option for Metabot", async () => {
+    setup({
+      modularEmbeddingEnabled: true,
+      metabotEnabled: true,
+    });
+
+    // Switch to Metabot experience
+    await userEvent.click(screen.getByRole("radio", { name: /Metabot/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    const saveCheckbox = await screen.findByRole("checkbox", {
+      name: "Allow people to save new questions",
+    });
+
+    expect(saveCheckbox).toBeEnabled();
+    expect(saveCheckbox).not.toBeChecked();
+
+    await userEvent.click(saveCheckbox);
+    expect(saveCheckbox).toBeChecked();
   });
 });

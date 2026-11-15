@@ -23,7 +23,7 @@ You can find Trash at the bottom of the left navigation sidebar below all the co
 
 You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
 
-You;'ll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
+You'll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
 
 ## Search in Trash
 
@@ -91,11 +91,13 @@ What happens to related items when you delete a dashboard?
 
 What happens to related items when you delete a model?
 
-| Related item                       | In Trash       | Permanently deleted                | Restored       |
-| ---------------------------------- | -------------- | ---------------------------------- | -------------- |
-| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated    |
-| Dashboard                          | Card removed   | Card removed                       | Card restored  |
-| Action                             | Works normally | Deleted                            | Works normally |
+| Related item                       | In Trash       | Permanently deleted                | Restored      |
+| ---------------------------------- | -------------- | ---------------------------------- | ------------- |
+| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated   |
+| Dashboard                          | Card removed   | Card removed                       | Card restored |
+| Action                             | Deleted        | Deleted                            | Not restored  |
+
+Metabase also removes the dashboard buttons that use the model's actions. The same happens when you move the collection that the model is in to the trash. See [Deleting a model deletes its actions](../data-modeling/models/actions/introduction.md#deleting-a-model-deletes-its-actions).
 
 ## Collections
 
@@ -132,11 +134,11 @@ Snippets can be archived and unarchived. See [Archiving snippets](../questions/n
 
 ## Deleting segments
 
-Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#editing-and-retiring-segments). Retiring segments is permanent.
+See [Delete segments](../data-modeling/semantic-layer/segments.md#delete-segments). Deleting segments is permanent, but it won't break questions that use the segment.
 
 ## Deleting measures
 
-See [Delete measures](../data-studio/measures.md#delete-measures). Deleting measures is permanent.
+See [Delete measures](../data-modeling/semantic-layer/measures.md#delete-measures). Deleting measures is permanent.
 
 ## Deleting subscriptions and alerts
 

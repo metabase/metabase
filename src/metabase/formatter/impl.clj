@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types.core :as types]
@@ -133,17 +134,23 @@
                                   (get column-settings {::mb.viz/column-name col-id-or-name}))
                               (qualify-keys col-settings))
         global-settings      (streaming.common/viz-settings-for-col col viz-settings)
-        currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                          (= (::mb.viz/number-style viz-settings) "currency")
-                                          (and (nil? (::mb.viz/number-style column-settings))
-                                               (or
-                                                (::mb.viz/currency-style column-settings)
-                                                (::mb.viz/currency column-settings)))))
+        ;; Shared with the XLSX export path so both agree on what counts as currency (GDGT-2398). The extra
+        ;; viz-settings check covers a number-style set at the global/viz level rather than on the column itself.
+        currency?            (or (streaming.common/currency-settings? column-settings)
+                                 (= (::mb.viz/number-style viz-settings) "currency"))
 
         {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency]} global-settings
+                        prefix suffix currency-style currency-position currency]} global-settings
         currency           (when currency?
                              (keyword (or currency "USD")))
+        currency-label     (when currency?
+                             (get-in currency/currency
+                                     [currency (case currency-style
+                                                 "code" :code
+                                                 "name" :name_plural
+                                                 "narrowSymbol" :symbol_native
+                                                 :symbol)]))
+        currency-after?    (or (= currency-style "name") (= currency-position "after"))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
         relation?          (isa? semantic_type :Relation/*)
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
@@ -196,20 +203,18 @@
                  sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
-             (when (and inline-currency? (or (nil? currency-style)
-                                             (= currency-style "symbol")))
-               (.append sb (get-in currency/currency [currency :symbol])))
-             (when (and inline-currency? (= currency-style "code"))
-               (.append sb (get-in currency/currency [currency :code]))
-               (.append sb \space))
+             (when (and inline-currency? (not currency-after?))
+               (.append sb currency-label)
+               (when (= currency-style "code")
+                 (.append sb \space)))
              (.append sb (cond-> (.format ^DecimalFormat fmtr scaled-value)
                            (and (not currency?) (not decimals))
                            (strip-trailing-zeroes decimal)))
              (when percent?
                (.append sb "%"))
-             (when (and inline-currency? (= currency-style "name"))
-               (.append sb \space)
-               (.append sb (get-in currency/currency [currency :name_plural])))
+             (when (and inline-currency? currency-after?)
+               (.append sb (if (= currency-style "name") \space \u00a0))
+               (.append sb currency-label))
              (when suffix (.append sb suffix))
              (str sb))
            value))
@@ -218,11 +223,15 @@
 (mu/defn format-scalar-number :- (ms/InstanceOfClass NumericWrapper)
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
-  ([n :- number?]
-   (map->NumericWrapper {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
-                         :num-value n}))
+  ([n :- [:maybe number?]]
+   (map->NumericWrapper (if n
+                          {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
+                           :num-value n}
+                          {:num-str "" :num-value nil})))
 
-  ([value column viz-settings]
+  ([value        :- number?
+    column       :- [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]
+    viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
@@ -289,14 +298,19 @@
 
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
-  ([timezone-id :- [:maybe :string] col visualization-settings]
+  ([timezone-id            :- [:maybe :string]
+    col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
+    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    (create-formatter timezone-id col visualization-settings true))
-  ([timezone-id :- [:maybe :string] col visualization-settings apply-formatting?]
+  ([timezone-id            :- [:maybe :string]
+    col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
+    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
+    apply-formatting?      :- :boolean]
    (cond
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
      (and apply-formatting?
-          #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? col)) ; legacy usage -- do not use going forward
+          #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? (select-keys col [:base_type :effective_type]))) ; legacy usage -- do not use going forward
      (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
      (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))
@@ -317,6 +331,52 @@
        (fn [value]
          (->TextWrapper (str value) value))
        identity))))
+
+(defn get-formatter
+  "Returns a memoized fn that builds a column formatter (via [[create-formatter]]) for a column."
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (create-formatter timezone column settings format-rows?))))
+
+(defn- pivot-inline-currency-col
+  "Pivot exports render the currency symbol in the cell (matching the in-app pivot table), since pivot measures have no
+  column header to carry it. Express that by forcing `currency-in-header` off for currency columns -- the
+  override goes on the column's `:settings`, which wins [[number-formatter]]'s settings merge. Scoped to currency
+  columns so non-currency columns are untouched."
+  [col settings]
+  (cond-> col
+    (streaming.common/currency-settings? (streaming.common/viz-settings-for-col col settings))
+    (assoc-in [:settings :currency-in-header] false)))
+
+(defn- create-formatters
+  "Value formatters for the columns at `indexes`; each formats a raw value via
+  [[metabase.query-processor.streaming.common/format-value]] then the column's formatter."
+  [columns indexes timezone settings format-rows?]
+  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [formatter (formatter-fn (pivot-inline-currency-col (nth columns idx) settings))]
+              (fn [value]
+                (formatter (streaming.common/format-value value)))))
+          indexes)))
+
+(mu/defn make-formatters :- [:map
+                             [:row-formatters [:sequential ifn?]]
+                             [:col-formatters [:sequential ifn?]]
+                             [:val-formatters [:sequential ifn?]]]
+  "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
+  Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
+  indexes into `columns`."
+  [columns      :- [:sequential [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
+   row-indexes  :- [:maybe [:sequential :int]]
+   col-indexes  :- [:maybe [:sequential :int]]
+   val-indexes  :- [:maybe [:sequential :int]]
+   settings     :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
+   timezone     :- [:maybe :string]
+   format-rows? :- :boolean]
+  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
 
 (defn NumericWrapper?
   "Is `x` an instance of `NumericWrapper`?"

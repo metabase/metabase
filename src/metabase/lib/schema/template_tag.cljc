@@ -1,12 +1,13 @@
 (ns metabase.lib.schema.template-tag
-  (:refer-clojure :exclude [every?])
+  (:refer-clojure :exclude [empty? every? mapv some])
   (:require
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every?]]))
+   [metabase.util.performance :refer [empty? every? mapv some]]))
 
 (mr/def ::widget-type
   "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
@@ -30,12 +31,14 @@
 
 ;;; Things required by all template tag types.
 (mr/def ::common
-  [:map
+  [:map {:closed true}
    [:name         ::name]
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:ref ::id]]])
+   [:id {:optional true} [:ref ::id]]
+   [:lib.walk/template-tag-name {:optional true} ::name]
+   [:sectionid {:optional true} ::common/non-blank-string]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common
@@ -43,7 +46,7 @@
    [:ref ::common]
    [:map
     ;; default value for this parameter
-    [:default {:optional true} any?]
+    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
 
@@ -55,16 +58,20 @@
 ;;    :display-name "Unit"}
 (mr/def ::temporal-unit
   [:merge
-   [:ref ::common]
+   [:ref ::value.common]
    [:map
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
-    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
+    [:field-id    {:optional true} ::id/field]]])
 
 (mr/def ::field-filter.options
+  "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
+  value the QP builds for the tag, so they are the same options as `:metabase.lib.schema.parameter/parameter.options`."
   [:map
-   {:decode/normalize common/normalize-map-no-kebab-case}])
+   {:decode/normalize common/normalize-map-no-kebab-case :closed true}
+   [:case-sensitive  {:optional true} :boolean]
+   [:include-current {:optional true} :boolean]])
 
 ;; Example:
 ;;
@@ -72,15 +79,15 @@
 ;;     :name         "date"
 ;;     :display-name "Date"
 ;;     :type         :dimension,
-;;     :dimension    [:field 4 nil]
+;;     :field-id     4
 ;;     :widget-type  :date/all-options}
 (mr/def ::field-filter
   [:merge
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    ;; field filters can have missing dimension before it is set
-    [:dimension   {:optional true} [:ref :mbql.clause/field]]
+    ;; field filters can have missing field before it is set
+    [:field-id    {:optional true} ::id/field]
     ;; an optional alias to use in place of the normal field ref
     [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
@@ -89,8 +96,23 @@
     ;; optional map to be appended to filter clause
     [:options {:optional true} [:maybe ::field-filter.options]]]])
 
-(mr/def ::disallow-dimension
-  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
+(mr/def ::disallow-field-id
+  (common/disallowed-keys {:field-id ":field-id is only allowed for :type :dimension and :temporal-unit template tags"}))
+
+(defn- dimension->field-id
+  [[_tag x y]]
+  (cond
+    (pos-int? x) x
+    (pos-int? y) y))
+
+(defn normalize-dimension
+  "Replace the legacy `:dimension` field ref of a template tag with the `:field-id` it points to."
+  [tag]
+  (if-some [dimension (some tag [:dimension "dimension"])]
+    (-> tag
+        (dissoc :dimension "dimension")
+        (m/assoc-some :field-id (dimension->field-id dimension)))
+    tag))
 
 ;; Example:
 ;;
@@ -107,10 +129,12 @@
     [:map
      [:type         [:= :snippet]]
      [:snippet-name ::common/non-blank-string]
+     ;; TODO (Cam 2026-05-28) why isn't this required? Parameter substitution fails if it's not
+     ;; present (see [[metabase.query-processor.parameters.values-test/snippet-validation-test]]
      [:snippet-id {:optional true} ::id/snippet]
      ;; database to which this Snippet belongs. Doesn't always seem to be specified.
      [:database {:optional true} ::id/database]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 ;; Example:
 ;;
@@ -122,11 +146,11 @@
 (mr/def ::source-query
   [:and
    [:merge
-    [:ref ::common]
+    [:ref ::value.common]
     [:map
      [:type    [:= :card]]
      [:card-id ::id/card]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 (def allowed-source-filter-ops
   "Set of allowed source-filter ops"
@@ -134,10 +158,10 @@
 
 (mr/def ::source-filter
   "Schema for a single source-filter applied to a table template tag."
-  [:map
+  [:map {:closed true}
    [:field-id ::id/field]
    [:op       (into [:enum] allowed-source-filter-ops)]
-   [:value    :any]])
+   [:value    [:ref ::lib.schema.parameter/parameter.value]]])
 
 ;; Example:
 ;;
@@ -150,13 +174,13 @@
 (mr/def ::source-table
   [:and
    [:merge
-    [:ref ::common]
+    [:ref ::value.common]
     [:map
      [:type                  [:= :table]]
      [:table-id              ::id/table]
      [:emit-alias            {:optional true} :boolean]
      [:source-filters        {:optional true} [:sequential [:ref ::source-filter]]]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-field-id]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -181,14 +205,18 @@
     ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
     ;; which types of parameters are allowed to be passed in for this template tag.
     [:map
-     [:type [:ref ::raw-value.type]]]]
-   [:ref ::disallow-dimension]])
+     [:type [:ref ::raw-value.type]]
+     [:widget-type {:optional true} [:maybe [:ref ::widget-type]]]]]
+   [:ref ::disallow-field-id]])
 
 (mr/def ::template-tag
   [:and
-   {:decode/normalize common/normalize-map}
-   [:map
-    [:type [:ref ::type]]]
+   {:decode/normalize (fn [tag]
+                        (when-some [tag (common/normalize-map tag)]
+                          (cond-> (normalize-dimension tag)
+                            (:type tag) (update :type common/normalize-keyword))))
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
@@ -214,7 +242,70 @@
                (= tag-name (:name tag-definition)))
              m))])
 
+(defn normalize-template-tag-map
+  "If `template-tags` is a sequence, convert it to a map. This map should only be used for lookup purposes as it loses
+  the order the tags were saved in."
+  [template-tags]
+  (letfn [(normalize-template-tag-sequence [tags]
+            (into {}
+                  (map (juxt :name identity))
+                  tags))]
+    (cond
+      (sequential? template-tags) (normalize-template-tag-sequence template-tags)
+      :else                       template-tags)))
+
 (mr/def ::template-tag-map
+  "Legacy way to store template tags... storing them as a map is problematic because having more than 8 template tags
+  causes the map to switch to a hash map (in Clojure < 1.13) and order gets lost (see #5136). For the sake of keeping
+  things simple for the FE (which does not have this issue with JS Objects).
+
+  This is still used by a handful of functions to support easy lookup by tag name, so we'll leave the schema around
+  FOR NOW, but it would probably be better to remove this entirely and just introduce helper functions for looking
+  things up."
   [:and
-   [:map-of ::name ::template-tag]
+   [:map-of
+    {:decode/normalize normalize-template-tag-map}
+    [:ref ::name]
+    [:ref ::template-tag]]
    [:ref ::template-tag-map.validate-names]])
+
+(defn normalize-template-tags
+  "Normalize `template-tags` to a sequence (converting a map if needed)."
+  [template-tags]
+  (letfn [(normalize-map [tags-map]
+            (mapv (fn [[tag-name template-tag]]
+                    ;; prefer the tag name that was used as a map key over the `:name` in the tag itself; they should
+                    ;; agree but just in case they don't use the map key as the source of truth.
+                    (assoc template-tag :name tag-name))
+                  tags-map))]
+    (cond-> template-tags
+      (map? template-tags) normalize-map)))
+
+(mr/def ::distinct-template-tags
+  [:fn
+   {:error/message    "Template tags must have distinct :names"
+    :decode/normalize (fn [tags]
+                        (when (sequential? tags)
+                          (into [] (m/distinct-by :name) tags)))}
+   (fn [template-tags]
+     (and (sequential? template-tags)
+          (or (empty? template-tags)
+              (apply distinct? (map :name template-tags)))))])
+
+(mr/def ::template-tags
+  "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.
+
+  Each tag must have a distinct `:name`."
+  [:and
+   [:sequential
+    {:decode/normalize normalize-template-tags}
+    [:ref ::template-tag]]
+   [:ref ::distinct-template-tags]])
+
+(mr/def ::template-tag-map-or-sequence
+  "Either a map of template tags (name => tag) or sequence of template tags. This schema is meant for functions that
+  accept either type as input as a convenience, since Native Query Snippet template tags are currently still stored as
+  a map."
+  [:or
+   [:ref ::template-tag-map]
+   [:ref ::template-tags]])

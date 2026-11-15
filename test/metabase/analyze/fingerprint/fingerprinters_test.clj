@@ -15,7 +15,7 @@
 (defn- temporal-core-fields
   "Return the subset of a temporal fingerprint result containing the historically-asserted fields.
    We compare only :earliest / :latest (plus :global) to keep tests stable against new distribution
-   stats (skewness, mode-fraction, weekday-distribution, hour-distribution)."
+   stats (skewness, mode-fraction)."
   [result]
   {:global (:global result)
    :type   {:type/DateTime (select-keys (get-in result [:type :type/DateTime])
@@ -113,6 +113,40 @@
                          (fingerprinters/fingerprinter field)
                          [#t "2013" #t "2018" #t "2015"])))))))
 
+(deftest ^:parallel temporal-fingerprint-omits-skewness-test
+  (testing "temporal fingerprints do not compute skewness (it required a costly per-value epoch-millis
+            conversion for a weak, redundant interestingness signal); the other distribution stats remain"
+    (let [result (transduce identity
+                            (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/DateTime}))
+                            [(java.time.LocalDateTime/of 2013 1 1 20 4 0 0)
+                             (java.time.LocalDateTime/of 2014 3 2 4 14 0 0)
+                             (java.time.LocalDateTime/of 2015 6 5 9 24 0 0)
+                             (java.time.LocalDateTime/of 2016 9 8 14 34 0 0)
+                             (java.time.LocalDateTime/of 2017 12 11 22 44 0 0)])
+          dt     (get-in result [:type :type/DateTime])]
+      (is (nil? (:skewness dt))
+          "skewness must not be present in temporal fingerprints")
+      (is (some? (:earliest dt)))
+      (is (some? (:latest dt)))
+      ;; 5 distinct timestamps, each once: mode-stats counts the raw Temporal values (no epoch-millis
+      ;; conversion) and must still produce the right fractions.
+      (is (= 0.2 (:mode-fraction dt)) "1/5")
+      (is (= 0.6 (:top-3-fraction dt)) "3/5"))))
+
+(deftest ^:parallel mode-stats-large-values-test
+  (testing "mode-fraction / top-3-fraction count frequencies correctly for large text values
+            (the tracker keys on a hash, so it must not retain the values yet must still count them)"
+    (let [big1   (apply str (repeat 2000 \a))
+          big2   (apply str (repeat 2000 \b))
+          big3   (apply str (repeat 2000 \c))
+          ;; big1 x6, big2 x3, big3 x1  -> mode 0.6, top-3 covers all 10
+          result (transduce identity
+                            (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text}))
+                            (concat (repeat 6 big1) (repeat 3 big2) [big3]))
+          txt    (get-in result [:type :type/Text])]
+      (is (= 0.6 (:mode-fraction txt)))
+      (is (= 1.0 (:top-3-fraction txt))))))
+
 (deftest ^:parallel fingerprint-numeric-values-test
   (is (= {:global {:distinct-count 99
                    :nil%           0.0}
@@ -174,8 +208,6 @@
                                :percent-email  0.0
                                :percent-state  0.0
                                :average-length 6.4
-                               :min-length     4.0
-                               :max-length     9.0
                                :mode-fraction  0.2
                                :top-3-fraction 0.6
                                :percent-blank  0.0}}}
@@ -190,8 +222,6 @@
                                  :percent-email  0.0
                                  :percent-state  0.0
                                  :average-length 10.6
-                                 :min-length     4.0
-                                 :max-length     30.0
                                  :mode-fraction  0.2
                                  :top-3-fraction 0.6
                                  :percent-blank  0.0}}}

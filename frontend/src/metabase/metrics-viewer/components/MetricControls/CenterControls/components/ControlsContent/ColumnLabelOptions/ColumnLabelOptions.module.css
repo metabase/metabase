@@ -1,0 +1,16 @@
+.ellipsisMenuButton {
+  --ellipsis-button-size: 2rem;
+}
+
+.ellipsisMenuButtonFloating {
+  position: absolute;
+  /** Make the container be centered without taking the ellipsis menu button into consideration */
+  right: calc(
+    -1 * calc(var(--mantine-spacing-sm) + var(--ellipsis-button-size))
+  );
+  top: 0.25rem;
+}
+
+.ellipsisMenuButtonInline {
+  flex: 0 0 auto;
+}

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn, dissocIn } from "icepick";
-import { omit } from "underscore";
+import _ from "underscore";
 
 import {
   createDashboardPublicLink,
@@ -9,9 +10,8 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import {
   INITIALIZE,
   RESET,
@@ -25,13 +25,12 @@ import {
   REVERT_CARD_TO_REVISION,
 } from "metabase/redux/query-builder";
 import type {
-  DashboardSidebarName,
+  DashboardLinkTargets,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  DashCardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
@@ -46,13 +45,13 @@ import {
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_SIDEBAR,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
   addManyCardsToDash,
   cancelFetchCardData,
   clearCardData,
+  dashboardLayoutFetched,
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
@@ -60,8 +59,16 @@ import {
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  setSidebar,
 } from "./actions";
-import { INITIAL_DASHBOARD_STATE } from "./constants";
+import {
+  deselectTimelineEvents,
+  markTimelineEventsShown,
+  selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
+  setDashCardTimelineEventsVisibility,
+} from "./actions/timeline-events";
+import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
@@ -200,22 +207,50 @@ export const sidebar = createReducer(
     builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
     builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          name: DashboardSidebarName;
-          props?: {
-            dashcardId?: DashCardId;
-            parameterId?: ParameterId;
-          };
-        };
-      }
-    >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
+    builder.addCase(setSidebar, (_state, { payload: { name, props } }) => ({
       name,
       props: props || {},
     }));
+  },
+);
+
+export const timelineEvents = createReducer(
+  INITIAL_DASHBOARD_STATE.timelineEvents,
+  (builder) => {
+    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(SET_EDITING_DASHBOARD, (state) => ({
+      ...INITIAL_DASHBOARD_STATE.timelineEvents,
+      hasTrackedEventsShown: state.hasTrackedEventsShown,
+    }));
+    builder.addCase(CLOSE_SIDEBAR, (state) => {
+      state.selection = null;
+    });
+    builder.addCase(setSidebar, (state, { payload: { name } }) => {
+      if (name !== SIDEBAR_NAME.events) {
+        state.selection = null;
+      }
+    });
+    builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
+      state.overrides = { ...state.overrides, ...action.payload };
+    });
+    builder.addCase(
+      setDashCardTimelineEventsEnabled,
+      (state, { payload: { dashcardId, isEnabled } }) => {
+        if (state.enabledByDashCard[dashcardId] !== isEnabled) {
+          state.enabledByDashCard[dashcardId] = isEnabled;
+        }
+      },
+    );
+    builder.addCase(selectTimelineEvents, (state, action) => {
+      state.selection = action.payload;
+    });
+    builder.addCase(deselectTimelineEvents, (state) => {
+      state.selection = null;
+    });
+    builder.addCase(markTimelineEventsShown, (state) => {
+      state.hasTrackedEventsShown = true;
+    });
   },
 );
 
@@ -290,10 +325,25 @@ function newDashboard(
     ...before,
     // mimic the StoreDashboard type - this function is only made to update attributes
     // rather than deep values like dashcards or tabs
-    ...omit(after, "dashcards", "tabs"),
+    ..._.omit(after, "dashcards", "tabs"),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
   };
+}
+
+// Replaced rather than merged: the targets belong to the dashboard being
+// loaded, and a stale entry would let a removed click behavior keep resolving.
+export function linkTargets(
+  state: DashboardLinkTargets = INITIAL_DASHBOARD_STATE.linkTargets,
+  action: UnknownAction,
+): DashboardLinkTargets {
+  if (fetchDashboard.fulfilled.match(action)) {
+    return action.payload.linkTargets;
+  }
+  if (action.type === RESET) {
+    return INITIAL_DASHBOARD_STATE.linkTargets;
+  }
+  return state;
 }
 
 export const dashboards = createReducer(
@@ -304,12 +354,17 @@ export const dashboards = createReducer(
         ...state,
         ...payload.entities.dashboard,
       }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashboard,
+      }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast to avoid infinite type instantiation error.
+          const dashboards = state as Record<string, StoreDashboard>;
+          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         state[dashcard.dashboard_id].dashcards.push(dashcard.id);
@@ -318,13 +373,6 @@ export const dashboards = createReducer(
         const [{ dashboard_id }] = dashcards;
         const dashcardIds = dashcards.map(({ id }) => id);
         state[dashboard_id].dashcards.push(...dashcardIds);
-      })
-      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-        const draftDashboard = state[payload.dashboard?.id];
-        if (draftDashboard) {
-          draftDashboard.collection_id = payload.dashboard.collection_id;
-          draftDashboard.collection = payload.dashboard.collection;
-        }
       })
       .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
         const draftDashboard = state[payload.id];
@@ -335,13 +383,21 @@ export const dashboards = createReducer(
       })
       .addMatcher(
         createDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = payload.uuid;
+          }
+        },
       )
       .addMatcher(
         deleteDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], null),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = null;
+          }
+        },
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
@@ -432,15 +488,17 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          // Mutates the draft directly so Immer finalizes child drafts correctly.
+          // Object.assign because DashCardDataMap does not model { error } results.
+          Object.assign((state[dashcard_id] ??= {}), { [card_id]: result });
         }
       })
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;
-        return dissocIn(state, [dashcardId, cardId]);
+        delete state[dashcardId]?.[cardId];
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
-        Questions.actionTypes.UPDATE,
+        CARD_UPDATED,
         (state, { payload: { object: card } }) => {
           if (card) {
             const { id } = card;

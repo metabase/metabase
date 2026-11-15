@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import type {
   ClickAction,
   ClickActionsMode,
@@ -9,25 +8,36 @@ import * as LibMetric from "metabase-lib/metric";
 import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 
 import {
+  type ExpressionDefinitionEntry,
   type MetricDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
-  type MetricsViewerTabState,
+  isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
 
-import { getEffectiveDefinitionEntry } from "./definition-entries";
+import {
+  getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
+} from "./definition-entries";
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
-import { type MetricSlot, findStandaloneSlot } from "./metric-slots";
+import {
+  type MetricSlot,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "./metric-slots";
 
 type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   cardIdToEntityIndex: Record<CardId, number>;
 };
 
@@ -35,22 +45,24 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   private formulaEntities: MetricsViewerFormulaEntity[];
   private metricSlots: MetricSlot[];
-  private tab: MetricsViewerTabState;
-  private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  private dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  private onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   private cardIdToEntityIndex: Record<CardId, number>;
   constructor({
     definitions,
     formulaEntities,
     metricSlots,
-    tab,
-    onTabUpdate,
+    dimensionBreakout,
+    onDimensionBreakoutUpdate,
     cardIdToEntityIndex,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
     this.formulaEntities = formulaEntities;
     this.metricSlots = metricSlots;
-    this.tab = tab;
-    this.onTabUpdate = onTabUpdate;
+    this.dimensionBreakout = dimensionBreakout;
+    this.onDimensionBreakoutUpdate = onDimensionBreakoutUpdate;
     this.cardIdToEntityIndex = cardIdToEntityIndex;
   }
   actionsForClick(clickObject: ClickObject): ClickAction[] {
@@ -65,8 +77,8 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
       entity,
       entityIndex,
       metricSlots: this.metricSlots,
-      tab: this.tab,
-      onTabUpdate: this.onTabUpdate,
+      dimensionBreakout: this.dimensionBreakout,
+      onDimensionBreakoutUpdate: this.onDimensionBreakoutUpdate,
       clickObject,
     };
     return [getZoomInTimeSeriesAction(params)].filter(
@@ -80,8 +92,10 @@ type GetActionParams = {
   entity: MetricsViewerFormulaEntity | undefined; //entity that was clicked on
   entityIndex: number | undefined;
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   clickObject: ClickObject;
 };
 
@@ -90,11 +104,11 @@ function getZoomInTimeSeriesAction({
   entity,
   entityIndex,
   metricSlots,
-  tab,
-  onTabUpdate,
+  dimensionBreakout,
+  onDimensionBreakoutUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!entity || entityIndex == null || !isMetricEntry(entity)) {
+  if (!entity || entityIndex == null) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -105,14 +119,26 @@ function getZoomInTimeSeriesAction({
   if (!isValidTemporalUnit(currentTemporalUnit)) {
     return;
   }
-  const nextTemporalUnit = getNextTemporalUnit(
-    definitions,
-    entity,
-    entityIndex,
-    metricSlots,
-    tab,
-    currentTemporalUnit,
-  );
+  let nextTemporalUnit: TemporalUnit | undefined;
+  if (isMetricEntry(entity)) {
+    nextTemporalUnit = getNextTemporalUnit(
+      definitions,
+      entity,
+      entityIndex,
+      metricSlots,
+      dimensionBreakout,
+      currentTemporalUnit,
+    );
+  } else if (isExpressionEntry(entity)) {
+    nextTemporalUnit = getNextTemporalUnitForExpression(
+      definitions,
+      entity,
+      entityIndex,
+      metricSlots,
+      dimensionBreakout,
+      currentTemporalUnit,
+    );
+  }
   if (!nextTemporalUnit) {
     return;
   }
@@ -136,9 +162,9 @@ function getZoomInTimeSeriesAction({
     icon: "zoom_in",
     buttonType: "horizontal",
     onClick: ({ closePopover }) => {
-      onTabUpdate({
+      onDimensionBreakoutUpdate({
         projectionConfig: {
-          ...tab.projectionConfig,
+          ...dimensionBreakout.projectionConfig,
           temporalUnit: nextTemporalUnit,
           dimensionFilter,
         },
@@ -189,7 +215,7 @@ function getNextTemporalUnit(
   entity: MetricDefinitionEntry,
   entityIndex: number,
   metricSlots: MetricSlot[],
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
   const definition = getEffectiveDefinitionEntry(
@@ -200,7 +226,50 @@ function getNextTemporalUnit(
   if (!slot) {
     return undefined;
   }
-  const dimensionId = tab.dimensionMapping[slot.slotIndex];
+  const dimensionId = dimensionBreakout.dimensionMapping[slot.slotIndex];
+  if (!definition || !dimensionId) {
+    return undefined;
+  }
+  const dimension = findDimensionById(definition, dimensionId);
+  if (!dimension) {
+    return undefined;
+  }
+  const availableBuckets = LibMetric.availableTemporalBuckets(
+    definition,
+    dimension,
+  ).map((bucket) => LibMetric.displayInfo(definition, bucket).shortName);
+  const filteredNextTemporalUnitMap = Object.fromEntries(
+    Object.entries(nextTemporalUnitMap).filter(([_key, value]) =>
+      availableBuckets.includes(value),
+    ),
+  );
+  return filteredNextTemporalUnitMap[currentUnit];
+}
+
+function getNextTemporalUnitForExpression(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  entity: ExpressionDefinitionEntry,
+  entityIndex: number,
+  metricSlots: MetricSlot[],
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+  currentUnit: TemporalUnit,
+): TemporalUnit | undefined {
+  const expressionSlots = slotsForEntity(metricSlots, entityIndex);
+  const firstSlot = expressionSlots[0];
+  if (!firstSlot) {
+    return undefined;
+  }
+  const tokenPosition = firstSlot.tokenPosition;
+  if (tokenPosition === undefined) {
+    return undefined;
+  }
+  const token = entity.tokens[tokenPosition];
+  if (!token || token.type !== "metric") {
+    return undefined;
+  }
+  const definitionEntry = getEffectiveTokenDefinitionEntry(token, definitions);
+  const definition = definitionEntry.definition;
+  const dimensionId = dimensionBreakout.dimensionMapping[firstSlot.slotIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

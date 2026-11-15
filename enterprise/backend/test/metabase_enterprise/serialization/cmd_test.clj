@@ -21,8 +21,8 @@
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (.mkdirs (io/file dump-dir))
         (.setWritable (io/file dump-dir) false)
-        (with-redefs [v2.extract/extract (fn [& _args]
-                                           (throw (ex-info "Do not call me!" {})))]
+        (mt/with-dynamic-fn-redefs [v2.extract/extract (fn [& _args]
+                                                         (throw (ex-info "Do not call me!" {})))]
           (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                 (cmd/export dump-dir))))))))
 
@@ -52,7 +52,6 @@
                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                              (filter #(= "serialization" (get % "event")))
                              first))))
-
               (testing "Snowplow import event was sent"
                 (cmd/import dump-dir)
                 (is (=? {"event"         "serialization"
@@ -64,9 +63,8 @@
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
-
-              (with-redefs [v2.storage/store! (fn [_stream _backend]
-                                                (throw (Exception. "Cannot load settings")))]
+              (mt/with-dynamic-fn-redefs [v2.storage/store! (fn [_stream _backend]
+                                                              (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
@@ -82,18 +80,17 @@
                            "source"          "cli"
                            "secrets"         false
                            "success"         false
-                           "error_message"   "Cannot load settings"}
+                           "error_message"   #"(?s)Cannot load settings.*"}
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                                (filter #(= "serialization" (get % "event")))
                                first)))))
-
-              (let [ingest-file @#'v2.ingest/ingest-file]
+              (let [ingest-file (mt/original-fn #'v2.ingest/ingest-file)]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
-                (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
-                                                      (cond-> (ingest-file file)
-                                                        (= (.getName file) "card.yaml")
-                                                        (assoc :collection_id "DoesNotExist")))]
+                (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
+                                                                    (cond-> (ingest-file file)
+                                                                      (= (.getName file) "card.yaml")
+                                                                      (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"
@@ -105,5 +102,5 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" #"Collection 'DoesNotExist' was not found.*"}
+                             "error_message" #"(?s).*DoesNotExist.* was not found.*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

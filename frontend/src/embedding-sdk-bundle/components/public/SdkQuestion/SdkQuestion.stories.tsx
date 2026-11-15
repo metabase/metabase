@@ -12,17 +12,14 @@ import {
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { Box, Stack } from "metabase/ui";
-import {
-  createMockNativeCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockParameter,
-} from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockCard, createMockParameter } from "metabase-types/api/mocks";
 
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 type SdkQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
@@ -83,7 +80,7 @@ export default {
 
 const Template: StoryFn<SdkQuestionComponentProps> = (args) => {
   return (
-    <Box bg="background-primary" mih="100vh">
+    <Box bg="background_page-primary" mih="100vh">
       <SdkQuestion {...args} />
     </Box>
   );
@@ -103,7 +100,7 @@ export const Default = {
 export const WithEditableSqlParametersCustomLayout = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Title />
           <SdkQuestion.SqlParametersList />
@@ -126,15 +123,16 @@ export const WithEditableSqlParametersCustomLayout = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Test Question",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
+              query_type: "native",
+              dataset_query: Lib.toLegacyQuery(
+                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
                   query:
                     "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
-                  "template-tags": {
+                  templateTags: {
                     State: {
                       type: "text",
                       name: "State",
@@ -155,8 +153,7 @@ export const WithEditableSqlParametersCustomLayout = {
                     },
                   },
                 }),
-                database: SAMPLE_DB_ID,
-              }),
+              ),
               parameters: [
                 createMockParameter({
                   id: "1",
@@ -185,7 +182,7 @@ export const WithEditableSqlParametersCustomLayout = {
 export const EditorOnly = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Editor />
         </SdkQuestion>
@@ -203,7 +200,7 @@ export const EditorOnly = {
 export const CreateQuestion = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args} />
       </Box>
     );
@@ -234,13 +231,13 @@ const ControlledSqlParametersPlayground = (args: SdkQuestionComponentProps) => {
         </>
       }
       dashboard={
-        <Box bg="background-primary" mih="100vh" p="md">
+        <Box bg="background_page-primary" mih="100vh" p="lg">
           <SdkQuestion
             {...args}
             sqlParameters={playground.parameters}
             onSqlParametersChange={playground.handleParametersChange}
           >
-            <Stack gap="md">
+            <Stack gap="lg">
               <SdkQuestion.SqlParametersList />
               <SdkQuestion.QuestionVisualization />
             </Stack>
@@ -306,15 +303,16 @@ export const ControlledSqlParameters = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Controlled SQL parameters demo",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
+              query_type: "native",
+              dataset_query: Lib.toLegacyQuery(
+                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
                   query:
                     "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
-                  "template-tags": {
+                  templateTags: {
                     state: {
                       type: "text",
                       name: "state",
@@ -335,8 +333,7 @@ export const ControlledSqlParameters = {
                     },
                   },
                 }),
-                database: SAMPLE_DB_ID,
-              }),
+              ),
               parameters: [
                 createMockParameter({ id: "1", slug: "state" }),
                 createMockParameter({ id: "2", slug: "city" }),
@@ -348,6 +345,7 @@ export const ControlledSqlParameters = {
         // Smart query handler: filters rows by the pushed state / city /
         // source params so the visualization reacts visibly to every push.
         http.post(`*/api/card/${QUESTION_ID}/query`, async ({ request }) => {
+          // Unjustified type cast. FIXME
           const body = (await request.json()) as {
             parameters?: Array<{ id: string; value: unknown }>;
           };

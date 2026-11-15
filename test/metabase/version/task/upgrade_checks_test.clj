@@ -18,7 +18,6 @@
                          :current-version (:tag config/mb-version-info)}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info))))))
-
   (testing "Empty values are omitted from the query params"
     (with-redefs [config/is-prod? true
                   version.settings/site-uuid-for-version-info-fetching (constantly "")
@@ -28,7 +27,6 @@
           :query-params {}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info))))))
-
   (testing "No query parameters are sent outside of prod"
     (with-redefs [config/is-prod? false]
       (http-fake/with-fake-routes-in-isolation

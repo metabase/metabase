@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex, Text, rem } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
@@ -105,7 +105,11 @@ export function JoinComplete({
 
   return (
     <Flex direction={{ base: "column", md: "row" }} gap="sm">
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <NotebookCell
+        className={S.JoinConditionCell}
+        color={color}
+        align="flex-start"
+      >
         <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {tc(lhsTableName)}
@@ -136,11 +140,12 @@ export function JoinComplete({
         </Flex>
       </NotebookCell>
       <Flex className={S.JoinConditionOn}>
-        <Text c="brand" fw="bold">{t`on`}</Text>
+        <Text c="text-brand-strong" fw="bold">{t`on`}</Text>
       </Flex>
       <NotebookCell
         className={S.JoinConditionCell}
         color={color}
+        align="flex-start"
         p={rem("10px")}
       >
         {conditions.map((condition, index) => {

@@ -19,14 +19,14 @@
 (derive ::FakedCard :metabase/model)
 
 (defn- do-with-model-i18n-strs! [thunk]
-  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
-                                                    (case model-str
-                                                      "Dashboard"     (deferred-tru "Dashboard")
-                                                      "Card"          (deferred-tru "Card")
-                                                      "Segment"       (deferred-tru "Segment")
-                                                      "Metric"        (deferred-tru "Metric")
-                                                      "NonExistModel" "NonExistModel"
-                                                      "FakeCard"      "FakeCard"))]
+  (mt/with-dynamic-fn-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+                                                                  (case model-str
+                                                                    "Dashboard"     (deferred-tru "Dashboard")
+                                                                    "Card"          (deferred-tru "Card")
+                                                                    "Segment"       (deferred-tru "Segment")
+                                                                    "Metric"        (deferred-tru "Metric")
+                                                                    "NonExistModel" "NonExistModel"
+                                                                    "FakeCard"      "FakeCard"))]
     (thunk)))
 
 (defmethod revision/serialize-instance ::FakedCard
@@ -79,7 +79,6 @@
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private false}))))
-
     (is (= "made this Card private."
            (u/build-sentence
             ((get-method revision/diff-strings :default)
@@ -95,7 +94,6 @@
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private true})))))
-
   (testing "Check that several changes are handled nicely"
     (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
@@ -116,6 +114,37 @@
              :model/Card
              {:private true :collection_unknown_field nil}
              {:private false :collection_unknown_field 1}))))))
+
+(deftest ^:parallel every-revisioned-model-has-a-diff-description-test
+  (testing "Each revisioned model gets a description of a rename"
+    (let [model->display-name (cond-> {:model/Card        "Card"
+                                       :model/Dashboard   "Dashboard"
+                                       :model/Document    "Document"
+                                       :model/Exploration "Exploration"
+                                       :model/Measure     "Measure"
+                                       :model/Segment     "Segment"
+                                       :model/Transform   "Transform"}
+                                config/ee-available? (assoc :model/TransformTest "Transform test"
+                                                            :model/CardTest      "Card test"))]
+      ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
+      (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
+             (set (keys model->display-name))))
+      (doseq [[model display-name] model->display-name]
+        (testing model
+          (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+            (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
+                   (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))
+            ;; A missing display name falls back to the model string, which equals the display name for most models.
+            (testing "with no warning of a missing display name"
+              (is (= [] (messages))))))))))
+
+(deftest ^:parallel model-with-no-display-name-gets-a-description-test
+  (testing "A model with no display name gets a description with the model string, and a warning that names the model"
+    (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+      (is (= "renamed this NoSuchModel from \"A\" to \"B\"."
+             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"}))))
+      (is (=? [{:level :warn, :message #".*NoSuchModel.*"}]
+              (messages))))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 
@@ -140,7 +169,6 @@
                    :message      "yay!"})]
                 (for [revision (revision/revisions ::FakedCard card-id)]
                   (dissoc revision :timestamp :id :model_id))))))
-
     (testing "test that most_recent is correct"
       (mt/with-temp [:model/Card {card-id :id}]
         (doseq [i (range 3)]
@@ -165,9 +193,9 @@
                                                                            :model_id    card-id
                                                                            :object      {}
                                                                            :most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) (:id revision) {:most_recent true})
+      (t2/update! (t2/table-name :model/Revision) :id (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
-             (t2/select-one-fn :timestamp :model/Revision (:id revision)))))))
+             (t2/select-one-fn :timestamp :model/Revision :id (:id revision)))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
@@ -215,15 +243,12 @@
             (testing "first revision should be recorded"
               (new-revision 1)
               (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-
             (testing "repeatedly push reivisions with the same object shouldn't create new revision"
               (dorun (repeatedly 5 #(new-revision 1)))
               (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-
             (testing "push a revision with different object should create new revision"
               (new-revision 2)
               (is (= 2 (count (revision/revisions ::FakedCard card-id)))))))))
-
     (testing "Check that we don't record revision on dashboard if it has a filter"
       (mt/with-temp
         [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
@@ -240,7 +265,7 @@
                                     {:entity :model/Dashboard
                                      :id     dash-id
                                      :user-id (mt/user->id :rasta)
-                                     :object (t2/select-one :model/Dashboard dash-id)}))]
+                                     :object (t2/select-one :model/Dashboard :id dash-id)}))]
           (testing "first revision should be recorded"
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
@@ -251,6 +276,40 @@
             (t2/update! :model/Dashboard :id dash-id {:name "New name"})
             (push-revision)
             (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
+
+(deftest do-not-record-card-revision-if-object-is-not-changed-test
+  (testing "Check that we don't record a revision for a real :model/Card that hasn't changed"
+    ;; The sibling test above exercises ::FakedCard, which has no `:card_schema`, so it never covered the
+    ;; Card-specific branch in `push-revision!`. `serialize-instance :model/Card` keeps `:card_schema`, so
+    ;; stripping it from only the previous revision made every Card compare as changed and recorded a
+    ;; revision on every push — filling a metric's history with "created a revision with no change." and
+    ;; evicting real edits once `max-revisions` was reached.
+    (mt/with-model-cleanup [:model/Revision]
+      (mt/with-temp [:model/Card {card-id :id} {:name "Tips Created by Day"}]
+        (let [push-revision (fn [] (revision/push-revision!
+                                    {:entity  :model/Card
+                                     :id      card-id
+                                     :user-id (mt/user->id :rasta)
+                                     :object  (t2/select-one :model/Card :id card-id)}))]
+          (testing "first revision should be recorded"
+            (push-revision)
+            (is (= 1 (count (revision/revisions :model/Card card-id)))))
+          (testing "pushing the same object again shouldn't record a new revision"
+            (dorun (repeatedly 3 push-revision))
+            (is (= 1 (count (revision/revisions :model/Card card-id)))))
+          (testing "a real change should record a new revision"
+            (t2/update! :model/Card :id card-id {:name "Spots Created by Day"})
+            (push-revision)
+            (is (= 2 (count (revision/revisions :model/Card card-id)))))
+          (testing "`:card_schema` is still stored in the snapshot, because revert reads it back"
+            ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
+            ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
+            ;; silently downgrade the card on every revert.
+            (let [card (t2/select-one :model/Card :id card-id)]
+              (is (= (:card_schema card)
+                     (:card_schema (revision/serialize-instance :model/Card card-id card))))
+              (is (> (:card_schema card) queries/starting-card-schema-version)
+                  "sanity check: the card is past the legacy schema version, so a downgrade would be visible"))))))))
 
 ;;; # REVISIONS+DETAILS
 
@@ -273,11 +332,9 @@
                   (-> (revision/add-revision-details ::FakedCard (first revisions) (last revisions))
                       (dissoc :timestamp :id :model_id)
                       mt/derecordize))))))
-
     (testing "test that we return a description even when there is no change between revision"
       (is (= "created a revision with no change."
              (str (:description (revision/add-revision-details ::FakedCard {:name "Apple"} {:name "Apple"}))))))
-
     (testing "that we return a descrtiopn when there is no previous revision"
       (is (= "modified this."
              (str (:description (revision/add-revision-details ::FakedCard {:name "Apple"} nil))))))))
@@ -439,7 +496,6 @@
                                                         {:object       {:name "New Object"}
                                                          :is_reversion false
                                                          :is_creation  true}))))
-
          (testing "reversion"
            (is (= {:has_multiple_changes false
                    :description          "reverted to an earlier version."}
@@ -450,20 +506,18 @@
                                                         {:object       {:name "New Object"}
                                                          :is_reversion true
                                                          :is_creation  false}))))
-
          (testing "multiple changes"
-           {:description          "changed the display from table to bar and turned this into a model."
-            :has_multiple_changes true}
-           (#'revision/revision-description-info model
-                                                 {:object       {:type "question"
-                                                                 :display :table}
-                                                  :is_reversion false
-                                                  :is_creation  false}
-                                                 {:object       {:type "model"
-                                                                 :display :bar}
-                                                  :is_reversion false
-                                                  :is_creation  false}))
-
+           (is (= {:description          "changed the display from table to bar and turned this to a model."
+                   :has_multiple_changes true}
+                  (#'revision/revision-description-info model
+                                                        {:object       {:type "question"
+                                                                        :display :table}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:object       {:type "model"
+                                                                        :display :bar}
+                                                         :is_reversion false
+                                                         :is_creation  false}))))
          (testing "changes contains unspecified keys will not be mentioned"
            (is (= {:description          "turned this to a model."
                    :has_multiple_changes false}

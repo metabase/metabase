@@ -1,4 +1,4 @@
-import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { LegendItem } from "metabase/viz-core";
 
 export type PositionedLegendItem = LegendItem & {
   left: number;

@@ -51,6 +51,7 @@ export function StringInputWidget({
     event.preventDefault();
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
+        // Unjustified type cast. FIXME
         setValue(parameter.default as string[] | undefined);
       }
       return;

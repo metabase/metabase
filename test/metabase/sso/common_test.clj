@@ -1,11 +1,11 @@
 (ns metabase.sso.common-test
   (:require
    [clojure.test :refer :all]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [clojure.tools.logging]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sso.common :as integrations.common]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.settings :as ldap.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -132,24 +132,19 @@
 
 (deftest sync-groups-test-10
   (testing "Make sure the delete last admin exception is catched"
-    (mt/with-log-level :warn
+    (mt/with-log-messages-for-level [messages :warn]
       (mt/with-user-in-groups [user [(perms-group/admin)]]
-        (let [log-warn-count (atom #{})]
-          (with-redefs [t2/delete!
-                        (fn [model & _args]
-                          (when (= model :model/PermissionsGroupMembership)
-                            (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
-                                            {:status-code 400}))))
-                        clojure.tools.logging/log*
-                        (fn [_logger level _throwable msg]
-                          (when (:= level :warn)
-                            (swap! log-warn-count conj msg)))]
-            ;; make sure sync run without throwing exception
-            (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
-            ;; make sure we log a msg for that
-            (is (@log-warn-count
-                 (str "Attempted to remove the last admin during group sync! "
-                      "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")))))))))
+        (mt/with-dynamic-fn-redefs [t2/delete!
+                                    (fn [model & _args]
+                                      (when (= model :model/PermissionsGroupMembership)
+                                        (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                                        {:status-code 400}))))]
+          ;; make sure sync run without throwing exception
+          (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
+          ;; make sure we log a msg for that
+          (is (some #{(str "Attempted to remove the last admin during group sync! "
+                           "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")}
+                    (map :message (messages)))))))))
 
 (deftest sync-groups-2-arity-unchanged-memberships-test
   (testing "2-arity version: does syncing group memberships leave existing memberships in place if nothing has changed?"
@@ -205,13 +200,11 @@
           (integrations.common/sync-group-memberships! user #{})
           (is (= #{"All Users"}
                  (group-memberships user)))))
-
       (testing "add admin role when in new groups"
         (mt/with-user-in-groups [user []]
           (integrations.common/sync-group-memberships! user #{(perms-group/admin)})
           (is (= #{"All Users" "Administrators"}
                  (group-memberships user)))))
-
       (testing "keep admin role when already present and in new groups"
         (mt/with-user-in-groups [user [(perms-group/admin)]]
           (integrations.common/sync-group-memberships! user #{(perms-group/admin)})
@@ -231,14 +224,52 @@
   (testing "2-arity version: Make sure the delete last admin exception is caught"
     (mt/with-log-messages-for-level [messages :warn]
       (mt/with-user-in-groups [user [(perms-group/admin)]]
-        (with-redefs [t2/delete!
-                      (fn [model & _args]
-                        (when (= model :model/PermissionsGroupMembership)
-                          (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
-                                          {:status-code 400}))))]
+        (mt/with-dynamic-fn-redefs [t2/delete!
+                                    (fn [model & _args]
+                                      (when (= model :model/PermissionsGroupMembership)
+                                        (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                                        {:status-code 400}))))]
           ;; make sure sync runs without throwing exception
           (integrations.common/sync-group-memberships! user #{})
           ;; make sure we log a msg for that
           (is (= (str "Attempted to remove the last admin during group sync! "
                       "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
                  (:message (first (messages))))))))))
+
+(deftest sync-groups-data-analyst-without-advanced-permissions-test
+  (testing "a mapped add to the Data Analysts group is logged and skipped when :advanced-permissions is missing"
+    (mt/with-premium-features #{}
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/with-user-in-groups [group {:name (str ::group)}
+                                 user  []]
+          (integrations.common/sync-group-memberships! user #{group (perms-group/data-analyst)})
+          (testing "the rest of the sync still happens"
+            (is (= #{"All Users" ":metabase.sso.common-test/group"}
+                   (group-memberships user))))
+          (testing "the user is not put in the Data Analysts group"
+            (is (not (t2/exists? :model/PermissionsGroupMembership
+                                 :user_id (u/the-id user)
+                                 :group_id (u/the-id (perms-group/data-analyst))))))
+          (testing "and the refusal is logged"
+            (is (some #(re-find #"Advanced Permissions" (str (:message %)))
+                      (messages)))))))))
+
+(mt/when-ee-evailable
+ (deftest sync-groups-data-analyst-with-advanced-permissions-test
+   (testing "a mapped add to the Data Analysts group succeeds when :advanced-permissions is present"
+     (mt/with-premium-features #{:advanced-permissions}
+       (mt/with-user-in-groups [user []]
+         (integrations.common/sync-group-memberships! user #{(perms-group/data-analyst)})
+         (is (t2/exists? :model/PermissionsGroupMembership
+                         :user_id (u/the-id user)
+                         :group_id (u/the-id (perms-group/data-analyst))))
+         (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id (u/the-id user))))))))))
+
+(deftest ldap-directory-user-logs-failed-lookup-test
+  (testing "failed LDAP lookup is logged and treats user as local user"
+    (mt/with-log-messages-for-level [messages :warn]
+      (mt/with-dynamic-fn-redefs [ldap.settings/ldap-enabled (constantly true)
+                                  ldap/find-user             (fn [_] (throw (ex-info "LDAP server unavailable" {})))]
+        (is (nil? (integrations.common/ldap-directory-user "user@metabase.com")))
+        (is (some #{"LDAP user lookup failed: LDAP server unavailable"}
+                  (map :message (messages))))))))

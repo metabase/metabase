@@ -2,6 +2,13 @@
   color: var(--mb-color-text-secondary);
 }
 
+/* Clip the viz to the card's radius, else its square content squares off the
+   rounded card. inherit tracks the root radius; the wrapper relays it down. */
+.VisualizationContainer,
+.Visualization {
+  border-radius: inherit;
+}
+
 .VirtualDashCardOverlayText {
   color: var(--mb-color-text-secondary);
 }

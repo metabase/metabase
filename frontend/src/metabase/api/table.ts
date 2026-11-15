@@ -1,5 +1,6 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { ForeignKeySchema, TableSchema } from "metabase/schema";
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
+import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
+
 import type {
   BulkTableRequest,
   BulkTableSelectionInfo,
@@ -30,7 +31,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { rollbackOnError } from "./utils/rollback-on-error";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -41,10 +42,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [TableSchema])),
-        ),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -52,10 +49,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -64,10 +57,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableData: builder.query<TableData, GetTableDataRequest>({
       query: ({ tableId }) => ({
@@ -81,10 +70,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [ForeignKeySchema])),
-        ),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -92,13 +77,33 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, { id, collection_id }) =>
         invalidateTags(error, [
           idTag("table", id),
           tag("database"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
+          ...(collection_id !== undefined ? [listTag("table")] : []),
         ]),
+      onQueryStarted: async (
+        { id, ...body },
+        { dispatch, getState, queryFulfilled },
+      ) => {
+        const patches = selectCachedTableMetadata(getState(), [
+          idTag("table", id),
+        ]).map(({ originalArgs }) =>
+          dispatch(
+            patchCachedTableMetadata(originalArgs, (table) => {
+              if (table.id === id) {
+                Object.assign(table, body);
+              }
+            }),
+          ),
+        );
+
+        await rollbackOnError(queryFulfilled, patches);
+      },
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: (body) => ({
@@ -112,17 +117,17 @@ export const tableApi = Api.injectEndpoints({
           tag("database"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
         ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, field_order }) => ({
         method: "PUT",
         url: `/api/table/${id}/fields/order`,
-        body,
-        bodyParamName: "field_order",
+        body: { field_order },
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -130,6 +135,7 @@ export const tableApi = Api.injectEndpoints({
           listTag("field"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
@@ -152,6 +158,7 @@ export const tableApi = Api.injectEndpoints({
           listTag("field-values"),
           listTag("parameter-values"),
           tag("card"),
+          listTag("erd"),
         ]),
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
@@ -161,6 +168,40 @@ export const tableApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
+    }),
+    appendTableCsv: builder.mutation<
+      void,
+      { tableId: TableId; formData: FormData }
+    >({
+      query: ({ tableId, formData }) => ({
+        method: "POST",
+        url: `/api/table/${tableId}/append-csv`,
+        body: formData,
+      }),
+      invalidatesTags: (_, error, { tableId }) =>
+        invalidateTags(error, [
+          idTag("table", tableId),
+          listTag("field"),
+          listTag("field-values"),
+          listTag("erd"),
+        ]),
+    }),
+    replaceTableCsv: builder.mutation<
+      void,
+      { tableId: TableId; formData: FormData }
+    >({
+      query: ({ tableId, formData }) => ({
+        method: "POST",
+        url: `/api/table/${tableId}/replace-csv`,
+        body: formData,
+      }),
+      invalidatesTags: (_, error, { tableId }) =>
+        invalidateTags(error, [
+          idTag("table", tableId),
+          listTag("field"),
+          listTag("field-values"),
+          listTag("erd"),
+        ]),
     }),
 
     /// DATA STUDIO
@@ -226,7 +267,9 @@ export const tableApi = Api.injectEndpoints({
 
 export const {
   useListTablesQuery,
+  useLazyListTablesQuery,
   useGetTableQuery,
+  useLazyGetTableQuery,
   useGetTableQueryMetadataQuery,
   useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
@@ -238,6 +281,8 @@ export const {
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
+  useAppendTableCsvMutation,
+  useReplaceTableCsvMutation,
 
   useGetTableSelectionInfoQuery,
   useLazyGetTableSelectionInfoQuery,
@@ -246,6 +291,13 @@ export const {
   useSyncTablesSchemasMutation,
   useDiscardTablesFieldValuesMutation,
 } = tableApi;
+
+/**
+ * Reads a table's already-fetched `query_metadata` out of the RTK cache. Use it
+ * after awaiting the fetch, where a hook is not an option.
+ */
+export const selectTableQueryMetadata =
+  tableApi.endpoints.getTableQueryMetadata.select;
 
 /**
  * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
@@ -274,3 +326,30 @@ export const fetchForeignTablesMetadata = (
     );
   };
 };
+
+export type TableMetadataPatch = {
+  undo: () => void;
+};
+
+/**
+ * `updateQueryData` is generic over every endpoint in this file, and TypeScript
+ * can only instantiate that from inside the `injectEndpoints` call above
+ * (TS2589 anywhere else). Pinning the single endpoint we patch keeps the call
+ * sites, including the one in `field.ts`, fully checked.
+ */
+export const patchCachedTableMetadata = tableApi.util.updateQueryData.bind(
+  null,
+  "getTableQueryMetadata",
+) as (
+  args: GetTableQueryMetadataRequest,
+  recipe: (table: Table) => void,
+) => ThunkAction<TableMetadataPatch, unknown, unknown, UnknownAction>;
+
+export function selectCachedTableMetadata(
+  state: Parameters<typeof tableApi.util.selectInvalidatedBy>[0],
+  tags: Parameters<typeof tableApi.util.selectInvalidatedBy>[1],
+) {
+  return tableApi.util
+    .selectInvalidatedBy(state, tags)
+    .filter(({ endpointName }) => endpointName === "getTableQueryMetadata");
+}

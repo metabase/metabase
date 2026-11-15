@@ -96,18 +96,18 @@
 (mu/defn- referenced-tables
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (lib.metadata/tables query)
+  (let [specs         (-> query
+                          lib/raw-native-query
+                          (parsed-query driver)
+                          (macaw/query->components {:strip-contexts? true})
+                          :tables
+                          (->> (map :component))
+                          (->> (map split-compound-table-spec))
+                          (->> (mapv #(sql-tools.common/normalize-table-spec driver %))))
+        table-ids     (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+        db-tables     (lib.metadata/bulk-metadata query :metadata/table table-ids)
         db-transforms (lib.metadata/transforms query)]
-    (-> query
-        lib/raw-native-query
-        (parsed-query driver)
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (map split-compound-table-spec))
-        (->> (into #{}
-                   (keep #(->> (sql-tools.common/normalize-table-spec driver %)
-                               (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
+    (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs)))
 
 (defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]
@@ -139,7 +139,7 @@
   (sql-tools.common/validate-query parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
-  [_parser _driver sql-str]
+  [_parser _driver sql-str _opts]
   (-> sql-str
       (macaw/parsed-query)
       (macaw/query->components {:strip-contexts? true})
@@ -174,15 +174,20 @@
         :else
         {:is_simple true}))
     (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :macaw
   [_parser driver sql table-name]
   (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
-        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
+        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getPlainSelect parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
+
+(defmethod sql-tools/add-insert-clause-impl :macaw
+  [_parser _driver sql table-name]
+  ;; Macaw does not move a `WITH` clause before `INSERT INTO`.
+  (format "INSERT INTO %s %s" table-name sql))
 
 (defmethod sql-tools/replace-names-impl :macaw
   [_parser driver sql-string replacements opts]

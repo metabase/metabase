@@ -2,9 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
-import { FormFooter } from "metabase/common/components/FormFooter";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { canPlaceEntityInCollection } from "metabase/data-studio/utils";
+import { canPlaceEntityInCollection } from "metabase/common/data-studio/collection-utils";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +11,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Button, Flex, Modal } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem } from "../../types";
@@ -45,8 +43,6 @@ export const NewDashboardDialog = () => {
           : undefined,
     };
   }, [path]);
-
-  useEscapeToCloseModal(close, { capture: true });
 
   if (!options.canCreateDashboards) {
     return null;
@@ -101,12 +97,6 @@ export const NewDashboardDialog = () => {
         data-testid="create-dashboard-on-the-go"
         trapFocus={true}
         withCloseButton={false}
-        closeOnEscape={false}
-        styles={{
-          content: {
-            padding: "1rem",
-          },
-        }}
       >
         <FormProvider
           initialValues={{ name: "" }}
@@ -118,22 +108,19 @@ export const NewDashboardDialog = () => {
                 name="name"
                 label={t`Give it a name`}
                 placeholder={t`My new dashboard`}
-                mb="1rem"
                 labelProps={{ my: "0.5rem" }}
                 data-autofocus
               />
-              <FormFooter>
-                <FormErrorMessage inline />
-                <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
-                  <Button type="button" onClick={close}>{t`Cancel`}</Button>
-                  <FormSubmitButton
-                    type="submit"
-                    label={t`Create`}
-                    disabled={!dirty || isSubmitting}
-                    variant="filled"
-                  />
-                </Flex>
-              </FormFooter>
+              <Modal.Footer>
+                <FormErrorMessage flex={1} />
+                <Button type="button" onClick={close}>{t`Cancel`}</Button>
+                <FormSubmitButton
+                  type="submit"
+                  label={t`Create`}
+                  disabled={!dirty || isSubmitting}
+                  variant="filled"
+                />
+              </Modal.Footer>
             </Form>
           )}
         </FormProvider>

@@ -16,9 +16,8 @@
  [metabase.premium-features.defenterprise
   defenterprise
   defenterprise-schema]
-
  [metabase.premium-features.token-check
-   ;; TODO: move airgap code to a dedicated namespace?
+  ;; TODO: move airgap code to a dedicated namespace?
   assert-valid-airgap-user-count!
   assert-airgap-allows-user-creation!
   assert-has-feature
@@ -29,16 +28,22 @@
   has-any-features?
   has-feature?
   log-enabled?
+  query-transforms-enabled?
+  python-transforms-enabled?
+  any-transforms-enabled?
   max-users-allowed
   meters
   plan-alias
   quotas
   TokenStatus
   clear-cache!
+  clear-local-cache!
+  refresh-at-startup!
+  start-refresher!
+  stop-refresher!
   token-check-url
   transform-metered-as
   transform-stats]
-
  (metabase.premium-features.settings
   active-users-count
   airgap-enabled
@@ -58,16 +63,20 @@
   enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
+  enable-data-apps?
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-library-retrieval?
   enable-metabase-ai-managed?
   enable-metabot-v3?
   enable-dependencies?
+  enable-schema-viewer?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
+  enable-multi-factor-auth?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
@@ -76,6 +85,7 @@
   enable-scim?
   enable-semantic-search?
   enable-serialization?
+  enable-session-management?
   enable-session-timeout-config?
   enable-snippet-collections?
   enable-sso-google?
@@ -86,7 +96,9 @@
   enable-support-users?
   enable-basic-transforms?
   enable-python-transforms?
+  enable-transform-testing?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

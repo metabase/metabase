@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import { MetabotSetupInner } from "metabase/admin/ai/MetabotSetup";
 import { Modal, type ModalProps } from "metabase/ui";
+
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
 
 export function AIProviderConfigurationModal({
   opened,
@@ -9,13 +10,14 @@ export function AIProviderConfigurationModal({
 }: Pick<ModalProps, "opened" | "onClose">) {
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       onClose={onClose}
       title={t`Connect to an AI provider`}
       size="lg"
       data-testid="ai-provider-configuration-modal"
     >
-      <MetabotSetupInner isModal onClose={onClose} />
+      <AIProviderSetup onDone={onClose} />
     </Modal>
   );
 }

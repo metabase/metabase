@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { match } from "ts-pattern";
 
 import type { SdkIframeEmbedSetupStep } from "metabase/embedding/embedding-iframe-sdk-setup/types";
@@ -8,7 +7,10 @@ import {
   trackEmbedWizardOptionsCompleted,
   trackEmbedWizardResourceSelectionCompleted,
 } from "../analytics";
-import { EMBED_STEPS } from "../constants";
+import {
+  EMBED_STEPS,
+  EXPERIENCES_WITHOUT_RESOURCE_SELECTION,
+} from "../constants";
 import type { SdkIframeEmbedSetupContextType } from "../context";
 
 export function useSdkIframeEmbedNavigation({
@@ -40,17 +42,14 @@ export function useSdkIframeEmbedNavigation({
 > & {
   defaultStep: SdkIframeEmbedSetupStep;
 }) {
-  const availableSteps = useMemo(() => {
-    // Exclude non-applicable steps for the current embed type
-    return EMBED_STEPS.filter((step) => !step.skipFor?.includes(experience));
-  }, [experience]);
+  const steps = EMBED_STEPS.filter(
+    (step) => !step.excludedExperiences?.includes(experience),
+  );
 
   const handleNext = () => {
-    const currentIndex = availableSteps.findIndex(
-      (step) => step.id === currentStep,
-    );
+    const currentIndex = steps.findIndex((step) => step.id === currentStep);
 
-    const nextStep = availableSteps[currentIndex + 1];
+    const nextStep = steps[currentIndex + 1];
 
     match(currentStep)
       .with("select-embed-experience", () => {
@@ -59,13 +58,19 @@ export function useSdkIframeEmbedNavigation({
           defaultExperience: defaultSettings.experience,
           settings,
         });
-      })
-      .with("select-embed-resource", () => {
-        trackEmbedWizardResourceSelectionCompleted({
-          experience,
-          currentSettings: settings,
-          defaultResourceId: defaultSettings.resourceId,
-        });
+
+        if (
+          !EXPERIENCES_WITHOUT_RESOURCE_SELECTION.includes(
+            // Unjustified type cast. FIXME
+            experience as (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number],
+          )
+        ) {
+          trackEmbedWizardResourceSelectionCompleted({
+            experience,
+            currentSettings: settings,
+            defaultResourceId: defaultSettings.resourceId,
+          });
+        }
       })
       .with("select-embed-options", () => {
         trackEmbedWizardOptionsCompleted({
@@ -86,29 +91,23 @@ export function useSdkIframeEmbedNavigation({
   };
 
   const handleBack = () => {
-    const currentIndex = availableSteps.findIndex(
-      (step) => step.id === currentStep,
-    );
+    const currentIndex = steps.findIndex((step) => step.id === currentStep);
 
-    const prevStep = availableSteps[currentIndex - 1];
+    const prevStep = steps[currentIndex - 1];
 
     if (prevStep) {
       setCurrentStep(prevStep.id);
     }
   };
 
-  const currentIndex = availableSteps.findIndex(
-    (step) => step.id === currentStep,
-  );
+  const currentIndex = steps.findIndex((step) => step.id === currentStep);
 
   const isFirstStep = currentStep === defaultStep;
-  const isLastStep = currentIndex === availableSteps.length - 1;
+  const isLastStep = currentIndex === steps.length - 1;
 
-  const defaultStepIndex = EMBED_STEPS.findIndex(
-    ({ id }) => id === defaultStep,
-  );
+  const defaultStepIndex = steps.findIndex(({ id }) => id === defaultStep);
 
-  const canGoNext = currentIndex < availableSteps.length - 1;
+  const canGoNext = currentIndex < steps.length - 1;
   const canGoBack = currentIndex > defaultStepIndex;
 
   return {

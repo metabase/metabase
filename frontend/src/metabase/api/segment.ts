@@ -1,4 +1,3 @@
-import { SegmentSchema } from "metabase/schema";
 import type {
   CreateSegmentRequest,
   Segment,
@@ -15,7 +14,6 @@ import {
   provideSegmentTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,7 +23,6 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
-      onQueryStarted: hydrateLegacyEntities([SegmentSchema]),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: (id) => ({
@@ -33,7 +30,6 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
-      onQueryStarted: hydrateLegacyEntities(SegmentSchema),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: (body) => ({

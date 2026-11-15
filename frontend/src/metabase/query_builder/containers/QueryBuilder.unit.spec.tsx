@@ -12,7 +12,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import {
@@ -150,6 +150,24 @@ describe("QueryBuilder", () => {
         expect(executionTime).toHaveTextContent("123ms");
       });
     });
+
+    it("renders the database error of a failed native query", async () => {
+      const message = 'Table "NOT_A_TABLE" not found';
+      await setup({
+        card: TEST_NATIVE_CARD,
+        dataset: createMockDataset({ status: "failed", error: message }),
+      });
+
+      const visualization = await screen.findByTestId(
+        "query-visualization-root",
+      );
+      expect(
+        await within(visualization).findByText(
+          "An error occurred in your query",
+        ),
+      ).toBeInTheDocument();
+      expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
   });
 
   describe("downloading results", () => {
@@ -223,6 +241,7 @@ describe("QueryBuilder", () => {
       const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
       const lastCall = calls[calls.length - 1];
       const body = await Promise.resolve(lastCall.options?.body);
+      // Unjustified type cast. FIXME
       const urlSearchParams = new URLSearchParams(body as string);
       expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
       const query =

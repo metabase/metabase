@@ -6,11 +6,11 @@ import type { Channel } from "./notification-channels";
 import type { Parameter } from "./parameters";
 import type { User } from "./user";
 
-export interface ListSubscriptionsRequest {
+export type ListSubscriptionsRequest = {
   archived?: boolean;
   dashboard_id?: DashboardId;
   creator_or_recipient?: boolean;
-}
+};
 
 export interface DashboardSubscription {
   archived: boolean;
@@ -31,6 +31,36 @@ export interface DashboardSubscription {
   skip_if_empty: boolean;
   updated_at: string;
 }
+
+/** The subscription while it is being edited: server-generated fields are still optional. */
+export type DraftDashboardSubscription = Pick<
+  DashboardSubscription,
+  "cards" | "channels"
+> &
+  Partial<
+    Pick<
+      DashboardSubscription,
+      | "id"
+      | "name"
+      | "dashboard_id"
+      | "parameters"
+      | "skip_if_empty"
+      | "archived"
+      | "can_write"
+      | "collection_id"
+      | "collection_position"
+      | "created_at"
+      | "creator"
+      | "creator_id"
+      | "disable_links"
+      | "entity_id"
+      | "updated_at"
+    >
+  >;
+
+export type DashboardSubscriptionData =
+  | DashboardSubscription
+  | DraftDashboardSubscription;
 
 export interface CreateSubscriptionRequest {
   name: string;

@@ -3,7 +3,7 @@
 }
 
 .input:focus-within {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .option {
@@ -24,7 +24,7 @@
 }
 
 .optionIconDisabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   flex-shrink: 0;
 }
 

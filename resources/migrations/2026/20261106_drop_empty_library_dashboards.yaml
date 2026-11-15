@@ -1,0 +1,128 @@
+## The Library no longer gets a Dashboards section. Drop the one earlier Libraries got when it is empty. Its
+## remote-sync row goes too when it was never pushed or the instance is not read-write; otherwise it is marked deleted
+## so the next push removes the collection from the repo. pj1awi, pj1awk, and pj1awj share one "empty" check.
+
+databaseChangeLog:
+  - changeSet:
+      id: pj1awi
+      author: ranquild
+      comment: Drop the never-pushed remote-sync row of an empty Library Dashboards section
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM remote_sync_object
+              WHERE remote_sync_object.model_type = 'Collection'
+                AND remote_sync_object.model_id IN (
+                  SELECT collection.id FROM collection
+                  WHERE collection.entity_id = 'librarylibrarydashbrd'
+                  AND NOT EXISTS (SELECT 1 FROM (SELECT location FROM collection) child
+                                  WHERE child.location LIKE CONCAT(collection.location, collection.id, '/%'))
+                  AND NOT EXISTS (SELECT 1 FROM report_card x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM report_dashboard x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM pulse x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM timeline x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM document x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM native_query_snippet x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM action x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM exploration x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM metabase_table x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM transform x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM data_app x WHERE x.resource_collection_id = collection.id))
+                AND remote_sync_object.status = 'create'
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: pj1awk
+      author: ranquild
+      comment: Mark the remote-sync row of an empty Library Dashboards section deleted
+      changes:
+        - sql:
+            sql: >-
+              UPDATE remote_sync_object
+              SET status = 'delete', status_changed_at = CURRENT_TIMESTAMP
+              WHERE remote_sync_object.model_type = 'Collection'
+                AND remote_sync_object.model_id IN (
+                  SELECT collection.id FROM collection
+                  WHERE collection.entity_id = 'librarylibrarydashbrd'
+                  AND NOT EXISTS (SELECT 1 FROM (SELECT location FROM collection) child
+                                  WHERE child.location LIKE CONCAT(collection.location, collection.id, '/%'))
+                  AND NOT EXISTS (SELECT 1 FROM report_card x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM report_dashboard x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM pulse x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM timeline x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM document x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM native_query_snippet x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM action x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM exploration x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM metabase_table x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM transform x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings x WHERE x.collection_id = collection.id)
+                  AND NOT EXISTS (SELECT 1 FROM data_app x WHERE x.resource_collection_id = collection.id))
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: pj1awl
+      author: ranquild
+      comment: Drop the deleted remote-sync row of the Library Dashboards section on instances that cannot push it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              DELETE FROM remote_sync_object
+              WHERE remote_sync_object.model_type = 'Collection'
+                AND remote_sync_object.status = 'delete'
+                AND remote_sync_object.model_id IN (SELECT collection.id FROM collection
+                                                    WHERE collection.entity_id = 'librarylibrarydashbrd')
+                AND NOT EXISTS (SELECT 1 FROM setting
+                                WHERE setting.key = 'remote-sync-type' AND setting.value = 'read-write')
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM remote_sync_object
+              WHERE remote_sync_object.model_type = 'Collection'
+                AND remote_sync_object.status = 'delete'
+                AND remote_sync_object.model_id IN (SELECT collection.id FROM collection
+                                                    WHERE collection.entity_id = 'librarylibrarydashbrd')
+                AND NOT EXISTS (SELECT 1 FROM setting
+                                WHERE setting.`key` = 'remote-sync-type' AND setting.`value` = 'read-write')
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM remote_sync_object
+              WHERE remote_sync_object.model_type = 'Collection'
+                AND remote_sync_object.status = 'delete'
+                AND remote_sync_object.model_id IN (SELECT collection.id FROM collection
+                                                    WHERE collection.entity_id = 'librarylibrarydashbrd')
+                AND NOT EXISTS (SELECT 1 FROM setting
+                                WHERE setting."KEY" = 'remote-sync-type' AND setting."VALUE" = 'read-write')
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: pj1awj
+      author: ranquild
+      comment: Drop the Library's Dashboards section when it is empty
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM collection
+              WHERE collection.entity_id = 'librarylibrarydashbrd'
+                AND NOT EXISTS (SELECT 1 FROM (SELECT location FROM collection) child
+                                WHERE child.location LIKE CONCAT(collection.location, collection.id, '/%'))
+                AND NOT EXISTS (SELECT 1 FROM report_card x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM report_dashboard x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM pulse x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM timeline x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM document x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM native_query_snippet x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM action x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM exploration x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM metabase_table x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM transform x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings x WHERE x.collection_id = collection.id)
+                AND NOT EXISTS (SELECT 1 FROM data_app x WHERE x.resource_collection_id = collection.id)
+      rollback:
+        - empty: {}

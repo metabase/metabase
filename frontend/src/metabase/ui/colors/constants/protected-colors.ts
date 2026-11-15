@@ -6,12 +6,12 @@ import type { MetabaseColorKey } from "../types/color-keys";
  */
 export const PROTECTED_COLORS = [
   // Metabase's own brand
-  "metabase-brand",
+  "core-metabase_brand",
 
   // Admin-only UI colors
-  "admin-navbar",
-  "admin-navbar-secondary",
-  "admin-navbar-inverse",
+  "navbar-admin",
+  "navbar-admin-secondary",
+  "navbar-admin-inverse",
 
   // Accent colors must be set thru the `chartColors` API, not set directly
   "accent0",

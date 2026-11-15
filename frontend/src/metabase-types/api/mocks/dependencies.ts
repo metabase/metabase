@@ -1,13 +1,13 @@
 import type {
+  ActionDependencyNode,
+  ActionDependencyNodeData,
   AnalysisFindingError,
   CardDependencyNode,
   CardDependencyNodeData,
-  CheckCardDependenciesRequest,
-  CheckDependenciesResponse,
-  CheckSnippetDependenciesRequest,
-  CheckTransformDependenciesRequest,
   DashboardDependencyNode,
   DashboardDependencyNodeData,
+  DataAppDependencyNode,
+  DataAppDependencyNodeData,
   DependencyEdge,
   DependencyEntry,
   DependencyGraph,
@@ -30,6 +30,8 @@ import type {
   TransformDependencyNode,
   TransformDependencyNodeData,
 } from "metabase-types/api";
+
+import { createMockUserInfo } from "./user";
 
 export function createMockDependencyEntry(
   opts?: Partial<DependencyEntry>,
@@ -203,45 +205,10 @@ export function createMockSegmentDependencyNode(
   };
 }
 
-export function createMockCheckCardDependenciesRequest(
-  opts?: Partial<CheckCardDependenciesRequest>,
-): CheckCardDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckSnippetDependenciesRequest(
-  opts?: Partial<CheckSnippetDependenciesRequest>,
-): CheckSnippetDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckTransformDependenciesRequest(
-  opts?: Partial<CheckTransformDependenciesRequest>,
-): CheckTransformDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckDependenciesResponse(
-  opts?: Partial<CheckDependenciesResponse>,
-): CheckDependenciesResponse {
-  return {
-    success: true,
-    ...opts,
-  };
-}
-
 export function createMockDashboardDependencyNodeData(
   opts?: Partial<DashboardDependencyNodeData>,
 ): DashboardDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Dashboard",
     description: null,
@@ -267,6 +234,7 @@ export function createMockDashboardDependencyNode(
 export function createMockDocumentDependencyNodeData(
   opts?: Partial<DocumentDependencyNodeData>,
 ): DocumentDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Document",
     created_at: "2020-01-01T00:00:00Z",
@@ -328,6 +296,58 @@ export function createMockMeasureDependencyNode(
     id: 1,
     type: "measure",
     data: createMockMeasureDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockActionDependencyNodeData(
+  opts?: Partial<ActionDependencyNodeData>,
+): ActionDependencyNodeData {
+  return {
+    name: "Action",
+    description: null,
+    type: "query",
+    model_id: null,
+    created_at: "2020-01-01T00:00:00Z",
+    creator_id: 1,
+    creator: createMockUserInfo(),
+    collection_id: null,
+    ...opts,
+  };
+}
+
+export function createMockActionDependencyNode(
+  opts?: Partial<ActionDependencyNode>,
+): ActionDependencyNode {
+  return {
+    id: 1,
+    type: "action",
+    data: createMockActionDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockDataAppDependencyNodeData(
+  opts?: Partial<DataAppDependencyNodeData>,
+): DataAppDependencyNodeData {
+  return {
+    slug: "data-app",
+    name: "Data app",
+    description: null,
+    created_at: "2020-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockDataAppDependencyNode(
+  opts?: Partial<DataAppDependencyNode>,
+): DataAppDependencyNode {
+  return {
+    id: 1,
+    type: "data-app",
+    data: createMockDataAppDependencyNodeData(),
     dependents_count: {},
     ...opts,
   };

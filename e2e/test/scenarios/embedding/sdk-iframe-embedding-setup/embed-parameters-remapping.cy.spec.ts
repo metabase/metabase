@@ -19,7 +19,7 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("enable-embedding-modular", true);
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
     H.mockEmbedJsToDevServer();
   });
@@ -59,7 +59,7 @@ describe(suiteTitle, () => {
           "display-name": "Internal",
           type: "dimension",
           "widget-type": "number/=",
-          dimension: ["field", ORDERS.QUANTITY, null],
+          "field-id": ORDERS.QUANTITY,
         },
         product_id_fk: {
           id: "product_id_fk",
@@ -67,7 +67,7 @@ describe(suiteTitle, () => {
           "display-name": "FK",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
         user_id_pk: {
           id: "user_id_pk",
@@ -75,7 +75,7 @@ describe(suiteTitle, () => {
           "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", PEOPLE.ID, null],
+          "field-id": PEOPLE.ID,
         },
       };
 
@@ -154,6 +154,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Remapping",
+        preselectGuest: true,
       });
 
       H.setEmbeddingParameter("Internal", "Editable");
@@ -232,7 +233,7 @@ describe(suiteTitle, () => {
           "display-name": "Internal",
           type: "dimension",
           "widget-type": "number/=",
-          dimension: ["field", ORDERS.QUANTITY, null],
+          "field-id": ORDERS.QUANTITY,
         },
         product_id_fk: {
           id: "product_id_fk",
@@ -240,7 +241,7 @@ describe(suiteTitle, () => {
           "display-name": "FK",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
         user_id_pk: {
           id: "user_id_pk",
@@ -248,7 +249,7 @@ describe(suiteTitle, () => {
           "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", PEOPLE.ID, null],
+          "field-id": PEOPLE.ID,
         },
       };
 
@@ -294,6 +295,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Remapping",
+        preselectGuest: true,
       });
 
       H.setEmbeddingParameter("Internal", "Editable");

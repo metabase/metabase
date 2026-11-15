@@ -1,3 +1,6 @@
+import type { CacheStrategy } from "metabase-types/api";
+
 export const rootId = 0;
-export const defaultMinDurationMs = 1000;
-export const defaultCronSchedule = "0 0 * * * ? *";
+
+/** The implicit instance-wide policy when no root cache config exists */
+export const defaultRootStrategy: CacheStrategy = { type: "nocache" };

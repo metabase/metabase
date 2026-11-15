@@ -1,10 +1,17 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
+  setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -12,7 +19,13 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { WritebackParameter } from "metabase-types/api";
+import { useSelector } from "metabase/redux";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type {
+  ActionDashboardCard,
+  WritebackParameter,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
@@ -20,10 +33,12 @@ import {
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockFieldSettings,
   createMockImplicitCUDActions,
   createMockParameter,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { ActionDashcardSettings } from "./ActionDashcardSettings";
@@ -80,9 +95,18 @@ const dashboard = createMockDashboard({
 
 const DEFAULT_VALUE = "default value";
 
-const setup = (
-  options?: Partial<React.ComponentProps<typeof ActionDashcardSettings>>,
-) => {
+type SetupOpts = Partial<
+  React.ComponentProps<typeof ActionDashcardSettings>
+> & {
+  isAdmin?: boolean;
+  canWriteActions?: boolean;
+};
+
+const setup = ({
+  isAdmin = true,
+  canWriteActions = true,
+  ...options
+}: SetupOpts = {}) => {
   const searchItems = models.map((model) =>
     createMockCollectionItem({ ...model, model: "dataset" }),
   );
@@ -90,7 +114,12 @@ const setup = (
 
   setupSearchEndpoints(searchItems);
   setupCardsEndpoints(models);
-  setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
+  setupActionsEndpoints(
+    [...actions1, ...actions2, ...implicitActions].map((action) => ({
+      ...action,
+      can_write: canWriteActions,
+    })),
+  );
 
   renderWithProviders(
     <ActionDashcardSettings
@@ -99,6 +128,11 @@ const setup = (
       dashcard={actionDashcard}
       {...options}
     />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 
   return { closeSpy };
@@ -159,9 +193,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).getByText(dashboardParameter.name),
@@ -209,9 +245,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -268,9 +306,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameter1.id}`,
       );
 
-      await userEvent.click(within(formSection).getByTestId("select-button"));
+      await userEvent.click(
+        within(formSection).getByTestId("parameter-mapping-select"),
+      );
 
-      const popover = await screen.findByRole("tree");
+      const popover = await screen.findByRole("listbox");
 
       expect(within(popover).getByText("Select a value")).toBeInTheDocument();
       expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
@@ -309,9 +349,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -345,9 +387,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(within(popover).getByText("Select a value")).toBeInTheDocument();
         expect(
@@ -407,9 +451,9 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameterRequired.id}`,
       );
 
-      expect(within(formSection).getByRole("button")).toHaveTextContent(
-        "Select a value",
-      );
+      expect(
+        within(formSection).getByTestId("parameter-mapping-select"),
+      ).toHaveValue("Select a value");
     });
   });
 
@@ -500,6 +544,24 @@ describe("ActionViz > ActionDashcardSettings", () => {
     ).toBeInTheDocument();
   });
 
+  it("doesn't offer creating or editing actions to non-admins", async () => {
+    setup({
+      dashcard: actionDashcardWithAction,
+      isAdmin: false,
+      canWriteActions: false,
+    });
+
+    await waitForLoaderToBeRemoved();
+    const queryAction = await screen.findByTestId(
+      `action-item-${actions2[0].name}`,
+    );
+
+    expect(
+      within(queryAction).queryByRole("button", { name: "pencil icon" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Create new action")).not.toBeInTheDocument();
+  });
+
   it("can close the modal with the done button", async () => {
     const { closeSpy } = setup();
 
@@ -560,3 +622,121 @@ function dashcardFactory({
 
   return () => dashcard;
 }
+
+describe("ActionViz > ActionDashcardSettings > inline action edit", () => {
+  const newScoreParameter = createMockActionParameter({
+    id: "new-score",
+    name: "New Score",
+    slug: "new_score",
+    type: "number/=",
+    target: ["variable", ["template-tag", "new_score"]],
+  });
+  const updateScoreAction = createMockQueryAction({
+    id: 21,
+    name: "Update Score",
+    model_id: models[1].id,
+    database_id: 1,
+    can_write: true,
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "UPDATE scores SET score = {{new_score}}",
+    }),
+    parameters: [newScoreParameter],
+    visualization_settings: {
+      fields: {
+        [newScoreParameter.id]: createMockFieldSettings({
+          id: newScoreParameter.id,
+          fieldType: "number",
+          inputType: "number",
+          required: true,
+          hidden: false,
+        }),
+      },
+    },
+  });
+  const dashcardWithUpdateScore = createMockActionDashboardCard({
+    id: 5,
+    action: updateScoreAction,
+    parameter_mappings: [],
+  });
+
+  function StoreActionDashcardSettings() {
+    // The store only holds the action dashcard this test put there
+    const storeDashcard = useSelector(
+      (state) => state.dashboard.dashcards[dashcardWithUpdateScore.id],
+    ) as ActionDashboardCard;
+    return (
+      <ActionDashcardSettings
+        dashboard={dashboard}
+        dashcard={storeDashcard}
+        onClose={jest.fn()}
+      />
+    );
+  }
+
+  function setupInlineEdit() {
+    setupSearchEndpoints(
+      models.map((model) =>
+        createMockCollectionItem({ ...model, model: "dataset" }),
+      ),
+    );
+    setupCardsEndpoints(models);
+    setupDatabasesEndpoints([
+      createMockDatabase({ settings: { "database-enable-actions": true } }),
+    ]);
+    setupActionsEndpoints([updateScoreAction]);
+    // Echo the edited action back, like the API does
+    fetchMock.modifyRoute(`action-${updateScoreAction.id}-put`, {
+      response: (call: { options: RequestInit }) => {
+        const edits: unknown = JSON.parse(String(call.options.body));
+        return typeof edits === "object"
+          ? { ...updateScoreAction, ...edits }
+          : updateScoreAction;
+      },
+    });
+
+    renderWithProviders(<StoreActionDashcardSettings />, {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: {
+            [dashboard.id]: createMockStoreDashboard({
+              id: dashboard.id,
+              dashcards: [dashcardWithUpdateScore.id],
+            }),
+          },
+          dashcards: { [dashcardWithUpdateScore.id]: dashcardWithUpdateScore },
+        }),
+      }),
+    });
+  }
+
+  it("shows the updated action on the mapping form after hiding a required field", async () => {
+    setupInlineEdit();
+
+    const actionItem = await screen.findByTestId(
+      `action-item-${updateScoreAction.name}`,
+    );
+    expect(screen.queryByText("New Score: required")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+
+    await userEvent.click(
+      within(actionItem).getByRole("button", { name: "pencil icon" }),
+    );
+    const actionCreator = await screen.findByTestId("action-creator");
+    await userEvent.click(
+      await within(actionCreator).findByRole("checkbox", {
+        name: "Show field",
+      }),
+    );
+    await userEvent.click(
+      within(actionCreator).getByRole("button", { name: "Update" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("New Score: required")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+});

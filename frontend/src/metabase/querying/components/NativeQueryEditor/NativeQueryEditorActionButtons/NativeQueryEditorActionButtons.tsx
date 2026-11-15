@@ -1,0 +1,94 @@
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { DataReferenceButton } from "metabase/querying/components/NativeQueryEditor/DataReferenceButton";
+import { NativeVariablesButton } from "metabase/querying/components/NativeQueryEditor/NativeVariablesButton";
+import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEditor/PreviewQueryButton";
+import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
+import type { SidebarFeatures } from "metabase/querying/editor/types";
+import type { QueryModalType } from "metabase/redux/store";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+
+interface NativeQueryEditorActionButtonsProps {
+  question: Question;
+  features: SidebarFeatures;
+  snippets?: NativeQuerySnippet[];
+  snippetCollections?: Collection[];
+  isRunnable: boolean;
+  isRunning: boolean;
+  isResultDirty: boolean;
+  promptButton?: ReactNode;
+  isShowingDataReference: boolean;
+  isShowingTemplateTagsEditor: boolean;
+  isShowingSnippetSidebar: boolean;
+  runQuery?: () => void;
+  cancelQuery?: () => void;
+  toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
+  onFormatQuery?: () => void;
+}
+
+export const NativeQueryEditorActionButtons = (
+  props: NativeQueryEditorActionButtonsProps,
+) => {
+  const {
+    question,
+    snippetCollections,
+    snippets,
+    features,
+    promptButton,
+    toggleDataReference,
+    toggleTemplateTagsEditor,
+    onFormatQuery,
+  } = props;
+
+  // hide the snippet sidebar if there aren't any visible snippets/collections
+  // and the root collection isn't writable
+  const showSnippetSidebarButton = !(
+    snippets?.length === 0 &&
+    snippetCollections?.length === 1 &&
+    !snippetCollections[0].can_write
+  );
+
+  // Default to true if not explicitly set to false
+  const showFormatButton = features.formatQuery !== false;
+
+  return (
+    <Flex
+      component="aside"
+      data-testid="native-query-editor-action-buttons"
+      gap="sm"
+      align="center"
+    >
+      {promptButton}
+      {features.previewQuery !== false &&
+        PreviewQueryButton.shouldRender({ question }) && (
+          <PreviewQueryButton {...props} />
+        )}
+      {features.dataReference && (
+        <DataReferenceButton {...props} onClick={toggleDataReference} />
+      )}
+      {features.snippets && showSnippetSidebarButton && (
+        <SnippetSidebarButton {...props} />
+      )}
+      {features.variables && (
+        <NativeVariablesButton {...props} onClick={toggleTemplateTagsEditor} />
+      )}
+      {showFormatButton && onFormatQuery && (
+        <Tooltip label={t`Auto-format`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Auto-format`}
+            onClick={onFormatQuery}
+          >
+            <Icon name="format_code" />
+          </ActionIcon>
+        </Tooltip>
+      )}
+    </Flex>
+  );
+};

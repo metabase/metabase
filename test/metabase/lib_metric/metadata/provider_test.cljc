@@ -37,7 +37,7 @@
 
 (defn- mock-metric-fetcher
   "Mock metric fetcher that filters mock-metrics based on spec."
-  [{id-set :id, name-set :name, :keys [table-id card-id], :as _spec}]
+  [{id-set :id, name-set :name, :keys [table-ids card-ids], :as _spec}]
   (let [active-only? (not (or id-set name-set))]
     (into []
           (comp
@@ -47,12 +47,12 @@
            (if name-set
              (filter #(contains? name-set (:name %)))
              identity)
-           (if table-id
-             (filter #(and (= (:table-id %) table-id)
+           (if table-ids
+             (filter #(and (contains? table-ids (:table-id %))
                            (nil? (:source-card-id %))))
              identity)
-           (if card-id
-             (filter #(= (:source-card-id %) card-id))
+           (if card-ids
+             (filter #(contains? card-ids (:source-card-id %)))
              identity)
            (if active-only?
              (filter #(not (:archived %)))
@@ -69,7 +69,7 @@
   (reify lib.metadata.protocols/MetadataProvider
     (database [_this]
       {:id db-id :name (str "DB-" db-id) :lib/type :metadata/database})
-    (metadatas [_this {metadata-type :lib/type, id-set :id, :keys [table-id], :as _spec}]
+    (metadatas [_this {metadata-type :lib/type, id-set :id, :keys [table-ids], :as _spec}]
       (case metadata-type
         :metadata/table
         (if id-set
@@ -81,8 +81,8 @@
                 (filter #(= (:db-id %) db-id))
                 (vals mock-tables)))
         :metadata/column
-        (when table-id
-          (get mock-columns table-id []))
+        (when table-ids
+          (into [] (mapcat #(get mock-columns % [])) table-ids))
         []))
     (setting [_this k]
       (get mock-settings k))))
@@ -122,7 +122,7 @@
 (deftest ^:parallel metadatas-fetches-metrics-by-table-id-test
   (testing "metadatas should fetch metrics by table-id (excludes card-based metrics)"
     (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id 10})]
+          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-ids #{10}})]
       (is (= 2 (count metrics)))
       (is (every? #(= 10 (:table-id %)) metrics))
       (is (every? #(nil? (:source-card-id %)) metrics)))))
@@ -130,7 +130,7 @@
 (deftest ^:parallel metadatas-fetches-metrics-by-card-id-test
   (testing "metadatas should fetch metrics by card-id"
     (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :card-id 100})]
+          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :card-ids #{100}})]
       (is (= 1 (count metrics)))
       (is (= 100 (:source-card-id (first metrics)))))))
 
@@ -145,7 +145,7 @@
 (deftest ^:parallel metadatas-routes-columns-to-db-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
     (let [mp (create-mock-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 10})]
+          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-ids #{10}})]
       (is (= 2 (count columns)))
       (is (every? #(= 10 (:table-id %)) columns)))))
 

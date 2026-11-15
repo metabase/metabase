@@ -13,7 +13,6 @@ effective_type: type/BigInteger
 semantic_type: type/Quantity
 dimensions: []
 position: 7
-custom_position: 0
 database_position: 7
 has_field_values: auto-list
 serdes/meta:

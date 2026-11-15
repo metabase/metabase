@@ -118,19 +118,22 @@
     #"^(past|next)([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$" :>> (fn [matches] (apply format-relative-date-with-offset matches))))
 
 (defn- format-day [value locale]
-  (-> value
-      (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
-      (time/format-unit :day-of-week        locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :day-of-week-abbrev "en") ; always read in en locale
+                    :day-of-week
+                    {:locale locale}))
 
 (defn- format-hour [value locale]
-  (-> value
-      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
-      (time/format-unit :hour-of-day        locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :hour-of-day-24 "en") ; always read in en locale
+                    :hour-of-day
+                    {:locale locale}))
 
 (defn- format-month [value locale]
-  (-> value
-      (time/parse-unit  :month-of-year      "en") ;; always read in en locale
-      (time/format-unit :month-of-year-full locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :month-of-year "en") ; always read in en locale
+                    :month-of-year-full
+                    {:locale locale}))
 
 (defn- format-exclude-unit [value unit locale]
   (case unit
@@ -165,6 +168,7 @@
   on the values. The conjunction parameter determines whether to use 'and' or 'or' to join the last two items."
   [values & {:keys [conjunction] :or {conjunction (trs "and")}}]
   (condp = (count values)
+    0 ""
     1 (str (first values))
     2 (trs "{0} {1} {2}" (first values) conjunction (second values))
     (trs "{0}, {1}, {2} {3}"
@@ -206,10 +210,12 @@
 
 (defn param-val-or-default
   "Returns the parameter value, such that:
-    * nil value => nil
+    * nil value or empty collection => nil
     * missing value key => default"
   [parameter]
-  (get parameter :value (:default parameter)))
+  (let [value (get parameter :value (:default parameter))]
+    (cond-> value
+      (coll? value) not-empty)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
@@ -320,7 +326,7 @@
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
            tag->normalized-param (try
-                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (update-vals tag->param #(lib/normalize ::parameters.schema/parameter %))
                                    (catch #?(:clj Throwable :cljs :default) e
                                      (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use

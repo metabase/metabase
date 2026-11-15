@@ -1,9 +1,10 @@
-import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { Api, cardApi } from "metabase/api";
+import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { findErrorMessage } from "metabase/api/utils/errors";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import { UploadMode } from "metabase/redux/store/upload";
@@ -12,8 +13,8 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux/utils";
-import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
+import { isObject } from "metabase-types/guards/common";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 
@@ -52,6 +53,26 @@ export interface UploadFileProps {
   onUploadComplete?: () => void;
 }
 
+async function fetchTableName(
+  dispatch: Dispatch,
+  tableId: TableId,
+): Promise<string | undefined> {
+  try {
+    const table: unknown = await runRtkEndpoint(
+      { id: tableId },
+      dispatch,
+      tableApi.endpoints.getTable,
+      { forceRefetch: false },
+    );
+    return isObject(table) && typeof table.name === "string"
+      ? table.name
+      : undefined;
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
@@ -65,6 +86,12 @@ export const uploadFile = createThunkAction(
     async (dispatch: Dispatch) => {
       const id = Date.now();
 
+      // Resolved before the upload starts, so the status has its destination
+      // on its first render. Fetching it alongside the upload would race the
+      // upload itself, and the status would miss the window it reports on.
+      const tableName =
+        tableId == null ? undefined : await fetchTableName(dispatch, tableId);
+
       const clear = () =>
         setTimeout(() => {
           dispatch(clearUpload({ id }));
@@ -76,6 +103,7 @@ export const uploadFile = createThunkAction(
           name: file.name,
           collectionId,
           tableId,
+          tableName,
         }),
       );
 
@@ -95,15 +123,23 @@ export const uploadFile = createThunkAction(
         formData.append("file", file);
         formData.append("collection_id", String(collectionId));
 
-        const response = await (() => {
+        const response: unknown = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
-              return MetabaseApi.tableAppendCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.appendTableCsv,
+              );
             case UploadMode.replace:
-              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.replaceTableCsv,
+              );
             case UploadMode.create:
             default:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { file, collection_id: collectionId },
                 dispatch,
                 cardApi.endpoints.createCardFromCsv,
@@ -131,11 +167,12 @@ export const uploadFile = createThunkAction(
         }
 
         clear();
-      } catch (err: any) {
+      } catch (err: unknown) {
         dispatch(
           uploadError({
             id,
-            error: err?.data?.message ?? err?.data,
+            error:
+              findErrorMessage(err) ?? (isObject(err) ? err.data : undefined),
           }),
         );
       }
@@ -159,30 +196,36 @@ const upload = handleActions<
 >(
   {
     [UPLOAD_FILE_START]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id], {
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
           ...payload,
           status: "in-progress",
-        }),
+        },
+      }),
     },
     [UPLOAD_FILE_END]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "complete",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_ERROR]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "error",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_CLEAR]: {
-      next: (state, { payload: { id } }) => dissocIn(state, [id]),
+      next: (state, { payload: { id } }) => _.omit(state, String(id)),
     },
     [UPLOAD_FILE_CLEAR_ALL]: {
       next: () => ({}),

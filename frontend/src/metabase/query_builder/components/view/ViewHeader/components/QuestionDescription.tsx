@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { shouldRenderAdhocDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { AdHocQuestionDescription } from "./AdHocQuestionDescription";
+import { shouldRenderAdhocDescription } from "./AdHocQuestionDescription/AdHocQuestionDescription";
 import { QuestionDataSource } from "./QuestionDataSource";
 
 interface QuestionDescriptionProps {
@@ -25,7 +26,7 @@ export const QuestionDescription = ({
     return <AdHocQuestionDescription question={question} onClick={onClick} />;
   }
 
-  if (question.database()) {
+  if (Lib.databaseMetadata(question.query()) != null) {
     return (
       <QuestionDataSource
         question={question}

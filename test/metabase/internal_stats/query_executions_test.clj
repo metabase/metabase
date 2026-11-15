@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest testing is]]
    [java-time.api :as t]
    [metabase.internal-stats.query-executions :as sut]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -19,6 +20,9 @@
 
 (deftest query-execution-24h-filtering-test
   (mt/initialize-if-needed! :db)
+  ;; `QueryExecution`s are written in batches on a background thread, so rows from earlier tests can land between the
+  ;; `before` and `after` snapshots below and inflate the `:internal` counts.
+  (process-userland-query/flush-execution-metadata!)
   (t/with-clock (t/mock-clock 1583351015000)
     (let [before (sut/query-executions-all-time-and-last-24h)
           one-year-ago-defaults (assoc query-execution-defaults
@@ -93,33 +97,47 @@
                       (-> before :query-executions-24h :interactive_embed)))))))))
 
 (deftest query-execution-last-utc-day-test
-  (testing "count query exeuections over the previous utc day")
-  (t/with-clock (t/mock-clock 1583351015000)
-    (let [yesterday-defaults (assoc query-execution-defaults
-                                    :started_at (-> (t/offset-date-time (t/zone-offset "+00"))
-                                                    (t/minus (t/days 1))))]
-      (mt/with-temp [:model/User           u {}
-                     :model/QueryExecution _ yesterday-defaults
-                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-sdk-react")
-                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-simple")
-                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
-                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
-                     :model/QueryExecution _ (assoc yesterday-defaults
-                                                    :embedding_client "embedding-iframe"
-                                                    :executor_id (u/the-id u))
-                     :model/QueryExecution _ (assoc yesterday-defaults :context :public-question)
-                     :model/QueryExecution _ (assoc yesterday-defaults :context :public-csv-download)
-                     :model/QueryExecution _ query-execution-defaults
-                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
-                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-simple")
-                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
-                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
-                     :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
-                     :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
-        (is (= {:query_executions_sdk_embed 1,
-                :query_executions_simple_embed 1,
-                :query_executions_interactive_embed 1,
-                :query_executions_static_embed 2,
-                :query_executions_public_link 2,
-                :query_executions_internal 1}
-               (sut/query-execution-last-utc-day)))))))
+  (testing "count query exeuections over the previous utc day"
+    (t/with-clock (t/mock-clock 1583351015000)
+      (let [yesterday-defaults (assoc query-execution-defaults
+                                      :started_at (-> (t/offset-date-time (t/zone-offset "+00"))
+                                                      (t/minus (t/days 1))))]
+        (mt/with-temp [:model/User           u {}
+                       :model/QueryExecution _ yesterday-defaults
+                       :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-sdk-react")
+                       :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-simple")
+                       :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
+                       :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
+                       :model/QueryExecution _ (assoc yesterday-defaults
+                                                      :embedding_client "embedding-iframe"
+                                                      :executor_id (u/the-id u))
+                       :model/QueryExecution _ (assoc yesterday-defaults :context :public-question)
+                       :model/QueryExecution _ (assoc yesterday-defaults :context :public-csv-download)
+                       :model/QueryExecution _ query-execution-defaults
+                       :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                       :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-simple")
+                       :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                       :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                       :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
+                       :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
+          (is (= {:query_executions_sdk_embed         1
+                  :query_executions_simple_embed      1
+                  :query_executions_interactive_embed 1
+                  :query_executions_static_embed      2
+                  :query_executions_public_link       2
+                  :query_executions_internal          1}
+                 (sut/query-execution-last-utc-day))))))))
+
+(deftest query-execution-last-utc-day-boundaries-test
+  (testing "GHY-4651: the previous UTC day is [yesterday 00:00Z, today 00:00Z), filtered as a range on started_at"
+    (t/with-clock (t/mock-clock 1583351015000)
+      (let [today-start (t/truncate-to (t/offset-date-time (t/zone-offset "+00")) :days)
+            sdk-at      (fn [started-at]
+                          (assoc query-execution-defaults
+                                 :embedding_client "embedding-sdk-react"
+                                 :started_at started-at))]
+        (mt/with-temp [:model/QueryExecution _ (sdk-at (t/minus today-start (t/days 1) (t/millis 1)))
+                       :model/QueryExecution _ (sdk-at (t/minus today-start (t/days 1)))
+                       :model/QueryExecution _ (sdk-at (t/minus today-start (t/millis 1)))
+                       :model/QueryExecution _ (sdk-at today-start)]
+          (is (= 2 (:query_executions_sdk_embed (sut/query-execution-last-utc-day)))))))))

@@ -1,0 +1,23 @@
+.root {
+  border: 1px solid var(--mb-color-border-neutral);
+  outline: none;
+
+  &:hover,
+  &:focus {
+    border-color: var(--mb-color-core-brand);
+    transition: border 300ms ease-in-out;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-input-focus);
+  }
+
+  &:disabled {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+}
+
+.error {
+  border-color: var(--mb-color-feedback-negative);
+}

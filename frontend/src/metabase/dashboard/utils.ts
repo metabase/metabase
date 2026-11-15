@@ -1,22 +1,20 @@
-import type { Location } from "history";
-import { getIn } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
+  getDatasetPermissionError,
   getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
-import Question from "metabase-lib/v1/Question";
+} from "metabase/viz-core";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -31,6 +29,7 @@ import type {
   ClickBehavior,
   ColumnSettings,
   DashCardDataMap,
+  DashCardVisualizationSettings,
   Dashboard,
   DashboardCard,
   Database,
@@ -43,6 +42,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -58,6 +58,7 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
         }
       }
       return memo;
+      // Unjustified type cast. FIXME
     }, {} as any);
   } else {
     return before.embedding_params;
@@ -76,6 +77,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
+      // Unjustified type cast. FIXME
       series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
@@ -100,6 +102,12 @@ export function isHeadingDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "heading";
+}
+
+export function isTextDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return getVirtualCardType(dashcard) === "text";
 }
 
 export function isLinkDashCard(
@@ -141,6 +149,7 @@ export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
 ): DashboardCardWithInlineFilters | undefined {
+  // Unjustified type cast. FIXME
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
@@ -175,12 +184,7 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
-  // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  if (dashcard.card.dataset_query == null) {
-    return false;
-  }
-  const question = new Question(dashcard.card);
-  return question.isNative();
+  return dashcard.card.query_type === "native";
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -197,21 +201,32 @@ export function showVirtualDashCardInfoText(
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
+    // Unjustified type cast. FIXME
     const cards = [dashcard.card].concat((dashcard as any).series || []);
     results.push(...cards.map((card) => ({ card, dashcard })));
   }
   return results;
 }
 
+export const isDashCardOnTab = (
+  dashcard: BaseDashboardCard,
+  tabId: SelectedTabId,
+) => (dashcard.dashboard_tab_id ?? null) === tabId;
+
 export function getCurrentTabDashboardCards(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
 ) {
-  return getAllDashboardCards(dashboard).filter(
-    ({ dashcard }) =>
-      (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
-      dashcard.dashboard_tab_id === selectedTabId,
+  return getAllDashboardCards(dashboard).filter(({ dashcard }) =>
+    isDashCardOnTab(dashcard, selectedTabId),
   );
+}
+
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {
@@ -262,24 +277,21 @@ export function isDashcardLoading(
 export function isDashcardAccessRestricted(
   datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  return datasets.some(
-    (s) =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      (typeof s.error === "object" && s.error?.status === 403),
-  );
+  return datasets.some((dataset) => getDatasetPermissionError(dataset) != null);
 }
 
 export function getDashcardResultsError(
-  datasets: Dataset[],
+  datasets: Partial<Dataset>[],
   isGuestEmbed: boolean,
 ) {
-  if (isDashcardAccessRestricted(datasets)) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key" as const,
-    };
+  const permissionError = datasets
+    .map(getDatasetPermissionError)
+    .find((error) => error != null);
+  if (permissionError) {
+    return permissionError;
   }
 
+  // Unjustified type cast. FIXME
   const staticEntityLoadingError = datasets.find((dataset) =>
     isStaticEmbeddingEntityLoadingError(dataset.error, {
       isGuestEmbed,
@@ -324,8 +336,7 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   return (
     queryResults.length > 0 &&
     queryResults.every(
-      (queryResult) =>
-        "data" in queryResult && queryResult.data.rows.length > 0,
+      (queryResult) => "data" in queryResult && !hasNoResults(queryResult.data),
     )
   );
 };
@@ -403,8 +414,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }
@@ -499,13 +512,23 @@ export function setDashboardHeaderParameterIndex(
   return result;
 }
 
+export function getDashcardClickBehavior(dashcard: {
+  visualization_settings?: DashCardVisualizationSettings | null;
+}): ClickBehavior | undefined {
+  // `visualization_settings` is an open `Record<string, unknown>`, but when
+  // `click_behavior` is set it is always a ClickBehavior.
+  return dashcard.visualization_settings?.click_behavior as
+    | ClickBehavior
+    | undefined;
+}
+
 export function getClickBehaviorDescription(dashcard: DashboardCard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
     : t`Do nothing`;
-  if (isTableDisplay(dashcard)) {
+  if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
-      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+      dashcard.visualization_settings?.column_settings || {};
 
     const count = Object.values(columnSettings).filter(
       (settings) => settings.click_behavior != null,
@@ -521,15 +544,10 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     );
   }
 
-  if (
-    dashcard.visualization_settings == null ||
-    dashcard.visualization_settings.click_behavior == null
-  ) {
+  const clickBehavior = getDashcardClickBehavior(dashcard);
+  if (clickBehavior == null) {
     return noBehaviorMessage;
   }
-
-  const clickBehavior = dashcard.visualization_settings
-    .click_behavior as ClickBehavior;
 
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;
@@ -558,12 +576,12 @@ export function hasActionsMenu(dashcard: DashboardCard) {
 
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  const question = Question.create({
-    dataset_query: dashcard.card.dataset_query,
-  });
-  return !question.isNative();
+  return dashcard.card.query_type !== "native";
 }
 
-export function isTableDisplay(dashcard: DashboardCard) {
+export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    return dashcard.visualization_settings.visualization.display === "table";
+  }
   return dashcard?.card?.display === "table";
 }

@@ -1,7 +1,9 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -16,6 +18,13 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
+;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),
+;; which covers verified items, official collections, and library/published content, not just verified
+;; cards. The column keeps its original name on purpose: renaming it would need an appdb migration and
+;; would break the serdes `:copy`/`:defaults` contract and the API/FE field, for no behavioural gain.
+;; The user-facing label ("Verified or curated content") carries the broadened meaning instead.
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
@@ -24,30 +33,26 @@
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+              (metabot.db/prompts-for-metabots (map :id metabots)))
    :id
    {:default []}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Metabot
-  [_table]
-  [:name])
+(defmethod serialization/storage-paths :model/Metabot [_ entities _ctx]
+  (mapv (fn [metabot]
+          [{:label "metabots"} {:label (:name metabot) :key (:entity_id metabot)}])
+        entities))
 
-(defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts]}]
-  (set (mapcat serdes/dependencies prompts)))
-
-(defmethod serdes/generate-path "Metabot" [_ metabot]
-  [(serdes/infer-self-path "Metabot" metabot)])
-
-(defmethod serdes/storage-path "Metabot" [metabot _ctx]
-  [{:label "metabots"} {:label (:name metabot) :key (:entity_id metabot)}])
-
-(defmethod serdes/make-spec "Metabot" [_model-name opts]
-  {:copy      [:name :description :entity_id :use_verified_content]
-   :transform {:created_at    (serdes/date)
-               :updated_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
+(defmethod serialization/spec :model/Metabot [_]
+  {:schema    ::metabot.schema/external-metabot
+   :copy      [:name :description :entity_id :use_verified_content]
+   :transform {:collection_id (serialization/fk-transform :model/Collection)}
+   :children  {:prompts :model/MetabotPrompt}
    :defaults  {:use_verified_content false}})
+
+(defmethod serialization/import-dependencies :model/Metabot [_ entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            #{[:model/Collection collection_id]}))
+        entities))

@@ -7,44 +7,229 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 ![A metric viewed through an MCP client connected to Metabase](./images/metric-in-mcp.png)
 
-Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server (using Streamable HTTP transport) that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
+Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions. 
 
-## Connect an MCP client
+The MCP server is available on every Metabase plan. Some controls, like [MCP tools access](./usage-controls.md#mcp-tools-access) and [MCP analytics](#mcp-analytics), require a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
-If your admin has turned on [your Metabase's MCP server](./settings.md#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
+## Connect a client to your Metabase MCP server's URL
 
-```
-https://{your-metabase.example.com}/api/mcp
-```
+Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
 
-In the terminal, for example, you can run the following command.
+Once an admin has [turned on the MCP server](#turn-on-the-mcp-server), point your MCP client at:
 
 ```
-claude mcp add --transport http metabase https://{your-metabase-url}/api/mcp
+https://{your-metabase.example.com}/api/metabase-mcp
 ```
 
-Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
+Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also copy the URL from **Admin > AI > MCP > Settings > MCP server URL**.
 
-For Claude Desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
+Your client will direct you to an authentication page for your Metabase.
+
+Once authenticated, you can approve or block the tools in your client. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
+
+Connected a client before Metabase 0.64? It'll ask you to sign in again after you upgrade.
+
+### Connecting Claude Code to your Metabase's MCP server
+
+To connect Claude Code:
+
+1. Run a command to add the MCP server.
+
+To use Metabase in all your projects, add `--scope user`:
+
+```
+claude mcp add --scope user --transport http metabase https://{your-metabase-url}/api/metabase-mcp
+```
+
+To use Metabase only in the current project, leave out `--scope`:
+
+```
+claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
+```
+
+Replace `{your-metabase-url}` with your Metabase address.
+
+Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run:
+
+```
+claude mcp get metabase
+```
+
+See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+
+2. Start Claude Code with `claude`.
+
+3. In Claude Code, run `/mcp`.
+
+4. Select the Metabase MCP server.
+
+5. Click **Authenticate**, and authenticate with your Metabase. (You may first need to **Enable** the Metabase MCP server).
+
+If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
+
+Once authenticated, ask your agent about your Metabase. You should see your agent use Metabase tools to interact with your Metabase.
+
+See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
+
+### Connect via Claude web
+
+If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-servers-url).
+
+One of your Metabase admins will still need to have [turned on your Metabase's MCP server](#turn-on-the-mcp-server). You'll authenticate against your own Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
+
+## MCP tools
+
+The MCP server gives your agent tools for searching, browsing, querying, and creating content in your Metabase. For the full list and the permission each one needs, see [MCP server tools](./mcp-tools.md).
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can choose which of these tools each group can use. See [MCP tools access](./usage-controls.md#mcp-tools-access).
+
+## Using the MCP server
+
+The MCP server will return results as either text or an inline chart, depending on the question you asked.
+
+If you want the MCP server to return an inline chart, ask it to "show" or "visualize" the data:
+
+![Show me the stuff](./images/mcp-chart.png)
+
+Metabase picks a chart type based on the shape of the result. You can switch between bar, line, and table (when the data fits), and if the chart has a date axis, change the time range and granularity. You can also drill through the chart: zooming and sorting update the chart in place, and other drills either re-render in place or, in Claude, open the question in your Metabase. Every chart has an **Explore in Metabase** button that opens the question in Metabase.
+
+Clients that can't render inline charts (like Claude Code) won't list the `visualize_query` tool at all. That's expected, not a sign of a broken connection.
+
+## MCP server settings
+
+_Admin > AI > MCP_
+
+### Turn on the MCP server
+
+From **Admin > AI**, open the **MCP** tab in the left sidebar, and use the **MCP server** toggle to turn the MCP server on or off.
+
+The MCP server also needs [AI features](./overview.md) on. If **Disable all AI features** is on in **Admin > AI**, the MCP server stays off and the **MCP** settings are grayed out.
+
+You don't need an [AI provider](settings.md#choose-ai-provider) set up in Metabase to use the MCP server. Your client brings the model; Metabase just brings the tools. So MCP calls don't count against your Metabase's AI connection, even if you've set up a provider for Metabot. Results from the MCP server go to your client, which may forward them to an AI provider depending on how the client is set up. See [AI privacy](./privacy.md).
+
+### Show inline charts in these MCP clients
+
+These toggles control which browser-based clients can display [inline charts](#using-the-mcp-server) generated by Metabase. Switch on any of the supported clients:
+
+- **Claude** (Claude Desktop and Claude on the web). In Claude Desktop, use Chat, _not_ Cowork: inline charts don't work in Cowork.
+- **Cursor and VS Code**
+- **ChatGPT**
+
+Turning on a client adds its domains to Metabase's CORS allowlist, so the client's browser sandbox can load Metabase's charts.
+
+These toggles only control inline charts; they don't gate whether a client can connect. Any MCP client can connect (subject to [authentication](#authentication)), and clients that run outside the browser (like Claude Code on your own machine) don't need an allowlist entry at all.
+
+### Allowed origins for custom MCP clients
+
+Use the **Allowed origins for custom MCP clients** field for browser-based clients that render [inline charts](#using-the-mcp-server) but aren't in the list above (like a self-hosted client). It adds the origin to the same allowlist as the toggles.
+
+![An inline chart](./images/inline-bar-chart.png)
+
+Add the client's origin, separating multiple origins with spaces:
+
+```
+https://mcp.internal.example.com https://*.staging.example.com
+```
+
+Wildcards (`*`) work for subdomains. Origins can't include a path. Changes take effect within a minute.
 
 ## Authentication
 
 MCP clients authenticate with Metabase using OAuth 2.0. Metabase runs its own embedded OAuth server, so you don't need to set up an external OAuth provider.
 
-Your MCP client should try to connect to your Metabase. You'll see a Metabase-branded consent page asking you to approve the connection to your Metabase.
-
 A first-time connection will go something like this:
 
 1. The client discovers Metabase's OAuth endpoints.
 2. The client registers itself with Metabase.
-3. You're redirected to Metabase to log in (if you aren't already) and approve the connection.
+3. You're redirected to a Metabase consent page to log in (if you aren't already) and approve the connection.
 4. The client receives an access token scoped to the permissions you have in Metabase.
 
-Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [Privacy](./settings.md#privacy).
+### Choose authentication options in Claude
 
-### Site URL must match the URL your client uses
+If Claude asks you to choose authentication options when you add the Metabase connector, keep the detected defaults:
 
-For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to. For example, if you're playing around with a Metabase on localhost:
+- **Authentication**: **Sign in now**. None of the tools work without an account, so **Sign in when needed** just delays the same sign-in, and **No sign-in** won't connect.
+- **OAuth client**: **Register automatically**. Metabase supports dynamic client registration, but not **Use Claude's published identity** or **Use your own OAuth client**.
+- **Request headers**: leave empty. The OAuth token is all Metabase needs.
+
+### Permission scopes
+
+The consent page lists the permission scopes the client is asking for. Each [tool](./mcp-tools.md) needs one of these:
+
+- `agent:content:read`: see your Metabase content and data structure.
+- `agent:content:write`: create, edit, and trash Metabase content.
+- `agent:query:run`: run queries against your connected databases and see the results.
+- `agent:sql:run`: write and run raw SQL on your connected databases.
+- `agent:delivery:write`: create alerts and subscriptions that email or Slack your data. Creating one also needs `agent:query:run`, since it runs a query when it fires.
+
+Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
+
+### Using the MCP server when embedding Metabase
+
+{% include plans-blockquote.html feature="Headless access with JWT" %}
+
+An agent in your app can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
+
+Your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO) and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt}
+```
+
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. The JWT also needs `exp` (expiration time) and `iat` (issued at) claims, and Metabase accepts it for at most three minutes after its `iat`.
+
+The token gets all the [permission scopes](#permission-scopes), unless you ask for fewer with a space-separated `scope` parameter. The token lasts an hour. To get a new one after the token expires, you'll need to sign a fresh JWT.
+
+To request only the scopes for reading content and running queries:
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt} \
+  --data-urlencode "scope=agent:content:read agent:query:run"
+```
+
+Your agent sends the token to the MCP server at `https://{your-metabase.example.com}/api/metabase-mcp` as `Authorization: Bearer {access_token}`.
+
+Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Calls made with these tokens appear in [MCP analytics](#mcp-analytics).
+
+People who only use headless access show **Never** under **Last Login** in **Admin > People**.
+
+## Authorization logs
+
+To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.
+
+Each record includes:
+
+- **Client**: the MCP client that registered or requested access (like Claude Code).
+- **User**: the person who approved (authenticated) or denied the request (blank for registration events).
+- **Redirect URI**: the OAuth callback URL the client registered.
+- **Event**: **Registered**, **Approved**, or **Denied**.
+- **Date**: when the event happened.
+
+Use the event filter to narrow the list to a single event type.
+
+## MCP analytics
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see how people use the MCP server. Go to **Monitor > AI Auditing > MCP analytics**.
+
+The **Usage** tab charts calls over time by client, tool, and user, plus errors by type when there are any. The **Tool calls** tab lists each call with its tool, client, user, status, duration, and error type. Error messages only show up if you've turned on PII retention.
+
+MCP calls don't appear in [AI usage auditing](./usage-auditing.md), since they don't go through Metabot.
+
+## Use the MCP server with agent-driven development
+
+You can use the MCP server to help you create Metabase content as serialized YAML files that you can import into your Metabase. Point your agent at the MCP server to give it access to your Metabase's database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns.
+
+See [Agent-driven development](./agent-driven-development.md).
+
+## Connecting to a local MCP server
+
+Some clients don't support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
+
+For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
 
 ```
 MB_SITE_URL: http://localhost:3000
@@ -54,38 +239,9 @@ Some explanation: OAuth discovery starts with Metabase returning a `WWW-Authenti
 
 If the site URL doesn't match an address your MCP client can reach, like if you're running Metabase in Docker and the site URL got auto-detected from an internal hostname like `metabase-dev:3000`, the client will register but fail the handshake. Your MCP client will typically report a connection failure rather than prompting you to authenticate (for example, Claude Code shows `✗ Failed to connect` rather than `! Needs authentication`).
 
-## With the MCP server, your client provides the AI
-
-MCP server requests are handled by whatever AI client you're using (like a desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
-
-For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
-
-You don't need to have an [AI provider](settings.md#supported-providers) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
-
-## Available tools
-
-Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools. If you're building a custom integration and need full control, use the [Agent API](./agent-api.md) directly instead.
-
-- **search**: Find tables and metrics using keyword or natural language search.
-- **get_table**: Get details about a table, including its fields, related tables, and metrics.
-- **get_table_field_values**: Get sample values and statistics for a field in a table.
-- **get_metric**: Get details about a metric, including its queryable dimensions.
-- **get_metric_field_values**: Get sample values and statistics for a field in a metric.
-- **construct_query**: Construct a query against a table or metric. Returns an opaque query string that can be executed with `execute_query`.
-- **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
-- **query**: Query a table or metric and return results.
-- **create_question**: Create questions.
-- **create_dashboard**: Create dashboards.
-
-## Use the MCP server with file-based development
-
-You can use the MCP server to help you create Metabase content as serialized YAML files that you can import into your Metabase. Point your agent at the MCP server to give it access to your Metabase's database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns.
-
-See [File-based development](./file-based-development.md).
-
 ## Further reading
 
 - [Agent API](./agent-api.md)
-- [File-based development](./file-based-development.md)
+- [Agent-driven development](./agent-driven-development.md)
 - [Metabase API docs](../api.html)
 - [Model Context Protocol specification](https://modelcontextprotocol.io/)

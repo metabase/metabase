@@ -1,2 +1,2 @@
 [:multi {:dispatch :key}
- ["meow" [:map [:value [:maybe :string]]]]]
+ ["meow" [:map {:closed true} [:value [:maybe :string]]]]]

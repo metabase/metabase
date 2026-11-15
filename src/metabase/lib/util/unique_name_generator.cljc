@@ -39,7 +39,7 @@
 
     (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
     (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
-  ([s]
+  ([s :- :string]
    (truncate-alias s truncate-alias-max-length-bytes))
 
   ([s         :- :string
@@ -70,7 +70,7 @@
     :string]
    ;; (f id str) => unique-str
    [:=>
-    [:cat :any :string]
+    [:cat symbol? :string]
     :string]])
 
 (mu/defn- untruncated-unique-alias :- :string
@@ -248,9 +248,9 @@
 
   to get a new, fresh unique name generator for recursive usage without 'poisoning the well'."
   ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-   ;;
-   ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
-   ;; case
+  ;;
+  ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
+  ;; case
   (unique-name-generator-factory
    {:truncate-fn     truncate-alias
     :name-key-fn     u/lower-case-en

@@ -49,6 +49,7 @@
     existing calls when practical. Will be unexported when there are no callers left. Docstrings should suggest an
     alternative to calling these functions.
   - **Deprecated:** Stronger than Leak - the function should be removed altogether, not just unexported."
+  ;; remove and ->> have no lib export yet; excluded so the clojure.core versions can't leak into the API
   {:clj-kondo/ignore [:unused-excluded-var]}
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
                             + - * / time abs concat replace ref float])
@@ -94,11 +95,13 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
-   [metabase.lib.parameters.parse :as lib.parameters.parse]
+   [metabase.lib.parameters.parse]
+   [metabase.lib.parameters.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -117,9 +120,11 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
@@ -203,10 +208,13 @@
          lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me
+         metabase.lib.parameters.parse/keep-me
+         metabase.lib.parameters.parse.types/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -256,12 +264,14 @@
   expression parser and pretty-printer in the Notebook editor, see [[expression-clause]] and [[expression-parts]].
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query expression-name expressionable]
+  ([a-query         :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string
+    expressionable   :- ::lib.expression/expressionable]
    (expression a-query -1 expression-name expressionable))
   ([a-query         :- ::lib.schema/query
     stage-number    :- [:maybe :int]
     expression-name :- ::lib.schema.common/non-blank-string
-    expressionable]
+    expressionable   :- ::lib.expression/expressionable]
    (lib.expression/expression a-query stage-number expression-name expressionable)))
 ; TODO: (bshepherdson, 2026-03-03) There's a third arity in `lib.expression/expression` that supports an options map
 ; but it's a bit "gory details" so it's omitted here. I think it's only called by QP.
@@ -273,7 +283,7 @@
   a new expression.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (expressions a-query -1))
+  ([a-query :- ::lib.schema/query] (expressions a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- [:maybe :int]]
    (lib.expression/expressions a-query stage-number)))
@@ -292,7 +302,9 @@
   4. All columns which are *implicitly joinable* through any FK in the above.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query expression-position] (expressionable-columns a-query -1 expression-position))
+  ([a-query             :- ::lib.schema/query
+    expression-position :- [:maybe nat-int?]]
+   (expressionable-columns a-query -1 expression-position))
   ([a-query             :- ::lib.schema/query
     stage-number        :- [:maybe :int]
     expression-position :- [:maybe nat-int?]]
@@ -304,7 +316,7 @@
 
   **Code Health:** Leak. Expression columns are properly included in e.g. [[filterable-columns]]; there should not be
   cause to care about the expression columns specifically outside of Lib."
-  ([a-query] (expressions-metadata a-query -1))
+  ([a-query :- ::lib.schema/query] (expressions-metadata a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- [:maybe :int]]
    (lib.expression/expressions-metadata a-query stage-number)))
@@ -314,7 +326,9 @@
   to it.
 
   **Code Health:** Deprecated. This is a test helper that crept into the public API."
-  ([a-query expression-name] (expression-ref a-query -1 expression-name))
+  ([a-query         :- ::lib.schema/query
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (expression-ref a-query -1 expression-name))
   ([a-query         :- ::lib.schema/query
     stage-number    :- [:maybe :int]
     expression-name :- ::lib.schema.common/non-blank-string]
@@ -332,6 +346,12 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
+
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
@@ -426,7 +446,8 @@
   - A (v2) metric
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query aggregable]
+  ([a-query      :- ::lib.schema/query
+    aggregable   :- ::lib.aggregation/aggregable]
    (aggregate a-query -1 aggregable))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
@@ -435,7 +456,7 @@
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Returns the list of aggregation definitions on the target stage of `a-query`, or nil if there are none."
-  ([a-query] (aggregations a-query -1))
+  ([a-query :- ::lib.schema/query] (aggregations a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.aggregation/aggregations a-query stage-number)))
@@ -463,7 +484,8 @@
 
   **Code Health:** Single use. This mainly exists for the custom editor in the UI.
   Prefer [[available-aggregation-operators]] and [[aggregation-operator-columns]] for more \"structured\" usages."
-  ([a-query aggregation-position]
+  ([a-query              :- ::lib.schema/query
+    aggregation-position :- [:maybe nat-int?]]
    (aggregable-columns a-query -1 aggregation-position))
   ([a-query              :- ::lib.schema/query
     stage-number         :- :int
@@ -486,7 +508,7 @@
   that require an input column when no suitable inputs are available.
 
   **Code Health:** Healthy. This is the correct way to determine the valid set of aggregation operators."
-  ([a-query] (available-aggregation-operators a-query -1))
+  ([a-query :- ::lib.schema/query] (available-aggregation-operators a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.aggregation/available-aggregation-operators a-query stage-number)))
@@ -495,7 +517,7 @@
   "Removes all aggregations from the target stage of `a-query`.
 
   **Code Health:** Healthy, though it's an unusual thing to do."
-  ([a-query] (remove-all-aggregations a-query -1))
+  ([a-query :- ::lib.schema/query] (remove-all-aggregations a-query -1))
   ([a-query :- ::lib.schema/query
     stage-number :- :int]
    (lib.aggregation/remove-all-aggregations a-query stage-number)))
@@ -517,12 +539,26 @@
 
   This is useful for adding an [[order-by]] clause, since [[aggregations]] returns aggregation *definitions*, but
   [[order-by]] needs aggregation references."
-  ([a-query agg-index]
+  ([a-query      :- ::lib.schema/query
+    agg-index    :- nat-int?]
    (aggregation-ref a-query -1 agg-index))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
     agg-index    :- nat-int?]
    (lib.aggregation/aggregation-ref a-query stage-number agg-index)))
+
+(mu/defn aggregation-column :- ::lib.metadata.calculation/column-metadata-with-source
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named before the stage
+  deduplicates its column names.
+
+  **Code Health:** Healthy."
+  ([a-query            :- ::lib.schema/query
+    aggregation-clause :- ::lib.schema.aggregation/aggregation]
+   (aggregation-column a-query -1 aggregation-clause))
+  ([a-query            :- ::lib.schema/query
+    stage-number       :- :int
+    aggregation-clause :- ::lib.schema.aggregation/aggregation]
+   (lib.aggregation/aggregation-column a-query stage-number aggregation-clause)))
 
 ;;; These functions all directly construct an aggregation clause suitable for passing to [[aggregate]], taking
 ;;; input column and/or filter clauses as arguments, depending on the operator.
@@ -575,17 +611,19 @@
   provided they all set different `:temporal-unit`s.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query expr] (breakout a-query -1 expr))
+  ([a-query      :- ::lib.schema/query
+    expr         :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref ifn?]]
+   (breakout a-query -1 expr))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
-    expr         :- some?]
+    expr         :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref ifn?]]
    (lib.breakout/breakout a-query stage-number expr)))
 
 (mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
   "Returns the list of breakouts on the target stage of `a-query`, or nil if there are none.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (breakouts a-query -1))
+  ([a-query :- ::lib.schema/query] (breakouts a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.breakout/breakouts a-query stage-number)))
@@ -598,7 +636,9 @@
   except that the breakout column has the `:temporal-unit` or `:binning` specified from the breakout clause.
 
   **Code Health:** Healthy."
-  ([a-query breakout-clause] (breakout-column a-query -1 breakout-clause))
+  ([a-query         :- ::lib.schema/query
+    breakout-clause :- ::lib.schema.ref/ref]
+   (breakout-column a-query -1 breakout-clause))
   ([a-query         :- ::lib.schema/query
     stage-number    :- :int
     breakout-clause :- ::lib.schema.ref/ref]
@@ -626,7 +666,7 @@
   The removal is done properly per [[remove-clause]], so any references to the deleted breakouts will also be deleted.
 
   **Code Health:** Healthy."
-  ([a-query] (remove-all-breakouts a-query -1))
+  ([a-query :- ::lib.schema/query] (remove-all-breakouts a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.breakout/remove-all-breakouts a-query stage-number)))
@@ -653,20 +693,33 @@
   If `boolean-expression` is an exact duplicate of an existing filter, this silently does nothing.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query boolean-expression] (filter a-query -1 boolean-expression))
+  ([a-query            :- ::lib.schema/query
+    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment ::lib.schema.common/external-op]]
+   (filter a-query -1 boolean-expression))
   ([a-query            :- ::lib.schema/query
     stage-number       :- :int
-    boolean-expression :- some?]
+    boolean-expression :- [:or ::lib.schema.expression/boolean ::lib.schema.metadata/segment ::lib.schema.common/external-op]]
    (lib.filter/filter a-query stage-number boolean-expression)))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the list of filters on the target stage of `a-query`, or nil if there are none.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (filters a-query -1))
+  ([a-query :- ::lib.schema/query] (filters a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
+
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query :- ::lib.schema/query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
 
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
@@ -681,11 +734,13 @@
   Supports an optional third argument `options`, which can have these options:
 
   - `:include-sensitive-fields? true` will return fields with `:visibility-type :sensitive`. (Default false.)"
-  ([a-query] (filterable-columns a-query -1))
-  ([a-query stage-number] (filterable-columns a-query stage-number nil))
+  ([a-query :- ::lib.schema/query] (filterable-columns a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (filterable-columns a-query stage-number nil))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
-    options      :- [:maybe [:map [:include-sensitive-fields? :boolean]]]]
+    options      :- [:maybe [:map {:closed true} [:include-sensitive-fields? :boolean]]]]
    (lib.filter/filterable-columns a-query stage-number options)))
 
 ;;; ### Building filters in code
@@ -753,7 +808,9 @@
 
   **Code Health:** Healthy. This is a core API."
 
-  ([a-query a-join-or-joinable] (join a-query -1 a-join-or-joinable))
+  ([a-query :- ::lib.schema/query
+    a-join-or-joinable :- [:or ::lib.join.util/partial-join ::lib.join/joinable]]
+   (join a-query -1 a-join-or-joinable))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
     a-join-or-joinable :- [:or ::lib.join.util/partial-join ::lib.join/joinable]]
@@ -780,18 +837,32 @@
       - See also [[available-join-strategies]], since some engines only support certain kinds of joins.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-joinable] (lib.join/join-clause a-joinable))
-  ([a-joinable conditions] (lib.join/join-clause a-joinable conditions))
-  ([a-joinable conditions strategy] (lib.join/join-clause a-joinable conditions strategy)))
+  ([a-joinable :- ::lib.join/join-clause-source]
+   (lib.join/join-clause a-joinable))
+  ([a-joinable  :- ::lib.join/join-clause-source
+    conditions :- [:maybe ::lib.join/conditions-input]]
+   (lib.join/join-clause a-joinable conditions))
+  ([a-joinable  :- ::lib.join/join-clause-source
+    conditions :- [:maybe ::lib.join/conditions-input]
+    strategy   :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
+   (lib.join/join-clause a-joinable conditions strategy)))
 
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Return the list of all explicit join clauses on the target stage of `a-query`, or nil if there are none.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (joins a-query -1))
+  ([a-query :- ::lib.schema/query] (joins a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
+
+(mu/defn joined-thing :- [:maybe ::lib.join/joinable]
+  "Return metadata about the origin of `a-join` (the joined Table or Card).
+
+  **Code Health:** Healthy. This is a core API."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   a-join                :- ::lib.join.util/partial-join]
+  (lib.join/joined-thing metadata-providerable a-join))
 
 ;;; ### Join Strategies
 
@@ -863,7 +934,7 @@
 
   **Code Health:** Healthy. This is a core API."
   [a-join :- ::lib.join.util/partial-join
-   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
+   conditions :- [:maybe ::lib.join/conditions-input]]
   (lib.join/with-join-conditions a-join conditions))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]]
@@ -886,8 +957,13 @@
   If no plausible FK/PK pairs are found, this function returns nil and the join does not get a default condition.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query a-joinable] (suggested-join-conditions a-query -1 a-joinable))
-  ([a-query stage-number a-joinable] (suggested-join-conditions a-query stage-number a-joinable nil))
+  ([a-query    :- ::lib.schema/query
+    a-joinable :- ::lib.join/join-or-joinable]
+   (suggested-join-conditions a-query -1 a-joinable))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    a-joinable   :- ::lib.join/join-or-joinable]
+   (suggested-join-conditions a-query stage-number a-joinable nil))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
     a-joinable   :- ::lib.join/join-or-joinable
@@ -910,7 +986,10 @@
 
   **Code Health:** Healthy. This is the correct way to get the columns for software or a user to pick as the LHS of
   a join condition."
-  ([a-query a-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  ([a-query               :- ::lib.schema/query
+    a-joinable            :- [:maybe ::lib.join/join-or-joinable]
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    (join-condition-lhs-columns a-query -1 a-joinable lhs-expression-or-nil rhs-expression-or-nil))
   ([a-query               :- ::lib.schema/query
     stage-number          :- :int
@@ -932,7 +1011,10 @@
 
   **Code Health:** Healthy. This is the correct way to get the columns for software or a user to pick as the RHS of
   a join condition."
-  ([a-query a-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  ([a-query               :- ::lib.schema/query
+    a-joinable            :- ::lib.join/join-or-joinable
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    (join-condition-rhs-columns a-query -1 a-joinable lhs-expression-or-nil rhs-expression-or-nil))
   ([a-query               :- ::lib.schema/query
     stage-number          :- :int
@@ -952,7 +1034,9 @@
   The returned operators are maps, so that they can support [[display-name]] etc.
 
   **Code Health:** Healthy."
-  ([a-query lhs-expression-or-nil rhs-expression-or-nil]
+  ([a-query               :- ::lib.schema/query
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    (join-condition-operators a-query -1 lhs-expression-or-nil rhs-expression-or-nil))
   ([a-query               :- ::lib.schema/query
     stage-number          :- :int
@@ -975,7 +1059,9 @@
   Passing an `option-or-unit` of nil will un-set the bucketing of both arguments.
 
   **Code Health:** Healthy."
-  ([a-query join-condition option-or-unit]
+  ([a-query :- ::lib.schema/query
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or ::lib.schema.temporal-bucketing/option ::lib.schema.temporal-bucketing/unit]]]
    (join-condition-update-temporal-bucketing a-query -1 join-condition option-or-unit))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
@@ -1012,8 +1098,23 @@
   **Code Health:** Healthy. This is a core API."
   {:style/indent [:form]}
   [a-join :- ::lib.join.util/partial-join
-   fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
+   fields :- [:maybe [:or [:enum :all :none]
+                      [:sequential [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]]]
   (lib.join/with-join-fields a-join fields))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]].
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential ::lib.schema.metadata/column]]]
+  (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
@@ -1026,7 +1127,9 @@
   are selected to be returned.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query a-joinable] (join-fieldable-columns a-query -1 a-joinable))
+  ([a-query      :- ::lib.schema/query
+    a-joinable   :- ::lib.join/join-or-joinable]
+   (join-fieldable-columns a-query -1 a-joinable))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
     a-joinable   :- ::lib.join/join-or-joinable]
@@ -1043,9 +1146,12 @@
   If we can't determine a good display name for the LHS, this function returns \"Previous results\".
 
   **Code Health:** Healthy, Single Use. This exists to support UIs, but it's well-defined and safe to call."
-  ([a-query a-joinable]
+  ([a-query :- ::lib.schema/query
+    a-joinable :- [:maybe ::lib.join/join-or-joinable]]
    (join-lhs-display-name a-query a-joinable nil))
-  ([a-query a-joinable condition-lhs-expression-or-nil]
+  ([a-query :- ::lib.schema/query
+    a-joinable :- [:maybe ::lib.join/join-or-joinable]
+    condition-lhs-expression-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
    (join-lhs-display-name a-query -1 a-joinable condition-lhs-expression-or-nil))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
@@ -1065,6 +1171,15 @@
                      [:ref :mbql.clause/field]]]
   (lib.join.util/current-join-alias field-or-join))
 
+(mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+  "Resolve the join on `stage-number` of `query` with alias `join-alias`, or nil if there is no such join.
+
+  **Code Health:** Healthy."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (lib.join/maybe-resolve-join query stage-number join-alias))
+
 (mu/defn with-join-alias :- [:or
                              ::lib.schema.metadata/column
                              ::lib.join.util/partial-join
@@ -1082,10 +1197,7 @@
   Users of lib should be getting columns from [[filterable-columns]] et al, not manually setting join aliases on column
   metadata or refs."
   {:style/indent [:form]}
-  [field-or-join :- [:or
-                     ::lib.schema.metadata/column
-                     ::lib.join.util/partial-join
-                     [:ref :mbql.clause/field]]
+  [field-or-join :- ::lib.join/with-join-alias-target
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (lib.join/with-join-alias field-or-join join-alias))
 
@@ -1093,7 +1205,10 @@
 (shared.ns/import-fns
  [lib.join
   join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
-  raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
+  raw-join-strategy                  ;; TODO: Unexport this; it's only used from tests.
+  standard-join-condition?
+  standard-join-condition-lhs
+  standard-join-condition-rhs])
 
 ;;; ## Column selection
 ;;; These functions control what subset of the available columns are returned from a given stage of a query. This is
@@ -1132,7 +1247,7 @@
   [[with-fields]]. [[fieldable-columns]] gives the list of columns which are valid to list here.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (fields a-query -1))
+  ([a-query :- ::lib.schema/query] (fields a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.field/fields a-query stage-number)))
@@ -1148,7 +1263,7 @@
   list is specified, then *all columns* are marked `:selected?`.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (fieldable-columns a-query -1))
+  ([a-query :- ::lib.schema/query] (fieldable-columns a-query -1))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.field/fieldable-columns a-query stage-number)))
@@ -1188,7 +1303,9 @@
   stage return *everything* again.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query xs] (with-fields a-query -1 xs))
+  ([a-query :- ::lib.schema/query
+    xs      :- [:maybe [:sequential [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]]
+   (with-fields a-query -1 xs))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
     xs :- [:maybe [:sequential [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]]
@@ -1240,13 +1357,19 @@
   - `:include-sensitive-fields?` returns fields the user has marked as *sensitive* in the Admin / Table Metadata screen.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (lib.metadata.calculation/returned-columns a-query))
-  ([a-query x] (lib.metadata.calculation/returned-columns a-query x))
-  ([a-query stage-number x] (lib.metadata.calculation/returned-columns a-query stage-number x))
+  ([a-query :- ::lib.schema/query]
+   (lib.metadata.calculation/returned-columns a-query))
+  ([a-query :- ::lib.schema/query
+    x       :- ::lib.metadata.calculation/returned-columns-arg]
+   (lib.metadata.calculation/returned-columns a-query x))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
-    x
-    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+    x            :- ::lib.metadata.calculation/returned-columns-arg]
+   (lib.metadata.calculation/returned-columns a-query stage-number x))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    x            :- ::lib.metadata.calculation/returned-columns-arg
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (lib.metadata.calculation/returned-columns a-query stage-number x options)))
 
 (mu/defn visible-columns :- ::lib.metadata.calculation/visible-columns
@@ -1261,8 +1384,11 @@
   **Code Health:** Deprecated. Should be unexported, and maybe removed outright. All callers should be calling
   [[filterable-columns]], [[breakoutable-columns]], etc. instead of this. If we really want to keep it, then its options
   should be removed and it should be renamed to better reflect what it returns; perhaps `pre-aggregation-columns`."
-  ([a-query] (lib.metadata.calculation/visible-columns a-query))
-  ([a-query stage-number] (lib.metadata.calculation/visible-columns a-query stage-number))
+  ([a-query :- ::lib.schema/query]
+   (lib.metadata.calculation/visible-columns a-query))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- [:maybe :int]]
+   (lib.metadata.calculation/visible-columns a-query stage-number))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
     options      :- ::lib.metadata.calculation/visible-columns.options]
@@ -1278,13 +1404,17 @@
   If you pass only `a-query`, the query is also used as `x`.
 
   **Code Health:** Healthy. This is a core API."
-  ([a-query] (display-name a-query a-query))
-  ([a-query x] (display-name a-query -1 x))
-  ([a-query stage-number x]
+  ([a-query :- ::lib.schema/query] (display-name a-query a-query))
+  ([a-query :- ::lib.schema/query
+    x       :- ::lib.metadata.calculation/displayable]
+   (display-name a-query -1 x))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    x            :- ::lib.metadata.calculation/displayable]
    (lib.metadata.calculation/display-name a-query stage-number x))
   ([a-query      :- ::lib.schema/query
     stage-number :- :int
-    x
+    x            :- ::lib.metadata.calculation/displayable
     style        :- ::lib.metadata.calculation/display-name-style]
    (lib.metadata.calculation/display-name a-query stage-number x style)))
 
@@ -1343,7 +1473,9 @@
   See [[describe-filter-operator]] to get a human-readable, translated description of the filter operator keywords.
 
   **Code Health:** Healthy. This is deliberately public, including the output format."
-  ([a-query a-filter-clause] (filter-parts a-query -1 a-filter-clause))
+  ([a-query         :- ::lib.schema/query
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (filter-parts a-query -1 a-filter-clause))
   ([a-query         :- ::lib.schema/query
     stage-number    :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
@@ -1358,7 +1490,7 @@
   - `:default` (the default, naturally) uses \"Is (not)\", \"Greater than\" and \"Less than\"
   - `:number` uses \"Equal to\" and \"Not equal to\"
   - `:temporal` uses \"After\" and \"Before\" for `:>` and `:<`"
-  ([operator] (describe-filter-operator operator :default))
+  ([operator :- :keyword] (describe-filter-operator operator :default))
   ([operator :- :keyword ; TODO: (bshepherdson 2026-03-06) This could be more specific, if the list were in a schema.
     variant  :- [:enum :default :number :temporal]]
    (lib.filter/describe-filter-operator operator variant)))
@@ -1370,8 +1502,10 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group
@@ -1383,7 +1517,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1403,7 +1536,6 @@
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
-
  [lib.extraction
   column-extractions
   extract
@@ -1445,6 +1577,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit
@@ -1462,6 +1595,7 @@
   metadata-provider?
   metadata-providerable?]
  [metabase.lib.metadata.result-metadata
+  match-returned-columns
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
@@ -1474,6 +1608,9 @@
   native-query
   raw-native-query
   recognize-template-tags
+  rename-template-tags
+  rename-template-tags-in-text
+  replace-template-tag-names
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
@@ -1514,7 +1651,7 @@
   parameter-target-template-tag-name
   update-parameter-target-dimension-options
   update-parameter-target-field-ref]
- [lib.parameters.parse
+ [metabase.lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
   parse]
@@ -1522,7 +1659,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query
@@ -1540,7 +1677,10 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  with-field-ref-id]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
@@ -1559,6 +1699,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage
@@ -1580,6 +1721,9 @@
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
+ [lib.underlying
+  aggregation-sourced?
+  breakout-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1601,18 +1745,25 @@
   duplicate-column-error
   find-bad-refs
   find-bad-refs-with-source
+  missing-card-error
   missing-column-error
   missing-table-alias-error
+  missing-table-error
   syntax-error
   validation-exception-error]
+ [metabase.lib.walk
+  walk-stages]
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids
+  all-referenced-entity-ids-recursive
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-metric-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids
@@ -1620,7 +1771,11 @@
   all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?
-  any-native-stage-not-introduced-by-sandbox?])
+  any-native-stage-not-introduced-by-sandbox?
+  replace-field-ids
+  replace-table-ids])
+
+(shared.ns/import-macro lib.convert/with-aggregation-list)
 
 #?(:clj
    (defmacro with-card-clean-hook
@@ -1674,3 +1829,37 @@
   Prefer this over setting the `:case-sensitive false` option directly."
   [boolean-expression :- ::lib.schema.expression/boolean]
   (lib.options/update-options boolean-expression assoc :case-sensitive false))
+
+;;; Parameter Parsing
+;;;
+;;; **Code Health:** Healthy.
+
+(shared.ns/import-fn metabase.lib.parameters.parse/parse                           parse-parameters)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter              parsed-field-filter-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter?             parsed-field-filter-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit             parsed-temporal-unit-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit?            parsed-temporal-unit-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query     parsed-referenced-card-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query?    parsed-referenced-card-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query    parsed-referenced-table-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query?   parsed-referenced-table-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet  parsed-referenced-query-snippet-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet? parsed-referenced-query-snippet-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date                      parsed-date-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date?                     parsed-date-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range                parsed-date-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range?               parsed-date-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range           parsed-date-time-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range?          parsed-date-time-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param                     parsed-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param?                    parsed-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/function-param?           parsed-function-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional                  parsed-optional-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional?                 parsed-optional-param?)
+
+(def parsed-param-no-value-placeholder
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values.
+
+  **Code Health:** Healthy."
+  metabase.lib.parameters.parse.types/no-value)

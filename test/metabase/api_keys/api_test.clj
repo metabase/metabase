@@ -19,7 +19,7 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
+        (is (= #{:name :group :unmasked_key :masked_key :id :created_at :updated_at :updated_by :last_used_at}
                (-> resp keys set)))
         (is (= (select-keys (mt/fetch-user :crowberto) [:id :common_name])
                (:updated_by resp)))
@@ -31,7 +31,7 @@
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group :name :id :created_at :updated_at :updated_by}
+        (is (= #{:unmasked_key :masked_key :group :name :id :created_at :updated_at :updated_by :last_used_at}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -50,9 +50,9 @@
                                   generated-key
                                   generated-key
                                   (api-key/generate-key)])]
-        (with-redefs [api-key/generate-key (fn [] (let [next-val (first @generated-keys)]
-                                                    (swap! generated-keys next)
-                                                    next-val))]
+        (mt/with-dynamic-fn-redefs [api-key/generate-key (fn [] (let [next-val (first @generated-keys)]
+                                                                  (swap! generated-keys next)
+                                                                  next-val))]
           ;; put an API Key in the database with that key.
           (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key generated-key
                                           :name                   "my cool name"
@@ -70,7 +70,7 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "We don't retry forever if prefix collision keeps happening"
       (let [generated-key (api-key/generate-key)]
-        (with-redefs [api-key/generate-key (constantly generated-key)]
+        (mt/with-dynamic-fn-redefs [api-key/generate-key (constantly generated-key)]
           (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key generated-key
                                           :name                   "my cool name"
                                           :user_id                (mt/user->id :crowberto)
@@ -170,7 +170,7 @@
                                 :post 200 "api-key"
                                 {:group_id group-id-1
                                  :name     (str (random-uuid))})
-          _                (assert (t2/exists? :model/ApiKey id))
+          _                (assert (t2/exists? :model/ApiKey :id id))
           _                (is (= "Cool Friends" (-> create-resp :group :name)))
           api-user-id      (t2/select-one-fn :user_id :model/ApiKey :id id)
           member-of-group? (fn [group-id]
@@ -183,7 +183,7 @@
         (is (=? {:group {:id group-id-2, :name "Uncool Friends"}}
                 (mt/user-http-request :crowberto :put 200 (format "api-key/%s" id) {:group_id group-id-2})))
         (is (= "Uncool Friends"
-               (t2/select-one-fn :name :model/PermissionsGroup group-id-2)))
+               (t2/select-one-fn :name :model/PermissionsGroup :id group-id-2)))
         (is (not (member-of-group? group-id-1)))
         (is (member-of-group? group-id-2))))))
 
@@ -198,13 +198,13 @@
                                                :name     name-1})
             api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
         (testing "before the change..."
-          (is (= name-1 (:common_name (t2/select-one :model/User api-user-id)))))
+          (is (= name-1 (:common_name (t2/select-one :model/User :id api-user-id)))))
         (testing "after the change..."
           (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                 {:name name-2})
-          (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
+          (is (= name-2 (:common_name (t2/select-one :model/User :id api-user-id)))))
         (testing "the shape of the response is correct"
-          (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key}
+          (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key :last_used_at}
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                                   {:name name-1}))))))))))
 
@@ -279,7 +279,6 @@
 (deftest api-keys-can-be-deleted
   (mt/with-empty-h2-app-db!
     (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
-
     (let [{id :id} (mt/user-http-request :crowberto
                                          :post 200 "api-key"
                                          {:group_id (:id (perms-group/all-users))
@@ -305,7 +304,7 @@
           (testing "Creation was audit logged"
             (is (=? {:details  {:name    "My API Key"
                                 :group   {:name "Cool Friends"}
-                                :user_id (t2/select-one-fn :user_id :model/ApiKey id)}
+                                :user_id (t2/select-one-fn :user_id :model/ApiKey :id id)}
                      :model    "ApiKey"
                      :model_id id
                      :user_id  (mt/user->id :crowberto)}
@@ -390,3 +389,30 @@
                                                  :updated_by_id          (mt/user->id :crowberto)}]
     (is (nil? (mt/user-http-request :crowberto :delete 204 (format "api-key/%d" api-key-id))))
     (is (true? (t2/select-one-fn :is_active :model/User :id (mt/user->id :crowberto))))))
+
+(deftest api-key-endpoints-are-admin-only-test
+  (testing "every /api/api-key endpoint rejects non-admins with a 403"
+    (doseq [[method path body] [[:get    "api-key"               nil]
+                                [:get    "api-key/count"         nil]
+                                [:post   "api-key"               {:group_id 1 :name "x"}]
+                                [:put    "api-key/1"             {:name "x"}]
+                                [:put    "api-key/1/regenerate"  nil]
+                                [:delete "api-key/1"             nil]]]
+      (testing (format "%s /%s" method path)
+        (is (= "You don't have permissions to do that."
+               (if body
+                 (mt/user-http-request :rasta method 403 path body)
+                 (mt/user-http-request :rasta method 403 path))))))))
+
+(deftest api-key-attributes-revisions-test
+  (testing "content created via an API key attributes the revision to the API key's backing user"
+    (mt/with-model-cleanup [:model/ApiKey :model/Dashboard :model/User]
+      (let [{k :unmasked_key, api-key-id :id} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                                    {:group_id (:id (perms-group/admin))
+                                                                     :name     (str (random-uuid))})
+            api-user-id (t2/select-one-fn :user_id :model/ApiKey :id api-key-id)
+            dashboard   (client/client :post 200 "dashboard"
+                                       {:request-options {:headers {"x-api-key" k}}}
+                                       {:name "API key dashboard"})]
+        (is (= api-user-id
+               (t2/select-one-fn :user_id :model/Revision :model "Dashboard" :model_id (:id dashboard))))))))

@@ -2,6 +2,8 @@
   "Shared helpers for custom-viz-plugin tests: building in-memory tar+gzip
    archives that match the format `validate-bundle!` expects."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayOutputStream)
@@ -33,11 +35,18 @@
 (defn valid-bundle-bytes
   "Build a minimal valid plugin tar.gz archive: manifest at the root with the
    given `identifier` as `name`, a trivial `dist/index.js`, and optional
-   `:icon` / `:metabase-version` overrides merged into the manifest."
-  ^bytes [identifier & [{:keys [icon metabase-version]}]]
+   `:icon` / `:metabase-version` / `:sdk-version` overrides merged into the
+   manifest."
+  ^bytes [identifier & [{:keys [icon metabase-version sdk-version]}]]
   (let [manifest (cond-> {:name identifier}
                    icon             (assoc :icon icon)
-                   metabase-version (assoc-in [:metabase :version] metabase-version))]
+                   metabase-version (assoc-in [:metabase :version] metabase-version)
+                   sdk-version      (assoc-in [:sdk :version] sdk-version))]
     (make-tgz-bytes
      [["metabase-plugin.json" (json/encode manifest)]
       ["dist/index.js" "console.log('hi')"]])))
+
+(defn bundle-hash
+  "The sha256 hex of `bundle-bytes`, as stored in `custom_viz_plugin.bundle_hash`."
+  ^String [^bytes bundle-bytes]
+  (-> bundle-bytes buddy-hash/sha256 codecs/bytes->hex))

@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
-  (:import org.semver4j.Semver))
+  (:import
+   (org.semver4j Semver)))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -19,19 +20,25 @@
   (testing "parses standard versions"
     (doseq [input ["v1.57.0" "1.57.0" "v0.50.2" "v1.57.16"]]
       (is (some? (matching/parse-version input)) (str "should parse: " input))))
-  (testing "edition prefix preserved — 0.57 and 1.57 are distinct for range matching"
-    (is (not= (matching/parse-version "v0.57.0")
-              (matching/parse-version "v1.57.0"))))
+  (testing "the segments after the edition become the Semver"
+    (are [input expected] (= expected (str (matching/parse-version input)))
+      "v1.63.21.1"      "63.21.1"
+      "v1.57.16"        "57.16.0"
+      "v0.65.0.14-beta" "65.0.14-beta"
+      "v0.58.0-beta"    "58.0.0-beta"
+      "1.57"            "57.0.0"))
   (testing "pre-release sorts before stable"
     (is (.isLowerThan ^Semver (matching/parse-version "v0.58.0-beta")
-                      ^Semver (matching/parse-version "v0.58.0"))))
+                      ^Semver (matching/parse-version "v0.58.0")))
+    (is (.isLowerThan ^Semver (matching/parse-version "v0.65.0.14-beta")
+                      ^Semver (matching/parse-version "v0.65.0.14"))))
   (testing "invalid formats return nil"
     (are [input] (nil? (matching/parse-version input))
       "vLOCAL_DEV"
+      "v2.57.0"
       nil
       "")))
 
-#_:clj-kondo/ignore
 (deftest ^:parallel affected-by-version?-test
   (let [v            matching/parse-version
         in-range?    @#'matching/affected-by-version?
@@ -48,7 +55,7 @@
         false "1.57.17"                 ; one patch after fixed
         false "1.56.0"                  ; before range
         false "1.59.0"                  ; past range
-        false "0.57.5"))                ; OSS doesn't match EE range
+        true  "0.57.5"))                ; edition is ignored
     (testing "multiple ranges — any range counts"
       (are [expected version] (= expected (in-range? (v version) multi-range))
         true  "1.57.5"                  ; in first range
@@ -64,7 +71,17 @@
         false "0.50.2"
         false "1.0.0"))
     (testing "pre-release of fixed version is still in range"
-      (is (true? (in-range? (v "1.57.16-beta") single-range))))
+      (is (true? (in-range? (v "1.57.16-beta") single-range)))
+      (is (true? (in-range? (v "1.65.0.14-beta") [{:min "1.65.0" :fixed "1.65.0.14"}]))))
+    (testing "4-segment patch builds are compared on every segment (#85923)"
+      (are [expected version] (= expected (in-range? (v version) [{:min "1.59.0" :fixed "1.63.21.1"}]))
+        true  "1.63.21"                 ; base release is not mitigated
+        true  "1.63.21.0"
+        false "1.63.21.1"               ; at fixed patch build
+        false "1.63.21.2"
+        false "1.63.22")
+      (is (true? (in-range? (v "1.63.21.1") [{:min "1.59.0" :fixed "1.63.22"}]))
+          "patch build before a 3-segment fixed version is still in range"))
     (testing "empty affected_versions → never in range"
       (is (false? (in-range? (v "1.57.5") []))))
     (testing "nil version (vLOCAL_DEV / vUNKNOWN parse to nil) → never in range"
@@ -75,9 +92,11 @@
       (is (false? (in-range? nil []))))))
 
 (deftest ^:parallel evaluate-advisory-test
-  (testing ":error query-result propagates regardless of in-range?"
-    (is (= :error (matching/evaluate-advisory true  :error)))
-    (is (= :error (matching/evaluate-advisory false :error))))
+  (testing ":error only survives when the version check didn't already settle it"
+    (is (= :error (matching/evaluate-advisory true :error)))
+    (testing "out-of-range: the version alone rules the instance out, so an
+              undeterminable query must not escalate to :error"
+      (is (= :not_affected (matching/evaluate-advisory false :error)))))
   (testing "falsey query-result → :not_affected regardless of in-range?"
     (is (= :not_affected (matching/evaluate-advisory true  false)))
     (is (= :not_affected (matching/evaluate-advisory false false))))
@@ -103,12 +122,12 @@
                                 :where [:= :email "nonexistent@example.com"] :limit 1}}))))
   (testing "falls back to :default when dialect not present"
     (is (true? (matching/execute-matching-query!
-                {:some_other_db {:select [1] :from [:core_user]
-                                 :where [:= :email "nonexistent@example.com"] :limit 1}
-                 :default       {:select [1] :from [:core_user] :limit 1}}))))
+                {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user]
+                                                                       :where [:= :email "nonexistent@example.com"] :limit 1}
+                 :default                                             {:select [1] :from [:core_user] :limit 1}}))))
   (testing "no dialect match and no default → :error"
     (is (= :error (matching/execute-matching-query!
-                   {:some_other_db {:select [1] :from [:core_user] :limit 1}}))))
+                   {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user] :limit 1}}))))
   (testing "query against missing table returns :error"
     (is (= :error (matching/execute-matching-query!
                    {:default {:select [1] :from [:nonexistent_table_xyz] :limit 1}}))))
@@ -128,7 +147,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -144,7 +163,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:core_user]
                                                     :where [:= :email "nonexistent@example.com"] :limit 1}}
                       :match_status      "active"
@@ -160,7 +179,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    nil
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -175,7 +194,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -183,10 +202,32 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
+(deftest evaluate-advisory!-out-of-range-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
+    ;; An advisory whose query names a table this version doesn't have yet. Reported as
+    ;; :error before, which the notification task treats the same as :active — so instances
+    ;; the version check had already cleared got notified anyway. See GDGT-2972.
+    (testing "out-of-range + query error → :not_affected, never :error"
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     {:advisory_id       "SC-MATCH-005"
+                      :severity          "high"
+                      :title             "Test"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                      :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                      :match_status      "unknown"
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
+        (matching/evaluate-advisory! advisory)
+        (is (=? {:match_status      :not_affected
+                 :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
-  ;; The matching_query in these tests would throw if executed — that's how we
-  ;; verify the short-circuit actually avoids running the query.
+    ;; The matching_query in these tests would throw if executed — that's how we
+    ;; verify the short-circuit actually avoids running the query.
     (let [past #t "2020-01-01T00:00:00Z"]
       (testing "out-of-range + already :resolved → skip entirely (query not run, timestamp preserved)"
         (mt/with-temp [:model/SecurityAdvisory advisory
@@ -237,10 +278,13 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :resolved
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
-  ;; must never produce :active — we cannot claim an instance is affected when
-  ;; we can't even compare its version to the affected ranges.
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
+;; must never produce :active — we cannot claim an instance is affected when
+;; we can't even compare its version to the affected ranges.
+(deftest evaluate-advisory!-unparseable-version-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
     (doseq [tag ["vLOCAL_DEV" "vUNKNOWN"]]
       (testing (str "unparseable instance version " (pr-str tag) " never yields :active")
         (is (nil? (matching/parse-version tag)))
@@ -250,8 +294,8 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                      ;; Range that would normally match any realistic version.
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        ;; Range that would normally match any realistic version.
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "unknown"
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -276,7 +320,7 @@
                             :title             "Test"
                             :description       "Test"
                             :remediation       "Upgrade"
-                            :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                            :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                             :matching_query    query
                             :match_status      prior-status
                             :acknowledged_at   acked-at
@@ -297,7 +341,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "active"
                         :acknowledged_at   acked-at
@@ -316,7 +360,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "not_affected"
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -334,7 +378,7 @@
                     :title             "Active advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
@@ -345,7 +389,7 @@
                     :title             "Not affected advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:core_user]
                                                   :where [:= :email "nonexistent@example.com"] :limit 1}}
                     :match_status      "not_affected"
@@ -357,7 +401,7 @@
                     :title             "Erroring advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"

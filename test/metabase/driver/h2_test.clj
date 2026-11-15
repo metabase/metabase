@@ -1,4 +1,4 @@
-(ns metabase.driver.h2-test
+(ns ^:mb/driver-tests metabase.driver.h2-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.h2-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -10,45 +10,59 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.datasets :as mtd]
-   [metabase.test.data.env :as tx.env]
-   [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; temporary hack to run all tests against both the old :h2 and new mbql5 :h2
-;; remove this once :h2 does mbql5 by default!
-(defn- test-driver [driver thunk]
-  (when (contains? (tx.env/test-drivers) driver)
-    (testing (str "\n" driver "\n")
-      (driver/with-driver (tx/the-driver-with-test-extensions driver)
-        (thunk))
-      ;; the above is the original definition of test-driver, but we add in
-      ;; this clause to avoid having to rewrite all the tests below twice:
-      (when (= driver :h2)
-        (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
-          (thunk))))))
+(deftest default-schema-test
+  (mt/test-driver :h2
+    (testing "default"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :h2 (lib.metadata/database (mt/metadata-provider))))))
+    (testing "schema configured in the JDBC URL"
+      (let [details (update (:details (mt/db)) :db str ";SCHEMA=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :h2 (driver.u/lib-database (:id database))))))))))
 
-(use-fixtures :each (fn [f]
-                      ;; NB: because of test parallelism, this *will* affect other non-h2
-                      ;; tests, but the check above in the test-driver function will
-                      ;; prevent it from actually doing anything different in those tests.
-                      (with-redefs [mtd/-test-driver test-driver]
-                        (f))))
+(deftest database-error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :h2
+    (testing "An error that lazy execution raises while rows are read is :invalid-query, like one raised at the start"
+      (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
+            sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (mt/with-db database
+            (is (=? {:status     :failed
+                     :error_type :invalid-query
+                     :error      #"(?s)Division by zero.*"}
+                    (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) sql)))))))))))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "local H2 databases have no network host"
+    (is (= [] (driver/connection-hosts :h2 {:db "file:./sample.db"})))
+    (is (= [] (driver/connection-hosts :h2 {:db "mem:test"}))))
+  (testing "remote H2 TCP and SSL connection strings expose their hosts"
+    (are [db expected] (= expected (driver/connection-hosts :h2 {:db db}))
+      "tcp://10.0.0.5:9092/sample"          ["10.0.0.5"]
+      "jdbc:h2:tcp://db.example.com/sample" ["db.example.com"]
+      "ssl://[::1]:9092/sample"             ["::1"])))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -131,7 +145,7 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :h2
     (is (= (t/zone-id "Z")
-           (-> (driver/db-default-timezone :h2 (mt/db))
+           (-> (driver/db-default-timezone :h2 (lib.metadata/database (mt/metadata-provider)))
                t/zone-id
                .normalized)))))
 
@@ -217,7 +231,7 @@
                                                    :display-name "date"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                   :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type :date/all-options
                             :target [:dimension [:template-tag "date"]]
                             :value "past30years"}]}))))))
@@ -252,8 +266,7 @@
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
-    #_{:clj-kondo/ignore [:equals-true]}
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (lib.metadata/database (mt/metadata-provider)) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -273,17 +286,14 @@
       "insert into venues (name) values ('bill')"
       "create table venues"
       "alter table venues add column address varchar(255)")
-
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (lib.metadata/database (mt/metadata-provider)) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
-
     (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
-
     (is (= nil (#'h2/check-action-commands-allowed
                 {:database (mt/id)
                  :engine :h2
@@ -294,12 +304,12 @@
     (let [trigger-creation-attempt (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                                                    "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   #"DDL commands are not allowed to be used with h2."
-                   (#'h2/check-action-commands-allowed
-                    {:database (mt/id)
-                     :engine :h2
-                     :native {:query trigger-creation-attempt}}))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"DDL commands are not allowed to be used with H2."
+                            (#'h2/check-action-commands-allowed
+                             {:database (mt/id)
+                              :engine :h2
+                              :native {:query trigger-creation-attempt}}))))))
 
 (defn- check-read-only-statements [query]
   (mt/with-metadata-provider (mt/id)
@@ -327,22 +337,60 @@
       "update venues set name = 'bill'; some query that can't be parsed;")))
 
 (deftest ^:parallel check-read-only-test-2
-  (testing "not read only statements should fail"
-    (are [query] (thrown?
-                  clojure.lang.ExceptionInfo
-                  #"Only SELECT statements are allowed in a native query."
-                  (mt/with-metadata-provider (mt/id)
-                    (#'h2/check-read-only-statements
-                     {:database 1
-                      :type     :native
-                      :native   {:query query}}))
-                  "update venues set name = 'bill'")
+  (testing "not read only statements are refused as :invalid-query, so callers report a query error, not an internal one"
+    (are [query] (=? {:message "Only SELECT statements are allowed in a native query."
+                      :data    {:type :invalid-query}}
+                     (try
+                       (mt/with-metadata-provider (mt/id)
+                         (#'h2/check-read-only-statements
+                          {:database 1
+                           :type     :native
+                           :native   {:query query}}))
+                       (catch clojure.lang.ExceptionInfo e
+                         {:message (ex-message e), :data (ex-data e)})))
+      "update venues set name = 'bill'"
       "insert into venues (name) values ('bill')"
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                       "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                       "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest ^:parallel unsupported-functions-detection-test
+  (let [hits #'h2/unsupported-functions-in-query]
+    (testing "unsupported built-in functions are detected regardless of statement type, casing, or comments"
+      (are [expected query] (= expected (hits query))
+        #{"FILE_READ"}   "SELECT FILE_READ('a','UTF-8')"
+        #{"CSVREAD"}     "CALL CSVREAD('a')"
+        #{"FILE_WRITE"}  "WITH w AS (SELECT FILE_WRITE(STRINGTOUTF8('x'),'y') AS b) SELECT b FROM w"
+        #{"CSVWRITE"}    "CALL CSVWRITE('a','SELECT 1')"
+        #{"LINK_SCHEMA"} "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')"
+        #{"MEMORY_USED"} "select memory_used()"
+        ;; a comment between the function name and its arg list is still detected
+        #{"FILE_READ"}   "SELECT FiLe_ReAd/* c */ ('x')"
+        #{"FILE_READ"}   "SELECT 1 AS \"a'\", FILE_READ('/cat_pics.gif','UTF-8')"
+        #{"FILE_READ"}   "SELECT 'FILE_READ' AS col" ;; the name only appears inside a string literal but we disallow it anyway
+        ))
+    (testing "ordinary queries are not flagged"
+      (are [query] (nil? (hits query))
+        "SELECT * FROM orders"
+        ;; identifier merely containing an unsupported name as a substring
+        "SELECT my_file_read_col FROM t"
+        nil))))
+
+(deftest ^:parallel check-read-only-rejects-unsupported-functions-test
+  (testing "unsupported built-in functions are rejected even inside an allowed SELECT/CALL"
+    (are [query] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"not supported in native queries"
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
+      "SELECT FILE_READ('a','UTF-8')"
+      "CALL CSVREAD('a')"
+      "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2
@@ -379,7 +427,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
-               (driver/syncable-schemas driver/*driver* (mt/db))))))))
+               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
@@ -392,7 +440,7 @@
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
               (is (= audit-db-expected-id audit-db-id))
-              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
+              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database audit-db-id))]
                 (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
                 (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
                   (is (= #{:classname :subprotocol :subname :datasource}
@@ -416,8 +464,8 @@
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
             :errors {"RANKING" "This Ranking value already exists."}}
-           (with-redefs [h2.actions/constraint->column-names (fn [& _args]
-                                                               ["RANKING"])]
+           (mt/with-dynamic-fn-redefs [h2.actions/constraint->column-names (fn [& _args]
+                                                                             ["RANKING"])]
              (sql-jdbc.actions/maybe-parse-sql-error
               :h2 actions.error/violate-unique-constraint nil nil
               "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]"))))))
@@ -466,3 +514,28 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-check-constraint nil :model.row/create
             "Check constraint violation: \"users_email_check\"")))))
+
+;;; Metabase never reads Java objects out of H2 query results. Requiring the h2 driver registers a
+;;; JavaObjectSerializer that refuses to reconstruct them, so reading a JAVA_OBJECT value fails rather
+;;; than deserializing arbitrary classes. This verifies that refusal at the serializer itself.
+
+(deftest ^:parallel java-object-deserialization-is-refused-test
+  (testing "the registered H2 serializer refuses to reconstruct a Java object"
+    (let [^org.h2.api.JavaObjectSerializer serializer @#'h2/java-object-serializer]
+      (is (thrown-with-msg? Exception #"(?i)not supported"
+                            (.deserialize serializer (byte-array 0))))))
+  (testing "ordinary values still read normally"
+    (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
+      (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))
+
+(deftest workspace-isolation-details-uses-admin-overlay-test
+  (mt/test-driver :h2
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (testing "a Toucan Database row's admin overlay supplies the connection string the workspace user's is built off"
+         (let [database (assoc (mt/db) :admin_details {:db "mem:ws_admin_overlay;USER=ADMIN;PASSWORD=admin"})]
+           (driver.conn/with-admin-connection
+             (is (str/starts-with? (-> (driver/workspace-isolation-details :h2 database {:id 1 :name "ws"})
+                                       :database_details
+                                       :db)
+                                   "mem:ws_admin_overlay")))))))))

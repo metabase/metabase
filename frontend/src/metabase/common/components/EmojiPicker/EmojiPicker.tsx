@@ -4,15 +4,13 @@ import {
   type Emoji as EmojiType,
   EmojiPicker as Picker,
 } from "frimousse";
-import { type CSSProperties, type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
 
 import S from "./EmojiPicker.module.css";
-
-// Snapshot from https://cdn.jsdelivr.net/npm/emojibase-data@16.0.3/en/data.json
-const EMOJIBASE_URL = "/app/assets/emoji";
+import { resolveEmojiData } from "./emoji-data";
 
 type EmojiPickerProps = {
   search?: string;
@@ -33,11 +31,11 @@ export function EmojiPicker({
   const searchValue = controlledSearch ?? search;
 
   return (
-    <Paper data-testid="emoji-picker" radius="sm">
+    <Paper data-testid="emoji-picker" radius="xs">
       <Picker.Root
         className={S.root}
-        emojibaseUrl={EMOJIBASE_URL}
         locale="en"
+        resolveEmojiData={resolveEmojiData}
         onEmojiSelect={(emoji) => onEmojiSelect?.(emoji)}
       >
         {!hideSearch && (
@@ -85,7 +83,7 @@ function CategoryHeader({
   ...props
 }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box px="sm" pos="sticky" top={0} bg="background-primary" {...props}>
+    <Box px="sm" pos="sticky" top={0} bg="background_page-primary" {...props}>
       <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>
@@ -100,17 +98,17 @@ function Emoji({
 }: Omit<EmojiPickerListEmojiProps, "color">) {
   return (
     <ActionIcon
-      c="text-primary"
+      variant="subtle"
       component="button"
-      w="2rem"
       fz="1.25rem"
-      ref={ref as React.RefObject<HTMLButtonElement>}
+      // Unjustified type cast. FIXME
+      ref={ref as React.RefObject<HTMLButtonElement | null>}
       data-emoji={emoji.emoji}
       styles={{
         root: {
           // for colored backgrounds
           "--emoji": `"${emoji.emoji}"`,
-        } as CSSProperties,
+        },
       }}
       {...props}
     >

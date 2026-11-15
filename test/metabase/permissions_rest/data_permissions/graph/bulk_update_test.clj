@@ -372,7 +372,6 @@
                             (call-count))]
           (is (<= query-count 4)
               (format "Expected constant query count but got %d — possible N+1 regression" query-count)))
-
         ;; Verify the permissions actually took effect by spot-checking a few values
         (let [result (data-perms.graph/data-permissions-graph :group-ids [g1 g2 g3])]
           (testing "g1/db1 db-level perms applied"

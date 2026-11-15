@@ -70,21 +70,26 @@ export function useTemporalGranularity(
     ? Lib.temporalBucket(temporalColumn)
     : null;
 
-  const currentUnit = currentBucket
-    ? (Lib.displayInfo(query, stageIndex, currentBucket)
-        .shortName as TemporalUnit)
+  const currentShortName = currentBucket
+    ? Lib.displayInfo(query, stageIndex, currentBucket).shortName
     : undefined;
+  const currentUnit: TemporalUnit | undefined =
+    currentShortName && currentShortName !== "default"
+      ? currentShortName
+      : undefined;
 
   const availableBuckets = temporalColumn
     ? Lib.availableTemporalBuckets(query, stageIndex, temporalColumn)
     : [];
 
-  const availableItems: TemporalGranularityItem[] = availableBuckets.map(
+  const availableItems: TemporalGranularityItem[] = availableBuckets.flatMap(
     (bucket) => {
       const info = Lib.displayInfo(query, stageIndex, bucket);
-      const unit = info.shortName as TemporalUnit;
-
-      return { bucket, unit, label: Lib.describeTemporalUnit(unit) };
+      if (info.shortName === "default") {
+        return [];
+      }
+      const unit = info.shortName;
+      return [{ bucket, unit, label: Lib.describeTemporalUnit(unit) }];
     },
   );
 

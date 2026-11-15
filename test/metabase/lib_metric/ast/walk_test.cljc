@@ -87,7 +87,6 @@
     (is (ast.walk/node? {:node/type :ast/root}))
     (is (ast.walk/node? {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values [1]}))
     (is (ast.walk/node? {:node/type :ast/column :id 1})))
-
   (testing "returns false for non-nodes"
     (is (not (ast.walk/node? {})))
     (is (not (ast.walk/node? nil)))
@@ -100,7 +99,6 @@
     (is (ast.walk/filter-node? filter-b))
     (is (ast.walk/filter-node? (and-filter filter-a filter-b)))
     (is (ast.walk/filter-node? (not-filter filter-a))))
-
   (testing "returns false for non-filter nodes"
     (is (not (ast.walk/filter-node? {:node/type :ast/root})))
     (is (not (ast.walk/filter-node? {:node/type :ast/column :id 1})))
@@ -110,7 +108,6 @@
   (testing "returns true for source nodes"
     (is (ast.walk/source-node? {:node/type :source/metric :id 1}))
     (is (ast.walk/source-node? {:node/type :source/measure :id 1})))
-
   (testing "returns false for non-source nodes"
     (is (not (ast.walk/source-node? {:node/type :ast/root})))
     (is (not (ast.walk/source-node? filter-a)))))
@@ -119,7 +116,6 @@
   (testing "returns true for dimension ref nodes"
     (is (ast.walk/dimension-ref-node? dim-ref-1))
     (is (ast.walk/dimension-ref-node? (dimension-ref uuid-1 {:temporal-unit :month}))))
-
   (testing "returns false for other nodes"
     (is (not (ast.walk/dimension-ref-node? {:node/type :ast/dimension :id uuid-1})))
     (is (not (ast.walk/dimension-ref-node? filter-a)))))
@@ -204,7 +200,6 @@
                  #(= :filter/comparison (:node/type %))
                  sample-ast)]
       (is (= :filter/comparison (:node/type found)))))
-
   (testing "returns nil when not found"
     (let [found (ast.walk/find-first
                  #(= :nonexistent (:node/type %))
@@ -245,13 +240,11 @@
       ;; Since only one child remains, :filter/and should be unwrapped
       (is (= :filter/comparison (get-in result [:expression :ast :filter :node/type])))
       (is (= := (get-in result [:expression :ast :filter :operator])))))
-
   (testing "removes all filters leaving nil"
     (let [all-comparison (ast.walk/remove-filters
                           #(= :filter/comparison (:node/type %))
                           sample-ast)]
       (is (nil? (get-in all-comparison [:expression :ast :filter])))))
-
   (testing "handles nested compound filters"
     (let [nested-source-query (assoc sample-source-query
                                      :filter (and-filter
@@ -265,7 +258,6 @@
       ;; Inner :or should unwrap to just filter-a
       (is (= :filter/and (get-in result [:expression :ast :filter :node/type])))
       (is (= 2 (count (get-in result [:expression :ast :filter :children]))))))
-
   (testing "handles nested compound where all inner children are removed"
     (let [nested-source-query (assoc sample-source-query
                                      :filter (and-filter

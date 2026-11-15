@@ -1,28 +1,18 @@
 (ns metabase.transforms.feature-gating
   (:require
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.api.common :as api]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.malli :as mu]))
 
-(defn query-transforms-enabled?
-  "Query transforms: available in OSS, requires :transforms-basic feature in EE.
-  Note: OSS intentionally gets query transforms without a license."
-  []
-  (or (not (premium-features/is-hosted?))
-      (premium-features/has-feature? :transforms-basic)))
-
-(defn python-transforms-enabled?
-  "Python transforms: EE only, requires both :transforms-basic and :transforms-python."
-  []
-  (and (premium-features/has-feature? :transforms-basic)
-       (premium-features/has-feature? :transforms-python)))
-
-(defn enabled-source-types
+(mu/defn enabled-source-types :- [:set :string]
   "Returns set of enabled source types for WHERE clause filtering."
   []
   (cond-> #{}
-    (query-transforms-enabled?) (into ["native" "mbql"])
-    (python-transforms-enabled?) (conj "python")))
+    (premium-features/query-transforms-enabled?) (into ["native" "mbql"])
+    (premium-features/python-transforms-enabled?) (conj "python")))
 
-(defn any-transforms-enabled?
-  "Whether any transforms are enabled."
+(mu/defn enabled-source-types-for-user :- [:maybe [:set :string]]
+  "Returns set of enabled source types for WHERE clause filtering."
   []
-  (or (query-transforms-enabled?) (python-transforms-enabled?)))
+  (when (api/entitled-data-analyst?)
+    (enabled-source-types)))

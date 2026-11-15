@@ -1,6 +1,35 @@
 import { EditorState } from "@codemirror/state";
 
-import { getPlaceholderText, matchTagAtCursor } from "./util";
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import {
+  getPlaceholderText,
+  getReferencedCardIds,
+  matchTagAtCursor,
+} from "./util";
+
+describe("getReferencedCardIds", () => {
+  const database = createSampleDatabase();
+  const provider = createMetadataProvider({
+    databaseId: database.id,
+    metadata: createMockMetadata({ databases: [database] }),
+  });
+
+  function createQuery(text: string) {
+    return Lib.createTestNativeQuery(provider, { query: text });
+  }
+
+  it("should return the ids of the cards referenced in the query", () => {
+    const query = createQuery("SELECT * FROM {{#1-foo}}");
+    expect(getReferencedCardIds(query)).toEqual([1]);
+
+    const updatedQuery = createQuery("SELECT * FROM {{#1-foo}}, {{#2-bar}}");
+    expect(getReferencedCardIds(updatedQuery)).toEqual([1, 2]);
+  });
+});
 
 describe("matchTagAtCursor", () => {
   function setup(

@@ -40,18 +40,14 @@
       (insert-score! recent-score-label (t/minus now (t/months 2)))
       (insert-score! boundary-score-label (t/minus now (t/months 3)))
       (insert-score! old-score-label (t/minus now (t/months 4)))
-
       (is (= 3 (t2/count :model/DataComplexityScore
                          {:where [:like :fingerprint (str fingerprint-prefix "%")]})))
-
       (#'complexity-score-trimmer/trim-old-complexity-score-data!)
-
       (is (some? (t2/select-one :model/DataComplexityScore
                                 :fingerprint (str fingerprint-prefix recent-score-label))))
       (is (some? (t2/select-one :model/DataComplexityScore
                                 :fingerprint (str fingerprint-prefix boundary-score-label))))
       (is (nil? (t2/select-one :model/DataComplexityScore
                                :fingerprint (str fingerprint-prefix old-score-label))))
-
       (is (= 2 (t2/count :model/DataComplexityScore
                          {:where [:like :fingerprint (str fingerprint-prefix "%")]}))))))

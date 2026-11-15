@@ -27,12 +27,12 @@
   ;; There is a lot of overlap with the /api/email test, but enough differences that we keep them separate.
   ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email test?"
   (testing "PUT /api/ee/email/override - check updating email settings"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot call without hosting"
           (is (= "API is not available on non-hosted servers."
                  (mt/user-http-request :crowberto :put 402 "ee/email/override" default-email-override-settings))))))
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features []
         (testing "Cannot call without the :cloud-custom-smtp feature"
           (is (= "Custom SMTP is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
@@ -42,7 +42,7 @@
               body default-email-override-settings]
           (doseq [;; test what happens on both a successful and an unsuccessful connection.
                   [success? f] {true  (fn [thunk]
-                                        (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                        (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                                           (thunk)))
                                 false (fn [thunk]
                                         (with-redefs [email/retry-delay-ms 0]
@@ -66,7 +66,6 @@
                                 default-email-override-settings
                                 original-values)
                               (email-override-settings)))))))))))
-
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
           (is (= "Invalid email-smtp-security-override value"
@@ -76,39 +75,39 @@
         (testing "Updating values with obfuscated password (#23919)"
           (mt/with-temporary-setting-values [email-smtp-host-override "www.test.com"
                                              email-smtp-password-override "preexisting"]
-            (with-redefs [email/test-smtp-connection (fn [settings]
-                                                       (let [obfuscated? (str/starts-with? (:pass settings) "****")]
-                                                         (is (not obfuscated?) "We received an obfuscated password!")
-                                                         (if obfuscated?
-                                                           {::email/error (ex-info "Sent obfuscated password" {})}
-                                                           settings)))]
+            (mt/with-dynamic-fn-redefs [email/test-smtp-connection (fn [settings]
+                                                                     (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                                                       (is (not obfuscated?) "We received an obfuscated password!")
+                                                                       (if obfuscated?
+                                                                         {::email/error (ex-info "Sent obfuscated password" {})}
+                                                                         settings)))]
               (testing "If we don't change the password we don't see the password"
                 (let [payload (-> (email-override-settings)
-                                ;; user changes one property
+                                  ;; user changes one property
                                   (assoc :email-smtp-port 999)
-                                ;; the FE will have an obfuscated value
+                                  ;; the FE will have an obfuscated value
                                   (update :email-smtp-password-override setting/obfuscate-value))
                       response (mt/user-http-request :crowberto :put 200 "ee/email/override" payload)]
                   (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password-override response)))))
               (testing "If we change the password we can receive the password"
                 (let [payload (-> (email-override-settings)
-                                ;; user types in a new password
+                                  ;; user types in a new password
                                   (assoc :email-smtp-password-override "new-password"))
                       response (mt/user-http-request :crowberto :put 200 "ee/email/override" payload)]
                   (is (= "new-password" (:email-smtp-password-override response))))))))))))
 
 (deftest clear-email-override-settings-test
   (testing "DELETE /api/ee/email/override"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot call without hosting"
           (is (= "API is not available on non-hosted servers."
                  (mt/user-http-request :crowberto :delete 402 "ee/email/override" default-email-override-settings))))))
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (tu/discard-setting-changes [email-smtp-host-override email-smtp-port-override email-smtp-security-override
                                      email-smtp-username-override email-smtp-password-override]
-          (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
             (is (= (-> default-email-override-settings
                        (assoc :with-corrections {})
                        (update :email-smtp-security-override name))

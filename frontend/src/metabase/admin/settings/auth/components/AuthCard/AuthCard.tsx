@@ -1,23 +1,23 @@
-import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router";
+import type { JSX, ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Anchor, Button, Text } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
-import type { SettingDefinition } from "metabase-types/api";
-
+import { Link } from "metabase/common/components/Link";
+import { SettingsSection } from "metabase/settings-components";
 import {
-  CardBadge,
-  CardDescription,
-  CardHeader,
-  CardMenu,
-  CardRoot,
-  CardTitle,
-} from "./AuthCard.styled";
+  ActionIcon,
+  Anchor,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  Title,
+} from "metabase/ui";
+import type { SettingDefinition } from "metabase-types/api";
 
 export interface AuthCardProps {
   setting?: Pick<SettingDefinition, "is_env_setting" | "env_name">;
@@ -126,17 +126,33 @@ export const AuthCardBody = ({
 
   return (
     <SettingsSection>
-      <CardRoot data-testid={`${type}-setting`}>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
+      <Box flex={1} maw="52rem" data-testid={`${type}-setting`}>
+        <Flex align="flex-end" gap="lg" mb="xxs">
+          <Title order={2} c="text-primary">
+            {title}
+          </Title>
           {isConfigured && (
-            <CardBadge isEnabled={isEnabled} data-testid="card-badge">
+            <Box
+              c={isEnabled ? "core-brand" : "feedback-negative"}
+              bg={
+                isEnabled
+                  ? "background_surface-brand-subtle"
+                  : "background_page-secondary"
+              }
+              py="xxs"
+              px="xs"
+              bdrs="xxs"
+              fw="bold"
+              data-testid="card-badge"
+            >
               {badgeContent}
-            </CardBadge>
+            </Box>
           )}
           {children}
-        </CardHeader>
-        <CardDescription>{description}</CardDescription>
+        </Flex>
+        <Box c="text-primary" fz="md" lh="1.5rem" mb="lg" maw="40rem">
+          {description}
+        </Box>
         {footer ? (
           footer
         ) : (
@@ -144,7 +160,7 @@ export const AuthCardBody = ({
             <Button>{buttonLabel}</Button>
           </Link>
         )}
-      </CardRoot>
+      </Box>
     </SettingsSection>
   );
 };
@@ -160,22 +176,29 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const menuItems = useMemo(
-    () =>
-      [
-        {
-          title: isEnabled ? t`Pause` : t`Resume`,
-          icon: isEnabled ? "pause" : "play",
-          action: () => onChange(!isEnabled),
-        },
-        onDeactivate && {
-          title: `Deactivate`,
-          icon: "close",
-          action: onDeactivate,
-        },
-      ].filter(isNotNull),
-    [isEnabled, onChange, onDeactivate],
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon aria-label={t`Actions`} variant="subtle" ml="auto">
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
+          onClick={() => onChange(!isEnabled)}
+        >
+          {isEnabled ? t`Pause` : t`Resume`}
+        </Menu.Item>
+        {onDeactivate && (
+          <Menu.Item
+            leftSection={<Icon name="close" aria-hidden />}
+            onClick={onDeactivate}
+          >
+            {t`Deactivate`}
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
-
-  return <CardMenu triggerIcon="ellipsis" items={menuItems} />;
 };

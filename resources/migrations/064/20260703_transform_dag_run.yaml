@@ -1,0 +1,349 @@
+## DAG-reprocess runs: reprocessing the transitive dependency DAG rooted at a single transform
+## (upstream or downstream). These are coordinated multi-transform runs, like scheduled job runs,
+## but triggered manually from one seed transform rather than by a job. They get their own table
+## (transform_dag_run) rather than overloading transform_job_run, and each member transform_run is
+## linked back to its coordinating DAG run via transform_run.dag_run_id (mirroring job_run_id).
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.oxRKX6
+      author: bronsa
+      comment: Create transform_dag_run table to track manual DAG-reprocess runs seeded from a single transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transform_dag_run
+      changes:
+        - createTable:
+            tableName: transform_dag_run
+            remarks: Tracks manual DAG-reprocess runs (reprocessing a transform's upstream/downstream dependency DAG)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_transform_id
+                  type: int
+                  remarks: The seed transform the DAG reprocess was triggered from (null if it was later deleted)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_transform_name
+                  type: ${text.type}
+                  remarks: Name of the seed transform at run start, preserved after its deletion
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_transform_entity_id
+                  type: char(21)
+                  remarks: entity_id of the seed transform at run start, for potential reconnection when it is recreated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: direction
+                  type: varchar(20)
+                  remarks: DAG traversal direction (upstream/downstream) that selected the transforms to run
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_count
+                  type: int
+                  remarks: Number of transforms the run's plan selected to run, for display in run listings
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: Current status of the run (started, succeeded, failed, timeout, canceled)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: ${boolean.type}
+                  remarks: True only for currently running DAG runs, null for the others
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: When the DAG run started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: When the DAG run completed (null if still running)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Human-readable message about the run; may contain the error message when the run failed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user who triggered the DAG run (null if the user was later deleted)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Heartbeat timestamp stamped periodically while the run executes; a stale value means the owning process died
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this DAG run was created.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this DAG run was last updated.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: transform_dag_run
+
+  - changeSet:
+      id: v64.btfmlX
+      author: bronsa
+      comment: Index transform_dag_run on source_transform_id for per-transform DAG run history lookups (also backs the FK below)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_dag_run
+                indexName: idx_transform_dag_run_source_transform_id
+      changes:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_source_transform_id
+            columns:
+              - column:
+                  name: source_transform_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.dQGhvK
+      author: bronsa
+      comment: >-
+        FK from transform_dag_run.source_transform_id to transform; SET NULL on delete so DAG-run
+        history survives the transform (as for transform_run.transform_id), displayable via the
+        run-start name snapshot
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyTableName: transform_dag_run
+                foreignKeyName: fk_transform_dag_run_source_transform_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_dag_run_source_transform_id
+            baseTableName: transform_dag_run
+            baseColumnNames: source_transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.yY6UC9
+      author: bronsa
+      comment: Index transform_dag_run on user_id (backs the FK below and covers per-user run history lookups)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_dag_run
+                indexName: idx_transform_dag_run_user_id
+      changes:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.BTINKo
+      author: bronsa
+      comment: FK from transform_dag_run.user_id to core_user; null it out when the user is deleted so run history survives
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyTableName: transform_dag_run
+                foreignKeyName: fk_transform_dag_run_user_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_dag_run_user_id
+            baseTableName: transform_dag_run
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.ohN51V
+      author: bronsa
+      comment: Index transform_dag_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_dag_run
+                indexName: idx_transform_dag_run_active_runs
+      changes:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: last_heartbeat
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.wQe4Fn
+      author: bronsa
+      comment: >-
+        Unique constraint so at most one DAG run can be active per seed transform.
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_dag_run
+            constraintName: idx_unique_active_transform_dag_run
+            columnNames: source_transform_id, is_active
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v64.HUpfDD
+      author: bronsa
+      comment: >-
+        Add dag_run_id to transform_run to link each transform execution to its coordinating DAG run
+        (mirrors job_run_id, which links to transform_job_run). Exactly one of the two is set for a
+        coordinated member run; both are null for a standalone single-transform run.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: dag_run_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: dag_run_id
+                  type: bigint
+                  remarks: FK to transform_dag_run; links each transform execution to its coordinating DAG run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: dag_run_id
+
+  - changeSet:
+      id: v64.tOY28l
+      author: bronsa
+      comment: Index transform_run on dag_run_id for efficient drill-down of a DAG run's member transform runs
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_run
+                indexName: idx_transform_run_dag_run_id
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_dag_run_id
+            columns:
+              - column:
+                  name: dag_run_id
+      rollback:
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_dag_run_id
+
+  - changeSet:
+      id: v64.cH9mZs
+      author: bronsa
+      comment: >-
+        Snapshot the job's name on transform_job_run at run start, as transform_run does for its
+        transform. transform_job_run.job_id has no FK, so job runs already outlive their job — but
+        namelessly; the snapshot keeps them displayable in run history after the job is deleted.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: job_name
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: job_name
+                  type: ${text.type}
+                  remarks: Name of the job at run start, preserved after its deletion
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_name
+
+  - changeSet:
+      id: v64.gW3nQd
+      author: bronsa
+      comment: Snapshot the job's entity_id on transform_job_run at run start, for potential reconnection when a deleted job is recreated
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: job_entity_id
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: job_entity_id
+                  type: char(21)
+                  remarks: entity_id of the job at run start, for potential reconnection when it is recreated
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_entity_id
+
+  - changeSet:
+      id: v64.aY5kXm
+      author: bronsa
+      comment: Backfill the job name/entity_id snapshots on existing transform_job_run rows from their live jobs (this table predates the branch)
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_job_run
+              SET job_name = (SELECT name FROM transform_job WHERE transform_job.id = transform_job_run.job_id),
+                  job_entity_id = (SELECT entity_id FROM transform_job WHERE transform_job.id = transform_job_run.job_id)
+      rollback:
+        - sql:
+            sql: UPDATE transform_job_run SET job_name = NULL, job_entity_id = NULL

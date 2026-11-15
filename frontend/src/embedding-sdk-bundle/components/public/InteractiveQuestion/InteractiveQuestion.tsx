@@ -1,7 +1,9 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { resolveQuestionId } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion/utils";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
   BackButton,
@@ -19,6 +21,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SaveButton,
   SdkSaveQuestionForm,
   SqlParametersList,
@@ -31,11 +34,11 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
@@ -45,9 +48,10 @@ export type InteractiveQuestionBaseProps = Omit<
   SdkQuestionProps,
   | "token"
   | "questionId"
-  | "getClickActionMode"
+  | "clickActionMode"
   | "navigateToNewCard"
   | "backToDashboard"
+  | "navigatedEntity"
 >;
 
 /**
@@ -76,6 +80,7 @@ export type InteractiveQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -101,16 +106,72 @@ export type InteractiveQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-function InteractiveQuestionInner({
-  query,
-  ...rest
-}: InteractiveQuestionInternalProps) {
+function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
+  const {
+    query,
+    card,
+    questionId,
+    token,
+    title,
+    withDownloads,
+    isSaveEnabled,
+    withAlerts,
+    ...rest
+  } = props;
+
   const deserializedCard = useMemo(
-    () => (query ? deserializeCardFromQuery(query) : undefined),
-    [query],
+    () => resolveDeserializedCard({ card, query }),
+    [card, query],
   );
 
-  return <SdkQuestion {...rest} deserializedCard={deserializedCard} />;
+  // When rendered via the `query` prop (Metabot `navigate_to`), no questionId is
+  // passed. Derive it from the card so a native query opens the SQL editor,
+  // matching SdkAdHocQuestion / MetabotQuestion. See EMB-2042.
+  const resolvedQuestionId = query
+    ? resolveQuestionId(
+        undefined,
+        // Unjustified type cast. FIXME
+        deserializedCard as { dataset_query?: { type?: string } } | undefined,
+      )
+    : questionId;
+
+  const isNewQuestion =
+    resolvedQuestionId === "new" || resolvedQuestionId === "new-native";
+  const trackingEntityId =
+    resolvedQuestionId != null ? resolvedQuestionId : null;
+
+  useTrackSdkComponentMount(
+    "InteractiveQuestion",
+    trackingEntityId,
+    isNewQuestion
+      ? {
+          id_new: resolvedQuestionId === "new",
+          id_new_native: resolvedQuestionId === "new-native",
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        }
+      : {
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        },
+  );
+
+  return (
+    <SdkQuestion
+      {...rest}
+      questionId={resolvedQuestionId}
+      token={token}
+      title={title}
+      withDownloads={withDownloads}
+      isSaveEnabled={isSaveEnabled}
+      withAlerts={withAlerts}
+      deserializedCard={deserializedCard}
+    />
+  );
 }
 
 export const _InteractiveQuestion = InteractiveQuestionInner;
@@ -121,6 +182,7 @@ const subComponents: InteractiveQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,
@@ -150,6 +212,7 @@ const _InteractiveQuestionWrapped = withPublicComponentWrapper(
 );
 
 export const InteractiveQuestion = Object.assign(
+  // Unjustified type cast. FIXME
   _InteractiveQuestionWrapped as FC<InteractiveQuestionProps>,
   subComponents,
   { schema: interactiveQuestionSchema },
@@ -160,6 +223,7 @@ export const InteractiveQuestion = Object.assign(
  * internal `query` prop. This component is intended for internal use only.
  */
 export const InteractiveQuestionInternal = Object.assign(
+  // Unjustified type cast. FIXME
   _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,
   subComponents,
   { schema: interactiveQuestionSchema },

@@ -6,7 +6,10 @@ import {
   embedModalEnableEmbedding,
   legacyStaticEmbeddingButton,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  modal,
+  selectDropdown,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
@@ -85,7 +88,13 @@ export function getEmbeddedPageUrl(
   payload,
   {
     setFilters = {},
-    additionalHashOptions: { hideFilters = [], locale, font, theme } = {},
+    additionalHashOptions: {
+      hideFilters = [],
+      locale,
+      font,
+      theme,
+      background,
+    } = {},
     pageStyle = {},
     onBeforeLoad,
     qs,
@@ -111,6 +120,7 @@ export function getEmbeddedPageUrl(
         ...(locale && { locale }),
         ...(font && { font }),
         ...(theme && { theme }),
+        ...(background !== undefined && { background }),
       },
       hiddenFilters,
     );
@@ -267,7 +277,7 @@ export function openLegacyStaticEmbeddingModal({
 }
 
 export function closeStaticEmbeddingModal() {
-  modal().icon("close").click();
+  modal().findByLabelText("Close").click();
 }
 
 /**
@@ -313,16 +323,16 @@ export function unpublishChanges(apiPath, callback) {
 }
 
 export function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters");
+  return cy.findByTestId("parameters-container");
 }
 
 export function setEmbeddingParameter(name, value) {
   getParametersContainer().findByLabelText(name).click();
-  popover().contains(value).click();
+  selectDropdown().contains(value).click();
 }
 
 export function assertEmbeddingParameter(name, value) {
-  getParametersContainer().findByLabelText(name).should("have.text", value);
+  getParametersContainer().findByLabelText(name).should("have.value", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

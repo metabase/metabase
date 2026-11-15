@@ -1,16 +1,13 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Modal } from "metabase/common/components/Modal";
-import {
-  ModalContent,
-  ModalContentActionIcon,
-} from "metabase/common/components/ModalContent";
+import { ActionIcon, Icon, Modal, Text, Tooltip } from "metabase/ui";
 
 import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
 import ActionParametersInputForm from "./ActionParametersInputForm";
 
 interface ModalProps {
+  opened: boolean;
   title: string;
   showConfirmMessage?: boolean;
   showEmptyState: boolean;
@@ -23,6 +20,7 @@ export type ActionParametersInputModalProps = ModalProps &
   ActionParametersInputFormProps;
 
 function ActionParametersInputModal({
+  opened,
   showConfirmMessage,
   showEmptyState,
   title,
@@ -32,41 +30,42 @@ function ActionParametersInputModal({
   ...formProps
 }: ActionParametersInputModalProps) {
   return (
-    <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
-      <ModalContent
-        title={title}
-        headerActions={
-          onEdit ? (
-            <ModalContentActionIcon
-              name="pencil"
-              tooltip={t`Edit this action`}
+    <Modal
+      data-testid="action-parameters-input-modal"
+      opened={opened}
+      title={title}
+      size="lg"
+      density="relaxed"
+      headerActions={
+        onEdit && (
+          <Tooltip label={t`Edit this action`}>
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              aria-label={t`Edit this action`}
               onClick={onEdit}
-            />
-          ) : undefined
-        }
-        onClose={onClose}
-      >
+            >
+              <Icon name="pencil" />
+            </ActionIcon>
+          </Tooltip>
+        )
+      }
+      onClose={onClose}
+    >
+      {showEmptyState ? (
+        <EmptyState message={t`Choose a record to update`} />
+      ) : (
         <>
-          {showEmptyState && (
-            <EmptyState message={t`Choose a record to update`} />
-          )}
-
-          {!showEmptyState && (
-            <>
-              {showConfirmMessage && (
-                <ConfirmMessage message={confirmMessage} />
-              )}
-              <ActionParametersInputForm {...formProps} />
-            </>
-          )}
+          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
+          <ActionParametersInputForm {...formProps} />
         </>
-      </ModalContent>
+      )}
     </Modal>
   );
 }
 
 const ConfirmMessage = ({ message }: { message?: string }) => (
-  <div>{message ?? t`This action cannot be undone.`}</div>
+  <Text mb="xl">{message ?? t`This action cannot be undone.`}</Text>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "../constants";
 
+import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
   expectSectionToHaveLabel,
@@ -13,7 +15,9 @@ import {
   getSection,
   selectUsageReason,
   setup,
+  skipAiConfigStep,
   skipWelcomeScreen,
+  startAiConfigStep,
   submitUserInfoStep,
 } from "./setup";
 
@@ -40,8 +44,36 @@ describe("setup (OSS)", () => {
     await clickNextStep(); // Usage question
     expectSectionsToHaveLabelsInOrder({ from: 2 });
 
-    await userEvent.click(screen.getByText("Continue with sample data"));
+    await userEvent.click(await screen.findByText("Continue with sample data"));
     expectSectionsToHaveLabelsInOrder({ from: 3 });
+  });
+
+  it("should show a step number in the embedding use case, as it has more than one step", async () => {
+    await setup({ step: "user_info", isEmbeddingUseCase: true });
+
+    expect(screen.getByText("What should we call you?")).toBeInTheDocument();
+    expect(screen.getByTestId("step-number")).toHaveTextContent("1");
+  });
+
+  it("should not show 'Sample Database' if env var is explicitly set to false during setup", async () => {
+    await setup({ settings: { "has-sample-database?": false } });
+    await skipWelcomeScreen();
+    await submitUserInfoStep();
+    await clickNextStep(); // Usage question
+
+    const dataSection = getSection("Add your data");
+    const skipButton = await within(dataSection).findByRole("button", {
+      name: "I'll add my data later",
+    });
+    expect(
+      within(dataSection).queryByRole("button", {
+        name: "Continue with sample data",
+      }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(skipButton);
+
+    expect(getSection("I'll add my own data later")).toBeInTheDocument();
   });
 
   describe("Usage question", () => {
@@ -123,6 +155,62 @@ describe("setup (OSS)", () => {
     });
   });
 
+  describe("AI config step", () => {
+    const completeSetup = async (opts?: SetupOpts) => {
+      await setup(opts);
+      await skipWelcomeScreen();
+      await submitUserInfoStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
+      await userEvent.click(screen.getByText("Finish"));
+    };
+
+    it("should not be part of the wizard until it is opted into", async () => {
+      await completeSetup();
+
+      expect(
+        screen.queryByText("Connect to an AI provider"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("You're all set up!")).toBeInTheDocument();
+    });
+
+    it("should become the last step when opting in from the completed step", async () => {
+      await completeSetup();
+      await startAiConfigStep();
+
+      expect(getSection("Connect to an AI provider")).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+      expectSectionToHaveLabel("Connect to an AI provider", "5");
+      expect(screen.queryByText("You're all set up!")).not.toBeInTheDocument();
+    });
+
+    it("should go back to the completed step when skipping, without offering AI again", async () => {
+      await completeSetup();
+      await startAiConfigStep();
+      await skipAiConfigStep();
+
+      expect(await screen.findByText("You're all set up!")).toBeInTheDocument();
+      expect(screen.getByText("I'll set up AI later")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set up AI" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer the step when AI features are disabled", async () => {
+      await completeSetup({ settings: { "ai-features-enabled?": false } });
+
+      expect(screen.getByText("You're all set up!")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set up AI" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("embedding homepage flags", () => {
     it("should set the correct flags when interested in embedding", async () => {
       await setup();
@@ -136,6 +224,7 @@ describe("setup (OSS)", () => {
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
+        "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
     });
@@ -148,7 +237,9 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
 
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
 
       await userEvent.click(screen.getByText("Finish"));
 
@@ -160,8 +251,9 @@ describe("setup (OSS)", () => {
     });
 
     it("should not autoenable embedding if it was set by an env", async () => {
-      await setup({
-        settingOverrides: [
+      await setup();
+      fetchMock.modifyRoute("settings-list", {
+        response: [
           createMockSettingDefinition({
             key: "enable-embedding",
             value: false,
@@ -181,6 +273,7 @@ describe("setup (OSS)", () => {
 
       expect(flags).toEqual({
         "embedding-homepage": "visible",
+        "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
     });
@@ -205,7 +298,9 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
       await userEvent.click(screen.getByText("Finish"));
 
       await userEvent.click(
@@ -232,7 +327,9 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
 
       await userEvent.click(screen.getByText("Finish"));
 

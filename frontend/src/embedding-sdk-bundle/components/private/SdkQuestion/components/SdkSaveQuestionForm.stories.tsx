@@ -8,6 +8,7 @@ import {
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
@@ -38,7 +39,7 @@ export const Default = {
         }}
         {...args}
       >
-        <Box p="lg">
+        <Box p="xl">
           <Button onClick={toggle}>Save</Button>
         </Box>
 
@@ -50,7 +51,7 @@ export const Default = {
 
         {!isSaveModalOpen && <SdkQuestion.QuestionVisualization />}
 
-        <Stack p="lg">
+        <Stack p="xl">
           {isBeforeSaveCalled && <Box>onBeforeSave is called</Box>}
           {newQuestionTitle && <Box>question saved as {newQuestionTitle}</Box>}
         </Stack>

@@ -1,10 +1,10 @@
 (ns metabase.upload.types-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
+   [metabase.util.match :as match]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy]))
 
 (def ^:private bool-type         ::upload-types/boolean)
@@ -245,15 +245,10 @@
         (is (= (upload-types/concretize nil value-type)
                (upload-types/concretize existing-type value-type)))))))
 
-(defn- re-namespace
-  "Replace the namespace in any namespaced keyword with this test namespace, return all other values unchanged."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (keyword (name (ns-name *ns*)) (name x))
-    x))
-
 ;; Translate the hierarchy to talk about this namespace, so that we can omit an explicit namespace for brevity.
-(def ^:private h (walk/postwalk re-namespace upload-types/h))
+(def ^:private h
+  (match/replace-all upload-types/h
+    (x :guard (and (keyword? x) (namespace x))) (keyword (name (ns-name *ns*)) (name x))))
 
 (deftest ^:parallel parents-test
   (testing "Parents are listed according to the order that this tag was derived from each of them"
@@ -275,7 +270,6 @@
     (is (= [::text] (vec (ancestors h ::varchar-255))))
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
     (is (= [::*float-or-int* ::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
-
   (testing "Non-linear ancestors are listed in topological order, following edges in the order they were defined."
     (is (= [::boolean
             ::int
@@ -291,7 +285,6 @@
     (is (nil? (descendants h ::date)))
     (is (= [::date] (vec (descendants h ::datetime))))
     (is (= [::*boolean-int*] (vec (descendants h ::boolean)))))
-
   (testing "Non-linear descendants are listed in reverse topological order, following edges in reserve order."
     (is (= [::*float-or-int*
             ::int

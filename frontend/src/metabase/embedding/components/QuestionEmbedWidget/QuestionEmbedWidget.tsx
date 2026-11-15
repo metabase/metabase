@@ -4,9 +4,7 @@ import {
 } from "metabase/api";
 import { EmbedModal } from "metabase/embedding/components/EmbedModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import type { Card } from "metabase-types/api";
 
 type QuestionEmbedWidgetProps = {
@@ -17,16 +15,17 @@ type QuestionEmbedWidgetProps = {
 export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   const { card, onBack, onClose } = props;
 
-  const metadata = useSelector(getMetadata);
+  const question = useQuestionFromCard(card);
 
   const [updateEnableEmbedding] = useUpdateCardEnableEmbeddingMutation();
   const [updateEmbeddingParams] = useUpdateCardEmbeddingParamsMutation();
 
   return (
     <EmbedModal
+      opened={true}
       resource={card}
       resourceType="question"
-      resourceParameters={getCardUiParameters(card, metadata)}
+      resourceParameters={question.parameters()}
       onUpdateEnableEmbedding={(enable_embedding) =>
         updateEnableEmbedding({
           id: card.id,

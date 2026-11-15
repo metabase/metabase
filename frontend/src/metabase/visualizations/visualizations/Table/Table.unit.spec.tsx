@@ -1,16 +1,31 @@
 import userEvent from "@testing-library/user-event";
-import { thaw } from "icepick";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import {
+  getComputedSettingsForSeries,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   DatasetColumn,
+  RowValues,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -28,12 +43,15 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["table"]));
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -55,13 +73,11 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
     const [question, setQuestion] = useState(
       new Question(
         {
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": ORDERS_ID,
-            },
-            database: SAMPLE_DB_ID,
-          },
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [{ source: { type: "table", id: ORDERS_ID } }],
+            }),
+          ),
           display,
           visualization_settings,
         },
@@ -73,7 +89,7 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
       onChange(update);
       setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
-        return new Question(thaw(newQuestion.card()), metadata);
+        return new Question(newQuestion.card(), metadata);
       });
     };
 
@@ -185,63 +201,407 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
 });
 
 describe("table.pivot", () => {
-  describe("getHidden", () => {
-    const createMockSeriesWithCols = (cols: string[]): Series => [
-      createMockSingleSeries(
-        createMockCard(),
-        createMockDataset({
-          data: createMockDatasetData({
-            cols: cols.map((name) => createMockColumn({ name })),
-          }),
+  const createMockSeriesWithCols = (
+    cols: string[],
+    visualization_settings: VisualizationSettings = {},
+  ): Series => [
+    createMockSingleSeries(
+      { visualization_settings },
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: cols.map((name) => createMockColumn({ name })),
         }),
-      ),
-    ];
+      }),
+    ),
+  ];
 
-    const threeCols = createMockSeriesWithCols(["dim1", "dim2", "metric"]);
-    const fourCols = createMockSeriesWithCols([
-      "dim1",
-      "dim2",
-      "dim3",
-      "metric",
-    ]);
+  describe("getHidden", () => {
     const getHidden = Table.settings["table.pivot"].getHidden;
     if (!getHidden) {
       throw new Error("table.pivot getHidden should be defined");
     }
 
-    it("should be hidden when table.pivot is false and cols.length is not 3", () => {
-      expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": false,
-      });
-
-      expect(isHidden).toBe(true);
+    it("should be hidden when there are fewer than 3 columns", () => {
+      expect(getHidden(createMockSeriesWithCols(["dim1", "metric"]))).toBe(
+        true,
+      );
     });
 
-    it("should not be hidden when table.pivot is true, regardless of cols.length", () => {
-      expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": true,
-      });
-
-      expect(isHidden).toBe(false);
+    it("should not be hidden when there are 3 columns", () => {
+      expect(
+        getHidden(createMockSeriesWithCols(["dim1", "dim2", "metric"])),
+      ).toBe(false);
     });
 
-    it("should not be hidden when cols.length is 3 and table.pivot is false", () => {
-      expect(getHidden).toBeDefined();
+    it("should not be hidden when there are more than 3 columns (metabase#84401)", () => {
+      expect(
+        getHidden(createMockSeriesWithCols(["dim1", "dim2", "dim3", "metric"])),
+      ).toBe(false);
+    });
+  });
 
-      const isHidden = getHidden(threeCols, {
-        "table.pivot": false,
+  it.each([
+    { shape: "an extra metric", cols: ["dim1", "dim2", "metric1", "metric2"] },
+    { shape: "an extra dimension", cols: ["dim1", "dim2", "dim3", "metric"] },
+  ])(
+    "should keep a stored pivot when there is $shape (metabase#84401)",
+    ({ cols }) => {
+      const series = createMockSeriesWithCols(cols, { "table.pivot": true });
+
+      expect(getComputedSettingsForSeries(series)["table.pivot"]).toBe(true);
+    },
+  );
+
+  describe("rendering", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    const CATEGORY = createMockCategoryColumn({
+      name: "CATEGORY",
+      display_name: "Category",
+    });
+    const MONTH_LABEL = createMockCategoryColumn({
+      name: "MONTH_LABEL",
+      display_name: "Month label",
+    });
+    const MONTH_DATE = createMockColumn({
+      name: "MONTH_DATE",
+      display_name: "Month date",
+      base_type: "type/DateTime",
+      effective_type: "type/DateTime",
+    });
+    const TOTAL = createMockNumericColumn({
+      name: "TOTAL",
+      display_name: "Total",
+    });
+
+    type PivotSetupOpts = {
+      cols: DatasetColumn[];
+      rows: RowValues[];
+    };
+
+    const setupPivot = ({ cols, rows }: PivotSetupOpts) => {
+      const onUpdateWarnings = jest.fn<void, [string[]]>();
+      const series: Series = [
+        {
+          card: createMockCard({
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "",
+            }),
+            query_type: "native",
+            display: "table",
+            visualization_settings: {
+              "table.pivot": true,
+              "table.pivot_column": "MONTH_LABEL",
+              "table.cell_column": "TOTAL",
+            },
+          }),
+          ...createMockDataset({ data: { cols, rows } }),
+        },
+      ];
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series}
+          width={600}
+          height={400}
+          onUpdateWarnings={onUpdateWarnings}
+        />,
+      );
+
+      return { onUpdateWarnings };
+    };
+
+    it("should pivot a native question with an extra column, using the first other column for rows (metabase#84401)", () => {
+      setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, MONTH_DATE, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", "2025-01-01T00:00:00Z", 10],
+          ["Widget", "2025-01", "2025-01-01T00:00:00Z", 20],
+          ["Gadget", "2025-02", "2025-02-01T00:00:00Z", 30],
+          ["Widget", "2025-02", "2025-02-01T00:00:00Z", 40],
+        ],
       });
 
-      expect(isHidden).toBe(false);
+      expect(
+        screen.getAllByRole("columnheader").map((header) => header.textContent),
+      ).toEqual(["Category", "2025-01", "2025-02"]);
+      expect(
+        screen
+          .getAllByRole("row")
+          .slice(1)
+          .map((row) =>
+            within(row)
+              .getAllByRole("gridcell")
+              .map((cell) => cell.textContent),
+          ),
+      ).toEqual([
+        ["Gadget", "10", "30"],
+        ["Widget", "20", "40"],
+      ]);
+    });
+
+    it("should not warn when each row and pivot value pair appears once (metabase#84401)", async () => {
+      const { onUpdateWarnings } = setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, MONTH_DATE, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", "2025-01-01T00:00:00Z", 10],
+          ["Gadget", "2025-02", "2025-02-01T00:00:00Z", 30],
+        ],
+      });
+
+      // Visualization applies reported warnings in an animation frame
+      await act(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          ),
+      );
+      expect(onUpdateWarnings).toHaveBeenLastCalledWith([]);
+    });
+
+    it("should warn and show the last value when a row and pivot value pair appears more than once", async () => {
+      const { onUpdateWarnings } = setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", 10],
+          ["Gadget", "2025-01", 20],
+        ],
+      });
+
+      await waitFor(() =>
+        expect(onUpdateWarnings).toHaveBeenLastCalledWith([
+          'Some combinations of "Category" and "Month label" appear in more than one row. Each of those cells shows only the value from the last of these rows.',
+        ]),
+      );
+      const [, firstRow] = screen.getAllByRole("row");
+      expect(
+        within(firstRow)
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      ).toEqual(["Gadget", "20"]);
     });
   });
 });
 
+describe("dashboard client-side sorting", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("sorts numeric, null, and text values in small datasets (#67756)", () => {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [
+              createMockNumericColumn({ display_name: "id", name: "id" }),
+              createMockCategoryColumn({
+                display_name: "name",
+                name: "name",
+              }),
+            ],
+            rows: [
+              [1, "Alice"],
+              [2, null],
+              [3, "Charlie"],
+              [4, null],
+              [5, "Bob"],
+              [6, null],
+              [7, "Delta"],
+              [8, null],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const idClickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(idClickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(idClickTarget, { clientX: 0, clientY: 0 });
+
+    expect(
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("gridcell")[0].textContent),
+    ).toEqual(["8", "7", "6", "5", "4", "3", "2", "1"]);
+
+    const nameHeader = screen.getByRole("columnheader", { name: "name" });
+    const clickTarget = within(nameHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    const rows = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      );
+
+    expect(rows).toEqual([
+      ["7", "Delta"],
+      ["3", "Charlie"],
+      ["5", "Bob"],
+      ["1", "Alice"],
+      ["2", ""],
+      ["4", ""],
+      ["6", ""],
+      ["8", ""],
+    ]);
+  });
+});
+
+describe("table.striped", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("should be a display toggle disabled by default", () => {
+    const setting = Table.settings["table.striped"];
+
+    expect(setting).toBeDefined();
+    expect(setting.widget).toBe("toggle");
+    expect(setting.inline).toBe(true);
+    expect(setting.getDefault?.()).toBe(false);
+  });
+
+  function setupStripedTable() {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [createMockNumericColumn({ display_name: "id", name: "id" })],
+            rows: [[1], [2], [3], [4]],
+          },
+        },
+      ),
+    ];
+
+    series[0].card.visualization_settings = {
+      ...series[0].card.visualization_settings,
+      "table.striped": true,
+    };
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+  }
+
+  function getStripedRows() {
+    return screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => [
+        within(row).getAllByRole("gridcell")[0].textContent,
+        row.getAttribute("data-row-striped") === "true",
+      ]);
+  }
+
+  it("stripes every other rendered row", () => {
+    setupStripedTable();
+
+    expect(getStripedRows()).toEqual([
+      ["1", false],
+      ["2", true],
+      ["3", false],
+      ["4", true],
+    ]);
+  });
+
+  it("keeps stripes on alternating rendered rows after client-side sorting (#71960)", () => {
+    setupStripedTable();
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const clickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    // Rows are now in descending order; the stripes must still alternate by
+    // display position rather than by position in the original dataset.
+    expect(getStripedRows()).toEqual([
+      ["4", false],
+      ["3", true],
+      ["2", false],
+      ["1", true],
+    ]);
+  });
+});
+
 describe("text_wrapping", () => {
+  describe("line breaks in cells (#6178, #64697)", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    const wrappedColumn = createMockCategoryColumn({
+      name: "wrapped",
+      display_name: "wrapped",
+    });
+    const unwrappedColumn = createMockCategoryColumn({
+      name: "unwrapped",
+      display_name: "unwrapped",
+    });
+
+    it.each([
+      ["\\n", "\n"],
+      ["\\r\\n", "\r\n"],
+      ["\\r", "\r"],
+      ["\\u0085", "\u0085"],
+      ["\\u2028", " "],
+      ["\\u2029", " "],
+    ])(
+      "should render %s as a line break when wrapped and a space when not",
+      (_name, lineBreak) => {
+        const value = `line1${lineBreak}line2`;
+        const series = [
+          createMockSingleSeries(
+            {
+              display: "table",
+              visualization_settings: {
+                column_settings: {
+                  [getColumnKey(wrappedColumn)]: { text_wrapping: true },
+                },
+              },
+            },
+            {
+              data: {
+                cols: [wrappedColumn, unwrappedColumn],
+                rows: [[value, value]],
+              },
+            },
+          ),
+        ];
+
+        renderWithProviders(
+          <Visualization rawSeries={series} width={600} height={400} />,
+        );
+
+        const [_rowIdCell, wrappedCell, unwrappedCell] =
+          screen.getAllByRole("gridcell");
+        expect(wrappedCell).toHaveTextContent("line1\nline2", {
+          normalizeWhitespace: false,
+        });
+        expect(unwrappedCell).toHaveTextContent("line1 line2", {
+          normalizeWhitespace: false,
+        });
+      },
+    );
+  });
+
   describe("in columnSettings", () => {
     function assertDefined<T>(
       value: T | undefined | null,

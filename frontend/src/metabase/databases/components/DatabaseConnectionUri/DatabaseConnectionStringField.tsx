@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";
@@ -64,6 +65,7 @@ export function DatabaseConnectionStringField({
       }
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
+      // Unjustified type cast. FIXME
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
       await setValues((previousValues) =>
         setDatabaseFormValues(previousValues, fields),
@@ -160,7 +162,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
+        <Group style={styles} top={0} pos="absolute" h="xl" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -179,13 +181,13 @@ function ConnectionStringDescription({
           style={styles}
           pos="absolute"
           top={0}
-          c="danger"
+          c="feedback-negative"
           fw="bold"
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
-            <Icon name="warning_round_filled" c="danger" />
+          <Group gap="xxs" component="span">
+            <Icon name="warning_round_filled" c="feedback-negative" />
             {t`Couldn’t use this connection string.`}
           </Group>
         </Text>
@@ -205,15 +207,15 @@ function ConnectionStringDescription({
           style={styles}
           pos="absolute"
           top={0}
-          c="success"
+          c="feedback-positive"
           fw="bold"
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
+          <Group gap="xxs" component="span">
             <Icon
               name="check_filled"
-              style={{ color: "var(--mb-color-success)" }}
+              style={{ color: "var(--mb-color-feedback-positive)" }}
             />
             {t`Connection details pre-filled below.`}
           </Group>
@@ -222,7 +224,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative" component="span">
+    <Group h="xl" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

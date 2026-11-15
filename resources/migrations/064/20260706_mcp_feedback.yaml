@@ -1,0 +1,68 @@
+## Persist MCP Apps visualization feedback.
+##
+## MCP Apps feedback previously went only to Harbormaster; it is now stored
+## locally instead. MCP Apps have no metabot_conversation/metabot_message rows,
+## so the visualization context (prompt + query) is stored inline rather than
+## via a message FK.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.d7cqgl
+      author: tplude
+      comment: Create mcp_feedback table for MCP Apps visualization feedback
+      changes:
+        - createTable:
+            tableName: mcp_feedback
+            remarks: User feedback on MCP Apps visualizations - positive/negative w/ optional reason + comment
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Surrogate PK
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'The Metabase user who submitted the feedback. Unconstrained int (matches metabot_feedback precedent) so rows survive user deletion.'
+              - column:
+                  name: positive
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'true = thumbs up, false = thumbs down'
+              - column:
+                  name: issue_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+                  remarks: 'Optional structured issue category (e.g. "wrong-visualization")'
+              - column:
+                  name: freeform_feedback
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Optional freeform comment'
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'User prompt that produced the visualization, when available'
+              - column:
+                  name: query
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Encoded ad-hoc query that was being shown, when available'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When the feedback was submitted'

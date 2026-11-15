@@ -32,21 +32,27 @@ export function ModalBody({
 }: ModalBodyProps) {
   if (columnMappings.length === 0) {
     return (
-      <Flex flex={1} direction="column" p="lg" bg="background-secondary">
+      <Flex flex={1} direction="column" p="xl" bg="background_page-secondary">
         <EmptyState />
       </Flex>
     );
   }
 
   return (
-    <Flex flex={1} direction="column" miw={0} mih={0} bg="background-secondary">
+    <Flex
+      flex={1}
+      direction="column"
+      miw={0}
+      mih={0}
+      bg="background_page-secondary"
+    >
       <TabPanel
         selectedTab={selectedTab}
         canReplace={canReplace}
         dependentsCount={dependents.length}
         onTabChange={onTabChange}
       />
-      <Flex flex={1} direction="column" p="lg" miw={0} mih={0}>
+      <Flex flex={1} direction="column" p="xl" miw={0} mih={0}>
         {selectedTab === "column-mappings" && (
           <ColumnComparisonTable
             sourceItem={sourceItem}

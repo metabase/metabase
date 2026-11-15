@@ -13,15 +13,16 @@
 .Sidebar {
   overflow-y: auto;
   flex-shrink: 0;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 .Content {
   overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
   flex: 1;
   display: flex;
   justify-content: center;
   width: 100%;
   position: relative;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }

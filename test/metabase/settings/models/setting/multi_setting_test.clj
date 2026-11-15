@@ -1,9 +1,12 @@
 (ns metabase.settings.models.setting.multi-setting-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.events.audit-log]
    [metabase.settings.models.setting :as setting]
    [metabase.settings.models.setting.multi-setting :as multi-setting]
    [metabase.test.fixtures :as fixtures]))
+
+(comment metabase.audit-app.events.audit-log/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -47,6 +50,7 @@
 (multi-setting/define-multi-setting ^:private multi-setting-read-only
   "A test setting that is always read-only."
   (fn [] *parakeet*)
+  :encryption :no
   :visibility :internal
   :getter     (constantly "Parroty")
   :setter     :none)

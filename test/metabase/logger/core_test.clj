@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   ;; exercises the raw tools.logging pipeline that metabase.logger.core plugs into
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
@@ -32,15 +33,12 @@
                     entry))
                 (logger/messages))
           "In memory ring buffer did not receive log message")))
-
   (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
     (testing "make sure it's true to starts with"
       (is (.isAdditive (logger 'metabase))))
-
     (testing "set to false if parent logger is root"
       (mt/with-log-level :warn
         (is (not (.isAdditive (logger 'metabase))))))
-
     (testing "still true if the parent logger is not root"
       (mt/with-log-level [metabase.logger.core :warn]
         (is (.isAdditive (logger 'metabase.logger.core)))))))
@@ -95,7 +93,6 @@
                 (line-seq (io/reader f))))))))
 
 (deftest level-enabled?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [set-level check-level expected-value] (= expected-value
                                                  (mt/with-log-level [metabase.logger.core-test set-level]
                                                    (logger/level-enabled? 'metabase.logger.core-test check-level)))

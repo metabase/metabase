@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
@@ -9,24 +10,39 @@ import {
   useGetCardQuery,
   useGetPermissionsGroupQuery,
   useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { QuestionLoader } from "metabase/common/components/QuestionLoader";
-import { Radio } from "metabase/common/components/Radio";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { EntityName } from "metabase/entities/containers/EntityName";
-import { GTAPApi } from "metabase/services";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import { QuestionLoader } from "metabase/questions/components/QuestionLoader";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Icon,
+  Loader,
+  Menu,
+  Modal,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { getName } from "metabase/utils/name";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
   GroupId,
@@ -41,13 +57,13 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const ERROR_MESSAGE = t`An error occurred.`;
+import S from "./EditSandboxingModal.module.css";
 
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
@@ -63,8 +79,8 @@ const getDraftPolicy = ({
   groupId,
 }: GroupTableAccessPolicyParams): GroupTableAccessPolicyDraft => {
   return {
-    table_id: parseInt(tableId),
-    group_id: parseInt(groupId),
+    table_id: parseInt(String(tableId)),
+    group_id: parseInt(String(groupId)),
     card_id: null,
     attribute_remappings: { "": null },
   };
@@ -109,13 +125,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -143,20 +161,16 @@ const EditSandboxingModal = ({
 
   if (loadingCard || loadingTabe) {
     return (
-      <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
+      <Center>
+        <Loader />
       </Center>
     );
   }
 
   return (
-    <div>
-      <h2
-        className={CS.p3}
-      >{t`Configure row and column security for this table`}</h2>
-
-      <div>
-        <div className={cx(CS.px3, CS.pb3)}>
+    <>
+      <Stack gap="xl">
+        <div>
           {hasSavedQuestionSandboxingFeature ? (
             <div>
               <div className={CS.pb2}>
@@ -168,20 +182,23 @@ const EditSandboxingModal = ({
               <h4
                 className={CS.pb1}
               >{t`How do you want to filter this table?`}</h4>
-              <Radio
-                value={!shouldUseSavedQuestion}
-                options={[
-                  { name: t`Filter by a column in the table`, value: true },
-                  {
-                    name: t`Use a saved question to create a custom view for this table`,
-                    value: false,
-                  },
-                ]}
-                onChange={(shouldUseSavedQuestion) =>
-                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+              <Radio.Group
+                value={shouldUseSavedQuestion ? "saved-question" : "column"}
+                onChange={(value) =>
+                  setShouldUseSavedQuestion(value === "saved-question")
                 }
-                vertical
-              />
+              >
+                <Stack gap="sm">
+                  <Radio
+                    value="column"
+                    label={t`Filter by a column in the table`}
+                  />
+                  <Radio
+                    value="saved-question"
+                    label={t`Use a saved question to create a custom view for this table`}
+                  />
+                </Stack>
+              </Radio.Group>
             </div>
           ) : (
             <div>
@@ -193,24 +210,56 @@ const EditSandboxingModal = ({
           )}
         </div>
         {shouldUseSavedQuestion && (
-          <div className={cx(CS.px3, CS.pb3)}>
+          <div>
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <Button
-              data-testid="custom-view-picker-button"
-              onClick={showModal}
-              fullWidth
-              rightSection={<Icon name="ellipsis" />}
-              styles={{
-                inner: {
-                  justifyContent: "space-between",
-                },
-                root: { "&:active": { transform: "none" } },
-              }}
-            >
-              {policyCard?.name ?? t`Select a question`}
-            </Button>
+            <Box pos="relative">
+              <Button
+                data-testid="custom-view-picker-button"
+                onClick={showModal}
+                fullWidth
+                rightSection={policyCard ? undefined : <Icon name="ellipsis" />}
+                classNames={{
+                  root: S.policyCardButton,
+                  inner: S.policyCardButtonInner,
+                  label: policyCard ? S.policyCardLabel : undefined,
+                }}
+              >
+                {policyCard?.name ?? t`Select a question`}
+              </Button>
+              {policyCard && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      aria-label={t`Question options`}
+                      className={S.optionsButton}
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component="a"
+                      href={Urls.card(policyCard)}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<Icon name="external" />}
+                    >
+                      {t`Go to question`}
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={showModal}
+                      leftSection={<Icon name="refresh" />}
+                    >
+                      {t`Replace`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Box>
             {showPickerModal && (
               <QuestionPickerModal
                 value={
@@ -237,7 +286,7 @@ const EditSandboxingModal = ({
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
+            <div>
               {shouldUseSavedQuestion && (
                 <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
@@ -255,49 +304,35 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className={CS.px3}>
-              <AttributeOptionsEmptyState
-                title={
-                  shouldUseSavedQuestion
-                    ? t`To add additional filters, your users need to have some attributes`
-                    : t`For this option to work, your users need to have some attributes`
-                }
-              />
-            </div>
-          ))}
-      </div>
-
-      <div className={CS.p3}>
-        {isValid && (
-          <div className={CS.pb1}>
-            <PolicySummary
-              policy={normalizedPolicy}
-              policyTable={policyTable}
+            <AttributeOptionsEmptyState
+              title={
+                shouldUseSavedQuestion
+                  ? t`To add additional filters, your users need to have some attributes`
+                  : t`For this option to work, your users need to have some attributes`
+              }
             />
-          </div>
+          ))}
+        {isValid && (
+          <PolicySummary policy={normalizedPolicy} policyTable={policyTable} />
         )}
+      </Stack>
 
-        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
-          <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <ActionButton
-            className={CS.ml1}
-            actionFn={savePolicy}
-            primary
-            disabled={!canSave}
-          >
-            {t`Save`}
-          </ActionButton>
-        </div>
+      <Modal.Footer>
         {error && (
-          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
-            {typeof error === "string"
-              ? error
-              : // @ts-expect-error provide correct type for error
-                (error.data.message ?? ERROR_MESSAGE)}
-          </div>
+          <Text c="feedback-negative" flex={1}>
+            {getErrorMessage(error, t`An error occurred.`)}
+          </Text>
         )}
-      </div>
-    </div>
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <ActionButton
+          actionFn={savePolicy}
+          variant="filled"
+          disabled={!canSave}
+        >
+          {t`Save`}
+        </ActionButton>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -327,6 +362,7 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -350,16 +386,11 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
           policy.card_id
             ? jt`rows in the ${(
                 <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
+                  <QuestionName id={policy.card_id} />
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />
@@ -409,6 +440,7 @@ interface TargetNameProps {
 }
 
 const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
+  const tableCard = useTableCard(policyTable);
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&
@@ -428,11 +460,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <QuestionLoader
           questionHash={undefined}
           questionId={policy.card_id}
-          questionObject={
-            policy.card_id == null && policyTable
-              ? getRawDataQuestionForTable(policyTable)
-              : null
-          }
+          questionObject={policy.card_id == null ? tableCard : null}
           includeSensitiveFields
         >
           {({ question }) => {

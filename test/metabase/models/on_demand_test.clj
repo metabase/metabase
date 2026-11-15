@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -11,12 +12,20 @@
    [toucan2.core :as t2]))
 
 (defn- do-with-mocked-field-values-updating!
-  "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
-  of Fields that should have been updated. Returns the set of updated Field names."
+  "Run `f` with the on-demand FieldValues update entry points stubbed out to just record which
+   field names would have been refreshed. Returns the set of updated Field names.
+
+   On-demand uses [[sync.field-values/sync-fields-grouped-by-table!]] on SQL drivers and falls
+   back to [[field-values/create-or-update-full-field-values!]] on non-SQL drivers; the mock
+   covers both so behavioural tests work regardless of the temp database's driver."
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                     (swap! updated-field-names conj (:name field)))]
+    (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values!
+                                (fn [field & _]
+                                  (swap! updated-field-names conj (:name field)))
+                                sync.field-values/sync-fields-grouped-by-table!
+                                (fn [fields]
+                                  (swap! updated-field-names into (map :name fields)))]
       (f updated-field-names)
       @updated-field-names)))
 
@@ -33,7 +42,7 @@
                                          :display-name "Category"
                                          :id           "_category_"
                                          :type         "dimension"
-                                         :dimension    [:field (u/the-id field-or-id) nil]
+                                         :field-id     (u/the-id field-or-id)
                                          :widget-type  "category"
                                          :default      "Widget"}}}})
 
@@ -62,7 +71,6 @@
     (testing "in On-Demand DB should get updated FieldValues"
       (is (true?
            (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
-
     (testing "in non-On-Demand DB should *not* get updated FieldValues"
       (is (= false
              (field-values-were-updated-for-new-card?! {:db {:is_on_demand false}}))))))
@@ -79,7 +87,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (t2/update! :model/Card :id (u/the-id card) card))))))))
 
 (deftest existing-card-test-2
   (testing "Existing Card"
@@ -95,7 +103,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
+                  (t2/update! :model/Card :id (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 (deftest existing-card-test-3
@@ -110,7 +118,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (t2/update! :model/Card (u/the-id card)
+                (t2/update! :model/Card :id (u/the-id card)
                             {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-4
@@ -122,7 +130,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (t2/update! :model/Card :id (u/the-id card) card))))))))
 
 (deftest existing-card-test-5
   (testing "Existing Card"
@@ -135,7 +143,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (t2/update! :model/Card (u/the-id card)
+                (t2/update! :model/Card :id (u/the-id card)
                             {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-6
@@ -151,7 +159,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
+                  (t2/update! :model/Card :id (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

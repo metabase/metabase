@@ -1,16 +1,29 @@
+import _ from "underscore";
+
 import type {
+  AdminNotificationCountsResponse,
+  AdminNotificationDetail,
+  AdminNotificationListParams,
+  AdminNotificationListResponse,
+  BulkNotificationPayload,
   CreateNotificationRequest,
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  SendNotificationResponse,
+  UnsubscribeRequest,
+  UnsubscribeResponse,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
 import { Api } from "./api";
 import {
+  adminNotificationListTag,
   idTag,
   invalidateTags,
   listTag,
+  provideAdminNotificationListTags,
+  provideAdminNotificationTags,
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
@@ -46,8 +59,11 @@ export const notificationApi = Api.injectEndpoints({
         url: "/api/notification",
         body,
       }),
-      invalidatesTags: (notification, error) =>
-        invalidateTags(error, [listTag("notification")]),
+      invalidatesTags: (_notification, error) =>
+        invalidateTags(error, [
+          listTag("notification"),
+          adminNotificationListTag(),
+        ]),
     }),
     updateNotification: builder.mutation<
       Notification,
@@ -61,6 +77,7 @@ export const notificationApi = Api.injectEndpoints({
       invalidatesTags: (notification, error) =>
         invalidateTags(error, [
           listTag("notification"),
+          adminNotificationListTag(),
           ...(notification ? [idTag("notification", notification.id)] : []),
         ]),
     }),
@@ -78,12 +95,83 @@ export const notificationApi = Api.injectEndpoints({
       },
     ),
     sendUnsavedNotification: builder.mutation<
-      void,
+      SendNotificationResponse,
       CreateNotificationRequest | UpdateNotificationRequest
     >({
       query: (body) => ({
         method: "POST",
         url: `/api/notification/send`,
+        // In edit mode the alert modal passes the full Notification it fetched,
+        // including the server-managed `creator`, which the endpoint ignores.
+        body: _.omit(body, "creator"),
+      }),
+    }),
+    getAdminNotificationCounts: builder.query<
+      AdminNotificationCountsResponse,
+      void
+    >({
+      query: () => ({ method: "GET", url: "/api/notification/admin/counts" }),
+      providesTags: [adminNotificationListTag(), listTag("notification")],
+    }),
+    adminListNotifications: builder.query<
+      AdminNotificationListResponse,
+      AdminNotificationListParams | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/notification/admin",
+        params: params ?? undefined,
+      }),
+      providesTags: (result) =>
+        result
+          ? provideAdminNotificationListTags(result.data)
+          : [adminNotificationListTag()],
+    }),
+    bulkNotificationAction: builder.mutation<
+      { updated: number },
+      BulkNotificationPayload
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/admin/bulk",
+        body,
+      }),
+      invalidatesTags: (_result, error, { notification_ids }) =>
+        invalidateTags(
+          error,
+          provideAdminNotificationListTags(
+            notification_ids.map((id) => ({ id })),
+          ),
+        ),
+    }),
+    adminNotificationDetail: builder.query<
+      AdminNotificationDetail,
+      NotificationId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/notification/admin/${id}`,
+      }),
+      providesTags: (result) =>
+        result ? provideAdminNotificationTags(result) : [],
+    }),
+    unsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe",
+        body,
+      }),
+    }),
+    undoUnsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe/undo",
         body,
       }),
     }),
@@ -101,4 +189,11 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useGetAdminNotificationCountsQuery,
+  useAdminListNotificationsQuery,
+  useLazyAdminListNotificationsQuery,
+  useBulkNotificationActionMutation,
+  useAdminNotificationDetailQuery,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromNotificationByEmailMutation,
 } = notificationApi;

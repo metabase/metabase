@@ -1,0 +1,14 @@
+.scrollableLayout {
+  overflow: hidden;
+}
+
+.roundedBox {
+  display: grid;
+  grid-template-columns: minmax(5rem, 30rem);
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.formPanel {
+  overflow-y: auto;
+}

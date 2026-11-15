@@ -20,7 +20,6 @@
           (mt/assert-has-premium-feature-error "Audit app" (mt/user-http-request user-id
                                                                                  :delete 402
                                                                                  (format "ee/audit-app/user/%d/subscriptions" user-id))))))
-
     (mt/with-premium-features #{:audit-app}
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp [:model/User                  {user-id :id} {}
@@ -46,7 +45,7 @@
             (letfn [(describe-objects []
                       {:num-subscriptions                (+ (t2/count :model/PulseChannelRecipient :user_id user-id)
                                                             (t2/count :model/NotificationRecipient :user_id user-id))
-                       :alert-archived?                  (t2/select-one-fn (comp not :active) :model/Notification (:id alert))
+                       :alert-archived?                  (t2/select-one-fn (comp not :active) :model/Notification :id (:id alert))
                        :dashboard-subscription-archived? (t2/select-one-fn :archived :model/Pulse :id dash-sub-id)})
                     (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
                       (mt/user-http-request request-user-name-or-id

@@ -1,14 +1,234 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface
+
+## Metabase 0.66.0
+
+- The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
+  instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
+  **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
+
+- The setting `agent-api-enabled?`, which turned the Agent API on and off, no longer has an effect, with no
+  deprecation period. Its value does not carry over: an instance that had the Agent API on has it off after the
+  upgrade. To turn the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+  The old setting stays defined as a stub, so that a client, a config file or a serialization export that still
+  holds it does not fail.
+  - `GET /api/session/properties` and `GET /api/setting` no longer return `agent-api-enabled?`.
+  - `PUT /api/setting/:key` with the key `agent-api-enabled?`, and `PUT /api/setting` with that key, still answer
+    an admin with `204 No Content`. They store nothing, and the server log says to use
+    `deprecated-agent-api-enabled?`.
+  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `410 Gone` and the
+    removal message, and any other user with `403 Forbidden`.
+  - The environment variable `MB_AGENT_API_ENABLED` is ignored. An `agent-api-enabled?` key in a config file stores
+    nothing and logs the same message. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false`
+    holds it off with `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence
+    over the value that an admin sets.
+  - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
+    imports; the key has no effect.
+
+- `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
+  run it with `POST /api/ee/transform-test/:id/run`.
+
+- `POST /api/ee/remote-sync/create-branch` has been removed. `POST /api/ee/remote-sync/stash` creates the branch
+  `new_branch` at the version of the last sync, pushes the synced content of the instance to it and syncs with it.
+
+- The items of `GET /api/ee/remote-sync/dirty` are closed maps with `id`, `name`, `model` and `sync_status`, and, when
+  they apply, `collection` (the collection the change is in, with its `effective_ancestors`) and `parent` (the entity the
+  change shows within, such as the table of a segment). They no longer have `collection_id`, `created_at`, `updated_at`,
+  `authority_level`, `display`, `query_type`, `description`, `table_id`, `table_name` or `card_id`.
+
+- `POST /api/revision/revert` with `entity` `transform-test` needs the Transforms Testing premium feature, as the
+  `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
+  `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
+
+- Data apps name their slug and their display name as their `data_app.yaml` does: `slug` holds the slug that
+  `name` held, and `name` holds the display name that `display_name` held. The `/api/ee/apps` endpoints return `slug` and
+  `name`, and a data app node of the dependency endpoints has `slug` and `name`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
+  `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test whose output has two columns of one name with the
+  `error-code` `transform-test.duplicate-output-columns` in place of `transform-test.query-failed`. The status stays
+  `422`. On a database that ignores case in column names (MySQL, MariaDB, SQL Server, Redshift), two names that differ
+  only in case are one name.
+
+- `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
+  `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
+  `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
+  every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. Deleting
+  a test through Metabase sets `test_id` to `null` on its runs. A delete outside Metabase (raw SQL, a database cascade)
+  leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
+  the run started, so such a run is never listed or returned as `last_run`.
+
+- `POST /api/ee/transform-test/:id/run` needs native query access to the transform's source database, as well as
+  read access to the test and its transform. Users without native query access get `403 Forbidden`.
+
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
+
+- The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
+  `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
+  `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,
+  pass `include_editable_data_model=true` to the database endpoints and `include-editable-data-model=true` to
+  `GET /api/table` instead.
+
+- `GET /api/database/:id/metadata?include_hidden=true` no longer returns fields whose visibility is "Do not include"
+  (`sensitive`). Pass the new `include_sensitive_fields=true` to get them, for tables whose data model the current user
+  can edit, as with `GET /api/table/:id/query_metadata`.
+
+- `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
+  that does not start with `.` or `-`. Other values get `400 Bad Request`.
+
+- `PUT /api/field/:id` no longer accepts `nfc_path`, which only sync sets, and answers `null` for `has_field_values`,
+  `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
+  `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
+  way.
+
+- `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
+  subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its
+  dashboard's collection, and it has no collection position. `POST` accepts a `collection_id` that is absent, `null`
+  or equal to the dashboard's collection, and no `collection_position`. `PUT` accepts values equal to the stored
+  ones. In 0.65, `POST` asked for write access to a non-nil `collection_id` and answered `403` without it. With that
+  access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
+  these checks. `PUT` accepted a new `collection_position`.
+
+- The `collection_preview` card property has been removed.
+  - The following endpoints no longer return `collection_preview` in response objects:
+    - `GET /api/card`
+    - `GET /api/card/:id`
+    - `GET /api/collection/:id/items`
+    - `GET /api/collection/root/items`
+    - `GET /api/dashboard/:id/items`
+    - `GET /api/ee/library`
+    - `GET /api/ee/stale/:id`
+  - The following endpoints ignore `collection_preview` in request bodies:
+    - `POST /api/card`
+    - `PUT /api/card/:id`
+    - `POST /api/card/:id/query`
+  - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
+    breakouts, as it does without the flag, instead of returning a single aggregated value.
+
+- The sandbox host used by custom visualizations and data apps is now at
+  `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
+
+## Metabase 0.65.0
+
+- `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
+  `409 Conflict` instead of `403 Forbidden`. The message, "A table with that name already exists.", is unchanged.
+  `403` remains the answer when the user lacks permission.
+
+## Metabase 0.64.0
+
+- `POST /api/slack/bug-report` now requires bug reporting to be enabled (`MB_BUG_REPORTING_ENABLED`).
+  `diagnosticInfo.reporter` is now a boolean: `true` attributes the report to the authenticated user, `false` (or
+  omitting it) submits the report anonymously. The previous `{ "name": ..., "email": ... }` object is still accepted
+  and treated as `true`; the name and email in it are ignored. The request body is validated against a fixed set of
+  keys; undeclared keys are dropped. This change is
+  backported to 0.58 and later; see the per-version entries below.
+
+- Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
+
+- The endpoints that fetch prefill values for action forms have been converted from GET to POST so that parameter values are sent in the JSON request body instead of the URL query string. `parameters` is now a JSON object in the request body rather than a JSON-encoded query-string parameter:
+
+  - `GET /api/action/:action-id/execute` has been replaced by `POST /api/action/:action-id/execute/values`.
+  - `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/values`.
+  - `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute/values`.
+
+  The GET variants have been removed without a deprecation period.
+
+- `PUT /api/notification/:id` now identifies the notification by the URL only. An `id` in the request body (and a
+  `payload.id`) is ignored instead of being used to target a different notification. Previously, a body `id` that
+  didn't match the URL deleted and recreated the notification.
+
+- `POST /api/notification/:id/send` requires write access to the notification instead of read access. Only the
+  notification's creator or an admin can send it, and with advanced permissions enabled the creator also needs the
+  Subscriptions and Alerts application permission.
+
+- `POST /api/notification`, `PUT /api/notification/:id`, and `POST /api/notification/send` apply channel permissions
+  to inline handler definitions. A handler that carries an inline `channel` (instead of a `channel_id`) requires
+  permission to create channels. A handler that attaches, replaces, or removes a `template` requires permission to
+  write channel templates.
+
+- `POST /api/notification/send` validates the request body with the same schema as `POST /api/notification`. `id`,
+  `payload_id`, and other ids of saved rows are no longer part of the accepted body, since the notification being
+  sent is never saved.
+
+- `POST /api/action` and `PUT /api/action/:id` return a 403 when the action's `dataset_query` is a native query and
+  the caller doesn't have native query permission on the target database. This matches what the Metabase UI already
+  required.
+
+- `POST /api/pulse/test` requires the Subscriptions and Alerts application permission.
+
+- `GET /api/transform/run/:run-id` requires read access to the run's transform. Runs whose transform has been deleted
+  are only visible to admins. Previously, the endpoint only checked that the run existed.
+
+- Creating or updating a transform checks query permissions on every table and saved question referenced by the
+  transform's source query, not only the source database. Requests that used to succeed can now return a 403.
+
+- `GET /api/ee/tenant` and `GET /api/ee/tenant/:id` only include `member_count` and `attributes` for admins. Other
+  people get `id`, `name`, `slug`, `is_active`, and `tenant_collection_id`.
+
+- Pulse and subscription recipient lists are scoped by tenancy for everyone who isn't an admin: people in a tenant see
+  only recipients in their own tenant, and internal people see only other internal people. `GET /api/pulse/form_input`
+  no longer includes the Slack channel list for people in a tenant.
+
+- `PUT /api/dashboard/:id` returns a 400 when a link card's entity id or a click behavior's target id isn't an
+  integer. Previously, these values were stored as-is.
+
+- Unauthenticated requests to `PUT /api/email`, `DELETE /api/email`, and `POST /api/email/test` return a 401 instead
+  of a 403. The endpoints are now mounted behind the same authentication middleware as the other admin routes.
+
+## Metabase 0.63.15
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.62.18
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.61.20
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
 
 ## Metabase 0.61.0
 
 - `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints
   provided LLM-powered autodescription of cards and dashboards using the legacy OpenAI client. This functionality has
   been superseded by the Metabot agent.
+
+## Metabase 0.60.26
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.59.30
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.58.32
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
 
 ## Metabase 0.57.0
 
@@ -23,13 +243,16 @@ title: API changelog
   between group ids and collection id indicate that the group provides no permissions for the collection. For
   example, what was returned in versions before 0.56.13:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
+  {
+    "revision": 2,
+    "groups": { "1": { "root": "write", "1": "read", "2": "none" } }
+  }
   ```
   becomes:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read"}}}
+  { "revision": 2, "groups": { "1": { "root": "write", "1": "read" } } }
   ```
-  in versions 0.56.13 and up. 
+  in versions 0.56.13 and up.
 
 ## Metabase 0.55.0
 
@@ -123,7 +346,7 @@ title: API changelog
 
 - `/api/metric`
 
-  The `/api/metric` endpoints has been renamed to `/api/legacy-metric` to reflect that fact it will not be used for the new version of metrics. The new version uses the `/api/card` endpoints.
+  The `/api/metric` endpoints have been renamed to `/api/legacy-metric`. The new metrics use the `/api/card` endpoints.
 
 - `GET /api/permissions/graph` and `PUT /api/permissions/graph`
 

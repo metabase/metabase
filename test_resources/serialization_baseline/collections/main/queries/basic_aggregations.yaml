@@ -1,15 +1,8 @@
 name: Basic Aggregations
 entity_id: h5F2EjHsRd73Dqqh8sAtd
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: table
 collection_id: cOlQuErIeS0ExAmPlE2x1
-query_type: query
-database_id: Sample Database
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 parameters: []
 parameter_mappings: []
 dataset_query:
@@ -67,8 +60,8 @@ dataset_query:
           - ORDERS
           - PRODUCT_ID
     - - sum
-      - display-name: Total Revenue
-        name: total_revenue
+      - name: total_revenue
+        display-name: Total Revenue
       - - field
         - base-type: type/Float
         - - Sample Database
@@ -244,12 +237,9 @@ result_metadata:
   lib/original-name: total_revenue
   lib/source: source/aggregations
   lib/source-column-alias: total_revenue
-visualization_settings:
-  column_settings: null
-card_schema: 23
+visualization_settings: {}
+card_schema: 24
 serdes/meta:
-- id: h5F2EjHsRd73Dqqh8sAtd
-  label: basic_aggregations
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

@@ -5,7 +5,7 @@ summary: Explore metrics and measures across dimensions and compare them side by
 
 # Metrics explorer
 
-The metrics explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/measures.md)
+The metrics explorer is a space for ad-hoc analysis of [metrics](../data-modeling/semantic-layer/metrics.md) and [measures](../data-modeling/semantic-layer/measures.md)
 
 ![Metrics explorer](../questions/images/metrics-explorer.png)
 
@@ -32,7 +32,7 @@ To open a **metric** in the Metrics Explorer:
 
 1. Navigate to the metric's home page.
 
-   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
+   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/semantic-layer/metrics.md#see-all-metrics), or from search.
 
 2. To view the metric in the explorer, click **Explore** in the top right corner.
 
@@ -40,13 +40,30 @@ To return to the metric's home page, click the metric card in the search bar and
 
 To open a **measure** in the metrics explorer:
 
-1. Navigate to the measure in **Data studio > Tables > [Your table] > Measures**.
+1. Navigate to the measure in **Data Studio > Connected data > [Your table] > Measures**.
 2. Select your measure.
 3. On the measure's page, click **three dots** next to the measure's name and select **Explore**.
 
-Once you open a measure or metric in the metrics explorer, Metabase will create tabs plotting the metric/measure along the most appropriate dimensions, as well as the **Totals** tab with the total result of the metric, without any dimensions applied.
+When you open a measure or metric in the Metrics explorer, Metabase plots it along the most appropriate dimension. To change how the metric is broken out, click the current breakout dimension in the bottom controls to open the **Break out** sidebar. 
+
+The sidebar lists the metric's or measure's [dimensions](../data-modeling/semantic-layer/metrics.md#metric-dimensions), excluding primary key and foreign key dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you [compare](#compare-metrics-and-measures) multiple metrics or measures. 
+
+To see the total result without any dimensions, select **No breakout**.
 
 You can also [break out](#break-out-by-dimensions) a metric/measure by additional dimensions or [filter the metric/measure](#filter-metrics-and-measures).
+
+Column labels are hidden from the visualization by default. To show them, open the **...** menu in the bottom controls and enable the **Show column labels** toggle.
+
+### Time and country dimensions
+
+Metabase collapses all time columns into a single **Time** bucket and all country columns into a single **Country** bucket. 
+
+- A column appears in the **Time** bucket based on its data type, so any date or datetime column is included. 
+- A column appears in the **Country** bucket based on its semantic type, so the **Country** bucket only appears when a column has the **Country** semantic type. 
+
+To break out by a specific time or country column, click the slider button next to **Time** or **Country** and choose one.
+
+![Metrics explorer time bucket](images/metrics-explorer-time-bucket.png)
 
 ## Compare metrics and measures
 
@@ -59,25 +76,17 @@ To compare multiple metrics or measures:
 
    ![Compare metrics](./images/compare-metrics.png)
 
-You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visibile. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
+You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visible. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
 
-Once you pick the metrics, you'll see the dimensions of the first metric/measure below the search bar. You can pick a dimension to compare metrics/measures (for example, if you want to see how both Number of Orders and Revenue change by date, state, or product category).
+Once you pick the metrics or measures, open the **Break out** sidebar to choose a dimension to compare them by. Metabase matches dimensions across metrics/measures differently depending on the column type:
+
+- **Compare across different time or country columns.** If your metrics/measures have time or country dimensions, you can choose which column each metric/measure uses for the comparison, even if they're different columns. For example, you can compare Orders by their order date with Reviews by their review date. Click the slider icon next to **Time** or **Country** to choose a dimension for each metric/measure.
+  ![Metrics explorer time bucket comparison](images/metrics-explorer-time-bucket-comparison.png)
+- **Other columns require an exact match.** The column appears as a comparison option under **Shared dimensions** only if both metrics/measures have it. To break out by a dimension that only one metric/measure has, click **See all** and select it.
 
 ![Compare metrics](./images/two-metrics.png)
 
-Metabase will automatically detect shared dimensions and offer them for comparison, like when the metrics/measures are associated with the same data source, or the underlying data sources have foreign key relationships to another shared data source.
-
-If your metrics/measures don't have shared dimensions, you'll need to select a dimension for comparison:
-
-1. Click on the **+** under the search bar to select a dimension for the first metric/measure.
-
-   ![Pick first dimension](./images/pick-first-dimension.png)
-
-2. At the bottom of the screen, select compatible dimensions for other metrics/measures.
-
-   ![Pick second dimension](./images/pick-second-dimension.png)
-
-When your metrics/measures don't have shared dimensions, Metabase has no way of knowing how the dimensions relate to each other, so it's on you to make sure the dimensions you pick make sense to compare!
+Metabase treats dimensions as shared when the metrics or measures come from the same data source, or when their data sources have foreign key relationships to a common data source.
 
 You can [filter](#filter-metrics-and-measures) or [break out](#break-out-by-dimensions) each metric/measure separately, or [do simple calculations with metrics/measures](#calculations-with-metrics-and-measures).
 
@@ -89,12 +98,12 @@ You can also break out each metric by additional dimensions. For example, you mi
 
 To break out a metric or measure by additional dimensions:
 
-1. Click on the metric's card in the search bar.
-2. Select **Break out**
+1. Click the metric's card in the search bar.
+2. Select **Add a series breakout**
    ![Break out by](./images/break-out-metric.png)
 3. Choose the breakout dimension.
 
-To remove the breakout, click on the measure/metric card in the search bar again and select **Remove breakout**.
+To remove the breakout, click on the measure/metric card in the search bar again and select **Remove series breakout**.
 
 ## Filter metrics and measures
 
@@ -114,7 +123,7 @@ You'll see the filter added below the metric or measure's card in the search bar
 
 You can use the four basic math operations (`+`,`-`,`*`,`/`) on metrics/measures in the metrics explorer. For example, you can explore how revenue per user, `Revenue / Active users`, changes with time.
 
-The metrics explorer is especially useful when metrics and measures are associated with different data sources, likeif you have a  "Revenue" metric on the `Subscriptions` table and an "Active users" metric on the `Events` table. If you were to compare these metrics in the query builder, you'd have to wrangle their tables with joins, but the metrics explorer lets you compare these metrics by just typing out a formula.
+The metrics explorer is especially useful when metrics and measures are associated with different data sources, like if you have a  "Revenue" metric on the `Subscriptions` table and an "Active users" metric on the `Events` table. If you were to compare these metrics in the query builder, you'd have to wrangle their tables with joins, but the metrics explorer lets you compare these metrics by just typing out a formula.
 
 ![Math with metrics](./images/math-with-metrics.png)
 

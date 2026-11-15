@@ -71,7 +71,6 @@
           (testing "Behind a feature flag"
             (mt/with-premium-features #{} ;; not :upload-management
               (mt/assert-has-premium-feature-error "Upload Management" (mt/user-http-request :crowberto :delete 402 (delete-url 1)))))
-
           (mt/with-premium-features #{:upload-management}
             (testing "Happy path\n"
               (let [table-id (:id (oss-test/create-csv!))]
@@ -81,17 +80,14 @@
                   (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))
                 (testing "The table is gone from the list"
                   (is (not (contains? (listed-table-ids) table-id))))))
-
             (testing "Uploads may be deleted even when *uploading* has been disabled"
               (upload-test/with-uploads-disabled!
                 (let [table-id (:id (oss-test/create-csv!))]
                   (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))))
-
             (testing "The table must be uploaded"
               (mt/with-temp [:model/Table {table-id :id}]
                 (is (= {:message "The table must be an uploaded table."}
                        (mt/user-http-request :rasta :delete 422 (delete-url table-id))))))
-
             (testing "Write permissions to the table are required to delete it\n"
               (let [table-id (:id (oss-test/create-csv!))]
                 (testing "The delete request is rejected"
@@ -99,7 +95,6 @@
                          (mt/user-http-request :rasta :delete 403 (delete-url table-id)))))
                 (testing "The table remains in the list"
                   (is (contains? (listed-table-ids) table-id)))))
-
             (testing "The archive_cards argument is passed through"
               (let [passed-value (atom nil)]
                 (mt/with-dynamic-fn-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]

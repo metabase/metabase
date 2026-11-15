@@ -7,7 +7,7 @@
   - `name`, `description` — tool identity
   - `endpoint` — HTTP method + path
   - `inputSchema` — merged route + query + body parameters
-  - `responseSchema` — from the endpoint's response schema
+  - `outputSchema` — derived from the endpoint's response schema
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
@@ -160,28 +160,28 @@
    :open-world?  :openWorldHint})
 
 (defn- method-default-annotations
-  "Infer default MCP ToolAnnotations from HTTP method. POST defaults to non-destructive — opt
-   in with `:destructive? true` for endpoints that actually destroy data."
+  "Default MCP ToolAnnotations for an HTTP method."
   [method]
-  (case method
-    (:get :head) {:readOnlyHint    true
-                  :idempotentHint  true}
-    :post        {:destructiveHint false}
-    :put         {:destructiveHint false
-                  :idempotentHint  true}
-    :delete      {:destructiveHint true
-                  :idempotentHint  true}
-    {}))
+  ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present — some MCP clients
+  ;; (e.g. the ChatGPT Apps SDK) reject tools that omit them.
+  (merge {:readOnlyHint    false
+          :destructiveHint false
+          ;; `openWorldHint` signals whether a tool reaches arbitrary external entities (e.g. a
+          ;; web-search tool) — false because Metabase tools stay within the user's own instance.
+          :openWorldHint   false}
+         (case method
+           (:get :head) {:readOnlyHint   true
+                         :idempotentHint true}
+           :put         {:idempotentHint true}
+           :delete      {:destructiveHint true
+                         :idempotentHint  true}
+           {})))
 
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
-   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`. Callers should
-   reject `:redundant` entries (explicit declarations must add information beyond the
-   HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive).
-
-   `destructiveHint` is dropped from `:annotations` when `readOnlyHint` is true since per the
-   MCP spec it's only meaningful for non-read-only tools — but if both were `true` before the
-   drop, the result is flagged `:contradictory?` rather than silently coalesced."
+   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`.
+   Callers should reject `:redundant` entries (explicit declarations must add information beyond
+   the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive)."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
         explicit        (into {}
@@ -198,9 +198,9 @@
                                       (when-let [mcp-key (annotation-key-mapping k)]
                                         (when (= v (get method-defaults mcp-key))
                                           [k v]))))
-                              explicit-annotations)]
-    (cond-> {:annotations (cond-> merged
-                            read-only? (dissoc :destructiveHint))
+                              explicit-annotations)
+        annotations     merged]
+    (cond-> {:annotations annotations
              :redundant   redundant}
       (and read-only? (true? (:destructiveHint merged)))
       (assoc :contradictory? true))))
@@ -213,6 +213,56 @@
     (let [jss (malli->json-schema malli-schema)]
       (when (:properties jss)
         (select-keys jss [:properties :required])))))
+
+(defn strict-tool-input-schema
+  "Make an MCP inputSchema compatible with stricter LLM clients.
+
+  MCP allows normal JSON Schema optional object properties.
+  OpenAI's strict tool schema validation is narrower: every object property must be listed in `:required`.
+  The Malli source already models nullability via `[:maybe ...]` (see [[assert-optional-fields-nullable!]]),
+  so this only needs to widen `:required` and close the object — property types are left alone."
+  [schema]
+  (letfn [(strict-schema [schema]
+            (let [schema (cond-> schema
+                           (:properties schema) (update :properties update-vals strict-schema)
+                           (:items schema)      (update :items strict-schema)
+                           (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
+                           (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
+                           (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
+              (if (and (= "object" (:type schema)) (seq (:properties schema)))
+                (assoc schema
+                       :required (vec (keys (:properties schema)))
+                       :additionalProperties false)
+                schema)))]
+    (strict-schema schema)))
+
+(defn- nullable-malli?
+  "True when `schema` accepts `nil` (e.g. `[:maybe X]`, `:any`, `:nil`)."
+  [schema]
+  (try (mr/validate schema nil) (catch Throwable _ false)))
+
+(defn assert-optional-fields-nullable!
+  "Throw if any optional field reachable from `malli-schema` rejects an explicit null.
+   The strict-tool transform forces every property into `:required` (it does not widen property types),
+   so the only way for a strict MCP client to express \"no value\" is by sending null. If the Malli source
+   marks a field `:optional true` without `[:maybe ...]`, the published JSON Schema is required-and-non-
+   nullable — the `:optional` marker has no observable effect and the contract drifts from what the
+   schema says. The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
+  [malli-schema tool-name]
+  (when malli-schema
+    (mc/walk
+     (mr/resolve-schema malli-schema)
+     (fn [schema _path children _opts]
+       (when (= :map (mc/type schema))
+         (doseq [[k props value-schema] children
+                 :when (and (true? (:optional props))
+                            (not (nullable-malli? value-schema)))]
+           (throw (ex-info (str "Tool " tool-name " input has optional non-nullable field "
+                                (pr-str k) ". Mark it `[:maybe ...]` so the published JSON "
+                                "Schema is nullable; otherwise `:optional` has no observable effect "
+                                "under the strict-tool transform.")
+                           {:tool tool-name :field k}))))
+       schema))))
 
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
@@ -239,6 +289,17 @@
       (seq all-props)                    (cond-> {:type "object" :properties all-props}
                                            (seq all-req) (assoc :required all-req)))))
 
+(defn- tool-input-schema
+  "Derive a tool's MCP `inputSchema` from the endpoint's route/query/body Malli.
+  Linted by [[assert-optional-fields-nullable!]]: every optional field must be `[:maybe ...]` so the
+  published JSON Schema is already nullable, letting the strict transform leave property types alone.
+  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP input shape differs from
+  the endpoint's wire shape."
+  [tool-name form]
+  (doseq [k [:route :query :body]]
+    (assert-optional-fields-nullable! (get-in form [:params k :schema]) tool-name))
+  (some-> (merge-input-schemas form) strict-tool-input-schema))
+
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
   [response-schema]
@@ -247,6 +308,14 @@
           content  (or (-> resolved mc/properties :openapi/response-schema)
                        response-schema)]
       (malli->json-schema content))))
+
+(defn- tool-output-schema
+  "Derive a tool's MCP `outputSchema` from the endpoint's `:response-schema`.
+  No strict transform — outputs aren't constrained by OpenAI's strict-tool rules.
+  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP body transform
+  reshapes the endpoint response."
+  [form]
+  (response-schema->json-schema (:response-schema form)))
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -290,8 +359,8 @@
         description    (or (:description tool-md)
                            (:docstr form))
         full-path      (str prefix (route-path->endpoint-path route-path))
-        input-schema   (merge-input-schemas form)
-        resp-schema    (response-schema->json-schema (:response-schema form))
+        input-schema   (tool-input-schema tool-name form)
+        output-schema  (tool-output-schema form)
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)
         _              (when (:contradictory? inferred)
@@ -312,7 +381,7 @@
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
       input-schema      (assoc :inputSchema input-schema)
-      resp-schema       (assoc :responseSchema resp-schema)
+      output-schema     (assoc :outputSchema output-schema)
       (seq annotations) (assoc :annotations annotations)
       task-support      (assoc :execution {:taskSupport (name task-support)})
       (string? scope)   (assoc :scope scope))))

@@ -1,0 +1,21 @@
+.item {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_page-secondary);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+  }
+}
+
+/* opacity rather than visibility, so the button stays reachable by keyboard */
+.copyIcon {
+  opacity: 0;
+}
+
+.item:hover .copyIcon,
+.copyIcon:focus-visible {
+  opacity: 1;
+}

@@ -1,17 +1,19 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms.core :as transforms]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [metabase.transforms.schema :as transforms.schema]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +24,7 @@
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map
+   :- [:map {:closed true}
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -41,7 +43,7 @@
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map
+   :- [:map {:closed true}
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -54,10 +56,19 @@
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
   (let [work-fn  (fn [progress]
-                   (replacement.runner/run-swap-source!
-                    [source_entity_type source_entity_id]
-                    [target_entity_type target_entity_id]
-                    progress))
+                   (analytics/track-event! :snowplow/simple_event
+                                           {:event "replace_data_source_started"})
+                   (try
+                     (replacement.runner/run-swap-source!
+                      [source_entity_type source_entity_id]
+                      [target_entity_type target_entity_id]
+                      progress)
+                     (analytics/track-event! :snowplow/simple_event
+                                             {:event "replace_data_source_succeeded"})
+                     (catch Throwable e
+                       (analytics/track-event! :snowplow/simple_event
+                                               {:event "replace_data_source_failed"})
+                       (throw e))))
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id api/*current-user-id*)
@@ -84,15 +95,15 @@
   [_route-params
    _query-params
    {:keys [card_id transform_name transform_target target_collection_id transform_tag_ids]}
-   :- [:map
+   :- [:map {:closed true}
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
-       [:transform_target     :map]
+       [:transform_target     ::transforms.schema/transform-target]
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
-        card      (api/check-404 (t2/select-one :model/Card :id card_id))
+        card      (api/check-404 (replacement.db/card card_id))
         transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
@@ -106,7 +117,20 @@
                    user-id)
         progress  (replacement-run/run-row->progress job-row)
         work-fn   (fn [progress]
-                    (replacement.runner/run-swap-model-with-transform! card_id (:id transform) progress :user-id user-id))]
+                    (analytics/track-event! :snowplow/simple_event
+                                            {:event     "model_to_transforms_migration_started"
+                                             :target_id card_id})
+                    (try
+                      (replacement.runner/run-swap-model-with-transform!
+                       card_id (:id transform) progress :user-id user-id)
+                      (analytics/track-event! :snowplow/simple_event
+                                              {:event     "model_to_transforms_migration_success"
+                                               :target_id card_id})
+                      (catch Throwable e
+                        (analytics/track-event! :snowplow/simple_event
+                                                {:event     "model_to_transforms_migration_failure"
+                                                 :target_id card_id})
+                        (throw e))))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
@@ -114,24 +138,22 @@
 (api.macros/defendpoint :get "/runs" :- [:sequential ::replacement.schema/run]
   "List replacement runs, optionally filtered by is-active."
   [_route-params
-   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+   {:keys [is-active]} :- [:map {:closed true} [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (t2/select :model/ReplacementRun
-             (cond-> {:order-by [[:start_time :desc]]}
-               (some? is-active) (assoc :where [:= :is_active is-active]))))
+  (replacement.db/runs is-active))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (t2/select-one :model/ReplacementRun :id id)
+  (or (replacement.db/run id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (t2/select-one :model/ReplacementRun :id id)]
+  (let [run (replacement.db/run id)]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
     (when-not (:is_active run)

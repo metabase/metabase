@@ -1,13 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  CollectionNamespace,
   Database,
   DatabaseId,
   DraftTransformSource,
@@ -18,6 +15,8 @@ import type {
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
+
+import { RUN_STATUS_FILTER_VALUES } from "./constants";
 
 export function parseTimestampWithTimezone(
   timestamp: string,
@@ -51,6 +50,16 @@ export function formatStatus(status: TransformRunStatus | null) {
     case "canceled":
       return t`Canceled`;
   }
+}
+
+export function getRunStatusOptions(): {
+  value: TransformRunStatus;
+  label: string;
+}[] {
+  return RUN_STATUS_FILTER_VALUES.map((status) => ({
+    value: status,
+    label: formatStatus(status),
+  }));
 }
 
 export function formatRunMethod(trigger: TransformRunMethod) {
@@ -122,6 +131,12 @@ export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
 }
 
+export function isActiveRunStatus(
+  status: TransformRunStatus | null | undefined,
+) {
+  return status === "started" || status === "canceling";
+}
+
 export function isTransformRunning(transform: Transform) {
   const lastRun = transform.last_run;
   return lastRun?.status === "started";
@@ -164,27 +179,6 @@ export function isSameSource(
   return false;
 }
 
-export function isSourceEmpty(
-  source: DraftTransformSource,
-  databaseId: DatabaseId,
-  metadata: Metadata,
-): boolean {
-  if (source.type !== "query") {
-    return false;
-  }
-
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const query = Lib.fromJsQuery(metadataProvider, source.query);
-  const { isNative } = Lib.queryDisplayInfo(query);
-
-  if (!isNative) {
-    return false;
-  }
-
-  const nativeQuery = Lib.rawNativeQuery(query);
-  return !nativeQuery?.trim();
-}
-
 export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
@@ -199,7 +193,7 @@ export type ValidationResult = {
 export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Lib.templateTags(query);
 
     const invalidResults = tags
       .map(validateTemplateTag)
@@ -235,41 +229,43 @@ function validateTemplateTag(tag: TemplateTag): ValidationResult {
 
 export const getLibQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
   if (source.type !== "query") {
     return null;
   }
-  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+  return Lib.fromJsQuery(
+    getMetadataProvider(source.query.database),
+    source.query,
+  );
 };
 
 // Check if this is an MBQL query (not native SQL or Python)
 export const isMbqlQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
-  const query = getLibQuery(source, metadata);
+  const query = getLibQuery(source, getMetadataProvider);
   if (!query) {
     return false;
   }
   return !Lib.queryDisplayInfo(query).isNative;
 };
 
-export const getRootCollectionItem = ({
-  namespace,
-}: {
-  namespace: CollectionNamespace;
-}): OmniPickerCollectionItem | null => {
-  if (namespace === "transforms") {
-    return {
-      model: "collection",
-      id: "root",
-      namespace: "transforms",
-      location: "/",
-      name: t`Transforms`,
-      here: ["collection"],
-      below: ["table", "metric"],
-    };
+/**
+ * Returns the duration in ms of a transform run, or null when it cannot be
+ * measured (run still in progress, missing timestamps, unparseable values).
+ */
+export function getRunDurationMs(
+  run: Pick<TransformRun, "start_time" | "end_time"> | null | undefined,
+): number | null {
+  if (run == null || run.end_time == null) {
+    return null;
   }
-  return null;
-};
+  const start = Date.parse(run.start_time);
+  const end = Date.parse(run.end_time);
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return null;
+  }
+  return end - start;
+}

@@ -5,24 +5,24 @@
  * good reason.
  */
 
-import "dotenv/config";
 import { Octokit } from "@octokit/rest";
 import "zx/globals";
 import { $ } from "zx";
 $.verbose = false;
 
 import {
-  isValidVersionString,
-  hasBeenReleased,
-  isValidCommitHash,
-  isEnterpriseVersion,
+  closeMilestone,
   getMajorVersion,
   getVersionInfo,
-  publishRelease,
-  closeMilestone,
+  hasBeenReleased,
+  isEnterpriseVersion,
+  isValidCommitHash,
+  isValidVersionString,
   openNextMilestones,
+  publishRelease,
   versionRequirements,
 } from "./src";
+import { publishVersionInfoFiles } from "./version-info-s3";
 
 const {
   GITHUB_TOKEN,
@@ -50,7 +50,6 @@ const isWithoutGithub = process.argv?.[5]?.trim() === "--without-github";
 let latestFlag: string | boolean | null = process.argv?.[6]?.trim();
 
 const log = (message, color = "blue") =>
-  // eslint-disable-next-line no-console
   console.log(chalk[color](`\n${message}\n`));
 
 function error(message) {
@@ -61,10 +60,12 @@ function error(message) {
 // need to force the user to set the latest tag from the command line if they are releasing without github
 if (isWithoutGithub) {
   if (!latestFlag) {
-    error('If you are releasing without github you must pass --latest or --not-latest as the last argument');
+    error(
+      "If you are releasing without github you must pass --latest or --not-latest as the last argument",
+    );
   }
 
-  latestFlag = (latestFlag === "--latest") ? true : false;
+  latestFlag = latestFlag === "--latest" ? true : false;
 }
 
 const edition = isEnterpriseVersion(version) ? "ee" : "oss";
@@ -90,7 +91,7 @@ if (!step) {
 // mostly for type checking
 function getGithubCredentials() {
   if (isWithoutGithub) {
-    return { GITHUB_TOKEN: '', GITHUB_OWNER: '', GITHUB_REPO: '' };
+    return { GITHUB_TOKEN: "", GITHUB_OWNER: "", GITHUB_REPO: "" };
   }
 
   if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
@@ -162,7 +163,7 @@ async function checkJar() {
     `${JAR_PATH}/SHA256.sum`,
   ];
 
-  requiredFiles.forEach(file => {
+  requiredFiles.forEach((file) => {
     if (!fs.existsSync(file)) {
       error(`You must build the jar first. ${file} does not exist`);
     }
@@ -306,13 +307,11 @@ async function versionInfo() {
 
   fs.writeFileSync(versionInfoName, JSON.stringify(newVersionInfo, null, 2));
 
-  await $`aws s3 cp ${versionInfoName} s3://${AWS_S3_STATIC_BUCKET}/${versionInfoName}`.pipe(
-    process.stdout,
-  );
-
-  await $`aws cloudfront create-invalidation \
-    --distribution-id ${AWS_CLOUDFRONT_STATIC_ID} \
-    --paths /${versionInfoName}`.pipe(process.stdout);
+  await publishVersionInfoFiles({
+    files: [versionInfoName],
+    bucket: AWS_S3_STATIC_BUCKET,
+    distributionId: AWS_CLOUDFRONT_STATIC_ID,
+  });
 
   log(`✅ Published ${versionInfoName} to s3`);
 }
@@ -376,8 +375,11 @@ async function updateMilestones() {
   if (step === "publish") {
     log(`🚀 Publishing ${edition} ${version} 🚀`);
 
-    if ( isWithoutGithub ) {
-      log(`⚠️   Skipping github steps because --without-github was passed   ⚠️`, "yellow");
+    if (isWithoutGithub) {
+      log(
+        `⚠️   Skipping github steps because --without-github was passed   ⚠️`,
+        "yellow",
+      );
 
       await s3();
       await docker();
@@ -389,7 +391,9 @@ async function updateMilestones() {
         "no milestones were updated",
       ].join("\n ❌  ");
 
-      log(`Because you released without github the following steps were not completed:\n ❌  ${remainingSteps}`);
+      log(
+        `Because you released without github the following steps were not completed:\n ❌  ${remainingSteps}`,
+      );
 
       return;
     }

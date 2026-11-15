@@ -1,0 +1,25 @@
+## Assert DB-level defaults for metabase_table.data_layer / data_authority so they're consistent across
+## app DBs (data_authority was NULL on MySQL/MariaDB). The model before-insert sets both for model inserts.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-06-10T10:00:00
+      author: chris
+      comment: Default metabase_table.data_layer to "internal" at the DB level
+      changes:
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultValue: internal
+
+  - changeSet:
+      id: v63.2026-06-10T10:00:01
+      author: chris
+      comment: Reassert metabase_table.data_authority DB default of "unconfigured" (was inconsistent on MySQL/MariaDB)
+      changes:
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_authority
+            columnDataType: varchar(20)
+            defaultValue: unconfigured

@@ -9,17 +9,20 @@ import {
 import { match } from "ts-pattern";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { buildClickParameters } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
 import { setInitialDashboardTabId } from "embedding-sdk-bundle/store/reducer";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import { setParameterValue } from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
+  getParameters,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import { Stack } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type {
@@ -28,12 +31,34 @@ import type {
 } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
+import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
   SdkInternalNavigationContext,
   type SdkInternalNavigationEntry,
+  type SdkInternalNavigationStackEntry,
 } from "./context";
+
+// Strips props that are only meant for the root dashboard before forwarding to a drill-through target.
+function getDrillThroughDashboardProps({
+  parameters: _parameters,
+  onParametersChange: _onParametersChange,
+  initialParameters: _initialParameters,
+  navigatedEntityParameters: _navigatedEntityParameters,
+  onNavigatedEntityParametersChange: _onNavigatedEntityParametersChange,
+  ...props
+}: Partial<SdkDashboardInnerProps> = {}): Omit<
+  SdkDashboardInnerProps,
+  | "dashboardId"
+  | "parameters"
+  | "onParametersChange"
+  | "initialParameters"
+  | "navigatedEntityParameters"
+  | "onNavigatedEntityParametersChange"
+> {
+  return props;
+}
 
 type Props = {
   children: ReactNode;
@@ -57,7 +82,7 @@ const SdkInternalNavigationProviderInner = ({
   drillThroughQuestionProps,
   keepChildrenMounted = false,
 }: Props) => {
-  const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
+  const [stack, setStack] = useState<SdkInternalNavigationStackEntry[]>([]);
   const dispatch = useSdkDispatch();
   const currentDashboard = useSelector(getDashboardComplete);
   const selectedTabId = useSelector(getSelectedTabId);
@@ -89,6 +114,7 @@ const SdkInternalNavigationProviderInner = ({
       if (entry.type === "dashboard") {
         dispatch(setInitialDashboardTabId(entry.tabId ?? null));
       }
+      const navigationId = uuid();
       setStack((prev) => {
         const top = prev.at(-1);
         // Capture the live selected tab onto the outgoing dashboard entry so
@@ -101,7 +127,7 @@ const SdkInternalNavigationProviderInner = ({
                 { ...top, tabId: selectedTabId ?? top.tabId },
               ]
             : prev;
-        return [...updated, entry];
+        return [...updated, { ...entry, navigationId }];
       });
     },
     [dispatch, currentDashboard, selectedTabId],
@@ -130,27 +156,16 @@ const SdkInternalNavigationProviderInner = ({
     (dashboard: { id: SdkDashboardId; name: string }) => {
       if (stack.length === 0) {
         setStack([
-          { type: "dashboard", id: dashboard.id, name: dashboard.name },
+          {
+            type: "dashboard",
+            id: dashboard.id,
+            name: dashboard.name,
+            navigationId: uuid(),
+          },
         ]);
       }
     },
     [stack.length],
-  );
-
-  const value = useMemo(
-    () => ({
-      stack,
-      push,
-      pop,
-      currentEntry: stack.at(-1),
-      previousEntry: stack.at(-2),
-      // When starting from the `metabase-browser`, we need to have > 2 items in
-      // the stack to be able to go back, as the first navigation is handled by
-      // the breadcrumbs.
-      canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
-      initWithDashboard,
-    }),
-    [stack, push, pop, initWithDashboard],
   );
 
   // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
@@ -164,6 +179,32 @@ const SdkInternalNavigationProviderInner = ({
   const entryIndex = entryToRender ? stack.indexOf(entryToRender) : -1;
   // If the entry is the original entry, we just need to return the children.
   const entryIsOriginalEntity = stack.length === 0 || entryIndex === 0;
+  const hasNavigatedToEntity = !entryIsOriginalEntity;
+
+  const navigatedEntityParameters = dashboardProps?.navigatedEntityParameters;
+  const onNavigatedEntityParametersChange =
+    dashboardProps?.onNavigatedEntityParametersChange;
+  const store = useSdkStore();
+  const controlledParameters = entryToRender
+    ? navigatedEntityParameters?.[entryToRender.navigationId]
+    : undefined;
+
+  const value = useMemo(
+    () => ({
+      stack,
+      push,
+      pop,
+      currentEntry: stack.at(-1),
+      previousEntry: stack.at(-2),
+      // When starting from the `metabase-browser`, we need to have > 2 items in
+      // the stack to be able to go back, as the first navigation is handled by
+      // the breadcrumbs.
+      canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
+      initWithDashboard,
+      hasNavigatedToEntity,
+    }),
+    [stack, push, pop, initWithDashboard, hasNavigatedToEntity],
+  );
 
   const shouldRenderBackButton = match(stack.at(-1)?.type ?? null)
     .with(null, () => false)
@@ -173,36 +214,87 @@ const SdkInternalNavigationProviderInner = ({
 
   const maybeButton = shouldRenderBackButton ? (
     // Same padding as when the button is rendered inside the question, to minimize movement while navigating
-    <Stack align="flex-start" p="md">
+    <Stack align="flex-start" p="lg">
       <SdkInternalNavigationBackButton />
     </Stack>
   ) : null;
 
+  // We try to infer question props from the starting dashboard when they have a 1:1 mapping
+  const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
+    withDownloads: dashboardProps?.withDownloads,
+  };
+
   const content = match({ activeEntry: entryToRender })
-    .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
-      <InteractiveDashboardContent
-        {...dashboardProps}
-        style={undefined}
-        className={undefined}
-        dashboardId={activeEntry.id}
-        initialParameters={activeEntry.parameters}
-        enableEntityNavigation
-      />
+    .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => {
+      const { entityId, navigationId } = activeEntry;
+
+      return (
+        <InteractiveDashboardContent
+          {...getDrillThroughDashboardProps(dashboardProps)}
+          dashboardId={activeEntry.id}
+          {...(controlledParameters
+            ? { parameters: controlledParameters }
+            : { initialParameters: activeEntry.parameters })}
+          onParametersChange={
+            entityId !== undefined
+              ? (payload) =>
+                  onNavigatedEntityParametersChange?.({
+                    ...payload,
+                    entityType: "dashboard",
+                    entityId,
+                    navigationId,
+                    // Read the store now: on the first load, the render still has the previous dashboard
+                    clickParameters: buildClickParameters(
+                      activeEntry.parameters ?? {},
+                      getParameters(store.getState()),
+                    ),
+                  })
+              : undefined
+          }
+          enableEntityNavigation
+        />
+      );
+    })
+    .with({ activeEntry: { type: "ad-hoc-question" } }, ({ activeEntry }) => (
+      <SdkAdHocQuestion
+        questionPath={activeEntry.adHocQuestionPath}
+        onNavigateBack={pop}
+        isSaveEnabled
+        {...questionPropsInferredFromDashboard}
+        {...drillThroughQuestionProps}
+      >
+        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+      </SdkAdHocQuestion>
     ))
     .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => {
-      // We try to infer question props from the starting dashboard when they have a 1:1 mapping
-      const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
-        withDownloads: dashboardProps?.withDownloads,
-      };
+      const { entityId, navigationId } = activeEntry;
 
       return (
         <SdkQuestion
           questionId={activeEntry.id}
           onNavigateBack={pop}
-          initialSqlParameters={activeEntry.parameters}
+          // When using controlled parameters we pass `sqlParameters`, not `initialSqlParameters`
+          initialSqlParameters={
+            controlledParameters ? undefined : activeEntry.parameters
+          }
           isSaveEnabled
           {...questionPropsInferredFromDashboard}
           {...drillThroughQuestionProps}
+          sqlParameters={controlledParameters}
+          navigatedEntity={
+            entityId !== undefined
+              ? {
+                  rawClickParameters: activeEntry.parameters ?? {},
+                  onParametersChange: (payload) =>
+                    onNavigatedEntityParametersChange?.({
+                      ...payload,
+                      entityType: "question",
+                      entityId,
+                      navigationId,
+                    }),
+                }
+              : undefined
+          }
         >
           {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
         </SdkQuestion>

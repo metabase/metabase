@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
@@ -5,17 +6,17 @@ import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { getTenantsBasePath } from "metabase/common/tenants";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
@@ -25,11 +26,13 @@ import {
   Icon,
   Input,
   Menu,
+  Text,
   UnstyledButton,
 } from "metabase/ui";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
+import { useListApiKeysQuery } from "../../settings/api/api-key";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
@@ -97,16 +100,18 @@ function DeleteGroupModal({
         ? t`Are you sure you want remove this group and its API key?`
         : t`Are you sure you want remove this group and its API keys?`;
 
-  const message = hasApiKeys
-    ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
-        <Link
-          key="link"
-          to="/admin/settings/authentication/api-keys"
-          variant="brand"
-        >{t`move the API keys to another group`}</Link>
-      )}.`
-    : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
-              This can't be undone.`;
+  const message = hasApiKeys ? (
+    <Text c="text-secondary">{jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
+      <Link
+        key="link"
+        to="/admin/settings/authentication/api-keys"
+        variant="brand"
+      >{t`move the API keys to another group`}</Link>
+    )}.`}</Text>
+  ) : (
+    t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
+              This can't be undone.`
+  );
 
   const confirmButtonText =
     apiKeysCount === 0
@@ -144,17 +149,17 @@ function ActionsPopover({
 
   return (
     <>
-      <Menu shadow="md" width={200} position="bottom-end">
+      <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-tertiary" name="ellipsis" />
+            <Icon c="text-secondary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item onClick={() => onEditGroupClicked(group)}>
             {t`Edit Name`}
           </Menu.Item>
-          <Menu.Item c="danger" onClick={openModal}>
+          <Menu.Item c="feedback-negative" onClick={openModal}>
             {t`Remove Group`}
           </Menu.Item>
         </Menu.Dropdown>
@@ -187,7 +192,7 @@ function EditingGroupRow({
   const textIsValid = group.name && group.name.length;
 
   return (
-    <Box component="tr" bd="1px solid var(--mb-color-brand)">
+    <Box component="tr" bd="1px solid var(--mb-color-core-brand)">
       <td>
         <Input
           fz="lg"
@@ -199,10 +204,14 @@ function EditingGroupRow({
       </td>
       <td />
       <Box component="td" ta="right">
-        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={onCancelClicked}
+        >{t`Cancel`}</Button>
         <Button
           ml="1rem"
-          variant={textIsValid && textHasChanged ? "filled" : "outline"}
+          variant={textIsValid && textHasChanged ? "filled" : "default"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
@@ -214,6 +223,28 @@ function EditingGroupRow({
 }
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
+
+function GroupNameCell({ group }: { group: GroupInfo }) {
+  const name = getGroupNameLocalized(group);
+  const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
+    ? `${getTenantsBasePath()}/groups/${group.id}`
+    : `/admin/people/groups/${group.id}`;
+
+  return (
+    <Flex
+      component={Link}
+      align="center"
+      to={membersLink}
+      className={CS.link}
+      gap="md"
+    >
+      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
+      <Box component="span" fw={700} c="core-brand">
+        {name}
+      </Box>
+    </Flex>
+  );
+}
 
 interface GroupRowProps {
   group: GroupInfo;
@@ -236,18 +267,11 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton =
     !isDefaultGroup(group) &&
     !isAdminGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
-
-  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
-
-  const membersLink = isTenantGroup
-    ? `/admin/people/tenants/groups/${group.id}`
-    : `/admin/people/groups/${group.id}`;
 
   return editing ? (
     <EditingGroupRow
@@ -260,21 +284,7 @@ function GroupRow({
   ) : (
     <tr aria-label={`group-${group.id}-row`}>
       <td>
-        <Flex
-          component={Link}
-          align="center"
-          to={membersLink}
-          className={CS.link}
-          gap="md"
-        >
-          <UserAvatar
-            user={{ name: getGroupNameLocalized(group) }}
-            bg={backgroundColor}
-          />
-          <Box component="span" fw={700} c="brand">
-            {getGroupNameLocalized(group)}
-          </Box>
-        </Flex>
+        <GroupNameCell group={group} />
       </td>
       <td aria-label="member-count">
         {group.member_count || 0}
@@ -299,7 +309,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-tertiary">
+    <Box component="span" c="text-secondary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
@@ -517,7 +527,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
           <Button
             variant="filled"
             onClick={onCreateAGroupButtonClicked}
-            flex="0 1 140px"
           >{t`Create a group`}</Button>
         )
       }

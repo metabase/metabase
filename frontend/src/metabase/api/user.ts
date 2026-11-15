@@ -1,4 +1,3 @@
-import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -16,8 +15,8 @@ import {
   listTag,
   provideUserListTags,
   provideUserTags,
+  tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -56,6 +55,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           listTag("tenant"),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
@@ -67,6 +67,14 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
+    disconnectSlack: builder.mutation<void, UserId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/user/${id}/slack`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("current-user")]),
+    }),
     deactivateUser: builder.mutation<void, UserId>({
       query: (id) => ({
         method: "DELETE",
@@ -77,6 +85,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           idTag("user", id),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     reactivateUser: builder.mutation<User, UserId>({
@@ -89,6 +98,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           idTag("user", id),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     updateUser: builder.mutation<User, UpdateUserRequest>({
@@ -98,12 +108,11 @@ export const userApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          // used to keep current user state in sync
-          dispatch(userUpdated(user));
-        }),
+        invalidateTags(error, [
+          listTag("user"),
+          idTag("user", id),
+          idTag("current-user", id),
+        ]),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },
@@ -127,6 +136,7 @@ export const {
   useGetUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
+  useDisconnectSlackMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,

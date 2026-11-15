@@ -1,13 +1,13 @@
 import { getSubpathSafeUrl } from "metabase/urls";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
+import { formatValue as internalFormatValue } from "metabase/value-formatting";
 import type {
+  ColumnSettings,
+  CustomVizDisplayType,
   CustomVizPluginId,
   CustomVizPluginRuntime,
-  VisualizationDisplay,
 } from "metabase-types/api";
 
-export function formatValue(value: unknown, options?: OptionsType): string {
+export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {
     ...options,
     jsx: false,
@@ -30,9 +30,19 @@ export function getPluginAssetUrl(
   );
 }
 
+/**
+ * Plain same-origin asset URL. The SDK overrides this to fetch the asset with auth headers and return a blob.
+ */
+export function resolveCustomVizAssetUrl(
+  pluginId: CustomVizPluginId,
+  assetPath: string | null | undefined,
+): Promise<string | undefined> {
+  return Promise.resolve(getPluginAssetUrl(pluginId, assetPath));
+}
+
 export function getCustomPluginIdentifier(
   pluginOrIdentifier: Pick<CustomVizPluginRuntime, "identifier"> | string,
-): VisualizationDisplay {
+): CustomVizDisplayType {
   const identifier =
     typeof pluginOrIdentifier === "string"
       ? pluginOrIdentifier

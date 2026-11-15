@@ -6,14 +6,14 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import {
   getHasTokenFeature,
+  getInitStatus,
   getIsGuestEmbedRaw,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import { useSetting } from "metabase/common/hooks";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { getTokenFeature } from "metabase/setup/selectors";
+import { getSetting, getTokenFeature, useSetting } from "metabase/settings";
 
 export function useSdkUsageProblem({
   authConfig,
@@ -42,7 +42,7 @@ export function useSdkUsageProblem({
 
   const isDevelopmentMode = useSdkSelector((state) => {
     // Assume that we are not in development mode until the setting is loaded
-    if (!state.settings.values?.["token-features"]) {
+    if (!getSetting(state, "token-features")) {
       return false;
     }
 
@@ -82,13 +82,25 @@ export function useSdkUsageProblem({
   // are reflected here.
   const usageProblem = useSdkSelector(getUsageProblem);
 
+  const initStatus = useSdkSelector(getInitStatus);
+
+  // Until init finishes, the problem can be wrongly inferred from the assumed
+  // settings values above, before the real ones load.
+  const isInitFinished =
+    initStatus.status === "success" || initStatus.status === "error";
+
   useEffect(() => {
     // Log the problem to the console once.
-    if (!hasLoggedRef.current && allowConsoleLog) {
+    if (
+      !hasLoggedRef.current &&
+      allowConsoleLog &&
+      isInitFinished &&
+      usageProblem
+    ) {
       printUsageProblemToConsole(usageProblem);
       hasLoggedRef.current = true;
     }
-  }, [usageProblem, allowConsoleLog, dispatch]);
+  }, [usageProblem, allowConsoleLog, isInitFinished, dispatch]);
 
   return usageProblem;
 }

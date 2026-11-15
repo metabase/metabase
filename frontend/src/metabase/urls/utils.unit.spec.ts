@@ -1,4 +1,5 @@
-import api from "metabase/api/legacy-client";
+import { setupBasename } from "__support__/basename";
+import { setBasename } from "metabase/utils/basename";
 
 import {
   getSubpathSafeUrl,
@@ -11,17 +12,13 @@ import {
 } from "./utils";
 
 const fakeBasename = "foobar";
-const originalBasename = api.basename;
 
 const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
 describe("utils", () => {
-  beforeEach(() => {
-    api.basename = fakeBasename;
-  });
+  setupBasename(fakeBasename);
 
   afterEach(() => {
-    api.basename = originalBasename;
     mockWindowOpen.mockClear();
   });
 
@@ -38,8 +35,8 @@ describe("utils", () => {
       expect(getSubpathSafeUrl("baz")).toBe(`${fakeBasename}/baz`);
     });
 
-    it("should return original url if `api.basename ` is empty", () => {
-      api.basename = "";
+    it("should return original url if the basename is empty", () => {
+      setBasename("");
 
       expect(getSubpathSafeUrl("baz")).toBe("baz");
     });
@@ -127,5 +124,12 @@ describe("parseListParam", () => {
   it("should return undefined for null/undefined", () => {
     expect(parseListParam(null, parseStringParam)).toBeUndefined();
     expect(parseListParam(undefined, parseStringParam)).toBeUndefined();
+  });
+
+  it("should return undefined for an absent search param", () => {
+    const params = new URLSearchParams("?other=a");
+    expect(
+      parseListParam(params.getAll("missing"), parseStringParam),
+    ).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center } from "metabase/ui";
@@ -13,18 +14,15 @@ type TransformRunPageParams = {
   transformId: string;
 };
 
-type TransformRunPageProps = {
-  params: TransformRunPageParams;
-};
-
-export const TransformRunPage = ({ params }: TransformRunPageProps) => {
+export const TransformRunPage = () => {
+  const params = useParams<TransformRunPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     transform,
     isLoading: isLoadingTransform,
     error: transformError,
   } = useTransformWithPolling(transformId);
-  const { readOnly, isLoadingDatabases, databasesError } =
+  const { readOnly, permissionsReadOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
@@ -40,7 +38,11 @@ export const TransformRunPage = ({ params }: TransformRunPageProps) => {
   return (
     <PageContainer data-testid="transforms-run-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <RunSection transform={transform} readOnly={readOnly} />
+      <RunSection
+        transform={transform}
+        readOnly={readOnly}
+        permissionsReadOnly={permissionsReadOnly}
+      />
     </PageContainer>
   );
 };

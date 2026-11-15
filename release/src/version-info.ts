@@ -2,26 +2,25 @@ import fetch from "node-fetch";
 
 import { getChangelogUrl } from "./release-notes";
 import type {
+  MajorVersionSupport,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
 } from "./types";
 import {
+  getMajorVersion,
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
+  isPreReleaseVersion,
 } from "./version-helpers";
 
-const generateVersionInfo = ({
-  version,
-}: {
-  version: string;
-}): VersionInfo => {
+const generateVersionInfo = ({ version }: { version: string }): VersionInfo => {
   return {
     version,
     released: new Date().toISOString().slice(0, 10),
     patch: ["patch", "minor"].includes(getVersionType(version)),
-    highlights: [ `see ${getChangelogUrl(version)}` ],
+    highlights: [`see ${getChangelogUrl(version)}`],
   };
 };
 
@@ -69,7 +68,9 @@ export const updateVersionInfoLatestJson = ({
   }
 
   if (existingVersionInfo.latest.version === newLatestVersion) {
-    console.warn(`Version ${newLatestVersion} already latest, updating rollout % only`);
+    console.warn(
+      `Version ${newLatestVersion} already latest, updating rollout % only`,
+    );
     return {
       ...existingVersionInfo,
       latest: {
@@ -79,8 +80,9 @@ export const updateVersionInfoLatestJson = ({
     };
   }
 
-  const newLatestVersionInfo = existingVersionInfo.older
-    .find((info: VersionInfo) => info.version === newLatestVersion);
+  const newLatestVersionInfo = existingVersionInfo.older.find(
+    (info: VersionInfo) => info.version === newLatestVersion,
+  );
 
   if (!newLatestVersionInfo) {
     throw new Error(`${newLatestVersion} not found version-info.json`);
@@ -111,11 +113,9 @@ export const getVersionInfoUrl = (version: string) => {
 };
 
 // for adding a new release to version info
-export async function getVersionInfo({
-  version,
-}: ReleaseProps) {
+export async function getVersionInfo({ version }: ReleaseProps) {
   const url = getVersionInfoUrl(version);
-  const existingFile = (await fetch(url).then(r =>
+  const existingFile = (await fetch(url).then((r) =>
     r.json(),
   )) as VersionInfoFile;
 
@@ -127,6 +127,93 @@ export async function getVersionInfo({
   return newVersionJson;
 }
 
+// A major version line is in support — and therefore an eligible backport and
+// auto-release target — if and only if its end-of-life date is today or later.
+// `lts` is display-only and intentionally ignored here. `major_version_support`
+// is append-only, so support is computed from `eol`, never from list membership.
+export const getSupportedMajorVersions = (
+  versionInfo: VersionInfoFile,
+  today: string = new Date().toISOString().slice(0, 10),
+): number[] => {
+  const lines: MajorVersionSupport[] | undefined =
+    versionInfo?.major_version_support;
+
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new Error(
+      "version-info.json has no `major_version_support` — cannot determine supported major versions",
+    );
+  }
+
+  const supported = [
+    ...new Set(
+      lines.filter((line) => line.eol > today).map((line) => line.major),
+    ),
+  ].sort((a, b) => b - a);
+
+  if (supported.length === 0) {
+    throw new Error(
+      "No in-support major versions found — every `eol` date is in the past?",
+    );
+  }
+
+  return supported;
+};
+
+// Fetches version-info.json and returns the supported major versions, newest
+// first. `major_version_support` is edition-agnostic, so the OSS file suffices.
+export async function getSupportedMajors(
+  today: string = new Date().toISOString().slice(0, 10),
+): Promise<number[]> {
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then((r) =>
+    r.json(),
+  )) as VersionInfoFile;
+
+  return getSupportedMajorVersions(versionInfo, today);
+}
+
+const subtractDays = (day: string, days: number) => {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+};
+
+export const hasRecentMinorReleaseIn = (
+  versionInfo: VersionInfoFile,
+  majorVersion: number,
+  windowDays: number,
+  today: string = new Date().toISOString().slice(0, 10),
+): boolean => {
+  if (!Number.isInteger(windowDays) || windowDays < 0) {
+    throw new Error(`Invalid window in days: ${windowDays}`);
+  }
+
+  const windowStart = subtractDays(today, windowDays - 1);
+
+  return [versionInfo.latest, ...(versionInfo.older ?? [])].some(
+    (info) =>
+      !!info &&
+      ["major", "minor"].includes(getVersionType(info.version)) &&
+      !isPreReleaseVersion(info.version) &&
+      getMajorVersion(info.version) === String(majorVersion) &&
+      info.released >= windowStart &&
+      info.released <= today,
+  );
+};
+
+export async function getOssVersionInfo(): Promise<VersionInfoFile> {
+  const url = getVersionInfoUrl("v0");
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return (await response.json()) as VersionInfoFile;
+}
+
 // for promoting a released version to `latest` in version-info.json
 export async function updateVersionInfoLatest({
   newVersion,
@@ -136,7 +223,7 @@ export async function updateVersionInfoLatest({
   rollout?: number;
 }) {
   const url = getVersionInfoUrl(newVersion);
-  const existingFile = (await fetch(url).then(r =>
+  const existingFile = (await fetch(url).then((r) =>
     r.json(),
   )) as VersionInfoFile;
 
@@ -145,4 +232,28 @@ export async function updateVersionInfoLatest({
     existingVersionInfo: existingFile,
     rollout,
   });
+}
+
+// Checks if a version is part of an LTS major release.
+export async function isLtsVersion({
+  version,
+}: {
+  version: string;
+}): Promise<boolean> {
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then((r) =>
+    r.json(),
+  )) as VersionInfoFile;
+
+  const majorVersions = versionInfo?.major_version_support;
+  if (!majorVersions || majorVersions.length === 0) {
+    return false;
+  }
+
+  const versionMajor = getMajorVersion(version);
+  const match = majorVersions.find(
+    (v) => v?.lts && String(v.major) === versionMajor,
+  );
+
+  return match !== undefined;
 }

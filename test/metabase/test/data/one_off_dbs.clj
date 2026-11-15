@@ -78,4 +78,5 @@
      (insert-rows-and-sync! [0 1 2 3]) ; insert 4 rows"
   [values]
   (jdbc/execute! *conn* [(insert-sql values)])
-  (sync/sync-database! (data/db)))
+  ;; `(data/db)` is the map from before the first sync; its stale `initial_sync_status` would skip the FieldValues scan
+  (sync/sync-database! (data/id)))

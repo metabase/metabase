@@ -27,9 +27,16 @@
 (def ^:private startup-job-key "metabase.task.on-startup-refresh-channel-cache.job")
 (def ^:private startup-trigger-key "metabase.task.on-startup-refresh-channel-cache.trigger")
 
-(task/defjob ^{:doc "General slack cache refresh job"} RefreshCache [_] (job))
+(task/defjob RefreshCache
+  "General slack cache refresh job"
+  {:saved-class "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"}
+  [_]
+  (job))
 
-(task/defjob ^{:doc "Startup cache refresh, with cleanup on failure."} RefreshCacheOnStartup [_]
+(task/defjob RefreshCacheOnStartup
+  "Startup cache refresh, with cleanup on failure."
+  {:saved-class "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"}
+  [_]
   (try (job)
        (finally
          (task/delete-task! (jobs/key startup-job-key)
@@ -45,10 +52,9 @@
                  (triggers/with-schedule
                   (cron/schedule
                    (cron/cron-schedule
-                     ;; run every 4 hours at a random minute:
+                    ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
                    (cron/with-misfire-handling-instruction-do-nothing)))
-
                  (triggers/start-now))
         startup-job     (jobs/build
                          (jobs/of-type RefreshCacheOnStartup)

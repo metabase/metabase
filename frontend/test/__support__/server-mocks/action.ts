@@ -2,8 +2,12 @@ import fetchMock from "fetch-mock";
 
 import type {
   CardId,
+  DashCardId,
+  DashboardId,
   GetPublicAction,
+  ParametersForActionExecution,
   WritebackAction,
+  WritebackActionId,
 } from "metabase-types/api";
 import {
   createMockImplicitQueryAction,
@@ -52,6 +56,7 @@ export function setupModelActionsEndpoints(
     url: "path:/api/action",
     query: { "model-id": modelId },
     response: actions,
+    name: `model-${modelId}-actions-list`,
   });
 
   setupActionPostEndpoint();
@@ -63,4 +68,33 @@ export function setupListPublicActionsEndpoint(
   publicActions: GetPublicAction[],
 ) {
   fetchMock.get("path:/api/action/public", publicActions);
+}
+
+export function setupPrefetchActionValuesEndpoint(
+  actionId: WritebackActionId,
+  values: ParametersForActionExecution,
+) {
+  fetchMock.post(`path:/api/action/${actionId}/execute/values`, values);
+}
+
+export function setupPrefetchDashcardValuesEndpoint(
+  dashboardId: DashboardId,
+  dashcardId: DashCardId,
+  values: ParametersForActionExecution,
+) {
+  fetchMock.post(
+    `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute/values`,
+    values,
+  );
+}
+
+export function setupExecuteActionEndpoint(
+  actionId: WritebackActionId,
+  { status = 200, body = {} }: { status?: number; body?: object } = {},
+) {
+  fetchMock.post(
+    `path:/api/action/${actionId}/execute`,
+    { status, body },
+    { name: `action-${actionId}-execute` },
+  );
 }

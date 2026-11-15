@@ -1,24 +1,21 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
-  getPermissionWarning,
-  getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermissionType,
-  type EntityId,
+  Messages,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-} from "metabase/admin/permissions/types";
-import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
+  getPermissionWarning,
+  getPermissionWarningModal,
+  getSchemasPermission,
+} from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
 } from "metabase-types/api";
 
 export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
@@ -28,7 +25,7 @@ export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     },
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   yes: {
     get label() {
@@ -36,7 +33,7 @@ export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     },
     value: DataPermissionValue.YES,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };
 
@@ -50,7 +47,7 @@ const getTransformsPermission = (
   groupId: number,
   databaseId: number,
 ) =>
-  getIn(permissions, [groupId, databaseId, DataPermission.TRANSFORMS]) ??
+  permissions[groupId]?.[databaseId]?.[DataPermission.TRANSFORMS] ??
   TRANSFORMS_PERMISSION_OPTIONS.no.value;
 
 const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {
@@ -79,7 +76,7 @@ const getTransformsDisabledTooltip = (
 };
 
 export const buildTransformsPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,

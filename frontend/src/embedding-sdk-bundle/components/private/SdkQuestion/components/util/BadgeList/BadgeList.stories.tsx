@@ -60,7 +60,7 @@ export const DefaultLayoutBadgeList = {
           onRemoveItem={onRemoveItem}
           addButtonLabel="Add another item"
         />
-        <Box p="md">
+        <Box p="lg">
           {selectedItem?.item
             ? `The selected element is ${selectedItem.item} at index ${selectedItem.index}`
             : "No element has been selected"}

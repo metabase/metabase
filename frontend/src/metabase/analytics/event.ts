@@ -1,6 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import { shouldLogAnalytics } from "metabase/env";
+import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
 import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
@@ -24,11 +25,11 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   invite: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
-  search: "1-1-3",
+  search: "1-1-4",
   serialization: "1-0-1",
   settings: "1-0-2",
-  setup: "1-0-3",
-  timeline: "1-0-0",
+  setup: "1-0-4",
+  timeline: "1-0-1",
   upsell: "1-0-0",
 };
 
@@ -43,14 +44,14 @@ export function trackSchemaEvent<S extends SchemaType>(
   schema: S,
   event: SchemaEventMap[S],
 ): void {
-  const shouldSendEvent =
-    Settings.trackingEnabled() && Settings.snowplowEnabled();
+  const trackingEnabled = Settings.trackingEnabled();
+  const shouldSendSnowplow = Settings.snowplowEnabled();
 
   if (shouldLogAnalytics) {
     const { event: type, ...other } = event;
     // eslint-disable-next-line no-console
     console.log(
-      `%c[SNOWPLOW EVENT | event sent:${shouldSendEvent}]%c, ${type}`,
+      `%c[SNOWPLOW EVENT | event sent:${shouldSendSnowplow}]%c, ${type}`,
       // eslint-disable-next-line metabase/no-color-literals
       "background: #222; color: #bada55",
       "color: ",
@@ -58,12 +59,20 @@ export function trackSchemaEvent<S extends SchemaType>(
     );
   }
 
-  if (shouldSendEvent) {
-    Snowplow.trackSelfDescribingEvent({
-      event: {
-        schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
-        data: event,
-      },
-    });
+  if (!trackingEnabled) {
+    return;
+  }
+
+  if (shouldSendSnowplow) {
+    const payload: Snowplow.SelfDescribingJson = {
+      schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
+      data: event,
+    };
+    Snowplow.trackSelfDescribingEvent({ event: payload }, ["sp"]);
+  }
+
+  if (Settings.get("metaplow-tracking-enabled")) {
+    const { event: name, ...data } = event;
+    trackMetaplowEvent(name, data);
   }
 }

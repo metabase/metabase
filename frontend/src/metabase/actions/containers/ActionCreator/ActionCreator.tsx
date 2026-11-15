@@ -1,70 +1,46 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
-import {
-  skipToken,
-  useCreateActionMutation,
-  useGetActionQuery,
-  useUpdateActionMutation,
-} from "metabase/api";
+import { useCreateActionMutation, useUpdateActionMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { Databases } from "metabase/entities/databases";
-import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  CardId,
-  DatabaseId,
-  WritebackAction,
-  WritebackActionId,
-  WritebackQueryAction,
-} from "metabase-types/api";
+import { Modal } from "metabase/ui";
+import type { CardId, WritebackAction } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
 
-import ActionContext, { useActionContext } from "./ActionContext";
-import ActionCreatorView from "./ActionCreatorView";
+import { useActionContext } from "./ActionContext";
+import { ActionCreatorView } from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
+import type { DataReferenceSlot } from "./types";
 
-interface OwnProps {
-  actionId?: WritebackActionId;
+export interface ActionCreatorProps {
   modelId?: CardId;
-  databaseId?: DatabaseId;
-
-  action?: WritebackAction;
-  route: Route;
+  canCreateActions?: boolean;
+  canWriteAction?: boolean;
+  /**
+   * Whether the creator is mounted as its own route. A routed creator guards
+   * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
+   */
+  isRouted?: boolean;
+  dataReference: DataReferenceSlot;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
-interface ModelLoaderProps {
-  model?: Question;
-}
-
-interface StateProps {
-  metadata: Metadata;
-}
-
-export type ActionCreatorProps = OwnProps;
-
-type Props = OwnProps & ModelLoaderProps & StateProps;
-
-const mapStateToProps = (state: State) => ({
-  metadata: getMetadata(state),
-});
-
-function ActionCreator({ model, onSubmit, onClose, route }: Props) {
+export function ActionCreator({
+  modelId,
+  canCreateActions = false,
+  canWriteAction = false,
+  isRouted,
+  dataReference,
+  onSubmit,
+  onClose,
+}: ActionCreatorProps) {
   const [createAction] = useCreateActionMutation();
   const [updateAction] = useUpdateActionMutation();
   const [sendToast] = useToast();
@@ -87,24 +63,27 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || (model != null && model.canWriteActions());
+  const isEditable = isSavedAction(action) ? canWriteAction : canCreateActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
 
-  useBeforeUnload(!route && showUnsavedChangesWarning);
+  useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
-    if (action.type !== "query") {
+    if (action.type !== "query" || action.dataset_query == null) {
       return; // only query action creation is supported now
     }
+    const { dataset_query } = action;
 
     try {
       const createdAction = await createAction({
         ...action,
         ...values,
+        type: "query",
+        dataset_query,
         visualization_settings: formSettings,
-      } as WritebackQueryAction).unwrap();
+      }).unwrap();
 
       // Sync the editor state with data from save modal form
       handleActionChange(values);
@@ -116,7 +95,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to create action` });
+      sendToast({ variant: "negative", message: t`Failed to create action` });
     }
   };
 
@@ -128,7 +107,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
     try {
       const updatedAction = await updateAction({
         ...action,
-        model_id: model?.id(),
+        model_id: modelId,
         visualization_settings: formSettings,
       }).unwrap();
 
@@ -138,7 +117,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to update action` });
+      sendToast({ variant: "negative", message: t`Failed to update action` });
     }
   };
 
@@ -165,6 +144,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         canSave={canSave}
         isNew={isNew}
         isEditable={isEditable}
+        dataReference={dataReference}
         onChangeAction={handleActionChange}
         onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
@@ -172,59 +152,26 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
       >
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
-      {isSaveModalShown && (
-        <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
-          <CreateActionForm
-            initialValues={{
-              name: action.name,
-              description: action.description,
-              model_id: model?.id(),
-            }}
-            onCreate={handleCreate}
-            onCancel={handleCloseNewActionModal}
-          />
-        </Modal>
-      )}
-
-      {route && (
-        <LeaveRouteConfirmModal
-          isEnabled={showUnsavedChangesWarning}
-          route={route}
+      <Modal
+        density="relaxed"
+        opened={isSaveModalShown}
+        title={t`New Action`}
+        onClose={handleCloseNewActionModal}
+      >
+        <CreateActionForm
+          initialValues={{
+            name: action.name,
+            description: action.description,
+            model_id: modelId,
+          }}
+          onCreate={handleCreate}
+          onCancel={handleCloseNewActionModal}
         />
+      </Modal>
+
+      {isRouted && (
+        <LeaveRouteConfirmModal isEnabled={showUnsavedChangesWarning} />
       )}
     </>
   );
 }
-
-function ActionCreatorWithContext({
-  metadata,
-  databaseId,
-  action,
-  ...props
-}: Props) {
-  const { data: initialAction } = useGetActionQuery(
-    props.actionId != null ? { id: props.actionId } : skipToken,
-  );
-  // This is needed in case we already have an action and pass it from the outside
-  const contextAction = action || initialAction;
-
-  return (
-    <ActionContext
-      initialAction={contextAction}
-      databaseId={databaseId}
-      metadata={metadata}
-    >
-      <ActionCreator {...props} databaseId={databaseId} metadata={metadata} />
-    </ActionContext>
-  );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Questions.load({
-    id: (state: State, props: OwnProps) => props?.modelId,
-    entityAlias: "model",
-  }),
-  Databases.loadList(),
-  connect(mapStateToProps),
-)(ActionCreatorWithContext);

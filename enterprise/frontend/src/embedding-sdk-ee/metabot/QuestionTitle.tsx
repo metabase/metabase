@@ -1,6 +1,6 @@
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Text } from "metabase/ui";
 
 export function QuestionTitle() {

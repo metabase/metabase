@@ -1,30 +1,37 @@
 (ns metabase.mcp.scope
-  "Scope matching for MCP tools and resources.
+  "The OAuth scopes the v2 MCP surface accepts, and scope matching for MCP tools and resources.
 
-   Wraps [[metabase.api.macros.scope/scope-satisfied?]] with the conventions used by
-   MCP entry points: nil token-scopes (internal callers) and the `::scope/unrestricted`
-   sentinel (session auth or unscoped JWT) both bypass the check."
-  (:require
-   [metabase.api.macros.scope :as api.scope]))
+  Only a named scope string grants anything, and only by exact match.
+
+  Keep this namespace dependency-free.")
+
+(def v2-surface-scopes
+  "Every OAuth scope the v2 MCP surface accepts in order from safest to most dangerous."
+  ["agent:content:read"
+   "agent:query:run"
+   "agent:content:write"
+   "agent:sql:run"
+   "agent:delivery:write"])
+
+(def ^:private v2-surface-scopes-set (set v2-surface-scopes))
+
+(defn valid-scope?
+  "Is this an allowed scope from MCP?"
+  [scope]
+  (contains? v2-surface-scopes-set scope))
+
+(def ^:private v2-baseline-scopes
+  "The subset of [[v2-surface-scopes]] the consent page locks."
+  #{"agent:content:read"
+    "agent:query:run"})
+
+(defn v2-baseline-scope?
+  "Is `scope` locked on the consent page?"
+  [scope]
+  (contains? v2-baseline-scopes scope))
 
 (defn matches?
-  "Does `token-scopes` grant access to an entity with the given `required-scope`?
-   - nil `token-scopes` always matches (internal callers).
-   - `::api.scope/unrestricted` in `token-scopes` always matches.
-   - nil `required-scope` only matches the two cases above (callers that want
-     \"public to any authenticated MCP user\" should use [[public-or-matches?]]).
-   - Otherwise delegates wildcard/exact matching to [[api.scope/scope-satisfied?]]."
+  "True when `required-scope` is a valid MCP scope and is contained in `token-scopes`."
   [token-scopes required-scope]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::api.scope/unrestricted)
-      (boolean (and (some? required-scope)
-                    (api.scope/scope-satisfied? token-scopes required-scope)))))
-
-(defn public-or-matches?
-  "Like [[matches?]] but treats a nil `required-scope` as \"public to any caller\"
-   rather than \"internal-only.\" Use this for entities (e.g. MCP resources) whose
-   nil-scope contract is documented as public, instead of re-implementing the
-   nil-check at every call site."
-  [token-scopes required-scope]
-  (or (nil? required-scope)
-      (matches? token-scopes required-scope)))
+  (boolean (and (valid-scope? required-scope)
+                (contains? token-scopes required-scope))))

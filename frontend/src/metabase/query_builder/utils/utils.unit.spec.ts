@@ -1,45 +1,64 @@
 import { createMockMetadata } from "__support__/metadata";
+import { createMockLocation } from "__support__/state";
 import { getNextId } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import { createMockLocation } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type { Card, TableId } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
-  createMockCard,
-  createMockNativeDatasetQuery,
-} from "metabase-types/api/mocks";
+  ORDERS_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
-import { isNavigationAllowed } from ".";
+import { getTableUrlForPristineQuestion, isNavigationAllowed } from ".";
+
+const structuredQuery = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
+
+const nativeQuery = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
 
 const structuredCard = createMockCard({
   id: getNextId(),
   name: "structured question",
+  dataset_query: structuredQuery,
 });
 
 const nativeCard = createMockCard({
   id: getNextId(),
   name: "native question",
-  dataset_query: createMockNativeDatasetQuery(),
+  query_type: "native",
+  dataset_query: nativeQuery,
 });
 
 const structuredModelCard = createMockCard({
   id: getNextId(),
   name: "structured model",
   type: "model",
+  dataset_query: structuredQuery,
 });
 
 const nativeModelCard = createMockCard({
   id: getNextId(),
   name: "native model",
   type: "model",
-  dataset_query: createMockNativeDatasetQuery(),
+  query_type: "native",
+  dataset_query: nativeQuery,
 });
 
 const structuredMetricCard = createMockCard({
   id: getNextId(),
   name: "structured metric",
   type: "metric",
+  dataset_query: structuredQuery,
 });
 
 const cards: Card[] = [
@@ -52,19 +71,15 @@ const cards: Card[] = [
 
 const metadata = createMockMetadata({ questions: cards });
 
-const structuredQuestion = checkNotNull(metadata.question(structuredCard.id));
+const structuredQuestion = new Question(structuredCard, metadata);
 
-const nativeQuestion = checkNotNull(metadata.question(nativeCard.id));
+const nativeQuestion = new Question(nativeCard, metadata);
 
-const structuredModelQuestion = checkNotNull(
-  metadata.question(structuredModelCard.id),
-);
+const structuredModelQuestion = new Question(structuredModelCard, metadata);
 
-const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
+const nativeModelQuestion = new Question(nativeModelCard, metadata);
 
-const structuredMetricQuestion = checkNotNull(
-  metadata.question(structuredMetricCard.id),
-);
+const structuredMetricQuestion = new Question(structuredMetricCard, metadata);
 
 const questions: Question[] = [
   structuredQuestion,
@@ -654,5 +669,84 @@ describe("isNavigationAllowed", () => {
         ).toBe(false);
       });
     });
+  });
+});
+
+describe("getTableUrlForPristineQuestion", () => {
+  const tableMetadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  // What `selectQuestionFromOptsBuilder` gives the thunk, over test metadata.
+  const buildDraftQuestion: DraftQuestionBuilder = (opts) =>
+    Question.create({ ...opts, metadata: tableMetadata });
+
+  const createPristineQuestion = (tableId: TableId) =>
+    Question.create({
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+      DEPRECATED_RAW_MBQL_tableId: tableId,
+      metadata: tableMetadata,
+    });
+
+  const pristineOrders = createPristineQuestion(ORDERS_ID);
+
+  it("returns the /table/:slug URL for a table's pristine default question", () => {
+    expect(
+      getTableUrlForPristineQuestion(pristineOrders, buildDraftQuestion),
+    ).toBe("/table/2-orders");
+    expect(
+      getTableUrlForPristineQuestion(
+        createPristineQuestion(PRODUCTS_ID),
+        buildDraftQuestion,
+      ),
+    ).toBe("/table/1-products");
+  });
+
+  it("returns null once the query is modified", () => {
+    const withLimit = pristineOrders.setQuery(
+      Lib.limit(pristineOrders.query(), -1, 10),
+    );
+    expect(
+      getTableUrlForPristineQuestion(withLimit, buildDraftQuestion),
+    ).toBeNull();
+  });
+
+  it("returns null when the display is changed", () => {
+    expect(
+      getTableUrlForPristineQuestion(
+        pristineOrders.setDisplay("bar"),
+        buildDraftQuestion,
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null when visualization settings are set", () => {
+    const withSettings = pristineOrders.setCard({
+      ...pristineOrders.card(),
+      visualization_settings: { "table.pivot": true },
+    });
+    expect(
+      getTableUrlForPristineQuestion(withSettings, buildDraftQuestion),
+    ).toBeNull();
+  });
+
+  it("returns null for a saved question", () => {
+    expect(
+      getTableUrlForPristineQuestion(
+        pristineOrders.setId(1),
+        buildDraftQuestion,
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null for a native question", () => {
+    const native = pristineOrders.setCard({
+      ...pristineOrders.card(),
+      query_type: "native",
+      dataset_query: nativeQuery,
+    });
+    expect(
+      getTableUrlForPristineQuestion(native, buildDraftQuestion),
+    ).toBeNull();
   });
 });

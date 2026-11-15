@@ -1,6 +1,8 @@
 (ns metabase.sso.oidc.state-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.system.settings :as system.settings]
    [metabase.util.encryption :as encryption])
@@ -52,43 +54,46 @@
       (is (true? (oidc.state/valid-redirect-url? "/dashboard/123" "https://example.com")))
       (is (true? (oidc.state/valid-redirect-url? "/path?query=value" "https://example.com")))
       (is (true? (oidc.state/valid-redirect-url? "/path#fragment" "https://example.com"))))
-
     (testing "rejects protocol-relative URLs (potential open redirect)"
       (is (false? (oidc.state/valid-redirect-url? "//evil.com" "https://example.com")))
-      (is (false? (oidc.state/valid-redirect-url? "//evil.com/path" "https://example.com")))))
-
+      (is (false? (oidc.state/valid-redirect-url? "//evil.com/path" "https://example.com"))))
+    (testing "rejects relative URLs containing characters a browser normalizes away"
+      ;; A browser treats a backslash as a path separator and strips TAB/CR/LF while resolving a URL, so these
+      ;; would not resolve to the same-origin path this predicate sees.
+      (are [url] (false? (oidc.state/valid-redirect-url? url "https://example.com"))
+        "/\\other.example"
+        "/\\/other.example"
+        "/foo\\bar"
+        "/fo\to/bar"
+        "/foo\r/bar"
+        "/foo\n/bar"))
+    (testing "still accepts ordinary relative paths"
+      (is (true? (oidc.state/valid-redirect-url? "/foo/bar" "https://example.com")))))
   (testing "absolute URLs"
     (testing "accepts same-origin URLs"
       (is (true? (oidc.state/valid-redirect-url? "https://example.com/" "https://example.com")))
       (is (true? (oidc.state/valid-redirect-url? "https://example.com/dashboard" "https://example.com")))
       (is (true? (oidc.state/valid-redirect-url? "https://example.com:443/path" "https://example.com")))
       (is (true? (oidc.state/valid-redirect-url? "http://example.com:80/path" "http://example.com"))))
-
     (testing "accepts same-origin with explicit default ports"
       (is (true? (oidc.state/valid-redirect-url? "https://example.com:443/" "https://example.com/")))
       (is (true? (oidc.state/valid-redirect-url? "http://example.com:80/" "http://example.com/"))))
-
     (testing "accepts same-origin with non-default ports"
       (is (true? (oidc.state/valid-redirect-url? "https://example.com:8443/path" "https://example.com:8443")))
       (is (true? (oidc.state/valid-redirect-url? "http://example.com:3000/" "http://example.com:3000/"))))
-
     (testing "rejects different origins"
       (is (false? (oidc.state/valid-redirect-url? "https://evil.com/" "https://example.com")))
       (is (false? (oidc.state/valid-redirect-url? "https://evil.com/path" "https://example.com")))
       (is (false? (oidc.state/valid-redirect-url? "https://subdomain.example.com/" "https://example.com"))))
-
     (testing "rejects different schemes"
       (is (false? (oidc.state/valid-redirect-url? "http://example.com/" "https://example.com")))
       (is (false? (oidc.state/valid-redirect-url? "https://example.com/" "http://example.com"))))
-
     (testing "rejects different ports"
       (is (false? (oidc.state/valid-redirect-url? "https://example.com:8443/" "https://example.com")))
       (is (false? (oidc.state/valid-redirect-url? "https://example.com/" "https://example.com:8443")))))
-
   (testing "case insensitivity"
     (is (true? (oidc.state/valid-redirect-url? "https://EXAMPLE.COM/path" "https://example.com")))
     (is (true? (oidc.state/valid-redirect-url? "HTTPS://example.com/path" "https://example.com"))))
-
   (testing "invalid inputs"
     (is (false? (oidc.state/valid-redirect-url? nil "https://example.com")))
     (is (false? (oidc.state/valid-redirect-url? "" "https://example.com")))
@@ -103,6 +108,24 @@
       (is (true? (oidc.state/valid-redirect-url? "/dashboard")))
       (is (true? (oidc.state/valid-redirect-url? "https://metabase.example.com/dashboard")))
       (is (false? (oidc.state/valid-redirect-url? "https://evil.com/"))))))
+
+(deftest validate-redirect-url-returns-clean-400-test
+  (testing "an unacceptable redirect produces a 400 whose body is just the message"
+    (with-site-url! "https://metabase.example.com"
+      (let [supplied "https://other.example/somewhere"
+            response (try
+                       (oidc.state/validate-redirect-url! supplied)
+                       (is false "expected validate-redirect-url! to throw")
+                       (catch clojure.lang.ExceptionInfo e
+                         (mw.exceptions/api-exception-response e {})))
+            body     (:body response)]
+        (is (= 400 (:status response)))
+        (testing "the body is the plain message, not a serialized exception"
+          (is (string? body))
+          (is (not (str/includes? body ":trace")))
+          (is (not (str/includes? body ":via"))))
+        (testing "the body does not contain the supplied value"
+          (is (not (str/includes? body supplied))))))))
 
 ;;; -------------------------------------------------- create-oidc-state Tests --------------------------------------------------
 
@@ -120,7 +143,6 @@
         (is (number? (:created-at state-map)))
         (is (number? (:expires-at state-map)))
         (is (> (:expires-at state-map) (:created-at state-map)))))
-
     (testing "includes browser-id when provided"
       (let [state-map (oidc.state/create-oidc-state {:state      "csrf-token"
                                                      :nonce      "nonce-value"
@@ -128,14 +150,12 @@
                                                      :provider   :slack-connect
                                                      :browser-id "device-uuid"})]
         (is (= "device-uuid" (:browser-id state-map)))))
-
     (testing "omits browser-id when not provided"
       (let [state-map (oidc.state/create-oidc-state {:state    "csrf-token"
                                                      :nonce    "nonce-value"
                                                      :redirect "/dashboard"
                                                      :provider :slack-connect})]
         (is (not (contains? state-map :browser-id)))))
-
     (testing "uses custom ttl-ms when provided"
       (let [before    (now-ms)
             state-map (oidc.state/create-oidc-state {:state    "csrf-token"
@@ -147,21 +167,18 @@
         ;; expires-at should be ~5 minutes from created-at
         (is (>= (:expires-at state-map) (+ before 300000)))
         (is (<= (:expires-at state-map) (+ after 300000)))))
-
     (testing "converts provider keyword to string"
       (let [state-map (oidc.state/create-oidc-state {:state    "csrf-token"
                                                      :nonce    "nonce-value"
                                                      :redirect "/dashboard"
                                                      :provider :my-provider})]
         (is (= "my-provider" (:provider state-map)))))
-
     (testing "accepts same-origin absolute redirect URL"
       (let [state-map (oidc.state/create-oidc-state {:state    "csrf-token"
                                                      :nonce    "nonce-value"
                                                      :redirect "https://metabase.example.com/dashboard"
                                                      :provider :slack-connect})]
         (is (= "https://metabase.example.com/dashboard" (:redirect state-map)))))
-
     (testing "throws on missing required fields"
       (is (thrown? AssertionError
                    (oidc.state/create-oidc-state {:nonce    "nonce"
@@ -190,7 +207,6 @@
                                           :nonce    "nonce-value"
                                           :redirect "https://evil.com/steal-session"
                                           :provider :slack-connect}))))
-
     (testing "throws on protocol-relative URL"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -199,7 +215,6 @@
                                           :nonce    "nonce-value"
                                           :redirect "//evil.com/path"
                                           :provider :slack-connect}))))
-
     (testing "throws on different subdomain"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -208,7 +223,6 @@
                                           :nonce    "nonce-value"
                                           :redirect "https://other.example.com/path"
                                           :provider :slack-connect}))))
-
     (testing "throws on javascript: URL"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -234,7 +248,6 @@
         (is (string? encrypted))
         (is (not= (pr-str original) encrypted))
         (is (= original decrypted))))
-
     (testing "encrypted output is URL-safe base64"
       (let [state-map {:state      "csrf-token"
                        :nonce      "nonce-value"
@@ -290,6 +303,14 @@
     (testing "returns nil for nil input"
       (is (nil? (oidc.state/decrypt-state nil))))))
 
+(deftest decrypt-state-malformed-input-test
+  (with-test-encryption!
+    (testing "returns nil rather than throwing for unusable input"
+      ;; `decrypt-state` promises nil for any input it cannot decode.
+      (are [input] (nil? (oidc.state/decrypt-state input))
+        ""
+        "AAAA"))))
+
 (deftest decrypt-state-browser-id-validation-test
   (with-test-encryption!
     (testing "validates browser-id when requested"
@@ -329,7 +350,6 @@
           (is (= "nonce-value" (:nonce retrieved)))
           (is (= "/dashboard" (:redirect retrieved)))
           (is (= "slack-connect" (:provider retrieved))))))
-
     (with-test-encryption!
       (testing "sets correct cookie attributes for HTTPS"
         (let [request  {:scheme :https}
@@ -400,7 +420,6 @@
           (is (= "https://slack.com/oauth/authorize?..." (get-in response [:headers "Location"])))
           ;; Should have state cookie
           (is (string? (get-in response [:cookies "metabase.OIDC_STATE" :value]))))))
-
     (with-test-encryption!
       (testing "rejects external redirect URL (open redirect protection)"
         (let [auth-result {:redirect-url "https://slack.com/oauth/authorize?..."
@@ -430,7 +449,6 @@
           (is (true? (:valid? result)))
           (is (= "test-nonce" (:nonce result)))
           (is (= "/dashboard" (:redirect result)))))
-
       (testing "rejects mismatched state (CSRF protection)"
         (let [request    {:scheme :https}
               response   (oidc.state/set-oidc-state-cookie {} request {:state    "correct-state"
@@ -442,7 +460,6 @@
               result     (oidc.state/validate-oidc-callback callback "wrong-state" :slack-connect)]
           (is (false? (:valid? result)))
           (is (= :state-mismatch (:error result)))))
-
       (testing "rejects wrong provider"
         (let [request    {:scheme :https}
               response   (oidc.state/set-oidc-state-cookie {} request {:state    "state"
@@ -454,7 +471,6 @@
               result     (oidc.state/validate-oidc-callback callback "state" :other-provider)]
           (is (false? (:valid? result)))
           (is (= :invalid-or-expired-state (:error result)))))
-
       (testing "rejects missing cookie"
         (let [result (oidc.state/validate-oidc-callback {:cookies {}} "state" :slack-connect)]
           (is (false? (:valid? result)))

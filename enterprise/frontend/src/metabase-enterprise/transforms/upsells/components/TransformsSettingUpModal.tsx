@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -9,9 +12,7 @@ import {
   Loader,
   Modal,
   type ModalProps,
-  Stack,
   Text,
-  Title,
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -28,8 +29,17 @@ export const TransformsSettingUpModal = ({
   isPython = false,
 }: TransformsSettingUpModalProps) => {
   const featureToCheck = isPython ? "transforms-python" : "transforms-basic";
-  useTokenRefreshUntil(featureToCheck, { intervalMs: 1000, skip: !opened });
+  useTokenRefreshUntil(featureToCheck, {
+    intervalMs: WAITING_REFRESH_INTERVAL,
+    skip: !opened,
+  });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
+  const settingUpTitle = isPython
+    ? t`Setting up Python transforms, please wait`
+    : t`Setting up transforms, please wait`;
+  const readyTitle = isPython
+    ? t`Python transforms are ready`
+    : t`Transforms are ready`;
 
   return (
     <Modal
@@ -39,20 +49,19 @@ export const TransformsSettingUpModal = ({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
-    >
-      <Stack align="center" gap="lg" my="4.5rem">
+      layout="centered"
+      illustration={
         <Box h={96} pos="relative" w={96}>
           <Flex
             align="center"
             justify="center"
             h="100%"
             w="100%"
-            bg="background-secondary"
+            bg="background_page-secondary"
             style={{ borderRadius: "50%" }}
           >
-            <Icon name="table2" size={48} c="brand" />
+            <Icon name="table2" size={48} c="core-brand" />
           </Flex>
 
           {isSettingUp && (
@@ -65,50 +74,34 @@ export const TransformsSettingUpModal = ({
               pos="absolute"
               right={0}
               wrap="nowrap"
-              bg="white"
+              bg="core-white"
               fz={0}
               p="sm"
               ta="center"
               style={{
                 borderRadius: "100%",
-                boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
+                boxShadow: `0 1px 6px 0 var(--mb-color-shadow-default)`,
               }}
             >
               <Loader size="xs" ml={1} mt={1} />
             </Flex>
           )}
         </Box>
-
-        {isSettingUp ? (
-          <Box ta="center">
-            <Title c="text-primary" fz="lg">
-              {isPython
-                ? t`Setting up Python transforms, please wait`
-                : t`Setting up transforms, please wait`}
-            </Title>
-            <Text c="text-secondary" fz="md" lh={1.43}>
-              {t`This will take just a minute or so`}
-            </Text>
-          </Box>
-        ) : (
-          <>
-            <Box ta="center">
-              <Title c="text-primary" fz="lg">
-                {isPython
-                  ? t`Python transforms are ready`
-                  : t`Transforms are ready`}
-              </Title>
-              <Text c="text-secondary" fz="md" lh={1.43}>
-                {t`Happy transforming!`}
-              </Text>
-            </Box>
-
-            <Button variant="filled" size="md" onClick={onClose}>
-              {t`Done`}
-            </Button>
-          </>
-        )}
-      </Stack>
+      }
+      title={isSettingUp ? settingUpTitle : readyTitle}
+    >
+      <Text c="text-secondary">
+        {isSettingUp
+          ? t`This will take just a minute or so`
+          : t`Happy transforming!`}
+      </Text>
+      {!isSettingUp && (
+        <Modal.Footer>
+          <Button variant="filled" onClick={onClose}>
+            {t`Done`}
+          </Button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 };

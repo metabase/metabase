@@ -5,14 +5,15 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { screen, within } from "__support__/ui";
+import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   createMockSdkState,
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -21,14 +22,18 @@ import {
 
 const TEST_USER = createMockUser();
 
-jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
+jest.mock("metabase/visualizations/register", () => ({
+  registerVisualizations: jest.fn(),
+}));
 
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
+  // The actual helper reads the actual config, not the mocked one below.
+  isEmbeddingEajs: () => true,
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",
-    enableEmbeddingSettingKey: "enable-embedding-simple",
+    enableEmbeddingSettingKey: "enable-embedding-modular",
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
@@ -49,7 +54,7 @@ const setup = (options: Options) => {
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
+    "enable-embedding-modular": options.isSimpleEmbeddingEnabled ?? true,
   });
 
   const MINUTE = 60;
@@ -118,7 +123,26 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
     );
   });
 
-  it("shows an error when simple embedding is disabled", async () => {
+  // We allow simple embedding to be used locally even when it's disabled for the
+  // instance — same as the SDK; on localhost there is no usage problem.
+  it("does not show an error when simple embedding is disabled on localhost", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    await setup({
+      hasSimpleEmbeddingFeature: true,
+      isSimpleEmbeddingEnabled: false,
+    });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an error when simple embedding is disabled in production", async () => {
+    const mock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+
     await setup({
       hasSimpleEmbeddingFeature: true,
       isSimpleEmbeddingEnabled: false,
@@ -131,5 +155,7 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
     expect(
       within(card).getByText(/not enabled for this instance/),
     ).toBeInTheDocument();
+
+    mock.mockRestore();
   });
 });

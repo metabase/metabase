@@ -1,0 +1,4086 @@
+(ns metabase.agent-lib.representations.repair
+  "Repair pass for LLM-authored representations queries.
+
+  Works on the **string-keyed, portable** representations form -- i.e. the JSON body
+  `metabase.agent-lib.representations/external-query->portable` produced from the LLM's
+  external-query input, *before* it has been handed to the resolver. This is where we gently
+  patch up the sort of shape drift that LLMs routinely produce:
+
+    * missing `{}` options on clauses (LLMs forget to emit empty maps);
+    * missing `\"lib/type\"` marker on stages, joins, and the top-level query;
+    * stage / clause shape normalisations covering common LLM-authored variants
+      (see the per-pass docstrings below).
+
+  **Key invariant: idempotency.** Repair must be a fixed point under repeated application: for
+  any repr `q`, `(repair q)` must equal `(repair (repair q))`. This is enforced by property test
+  and by construction -- every pass is written as `when-something-is-missing, add it`, never as
+  `rewrite what's there`.
+
+  The repair pass does **not** do FK resolution (that's the resolver's job) and does **not**
+  validate (that's `representations/validate-query`'s job). It runs *between* the JSON
+  external-query → portable conversion and validate-and-resolve.
+
+  ## Implicit joins
+
+  The implicit-join pass uses the caller's `MetadataProvider` to set `source-field` on references
+  to columns outside the stage's source. It handles table sources and columns omitted by a card source.
+
+  A card stage calls `lib/visible-columns` once, and only when a reference needs implicit-join repair.
+  See [[try-resolve-card-source-info]]."
+  (:require
+   [clojure.string :as str]
+   [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.binning.util :as lib.binning.util]
+   [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.serialization.resolve :as serialization.resolve]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :as perf]
+   [metabase.util.quoting :as quoting]))
+
+(set! *warn-on-reflection* true)
+
+;;; ============================================================
+;;; Pass 1 -- ensure every clause vector has an options map at position 2
+;;; ============================================================
+
+(defn- non-blank-string? [x]
+  (and (string? x) (not= "" x)))
+
+(defn- looks-like-fk-path?
+  "An FK path is a vector of strings (possibly with `nil` for schema-less DBs) of length >= 3
+  (`[db schema table]`) or >= 4 (`[db schema table col …]`). We use length >= 3 as the cutoff
+  here to keep things safe -- shorter vectors of strings are probably not FK paths, they're more
+  likely bare clauses like `[\"count\"]` that the LLM forgot to annotate."
+  [v]
+  (and (>= (count v) 3)
+       (every? #(or (string? %) (nil? %)) v)))
+
+(defn- clause-like?
+  "Heuristic: a real clause vector (not an FK path) whose head is a non-blank operator string."
+  [v]
+  (and (match/matches? v [#'non-blank-string? & _])
+       (not (looks-like-fk-path? v))))
+
+(defn- ensure-clause-options*
+  "Fix a clause-like vector missing options map at position 2 in nested clause-like vectors."
+  [form]
+  (match/replace-all form
+    (:and [op] #'clause-like?) [op {}]
+    (:and [op nil & _] #'clause-like?) (assoc &match 1 {})
+    (:and [op (non-map :guard (not (map? non-map))) & args] #'clause-like?) (into [op {} non-map] args)))
+
+;;; ============================================================
+;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
+;;;
+;;; LLMs occasionally write a `field` clause that wraps another `field` clause, e.g.
+;;;
+;;;   ["field" {"temporal-unit" "month"} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+;;;
+;;; reasoning as "apply granularity to this field." The intended MBQL is a single
+;;; `field` clause with the options merged -- outer options win on key conflicts (because
+;;; the outer layer is what the LLM thought it was *adding*). We collapse nests of any
+;;; depth into one flat `["field" <merged-opts> <target>]`.
+;;;
+;;; A `field` clause is recognised by head `"field"` at position 0, a map at position 1,
+;;; and a third slot at position 2 that is either an FK path (vector of strings/nil) or a
+;;; column-name string (cross-stage ref). When the third slot is itself a `field` clause,
+;;; we collapse.
+;;; ============================================================
+
+(defn- unwrap-nested-field-clauses*
+  [form]
+  (match/replace-all form
+    ["field" (outer :guard map?) ["field" (inner :guard map?) target]]
+    ["field" (into inner outer) target]))
+
+;;; ============================================================
+;;; Pass 1.75 -- strip stray double-quotes from portable-FK field references.
+;;;
+;;; The field metadata shown to the LLM historically rendered column names wrapped in
+;;; double quotes (`<field name="\"col\"">`), and LLMs are SQL-trained to quote identifiers,
+;;; so the model frequently emits a portable field reference whose column segment carries
+;;; literal surrounding quotes:
+;;;
+;;;   ["field" {} ["DB" "SCH" "TBL" "\"col\""]]   (portable-FK column segment)
+;;;
+;;; The resolver rejects `"col"` as `:unknown-field`. A double-quote never legitimately wraps
+;;; a portable identifier segment, so we strip a single balanced pair from each string segment
+;;; of the **portable-FK vector** target. We only touch a `field` clause's target vector (never
+;;; arbitrary strings), so filter literals such as `["=" {} <field> "\"paid\""]` are left
+;;; untouched. Cross-stage *string* targets (`["field" {} "\"col\""]`) are deliberately left to
+;;; the resolution-aware [[match-cross-stage-column]] pass, which only strips when the result
+;;; matches a real previous-stage column.
+;;; ============================================================
+
+(defn dequote-identifier
+  "Strip one balanced pair of surrounding ASCII double-quotes from `s`. Idempotent; returns
+  non-strings and unquoted strings unchanged."
+  [s]
+  (if (and (string? s)
+           (>= (count s) 2)
+           (str/starts-with? s "\"")
+           (str/ends-with? s "\""))
+    (subs s 1 (dec (count s)))
+    s))
+
+(defn- dequote-field-target
+  "Dequote each string segment of a `field` clause's portable-FK vector target."
+  [target]
+  (mapv #(if (string? %) (dequote-identifier %) %) target))
+
+(defn- dequote-field-targets*
+  [form]
+  (match/replace-all form
+    ["field" (opts :guard map?) (target :guard vector?)]
+    ["field" opts (dequote-field-target target)]))
+
+;;; ============================================================
+;;; Pass 1.81 -- canonicalise common operator-name aliases.
+;;;
+;;; LLMs are heavily-trained on shell scripts, Python comparison protocols, and SQL-ish
+;;; idioms. They occasionally pick up:
+;;;
+;;;   * shell-style comparison operators: `eq`, `ne`, `lt`, `lte` / `le`, `gt`, `gte` / `ge`
+;;;     (cf. `man test`);
+;;;   * verbose comparison spellings: `equals`, `not-equals`;
+;;;   * lib-renamed aggregation / clause names that stuck around:
+;;;       - `count-if`            → `count-where`
+;;;       - `variance`            → `var`
+;;;       - `stddev-pop`          → `stddev`
+;;;       - `count-distinct`      → `distinct`
+;;;       - `distinct-count`      → `distinct`
+;;;       - `relative-date`       → `relative-datetime`
+;;;       - `temporal-diff`       → `datetime-diff`
+;;;       - `is-not-null`         → `not-null`
+;;;
+;;; The lib-rename set is carried over from the sexp pipeline's
+;;; `metabase.agent-lib.syntax/canonical-operator-aliases` (see
+;;; `repr-deletion-followups.md` § 1.1) - the original commentary recommended against
+;;; reintroducing aliases, but we add the shell/SQL aliases anyway because LLMs are
+;;; demonstrably shell-literate and the cost of supporting these names is one extra
+;;; lookup at the start of the pipeline. The temporal-bucket aliases (`dayofweek`,
+;;; `day-of-week`, `hour-of-day`, `month-of-year`, `quarter-of-year`) are kept in their
+;;; own pass (1.8) for separate testing and because they target different lib heads
+;;; depending on the unit.
+;;;
+;;; Notably **not** ported:
+;;;   * `if` → `case`: lib accepts both (§conditional.cljc explicitly aliases them);
+;;;   * `month` → `get-month`: ambiguous (could also be `:temporal-bucket :month`);
+;;;   * `|` → `or`: too symbolic, unlikely from any model.
+;;; ============================================================
+
+(def ^:private operator-name-aliases
+  "Lowercased alias → canonical lib head. Match is case-insensitive on lookup."
+  {;; Shell-style / Python-style comparison
+   "eq"             "="
+   "equals"         "="
+   "ne"             "!="
+   "not-equals"     "!="
+   "lt"             "<"
+   "le"             "<="
+   "lte"            "<="
+   "gt"             ">"
+   "ge"             ">="
+   "gte"            ">="
+   ;; Lib renames (carried over from sexp `canonical-operator-aliases`)
+   "count-if"       "count-where"
+   "variance"       "var"
+   "stddev-pop"     "stddev"
+   "count-distinct" "distinct"
+   "distinct-count" "distinct"
+   "relative-date"  "relative-datetime"
+   "temporal-diff"  "datetime-diff"
+   "is-not-null"    "not-null"})
+
+(defn- rewrite-operator-name-aliases*
+  [form]
+  (match/replace-all form
+    [(op :guard (and (string? op)
+                     (let [lower (u/lower-case-en op)]
+                       (and (contains? operator-name-aliases lower)
+                            (not= op (operator-name-aliases lower))))))
+     #'map? & _]
+    (assoc &match 0 (operator-name-aliases (u/lower-case-en op)))))
+
+;;; ============================================================
+;;; Pass 1.8 -- canonicalise temporal-bucket extraction aliases.
+;;;
+;;; LLMs naturally pick up English-flavoured operator names like `dayofweek`,
+;;; `day-of-week`, `hour-of-day`, `month-of-year`, `quarter-of-year` for the temporal-
+;;; extraction helpers. lib's canonical names are `get-day-of-week`, `get-hour`,
+;;; `get-month`, `get-quarter` (see `metabase.lib.schema.expression.temporal`). We
+;;; rewrite the alias forms to canonical so downstream resolve/validate doesn't reject
+;;; them.
+;;;
+;;; Carried over from `metabase.agent-lib.repair.normalize.forms` (see
+;;; `repr-deletion-followups.md` § 1.2). Idempotent: the rewrite only fires when the head
+;;; is a known alias; canonical heads are left alone.
+;;; ============================================================
+
+(def ^:private temporal-bucket-extraction-aliases
+  "Map from LLM-favoured alias to canonical lib operator name."
+  {"dayofweek"       "get-day-of-week"
+   "day-of-week"     "get-day-of-week"
+   "hour-of-day"     "get-hour"
+   "month-of-year"   "get-month"
+   "quarter-of-year" "get-quarter"})
+
+(defn- rewrite-temporal-bucket-aliases*
+  [form]
+  (match/replace-all form
+    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) #'map? & _]
+    (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op)))))
+
+;;; ============================================================
+;;; Pass 1.815 -- drop unsupported `get-day-of-week` week-mode arguments.
+;;;
+;;; `get-day-of-week` accepts a positional week-mode (`["get-day-of-week" {} <field> <mode>]`).
+;;; The `::week-mode` schema allows `:iso`, `:us`, and `:instance` (shared with `get-week`), but
+;;; only the no-mode (default) and `:iso` forms actually have a lowering in
+;;; `metabase.lib.filter.desugar` - `:us` / `:instance` desugar to a **nil** temporal-extract unit
+;;; and blow up with an opaque 500 at SQL-compilation time (observed: an LLM emitting
+;;; `["get-day-of-week" {} <field> "instance"]` for "day of week on weekends").
+;;;
+;;; The default (no-mode) `get-day-of-week` already extracts the day-of-week relative to the
+;;; instance's start-of-week setting. For `:instance` that is an exact equivalence - default *is*
+;;; the instance semantics. For `:us` it is a best-effort substitution, NOT an equivalence: `:us`
+;;; would fix the week to start on Sunday, whereas the default honours the instance's start-of-week
+;;; setting, so the two diverge whenever that setting isn't Sunday. We accept the substitution
+;;; anyway because `get-day-of-week` has no `:us` lowering at all (unlike `get-week`), so the only
+;;; alternative is the opaque 500. Dropping to the default keeps the query running and close to the
+;;; model's intent. `:iso` and the bare (no-mode) forms are left untouched.
+;;;
+;;; Runs after `ensure-clause-options*`, so the options map is already at position 1 and the mode,
+;;; when present, is the single trailing arg at position 3. Idempotent: once the mode is dropped
+;;; the clause has arity 3 and the predicate no longer fires.
+;;; ============================================================
+
+(defn- drop-unsupported-day-of-week-mode*
+  [form]
+  (match/replace form
+    ["get-day-of-week" #'map? _
+     (mode :guard (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
+    (subvec &match 0 3)))
+
+;;; ============================================================
+;;; Pass 1.85 -- canonicalise order-by direction aliases.
+;;;
+;;; The lib schema accepts only `[asc, {}, <ref>]` and `[desc, {}, <ref>]` as order-by
+;;; direction clauses. LLMs sometimes write `[ascending, {}, …]` / `[descending, {}, …]`
+;;; and uppercase variants like `[ASC, {}, …]`. We rewrite any case-insensitive variant of
+;;; the four spellings (`asc`, `ascending`, `desc`, `descending`) to canonical lowercase
+;;; `asc` / `desc` when used as a clause head.
+;;;
+;;; The rewrite is restricted to the **order-by-clause shape** (head + options map +
+;;; exactly one ref-shaped argument); we don't touch a bare string "ASC"/"DESC" that might
+;;; appear elsewhere as a literal value. Carried over with a wider alias set than the
+;;; sexp original (which accepted only case-insensitive `asc`/`desc`); see
+;;; `repr-deletion-followups.md` § 1.3.
+;;; ============================================================
+
+(def ^:private direction-aliases
+  "Map from lowercase alias to canonical lib direction string."
+  {"asc"        "asc"
+   "ascending"  "asc"
+   "desc"       "desc"
+   "descending" "desc"})
+
+(defn- direction-clause-head?
+  "True when `head` is a non-canonical alias (case-insensitive variant of one of
+  `direction-aliases`' keys) that should be rewritten. We exclude the canonical lowercase
+  `asc` / `desc` so that already-canonical clauses pass through unchanged (preserving
+  idempotency cheaply)."
+  [head]
+  (and (string? head)
+       (let [canonical (direction-aliases (u/lower-case-en head))]
+         (and canonical (not= head canonical)))))
+
+(defn- rewrite-direction-aliases*
+  [form]
+  (match/replace-all form
+    [(head :guard direction-clause-head?) #'map? _]
+    (assoc &match 0 (get direction-aliases (u/lower-case-en head)))))
+
+;;; ============================================================
+;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
+;;;
+;;; Pass 2's `ensure-lib-types*` only FILLS a missing marker; it never rewrites a present one.
+;;; This pass handles the present-but-wrong case via a small alias table, exactly like the
+;;; `rewrite-operator-name-aliases*` / `rewrite-temporal-bucket-aliases*` passes.
+;;; ============================================================
+
+(def ^:private lib-type-aliases
+  "Known LLM misspellings of a `lib/type` marker -> its canonical value."
+  {"mbql.join/join" "mbql/join"})
+
+(defn- rewrite-lib-type-aliases*
+  [form]
+  (match/replace-all form
+    {"lib/type" (canonical :guard lib-type-aliases)}
+    (assoc &match "lib/type" (lib-type-aliases canonical))))
+
+;;; ============================================================
+;;; Pass 1.88 -- merge a trailing extra options-map into the position-1 options.
+;;;
+;;; LLMs sometimes place a clause's options at the END of the vector instead of
+;;; (or in addition to) position 1. The canonical example:
+;;;
+;;;   ["time-interval" {} <expr> -1 "month" {"include-current" true}]
+;;;
+;;; The schema for `time-interval` is a strict `:tuple` of 5 elements with options
+;;; at position 1 (the `include-current` flag lives there). The 6th element above
+;;; is misplaced options - the LLM read the prompt's "Opts may set
+;;; {include-current: true}" hint and put it after the args.
+;;;
+;;; We handle this generically across every fixed-arity tuple clause registered with
+;;; `metabase.lib.schema.mbql-clause`. The expected-element-count table is derived
+;;; once at namespace load from [[mbql-clause/registered-tags]] and selecting
+;;; schemas whose head form is `:tuple`. Variadic clauses (`and`, `or`, `=`, `in`,
+;;; `case`, `coalesce`, ...) use `:catn` / `:repeat` and are correctly excluded -
+;;; their arity isn't fixed, so a trailing map could be a legitimate arg.
+;;;
+;;; Repair condition (all four required):
+;;;   * clause-shaped vector (string head, not an FK path);
+;;;   * head matches a known fixed-arity clause;
+;;;   * count is exactly `expected + 1` (count off by >=2 is too ambiguous - the
+;;;     schema validator will reject it with a friendly tuple-shape error);
+;;;   * position 1 is a map AND last element is a map.
+;;;
+;;; Repair action: merge the trailing map into position-1 options, with trailing
+;;; keys winning on conflict (the trailing map is where the LLM wrote content;
+;;; position 1 is typically `{}`). Then drop the trailing element.
+;;;
+;;; Idempotent by construction: a repaired clause has the canonical expected count,
+;;; so the predicate fails on a second pass.
+;;; ============================================================
+
+(defn- tuple-clause-element-count
+  "If `schema-form` is a `:tuple` schema (the shape [[mbql-clause/tuple-clause-schema]]
+  produces), return the expected number of elements in matching tuples (head + opts + args).
+  Returns `nil` for non-tuple schemas (`:catn` / `:repeat` variadic clauses) and for
+  malformed inputs."
+  [schema-form]
+  (when (and (vector? schema-form)
+             (= :tuple (first schema-form)))
+    (let [after-head    (next schema-form)
+          ;; Malli optionally puts a properties map at index 1; skip it if present.
+          child-schemas (if (map? (first after-head))
+                          (next after-head)
+                          after-head)]
+      (count child-schemas))))
+
+(def ^:private fixed-arity-clause-element-counts
+  "Map of clause-head-string -> expected element count, derived from the MBQL clause
+  registry at first use. Includes only `:tuple` clauses; variadic `:catn` / `:repeat`
+  clauses are excluded (their arity isn't fixed). Used by [[merge-trailing-options*]]
+  to detect a misplaced trailing options map.
+
+  Wrapped in `delay` so we don't pay the introspection cost at require time. If
+  introspecting an individual clause's schema throws, the exception is allowed to
+  propagate so a Malli reshape that breaks the walk surfaces immediately instead of
+  silently dropping that clause from the table."
+  (delay
+    (into {}
+          (keep (fn [tag]
+                  (let [schema-name (mbql-clause/tag->registered-schema-name tag)
+                        form        (mr/registered-schema schema-name)]
+                    (when-let [n (tuple-clause-element-count form)]
+                      [(name tag) n]))))
+          (mbql-clause/registered-tags))))
+
+(defn- needs-trailing-options-merge?
+  "True when `node` is a fixed-arity tuple clause that the LLM wrote with one extra
+  element at the end, and that extra element is a map. See the pass docstring above
+  for the full condition."
+  [node]
+  (and (clause-like? node)
+       (>= (count node) 3)
+       (map? (nth node 1))
+       (map? (peek node))
+       (when-let [expected (get @fixed-arity-clause-element-counts (nth node 0))]
+         (= (count node) (inc expected)))))
+
+(defn- merge-trailing-options
+  "Merge the trailing map into the position-1 options (trailing keys win) and drop
+  the trailing element."
+  [node]
+  (let [head      (nth node 0)
+        pos1-opts (nth node 1)
+        trailing  (peek node)
+        middle    (subvec node 2 (dec (count node)))
+        merged    (merge pos1-opts trailing)]
+    (into [head merged] middle)))
+
+(defn- merge-trailing-options*
+  [form]
+  (match/replace-all form
+    #'needs-trailing-options-merge? (merge-trailing-options &match)))
+
+;;; ============================================================
+;;; Pass 1.89 -- merge a trailing options-map into position-1 on N-ary string-search filters
+;;; (`contains` / `does-not-contain` / `starts-with` / `ends-with`).
+;;;
+;;; These four string filters are N-ary in MBQL (`[op opts field val1 val2 …]`, at least two
+;;; string args) and carry their `case-sensitive` flag in the position-1 options map (see
+;;; `metabase.lib.schema.filter/string-filter-options`). Because they're variadic, the
+;;; fixed-arity [[merge-trailing-options*]] pass deliberately skips them -- there, a trailing
+;;; map could be a legitimate arg. LLMs nonetheless append the case-sensitivity options as a
+;;; trailing element, e.g.
+;;;
+;;;   ["contains" {} <field> "@gmail.com" {"case-sensitive" false}]
+;;;
+;;; A string-search value is always a string, never a map, so a trailing map is unambiguously
+;;; misplaced options. We merge it into position-1 (trailing keys win) and drop it. Left
+;;; unrepaired, `lib.normalize` cannot normalise the clause and the query explodes downstream
+;;; with a missing-`lib/uuid` "Invalid output" error.
+;;; ============================================================
+
+(def ^:private string-search-filter-heads
+  "N-ary string-search filter heads whose options (e.g. `case-sensitive`) belong in the
+  position-1 options map. See `metabase.lib.schema.filter`."
+  #{"contains" "does-not-contain" "starts-with" "ends-with"})
+
+(defn- merge-string-filter-trailing-options*
+  [form]
+  (match/replace form
+    ;; head + opts + field + >=1 value + trailing options-map
+    (:and [(op :guard (contains? string-search-filter-heads op)) #'map?
+           & (args :guard (and (map? (peek args)) (>= (count args) 3)))]
+          #'clause-like?)
+    (&recur (merge-trailing-options &match))))
+
+;;; ============================================================
+;;; Pass 1.84 -- normalise alternative `case` / `if` argument shapes.
+;;;
+;;; lib's canonical shape is `[case, {}, [[pred1 then1] [pred2 then2] ...] default?]` -
+;;; a single vector of branch pairs in slot 2, optional default in slot 3. LLMs sometimes
+;;; emit alternative shapes that are unambiguously interpretable:
+;;;
+;;;   1. Three bare args: `[case, {}, pred, then, else]`
+;;;      → `[case, {}, [[pred then]], else]`
+;;;   2. Branch pairs as separate args: `[case, {}, [p1 t1], [p2 t2], default]`
+;;;      → `[case, {}, [[p1 t1] [p2 t2]], default]`
+;;;   3. Flat alternating: `[case, {}, p1, t1, p2, t2, default?]`
+;;;      → `[case, {}, [[p1 t1] [p2 t2]], default?]`
+;;;   4. Trailing `["else" x]` branch inside the pairs vector
+;;;      → strip and treat `x` as the default.
+;;;
+;;; `if` is a documented alias for `case`; we normalise it the same way (lib accepts both
+;;; tags and treats them identically). Carried over from the sexp pipeline's
+;;; `repair/normalize/forms.clj/repair-case-args` (see `repr-deletion-followups.md`
+;;; § 1.8).
+;;;
+;;; Idempotency: after the first rewrite the args are exactly `[<vector-of-pairs>]` or
+;;; `[<vector-of-pairs>, <default>]`, neither of which matches the alternative-shape
+;;; classifiers below.
+;;; ============================================================
+
+(defn- branch-pair? [v]
+  (and (vector? v) (= 2 (count v))))
+
+(defn- else-branch?
+  "True for `[\"else\" x]` or its post-Pass-1 form `[\"else\" {} x]`. Pass 1
+  (`ensure-clause-options*`) runs before us, so by the time this pass sees an LLM-authored
+  `[\"else\" 0]` it has already been rewritten to `[\"else\" {} 0]`."
+  [v]
+  (and (vector? v)
+       (string? (nth v 0))
+       (= "else" (u/lower-case-en (nth v 0)))
+       (or (= 2 (count v))
+           (and (= 3 (count v)) (map? (nth v 1))))))
+
+(defn- else-branch-payload [v]
+  (if (= 2 (count v)) (nth v 1) (nth v 2)))
+
+(defn- split-trailing-else
+  "If the last entry of `branches` is an `else-branch?`, peel it off and use its payload
+  as the default; otherwise return inputs unchanged."
+  [branches default]
+  (if (and (seq branches) (else-branch? (peek branches)))
+    [(pop branches) (else-branch-payload (peek branches))]
+    [branches default]))
+
+(defn- canonical-case-args
+  "Build the canonical `[<vector-of-pairs> default?]` arg sequence given already-classified
+  `branches` (vector of pairs) and an optional `default`. Strips a trailing `else` branch
+  from `branches`. Returns the canonical args vector for splicing into a `case` / `if`
+  clause."
+  [branches default]
+  (let [[branches default] (split-trailing-else (vec branches) default)]
+    (if (some? default)
+      [(vec branches) default]
+      [(vec branches)])))
+
+(defn- pair-or-else? [v]
+  (or (branch-pair? v) (else-branch? v)))
+
+(defn- classify-case-args
+  "Given the args of a `case` / `if` clause (everything after head + opts), return
+  `[branches default]` for one of the recognised shapes - including the canonical one (so
+  the central `canonical-case-args` step uniformly handles trailing-else stripping). Return
+  `nil` only when the args are unrecognised."
+  [args]
+  (match/match-one args
+    ;; Already canonical or canonical-with-trailing-else: a single vector in slot 0 whose
+    ;; entries are branch-pairs (or a final else-branch), with optional explicit default in
+    ;; slot 1.
+    [(pred :guard (and (vector? pred) (seq pred) (every? pair-or-else? pred))) & (extra :guard (<= (count extra) 1))]
+    (into [pred] extra)
+
+    ;; Three bare non-pair args: pred, then, else
+    [(pred :guard (not (branch-pair? pred))) then else]
+    [[[pred then]] else]
+
+    ;; Two bare non-pair args: pred, then (no default)
+    [(pred :guard (not (branch-pair? pred))) then]
+    [[[pred then]] nil]
+
+    ;; Leading branch pairs followed by an optional non-pair fallback
+    ;; (covers \"branch pairs as separate args\").
+    [(pred :guard (branch-pair? pred)) & extra]
+    (let [pairs    (vec (take-while branch-pair? &match))
+          remainder (drop (count pairs) &match)]
+      [pairs (when (= 1 (count remainder)) (first remainder))])
+
+    ;; Flat alternating pred/then args (≥4 args). Falls through from "branch pairs as
+    ;; separate args" above when the first arg is a non-2-tuple vector like `["=" {} field
+    ;; val]`.
+    (_ :guard (>= (count args) 4))
+    (let [n          (count args)
+          even-cnt   (- n (rem n 2))
+          pred-thens (partition 2 (take even-cnt args))
+          default    (when (odd? n) (nth args (dec n)))]
+      [(mapv vec pred-thens) default])
+
+    _ nil))
+
+(defn- normalise-case-clauses* [form]
+  (match/replace-all form
+    [(head :guard #{"case" "if"}) (opts :guard map?) & args]
+    (let [canonical-args (if-let [[branches default] (classify-case-args args)]
+                           (canonical-case-args branches default)
+                           args)]
+      (into [head opts] canonical-args))))
+
+;;; ============================================================
+;;; Pass 1.82 -- normalise filter clauses where the LLM passed a values-list as a single
+;;; vector arg.
+;;;
+;;; lib's canonical shape for `:in` / `:not-in` is **flat**: `[in, {}, lhs, v1, v2, v3]`.
+;;; Likewise `:=` and `:!=` take exactly two operand args: `[=, {}, lhs, rhs]`. LLMs
+;;; sometimes put the value list into a single vector slot:
+;;;
+;;;   [in,  {}, lhs, [v1, v2, v3]]      → splat → [in,  {}, lhs, v1, v2, v3]
+;;;   [not-in, {}, lhs, [v1, v2, v3]]   → splat → [not-in, {}, lhs, v1, v2, v3]
+;;;
+;;; And occasionally use `=` / `!=` with a list value, expecting list-membership semantics:
+;;;
+;;;   [=,  {}, lhs, [v1, v2, v3]]       → [in,  {}, lhs, v1, v2, v3]
+;;;   [!=, {}, lhs, [v1, v2, v3]]       → [not-in, {}, lhs, v1, v2, v3]
+;;;
+;;; Adapted from the sexp pipeline's `in`/`not-in`/`=`/`!=` repair branches (see
+;;; `repr-deletion-followups.md` § 1.10). The sexp form `[in lhs [v1 v2 v3]]` was nested by
+;;; design; the repr canonical form is flat, so we splat instead of just rewriting head.
+;;;
+;;; A "values list" is recognised conservatively: a non-empty vector whose every entry is a
+;;; primitive scalar (string, number, boolean, nil). This excludes nested clauses
+;;; (vectors with a string head + map options) and FK-path arguments (which only appear
+;;; inside a `field` clause, never as values to a comparison op).
+;;; ============================================================
+
+(defn- scalar-literal? [v]
+  (or (string? v) (number? v) (boolean? v) (nil? v)))
+
+(defn- values-list? [v]
+  (and (vector? v)
+       (seq v)
+       (every? scalar-literal? v)))
+
+(defn- splat-in-values-clause [head opts lhs values]
+  (into [head opts lhs] values))
+
+(defn- =->in-head [head]
+  (case head "=" "in" "!=" "not-in"))
+
+(defn- comparison-lhs-clause?
+  "Heuristic for what counts as a real \"left-hand side\" of a comparison: a clause vector
+  with a string head and a map options at slot 1 (e.g. `field`, `expression`, `+`, etc.).
+  Crucially, this excludes a bare FK-path vector (`[DB SCHEMA TABLE COL]`) - which is a
+  vector of strings and would otherwise be mis-classified as an LHS by the value-list
+  splat pass, making repair non-idempotent on adversarial property-test inputs that look
+  like `[\"=\" {} [\"DB\" \"S\" \"T\"] [\"v1\" \"v2\"]]`."
+  [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (string? (nth v 0))
+       (map? (nth v 1))))
+
+(defn- list-value-comparison-clause
+  "If `node` is a comparison clause whose last arg is a values-list, return
+  `[head opts lhs values]` so the splat can be applied. Otherwise return `nil`.
+
+  Recognises two shapes (pass runs *before* `ensure-clause-options*`):
+
+    * `[head, opts-map, lhs, [v1 v2 …]]` (4 elements, options already in place); and
+    * `[head, lhs, [v1 v2 …]]` (3 elements, options omitted - we splice an empty
+      options map for downstream uniformity).
+
+  Additionally requires `lhs` to be clause-shaped (`comparison-lhs-clause?`), to avoid
+  mis-firing on adversarial inputs where every arg is a vector-of-strings."
+  [heads node]
+  (when (and (vector? node)
+             (>= (count node) 3)
+             (string? (nth node 0))
+             (contains? heads (nth node 0)))
+    (let [head    (nth node 0)
+          opts-at (when (map? (nth node 1)) 1)
+          ;; If options are present, lhs is at slot 2 and values at slot 3; otherwise
+          ;; lhs is at slot 1 and values at slot 2. Either way we need exactly one lhs and
+          ;; one values-list arg, so total args after head is either 2 (no opts) or 3 (opts).
+          [lhs values-slot] (if opts-at
+                              [(when (= 4 (count node)) (nth node 2))
+                               (when (= 4 (count node)) (nth node 3))]
+                              [(when (= 3 (count node)) (nth node 1))
+                               (when (= 3 (count node)) (nth node 2))])]
+      (when (and (comparison-lhs-clause? lhs)
+                 (values-list? values-slot))
+        [head (if opts-at (nth node 1) {}) lhs values-slot]))))
+
+(defn- in-not-in-values-list-clause [node]
+  (list-value-comparison-clause #{"in" "not-in"} node))
+
+(defn- eq-values-list-clause [node]
+  (list-value-comparison-clause #{"=" "!="} node))
+
+(defn- normalise-list-value-comparisons*
+  "Pre-Pass-1 sweep: splat values-list args of `in`/`not-in` and rewrite `=`/`!=` against a
+  values-list to `in`/`not-in`. Runs *before* `ensure-clause-options*` because Pass 1 would
+  otherwise mis-identify a 2-element values-list (e.g. `[\"alice\" \"bob\"]`) as a bare
+  clause and corrupt it by inserting `{}` between the two scalars."
+  [form]
+  (match/replace-all form
+    #'in-not-in-values-list-clause
+    (let [[head opts lhs values] (in-not-in-values-list-clause &match)]
+      (splat-in-values-clause head opts lhs values))
+    #'eq-values-list-clause
+    (let [[head opts lhs values] (eq-values-list-clause &match)]
+      (splat-in-values-clause (=->in-head head) opts lhs values))))
+
+;;; ============================================================
+;;; Pass 1.83 -- unwrap boolean wrapper clauses.
+;;;
+;;; LLMs occasionally write `["true", x]` thinking of it as "wrap this clause as truthy",
+;;; or `["false", x]` as "wrap this clause as falsy". Neither has any meaning in lib; the
+;;; canonical equivalents are just `x` and `["not", {}, x]`. We unwrap when we see them.
+;;; Carried over from the sexp pipeline's `syntax/boolean-wrapper-form?` (see
+;;; `repr-deletion-followups.md` § 1.4).
+;;;
+;;; Form recognised: `["true"  {} x]` (1 arg) - unwrap to `x`.
+;;;                  `["false" {} x]` (1 arg) - rewrite to `["not" {} x]`.
+;;;
+;;; The 0-arg literal forms `["true" {}]` and `["false" {}]` (boolean literals) are NOT
+;;; touched. Multi-arg variants (≥2 args) we don't touch either - those would be
+;;; legitimate uses of the head.
+;;; ============================================================
+
+(defn- unwrap-boolean-wrappers*
+  [form]
+  (match/replace-all form
+    [(head :guard (and (string? head) (#{"true" "false"} (u/lower-case-en head)))) #'map? x]
+    (case (u/lower-case-en head)
+      ;; Always emit a vector so we don't expose a bare scalar (`["true" {} x]` -> `x`) that a
+      ;; sole-element parent would turn into an un-optioned clause `[x]`, which a later `repair`
+      ;; pass would then "fix" to `[x {}]` - breaking idempotency. A wrapped clause is returned
+      ;; as-is; a wrapped scalar becomes a clause with an empty options map.
+      "true"  (if (vector? x) x [x {}])
+      "false" ["not" {} x])))
+
+;;; ============================================================
+;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
+;;;
+;;; The lib schema for `:between` does not enforce `min <= max` (there's an explicit TODO
+;;; comment in `metabase.lib.schema.filter` flagging this). LLMs occasionally swap the two
+;;; bounds, especially for date ranges (e.g. `between(date, "2024-12-31", "2024-01-01")`).
+;;; The query then runs but returns no rows, which is silently misleading. We swap the two
+;;; bounds here when they're directly comparable literals.
+;;;
+;;; Cases handled:
+;;;   * both bounds are numbers,
+;;;   * both bounds are ISO-8601 date / date-time strings (string lex order = chronological
+;;;     for ISO-8601),
+;;;   * both bounds are `[absolute-datetime, {}, <iso-str>, <unit>]` clauses (the iso-str
+;;;     drives the comparison).
+;;;
+;;; If either bound is non-literal (a `field` ref, an expression, a `relative-datetime`
+;;; clause, etc.) we don't touch the clause - we can't compare without execution. See
+;;; `repr-deletion-followups.md` § 1.5 (the scalar-wrap sub-case is intentionally not
+;;; ported - the prompt is explicit about between's three-arg shape).
+;;; ============================================================
+
+(defn- between-bound-comparable
+  "Extract a comparable value from `bound` if it's a literal we can order. Returns the
+  value (a Number or String) or `nil` if the bound is not directly comparable."
+  [bound]
+  (match/match-one bound
+    (:or #'number? #'string?) &match
+    ["absolute-datetime" #'map? (dt :guard string?) & _] dt
+    _ nil))
+
+(defn- bounds-comparable-and-swappable?
+  "True when both bounds are extractable comparables of the same kind (both numbers, both
+  strings) and the lower bound compares strictly greater than the upper."
+  [lower upper]
+  (let [lo (between-bound-comparable lower)
+        hi (between-bound-comparable upper)]
+    (cond
+      (and (number? lo) (number? hi)) (> lo hi)
+      (and (string? lo) (string? hi)) (pos? (compare lo hi))
+      :else                            false)))
+
+(defn- between-clause? [v]
+  (and (vector? v)
+       (= 5 (count v))
+       (= "between" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- swap-between-bounds*
+  [form]
+  (match/replace-all form
+    (:and ["between" #'map? _ lower upper]
+          (_ :guard (bounds-comparable-and-swappable? lower upper)))
+    (-> &match (assoc 3 upper) (assoc 4 lower))))
+
+;;; ============================================================
+;;; Temporal-literal helpers, shared by the passes below.
+;;; ============================================================
+
+(def ^:private iso-date-or-datetime-pattern
+  "Recognises an ISO-8601 calendar-date string (yyyy-mm-dd, optionally with a time portion)."
+  #"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+\-]\d{2}:?\d{2})?)?")
+
+(defn- iso-date-string? [v]
+  (and (string? v)
+       (re-matches iso-date-or-datetime-pattern (str/trim v))))
+
+(defn- temporal-clause-head?
+  "Heads that are unambiguously temporal-shaped clauses."
+  [head]
+  (contains? #{"absolute-datetime" "relative-datetime" "now"
+               "get-year" "get-quarter" "get-month" "get-week" "get-day"
+               "get-day-of-week" "get-hour" "get-minute" "get-second"}
+             head))
+
+(defn- temporal-shaped-clause? [v]
+  (and (vector? v)
+       (>= (count v) 1)
+       (string? (nth v 0))
+       (temporal-clause-head? (nth v 0))))
+
+;;; ============================================================
+;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
+;;; `["now" {}]` clause.
+;;;
+;;; LLMs sometimes write `[<, {}, <date-field>, "now"]` or `[between, {}, <field>,
+;;; "2024-01-01", "now"]` - using the bare string `"now"` (case-insensitive, optional
+;;; whitespace) where lib expects a `["now" {}]` clause. We rewrite such literals to the
+;;; canonical clause shape **only inside a clause whose other operand is already temporal-
+;;; shaped** (a `field` with `temporal-unit`, an `absolute-datetime`, a `relative-datetime`,
+;;; another `now`, or one of the `get-*` extraction heads).
+;;;
+;;; The context restriction matters: a column literally containing the value `"now"` could
+;;; legitimately appear as an operand in a non-temporal comparison. Carried over from the
+;;; sexp pipeline's `wrap-now-as-expression` (see `repr-deletion-followups.md` § 1.7).
+;;; ============================================================
+
+(defn- now-literal? [v]
+  (and (string? v)
+       (= "now" (u/lower-case-en (str/trim v)))))
+
+(defn- field-with-temporal-unit? [v]
+  (and (vector? v)
+       (>= (count v) 2)
+       (= "field" (nth v 0))
+       (map? (nth v 1))
+       (contains? (nth v 1) "temporal-unit")))
+
+(defn- temporal-context-operand? [v]
+  (or (temporal-shaped-clause? v)
+      (field-with-temporal-unit? v)
+      ;; A bare ISO-date bound counts as a temporal sibling: in `["between" {} <field>
+      ;; "2024-01-01" "now"]` neither operand is a clause, and without this the `"now"`
+      ;; would survive as a bare string and blow up in `wrap-value-literals`.
+      (iso-date-string? v)))
+
+(def ^:private temporal-comparison-heads
+  "Comparison-style heads for which we'll wrap a bare `\"now\"` literal in another operand
+  position."
+  #{"=" "!=" "<" "<=" ">" ">=" "between"})
+
+(defn- temporal-comparison-clause? [v]
+  (and (vector? v)
+       (>= (count v) 3)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (contains? temporal-comparison-heads (nth v 0))))
+
+(defn- wrap-now-literal [v]
+  (if (now-literal? v)
+    ["now" {}]
+    v))
+
+(defn- maybe-wrap-now-operands
+  "For a comparison clause, return a clause with each `\"now\"` literal in arg positions
+  rewritten to `[\"now\" {}]`, but only if at least one *other* operand in the clause is
+  already temporal-shaped (so we know we're really in a temporal context)."
+  [clause]
+  (let [args (subvec clause 2)]
+    (if (some temporal-context-operand? args)
+      (let [rewritten (mapv wrap-now-literal args)]
+        (into (subvec clause 0 2) rewritten))
+      clause)))
+
+(defn- wrap-now-literals*
+  [form]
+  (match/replace-all form
+    #'temporal-comparison-clause? (maybe-wrap-now-operands &match)))
+
+;;; ============================================================
+;;; Structural predicates -- what a bare map looks like, with no `lib/type` marker to go on.
+;;;
+;;; Shared by Pass 2.95, which hoists only inside a stage, and Pass 2, which stamps a missing
+;;; marker on one. One definition, so the hoist's notion of a stage is the one that stamps the
+;;; marker -- a marker the model wrote can be wrong, a derivation cannot disagree with itself.
+;;; ============================================================
+
+(defn- top-level-query-map?
+  [m]
+  (match/matches? m {"database" _, "stages" _}))
+
+(defn- join-like-map?
+  "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
+  `alias`+`stages`) that never appear on a stage or top-level query. We key on these rather
+  than on `\"fields\"` (which a join shares with a stage) so a join is not mistaken for a
+  stage by [[stage-like-map?]]."
+  [m]
+  (and (map? m)
+       (or (contains? m "conditions")
+           (and (contains? m "alias")
+                (contains? m "stages")))))
+
+(defn- stage-like-map?
+  "A map that looks like an MBQL stage: has `\"source-table\"`, `\"source-card\"`, or any of the
+  stage-body keys (`filters`, `aggregation`, `breakout`, `order-by`, `fields`, `joins`,
+  `expressions`, `limit`). Not a top-level query and not an explicit join (a join can carry
+  `\"fields\"`, so we exclude it explicitly)."
+  [m]
+  (and (map? m)
+       (not (top-level-query-map? m))
+       (not (join-like-map? m))
+       (boolean
+        (some #(contains? m %)
+              ["source-table" "source-card" "filters" "aggregation"
+               "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
+
+;;; ============================================================
+;;; Pass 2.95 -- hoist a temporal bucket: move it off an `absolute-datetime` literal and onto the
+;;; ref it is compared to, aligning the literal to the unit it gives up. Sideways, within one
+;;; clause; nothing moves up a level.
+;;;
+;;;   ["=", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "month"]]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-01-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-06-15", "month"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-06-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-01-01T10:30:00", "hour"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "hour"}, <col>], "2025-01-01T10:00"]
+;;;
+;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
+;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
+;;;
+;;; `metabase.metabot.agent.links/->frontend-query` converts a structured query that does not
+;;; normalize to valid MBQL 5 to legacy MBQL. If that conversion fails too, as it does for a query
+;;; stripped of its `:lib/*` keys whose aggregation ref points at one of several aggregations, the
+;;; raw MBQL 5 query goes out instead. In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot
+;;; decode it for `absolute-datetime` / `during`, so the frontend drops the clause (BOT-1972). A
+;;; `temporal-unit` on a ref decodes correctly (`legacy-json-round-trip-temporal-filters-test`). The
+;;; query builder also writes the hoisted form.
+;;;
+;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
+;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages
+;;; among them, where `optimize-temporal-filters` reads the unit from either side. Not in
+;;; `aggregation:` (`count-where`, `sum-where`, `share`), `order-by:` or a join's own `conditions:`:
+;;; that middleware walks `:filters` and `:expressions` and nothing else, so there the bucket really
+;;; would truncate the column --
+;;;
+;;;   ["count-where", {}, [">", {}, <col>, ["absolute-datetime", {}, "2027-06-15", "month"]]]
+;;;     as written: SUM(CASE WHEN created_at                    > date_trunc(month, ...) ...)
+;;;     hoisted:    SUM(CASE WHEN date_trunc(month, created_at) > date_trunc(month, ...) ...)
+;;;
+;;; -- a different answer. Also left as written: a unit the literal cannot carry (`hour` on a date,
+;;; `month-of-year`), `year` on an `expression` ref ([[unit-hoistable-onto-ref?]] says why), a ref
+;;; that already has a `temporal-unit`, `between` bounds with different buckets, and an unparseable
+;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
+;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
+;;; query builder writes it.
+;;; Pass 2.6 expands date-only `day` / `default` bounds into ranges in conditional aggregations.
+;;;
+;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
+;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
+;;;
+;;; Both forms then select the same rows -- or compute the same value, inside `expressions` --
+;;; wherever `optimize-temporal-filters` can read the unit off either side: a `field` ref, or an
+;;; `expression` ref that carries a type. Two exceptions.
+;;;
+;;; (1) `!=` / `not-in` on a `:type/Date` column bucketed by `day`. Only the hoisted form reaches
+;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
+;;; (`d < x OR d >= x+1`, dropping NULL rows) while the hoisted one stays an `!=` and gets the
+;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
+;;; only option here, not just the better one: the `/question#` link carries the literal-side form
+;;; intact as MBQL 5, and the query engine then runs it as that negated range. Pinned by
+;;; `optimize-date-not-equals-null-semantics-test`. The divergence is about *which rows*; inside a
+;;; `case` under `expressions` that becomes a difference in a computed value rather than in the
+;;; filter.
+;;;
+;;; (2) An `expression` ref. The middleware optimises neither form, for two unrelated reasons: as
+;;; written, resolve stamps no `base-type` on the ref and `temporal-ref?` reads the type from the
+;;; ref's own options, so the clause is not optimizable at all; hoisted, `wrap-value-literals` copies
+;;; a ref's unit onto the bare literal only for `field` refs (`type-info-from-col` sits behind a
+;;; `clause-of-type? :field` guard), so a `month`-bucketed `expression` ref meets a `day` literal and
+;;; the units disagree.
+;;;
+;;;   [">", {}, ["expression", {}, "Ship"], ["absolute-datetime", {}, "2025-06-01", "month"]]
+;;;     as written: WHERE <Ship>                    > date_trunc(month, '2025-06-01')   -- 18744 rows
+;;;     hoisted:    WHERE date_trunc(month, <Ship>) > '2025-06-01'                      -- 18709 rows
+;;;
+;;; The hoisted count is what both forms give once the ref is typed, so the rewrite makes an untyped
+;;; *temporal* `expression` ref behave like a typed one -- a real change, and the right one. `=` and
+;;; `<=` diverge the same way; `<` and `>=` happen to agree. Both asymmetries are QP gaps
+;;; (`temporal-ref?` should consult `lib/type-of`; `wrap-value-literals` should read a unit off any
+;;; ref); worth their own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
+;;;
+;;; That is also why the pass aligns the literal itself ([[align-literal-to-unit]]). The middleware
+;;; truncates *both* sides of a comparison, so on a `field` ref a literal sitting in the middle of
+;;; its bucket costs nothing. On a hoisted `expression` ref it fires only when the literal carries a
+;;; time component, which `wrap-value-literals` types for it; a date-only literal is left alone, so
+;;; only the column is truncated and the comparison asks a different question --
+;;;
+;;;   ["=", {}, ["expression", {"temporal-unit": "month"}, "Ship"], "2025-06-15"]
+;;;     date-only:          WHERE date_trunc(month, <Ship>) = '2025-06-15'   -- never true
+;;;     "…T10:00:00" or "Z": WHERE <Ship> >= '2025-06-01' AND <Ship> < '2025-07-01'
+;;;
+;;; -- and the ordered heads land up to one bucket out. `during` makes that the mainline case, since
+;;; it names the unit *containing* its literal. Aligning reproduces what the middleware would have
+;;; done, and is a no-op on a `field` ref.
+;;;
+;;; The one unit alignment cannot rescue is `year`, which is both a truncation and an extraction
+;;; unit: `lib/type-of` calls a `year`-bucketed untyped ref `:type/Integer`, and the QP's
+;;; `auto-parse-filter-values` then fails on the date literal. [[unit-hoistable-onto-ref?]] declines
+;;; that hoist on an `expression` ref, leaving the clause to Pass 6; a model writing the bucketed ref
+;;; itself still reaches the QP, so the hole belongs with the two gaps above.
+;;;
+;;; Column types are unknown here, so a bucket can land on a text or numeric column;
+;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve, on an `expression`
+;;; ref as well as a `field` one. It matters more on the former: the QP drops the bucket silently on
+;;; a `field` ref, but keeps it on an `expression` ref, where it compiles to nonsense on a text
+;;; column and fails preprocessing outright on a numeric one. That is the same exposure `filters`
+;;; already has; walking `expressions` opens a second position onto it.
+;;;
+;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
+;;; predicate.
+;;;
+;;; The survivors above reach the question intact, since the `/question#` link carries MBQL 5, but the
+;;; query engine runs some of them wrong. Pass 6's [[unencodable-temporal-clause-error!]], whose
+;;; docstring has two examples, catches every one and raises a retryable `:agent-error?`, except the
+;;; unparseable literal, which resolve names more precisely.
+;;; ============================================================
+
+(def ^:private date-truncation-units
+  "Bucketing units that mean the same thing on a ref as on a date literal."
+  #{"day" "week" "month" "quarter" "year"})
+
+(def ^:private datetime-truncation-units
+  "The date units plus the sub-day ones a datetime literal supports."
+  (into date-truncation-units #{"second" "minute" "hour"}))
+
+(def ^:private bucket-hoistable-heads
+  "Comparison heads whose literal operands may carry a hoistable bucket."
+  #{"=" "!=" "<" "<=" ">" ">=" "in" "not-in"})
+
+(def ^:private date-only-pattern #"\d{4}-\d{2}-\d{2}")
+(def ^:private year-month-pattern #"\d{4}-\d{2}")
+(def ^:private year-pattern #"\d{4}")
+
+(defn- widen-partial-date
+  "`yyyy-MM` -> `yyyy-MM-01`, `yyyy` -> `yyyy-01-01`; anything else unchanged."
+  [s]
+  (cond
+    (re-matches year-month-pattern s) (str s "-01")
+    (re-matches year-pattern s)       (str s "-01-01")
+    :else                             s))
+
+(defn- align-literal-to-unit
+  "Truncate `literal` to the start of the `unit` that contains it.
+
+    [\"2025-06-15\" \"month\"] => \"2025-06-01\"
+    [\"2025-06-15\" \"day\"]   => \"2025-06-15\"   ; already aligned, returned as written
+
+  The generalisation of [[widen-partial-date]], which already does this for `yyyy-MM` / `yyyy`. On a
+  `field` ref it changes no answer - the QP truncates both sides of such a comparison itself - and on
+  an `expression` ref it is what keeps the hoisted clause meaning what the literal-side one did; the
+  pass header says why the QP cannot do it there.
+
+  `literal` comes back as written unless truncation both moves the instant and leaves an ISO string.
+  `default` names no unit, so it is skipped."
+  [literal unit]
+  (if (= "default" unit)
+    literal
+    (let [parsed  (u.date/parse literal)
+          t       (u.date/truncate (lib-be/time-config) parsed (keyword unit))
+          ;; a `Z`-suffixed literal parses to a `ZonedDateTime`, which renders back as
+          ;; `2025-06-01T00:00Z[UTC]` - that would reach the `/question#` hash and the LLM-facing
+          ;; export verbatim, so a rewrite that is not ISO is dropped rather than emitted
+          aligned (str t)]
+      (if (and (not= parsed t) (iso-date-string? aligned))
+        aligned
+        literal))))
+
+(defn- parseable-temporal-literal? [s]
+  (try
+    (some? (u.date/parse s))
+    (catch Exception _
+      false)))
+
+(defn- truncation-units-for
+  "The bucketing units a widened literal of this shape can carry.
+
+  A date-only literal takes the date units; a datetime literal also takes the sub-day ones."
+  [literal]
+  (if (re-matches date-only-pattern literal)
+    date-truncation-units
+    datetime-truncation-units))
+
+(defn- hoistable-bucket
+  "Return `[literal unit]` for an `absolute-datetime` literal whose bucket the compared ref can take.
+
+    [\"absolute-datetime\" {} \"2025-03\" \"MONTH\"]    => [\"2025-03-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-06-15\" \"month\"] => [\"2025-06-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-01-01\" \"hour\"]  => nil   ; a date cannot carry `hour`
+
+  Both values come back normalised: trimmed, lower-cased, `yyyy-MM` / `yyyy` widened to the first day
+  they name, and the literal aligned to its unit ([[align-literal-to-unit]]) so the hoisted clause
+  means what the literal-side one did. `nil` for anything that is not such a literal."
+  [v]
+  (when (and (vector? v)
+             (= 4 (count v))
+             (string? (nth v 0))
+             (= "absolute-datetime" (u/lower-case-en (nth v 0)))
+             (map? (nth v 1))
+             ;; a named literal is only ever an expression's top-level clause, never a comparison
+             ;; operand; a type hint is safe to drop
+             (empty? (dissoc (nth v 1) "base-type" "effective-type"))
+             (string? (nth v 2))
+             (string? (nth v 3)))
+    (let [literal (widen-partial-date (str/trim (nth v 2)))
+          unit    (u/lower-case-en (nth v 3))
+          units   (truncation-units-for literal)]
+      (when (and (iso-date-string? literal)
+                 (or (= "default" unit) (contains? units unit))
+                 (parseable-temporal-literal? literal))
+        [(align-literal-to-unit literal unit) unit]))))
+
+(defn- during-clause? [v]
+  (and (vector? v)
+       (= 5 (count v))
+       (= "during" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- unbucketed-ref-clause?
+  "A `field` or `expression` ref with no `temporal-unit`. A `nil` unit counts as none: lib drops it."
+  [v]
+  (and (vector? v)
+       (= 3 (count v))
+       (contains? #{"field" "expression"} (nth v 0))
+       (map? (nth v 1))
+       (nil? (get (nth v 1) "temporal-unit"))))
+
+(defn- hoistable-comparison-node?
+  "A comparison clause shaped so that a bucket could move onto its ref operand. Says nothing about
+  whether the literal operands actually carry one."
+  [v]
+  (and (vector? v)
+       (>= (count v) 4)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (unbucketed-ref-clause? (nth v 2))
+       (or (between-clause? v)
+           (during-clause? v)
+           (contains? bucket-hoistable-heads (nth v 0)))))
+
+(defn- with-temporal-unit [ref-clause unit]
+  (assoc-in ref-clause [1 "temporal-unit"] unit))
+
+(defn- unit-hoistable-onto-ref?
+  "Whether `unit` may move onto `ref-clause`. False only for `year` on an `expression` ref.
+
+  `year` is both a truncation and an extraction unit, so `lib/type-of` answers `:type/Integer` for a
+  `year`-bucketed ref that carries no `effective-type` - which is exactly an `expression` ref, since
+  resolve stamps no type on one - and the QP's `auto-parse-filter-values` then fails outright trying
+  to read the date literal as an integer. A `field` ref carries a type, so the same bucket is fine
+  there. Declining leaves the literal standing for [[unencodable-temporal-clause-error!]] to turn
+  into a retryable error."
+  [ref-clause unit]
+  (not (and (= "expression" (nth ref-clause 0))
+            (= "year" unit))))
+
+(defn- hoist-bucket-in-comparison
+  "When every literal of a comparison carries the same hoistable bucket, put it on the ref.
+
+    [\"in\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                                  [\"absolute-datetime\" {} \"2025-03-01\" \"month\"]]
+    => [\"in\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\" \"2025-03-01\"]"
+  [[head opts ref & literals :as node]]
+  (let [buckets (map hoistable-bucket literals)
+        unit    (second (first buckets))]
+    (if (and (every? some? buckets)
+             (apply = (map second buckets))
+             (unit-hoistable-onto-ref? ref unit))
+      (into [head opts (with-temporal-unit ref unit)] (map first buckets))
+      node)))
+
+(defn- redundant-bucket-literal
+  "The bare literal of a bucketed bound whose bucket adds nothing to it: `default`, or `day` on a
+  date-only literal. `nil` otherwise."
+  [v]
+  (when-let [[literal unit] (hoistable-bucket v)]
+    (when (or (= "default" unit)
+              (and (= "day" unit) (re-matches date-only-pattern literal)))
+      literal)))
+
+(defn- hoist-bucket-in-between
+  "Both bounds bucketed alike: hoist the bucket onto the ref. Otherwise drop only a wrapper that adds nothing.
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                         [\"absolute-datetime\" {} \"2025-06-01\" \"month\"]]
+    => [\"between\" {} <ref bucketed by month> \"2025-01-01\" \"2025-06-01\"]
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"day\"] [\"now\" {}]]
+    => [\"between\" {} <ref> \"2025-01-01\" [\"now\" {}]]"
+  [[head opts ref lo hi]]
+  (let [[lo' lo-unit] (hoistable-bucket lo)
+        [hi' hi-unit] (hoistable-bucket hi)]
+    (if (and lo' hi' (= lo-unit hi-unit) (unit-hoistable-onto-ref? ref lo-unit))
+      [head opts (with-temporal-unit ref lo-unit) lo' hi']
+      [head opts ref (or (redundant-bucket-literal lo) lo) (or (redundant-bucket-literal hi) hi)])))
+
+(defn- hoist-bucket-in-during
+  "`during` is `=` against the ref bucketed by the same unit; say it that way.
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-06-15\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-06-01\"]
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"hour\"] => unchanged
+
+  The unit set follows the literal's shape, as it does for a comparison ([[hoistable-bucket]]):
+  rewriting `hour` on a date would narrow the filter to one hour. `during` names the unit
+  *containing* the literal, so a literal in the middle of its bucket is its normal input and is
+  [[align-literal-to-unit]]'s mainline case - the second example above.
+  [[unencodable-temporal-clause-error!]] reports what is left standing."
+  [[_ opts ref literal unit :as node]]
+  (let [literal (when (string? literal) (widen-partial-date (str/trim literal)))
+        unit    (when (string? unit) (u/lower-case-en unit))]
+    (if (and literal
+             (iso-date-string? literal)
+             (contains? (truncation-units-for literal) unit)
+             (unit-hoistable-onto-ref? ref unit)
+             (parseable-temporal-literal? literal))
+      ["=" opts (with-temporal-unit ref unit) (align-literal-to-unit literal unit)]
+      node)))
+
+(defn- hoist-bucket-in-clause [node]
+  (cond
+    (during-clause? node)  (hoist-bucket-in-during node)
+    (between-clause? node) (hoist-bucket-in-between node)
+    :else                  (hoist-bucket-in-comparison node)))
+
+(def ^:private bucket-hoist-stage-keys
+  "The stage keys the QP's `optimize-temporal-filters` rewrites, and so the only ones a bucket may
+  move inside."
+  ["filters" "expressions"])
+
+(defn- hoist-buckets-in-clauses
+  "Rewrite every hoistable comparison at any depth of one stage key's clause vector."
+  [clauses]
+  (match/replace-all clauses
+    #'hoistable-comparison-node? (hoist-bucket-in-clause &match)))
+
+(defn- hoist-temporal-buckets*
+  "Hoist each `absolute-datetime` bucket in a stage's `filters` / `expressions` onto the compared ref.
+
+    {\"filters\" [[\"=\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]]]}
+    => {\"filters\" [[\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]]}
+
+  Only those two keys, and only on a map [[stage-like-map?]] recognises -- the same predicate Pass 2
+  uses to decide what a stage is, so the hoist's notion of a stage is the one that stamps the marker.
+  The pass header says why the scope is those two keys."
+  [form]
+  (match/replace-all form
+    #'stage-like-map?
+    (reduce (fn [stage k]
+              (cond-> stage
+                ;; belt and braces: Pass 1.5 `normalize-expressions-shape*` has already turned a
+                ;; map-form `expressions:` into the sequential form, and a stage carrying neither
+                ;; key falls through untouched
+                (vector? (get stage k)) (update k hoist-buckets-in-clauses)))
+            &match
+            bucket-hoist-stage-keys)))
+
+;;; ============================================================
+;;; Pass 2.6 -- expand whole-day comparisons outside of filters, expressions and join conditions.
+;;;
+;;; Date-only bounds with the `day` or `default` unit become ranges on the unbucketed column,
+;;; with an exclusive upper bound on the next day. The expression editor can save these ranges;
+;;; it cannot save a bucketed column, and dropping the unit would leave out times after midnight
+;;; on the last day. Timestamps with the `default` unit only lose their wrapper, and so does the
+;;; whole-day start of a `between` that ends at `now` or at a timestamp. E7 rejects date
+;;; negations because `!=` filters keep rows with no date for Date columns and drop them for
+;;; DateTime columns, and this pass does not know the column's type.
+;;; ============================================================
+
+(defn- next-day [literal]
+  (str (u.date/add (u.date/parse literal) :day 1)))
+
+(defn- expand-day-comparison [[head opts ref & dates :as node]]
+  (let [range-ref (update ref 1 dissoc "lib/uuid")]
+    (cond
+      (= head "between")
+      ["and" opts [">=" {} range-ref (first dates)] ["<" {} range-ref (next-day (second dates))]]
+
+      (contains? #{"=" "in"} head)
+      (let [ranges (mapv (fn [date] ["and" {} [">=" {} range-ref date] ["<" {} range-ref (next-day date)]]) dates)]
+        (if (= 1 (count ranges))
+          (assoc (first ranges) 1 opts)
+          (into ["or" opts] ranges)))
+
+      (= 1 (count dates))
+      (case head
+        "<=" ["<" opts ref (next-day (first dates))]
+        ">"  [">=" opts ref (next-day (first dates))]
+        node)
+
+      :else node)))
+
+(defn- whole-day-bound?
+  "Whether `v` is a `day` or `default` bound written as a full date, which a filter reads as the whole day.
+  `yyyy-MM` and `yyyy` name a month or a year, though [[hoistable-bucket]] widens them to their first day."
+  [v]
+  (and (redundant-bucket-literal v)
+       (re-matches date-only-pattern (str/trim (nth v 2)))))
+
+(defn- now-or-timestamp? [v]
+  (or (and (vector? v) (= "now" (nth v 0 nil)))
+      (and (iso-date-string? v) (not (re-matches date-only-pattern (str/trim v))))))
+
+(defn- t-separated
+  "`timestamp` with a `T` between its date and time.
+  A space there breaks the column name of an aggregation, though a filter accepts it."
+  [timestamp]
+  (str/replace-first (str/trim timestamp) " " "T"))
+
+(defn- unwrap-whole-day-start
+  "Unwrap the whole-day start of a `between` that ends at `now` or at a timestamp.
+
+  SQL `BETWEEN` then counts from midnight, as the same clause does in a filter. Any other end leaves the
+  clause to E7, since `BETWEEN` stops at the start of a plain date or of a `relative-datetime` period."
+  [[_ _ _ start end :as node]]
+  (if (and (between-clause? node) (whole-day-bound? start) (now-or-timestamp? end))
+    (cond-> (assoc node 3 (redundant-bucket-literal start))
+      (string? end) (assoc 4 (t-separated end)))
+    node))
+
+(defn- repair-day-and-default-comparison [node]
+  (if (hoistable-comparison-node? node)
+    (let [operands   (subvec node 3)
+          literals   (mapv redundant-bucket-literal operands)
+          timestamp? #(and % (not (re-matches date-only-pattern %)))]
+      (if (every? whole-day-bound? operands)
+        (if (contains? #{"!=" "not-in"} (first node))
+          node
+          (expand-day-comparison (into (subvec node 0 3) literals)))
+        (unwrap-whole-day-start
+         (if (some timestamp? literals)
+           (into (subvec node 0 3)
+                 (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
+                      operands literals))
+           node))))
+    node))
+
+(def ^:private day-comparison-skipped-keys
+  "Keys that [[repair-day-and-default-comparisons*]] does not descend into, in a map at any depth.
+  Pass 2.95 hoists buckets under the stage keys, and join conditions refuse temporal literals."
+  (conj (set bucket-hoist-stage-keys) "conditions"))
+
+(defn- repair-day-and-default-comparisons*
+  "Repair temporal comparisons outside of filters, expressions and join conditions."
+  [form]
+  (if (and (map? form) (vector? (get form "stages")))
+    (letfn [(rewrite [node]
+              (if (map? node)
+                (reduce-kv (fn [result k v]
+                             (if (contains? day-comparison-skipped-keys k)
+                               result
+                               (let [v' (rewrite v)]
+                                 (if (identical? v' v) result (assoc result k v')))))
+                           node node)
+                (perf/walk rewrite repair-day-and-default-comparison node)))]
+      (rewrite form))
+    form))
+
+;;; ============================================================
+;;; Pass 1.867 -- rewrite `temporal-extract` to the `get-*` clause that means the same thing.
+;;;
+;;;   ["temporal-extract", {}, <col>, "month-of-year"]        => ["get-month", {}, <col>]
+;;;   ["temporal-extract", {}, <col>, "week-of-year-iso"]     => ["get-week", {}, <col>, "iso"]
+;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
+;;;
+;;; The unit lands in the legacy `::TemporalExtractUnit` enum, which has no decoder, so a question
+;;; that opens from legacy MBQL 400s. The `/question#` link carries a structured query as MBQL 5,
+;;; where the clause survives, so this matters only when a query falls back to legacy MBQL. A
+;;; `get-*` clause carries no unit. The week-mode units keep their meaning through the trailing
+;;; argument `get-week` / `get-day-of-week` already take. The clause's own optional mode slot (third
+;;; example) is dropped: SQL compilation reads only the unit (`:temporal-extract` in
+;;; `metabase.driver.sql.query-processor`), so it never mattered.
+;;;
+;;; An exact synonym wherever the clause appears, so not scoped to `filters`. Idempotent: the new
+;;; head is not `temporal-extract`.
+;;; ============================================================
+
+(def ^:private temporal-extract-unit->getter
+  "Extraction unit -> the `get-*` head meaning exactly the same thing, followed by any trailing
+  week-mode argument that head needs to preserve the unit's meaning."
+  {"year-of-era"           ["get-year"]
+   "quarter-of-year"       ["get-quarter"]
+   "month-of-year"         ["get-month"]
+   "day-of-month"          ["get-day"]
+   "day-of-week"           ["get-day-of-week"]
+   "day-of-week-iso"       ["get-day-of-week" "iso"]
+   "hour-of-day"           ["get-hour"]
+   "minute-of-hour"        ["get-minute"]
+   "second-of-minute"      ["get-second"]
+   "week-of-year-iso"      ["get-week" "iso"]
+   "week-of-year-us"       ["get-week" "us"]
+   "week-of-year-instance" ["get-week" "instance"]})
+
+(defn- rewrite-temporal-extract*
+  "Rewrite each `temporal-extract` clause in `form` to the `get-*` clause that means the same thing.
+
+    [\"temporal-extract\" {} <col> \"week-of-year-iso\"]  => [\"get-week\" {} <col> \"iso\"]
+    [\"temporal-extract\" {} <col> \"day-of-week\" \"us\"] => [\"get-day-of-week\" {} <col>]
+
+  A unit with no `get-*` equivalent is left as written for validation to report."
+  [form]
+  (match/replace-all form
+    [(op :guard (= (u/lower-case-en op) "temporal-extract"))
+     (opts :guard map?)
+     col
+     (unit :guard string?)
+     & more]
+    (if-let [[getter & mode] (and (<= (count more) 1)
+                                  (temporal-extract-unit->getter (u/lower-case-en unit)))]
+      (into [getter opts col] mode)
+      &match)))
+
+;;; ============================================================
+;;; Pass 1.55 -- wrap a single `fields:` or `aggregation:` clause in a list
+;;;
+;;; The repr schema for both stage and join requires
+;;; `"fields": [:sequential [:ref ::clause]]` (joins additionally accept the enum strings
+;;; `"all"` / `"none"`). LLMs occasionally write a single clause as the value, e.g.
+;;;
+;;;   stages:
+;;;   - …
+;;;     fields: [field, {}, [Sample, PUBLIC, T, COL]]
+;;;
+;;; rather than the canonical list-of-one
+;;;
+;;;   stages:
+;;;   - …
+;;;     fields:
+;;;     - [field, {}, [Sample, PUBLIC, T, COL]]
+;;;
+;;; The single-clause shape would otherwise fail validation. We detect it (a vector whose
+;;; slot 0 is a string head AND slot 1 is a map - i.e. clause-shaped) and wrap it in a
+;;; one-element list.
+;;;
+;;; Carried over from the sexp pipeline's \`normalize-with-fields-selection\` (see
+;;; `repr-deletion-followups.md` § 1.9). Idempotent: after wrapping, the value is
+;;; sequential-of-clause and the predicate no longer matches.
+;;; ============================================================
+
+(defn- normalise-fields-shape*
+  [form]
+  (match/replace-all form
+    {"fields" (:and single-clause
+                    [#'string? #'map? & _])}
+    (assoc &match "fields" [single-clause])))
+
+(defn- normalise-aggregation-clauses*
+  "Wrap a stage's bare aggregation clause in a one-element list."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages"
+            (fn [stages]
+              (mapv (fn [stage]
+                      (let [aggregation (get stage "aggregation")]
+                        (cond-> stage
+                          (and (vector? aggregation) (string? (first aggregation)))
+                          (assoc "aggregation" [aggregation]))))
+                    stages)))))
+
+;;; ============================================================
+;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
+;;;
+;;; A stage's `filters:` entries are implicitly combined with `and`, so
+;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The notebook renders the
+;;; compound `and` as one custom expression (BOT-1446). Splitting it gives each condition its own
+;;; editable filter without changing the rows, whether the model or the user wrote the `and`.
+;;;
+;;; Top-level `and` clauses and directly nested `and` clauses are split case-insensitively (`AND`).
+;;; An `and` under `or` or `not` must stay nested to preserve the boolean logic. An `and` with a
+;;; non-clause operand, such as a trailing map, stays intact so validation can report the original
+;;; clause. The `and`'s options map is dropped because its operands need nothing from it in the
+;;; portable form. Repeating the pass makes no further changes.
+;;;
+;;; Pass 1.56 runs in `normalize-shape*`, after Pass 1 adds options maps and before Pass 1.5.
+;;; It must precede Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries,
+;;; so a row condition stays in stage 0 while only the condition on an aggregation moves.
+;;;
+;;; `metabase.lib.filter/flatten-and-clause`, used by `lib/atomic-filters`, does the same flattening
+;;; but requires keyword-keyed MBQL. This pass receives the string-keyed portable form before resolution.
+;;; ============================================================
+
+(defn- and-filter-clause?
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (string? (nth clause 0))
+       (= "and" (u/lower-case-en (nth clause 0)))
+       (map? (nth clause 1))
+       (every? clause-like? (drop 2 clause))))
+
+(defn- and-filter-operands
+  [clause]
+  (if (and-filter-clause? clause)
+    (mapcat and-filter-operands (drop 2 clause))
+    [clause]))
+
+(defn- split-top-level-and-filters*
+  [form]
+  (match/replace-all form
+    {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
+    (assoc &match "filters" (into [] (mapcat and-filter-operands) filters))))
+
+;;; ============================================================
+;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
+;;;
+;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
+;;; expression clause carrying `:lib/expression-name` in its options map. LLMs naturally
+;;; want to write a map-shape `expressions: {Name: [op, {}, ...]}` (with the expression
+;;; name as the map key), which is far more readable. We accept both shapes here and
+;;; normalise to the canonical sequential form, stamping `lib/expression-name` into each
+;;; clause's options from the map key.
+;;;
+;;; If the author already wrote the sequential form, we leave the expression-name alone
+;;; (authoritative in options). If both a map key AND `lib/expression-name` exist and
+;;; disagree, the options-map wins (we don't overwrite authored metadata).
+;;; ============================================================
+
+(defn- expression-clause?
+  "An expression definition clause: a vector whose position-1 element is a map (options).
+  Anything else - a literal value, a non-vector, an empty vector - we leave alone and let
+  schema validation complain."
+  [x]
+  (and (vector? x)
+       (>= (count x) 2)
+       (map? (nth x 1))))
+
+(defn- stamp-expression-name
+  "If the clause doesn't already have `\"lib/expression-name\"` in its options, stamp the
+  given name. Otherwise leave the clause alone."
+  [clause expr-name]
+  (let [opts (nth clause 1)]
+    (if (contains? opts "lib/expression-name")
+      clause
+      (assoc clause 1 (assoc opts "lib/expression-name" expr-name)))))
+
+(defn- normalize-expressions-shape*
+  "Walk the query and, for every map that has a map-shape `\"expressions\"` key, convert it
+  into the canonical sequential shape with `lib/expression-name` stamped from the map key.
+  Idempotent: sequential input passes through unchanged."
+  [form]
+  (match/replace-all form
+    {"expressions" (exprs :guard map?)}
+    (assoc &match "expressions"
+           (into []
+                 (keep (fn [[expr-name clause]]
+                         (when (expression-clause? clause)
+                           (stamp-expression-name clause expr-name))))
+                 exprs))))
+
+;;; ============================================================
+;;; Pass 1.9 -- stamp top-level `database:` from the first stage
+;;;
+;;; Rationale: the `representations` spec mandates a top-level `database:` field on every
+;;; query (see `../representations/core-spec/v1/schemas/common/query.yaml`), but every
+;;; database-identifying piece of information is already available in the first stage's
+;;; `source-table:` (a portable FK `[db, schema, table]`) or `source-card:` (an entity_id
+;;; whose card carries a `database_id`). We remove `database:` from the LLM-facing tool
+;;; contract - one less thing for the model to get wrong, one less failure mode where the
+;;; top-level name disagrees with the FKs.
+;;;
+;;; To keep the downstream spec-compliant (lib.schema/Query, validate-query, etc.), this pass
+;;; stamps the top-level `database:` from the first stage. Sources of truth, in order:
+;;;
+;;;   1. `stages[0].source-table[0]` - the db-name component of the portable table FK.
+;;;   2. `stages[0].source-card` - entity_id; look up the card, read its `database_id`, then
+;;;      the database's name via the metadata provider.
+;;;
+;;; **Silent overwrite on conflict.** If the LLM did author a `database:` field and it
+;;; disagrees with what we computed, we overwrite it. The first-stage source is more detailed
+;;; and is what the resolver actually uses; there's no reason to trust a dangling top-level
+;;; name over it.
+;;;
+;;; **No-op when we can't derive anything** (no source-table, and source-card lookup failed /
+;;; absent). The enclosing pipeline's `resolve-database-id-from-first-stage` already raised
+;;; before we got here in that case, but we guard here too for test isolation.
+;;; ============================================================
+
+(defn- db-name-from-source-table
+  "Pull the first element (db-name) out of `stages[0].source-table`, or nil."
+  [query]
+  (let [fk (get-in query ["stages" 0 "source-table"])]
+    (when (and (vector? fk) (>= (count fk) 1) (string? (nth fk 0)))
+      (nth fk 0))))
+
+(defn- db-name-from-mp
+  "Read the canonical database name off the metadata provider, or nil on failure."
+  [mp]
+  (when mp
+    (try
+      (:name (lib.metadata.protocols/database mp))
+      (catch Exception _ nil))))
+
+(defn- infer-top-level-database*
+  "Stamp (or overwrite) the top-level `database:` field on a parsed query.
+
+  Only applies to maps that look like a top-level query - those that have a `stages` key.
+  We intentionally do NOT stamp `database:` on arbitrary maps: the `repair` entry point is
+  sometimes exercised with a non-query input (shape-pass unit tests, plain data), and we
+  must preserve those inputs unchanged modulo the structural repairs.
+
+  Source of truth, in order:
+    1. The metadata provider's database name - authoritative, since the MP was built from the
+       database-id resolved from the first stage. This is always correct when present.
+    2. The raw `stages[0].source-table[0]` string - fallback for the `mp == nil` case (unit
+       tests of this pass in isolation).
+
+  **Silent overwrite on conflict.** If the LLM authored a `database:` field that disagrees
+  with the computed value, we overwrite it: the source is more detailed and is what the
+  resolver actually uses; a dangling top-level name has no independent authority."
+  [query mp]
+  (if-not (and (map? query) (contains? query "stages"))
+    query
+    (if-let [db-name (or (db-name-from-mp mp)
+                         (db-name-from-source-table query))]
+      (assoc query "database" db-name)
+      query)))
+
+;;; ============================================================
+;;; Pass 2 -- fill in missing `lib/type` markers
+;;;
+;;; The structural predicates `needs-lib-type-marker?` keys on live in the shared section above Pass
+;;; 2.95, which gates on the same notion of a stage.
+;;; ============================================================
+
+(defn- needs-lib-type-marker? [m]
+  (and (map? m)
+       (not (contains? m "lib/type"))
+       (or (top-level-query-map? m) (join-like-map? m) (stage-like-map? m))))
+
+(defn- ensure-lib-types* [form]
+  (match/replace-all form
+    #'needs-lib-type-marker?
+    (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
+                                   (join-like-map? &match) "mbql/join"
+                                   (stage-like-map? &match) "mbql.stage/mbql"))))
+
+;;; ============================================================
+;;; Pass 2.7 -- rewrite inline aggregation expressions in `order-by` to aggregation refs
+;;;
+;;; Background: when the user asks for something like "top categories by total revenue", the
+;;; LLM tends to write `order-by` by re-stating the aggregation expression inline:
+;;;
+;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
+;;;   order-by:    [[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]]   # <-- inline copy
+;;;
+;;; In MBQL 5 / legacy MBQL the `order-by` direction must wrap an aggregation **reference**,
+;;; not the aggregation expression itself. The `lib.normalize` step accepts the inline form
+;;; structurally, but `lib/->legacy-MBQL` produces a query that fails legacy-schema validation
+;;; the moment something downstream re-loads it (e.g. when the chart is opened, the QP
+;;; round-trips through legacy MBQL and explodes with `Invalid output: {:query {:order-by ...}}`).
+;;;
+;;; This pass detects the pattern, structurally matches each `order-by` inner clause against
+;;; the stage's `aggregation` list (ignoring options-map differences), and:
+;;;   * stamps a UUID into the matching aggregation's options (if it doesn't already have one);
+;;;   * replaces the inline `order-by` aggregation with `["aggregation" {} "<that-uuid>"]`.
+;;;
+;;; This does NOT introduce general placeholder-UUID handling (Phase 2 step 10 - `@agg-N`
+;;; references); we only resolve the very specific "order-by re-states the aggregation inline"
+;;; mistake. If the LLM writes a `["aggregation" {} "..."]` ref directly, we leave it alone.
+;;; ============================================================
+
+(defn- strip-clause-options
+  "Recursively remove the options map (slot at position 1) from every clause-like vector in
+  `form`. Used as a structural-equality key so we can match an inline `order-by` aggregation
+  against the stage's `aggregation` entry without being thrown off by `lib/uuid` differences
+  or unrelated option keys.
+
+  Uses the same `clause-like?` predicate as the options-insertion pass, so FK-paths and
+  non-clause vectors are left alone."
+  [form]
+  (match/replace-all form
+    (:and [op #'map? & args] #'clause-like?)
+    (into [op] args)))
+
+(defn- ensure-aggregation-uuid
+  "Return a tuple `[stamped-aggregation uuid]`. If the aggregation already has a `lib/uuid` in
+  its options, reuse it; otherwise generate one and assoc it in. Always returns the UUID for
+  use in the corresponding aggregation reference."
+  [aggregation]
+  (let [opts (when (and (vector? aggregation) (>= (count aggregation) 2) (map? (nth aggregation 1)))
+               (nth aggregation 1))
+        existing (get opts "lib/uuid")
+        uuid     (or existing (str (random-uuid)))]
+    (if existing
+      [aggregation uuid]
+      [(assoc aggregation 1 (assoc (or opts {}) "lib/uuid" uuid)) uuid])))
+
+(defn- aggregation-ref-clause?
+  "True if `clause` is already an `[\"aggregation\" {opts} \"<uuid>\"]` reference. We never
+  rewrite these."
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (= "aggregation" (first clause))))
+
+(defn- order-by-direction-clause?
+  "True if `clause` is `[\"asc\" {} <inner>]` or `[\"desc\" {} <inner>]`."
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (contains? #{"asc" "desc"} (first clause))))
+
+(defn- rewrite-order-by-inline-aggs-in-stage
+  "Rewrite inline aggregations in a stage's `order-by` clauses.
+
+  Leave the stage unchanged if `order-by` is missing or `aggregation` isn't a list of clauses."
+  [stage]
+  (let [aggs    (get stage "aggregation")
+        ord     (get stage "order-by")]
+    (if-not (and (vector? aggs) (seq aggs) (every? clause-like? aggs) (vector? ord) (seq ord))
+      stage
+      ;; Build a structural-key → index lookup over the aggregations once.
+      (let [agg-key->idx (into {}
+                               (map-indexed (fn [i a] [(strip-clause-options a) i]))
+                               aggs)
+            ;; Mutable-style accumulators: walk order-by, simultaneously collecting any
+            ;; aggregations that need a UUID stamped in.
+            *aggs* (atom aggs)
+            new-ord
+            (mapv
+             (fn [direction-clause]
+               (if-not (order-by-direction-clause? direction-clause)
+                 direction-clause
+                 (let [inner (nth direction-clause 2)]
+                   (cond
+                     ;; Already an aggregation ref - leave it alone.
+                     (aggregation-ref-clause? inner)
+                     direction-clause
+
+                     ;; Inline aggregation that matches one of the stage's aggregations.
+                     (and (vector? inner)
+                          (contains? agg-key->idx (strip-clause-options inner)))
+                     (let [idx (get agg-key->idx (strip-clause-options inner))
+                           [stamped uuid] (ensure-aggregation-uuid (nth @*aggs* idx))]
+                       (swap! *aggs* assoc idx stamped)
+                       (assoc direction-clause 2 ["aggregation" {} uuid]))
+
+                     :else
+                     direction-clause))))
+             ord)]
+        (assoc stage "aggregation" @*aggs* "order-by" new-ord)))))
+
+(defn- rewrite-order-by-inline-aggs*
+  "Top-level pass for inline-aggregation-in-order-by repair. Walks every stage in the query
+  (not just `stages[0]`) since the same mistake can appear in multi-stage queries."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages" #(mapv rewrite-order-by-inline-aggs-in-stage %))))
+
+;;; ============================================================
+;;; Pass 2.8 -- resolve integer-index aggregation references to UUID form
+;;;
+;;; LLM-authored queries commonly use a 0-based integer index to refer to an aggregation
+;;; from the same stage: `[aggregation, {}, 0]` means "the first aggregation in this stage".
+;;; This mirrors legacy MBQL 4 prior art (`[:aggregation 0]`, see `legacy_mbql/schema.cljc`)
+;;; and is far easier for the model to produce than a UUID-based ref.
+;;;
+;;; MBQL 5's canonical form is `[aggregation, {lib/uuid, base-type, effective-type, …},
+;;; "<uuid-string>"]` where the string in slot 2 is the `:lib/uuid` of the target
+;;; aggregation clause in the same stage. This pass walks each stage, builds an
+;;; index→uuid map over the stage's `aggregation:` vector (stamping a UUID on each agg
+;;; clause that lacks one), then rewrites every `[aggregation, opts, <int>]` clause to the
+;;; canonical form with `base-type`/`effective-type` inferred from the aggregation head.
+;;;
+;;; Same-stage refs only. Cross-stage aggregation references (a stage-N+1 `:aggregation`
+;;; ref pointing at a stage-N aggregation) are **out of scope** for this pass - MBQL 5
+;;; actually forbids that shape; the correct downstream form is a cross-stage field ref by
+;;; the aggregation's column name, which Pass 4 handles once the column name is known.
+;;; An out-of-range or no-aggregations stage raises an `:agent-error?` ex-info with a
+;;; helpful message listing the available indices/heads.
+;;; ============================================================
+
+(defn- integer-index-agg-ref?
+  "True if `clause` is `[\"aggregation\", <opts>, <non-negative-int>]`."
+  [clause]
+  (and (vector? clause)
+       (= 3 (count clause))
+       (= "aggregation" (nth clause 0))
+       (map? (nth clause 1))
+       (let [idx (nth clause 2)]
+         (and (integer? idx) (not (neg? idx))))))
+
+(defn- inner-clause-field-base-type
+  "Best-effort inner-field type extraction for `sum`/`min`/`max` etc. Looks for a nested
+  `[\"field\" {\"base-type\" T, …} …]` clause; returns nil if none found."
+  [agg-clause]
+  (when (and (vector? agg-clause) (>= (count agg-clause) 3))
+    (let [inner (nth agg-clause 2)]
+      (when (and (vector? inner)
+                 (>= (count inner) 2)
+                 (= "field" (nth inner 0))
+                 (map? (nth inner 1)))
+        (get (nth inner 1) "base-type")))))
+
+(defn- infer-agg-base-type
+  "Return the string base-type for an aggregation clause. Small, intentionally inexact
+  lookup table keyed by clause head - this is a shape pass, not a resolver. Return values
+  are the string forms expected in the portable repair output.
+
+  Heads whose output type tracks an inner field (`sum`, `min`, `max`, etc) try to pull the
+  inner field's authored `base-type`; fall through to `type/*` if unknown."
+  [agg-clause]
+  (let [head (when (and (vector? agg-clause) (>= (count agg-clause) 1))
+               (nth agg-clause 0))]
+    (case head
+      ("count" "distinct" "cum-count" "count-where") "type/BigInteger"
+      ("avg" "median" "stddev" "var" "share")        "type/Float"
+      ("sum" "sum-where" "cum-sum" "min" "max")
+      (or (inner-clause-field-base-type agg-clause) "type/Float")
+      "type/*")))
+
+(defn- ensure-aggregation-uuids
+  "Walk the stage's aggregation vector, stamping `lib/uuid` into each clause's options map
+  when missing. Returns `[stamped-aggs index->uuid]` where `index->uuid` is a vector aligned
+  with the aggregation vector."
+  [aggs]
+  (reduce
+   (fn [[acc-aggs acc-uuids] agg]
+     (let [[stamped uuid] (ensure-aggregation-uuid agg)]
+       [(conj acc-aggs stamped) (conj acc-uuids uuid)]))
+   [[] []]
+   aggs))
+
+(defn- agg-heads-summary
+  "Return a short human-readable summary like `[sum at 0, count at 1]` for error messages."
+  [aggs]
+  (str "["
+       (str/join ", "
+                 (map-indexed (fn [i a]
+                                (let [head (when (and (vector? a) (>= (count a) 1))
+                                             (nth a 0))]
+                                  (str head " at " i)))
+                              aggs))
+       "]"))
+
+(defn- rewrite-integer-agg-refs-in-tree
+  "Postwalk `tree` replacing every integer-index aggregation ref with its canonical
+  UUID-keyed form. Uses `index->uuid` / `index->type` (both vectors aligned with the
+  stage's aggregation vector) for the rewrite. Throws agent-error ex-info on out-of-range.
+
+  Does NOT descend into the stage's own `aggregation:` vector; that's handled by the
+  caller (we don't want to rewrite a stray integer that legitimately means \"the number 0\"
+  inside an aggregation's args)."
+  [tree index->uuid index->type aggs-for-error]
+  (match/replace-all tree
+    (:and [_ opts idx] #'integer-index-agg-ref?)
+    (if-let [uuid (get index->uuid idx)]
+      (let [inferred-type (get index->type idx)
+            new-opts      (cond-> opts
+                            (and inferred-type (not (contains? opts "base-type")))
+                            (assoc "base-type" inferred-type)
+                            (and inferred-type (not (contains? opts "effective-type")))
+                            (assoc "effective-type" inferred-type))]
+        ["aggregation" new-opts uuid])
+      (throw (ex-info (format "Aggregation index %s out of range; stage has %s aggregation(s): %s"
+                              idx (count index->uuid) (agg-heads-summary aggs-for-error))
+                      {:agent-error? true
+                       :error        :aggregation-ref-out-of-range
+                       :index        idx
+                       :available    (count index->uuid)
+                       :heads        (mapv (fn [a] (when (vector? a) (first a))) aggs-for-error)})))))
+
+(defn- stage-has-integer-agg-ref?
+  "Does `stage` contain any `[aggregation, {}, <int>]` clause anywhere? Used to decide
+  whether to complain about a missing `aggregation:` vector (if there are no integer refs
+  and no `aggregation:` block, it's a perfectly valid stage)."
+  [stage]
+  (some? (match/match-one (dissoc stage "aggregation")
+           #'integer-index-agg-ref? true)))
+
+(defn- resolve-integer-agg-refs-in-stage
+  "Resolve all integer-index aggregation refs in a single stage to canonical UUID form.
+  No-op when the stage has neither `aggregation:` nor any integer-indexed refs."
+  [stage]
+  (let [aggs (get stage "aggregation")]
+    (cond
+      (not (map? stage))
+      stage
+
+      ;; No integer refs anywhere in the stage - nothing to do.
+      (not (stage-has-integer-agg-ref? stage))
+      stage
+
+      ;; Integer ref(s) present but stage has no aggregation vector - agent-error.
+      (not (and (vector? aggs) (seq aggs)))
+      (throw (ex-info "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause"
+                      {:agent-error? true
+                       :error        :aggregation-ref-no-aggregations}))
+
+      ;; Let query validation report malformed aggregation entries.
+      (not-every? clause-like? aggs)
+      stage
+
+      :else
+      (let [[stamped-aggs index->uuid] (ensure-aggregation-uuids aggs)
+            index->type                (mapv infer-agg-base-type stamped-aggs)
+            ;; Walk everything EXCEPT the `aggregation:` vector itself. We replace that
+            ;; vector with a sentinel during the walk and restore it after. (Simpler than
+            ;; implementing a custom non-descending walker.)
+            stage-wo-aggs              (assoc stage "aggregation" ::placeholder)
+            rewritten                  (rewrite-integer-agg-refs-in-tree
+                                        stage-wo-aggs index->uuid index->type stamped-aggs)]
+        (assoc rewritten "aggregation" stamped-aggs)))))
+
+(defn- resolve-aggregation-ref-indexes*
+  "Top-level pass: resolve 0-based integer `[aggregation, {}, <idx>]` references to the
+  canonical MBQL 5 `[aggregation, {lib/uuid, base-type, effective-type}, \"<uuid>\"]`
+  shape. See block comment above."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (let [stages (get query "stages")]
+      (log/debugf "[repr-repair] resolve-aggregation-ref-indexes*: %d stage(s)" (count stages))
+      (assoc query "stages" (mapv resolve-integer-agg-refs-in-stage stages)))))
+
+;;; ============================================================
+;;; Pass 2.9 -- auto-split a stage that uses a same-stage aggregation reference inside a
+;;; `filters:` clause (post-aggregation / HAVING-style filter) into two stages.
+;;;
+;;; lib's canonical shape forbids `[aggregation, {}, <uuid>]` to appear inside a stage's
+;;; `filters:` (or `breakout:`, `expressions:`) - that's a HAVING-clause situation in SQL
+;;; terms, and in MBQL 5 it must be expressed as a *second stage* whose `filters:` reference
+;;; the aggregation's output column by name. lib's schema is shape-only and does not catch
+;;; this; the broken query goes through validate, resolve, and only fails at SQL-generation
+;;; time (or, worse, silently produces wrong results). LLMs habitually write the single-
+;;; stage shape because that's the SQL idiom (`HAVING count(*) > 10`).
+;;;
+;;; Carried over from the sexp pipeline's stage-boundary inference (see
+;;; `repr-deletion-followups.md` § 1.11).
+;;;
+;;; Detection
+;;; =========
+;;; For each stage S whose `aggregation:` is non-empty, build the set of `lib/uuid`s of S's
+;;; aggregations. Walk every entry of `S.filters` looking for any
+;;; `[aggregation, opts, <uuid>]` clause whose uuid is in that set. If found, the stage is
+;;; "post-agg-filter-broken".
+;;;
+;;; Auto-fix
+;;; ========
+;;; Derive the output column-name for each aggregation (static lib-mirroring table, plus
+;;; `"name"` opts override). If any aggregation's name can't be derived (custom heads,
+;;; `metric` ref needing the metadata-provider, etc.), throw `:agent-error?` with a clear
+;;; message - the LLM retry will then either avoid the pattern or refactor to multi-stage
+;;; explicitly.
+;;;
+;;; When all names are derivable, split S into [S0, S1]:
+;;;
+;;;   * S0 keeps: source-*, joins, aggregation, breakout, expressions, and any pre-agg
+;;;     filters (those that do NOT reference a same-stage agg-ref).
+;;;   * S1 (new, no source-table) takes:
+;;;       - the offending filters, with `[aggregation, {}, <uuid>]` rewritten to
+;;;         `[field, {}, "<column-name>"]` (cross-stage ref);
+;;;       - the original `order-by:` (if any), with the same rewrite applied;
+;;;       - the original `limit:`;
+;;;       - the original `fields:` (if any).
+;;;
+;;; Why move order-by + limit + fields? The user's intent is "of {rows matching the filter},
+;;; the top-N sorted by X, projecting columns Y". Leaving order-by/limit/fields in S0 would
+;;; sort/limit/project *before* the filter, producing a different (smaller) row set and the
+;;; wrong semantics. They semantically belong on the post-filter view.
+;;;
+;;; Pre-agg filters (those NOT referencing agg-ref) STAY in S0 so they can do row
+;;; filtering before aggregation as the LLM intended.
+;;;
+;;; Idempotency
+;;; ===========
+;;; After the split, S0 has no `[aggregation, {}, <uuid>]` ref in its filters and S1 has no
+;;; aggregation: vector at all. Re-running the pass finds no triggering shape and is a
+;;; no-op.
+;;;
+;;; This pass runs AFTER `resolve-aggregation-ref-indexes*` (so integer-index refs are
+;;; already in UUID form) and BEFORE `infer-cross-stage-field-types*` (so the new
+;;; cross-stage `field` refs we synthesise get their `base-type` / `effective-type` filled
+;;; in by Pass 5).
+;;; ============================================================
+
+(def ^:private aggregation-column-name-table
+  "Lib-mirroring static table: aggregation head → the output column name lib's
+  `column-name-method` produces. Covers all the heads we expect from LLM-authored queries
+  in the absence of an explicit `name` override. `metric` is intentionally NOT in this
+  table - resolving its column name needs the metadata-provider, and the auto-split caller
+  emits a clean diagnostic when it can't derive a name."
+  {"count"          "count"
+   "cum-count"      "count"
+   "distinct"       "count"
+   "count-where"    "count_where"
+   "distinct-where" "count_where"
+   "avg"            "avg"
+   "max"            "max"
+   "median"         "median"
+   "min"            "min"
+   "stddev"         "stddev"
+   "sum"            "sum"
+   "var"            "var"
+   "cum-sum"        "sum"
+   "percentile"     "percentile"})
+
+(defn- aggregation-clause-column-name
+  "Derive the output column-name an aggregation will produce, mirroring lib's
+  `column-name-method`. An explicit `\"name\"` in opts (lib's column-name override) takes
+  precedence. Returns `nil` when we can't determine the name (e.g. `metric` head, custom
+  head not in the table); the caller treats that as \"please diagnose, don't auto-fix\"."
+  [agg]
+  (when (and (vector? agg) (>= (count agg) 2))
+    (or (let [n (get (nth agg 1) "name")]
+          (when (and (string? n) (not= n "")) n))
+        (get aggregation-column-name-table (nth agg 0)))))
+
+(defn- collect-stage-agg-uuids
+  "Set of `lib/uuid` strings on the aggregation clauses of `stage`. Aggregations without a
+  uuid (shouldn't happen post-Pass-2.7/2.8 but guard anyway) contribute nothing."
+  [stage]
+  (into #{}
+        (keep (fn [agg]
+                (when (and (vector? agg) (>= (count agg) 2) (map? (nth agg 1)))
+                  (let [u (get (nth agg 1) "lib/uuid")]
+                    (when (string? u) u)))))
+        (get stage "aggregation")))
+
+(defn- form-references-stage-agg?
+  "True if `form` contains any `[aggregation, opts, <uuid>]` clause whose uuid is in
+  `same-stage-uuids`."
+  [form same-stage-uuids]
+  (some? (match/match-one form
+           ["aggregation" _ (s :guard (and (string? s) (contains? same-stage-uuids s))) & _] true)))
+
+(defn- aggregation-uuid->column-name
+  "Build a `{uuid → column-name}` map for the stage's aggregation vector. Returns `nil` when
+  auto-split isn't safe — the caller emits the `:post-agg-filter-needs-multi-stage`
+  diagnostic and the LLM must author two stages explicitly.
+
+  Two unsafe conditions:
+
+  * Any aggregation fails to produce a column name (e.g. a `metric` head whose name needs
+    the metadata provider, or a custom head not in the static table).
+
+  * Two aggregations produce the **same** output column name. lib would dedupe these via
+    `unique-name-generator` (`sum` / `sum_2` / …) which depends on field order; our static
+    table can't replicate that without recreating the generator. Picking either name in
+    the cross-stage `[\"field\" {} <name>]` rewrite would silently filter against the
+    wrong column."
+  [aggs]
+  (let [m (reduce
+           (fn [acc agg]
+             (let [uuid (get-in agg [1 "lib/uuid"])]
+               (if (and (string? uuid) (not= uuid ""))
+                 (if-let [col-name (aggregation-clause-column-name agg)]
+                   (assoc acc uuid col-name)
+                   (reduced nil))
+                 acc)))
+           {}
+           aggs)]
+    (when (and m (= (count m) (count (set (vals m)))))
+      m)))
+
+(defn- rewrite-agg-refs-to-cross-stage-fields
+  "Postwalk: replace every `[aggregation, opts, <uuid>]` clause whose uuid is in
+  `uuid->col-name` with the canonical cross-stage `[field, {}, <col-name>]` shape.
+  Aggregation-specific opts (`base-type`, `effective-type`, `lib/uuid`) are intentionally
+  dropped - downstream Pass 5 (`infer-cross-stage-field-types*`) will re-stamp the field's
+  types based on metadata."
+  [form uuid->col-name]
+  (match/replace-all form
+    ["aggregation" #'map? (uuid :guard (and (string? uuid) (contains? uuid->col-name uuid)))]
+    ["field" {} (get uuid->col-name uuid)]))
+
+(defn- split-post-agg-filter-stage
+  "Split a stage whose filters refer to its own aggregations.
+
+  Return `[stage]` if no split is needed, or `[stage' new-stage]` after a split.
+  Rewrite aggregation references in the new stage as cross-stage field references.
+  Throw an `:agent-error?` exception if a split is needed but can't be done safely.
+
+  Moving `order-by`, `limit` or `fields` could change the results because those clauses
+  may refer to columns absent from the aggregation output. Ask the LLM to write two stages
+  explicitly in that case. Only nil and empty collections count as absent trailing clauses."
+  [stage]
+  (let [aggs              (get stage "aggregation")
+        same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
+    (if-not (seq same-stage-uuids)
+      [stage]
+      (let [filters             (get stage "filters")
+            offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
+            offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
+        (cond
+          (empty? offending-filters)
+          [stage]
+
+          (some (fn [clause]
+                  (if (coll? clause)
+                    (seq clause)
+                    (some? clause)))
+                (map stage ["order-by" "limit" "fields"]))
+          (throw (ex-info
+                  "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don't survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation's output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs."
+                  {:agent-error? true
+                   :status-code  400
+                   :error-code   :post-agg-filter-with-trailing-clauses
+                   :error        :post-agg-filter-with-trailing-clauses
+                   :stage        stage}))
+
+          :else
+          (if-let [uuid->col (aggregation-uuid->column-name aggs)]
+            (let [keep-filters  (vec (remove offending-filter? filters))
+                  rewrite       #(rewrite-agg-refs-to-cross-stage-fields % uuid->col)
+                  moved-filters (mapv rewrite offending-filters)
+                  s0            (cond-> stage
+                                  true                  (assoc "filters" keep-filters)
+                                  (empty? keep-filters) (dissoc "filters"))
+                  s1            {"lib/type" "mbql.stage/mbql"
+                                 "filters"  moved-filters}]
+              [s0 s1])
+            (throw (ex-info
+                    "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation's output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names."
+                    {:agent-error? true
+                     :status-code  400
+                     :error-code   :post-agg-filter-needs-multi-stage
+                     :error        :post-agg-filter-needs-multi-stage
+                     :stage        stage}))))))))
+
+(defn- split-post-agg-filters*
+  "Split query stages that filter aggregation results.
+
+  Repeated calls leave already split stages unchanged. The `::repr/original-stage-indexes` metadata
+  maps each resulting stage to its index in the original input. Split failures carry the unsplit query as `:query`."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (try
+      (let [stages           (get query "stages")
+            original-indexes (or (::repr/original-stage-indexes (meta query)) (range (count stages)))
+            stage-groups     (mapv split-post-agg-filter-stage stages)
+            stage-indexes    (into [] (mapcat (fn [idx group] (repeat (count group) idx))
+                                              original-indexes stage-groups))]
+        (-> query
+            (assoc "stages" (into [] cat stage-groups))
+            (vary-meta assoc ::repr/original-stage-indexes stage-indexes)))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :query query) e))))))
+
+;;; ============================================================
+;;; Pass 3 -- auto-wire `source-field` for implicit joins
+;;;
+;;; When a field clause references a field on a table *other* than the stage's source table,
+;;; and there is exactly one foreign key from the source table to that target table, fill in
+;;; the `source-field` option with the portable FK of the FK column. The QP interprets this as
+;;; an implicit join (the same machinery users get from the notebook UI).
+;;;
+;;; Card stages use the FK columns the card returns; table stages use their outbound FKs.
+;;; Columns already returned by a card are left unchanged. An implicit join could select different rows.
+;;; Card stages with explicit joins are skipped because lib resolves their fields through those joins.
+;;;
+;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
+;;; inside a join live in a join context), and is a no-op on clauses that already carry any
+;;; of the disambiguating opts: `source-field`, `source-field-name`, `source-field-join-alias`,
+;;; or `join-alias`. The latter three are LLM-authored variants we do *not* auto-fill:
+;;; correctly filling them in would require resolving a previous-stage's returned-columns or
+;;; an explicit-join's FK shape, neither of which is in scope for this pass.
+;;; ============================================================
+
+(defn- field-clause?
+  "A repaired field clause of shape `[\"field\" <opts-map> <target>]` whose target names a
+  concrete column. We require the opts map to be a real map and the target to be either a
+  portable FK vector of >= 4 elements (DB, SCHEMA, TABLE, FIELD, …) or — on a surface that
+  accepts numeric ids — a numeric field id."
+  [v]
+  (and (vector? v)
+       (>= (count v) 3)
+       (= "field" (nth v 0))
+       (map? (nth v 1))
+       (let [fk (nth v 2)]
+         (or (and (vector? fk) (>= (count fk) 4))
+             (and (pos-int? fk) repr.resolve/*numeric-ids-allowed?*)))))
+
+(defn- try-resolve-source-table-id
+  "Resolve the stage's `source-table` reference to a numeric id. Returns nil on any failure
+  (unknown DB, unknown table, nil source-table, wrong shape, etc.) - implicit-join repair is
+  best-effort and should never mask an error that the downstream validate/resolve passes will
+  surface with a better message."
+  [import-store source-table-fk]
+  (try
+    (cond
+      (and (pos-int? source-table-fk) repr.resolve/*numeric-ids-allowed?*)
+      source-table-fk
+
+      (and import-store (vector? source-table-fk) (= 3 (count source-table-fk)))
+      (get (serialization.resolve/table-ids import-store #{source-table-fk} (repr.resolve/import-opts))
+           source-table-fk))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-source-card-id
+  "Resolve the stage's `source-card` entity ID to a numeric Card ID, or nil on failure."
+  [import-store source-card-eid]
+  (try
+    (cond
+      (and (pos-int? source-card-eid) repr.resolve/*numeric-ids-allowed?*)
+      source-card-eid
+
+      (and import-store (string? source-card-eid))
+      (get (serialization.resolve/entity-pks import-store :model/Card #{source-card-eid}) source-card-eid))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-id
+  "Resolve a field target — a Field reference or a numeric field id — to a numeric field id.
+  Walks JSON-unfolded parent chains via the store. Returns nil on failure."
+  [import-store field-fk]
+  (try
+    (if (pos-int? field-fk)
+      field-fk
+      (get (serialization.resolve/field-ids import-store #{field-fk} (repr.resolve/import-opts)) field-fk))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-table-id
+  "The `:table-id` of the field with `field-id`, or nil on failure."
+  [mp field-id]
+  (try
+    (when field-id
+      (:table-id (lib.metadata.protocols/field mp field-id)))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-target-table-id
+  "Resolve the target-table-id of a field target — a Field reference or a numeric field id —
+  by looking up the field and following its `:table-id`. Returns nil on failure."
+  [mp import-store field-fk]
+  (try-resolve-field-table-id mp (try-resolve-field-id import-store field-fk)))
+
+(defn- try-resolve-card-source-info
+  "Return the fields, tables, and implicit-join candidates exposed by the card with `card-id`.
+
+  Return nil for native cards, metric cards, or cards that cannot be inspected. Candidates come from the card's
+  returned columns, as reported by `lib/visible-columns`."
+  ;; A card may omit its base table's FK columns, so candidates must come from its returned columns.
+  ;; Return nil on inspection failure: an empty set could cause a returned column to be replaced by a join.
+  [mp card-id]
+  (try
+    (when-let [card (and mp card-id (lib.metadata/card mp card-id))]
+      (when (and (:table-id card) (not= :metric (:type card)))
+        (let [cols       (lib/visible-columns (lib/query mp card))
+              implicit?  #(= :source/implicitly-joinable (:lib/source %))
+              own        (remove implicit? cols)]
+          {:card-name          (:name card)
+           ;; Recovery hints need the card type because models and saved questions use different lookup URIs.
+           :card-type          (if (= :model (:type card)) "model" "question")
+           :returned-field-ids (into #{} (keep :id) own)
+           ;; A table already read by the card cannot be joined to itself to recover an omitted column.
+           ;; Include its base table even when an aggregation returns no columns from it.
+           :read-table-ids     (into #{(:table-id card)} (keep :table-id) own)
+           :fks-by-target      (->> cols
+                                    (filter implicit?)
+                                    (keep (fn [c]
+                                            (when-let [fk-id (:fk-field-id c)]
+                                              {:source-field-id   fk-id
+                                               :source-field-name (:fk-field-name c)
+                                               :target-table-id   (:table-id c)})))
+                                    distinct
+                                    (group-by :target-table-id))})))
+    (catch Exception e
+      ;; Log inspection failures so skipped repairs can be traced from later missing-column errors.
+      (log/warnf e "Could not inspect source card %s for implicit-join repair; skipping the stage" card-id)
+      nil)))
+
+(defn- export-source-field-ref
+  "Convert a numeric FK column id into its `[db schema table field …]` reference, via the
+  MP-backed export store. Returns nil on failure."
+  [export-store source-field-id]
+  (try
+    (get (serialization.resolve/field-refs export-store #{source-field-id}) source-field-id)
+    (catch Exception _ nil)))
+
+(defn- display-source-table [mp source-table-id]
+  (try
+    (let [t (lib.metadata.protocols/table mp source-table-id)]
+      (or (:name t) (str source-table-id)))
+    (catch Exception _ (str source-table-id))))
+
+(defn- display-portable [fk]
+  (pr-str fk))
+
+(defn- display-target-table
+  "Return the target table's name from a portable FK, or its numeric ID for a numeric field reference."
+  [fk target-table-id]
+  (if (vector? fk)
+    (pr-str (nth fk 2))
+    (str target-table-id)))
+
+(defn- no-fk-path-error [fk source-label target-table-id extra]
+  (ex-info (format (str "Field %s is on table %s, which has no foreign key from the source %s, so it cannot be "
+                        "reached implicitly. To group or filter by a column from that table, add an explicit `joins:` "
+                        "entry and reference the field using the join alias. If the foreign key comes from a table you "
+                        "joined in this stage, set `source-field-join-alias` instead. Otherwise use a field from the "
+                        "source.")
+                   (display-portable fk)
+                   (display-target-table fk target-table-id)
+                   (pr-str source-label))
+           (merge {:status-code  400
+                   :error        :no-fk-path
+                   :agent-error? true
+                   :field        fk
+                   :target-table target-table-id}
+                  extra)))
+
+(defn- column-not-returned-error [fk card-name card-type card-id target-table-id]
+  ;; Recovery hints use the card ID and type to choose the appropriate lookup.
+  (ex-info (let [[kind short-kind] (if (= "model" card-type) ["model" "model"] ["saved question" "question"])]
+             (format (str "Field %s is on %s. The %s %s reads from that table but does not return this field. "
+                          "Use a column that %s returns.")
+                     (display-portable fk)
+                     (display-target-table fk target-table-id)
+                     kind
+                     (pr-str card-name)
+                     short-kind))
+           {:status-code      400
+            :error            :column-not-returned
+            :agent-error?     true
+            :field            fk
+            :source-card      card-id
+            :source-card-type card-type
+            :target-table     target-table-id}))
+
+(defn- unexportable-fk-error [fk source-label target-table-id extra]
+  (ex-info (format (str "Field %s is on table %s, which is reachable from the source %s only through a foreign key "
+                        "that could not be resolved, so it cannot be reached implicitly. Add an explicit `joins:` entry "
+                        "and reference the field using the join alias, or use a column the source returns.")
+                   (display-portable fk)
+                   (display-target-table fk target-table-id)
+                   (pr-str source-label))
+           (merge {:status-code  400
+                   :error        :unexportable-fk
+                   :agent-error? true
+                   :field        fk
+                   :target-table target-table-id}
+                  extra)))
+
+(defn- ambiguous-fk-error [fk source-label n target-table-id extra by-name?]
+  ;; The metadata provider is not permission-aware, so listing FK candidates could reveal restricted column names.
+  ;; Recovery hints send the agent to permission-checked field listings. `by-name?` also requires the FK's output name
+  ;; when a card returns the same FK column under several names.
+  (ex-info (format (str "Field %s can be reached from %s via %d foreign keys. Specify the `source-field` option on the "
+                        "field clause"
+                        (when by-name?
+                          ", and `source-field-name` with the name the source returns that foreign-key column under,")
+                        " to disambiguate.")
+                   (display-portable fk)
+                   (pr-str source-label)
+                   n)
+           (merge {:status-code  400
+                   :error        :ambiguous-fk
+                   :agent-error? true
+                   :field        fk
+                   :target-table target-table-id}
+                  extra)))
+
+(defn- fill-from-candidates
+  "Set `source-field` from the single candidate, or throw an agent error.
+
+  When `stamp-name?` is true, also set `source-field-name` if the candidate has a name. A renamed FK column needs
+  that name in the join condition."
+  [clause opts fk export-store candidates
+   {:keys [source-label target-table-id ex-data-extra stamp-name? strict?]}]
+  (case (count candidates)
+    0 (throw (no-fk-path-error fk source-label target-table-id ex-data-extra))
+    1 (let [{:keys [source-field-id source-field-name]} (first candidates)
+            src-fk (export-source-field-ref export-store source-field-id)]
+        (cond
+          src-fk   (assoc clause 1 (cond-> (assoc opts "source-field" src-fk)
+                                     (and stamp-name? source-field-name)
+                                     (assoc "source-field-name" source-field-name)))
+          ;; A card reference known to need an implicit join would otherwise compile to a missing column.
+          strict?  (throw (unexportable-fk-error fk source-label target-table-id ex-data-extra))
+          :else    clause))
+    (throw (ambiguous-fk-error fk source-label (count candidates) target-table-id ex-data-extra stamp-name?))))
+
+(defn- maybe-fill-source-field
+  "Return the field clause with an inferred `source-field`, or leave it unchanged.
+
+  `source-info` describes a table or card (see [[stage-source-info]]). A card exposes only its returned columns,
+  so a field on its base table may still be unavailable. Throw `:no-fk-path`, `:ambiguous-fk`,
+  `:column-not-returned`, or `:unexportable-fk` when the reference cannot be resolved safely."
+  [clause mp import-store export-store source-info]
+  (let [opts (nth clause 1)
+        fk   (nth clause 2)]
+    (cond
+      ;; Already disambiguated by the LLM. We leave any clause that carries one of the
+      ;; implicit-/explicit-join disambiguators alone:
+      ;;   * `source-field` — implicit join with FK column from the *source-table* (handled
+      ;;     downstream by the resolver); we don't try to second-guess the LLM here.
+      ;;   * `source-field-name` — implicit join from a *previous stage*'s output column
+      ;;     (multi-stage); the FK column is referenced by name, not portable FK path.
+      ;;   * `source-field-join-alias` — implicit join where the FK-bearing column lives on
+      ;;     an *explicitly joined* table; the alias picks which copy of the FK to use.
+      ;;   * `join-alias` — the field itself comes from an explicit join.
+      (or (contains? opts "source-field")
+          (contains? opts "source-field-name")
+          (contains? opts "source-field-join-alias")
+          (contains? opts "join-alias"))
+      clause
+
+      :else
+      (let [field-id        (try-resolve-field-id import-store fk)
+            target-table-id (try-resolve-field-table-id mp field-id)]
+        (if (nil? target-table-id)
+          ;; Couldn't resolve target table: skip (validate/resolve will surface the real error).
+          clause
+          (case (:kind source-info)
+            :table
+            (let [source-table-id (:table-id source-info)]
+              (if (= target-table-id source-table-id)
+                ;; Field is on the source table itself: nothing to do.
+                clause
+                (fill-from-candidates clause opts fk export-store
+                                      (get (:fks-by-target source-info) target-table-id)
+                                      {:source-label    (display-source-table mp source-table-id)
+                                       :target-table-id target-table-id
+                                       :ex-data-extra   {:source-table source-table-id}})))
+
+            :card
+            (if-let [info @(:info source-info)]
+              (cond
+                ;; An implicit join could select different rows from the column the card already returns.
+                (contains? (:returned-field-ids info) field-id)
+                clause
+
+                ;; The card omits this column; joining its table to itself would not recover it.
+                (contains? (:read-table-ids info) target-table-id)
+                (throw (column-not-returned-error fk (:card-name info) (:card-type info)
+                                                  (:card-id source-info) target-table-id))
+
+                :else
+                (fill-from-candidates clause opts fk export-store
+                                      (get (:fks-by-target info) target-table-id)
+                                      {:source-label    (:card-name info)
+                                       :target-table-id target-table-id
+                                       :ex-data-extra   {:source-card      (:card-id source-info)
+                                                         :source-card-type (:card-type info)}
+                                       :stamp-name?     true
+                                       :strict?         true}))
+              ;; Skip repair when the card cannot be inspected; guessing a join could select different rows.
+              clause)))))))
+
+(defn- stage-source-info
+  "Return a stage's table or card source information, or nil when the stage must be skipped.
+
+  Skip unresolved sources and card stages with explicit joins, whose fields lib can resolve through those joins.
+  Card metadata is resolved only when a field needs implicit-join repair; candidates come from the card's returned
+  FK columns, not every FK on its base table. See [[try-resolve-card-source-info]]."
+  [stage mp import-store]
+  (if-let [source-table-fk (get stage "source-table")]
+    (when-let [table-id (try-resolve-source-table-id import-store source-table-fk)]
+      {:kind          :table
+       :table-id      table-id
+       :fks-by-target (group-by :target-table-id (serialization.protocol.mp/outbound-fks-from-table mp table-id))})
+    (when-let [card-id (when (empty? (get stage "joins"))
+                         (try-resolve-source-card-id import-store (get stage "source-card")))]
+      {:kind    :card
+       :card-id card-id
+       :info    (delay (try-resolve-card-source-info mp card-id))})))
+
+(defn- resolve-implicit-joins-in-stage
+  "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
+
+  Skips descent into the `\"joins\"` subtree by plucking it out before the rewrite and
+  restoring it afterwards - field clauses inside explicit joins are expected to carry a
+  `join-alias` already."
+  [stage mp import-store export-store]
+  (if-let [source-info (stage-source-info stage mp import-store)]
+    (let [joins  (get stage "joins")
+          stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
+          walked (match/replace-all stage'
+                   #'field-clause? (maybe-fill-source-field &match mp import-store export-store source-info))]
+      (cond-> walked
+        (contains? stage "joins") (assoc "joins" joins)))
+    ;; Can't resolve the source: skip the pass and let validate/resolve surface the error.
+    stage))
+
+(defn- resolve-implicit-joins*
+  "Top-level implicit-join pass. Only `stages[0]` participates: implicit-join `source-field`
+  inference is a relationship from a stage's source table to a sibling table via a single FK,
+  and only the first stage of a query has a source of its own. Stages 1+ feed off the
+  previous stage's output, where field references are by string name (handled by
+  [[infer-cross-stage-field-types*]] further down)."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
+    query
+    (let [import-store (serialization.protocol.mp/import-store mp content-store)
+          export-store (serialization.protocol.mp/export-store mp)]
+      (update-in query ["stages" 0] resolve-implicit-joins-in-stage
+                 mp import-store export-store))))
+
+;;; ============================================================
+;;; Pass 3.5 -- auto-wire `source-field-join-alias` for implicit joins through an explicitly
+;;; joined table.
+;;;
+;;; This pass uses the source table's FKs and only handles `source-table:` stages.
+;;; Card stages with explicit joins reach lib unchanged; their base table may expose FKs that the card omits.
+;;;
+;;; TODO (Mihael 2026-09-28) -- extend this pass to `source-card:` stages.
+;;;
+;;; Trigger: a field clause `["field" {opts} <portable-fk>]` whose target table is reachable
+;;; from **exactly one** explicit join's source table via **exactly one** FK, and which the
+;;; basic implicit-join pass (Pass 4) cannot handle (target not reachable from `source-table`,
+;;; or LLM clearly intended to hop through the join).
+;;;
+;;; This is the moral equivalent of Pass 4 but the FK-bearing column lives on a joined table
+;;; rather than on `source-table`. We refuse to second-guess any clause that already carries
+;;; one of `source-field` / `source-field-name` / `source-field-join-alias` / `join-alias`.
+;;;
+;;; Conservative on purpose - per `repr-deletion-followups.md`, repair is opt-in: we fill in
+;;; the unambiguous cases and bail loudly on ambiguity rather than guessing. The companion
+;;; multi-stage `source-field-name` repair is *not* implemented here (it would require
+;;; resolving a previous-stage's returned-columns from inside repair, which is structurally
+;;; awkward and prone to silent corruption); see `repr-deletion-followups.md` for the
+;;; deferred-with-rationale entry.
+;;;
+;;; Like Pass 4: walks `stages[0]` only, skips descent into the `\"joins\"` subtree (those
+;;; field clauses already need `join-alias`), no-op when source-table or any join's
+;;; source-table can't be resolved.
+;;; ============================================================
+
+(defn- explicit-join-source-tables
+  "For each entry in a stage's `\"joins\"` vector, return
+  `[{:alias <string>, :source-table-id <int>} …]`. Skips joins without a usable alias or whose
+  `source-table` portable FK can't be resolved - they don't participate in repair, but the
+  resolver will surface the structural error itself."
+  [import-store joins]
+  (vec (for [j     joins
+             :let  [a   (get j "alias")
+                    stf (get-in j ["stages" 0 "source-table"])
+                    tid (try-resolve-source-table-id import-store stf)]
+             :when (and (string? a) (seq a) tid)]
+         {:alias a :source-table-id tid})))
+
+(defn- candidates-via-explicit-join
+  "Find every `(join-alias, source-field-id)` pair through which `target-table-id` is reachable
+  from one of the explicit joins on the stage. Returns a vector (possibly empty) of
+  `{:alias <string>, :source-field-id <int>}`.
+
+  An entry is included iff the joined table has **exactly one** outbound FK to
+  `target-table-id`. Multiple FKs from the same joined table are intentionally NOT collapsed
+  into a single candidate - we can't tell which one the LLM meant, so we leave that join out
+  of the candidate list (it'll either be unambiguous through some *other* join or fail loud
+  below)."
+  [mp joined-tables target-table-id]
+  (vec (for [{:keys [alias source-table-id]} joined-tables
+             :let [outbound  (serialization.protocol.mp/outbound-fks-from-table mp source-table-id)
+                   matching  (filter #(= target-table-id (:target-table-id %)) outbound)]
+             :when (= 1 (count matching))]
+         {:alias            alias
+          :source-field-id  (:source-field-id (first matching))})))
+
+(defn- maybe-fill-source-field-join-alias
+  "Given a field clause known to lack all four disambiguators, the resolved source-table-id of
+  the stage, the resolved joined-table list, and the FK map for the stage's own source-table,
+  decide whether to fill in `source-field-join-alias` (and the accompanying portable
+  `source-field`).
+
+  We only intervene when the basic implicit-join (Pass 4) would NOT handle the clause,
+  i.e. the target is not the source-table itself and not reachable through `source-table`'s
+  outbound FKs. Otherwise we leave the clause for Pass 4 - which has clearer error messages
+  and is the canonical path for the common case.
+
+  Throws `:ambiguous-fk-via-join` (an `:agent-error?`) when the target is reachable from
+  multiple distinct join aliases. Returns the (possibly-augmented) clause otherwise."
+  [clause mp import-store export-store source-table-id outbound-from-source-by-target joined-tables]
+  (let [opts (nth clause 1)
+        fk   (nth clause 2)]
+    (if (or (contains? opts "source-field")
+            (contains? opts "source-field-name")
+            (contains? opts "source-field-join-alias")
+            (contains? opts "join-alias"))
+      clause
+      (let [target-table-id (try-resolve-field-target-table-id mp import-store fk)]
+        (cond
+          (nil? target-table-id)              clause
+          (= target-table-id source-table-id) clause
+          ;; Pass 4 can handle this one - leave it alone.
+          (seq (get outbound-from-source-by-target target-table-id)) clause
+
+          :else
+          (let [cands (candidates-via-explicit-join mp joined-tables target-table-id)]
+            (case (count cands)
+              ;; No explicit join provides a single-FK route either - let Pass 4 raise its
+              ;; own `:no-fk-path` error with its current wording.
+              0 clause
+              1 (let [{:keys [alias source-field-id]} (first cands)
+                      src-fk (export-source-field-ref export-store source-field-id)]
+                  (if src-fk
+                    (assoc clause 1 (assoc opts
+                                           "source-field"            src-fk
+                                           "source-field-join-alias" alias))
+                    clause))
+              ;; Alias names came from the LLM's own input (the `joins:` block it authored),
+              ;; so listing them in the diagnostic is fine. The FK column portables are NOT
+              ;; surfaced here — see the rationale on `:ambiguous-fk` above.
+              (let [aliases (mapv :alias cands)]
+                (throw (ex-info (format "Field %s is reachable from %s explicit joins via aliases %s. Specify the `source-field-join-alias` option on the field clause to pick which join's foreign key to use."
+                                        (display-portable fk)
+                                        (count cands)
+                                        (str/join ", " (map pr-str aliases)))
+                                {:status-code  400
+                                 :error        :ambiguous-fk-via-join
+                                 :agent-error? true
+                                 :field        fk
+                                 :target-table target-table-id
+                                 :aliases      aliases}))))))))))
+
+(defn- resolve-source-field-join-alias-in-stage
+  [stage mp import-store export-store]
+  (let [source-table-fk (get stage "source-table")
+        source-table-id (try-resolve-source-table-id import-store source-table-fk)
+        joins           (get stage "joins")]
+    (if-not (and source-table-id (vector? joins) (seq joins))
+      stage
+      (let [outbound          (serialization.protocol.mp/outbound-fks-from-table mp source-table-id)
+            outbound-by-target (group-by :target-table-id outbound)
+            joined-tables     (explicit-join-source-tables import-store joins)
+            ;; As in Pass 4, do not descend into `joins:` subtree - clauses inside an explicit
+            ;; join carry `join-alias` and have their own resolution context.
+            stage'            (dissoc stage "joins")
+            walked            (match/replace-all stage'
+                                #'field-clause? (maybe-fill-source-field-join-alias
+                                                 &match mp import-store export-store
+                                                 source-table-id outbound-by-target joined-tables))]
+        (assoc walked "joins" joins)))))
+
+(defn- resolve-source-field-join-alias*
+  "Top-level pass: fill in `source-field-join-alias` (+ accompanying `source-field`) on
+  `stages[0]` field clauses whose target is reachable through exactly one explicit join. See
+  the section header above for the full contract.
+
+  Runs *before* [[resolve-implicit-joins*]] so that any clause it augments is already
+  disambiguated by the time Pass 4 sees it (Pass 4 leaves clauses with any of the four
+  disambiguators alone). Best-effort: any failure to resolve `source-table` or a joined
+  table's `source-table` simply skips the pass."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
+    query
+    (let [import-store (serialization.protocol.mp/import-store mp content-store)
+          export-store (serialization.protocol.mp/export-store mp)]
+      (update-in query ["stages" 0] resolve-source-field-join-alias-in-stage
+                 mp import-store export-store))))
+
+;;; ============================================================
+;;; Passes 4.5 and 5 -- infer base-type / effective-type on cross-stage field references
+;;;
+;;; A cross-stage field reference looks like `["field" {opts} "<column-name>"]` where the
+;;; third element is a **string** (the column's name in the previous stage's output) rather
+;;; than a portable FK vector. The lib-schema for `:mbql.clause/field` requires the options
+;;; map to carry `:base-type` whenever the id-or-name argument is a string - and LLMs
+;;; routinely forget this, even though they're great at picking the right column name.
+;;;
+;;; Strategy:
+;;;   * Walk stages left-to-right.
+;;;   * Before processing stage `i` (i ≥ 1), build a mini-query consisting of stages[0..i-1]
+;;;     and resolve it. Match refs to its `lib/returned-columns` by the names lib resolves.
+;;;   * Walk stage[i], including its joins' `conditions` but not their [[hidden-join-keys]]: a
+;;;     join's own `stages` have their own resolution context. For every `["field" opts <string>]` clause:
+;;;       - If `opts` already has `"base-type"`, leave it alone (idempotent).
+;;;       - If the name is unknown to the previous stage, leave it alone (the resolver will
+;;;         report the real error with a better message).
+;;;       - Otherwise, stamp `"base-type"` (and `"effective-type"` when present) into the
+;;;         options map.
+;;;   * If the prefix can't be resolved (bad source-table, etc.), skip the rest of the pass
+;;;     - again, the resolver will surface the structural problem.
+;;;
+;;; The mini-resolve is potentially O(N) over stages, but in practice N ≤ a handful, the MP
+;;; is cached, and we only do this for queries that actually have multiple stages.
+;;; ============================================================
+
+(defn- stage-join-aliases [stage]
+  (let [joins (get stage "joins")]
+    (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
+
+(defn- hidden-join-keys
+  "Return the keys of `join` that the cross-stage passes leave alone.
+  These are its own `stages`, and its `fields` when it has no alias."
+  [join]
+  ;; Refs in an alias-less join's `fields` can't be told from refs to the previous stage, and validation reports the
+  ;; missing alias.
+  (cond-> ["stages"]
+    (not (non-blank-string? (get join "alias"))) (conj "fields")))
+
+(defn- without-join-stages
+  "Return `stage` without its joins' [[hidden-join-keys]], keeping the stage's own clauses and the rest of each join."
+  [stage]
+  (cond-> stage
+    (sequential? (get stage "joins"))
+    (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
+
+(defn- postwalk-outside-join-stages
+  "Postwalk `f` over the parts of `stage` that [[without-join-stages]] keeps.
+  Each join's [[hidden-join-keys]] come back unchanged."
+  [f stage]
+  (let [joins (get stage "joins")]
+    (cond-> (perf/postwalk f (without-join-stages stage))
+      (sequential? joins)
+      (update "joins" #(mapv (fn [walked join]
+                               (cond-> walked
+                                 (map? join) (merge (select-keys join (hidden-join-keys join)))))
+                             %
+                             joins)))))
+
+(defn- string-cross-stage-field-clause?
+  "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
+  aliased `join-aliases`. A ref through one of those aliases names a join's column instead."
+  [join-aliases v]
+  (match/matches? v ["field"
+                     (opts :guard (and (map? opts)
+                                       (not (contains? join-aliases (get opts "join-alias")))))
+                     #'non-blank-string?]))
+
+(defn- types-from-column
+  "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
+  metadata map, in the string-keyed form that matches the rest of the repair pipeline.
+  Returns `nil` if the column has no `:base-type` we can use."
+  [col]
+  (when-let [bt (:base-type col)]
+    (let [bt-str (if (keyword? bt) (subs (str bt) 1) (str bt))]
+      (cond-> {"base-type" bt-str}
+        (:effective-type col)
+        (assoc "effective-type" (let [et (:effective-type col)]
+                                  (if (keyword? et) (subs (str et) 1) (str et))))))))
+
+(defn- column-descriptors
+  "Build the cross-stage match oracle from a `lib/returned-columns` sequence, as a vector of descriptors:
+
+    {:name              <machine name>
+     :desired-alias     <alias>
+     :deduplicated-name <name>
+     :display-name      <display name>
+     :join-alias        <alias of the join the column came through> | nil
+     :id                <field id> | nil
+     :types             {\"base-type\" …} | nil}
+
+  The desired alias and the deduplicated name are the names lib resolves a by-name ref against.
+  The display name lets [[match-cross-stage-column]] recover a ref the LLM wrote with the UI label, such as
+  `\"Max of Instance Has SC\"`, instead of the machine name `max`.
+  The join alias says which of the previous stage's joins the column came through.
+  The types are nil when the column has no usable `base-type`."
+  [cols]
+  (mapv (fn [col]
+          {:name              (:name col)
+           :desired-alias     (:lib/desired-column-alias col)
+           :deduplicated-name (:lib/deduplicated-name col)
+           :display-name      (:display-name col)
+           :join-alias        (:lib/original-join-alias col)
+           :id                (:id col)
+           :types             (types-from-column col)})
+        cols))
+
+(defn- stages-query
+  "Return `stages` as a standalone query against `database`, which may be nil."
+  [database stages]
+  (cond-> {"lib/type" "mbql/query", "stages" stages}
+    database (assoc "database" database)))
+
+(defn- resolved-columns
+  "Resolve `stages` as a standalone query against `database` and return their returned columns as
+  a vector of [[column-descriptors]], or nil when anything in the resolve path throws. `what`
+  names the stages in the debug log."
+  [mp database stages content-store what]
+  (try
+    (let [resolved (repr.resolve/resolve-query mp (stages-query database stages) content-store)]
+      (column-descriptors (lib/returned-columns (lib/query mp resolved))))
+    (catch Exception e
+      (log/debugf "[repr-repair] resolve of %s failed; skipping field-type inference: %s" what (ex-message e))
+      nil)))
+
+(defn- mini-resolved-columns
+  "The [[resolved-columns]] of the stages before `stage-idx`: the columns that stage can reference.
+  `nil` means 'skip this stage's repairs and let downstream surface the real error'."
+  [mp query stage-idx content-store]
+  (resolved-columns mp (get query "database") (subvec (get query "stages") 0 stage-idx) content-store
+                    (format "stages[0..%d] (prefix of stage %d)" (dec stage-idx) stage-idx)))
+
+(defn- strip-surrounding-double-quotes
+  "If `s` is wrapped in a matched pair of leading/trailing double-quote characters, return the
+  inner string; otherwise return `s` unchanged.
+
+  LLMs sometimes quote a cross-stage / source-card column name the way they'd quote a SQL
+  identifier - e.g. `\"app_id\"` - but those quotes are not part of the column's actual name.
+  Left in place they make the name match no source column, so the [[maybe-fill-cross-stage-types]]
+  pass can't infer `base-type`, the resolver passes the typeless string-named ref through
+  unvalidated (production has Malli instrumentation off), and the FE later crashes computing
+  display info for it."
+  [s]
+  (or (when (string? s)
+        (second (re-matches #"\"(.*)\"" s)))
+      s))
+
+(defn- normalize-col-key
+  "Loose matching key for an LLM-authored cross-stage column name: lowercased, with hyphens and
+  whitespace folded to underscores. Lets the natural `count-where` (or `Count Where`) the LLM
+  tends to write match the canonical `count_where` that lib emits as an aggregation's output
+  column name - so the model doesn't have to memorise the hyphen-vs-underscore output-naming
+  rule."
+  [s]
+  (when (string? s)
+    (-> s u/lower-case-en (str/replace #"[-\s]+" "_"))))
+
+(defn- match-cross-stage-column
+  "Find the column in `cols`, a vector of [[column-descriptors]], that `col-name` refers to.
+  Returns `[name types]`, where `name` is the spelling the ref should carry, or nil when no column matches.
+
+  Tries, in order:
+    1. an exact match on a name lib resolves: the desired alias, then the deduplicated name, then `:name`.
+       The ref keeps its spelling, since a nested join's column is `P__NAME` to lib even when its `:name` is `NAME`;
+    2. the same match with surrounding double quotes stripped, giving the stripped spelling;
+    3. with `join-alias`, a loose match on the desired alias without its `join-alias__` prefix, which folds case and
+       hyphens/whitespace to underscores, but **only when exactly one** real column matches - so `Sum` finds a
+       joined `sum` that the previous stage deduplicated to `sum_2`.
+       It comes first because, as with exact matches, the join's own name wins over a deduplicated `:name`;
+    4. the same loose match on `:name` - so `count-where` resolves to `count_where`;
+    5. a loose `:display-name` match (same folding, same one-hit guard) - so a ref the LLM
+       wrote with the UI label (`\"Max of Instance Has SC\"`) recovers the machine name (`max`).
+
+  Genuine ambiguity (more than one loose hit) is left unmatched at each layer.
+  A column whose name legitimately needs quotes (vanishingly rare) is never clobbered.
+  With `join-alias`, each exact match tries `join-alias__name` before the name itself, keeping the ref's spelling.
+  Loose matches through `join-alias` use a spelling that resolves back to the same column."
+  ([cols col-name]
+   (match-cross-stage-column cols col-name nil))
+  ([cols col-name join-alias]
+   (let [stripped   (strip-surrounding-double-quotes col-name)
+         find-on    (fn [k n] (some #(when (= n (k %)) %) cols))
+         exact      (fn [n] (some #(find-on % n) [:desired-alias :deduplicated-name :name]))
+         prefix     (when join-alias (str join-alias "__"))
+         unprefixed (fn [col]
+                      (let [desired-alias (:desired-alias col)]
+                        (when (and prefix desired-alias (str/starts-with? desired-alias prefix))
+                          (subs desired-alias (count prefix)))))
+         lib-match  (fn [n] (or (when prefix (exact (str prefix n)))
+                                (exact n)))
+         loose-on   (fn [key-fn raw]
+                      (let [target (normalize-col-key raw)
+                            hits   (when target
+                                     (filter #(= target (normalize-col-key (key-fn %))) cols))]
+                        (when (= 1 (count hits))
+                          (first hits))))]
+     (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
+                                     (distinct [col-name stripped]))]
+       [spelling (:types match)]
+       (when-let [match (or (loose-on unprefixed stripped)
+                            (loose-on :name stripped)
+                            (loose-on :display-name stripped))]
+         (let [spelling (or (unprefixed match) (:name match))]
+           ;; A deduplicated name can denote another column after lib adds the join prefix.
+           (when (or (nil? join-alias) (= match (lib-match spelling)))
+             [spelling (:types match)])))))))
+
+(defn- maybe-fill-cross-stage-types
+  "Return the by-name field `clause` with the spelling [[match-cross-stage-column]] finds for it in `cols`,
+  and with `base-type` / `effective-type` filled in when missing and known.
+  Returns `clause` unchanged when no column matches.
+
+  Idempotent: once renamed, the ref matches exactly on the next pass, and a present `base-type` is kept.
+  The optional `join-alias` enables previous-stage join lookup in [[match-cross-stage-column]]."
+  ([clause cols]
+   (maybe-fill-cross-stage-types clause cols nil))
+  ([clause cols join-alias]
+   (let [opts     (nth clause 1)
+         col-name (nth clause 2)]
+     (if-let [[spelling types] (match-cross-stage-column cols col-name join-alias)]
+       (cond-> clause
+         ;; Rename the ref when it matched only after quote-stripping or loose matching.
+         ;; A `base-type` stamp alone would leave it pointing at a column that doesn't exist.
+         (not= spelling col-name)
+         (assoc 2 spelling)
+         ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
+         ;; matched column actually exposes one.
+         (and types (not (contains? opts "base-type")))
+         (assoc 1 (merge opts types)))
+       clause))))
+
+(defn- cols-through-alias
+  "Return the columns in `cols` that `field-ref` can name: those that came through its join alias, or all of them
+  when it has none.
+  Returns nil when no column came through its join alias."
+  [cols field-ref]
+  (if-let [alias (get (nth field-ref 1) "join-alias")]
+    (not-empty (filterv #(= alias (:join-alias %)) cols))
+    cols))
+
+(defn- infer-cross-stage-field-types-in-stage
+  "Stamp types from `cols` on every by-name field ref in `stage` that lacks `\"base-type\"`, including the
+  refs in its joins' `conditions`.
+  A ref through a join alias matches only the columns that came through it, and is left for validation when none did.
+  Skips each join's [[hidden-join-keys]]; its own `stages` resolve on their own and can't reach this stage's columns."
+  [stage cols]
+  (let [aliases (stage-join-aliases stage)]
+    (postwalk-outside-join-stages
+     (fn [node]
+       (if-let [ref-cols (when (string-cross-stage-field-clause? aliases node)
+                           (cols-through-alias cols node))]
+         (maybe-fill-cross-stage-types node ref-cols (get-in node [1 "join-alias"]))
+         node))
+     stage)))
+
+(defn- mini-resolved-columns-for-source-card
+  "Resolve a single-stage query consisting only of `{:source-card <entity-id>}` (plus the
+  outer `mbql/query` wrapper and the warehouse database name), then return the
+  `lib/returned-columns` output as a vector of [[column-descriptors]] in the same shape as
+  [[mini-resolved-columns]]. Used by [[infer-source-card-field-types*]] to stamp
+  `base-type` onto `[field, {}, \"<col>\"]` clauses in a stage whose source is a saved
+  question / model.
+
+  Returns `nil` if anything in the resolve path throws - the resolver will surface the real
+  error on the main pipeline. Logged at debug."
+  [mp query stage-idx content-store]
+  (when-let [source-card (get-in query ["stages" stage-idx "source-card"])]
+    (let [bare-stage {"lib/type"    "mbql.stage/mbql"
+                      "source-card" source-card}]
+      (resolved-columns mp (get query "database") [bare-stage] content-store
+                        (format "the source-card of stage %d" stage-idx)))))
+
+(defn- infer-source-card-field-types*
+  "Stamp `base-type` / `effective-type` onto `[field, opts, \"<col>\"]` clauses in any stage
+  whose source is a `source-card:` entity. Uses the card's resolved `returned-columns` as the
+  type oracle.
+
+  Idempotent and silently no-ops when `mp` is nil, the query shape is off, the card can't be
+  resolved, or the column name isn't one the card produces (resolver will report the real
+  error downstream)."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")))
+    query
+    (let [n (count (get query "stages"))]
+      (loop [i 0
+             q query]
+        (if (>= i n)
+          q
+          (let [stage (get-in q ["stages" i])
+                q'    (if (and (map? stage) (get stage "source-card"))
+                        (if-let [cols (mini-resolved-columns-for-source-card mp q i content-store)]
+                          (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
+                          q)
+                        q)]
+            (recur (inc i) q')))))))
+
+;;; ============================================================
+;;; Pass 4.7 -- type and check join-alias field references
+;;;
+;;; A join-alias field ref names a column returned by a join on the same stage. The string-named
+;;; form needs `base-type` like the cross-stage refs above, but Pass 5 skips it: a join's columns
+;;; are not the previous stage's. Each referenced join's own stages are resolved as a standalone
+;;; query, and its returned columns both type the string refs and check every join-alias ref
+;;; against what the join actually returns. A concrete-column ref to a column a grouped join
+;;; doesn't return, or a string ref the LLM typed itself with a name the join doesn't return,
+;;; passes lib and only fails in SQL, so both are caught here too. A plain table join returns
+;;; every column of its table, so a concrete-column ref resolves it only when the ref names another
+;;; table's column. A string ref resolves it as it would any join.
+;;; Lib compiles such a ref against the joined table's column of the same name if there is one,
+;;; giving a wrong answer, and the database rejects it otherwise.
+;;; The refs in a join's own `fields` get its alias first, so they are typed and checked the same way.
+;;; A ref whose alias
+;;; names no join on its stage is a previous-stage ref, typed and checked by Passes 4.5 / 5 / 5.7;
+;;; refs whose join or field can't be resolved are left for the resolver to report.
+;;; ============================================================
+
+(defn- join-alias-string-field-clause?
+  "True if `v` is a field ref by column name through a join alias."
+  [v]
+  (match/matches? v ["field"
+                     {"join-alias" (_ :guard non-blank-string?)}
+                     (_ :guard non-blank-string?)]))
+
+(defn- join-alias-path-field-clause?
+  "True if `v` is a concrete-column field ref (portable path or numeric id) through an explicit
+  join, other than an implicit join hop from the joined table."
+  [v]
+  (and (field-clause? v)
+       (non-blank-string? (get (nth v 1) "join-alias"))
+       (not (contains? (nth v 1) "source-field"))))
+
+(defn- plain-table-join?
+  "True when `join` is a single stage over a table that neither groups nor narrows its columns, so
+  every column of that table can be referenced through the join."
+  [join]
+  (let [stages (get join "stages")]
+    (and (vector? stages)
+         (= 1 (count stages))
+         (map? (first stages))
+         (contains? (first stages) "source-table")
+         (not-any? #(contains? (first stages) %) ["aggregation" "breakout" "fields"]))))
+
+(defn- other-table-path-refs
+  "The `path-refs` into plain-table `join` whose field belongs to another table, or nil if there are none.
+  A ref is skipped when its field or the join's table can't be resolved."
+  [mp import-store join path-refs]
+  (when-let [table-id (try-resolve-source-table-id import-store (get-in join ["stages" 0 "source-table"]))]
+    (not-empty (filterv #(when-let [field-table-id (try-resolve-field-target-table-id mp import-store (nth % 2))]
+                           (not= field-table-id table-id))
+                        path-refs))))
+
+(defn- join-alias-refs
+  "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
+  grouped by alias, outside the joins' [[hidden-join-keys]]."
+  [stage]
+  (let [stage' (without-join-stages stage)
+        alias  #(get (nth % 1) "join-alias")]
+    {:named (group-by alias (match/match-many stage' (node :guard (join-alias-string-field-clause? node)) node))
+     :path  (group-by alias (match/match-many stage' (node :guard (join-alias-path-field-clause? node)) node))}))
+
+(defn- bad-join-alias-refs
+  "Returns `{:named [...], :path [...]}`: the distinct `named-refs` naming no column in `cols`, and the distinct
+  `path-refs` whose field matches no column of `cols` by id, or by name among the columns without an id.
+  A path ref whose field can't be resolved is skipped."
+  [mp cols named-refs path-refs import-store]
+  (let [returned-ids  (set (keep :id cols))
+        id-less-names (set (keep #(when-not (:id %) (:name %)) cols))
+        bad-named?    #(nil? (match-cross-stage-column cols (nth % 2)))
+        bad-path?     #(when-let [field (some->> (try-resolve-field-id @import-store (nth % 2))
+                                                 (lib.metadata.protocols/field mp))]
+                         ;; like lib, fall back to the field's name only for a column without an id, e.g. one
+                         ;; returned through a native card
+                         (and (not (contains? returned-ids (:id field)))
+                              (not (contains? id-less-names (:name field)))))]
+    {:named (into [] (comp (filter bad-named?) (distinct)) named-refs)
+     :path  (into [] (comp (filter bad-path?) (distinct)) path-refs)}))
+
+(defn- field-target-name
+  "The column a field ref's target denotes: the name itself, or `TABLE.FIELD` for a portable path
+  or a numeric field id, so a column isn't mistaken for another table's column of the same name."
+  [mp target]
+  (cond
+    (string? target)  target
+    (vector? target)  (str/join "." (drop 2 target))
+    (pos-int? target) (let [field (lib.metadata.protocols/field mp target)]
+                        (str (:name (lib.metadata.protocols/table mp (:table-id field))) "." (:name field)))))
+
+(defn- repair-join-alias-refs-in-stage
+  "Type `stage`'s join-alias string refs. Returns `{:stage <typed stage>, :problems [...]}`, one
+  problem per join that has refs naming columns it doesn't return."
+  [query mp content-store import-store idx stage]
+  (let [{:keys [named path]} (join-alias-refs stage)
+        joins                (get stage "joins")
+        checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
+                                        :let  [alias      (when (map? join) (get join "alias"))
+                                               plain?     (plain-table-join? join)
+                                               named-refs (get named alias)
+                                               path-refs  (cond->> (get path alias)
+                                                            ;; a plain table join returns all its table's columns, so it
+                                                            ;; is resolved only for a ref to another table's column
+                                                            plain?
+                                                            (other-table-path-refs mp @import-store join))]
+                                        :when (or named-refs path-refs)
+                                        :let  [cols (when (vector? (get join "stages"))
+                                                      (resolved-columns mp (get query "database") (get join "stages") content-store
+                                                                        (format "join %s" (pr-str alias))))]
+                                        :when cols]
+                                    {:alias      alias
+                                     :cols       cols
+                                     :named-refs named-refs
+                                     :path-refs  path-refs
+                                     :plain?     plain?
+                                     :field-refs (set (when (sequential? (get join "fields")) (get join "fields")))}))
+        alias->cols          (into {} (map (juxt :alias :cols)) checks)]
+    {:stage    (cond->> stage
+                 (seq alias->cols)
+                 (postwalk-outside-join-stages
+                  (fn [node]
+                    (if-let [cols (and (join-alias-string-field-clause? node)
+                                       (alias->cols (get (nth node 1) "join-alias")))]
+                      (maybe-fill-cross-stage-types node cols)
+                      node))))
+     :problems (vec (for [{:keys [alias cols named-refs path-refs plain? field-refs]} checks
+                          :let  [{bad-named :named, bad-path :path}
+                                 (bad-join-alias-refs mp cols named-refs path-refs import-store)
+                                 bad (into bad-named bad-path)]
+                          :when (seq bad)]
+                      ;; a plain table join's path refs are all to other tables, see `path-refs` above
+                      {:stage                  (repr/original-stage-index query idx)
+                       :join-alias             alias
+                       :clauses                bad
+                       :columns                (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
+                       :available              (mapv :name cols)
+                       :named?                 (boolean (seq bad-named))
+                       :plain?                 plain?
+                       :other-table?           (boolean (and plain? (some (complement field-refs) bad-path)))
+                       :other-table-in-fields? (boolean (and plain? (some field-refs bad-path)))}))}))
+
+(defn- unresolved-join-alias-fields-error
+  "The `:agent-error?` for `problems`, the join-alias refs naming columns their joins don't return.
+  Its message lists them, then gives the advice each problem's `:named?`, `:plain?`, `:other-table?` and
+  `:other-table-in-fields?` call for."
+  [problems]
+  ;; Only the advice that applies: a ref to another table through a plain table join has nothing to do with display
+  ;; labels or grouped joins. Outside the join, repair routes that ref through a foreign key once `join-alias` goes, or
+  ;; lib does when given both `source-field` options. A join's own `fields` can't take another table's column at all:
+  ;; repair puts the alias back, and lib rejects an implicitly joined column there.
+  (ex-info
+   (str (format "Some join column references name a column their join doesn't return: %s."
+                (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
+                                 (format "stage %s, join %s doesn't return %s (available: %s)"
+                                         stage
+                                         (quoting/quoted join-alias)
+                                         (str/join ", " (map quoting/quoted columns))
+                                         (str/join ", " (map quoting/quoted available))))))
+        (when (some :named? problems)
+          (str " Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its"
+               " display label like `Min of X`)."))
+        (when (some (complement :plain?) problems)
+          " Reference only columns the join returns: a grouped join returns just its breakouts and aggregations.")
+        (when (some #(or (:other-table? %) (:other-table-in-fields? %)) problems)
+          " A join of a single table returns only that table's columns.")
+        (when (some :other-table? problems)
+          (str " To use another table's column, drop `join-alias` so the table is reached through a foreign key, or set"
+               " both `source-field` (the foreign key column on the joined table) and `source-field-join-alias` (the"
+               " join's alias)."))
+        (when (some :other-table-in-fields? problems)
+          " To show another table's column, add a join on that table and list the column in that join's `fields`."))
+   {:agent-error? true
+    :error        :unresolved-join-alias-field
+    :problems     problems}))
+
+(defn- repair-join-alias-refs*
+  "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins' returned columns.
+  Raises one `:agent-error?` listing every join-alias ref, across all stages, that names a column its join doesn't
+  return.
+  Only joins named by a string ref or a concrete-column ref are resolved.
+  A concrete-column ref resolves a [[plain-table-join?]] only when it names another table's column."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")))
+    query
+    (let [import-store (delay (serialization.protocol.mp/import-store mp content-store))
+          results      (into [] (map-indexed (fn [idx stage]
+                                               (if (map? stage)
+                                                 (repair-join-alias-refs-in-stage query mp content-store import-store
+                                                                                  idx stage)
+                                                 {:stage stage})))
+                             (get query "stages"))]
+      (when-let [problems (seq (mapcat :problems results))]
+        (throw (unresolved-join-alias-fields-error (vec problems))))
+      (assoc query "stages" (mapv :stage results)))))
+
+(defn- infer-cross-stage-field-types*
+  "Top-level cross-stage field-type inference pass. No-op when the query has fewer than two
+  stages or `mp` is nil."
+  [query mp content-store]
+  (if-not (and mp
+               (map? query)
+               (vector? (get query "stages"))
+               (>= (count (get query "stages")) 2))
+    query
+    (let [n (count (get query "stages"))]
+      (loop [i 1
+             q query]
+        (if (>= i n)
+          q
+          (let [cols (when (map? (get-in q ["stages" i]))
+                       (mini-resolved-columns mp q i content-store))
+                q'   (if cols
+                       (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
+                       q)]
+            (recur (inc i) q')))))))
+
+;;; ============================================================
+;;; Pass 5.7 -- assert cross-stage / source-card string refs resolved
+;;;
+;;; A `["field" {} "<name>"]` ref into a previous stage or a source-card must name a real
+;;; output column. The inference passes above (4.5 / 5) stamp `base-type` onto every such ref
+;;; that matches; anything still missing `base-type` afterward matched nothing - the LLM
+;;; named a column that doesn't exist (typically a UI display label like "Max of X" instead of
+;;; the machine name "max"). lib's resolver passes a typeless string-named field ref through
+;;; unvalidated, producing a schema-invalid, non-runnable query that silently breaks the
+;;; notebook editor (BOT-1442). This pass turns that silent failure into the same loud,
+;;; retryable `:agent-error?` the LLM already recovers from for dangling `[:expression …]`
+;;; refs, naming the offending column and listing the valid ones.
+;;; ============================================================
+
+(defn- unstamped-cross-stage-ref?
+  "True if `node` is a `[\"field\" {} \"<name>\"]` cross-stage/source-card ref still lacking
+  `base-type` (an LLM-authored `base-type` is left for the resolver / schema to judge)."
+  [join-aliases node]
+  (and (string-cross-stage-field-clause? join-aliases node)
+       (not (contains? (nth node 1) "base-type"))))
+
+(defn- stage-has-unstamped-cross-stage-ref?
+  "True if `stage` has an [[unstamped-cross-stage-ref?]] outside its joins' [[hidden-join-keys]].
+  Lets the assert pass skip the resolving confirmation step on the happy path, where every ref is already typed."
+  [stage]
+  (let [aliases (stage-join-aliases stage)]
+    (some? (match/match-one (without-join-stages stage)
+             (node :guard (unstamped-cross-stage-ref? aliases node)) true))))
+
+(defn- first-unresolved-cross-stage-ref
+  "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in `cols`, or nil.
+  A ref through a join alias matches only the columns that came through it, and is skipped when none did.
+  Skips each join's [[hidden-join-keys]]."
+  [stage cols]
+  (let [aliases (stage-join-aliases stage)]
+    (match/match-one (without-join-stages stage)
+      (node :guard (and (unstamped-cross-stage-ref? aliases node)
+                        (when-let [ref-cols (cols-through-alias cols node)]
+                          (nil? (match-cross-stage-column ref-cols (nth node 2) (get-in node [1 "join-alias"]))))))
+      node)))
+
+(defn- assert-cross-stage-refs-resolved*
+  "Pass 5.7: raise an `:agent-error?` for any string-named cross-stage / source-card field ref
+  that resolves to no real column. No-op when `mp` is nil. Only stages that still carry an
+  unstamped ref pay the cost of re-resolving their column universe to build the message."
+  [query mp content-store]
+  (when-let [stages (and mp (match/match-one query
+                              {"stages" (stages :guard vector?)} stages
+                              _ nil))]
+    (doseq [[idx stage] (map-indexed vector stages)
+            :when        (and (map? stage) (stage-has-unstamped-cross-stage-ref? stage))]
+      (when-let [cols (cond
+                        (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
+                        (pos? idx)                (mini-resolved-columns mp query idx content-store))]
+        (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
+          (let [alias     (get (nth bad 1) "join-alias")
+                available (cols-through-alias cols bad)]
+            (throw (ex-info
+                    (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
+                            (cond-> (quoting/quoted (nth bad 2))
+                              alias (str " from join " (quoting/quoted alias)))
+                            (str/join ", " (map (comp quoting/quoted :name) available)))
+                    {:agent-error? true
+                     :error        :unresolved-cross-stage-field
+                     :stage        idx
+                     :clause       bad
+                     :available    (mapv :name available)})))))))
+  query)
+
+;;; ============================================================
+;;; Passes 4.5 to 5.7 over every join's own stages
+;;;
+;;; A join's `stages` are a query of their own, with the same kinds of by-name refs.
+;;; Until they are typed, the join can't be resolved, so Pass 4.7 can't type or check refs to its columns either.
+;;; The passes run over each join's stages first, innermost join first.
+;;; An agent error raised inside a join says which join it came from.
+;;; ============================================================
+
+(declare infer-field-types*)
+
+(defn- infer-join-field-types
+  "Return `join` with Passes 4.5 to 5.7 run over its own `stages`, as a query against `database`.
+  Rethrows an agent error from inside with a message naming the join and `stage-idx`, and with `:join-alias`
+  and `:join-stage` added to its data."
+  [join database mp content-store stage-idx]
+  (if-not (and (map? join) (vector? (get join "stages")))
+    join
+    (try
+      (assoc join "stages" (-> (stages-query database (get join "stages"))
+                               (infer-field-types* mp content-store)
+                               (get "stages")))
+      (catch clojure.lang.ExceptionInfo e
+        (if (:agent-error? (ex-data e))
+          (let [alias (get join "alias")
+                where (if (non-blank-string? alias)
+                        (format "In join %s of stage %d" (quoting/quoted alias) stage-idx)
+                        (format "In a join with no alias in stage %d" stage-idx))]
+            (throw (ex-info (str where ": " (ex-message e))
+                            (assoc (ex-data e) :join-alias alias :join-stage stage-idx)
+                            e)))
+          (throw e))))))
+
+(defn- with-alias-on-join-fields
+  "Return `join` with its alias on each field ref in its `fields`.
+  Lib's join normalization later adds the alias to every clause there."
+  [join]
+  (let [alias (when (map? join) (get join "alias"))]
+    (cond-> join
+      (and (non-blank-string? alias) (sequential? (get join "fields")))
+      (update "fields" (partial mapv #(cond-> %
+                                        (match/matches? % ["field" (_ :guard map?) _])
+                                        (assoc-in [1 "join-alias"] alias)))))))
+
+(defn- infer-join-field-types-in-stage
+  "Return `stage`, the stage at `idx` of `query`, with [[with-alias-on-join-fields]] and then
+  [[infer-join-field-types]] applied to each of its joins."
+  [query mp content-store idx stage]
+  (if-not (and (map? stage) (sequential? (get stage "joins")))
+    stage
+    (let [database  (get query "database")
+          stage-idx (repr/original-stage-index query idx)]
+      ;; Aliasing the `fields` refs first lets Pass 4.7 type them from the join, and keeps Pass 5 from
+      ;; taking them for refs to the previous stage.
+      (update stage "joins" (partial mapv #(-> %
+                                               with-alias-on-join-fields
+                                               (infer-join-field-types database mp content-store stage-idx)))))))
+
+(defn- infer-field-types*
+  "Run Passes 4.5, 4.7, 5 and 5.7 over `query`, after running them over every join's own stages.
+  No-op without `mp`."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")))
+    query
+    (-> query
+        (update "stages" #(into [] (map-indexed (partial infer-join-field-types-in-stage query mp content-store)) %))
+        (infer-source-card-field-types* mp content-store)
+        (repair-join-alias-refs* mp content-store)
+        (infer-cross-stage-field-types* mp content-store)
+        (assert-cross-stage-refs-resolved* mp content-store))))
+
+;;; ============================================================
+;;; Pass 6 -- friendly error messages for silently-accepted-but-wrong shapes.
+;;;
+;;; lib's schema is intentionally shape-only and does not catch a number of patterns where
+;;; the LLM clearly meant something else. Without a friendly diagnostic the broken query
+;;; goes through validate, resolve, and only fails at SQL-generation time (or, worse,
+;;; silently produces wrong results). Each detector below targets a *specific* pattern
+;;; observed in production / sexp-pipeline telemetry and throws an `:agent-error?` ex-info
+;;; with an LLM-actionable explanation.
+;;;
+;;; Carried over from the sexp pipeline's `validate/operators.clj` and
+;;; `validate/cross_checks.clj` (see `repr-deletion-followups.md` § 2.3) plus a few new
+;;; "silent failure" cases discovered while reviewing repr behaviour.
+;;;
+;;; This pass runs LAST in `repair`, after every shape pass and every mp-aware fill-in,
+;;; so that we don't false-positive on shapes that are about to be repaired by an earlier
+;;; pass.
+;;; ============================================================
+
+;;; ----- E1: `[field, …]` as an entry in a stage's `aggregation:` block ---------------
+
+(defn- aggregation-entry-not-aggregation-error!
+  "Detect a top-level `[field, …]` clause directly inside a stage's `aggregation:` vector.
+  An aggregation entry must be an actual aggregation function (`count`, `sum`, `avg`,
+  `metric`, …) or wrap a field in one (`[sum, opts, <field>]`). Lib accepts the
+  field-as-aggregation shape silently and the QP produces wrong-result SQL.
+
+  Throws `:agent-error?` ex-info on the *first* offending entry, naming the stage and
+  entry index so the LLM can fix it precisely. Does NOT recurse into nested clauses
+  (`[sum, {}, [field, …]]` is correct - the outer `sum` is the aggregation; the inner
+  `field` is its argument)."
+  [stage stage-idx]
+  (when-let [aggs (get stage "aggregation")]
+    (when (vector? aggs)
+      (doseq [[entry-idx entry] (map-indexed vector aggs)]
+        (when (and (vector? entry)
+                   (>= (count entry) 1)
+                   (= "field" (nth entry 0)))
+          (throw (ex-info
+                  (format "Stage %s aggregation entry %s is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
+                          stage-idx entry-idx)
+                  {:agent-error? true
+                   :error        :aggregation-entry-not-aggregation
+                   :stage-index  stage-idx
+                   :entry-index  entry-idx
+                   :entry        entry})))))))
+
+;;; ----- E2: `case` / `if` with `"default"` in opts ------------------------------------
+
+(defn- case-default-in-opts-error!
+  "Detect a `case` / `if` clause whose options map carries a `\"default\"` key. lib's
+  canonical shape uses the *third positional argument* as the fallback, e.g.
+
+      [case, {}, [[pred1 then1] [pred2 then2]], default-value]
+
+  Some LLMs (especially those primed by JSON-Schema-style examples) put `default` into the
+  options map instead. lib silently ignores the unknown opts key and the case clause
+  evaluates to `null` for any branch miss - a wrong-result class of bug.
+
+  Throws `:agent-error?` ex-info on the first offender. Carried over from the sexp
+  pipeline's `validate/operators.clj/validate-operator-specific!` `case` branch."
+  [form]
+  (match/match-one form
+    [#{"case" "if"} {"default" _} & _]
+    (throw (ex-info
+            "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss)."
+            {:agent-error? true
+             :error        :case-default-in-opts
+             :clause       &match}))))
+
+;;; ----- E3: sexp-legacy top-level operations used as clause heads ---------------------
+
+(def ^:private sexp-legacy-top-level-ops
+  "Heads from the deleted sexp pipeline that used to be top-level *operations* (“verbs” at
+  the program level), not nestable clauses. LLMs trained on the sexp era still occasionally
+  emit these as clause heads. They have no equivalent in repr (which uses stage-level
+  blocks: `aggregation:`, `filters:`, `breakout:`, `order-by:`, `expressions:`, `limit:`,
+  `joins:`).
+
+  Map from offending head to a one-liner suggesting the canonical replacement."
+  {"aggregate" "In repr, aggregations live directly inside a stage's `aggregation:` block (no `aggregate` wrapper). Move the inner clauses into the stage's `aggregation: […]` vector."
+   "filter"    "In repr, filters live directly inside a stage's `filters:` block. Move the inner clauses into the stage's `filters: […]` vector."
+   "order-by"  "In repr, ordering lives directly inside a stage's `order-by:` block as `[asc|desc, <opts>, <ref>]` clauses. Move the inner clauses into the stage's `order-by: […]` vector."
+   "breakout"  "In repr, breakouts (group-by) live directly inside a stage's `breakout:` block. Move the inner clauses into the stage's `breakout: […]` vector."
+   "limit"     "In repr, the row limit is a scalar at the stage level: `limit: <n>`, not a clause."})
+
+(defn- sexp-legacy-op-as-clause-error!
+  "Detect any sexp-era top-level operation used as a clause head (`[aggregate, …]`,
+  `[filter, …]`, etc.). lib accepts these silently because they look like generic
+  unknown-but-shape-valid clauses; the resulting query produces wrong results or fails
+  at SQL-generation time. Carried over from the sexp pipeline's
+  `validate/operators.clj` `top-level-operation` branch."
+  [form]
+  (match/match-one form
+    [(head :guard sexp-legacy-top-level-ops) & _]
+    (throw (ex-info
+            (format "`%s` is not a clause in repr; it was a top-level operation in the older sexp pipeline. %s"
+                    head (get sexp-legacy-top-level-ops head))
+            {:agent-error? true
+             :error        :sexp-legacy-op-as-clause
+             :head         head
+             :clause       &match}))))
+
+;;; ----- E5: blank `[expression, opts, ""]` reference --------------------------------
+
+(defn- blank-expression-ref-error!
+  "Detect any `[expression, <opts>, <name>]` reference whose name slot is missing,
+  blank, or non-string. lib's schema requires a non-blank string identifier here
+  (matching an entry in some upstream stage's `expressions:` block); without it the
+  reference resolves to nothing and the query produces wrong results or fails downstream.
+
+  Carried over from the sexp pipeline's
+  `validate/operators.clj/validate-operator-specific!` `expression-ref` branch."
+  [form]
+  (match/match-one form
+    ["expression" #'map? (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
+    (throw (ex-info
+            "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage's `expressions:` block."
+            {:agent-error? true
+             :error        :blank-expression-ref
+             :clause       &match}))))
+
+;;; ----- E6: numeric `[field, opts, 100]` (sexp legacy form) -------------------------
+
+(defn- numeric-field-id-error!
+  "Detect any `[field, <opts>, <id>]` clause whose third slot is an integer (the sexp /
+  legacy-MBQL numeric field-id form). On the portable-only surface repr requires a portable FK
+  in the third slot: either a vector `[<db>, <schema>, <table>, <column>]` (resolved against the
+  metadata provider) OR a string column name (cross-stage reference). Such a clause fails
+  downstream anyway, but as a generic shape mismatch; this detector gives an LLM-actionable
+  explanation pointing at the portable-FK syntax instead.
+
+  Carried over from the sexp pipeline's
+  `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces
+  that accept numeric field ids (see [[repr.resolve/*numeric-ids-allowed?*]])."
+  [form]
+  (when-not repr.resolve/*numeric-ids-allowed?*
+    (match/match-one form
+      ["field" #'map? #'integer?]
+      (throw (ex-info
+              "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references)."
+              {:agent-error? true
+               :error        :numeric-field-id
+               :clause       &match})))))
+
+;;; ----- E7: a temporal clause Pass 2.95 could not rewrite ----------------------------
+
+(defn- unencodable-temporal-clause-error!
+  "Reject temporal clauses that the repair passes could not rewrite.
+
+    [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
+
+  The `absolute-datetime`, `during` and unit-carrying `value` clauses store their units in
+  `::DateUnit` / `::DateTimeUnit` slots in the legacy schema (`metabase.legacy-mbql.schema`, via
+  `::ValueTypeInfo` for `value`), and neither enum carries a `:decode/normalize`: after a JSON hop as
+  legacy MBQL the unit is a string and the
+  clause never normalizes back. The `/question#` link carries a structured query as MBQL 5, where the
+  clause survives the hop, but the query engine runs some of these clauses wrong by comparing the
+  column with the start of the literal's period. On the Sample Database, `count-where` with
+  `[\">\" CREATED_AT [\"absolute-datetime\" \"2026-01-01\" \"month\"]]` counts 18016 orders, though
+  17811 are after January 2026, and
+  `[\"=\" [\"absolute-datetime\" \"2026-03-01\" \"month\"] CREATED_AT]` counts none of the 256 orders
+  from March 2026. Pass 2.95 repairs comparisons in filters and expressions.
+  Pass 2.6 expands date-only `day` / `default` bounds into ranges and unwraps `default` timestamps
+  outside of filters, expressions and join conditions. This detector has the model rewrite the rest.
+
+  `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
+  and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
+  1.867 has already rewritten every one to a `get-*` clause by the time this runs -- narrow that pass
+  and this detector needs the head. `time` is excluded on purpose: it 400s in dev, but `->mbql5`
+  salvages the raw clause in prod (unit correctly keywordized, filter intact), so flagging it would
+  reject a query that works for customers.
+
+  Throws `:agent-error?` ex-info on the first offender."
+  [form]
+  (letfn [(err [node]
+            (throw (ex-info
+                    (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
+                            (pr-str node))
+                    {:agent-error? true
+                     :error        :unencodable-temporal-clause
+                     :clause       node})))]
+    (match/match-one form
+      (:or [(op :guard (= (u/lower-case-en op) "absolute-datetime"))
+            #'map?
+            (literal :guard (or (not (string? literal)) (parseable-temporal-literal? literal)))
+            _]
+           [(op :guard (= (u/lower-case-en op) "during")) #'map? _ _ _]
+           [(op :guard (= (u/lower-case-en op) "value")) {"unit" &truthy} _])
+      (err &match))))
+
+;;; ----- friendly-errors pipeline driver -----------------------------------------------
+
+(defn- friendly-errors*
+  "Run every diagnostic detector in turn. Throws on the first match; otherwise returns
+  `query` unchanged."
+  [query]
+  (when (and (map? query) (vector? (get query "stages")))
+    (doseq [[idx stage] (map-indexed vector (get query "stages"))]
+      (when (map? stage)
+        (aggregation-entry-not-aggregation-error! stage (repr/original-stage-index query idx))))
+    (case-default-in-opts-error! query)
+    (sexp-legacy-op-as-clause-error! query)
+    (blank-expression-ref-error! query)
+    (numeric-field-id-error! query)
+    (unencodable-temporal-clause-error! query))
+  query)
+
+;;; ============================================================
+;;; Top-level entry point
+;;; ============================================================
+
+(defn- normalize-shape*
+  "Pure-shape passes that don't require a metadata provider."
+  [parsed]
+  (-> parsed
+      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
+      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
+      normalise-list-value-comparisons*
+      ensure-clause-options*
+      unwrap-boolean-wrappers*
+      unwrap-nested-field-clauses*
+      dequote-field-targets*
+      rewrite-operator-name-aliases*
+      rewrite-temporal-bucket-aliases*
+      drop-unsupported-day-of-week-mode*
+      rewrite-direction-aliases*
+      rewrite-lib-type-aliases*
+      merge-trailing-options*
+      merge-string-filter-trailing-options*
+      wrap-now-literals*
+      rewrite-temporal-extract*
+      swap-between-bounds*
+      normalise-case-clauses*
+      normalise-fields-shape*
+      normalise-aggregation-clauses*
+      split-top-level-and-filters*
+      normalize-expressions-shape*
+      ensure-lib-types*))
+
+(defn- stamp-top-level-database*
+  "Idempotent wrapper around [[infer-top-level-database*]] that takes `[query mp]` in the
+  arg order matching the other mp-taking passes below."
+  [query mp]
+  (infer-top-level-database* query mp))
+
+(defn repair
+  "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
+
+  The `::repr/original-stage-indexes` metadata maps each returned stage to its index in the original input.
+
+  Passes:
+    1. ensure every clause vector has an options map at position 2;
+    1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
+       canonical sequential form, always output sequential with `lib/expression-name`
+       stamped into each clause's options from the map key when missing;
+    1.56. split a top-level `and` in `filters:` into separate entries that the notebook shows as
+       individual filters (runs in `normalize-shape*`, before 1.5; must precede 2.9);
+    1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
+       portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
+       to the resolution-aware cross-stage matching in pass 5);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, which survives a fallback
+       to legacy MBQL (examples in the pass header);
+    1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
+       join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
+    1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
+       tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
+    2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
+    2.6. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
+       `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps
+       and the whole-day start of a `between` that ends at `now` or at a timestamp;
+    3. rewrite inline aggregation expressions in `order-by` to aggregation references when
+       they match an aggregation in the same stage's `aggregation:` list (synthesising the
+       referenced aggregation's `lib/uuid` if needed);
+    3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
+       stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
+       aggregation clause and `base-type`/`effective-type` on the ref's options;
+    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
+       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
+       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
+    3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
+       on field clauses whose target table is reachable through **exactly one** explicit
+       join on the stage via a single unambiguous FK on the joined table. Skips clauses
+       that already carry any of `source-field` / `source-field-name` /
+       `source-field-join-alias` / `join-alias`. Raises `:ambiguous-fk-via-join` (an
+       `:agent-error?`) when the target is reachable from multiple distinct join aliases.
+       Runs *before* the basic implicit-join pass so the latter sees an already-
+       disambiguated clause.
+    4. auto-wire `source-field` on field clauses that reference a foreign table via a single
+       unambiguous FK on the source table, or on a `source-card:` stage via a single FK column
+       the card returns (implicit-join resolution);
+    4.5. infer `base-type` / `effective-type` on field references in a stage whose source is
+       a saved question / model (`source-card:`), using the card's resolved returned columns.
+       Must run *before* Pass 5: a `source-card` stage's own bare-name field refs need
+       `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
+    4.7. infer `base-type` / `effective-type` on join-alias string field references from the
+       referenced join's own resolved returned columns, and raise an `:agent-error?` for a
+       join-alias ref naming a column its join doesn't return, including a concrete-column ref
+       to another table through a plain table join. The refs in a join's own `fields` get the
+       join's alias first, so they are checked too. Runs before Pass 5 so a stage
+       carrying such a ref can still be mini-resolved as a prefix.
+    5. infer `base-type` / `effective-type` on cross-stage field references
+       (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
+       prefix of stages and reading the returned columns' metadata. When the prefix includes
+       a `source-card` stage, this relies on Pass 4.5 having already typed that stage's own
+       field refs - otherwise the prefix fails to resolve/schema-validate and the mini-resolve
+       silently no-ops (BOT-1604).
+    5.7. assert that every string-named cross-stage / source-card field ref resolved to a real
+       column (i.e. Pass 4.5 / 5 stamped its `base-type`). A ref that matched nothing is the
+       LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
+       naming it and listing the valid columns, instead of letting it pass through into a
+       schema-invalid, non-runnable query (BOT-1442).
+    Passes 4.5 to 5.7 run over every join's own stages first, innermost first, since a join
+    can't be resolved until its own by-name refs are typed.
+
+  Pass 4, Pass 4.5, Pass 4.7, Pass 5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
+  best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
+  validate/resolve stages can surface the real error with their own, better messages). Hard FK
+  errors from Pass 4 (`:no-fk-path`, `:ambiguous-fk`, and on a `source-card:` stage
+  `:column-not-returned` and `:unexportable-fk`) are raised as `:agent-error?` ex-info so the
+  tool wrapper can relay them to the LLM. Pass 4.5 and Pass 5 never throw on their own - if
+  a prefix / source-card can't be resolved, they just leave the affected clauses alone; Pass
+  5.7 then raises the `:agent-error?` only for refs that survived to the end still unresolved.
+
+  Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
+  removed in `repr-plan.md` step 13, and the top-level `database:` field was removed from
+  the LLM-facing contract in the step-14 follow-up. Database identity is now derived from
+  the first stage's `source-table:` / `source-card:` (see
+  [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]]), and Pass 1.9
+  stamps `database:` from the MP into the parsed query so the downstream resolver and lib
+  schema see a spec-compliant document.
+
+  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 3
+  satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
+  (subsequent runs reuse it) and by leaving existing `[\"aggregation\" {} \"<uuid>\"]` refs
+  alone. Pass 5 is idempotent because it skips any cross-stage clause whose options already
+  contain `\"base-type\"`.
+
+  The optional `content-store` is threaded into mini-resolve passes that touch saved cards;
+  agent callers pass a permission-aware store so source-card/metric metadata is not read via
+  the default app-DB content store."
+  ([mp parsed]
+   (repair mp parsed serialization.protocol.mp/unchecked-app-db-content-store))
+  ([mp parsed content-store]
+   (-> parsed
+       normalize-shape*
+       (stamp-top-level-database* mp)
+       ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
+       repair-day-and-default-comparisons*
+       rewrite-order-by-inline-aggs*
+       resolve-aggregation-ref-indexes*
+       split-post-agg-filters*
+       hoist-temporal-buckets*
+       (resolve-source-field-join-alias* mp content-store)
+       (resolve-implicit-joins* mp content-store)
+       (infer-field-types* mp content-store)
+       friendly-errors*)))
+
+;;; ============================================================
+;;; Post-resolve gate -- expressions the FE expression editor rejects
+;;; ============================================================
+
+(def ^:private numeric-aggregation-ops
+  "Aggregations whose first argument must be a number. The first argument of `sum-where` is its value."
+  #{:sum :avg :median :percentile :stddev :var :cum-sum :sum-where})
+
+(defn- numeric-args
+  "The arguments that the clause `[op opts & args]` uses as numbers.
+
+    [:> {} field 100]      => [field]
+    [:= {} field 100]      => []      ; the editor accepts `=` and `!=`
+    [:sum-where {} v cond] => [v]"
+  [[op _opts & args]]
+  (cond
+    (#{:+ :- :* :/} op)                                      args
+    (and (#{:< :<= :> :>= :between} op) (some number? args)) args
+    (numeric-aggregation-ops op)                             (take 1 args)
+    :else                                                    []))
+
+(defn- numerically-used-field-refs
+  "The `:field` refs that `clause` uses as numbers: compared with a number, in arithmetic, or in a numeric aggregation.
+
+  A ref inside a cast is an argument of the cast, so it is not returned."
+  [clause]
+  (for [node  (tree-seq sequential? seq clause)
+        :when (and (vector? node) (keyword? (first node)))
+        arg   (numeric-args node)
+        :when (and (vector? arg) (= :field (first arg)))]
+    arg))
+
+(defn- text-column-refs
+  "The `:field` refs to text columns that `clause` uses as numbers."
+  [query stage-idx clause]
+  (filter #(isa? (lib/type-of query stage-idx %) :type/Text)
+          (numerically-used-field-refs clause)))
+
+(defn- ref-column-name
+  "The column name of the `:field` ref `a-ref`."
+  [query [_ _ id-or-name]]
+  (if (string? id-or-name)
+    id-or-name
+    (:name (lib.metadata.protocols/field (lib/->metadata-provider query) id-or-name))))
+
+(defn- native-card?
+  "Whether the card with `card-id` has a native query."
+  [query card-id]
+  ;; The query of a card is not always MBQL 5 yet (`:metabase.lib.schema.metadata/card`).
+  (let [card-query (:dataset-query (lib.metadata/card query card-id))]
+    (boolean (or (= :native (:type card-query))
+                 (some #(= :mbql.stage/native (:lib/type %)) (:stages card-query))))))
+
+(defn- table-field-ref?
+  "Whether `a-ref` is a `:field` ref to a column that comes from a table field."
+  [query stage-idx a-ref]
+  ;; Only a table field has a casting setting in Table Metadata. A custom column has no field id. The
+  ;; column of a native card comes from its SQL, so the casting of a field mapped to it changes nothing.
+  (try
+    (boolean
+     (when (and (vector? a-ref) (= :field (first a-ref)))
+       (let [{field-id :id, card-id :lib/card-id} (lib/metadata query stage-idx a-ref)]
+         (and (pos-int? field-id)
+              (not (and card-id (native-card? query card-id)))))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not tell whether a ref names a table field")
+      false)))
+
+(defn- no-cast-hint
+  "The advice for a text column used as a number on a database that supports no cast.
+
+  It names Table Metadata casting only when `table-field?` is true."
+  [table-field?]
+  (str "The query builder cannot convert text to a number on this database. "
+       (if table-field?
+         "An admin can set the column's casting to String → Integer or String → Float in Table Metadata, or use a SQL question."
+         "Use a SQL question instead.")))
+
+(defn- cast-hint
+  "The sentence that tells how to use a text column as a number on the database of `query`.
+
+  It names only the casts that the database supports. When it supports neither, it gives
+  [[no-cast-hint]] for `table-field?`."
+  [query table-field?]
+  (let [casts (cond-> []
+                (lib.metadata/database-supports? query :expressions/integer) (conj "`[\"integer\", {}, <field>]`")
+                (lib.metadata/database-supports? query :expressions/float)   (conj "`[\"float\", {}, <field>]`"))]
+    (if (seq casts)
+      (format "If a text column holds numbers, wrap it in a cast: %s." (str/join " or " casts))
+      (no-cast-hint table-field?))))
+
+(defn- text-column-hint
+  "A sentence to add to the editor's rejection of `clause` when it uses text columns as numbers, or nil."
+  [query stage-idx clause]
+  ;; Return nil on a failure, so that the editor's own error is still sent.
+  (try
+    (let [refs  (vec (text-column-refs query stage-idx clause))
+          names (into [] (comp (keep #(ref-column-name query %)) (distinct)) refs)]
+      (when (seq names)
+        (format " It uses the text column(s) %s as numbers. %s"
+                (str/join ", " (map quoting/quoted names))
+                (cast-hint query (every? #(table-field-ref? query stage-idx %) refs)))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not list the text columns of a rejected expression")
+      nil)))
+
+(def ^:private cast-features
+  "The database feature that each cast needs. The notebook editor hides a cast without its feature."
+  {:integer :expressions/integer
+   :float   :expressions/float})
+
+(defn- unsupported-cast
+  "The first cast in `clause` that the database of `query` does not support, or nil.
+
+    [:> {} [:integer {} field] 100] => [:integer {} field]   ; on a database without `:expressions/integer`"
+  [query clause]
+  (some (fn [node]
+          (when-let [feature (and (vector? node) (cast-features (first node)))]
+            (when-not (lib.metadata/database-supports? query feature)
+              node)))
+        (tree-seq sequential? seq clause)))
+
+(defn- numeric-expression?
+  "Whether `expr` has a numeric type in stage `stage-idx` of `query`. False when the type is unknown."
+  [query stage-idx expr]
+  (try
+    (isa? (lib/type-of query stage-idx expr) :type/Number)
+    (catch Exception e
+      (log/debug e "[repr-repair] could not compute the type of a cast argument")
+      false)))
+
+(defn- cast-argument-hint
+  "The advice for an unsupported cast of `arg`, from the type of `arg`."
+  [query stage-idx arg]
+  (if (numeric-expression? query stage-idx arg)
+    (str "Its argument is already a number, so remove the cast. To get a whole number, use `round`, "
+         "`floor` or `ceil`, for example `[\"round\", {}, <value>]`.")
+    (cast-hint query (table-field-ref? query stage-idx arg))))
+
+(defn- editor-rejection
+  "Why the query builder's expression editor rejects `clause`, the effect, and a hint to add to the message, or nil.
+
+  The reason is the editor's own diagnostic, or the \"Unsupported function\" error that the editor
+  shows for a cast that the database does not support."
+  [query stage-idx mode pos clause]
+  (if-let [{:keys [message]} (lib.expression/diagnose-expression
+                              query stage-idx mode clause
+                              (when (#{:expression :aggregation} mode) pos))]
+    {:reason (str/replace message #"\.$" "")
+     :effect "The query would build but could not be visualized or saved - rewrite the offending clause."
+     :hint   (text-column-hint query stage-idx clause)}
+    (when-let [[op _opts arg] (unsupported-cast query clause)]
+      {:reason (str "Unsupported function " (name op))
+       :effect "The query builder cannot edit this clause on this database - rewrite it."
+       :hint   (str " " (cast-argument-hint query stage-idx arg))})))
+
+(defn assert-editor-accepts-expressions!
+  "Validate resolved query expressions with the query builder's expression editor.
+
+  Check custom columns, aggregations and filters with [[metabase.lib.expression/diagnose-expression]],
+  and throw a retryable `:agent-error?` for the first rejected clause. Return `pmbql-query` if every
+  clause passes. When the rejected clause uses text columns as numbers, the message names them and
+  tells how to convert them. Like the editor, reject an `integer` or `float` cast that the database
+  does not support.
+
+  `pmbql-query` must already pass `::lib.schema/query` validation with expression type checks
+  suppressed. Otherwise, schema errors can hide the clause's error message.
+  `repaired-query` supplies the original stage indexes for diagnostics and defaults to `pmbql-query`."
+  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (doseq [stage-idx      (range (lib/stage-count pmbql-query))
+           [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
+                           [:aggregation (lib/aggregations pmbql-query stage-idx)]
+                           [:filter      (lib/filters      pmbql-query stage-idx)]]
+           [pos clause]   (map-indexed vector clauses)]
+     (when-let [{:keys [reason effect hint]} (editor-rejection pmbql-query stage-idx mode pos clause)]
+       (let [original-idx (repr/original-stage-index repaired-query stage-idx)
+             where (case mode
+                     :expression  "custom column (`expressions:`)"
+                     :aggregation "`aggregation:`"
+                     :filter      "`filters:`")]
+         (throw (ex-info
+                 (str (format "The query builder's expression editor rejects a %s clause in stage %s: %s. %s"
+                              where original-idx reason effect)
+                      hint)
+                 {:agent-error? true
+                  :error        :expression-editor-rejection
+                  :status-code  400
+                  :stage        original-idx
+                  :mode         mode
+                  :clause       clause})))))
+   pmbql-query))
+
+(defn- unbucketed-ref
+  "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.
+
+  A *coercion's* `:effective-type` is the column's own type rather than a bucket artifact, and stays.
+
+    [:expression {:temporal-unit :day-of-week, :effective-type :type/Integer,
+                  :base-type :type/DateTime} \"Ship\"]
+    => [:expression {:base-type :type/DateTime} \"Ship\"]
+
+    ;; field 105 is ISO-8601 text an admin coerced to a timestamp
+    [:field {:temporal-unit :year, :effective-type :type/DateTime,
+             :base-type :type/Text} 105]
+    => [:field {:effective-type :type/DateTime, :base-type :type/Text} 105]
+
+  `with-temporal-bucket` alone restores `:effective-type` from `:lib/original-effective-type`, which
+  is only there on a ref lib or [[metabase.agent-lib.representations.resolve/export-query]] produced.
+  On a ref resolve typed, an *extraction* unit leaves `:effective-type` describing the bucket rather
+  than the column - `:type/Integer` for `day-of-week` on a datetime column - and
+  [[metabase.lib.core/type-of]] reads that key first, so it has to go too. What is left resolves to
+  `:base-type`, or to the expression's own type when the ref carries none."
+  [clause]
+  (let [{:keys [effective-type temporal-unit] :lib/keys [original-effective-type]} (nth clause 1)]
+    (cond-> (lib/with-temporal-bucket clause nil)
+      (and (nil? original-effective-type)
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+           ;; A bucket's own type is never temporal, so a temporal stamp has to be the column's:
+           ;; resolve copies `:effective-type` straight off a coerced column, where it is the
+           ;; post-coercion type and `:base-type` is the storage type. Dropping it there would leave
+           ;; `:type/Text` on an ISO-8601 column and make the gate reject a bucket lib itself offers.
+           (not (isa? effective-type :type/Temporal)))
+      (update 1 dissoc :effective-type))))
+
+(defn- assert-bucketed-ref-is-temporal!
+  "Throw when the bucketed ref `clause` names a column that is not temporal.
+
+  Call only on a `field` / `expression` ref that carries a `temporal-unit`: the walk in
+  [[assert-temporal-buckets-on-temporal-columns!]] tests that itself, before resolving a stage."
+  [query stage-number clause]
+  (let [temporal-unit (:temporal-unit (nth clause 1))
+        bare-ref      (unbucketed-ref clause)
+        column-type   (lib/type-of query stage-number bare-ref)]
+    (when (and column-type
+               (not= column-type :type/*)
+               (not (isa? column-type :type/Temporal)))
+      (let [column-name (quoting/quoted (lib/display-name query stage-number bare-ref))
+            type-name   (name column-type)
+            unit-name   (name temporal-unit)]
+        (throw (ex-info (if (= :expression (nth clause 0))
+                          (format "%s is a %s custom column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name)
+                          (format "%s is a %s column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name))
+                        {:agent-error?  true
+                         :error         :temporal-unit-on-non-temporal-column
+                         :status-code   400
+                         :column-type   column-type
+                         :temporal-unit temporal-unit
+                         :clause        clause}))))))
+
+(defn assert-temporal-buckets-on-temporal-columns!
+  "Throw a retryable `:agent-error?` when a resolved `field` or `expression` ref carries a
+  `temporal-unit` but its column is not temporal. Returns `pmbql-query`.
+
+  lib accepts that shape - its unit check only knows Date / Time / DateTime columns. The QP then
+  drops the bucket silently on a `field` ref; on an `expression` ref it keeps it and applies it to a
+  non-temporal value, which compiles to nonsense on a text column and fails preprocessing outright
+  on a numeric one. Pass 2.95 can produce either, in `filters` and in `expressions`, since it moves a
+  bucket onto a ref without knowing the column's type; a model writing the bucket itself lands here
+  too, and Pass 6's [[unencodable-temporal-clause-error!]] sees neither, because the hoist has
+  already consumed the literal.
+
+  Walks with [[metabase.lib.walk/walk-clauses]] rather than `clojure.walk`: an `expression` ref
+  carries no type in its options, so the column type has to come from [[metabase.lib.core/type-of]],
+  which needs the ref's stage. A join condition's refs do not all live in the same stage - one
+  carrying `:join-alias` belongs to the join, one without it to the parent stage - so the path is
+  chosen per ref. A ref whose type cannot be resolved is skipped rather than reported: this gate must
+  never reject a query it merely failed to understand.
+
+  Must run after the `::lib.schema/query` gate ([[metabase.metabot.tools.construct]]'s `_runnable`):
+  a dangling expression ref makes `type-of` throw rather than resolve, and while `walk-clauses`
+  rejects the query first under `mu/defn` instrumentation, that is compiled out of a production JAR."
+  [pmbql-query]
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [query path-type path clause]
+     ;; `walk-clauses` calls this on non-clause arguments too - the bare `2` in `[:= {} <ref> 2]`.
+     ;; Everything a bucketed ref is not falls out here, before a stage is resolved for it: that is
+     ;; the expensive half, and all but a handful of nodes skip it.
+     (let [opts (when (vector? clause) (nth clause 1 nil))]
+       (when (and (map? opts)
+                  (:temporal-unit opts)
+                  (contains? #{:field :expression} (nth clause 0 nil)))
+         (let [stage-path (if (and (= path-type :lib.walk/join) (not (:join-alias opts)))
+                            (lib.walk/join-parent-stage-path path)
+                            path)]
+           (try
+             (lib.walk/apply-f-for-stage-at-path assert-bucketed-ref-is-temporal! query stage-path clause)
+             ;; `Throwable`, not `ExceptionInfo`: the contract is that an unresolvable ref is skipped,
+             ;; and anything narrower leaks past `execute-representations-query`'s relay as a 500
+             (catch Throwable e
+               ;; re-throw our own complaint; swallow lib's failure to resolve the ref
+               (when (:agent-error? (ex-data e))
+                 (throw e)))))))
+     nil))
+  pmbql-query)
+
+(defn- supported-cast-op
+  "The cast that the database of `query` supports, `\"integer\"` first, or nil."
+  [query]
+  (cond
+    (lib.metadata/database-supports? query :expressions/integer) "integer"
+    (lib.metadata/database-supports? query :expressions/float)   "float"))
+
+(defn- case-example
+  "A `case` bucket example that compares `value` with 100 and 500."
+  [value]
+  (format "`[\"case\", {}, [[[\"<=\", {}, %1$s, 100], \"1-100\"], [[\"<=\", {}, %1$s, 500], \"101-500\"]], \"Over 500\"]`"
+          value))
+
+(def ^:private case-advice
+  "Build a `case` custom column with explicit ranges instead, and break out by it.")
+
+(defn- bin-hint
+  "The advice for a bin rejection of a text column on the database of `query`.
+
+  `table-field?` tells whether the column comes from a table field."
+  [query table-field?]
+  ;; With a cast, the advice does not invite the LLM to cast and then bin: the LLM did that in 2 of 2
+  ;; live runs. Without a cast, it gives no `case` advice, because the editor gate rejects a `case`
+  ;; that compares text with numbers there.
+  (if-let [cast-op (supported-cast-op query)]
+    (str case-advice " Put the cast inside each condition, for example "
+         (case-example (format "[\"%s\", {}, <field>]" cast-op))
+         ", where <field> is the column's ref without `binning`.")
+    (no-cast-hint table-field?)))
+
+(defn- unbounded-bin-hint
+  "The advice for a bin rejection of a numeric column with no known min and max, on the database of `query`."
+  [query]
+  ;; The column is numeric, so a `case` that compares it with numbers passes the editor gate. A cast
+  ;; column of an earlier stage is the live-test case: the cast then goes inside each condition.
+  (if-let [cast-op (supported-cast-op query)]
+    (str case-advice " If the column is a cast of a text column, put the cast inside each condition, for example "
+         (case-example (format "[\"%s\", {}, <field>]" cast-op))
+         ", where <field> is the ref of the text column.")
+    (str case-advice " For example " (case-example "<field>")
+         ", where <field> is the column's ref without `binning`.")))
+
+(defn- custom-column-ref?
+  "Whether `a-ref` names a custom column of this stage or of an earlier stage."
+  [query stage-number a-ref]
+  (try
+    (let [column (lib/metadata query stage-number a-ref)]
+      (or (= :source/expressions (:lib/source column))
+          (some? (:lib/original-expression-name column))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not tell whether a binned ref names a custom column")
+      false)))
+
+(defn- assert-binned-ref-is-not-text!
+  "Throw when the binned ref `clause` names a text column."
+  [query stage-number clause]
+  ;; `lib/with-binning` has no method for an `:expression` ref, so remove the option directly.
+  (let [bare-ref    (update clause 1 dissoc :binning)
+        column-type (lib/type-of query stage-number bare-ref)]
+    (when (isa? column-type :type/Text)
+      (throw (ex-info (str (format "%s is a text column, so it cannot be split into automatic bins. "
+                                   (quoting/quoted (lib/display-name query stage-number bare-ref)))
+                           ;; A text custom column is often the `case` bucket that `bin-hint` advises.
+                           (if (custom-column-ref? query stage-number bare-ref)
+                             (str "Remove `binning` from its ref, and break out by the column as it is"
+                                  (if (supported-cast-op query) "." ", or use a SQL question."))
+                             (str "Automatic bins need a numeric column with a known min and max. "
+                                  (bin-hint query (table-field-ref? query stage-number bare-ref)))))
+                      {:agent-error? true
+                       :error        :binning-on-non-numeric-column
+                       :status-code  400
+                       :column-type  column-type
+                       :clause       clause})))))
+
+(defn- binning-bounds
+  "The min and max that the QP bins the `:field` ref `a-ref` by in stage `stage-number`, or nil."
+  [query stage-number [_ _ id-or-name :as a-ref]]
+  ;; The same rule as `update-binning-strategy` in [[metabase.query-processor.middleware.binning]]: the
+  ;; column's numeric fingerprint, narrowed by the `between` and comparison filters of the same stage.
+  (lib.binning.util/extract-bounds id-or-name
+                                   (:fingerprint (lib/metadata query stage-number a-ref))
+                                   (lib.binning.util/filters->field-map (lib/filters query stage-number))))
+
+(defn- assert-binned-ref-has-bounds!
+  "Throw when the binned `:field` ref `clause` names a custom column with no known min and max."
+  [query stage-number clause]
+  ;; Only a custom column: the QP gets the min and max of a field from its fingerprint, and this
+  ;; check does not judge whether sync has fingerprinted a field.
+  (let [bare-ref (lib/update-options clause dissoc :binning)]
+    (when (and (custom-column-ref? query stage-number bare-ref)
+               (nil? (binning-bounds query stage-number bare-ref)))
+      (throw (ex-info (str (format "%s has no known min and max, so it cannot be split into automatic bins. "
+                                   (quoting/quoted (lib/display-name query stage-number bare-ref)))
+                           (unbounded-bin-hint query))
+                      {:agent-error? true
+                       :error        :binning-on-non-numeric-column
+                       :status-code  400
+                       :clause       clause})))))
+
+(defn- assert-binned-ref-is-binnable!
+  "Throw when the binned ref `clause` names a text column, or, in a stage clause, a custom column without bounds."
+  [query stage-number clause stage-clause?]
+  (assert-binned-ref-is-not-text! query stage-number clause)
+  ;; The QP computes the bounds of a binned `:field` ref in a stage clause only, not in a join condition.
+  (when (and stage-clause? (= :field (first clause)))
+    (assert-binned-ref-has-bounds! query stage-number clause)))
+
+(defn assert-binning-on-numeric-columns!
+  "Throw a retryable `:agent-error?` when a resolved ref with `binning` cannot be binned, or return `pmbql-query`.
+
+  A ref cannot be binned when it names a text column, or a custom column with no known min and max
+  and no `between` or comparison filter on it in the same stage. A text column that an admin coerced
+  to a number is not text here. A ref whose column cannot be resolved is skipped."
+  [pmbql-query]
+  ;; Without this check the query fails at run time: the QP needs a min and max to bin by. The
+  ;; skip of an unresolved ref and the stage path of a join condition's refs are the same as in
+  ;; [[assert-temporal-buckets-on-temporal-columns!]], which explains them.
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [query path-type path clause]
+     (let [opts (when (vector? clause) (nth clause 1 nil))]
+       (when (and (map? opts)
+                  (:binning opts)
+                  (contains? #{:field :expression} (nth clause 0 nil)))
+         (let [stage-path (if (and (= path-type :lib.walk/join) (not (:join-alias opts)))
+                            (lib.walk/join-parent-stage-path path)
+                            path)]
+           (try
+             (lib.walk/apply-f-for-stage-at-path assert-binned-ref-is-binnable! query stage-path clause
+                                                 (= path-type :lib.walk/stage))
+             (catch Throwable e
+               (when (:agent-error? (ex-data e))
+                 (throw e)))))))
+     nil))
+  pmbql-query)

@@ -1,20 +1,19 @@
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
+import { loginGoogle } from "metabase/redux/auth";
+import { useSetting } from "metabase/settings";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
 
-import { loginGoogle } from "../../actions";
-import { getGoogleClientId, getSiteLocale } from "../../selectors";
-
 import S from "./GoogleButton.module.css";
+import { getErrors } from "./utils";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -27,8 +26,8 @@ interface CredentialResponse {
 
 export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   const [remember, setRemember] = useState(false);
-  const clientId = useSelector(getGoogleClientId);
-  const locale = useSelector(getSiteLocale);
+  const clientId = useSetting("google-auth-client-id");
+  const locale = useSetting("site-locale");
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
 
@@ -95,7 +94,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       {errors.length > 0 && (
         <Box mt="1rem">
           {errors.map((error, index) => (
-            <Box c="error" ta="center" key={index}>
+            <Box c="feedback-negative" ta="center" key={index}>
               {error}
             </Box>
           ))}
@@ -103,9 +102,4 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       )}
     </Box>
   );
-};
-
-const getErrors = (error: unknown): string[] => {
-  const errors = getIn(error, ["data", "errors"]);
-  return errors ? Object.values(errors) : [];
 };

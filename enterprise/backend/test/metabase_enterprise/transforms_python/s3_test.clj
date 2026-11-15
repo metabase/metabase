@@ -41,24 +41,17 @@
       (let [bucket (transforms-python.settings/python-storage-s-3-bucket)
             key    (str "test-object-" (random-uuid) ".txt")
             body   (str "Hello, S3! My secret is:" (random-uuid))]
-
         (is (nil? (s3/read-to-string s3-client bucket key)))
         (is (= :default (s3/read-to-string s3-client bucket key :default)))
-
         (let [tmp-file (Files/createTempFile "s3-test" ".txt" (into-array FileAttribute []))]
           (try
             (spit (.toFile tmp-file) body)
-
             (is (s3/upload-file s3-client bucket key (.toFile tmp-file)))
-
             (is (= body (s3/read-to-string s3-client bucket key)))
             (is (= body (s3/read-to-string s3-client bucket key :default)))
-
             (s3/delete s3-client bucket key)
-
             (is (nil? (s3/read-to-string s3-client bucket key)))
             (is (= :default (s3/read-to-string s3-client bucket key :default)))
-
             (finally
               (Files/deleteIfExists tmp-file))))))))
 
@@ -88,7 +81,6 @@
                   :put (do
                          (is (http/put url {:body content}))
                          (is (= content (s3/read-to-string s3-client bucket-name path :not-created)))))))))
-
         (testing "closing the ref deletes the files"
           (.close storage-ref)
           (doseq [[k {:keys [path]}] objects]

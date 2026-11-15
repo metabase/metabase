@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { createAction, createReducer } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
-import { Databases } from "metabase/entities/databases";
+import { databaseApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { databaseFetched } from "metabase/metadata-store";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
 import type { Dispatch } from "metabase/redux/store";
+import { navigate } from "metabase/router";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
@@ -20,8 +23,13 @@ const DELETE_DATABASE_FAILED = createAction<{
 
 export const updateDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {
-    const action = await dispatch(Databases.actions.update(database));
-    return Databases.HACK_getObjectFromAction(action);
+    const result = await runRtkEndpoint(
+      database,
+      dispatch,
+      databaseApi.endpoints.updateDatabase,
+    );
+    dispatch(databaseFetched(result));
+    return result;
   };
 };
 
@@ -40,8 +48,12 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
   return async function (dispatch: Dispatch) {
     try {
       dispatch(DELETE_DATABASE_STARTED({ databaseId }));
-      await dispatch(Databases.actions.delete({ id: databaseId }));
-      dispatch(push("/admin/databases/"));
+      await runRtkEndpoint(
+        databaseId,
+        dispatch,
+        databaseApi.endpoints.deleteDatabase,
+      );
+      navigate("/admin/databases/");
 
       dispatch(DELETE_DATABASE({ databaseId }));
     } catch (error) {
@@ -52,12 +64,13 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
 };
 
 export const databasesReducer = combineReducers({
-  deletionError: createReducer(null as null | unknown, (builder) => {
+  deletionError: createReducer<null | unknown>(null, (builder) => {
     builder.addCase(
       DELETE_DATABASE_FAILED,
       (_state, action) => action.payload.error,
     );
   }),
+  // Unjustified type cast. FIXME
   deletes: createReducer([] as DatabaseId[], (builder) => {
     builder
       .addCase(DELETE_DATABASE_STARTED, (state, action) =>

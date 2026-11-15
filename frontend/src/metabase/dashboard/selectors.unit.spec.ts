@@ -1,5 +1,11 @@
-import { chain } from "icepick";
+import { produce } from "immer";
 
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
@@ -7,31 +13,39 @@ import {
   getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
+  getIsLastSeenDashboardFixedWidth,
   getIsSharing,
+  getLastSeenDashboard,
+  getLastSeenDashboardHeaderParameters,
+  getLastSeenTabDashcards,
   getParameters,
+  getQuestionByCard,
+  getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import Field from "metabase-lib/v1/metadata/Field";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Card, DashboardParameterMapping } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
+  createMockDatabase,
   createMockField,
   createMockHeadingDashboardCard,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
+  createMockParameterMapping,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
+
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const STATE = createMockState({
   dashboard: createMockDashboardState({
@@ -47,10 +61,10 @@ const STATE = createMockState({
       0: createMockDashboardCard({
         card: createMockCard({
           id: 0,
-          dataset_query: createMockNativeDatasetQuery({
-            native: {
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
               query: "",
-              "template-tags": {
+              templateTags: {
                 foo: {
                   id: "foo",
                   type: "text",
@@ -58,15 +72,15 @@ const STATE = createMockState({
                   "display-name": "foo",
                 },
               },
-            },
-          }),
+            }),
+          ),
         }),
         parameter_mappings: [],
       }),
       1: createMockDashboardCard({
         card: createMockCard({
           id: 1,
-          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+          dataset_query: ORDERS_QUERY,
         }),
         parameter_mappings: [],
       }),
@@ -81,6 +95,24 @@ const STATE = createMockState({
   settings: createMockSettingsState(),
 });
 
+const PARAMETER = createMockParameter({ id: "1", type: "string/=" });
+
+const withParameter = (
+  state: State,
+  mappings: Array<{ dashcardId: number; mapping: DashboardParameterMapping }>,
+) =>
+  produce(state, (draft) => {
+    draft.dashboard.dashboards[0].parameters = [PARAMETER];
+    mappings.forEach(({ dashcardId, mapping }) => {
+      draft.dashboard.dashcards[dashcardId].parameter_mappings = [mapping];
+    });
+  });
+
+const createMapping = (
+  card_id: number,
+  target: DashboardParameterMapping["target"],
+) => createMockParameterMapping({ card_id, parameter_id: "1", target });
+
 describe("dashboard/selectors", () => {
   describe("getParameters", () => {
     it("should work with no parameters", () => {
@@ -88,37 +120,24 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a parameter", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "foo",
-        })
-        .value();
-      expect(getParameters(state)).toEqual([
-        {
-          id: 1,
-          type: "foo",
-        },
-      ]);
+      const parameter = createMockParameter({ id: "1", type: "temporal-unit" });
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [parameter];
+      });
+      expect(getParameters(state)).toEqual([parameter]);
     });
 
     it("should return a FieldFilterUiParameter mapped to a variable template tag", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["variable", ["template-tag", "foo"]],
-        })
-        .value();
+      const state = withParameter(STATE, [
+        {
+          dashcardId: 0,
+          mapping: createMapping(0, ["variable", ["template-tag", "foo"]]),
+        },
+      ]);
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...PARAMETER,
           hasVariableTemplateTagTarget: true,
           fields: [],
         },
@@ -126,108 +145,84 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a FieldFilterUiParameter mapped to a field", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .value();
+      const state = withParameter(STATE, [
+        {
+          dashcardId: 0,
+          mapping: createMapping(0, ["dimension", ["field", 1, null]]),
+        },
+      ]);
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...PARAMETER,
           hasVariableTemplateTagTarget: false,
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: 1 })],
         },
       ]);
     });
 
     it("should return a FieldFilterUiParameter with two mappings to the same field", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .value();
+      const state = withParameter(STATE, [
+        {
+          dashcardId: 0,
+          mapping: createMapping(0, ["dimension", ["field", 1, null]]),
+        },
+        {
+          dashcardId: 1,
+          mapping: createMapping(1, ["dimension", ["field", 1, null]]),
+        },
+      ]);
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
-          fields: [expect.any(Field)],
+          ...PARAMETER,
           hasVariableTemplateTagTarget: false,
+          fields: [expect.objectContaining({ id: 1 })],
         },
       ]);
     });
 
     it("should return a FieldFilterUiParameter that has mappings to a field and a template tag variable", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["variable", ["template-tag", "foo"]],
-        })
-        .value();
+      const state = withParameter(STATE, [
+        {
+          dashcardId: 0,
+          mapping: createMapping(0, ["dimension", ["field", 1, null]]),
+        },
+        {
+          dashcardId: 1,
+          mapping: createMapping(1, ["variable", ["template-tag", "foo"]]),
+        },
+      ]);
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
-          fields: [expect.any(Field)],
+          ...PARAMETER,
           hasVariableTemplateTagTarget: true,
+          fields: [expect.objectContaining({ id: 1 })],
         },
       ]);
     });
 
     it("should return a FieldFilterUiParameter with two mappings to two different fields", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["dimension", ["field", 2, null]],
-        })
-        .value();
+      const state = withParameter(STATE, [
+        {
+          dashcardId: 0,
+          mapping: createMapping(0, ["dimension", ["field", 1, null]]),
+        },
+        {
+          dashcardId: 1,
+          mapping: createMapping(1, ["dimension", ["field", 2, null]]),
+        },
+      ]);
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
-          fields: [expect.any(Field), expect.any(Field)],
+          ...PARAMETER,
           hasVariableTemplateTagTarget: false,
+          fields: [
+            expect.objectContaining({ id: 1 }),
+            expect.objectContaining({ id: 2 }),
+          ],
         },
       ]);
     });
@@ -399,34 +394,40 @@ describe("dashboard/selectors", () => {
   });
 
   describe("getDashboardComplete", () => {
-    const multiCardState = chain(STATE)
-      .assocIn(["dashboard", "dashboards", 0, "dashcards"], [0, 1, 2])
-      .assocIn(["dashboard", "dashcards", 2], {
-        card: createMockCard({
-          id: 2,
-          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-        }),
-        parameter_mappings: [],
-      })
-      .value();
-
-    const setup = (positions: Array<{ row: number; col: number }>) => {
-      const newStateChain = chain(multiCardState);
-
-      positions.forEach((position, index) => {
-        newStateChain
-          .assocIn(["dashboard", "dashcards", index, "row"], position.row)
-          .assocIn(["dashboard", "dashcards", index, "col"], position.col);
-      });
-
-      return newStateChain.value();
+    const multiCardState: State = {
+      ...STATE,
+      dashboard: {
+        ...STATE.dashboard,
+        dashboards: {
+          0: { ...STATE.dashboard.dashboards[0], dashcards: [0, 1, 2] },
+        },
+        dashcards: {
+          ...STATE.dashboard.dashcards,
+          2: createMockDashboardCard({
+            id: 2,
+            card: createMockCard({
+              id: 2,
+              dataset_query: ORDERS_QUERY,
+            }),
+            parameter_mappings: [],
+          }),
+        },
+      },
     };
 
+    const setup = (positions: Array<{ row: number; col: number }>) =>
+      produce(multiCardState, (draft) => {
+        positions.forEach((position, index) => {
+          draft.dashboard.dashcards[index].row = position.row;
+          draft.dashboard.dashcards[index].col = position.col;
+        });
+      });
+
     it("should filter out removed dashcards", () => {
-      const state: State = chain(multiCardState)
-        .assocIn(["dashboard", "dashcards", 0, "isRemoved"], true)
-        .assocIn(["dashboard", "dashcards", 2, "isRemoved"], true)
-        .value();
+      const state: State = produce(multiCardState, (draft) => {
+        draft.dashboard.dashcards[0].isRemoved = true;
+        draft.dashboard.dashcards[2].isRemoved = true;
+      });
 
       const dashboardComplete = getDashboardComplete(state);
       expect(dashboardComplete?.dashcards).toEqual([
@@ -460,6 +461,210 @@ describe("dashboard/selectors", () => {
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
+    });
+  });
+});
+
+describe("getSelectedTabId", () => {
+  const DASHBOARD_ID = 1;
+
+  const createTabbedState = (siteUrl: string) =>
+    createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        selectedTabId: null,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            id: DASHBOARD_ID,
+            tabs: [
+              createMockDashboardTab({ id: 1 }),
+              createMockDashboardTab({ id: 2 }),
+            ],
+          }),
+        },
+      }),
+      settings: createMockSettingsState({ "site-url": siteUrl }),
+    });
+
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("initializes from the tab query param", () => {
+    window.history.replaceState({}, "", "/dashboard/1?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("initializes from the tab query param on a subpath deployment (metabase#76946)", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/metabase/dashboard/1?tab=2-second-tab",
+    );
+
+    const state = createTabbedState("http://localhost:3000/metabase");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("falls back to the first tab while navigating to another dashboard", () => {
+    window.history.replaceState({}, "", "/dashboard/999?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(1);
+  });
+});
+
+describe("getQuestionByCard", () => {
+  function makeState(cards: Card[]): State {
+    const table = createMockTable({
+      id: 1,
+      db_id: 1,
+      fields: [createMockField({ id: 1, table_id: 1 })],
+    });
+
+    return createMockState({
+      settings: createMockSettingsState(),
+      entities: createMockEntitiesState({
+        databases: [createMockDatabase({ id: 1, tables: [table] })],
+        tables: [table],
+        questions: cards,
+      }),
+    });
+  }
+
+  it("returns the identical Question for the same card and state", () => {
+    const card = createMockCard({ id: 1 });
+    const state = makeState([card]);
+
+    // connect() shallow-compares mapped props, so a fresh Question here would
+    // re-render DashCardCardParameterMapper on every store change.
+    expect(getQuestionByCard(state, { card })).toBe(
+      getQuestionByCard(state, { card }),
+    );
+  });
+
+  it("holds an entry per card rather than only the most recent one", () => {
+    const cards = [1, 2, 3].map((id) => createMockCard({ id }));
+    const state = makeState(cards);
+
+    const first = cards.map((card) => getQuestionByCard(state, { card }));
+    // Reading the other cards in between must not evict the first. A one-entry
+    // cache would recompute here and re-render every mapped dashcard.
+    const second = cards.map((card) => getQuestionByCard(state, { card }));
+
+    first.forEach((question, index) => {
+      expect(question).toBe(second[index]);
+    });
+  });
+
+  describe("getLastSeenTabDashcards", () => {
+    // The active pointer is null, mimicking the window during a (re)fetch when
+    // the layout can only be read from the in-memory Redux cache by id.
+    const CACHED_STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10, 11, 12],
+            tabs: [
+              createMockDashboardTab({ id: 100 }),
+              createMockDashboardTab({ id: 200 }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, dashboard_tab_id: 100 }),
+          11: createMockDashboardCard({ id: 11, dashboard_tab_id: 100 }),
+          12: createMockDashboardCard({ id: 12, dashboard_tab_id: 200 }),
+        },
+      }),
+    });
+
+    it("returns the cached default-tab dashcards even when the active dashboard id is reset", () => {
+      const cards = getLastSeenTabDashcards(CACHED_STATE, 5);
+      expect(cards.map((dc) => dc.id)).toEqual([10, 11]);
+    });
+
+    it("returns an empty array for a dashboard that isn't cached", () => {
+      expect(getLastSeenTabDashcards(CACHED_STATE, 999)).toEqual([]);
+      expect(getLastSeenTabDashcards(CACHED_STATE, null)).toEqual([]);
+    });
+  });
+
+  describe("getLastSeenDashboard", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: { 5: createMockStoreDashboard({ id: 5 }) },
+      }),
+    });
+
+    it("returns the dashboard from the cache even when the active dashboard id is reset", () => {
+      expect(getLastSeenDashboard(STATE, 5)).toMatchObject({ id: 5 });
+    });
+
+    it("returns nothing for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboard(STATE, 999)).toBeUndefined();
+      expect(getLastSeenDashboard(STATE, null)).toBeUndefined();
+    });
+  });
+
+  describe("getIsLastSeenDashboardFixedWidth", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({ id: 5, width: "fixed" }),
+          6: createMockStoreDashboard({ id: 6, width: "full" }),
+        },
+      }),
+    });
+
+    it("follows the cached dashboard's width", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 5)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 6)).toBe(false);
+    });
+
+    it("assumes the default fixed width for a dashboard that isn't cached", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 999)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, null)).toBe(true);
+    });
+  });
+
+  describe("getLastSeenDashboardHeaderParameters", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10],
+            parameters: [
+              createMockParameter({ id: "a" }),
+              createMockParameter({ id: "b" }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, inline_parameters: ["b"] }),
+        },
+      }),
+    });
+
+    it("returns the cached dashboard's parameters except those inline on a dashcard", () => {
+      expect(
+        getLastSeenDashboardHeaderParameters(STATE, 5).map(({ id }) => id),
+      ).toEqual(["a"]);
+    });
+
+    it("returns no parameters for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboardHeaderParameters(STATE, 999)).toEqual([]);
     });
   });
 });

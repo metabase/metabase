@@ -42,7 +42,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
                 name: "ID",
                 "display-name": "ID",
                 type: "dimension",
-                dimension: ["field", ORDERS.ID, null],
+                "field-id": ORDERS.ID,
                 "widget-type": "category",
                 default: null,
               },
@@ -137,6 +137,41 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
         cy.log("should not show Group button");
         cy.findByText("Group").should("not.exist");
+      });
+    });
+  });
+
+  describe("editing column settings", () => {
+    beforeEach(() => {
+      setup({
+        question: {
+          name: "Orders native question",
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+    });
+
+    it("edits a column title without crashing (metabase#76455)", () => {
+      mountInteractiveQuestion({});
+
+      cy.wait("@cardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("TAX").should("be.visible");
+
+        H.openVizSettingsSidebar();
+        cy.findByTestId("chartsettings-sidebar")
+          .findByTestId("TAX-settings-button")
+          .click();
+      });
+
+      getSdkRoot().findByLabelText("Column title").clear().type("Renamed tax");
+
+      getSdkRoot().within(() => {
+        // Editing the column title used to throw a full-screen "Unexpected
+        // Application Error!" and leave the title unchanged (metabase#76455).
+        cy.findByText("Unexpected Application Error!").should("not.exist");
+        cy.findAllByText("Renamed tax").should("have.length.at.least", 1);
       });
     });
   });
@@ -298,7 +333,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         "display-name": "Category",
         type: "dimension",
         "widget-type": "number/=",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
       },
     };
 

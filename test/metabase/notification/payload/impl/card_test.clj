@@ -96,7 +96,7 @@
                   (is (=? {:body {:type               "alert"
                                   :alert_id           (-> notification :payload :id)
                                   :alert_creator_id   (-> notification :creator_id)
-                                  :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                  :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                                   :data               {:type          "question"
                                                        :question_id   card-id
                                                        :question_name notification.tu/default-card-name
@@ -161,7 +161,7 @@
                     (is (= (construct-email
                             {:message [{notification.tu/default-card-name true
                                         "Manage your subscriptions"       true}
-                                      ;; icon
+                                       ;; icon
                                        notification.tu/png-attachment
                                        notification.tu/csv-attachment]})
                            (mt/summarize-multipart-single-email
@@ -178,7 +178,7 @@
                     (is (=? {:body {:type               "alert"
                                     :alert_id           (-> notification :payload :id)
                                     :alert_creator_id   (-> notification :creator_id)
-                                    :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                    :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                                     :data               (mt/malli=? :map)
                                     :sent_at            (mt/malli=? :any)}}
                             req)))})))))))))
@@ -208,7 +208,6 @@
     (mt/with-temporary-setting-values [attachment-row-limit 10]
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
-
         (notification.tu/test-send-notification!
          notification
          {:channel/email
@@ -227,7 +226,6 @@
                                                :user_id (mt/user->id :rasta)}
                                               {:type    :notification-recipient/raw-value
                                                :details {:value "ngoc@metabase.com"}}]}]}]
-
     (notification.tu/test-send-notification!
      notification
      {:channel/email
@@ -346,7 +344,6 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))})))
-
   (testing "send if goal is met"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query          (mt/mbql-query
@@ -397,7 +394,6 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))})))
-
   (testing "send if goal is met"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query          (mt/mbql-query
@@ -431,15 +427,14 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (let [notification (t2/select-one :model/Notification (:id notification))]
+    (let [notification (t2/select-one :model/Notification :id (:id notification))]
       (testing "do not archive if the send fail for any reason"
         (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
           (u/ignore-exceptions (notification/send-notification! notification))
-          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
-
+          (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification))))))
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
-        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
+        (is (false? (t2/select-one-fn :active :model/Notification :id (:id notification))))
         (testing "once archived, notifications will be skipped if trying to send"
           (notification.tu/test-send-notification!
            notification
@@ -468,17 +463,16 @@
        {:channel/email
         (fn [emails]
           (is (zero? (count emails)))
-          (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
-
+          (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification)))))}))
     (testing "if the goal is met, notification is sent then archived"
       ;; flip the condition so the goal is met now
-      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (t2/update! :model/NotificationCard :id (get-in notification [:payload :id]) {:send_condition :goal_above})
       (notification.tu/test-send-notification!
-       (t2/select-one :model/Notification (:id notification))
+       (t2/select-one :model/Notification :id (:id notification))
        {:channel/email
         (fn [emails]
           (is (= 1 (count emails)))
-          (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))}))))
+          (is (false? (t2/select-one-fn :active :model/Notification :id (:id notification)))))}))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -534,21 +528,20 @@
       (notification.tu/with-card-notification
         [notification {:handlers [@notification.tu/default-email-handler
                                   notification.tu/default-slack-handler]}]
-
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
                                                         (apply original-render-noti args)))]
-            ;; slack failed but email should still be sent
-            (notification.tu/test-send-notification!
-             notification
-             {:channel/email
-              (fn [emails]
-                (is (pos-int? (count emails))))
-              :channel/slack
-              (fn [messages]
-                (is (nil?  messages)))})))))))
+            ;; slack failed but email should still be sent; the synchronous caller then learns that slack
+            ;; failed (GDGT-3144)
+            (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+              (let [messages (notification.tu/with-captured-channel-send!
+                               (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                     #"Failed to deliver to channel/slack$"
+                                                     (notification/send-notification! notification))))]
+                (is (pos-int? (count (:channel/email messages))))
+                (is (nil? (:channel/slack messages)))))))))))
 
 (deftest skip-for-archived-cards-test
   (testing "should not send for archived cards"
@@ -569,7 +562,7 @@
       (t2/delete! :model/TaskHistory)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Failed to execute card with error: Division by zero: " 1 ""
+           #"Failed to execute card with error: Division by zero: "
            (#'notification.send/send-notification-sync! notification)))
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
@@ -588,22 +581,22 @@
                             []
                             [@notification.tu/default-email-handler])]
           (testing "sanity: notification is active"
-            (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))
+            (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification)))))
           ;; Simulate an orphaned notification: delete the NotificationCard directly.
           ;; This mirrors what happens in prod when there is no Malli validation and a card is deleted (FK cascade deletes NotificationCard)
           ;; but the Notification row itself survives.
-          (t2/delete! :model/NotificationCard (:payload_id notification))
+          (t2/delete! :model/NotificationCard :id (:payload_id notification))
           (testing "sanity: notification still exists but its payload record is gone"
-            (is (t2/exists? :model/Notification (:id notification)))
-            (is (not (t2/exists? :model/NotificationCard (:payload_id notification)))))
+            (is (t2/exists? :model/Notification :id (:id notification)))
+            (is (not (t2/exists? :model/NotificationCard :id (:payload_id notification)))))
           (testing "sending the orphaned notification should delete it rather than crash forever"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Card no longer exists"
                  (#'notification.send/send-notification-sync!
-                  (t2/select-one :model/Notification (:id notification))))))
+                  (t2/select-one :model/Notification :id (:id notification))))))
           (testing "the notification should be deleted"
-            (is (not (t2/exists? :model/Notification (:id notification))))))))))
+            (is (not (t2/exists? :model/Notification :id (:id notification))))))))))
 
 (defn- email->attachment-line-count
   [email]
@@ -624,7 +617,6 @@
          {:channel/email
           (fn [emails]
             (is (= 18761 (email->attachment-line-count (first emails)))))})))
-
     (testing "respect attachment limit env if set"
       (mt/with-temporary-setting-values [attachment-row-limit 10]
         (notification.tu/with-card-notification
@@ -635,7 +627,6 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))
-
     (testing "respect query limit if set"
       (notification.tu/with-card-notification
         [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 10})}
@@ -645,7 +636,6 @@
          {:channel/email
           (fn [emails]
             (is (= 11 (email->attachment-line-count (first emails)))))})))
-
     (testing "attachment limit env > query limit"
       (mt/with-temporary-setting-values [attachment-row-limit 10]
         (notification.tu/with-card-notification

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { useSetting, useUserSetting } from "metabase/settings";
 
 import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
 import {
@@ -88,7 +88,28 @@ export const useSdkIframeEmbedSettings = ({
   const exampleDashboardId = useSetting("example-dashboard-id");
 
   const defaultSettings = useMemo(() => {
+    // Default to SSO when it's available and configured; otherwise default
+    // to guest. Callers that need a specific mode pass `initialState.isGuest`
+    // explicitly.
+    const defaultMode: "sso" | "guest" =
+      isSimpleEmbedFeatureAvailable && isSsoEnabledAndConfigured
+        ? "sso"
+        : "guest";
+
     return match(initialState)
+      .with(
+        { resourceType: "data-app", resourceId: P.nonNullable },
+        (initialState) =>
+          getDefaultSdkIframeEmbedSettings({
+            experience: "data-app",
+            resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
+            isGuestEmbedsEnabled,
+            isSsoEnabledAndConfigured,
+            isGuest: false,
+            useExistingUserSession: false,
+          }),
+      )
       .with(
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>
@@ -98,7 +119,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -111,7 +132,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -126,7 +147,7 @@ export const useSdkIframeEmbedSettings = ({
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
-          isGuest: !!initialState?.isGuest,
+          isGuest: initialState?.isGuest ?? defaultMode === "guest",
           useExistingUserSession: !!initialState?.useExistingUserSession,
         }),
       );

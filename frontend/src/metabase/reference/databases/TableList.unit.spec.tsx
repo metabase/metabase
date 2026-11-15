@@ -1,16 +1,11 @@
-import { Route } from "react-router";
-
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import TableList from "./TableList";
 
 const databaseId = getNextId();
-
-const disabledStyle = "pointer-events: none; opacity: 0.4;";
 
 const incompleteTable = createMockTable({
   id: getNextId(),
@@ -41,19 +36,13 @@ const database = createMockDatabase({
   tables,
 });
 
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [database],
-  }),
-});
-
 function setup() {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => <TableList params={{ databaseId }} style={{}} />}
+      element={<TableList database={database} tables={tables} />}
     />,
-    { storeInitialState, withRouter: true },
+    { withRouter: true },
   );
 }
 
@@ -75,7 +64,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).toHaveStyle(disabledStyle);
+    expect(tableItem).toHaveAttribute("data-disabled", "true");
     expect(link).not.toBeInTheDocument();
   });
 
@@ -88,7 +77,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).toHaveStyle(disabledStyle);
+    expect(tableItem).toHaveAttribute("data-disabled", "true");
     expect(link).not.toBeInTheDocument();
   });
 
@@ -101,7 +90,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).not.toHaveStyle(disabledStyle);
+    expect(tableItem).not.toHaveAttribute("data-disabled");
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute(
       "href",

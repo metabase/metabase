@@ -1,0 +1,44 @@
+## Allow transform.source_database_id to be null so transforms survive source-database deletion.
+## The existing fk_tranform_source_database_id constraint is replaced with one that uses
+## ON DELETE SET NULL, so deleting the source database leaves the transform in place with
+## a null source_database_id rather than blocking the delete or cascading the transform.
+
+databaseChangeLog:
+  - changeSet:
+      id: v60.5vvn7090z6
+      author: bronsa
+      comment: Make transform.source_database_id nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v60.sobugdkwux
+      author: bronsa
+      comment: Drop fk_tranform_source_database_id (recreated next with ON DELETE SET NULL)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_tranform_source_database_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v60.n6ngozcd0c
+      author: bronsa
+      comment: Recreate fk_tranform_source_database_id with ON DELETE SET NULL
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+            onDelete: SET NULL

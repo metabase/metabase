@@ -50,7 +50,7 @@ function PieMetricWell() {
   };
 
   return (
-    <Box mt="lg">
+    <Box mt="xl">
       <Text>{t`Metric`}</Text>
       <WellBox
         isHighlighted={canHandleActiveItem}
@@ -95,7 +95,7 @@ function PieDimensionWell() {
   };
 
   return (
-    <Box mt="lg">
+    <Box mt="xl">
       <Text>{t`Dimensions`}</Text>
       <WellBox
         isHighlighted={canHandleActiveItem}

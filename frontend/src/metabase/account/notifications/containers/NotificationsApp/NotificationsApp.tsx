@@ -1,37 +1,28 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import { useMemo } from "react";
 
-import type { NotificationListItem } from "metabase/account/notifications/types";
 import {
   skipToken,
   useListNotificationsQuery,
   useListSubscriptionsQuery,
 } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import type { NotificationListItem } from "metabase/notifications/types";
+import { useSelector } from "metabase/redux";
+import { Outlet, useNavigate } from "metabase/router";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 
-import {
-  navigateToArchive,
-  navigateToHelp,
-  navigateToUnsubscribe,
-} from "../../actions";
+import { getArchiveUrl, getHelpUrl, getUnsubscribeUrl } from "../../actions";
 import { NotificationList } from "../../components/NotificationList";
 
-interface NotificationsAppProps {
-  children?: ReactNode;
-}
-
-export const NotificationsApp = ({
-  children,
-}: NotificationsAppProps): JSX.Element | null => {
+export const NotificationsApp = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: pulses = [] } = useListSubscriptionsQuery({
     creator_or_recipient: true,
@@ -65,11 +56,11 @@ export const NotificationsApp = ({
     );
   }, [pulses, questionNotifications]);
 
-  const onHelp = () => dispatch(navigateToHelp());
+  const onHelp = () => navigate(getHelpUrl());
   const onUnsubscribe = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToUnsubscribe(item, type));
+    navigate(getUnsubscribeUrl(item, type));
   const onArchive = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToArchive(item, type));
+    navigate(getArchiveUrl(item, type));
 
   if (!user) {
     return null;
@@ -84,7 +75,7 @@ export const NotificationsApp = ({
       onUnsubscribe={onUnsubscribe}
       onArchive={onArchive}
     >
-      {children}
+      <Outlet />
     </NotificationList>
   );
 };

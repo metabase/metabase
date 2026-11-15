@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useRef } from "react";
 
-import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
@@ -10,17 +9,20 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { isSmallScreen } from "metabase/utils/dom";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 
-import { Dashboard } from "../Dashboard";
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
+import { ParametersList } from "../Dashboard/components";
 
 import S from "./DashboardParameterPanel.module.css";
+import { DashboardParameterPanelSkeleton } from "./DashboardParameterPanelSkeleton";
 
 export function DashboardParameterPanel() {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  const { dashboard, hideParameters, isEditing } = useDashboardContext();
+  const { dashboard, dashboardId, hideParameters, isEditing } =
+    useDashboardContext();
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -33,6 +35,15 @@ export function DashboardParameterPanel() {
     parameterPanelRef,
     disabled: !allowSticky || !hasVisibleParameters,
   });
+
+  if (!dashboard) {
+    return (
+      <DashboardParameterPanelSkeleton
+        dashboardId={dashboardId}
+        hideParameters={hideParameters}
+      />
+    );
+  }
 
   if (!hasVisibleParameters) {
     return null;
@@ -56,7 +67,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <Dashboard.ParametersList />
+            <ParametersList />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -79,7 +90,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <Dashboard.ParametersList />
+          <ParametersList />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>

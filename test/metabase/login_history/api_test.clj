@@ -5,7 +5,8 @@
    [metabase.request.util :as req.util]
    [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,24 +45,24 @@
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "52.206.149.9"}
-                               ;; this one shouldn't show up because it's from a different User
+                     ;; this one shouldn't show up because it's from a different User
                      :model/LoginHistory _    {:timestamp          #t "2021-03-17T19:00Z"
                                                :user_id            (mt/user->id :rasta)
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "52.206.149.9"}]
         ;; Mock geocoding to avoid external GeoJS dependency
-        (with-redefs [req.util/geocode-ip-addresses
-                      (fn [ip-addresses]
-                        (into {}
-                              (for [ip ip-addresses]
-                                [ip (case ip
-                                      "185.233.100.23" {:description "Paris, France"
-                                                        :timezone    (t/zone-id "Europe/Paris")}
-                                      "52.206.149.9"   {:description "Virginia, United States"
-                                                        :timezone    (t/zone-id "America/New_York")}
-                                      {:description "Unknown location"
-                                       :timezone    nil})])))]
+        (mt/with-dynamic-fn-redefs [req.util/geocode-ip-addresses
+                                    (fn [ip-addresses]
+                                      (into {}
+                                            (for [ip ip-addresses]
+                                              [ip (case ip
+                                                    "185.233.100.23" {:description "Paris, France"
+                                                                      :timezone    (t/zone-id "Europe/Paris")}
+                                                    "52.206.149.9"   {:description "Virginia, United States"
+                                                                      :timezone    (t/zone-id "America/New_York")}
+                                                    {:description "Unknown location"
+                                                     :timezone    nil})])))]
           (is (malli= [:cat
                        ;; localhost ipv6
                        [:map
@@ -96,3 +97,35 @@
                         [:location           [:= "Virginia, United States"]]
                         [:timezone           [:= "ET"]]]]
                       (mt/client session-key :get 200 "login-history/current"))))))))
+
+(deftest login-history-active-means-live-test
+  (testing "GET /api/login-history/current: `active` is whether the login's session is still live, not whether its row
+            exists"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [session! (fn [& {:as extra}]
+                       (let [id (session/generate-session-id)]
+                         (t2/insert! (t2/table-name :model/Session)
+                                     (merge {:id         id
+                                             :key_hashed (session/hash-session-key (session/generate-session-key))
+                                             :user_id    user-id
+                                             :created_at :%now}
+                                            extra))
+                         id))
+            login!   (fn [session-id ip]
+                       (t2/insert! :model/LoginHistory {:user_id            user-id
+                                                        :session_id         session-id
+                                                        :device_id          (str (random-uuid))
+                                                        :device_description windows-user-agent
+                                                        :ip_address         ip}))]
+        (login! (session! :key_hashed nil :ended_at :%now :end_reason "admin") "10.0.0.1")
+        (login! (session! :expires_at (t/minus (t/instant) (t/minutes 1))) "10.0.0.2")
+        (login! (session!) "10.0.0.3")
+        (login! nil "10.0.0.4")
+        (mt/with-dynamic-fn-redefs [req.util/geocode-ip-addresses
+                                    (fn [ips] (zipmap ips (repeat {:description "Somewhere" :timezone nil})))]
+          (is (= {"10.0.0.1" false   ; revoked: the row is kept, but the session is not live
+                  "10.0.0.2" false   ; expired, whether or not the sweep has recorded it
+                  "10.0.0.3" true
+                  "10.0.0.4" false}  ; the session row is gone
+                 (into {} (map (juxt :ip_address :active))
+                       (mt/user-http-request user-id :get 200 "login-history/current")))))))))

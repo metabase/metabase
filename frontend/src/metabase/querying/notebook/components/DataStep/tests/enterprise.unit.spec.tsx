@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
-function setup(opts: SetupOpts = {}) {
+async function setup(opts: SetupOpts = {}) {
   return baseSetup({
     enterprisePlugins: ["embedding"],
     ...opts,
@@ -14,19 +15,28 @@ function setup(opts: SetupOpts = {}) {
 
 describe("DataStep", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
     // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
+    // position fields are zeroed so floating-ui (Mantine popovers) does not
+    // compute a `NaN` offset from the otherwise-undefined `top`/`left`.
+    HTMLElement.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+      height: 1,
+      width: 1,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      x: 0,
+      y: 0,
+    });
   });
 
   afterAll(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
   });
@@ -38,7 +48,7 @@ describe("DataStep", () => {
       });
 
       it("should not show the tooltip", async () => {
-        setup({ isEmbeddingSdk: true });
+        await setup({ isEmbeddingSdk: true });
 
         await userEvent.hover(await screen.findByText("Orders"));
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -47,7 +57,7 @@ describe("DataStep", () => {
       it.each([{ metaKey: true }, { ctrlKey: true }])(
         "meta/ctrl click should not open the data source",
         async (clickConfig) => {
-          const { mockWindowOpen } = setup({
+          const { mockWindowOpen } = await setup({
             isEmbeddingSdk: true,
           });
 
@@ -61,7 +71,7 @@ describe("DataStep", () => {
       );
 
       it("middle click should not open the data source", async () => {
-        const { mockWindowOpen } = setup({
+        const { mockWindowOpen } = await setup({
           isEmbeddingSdk: true,
         });
 

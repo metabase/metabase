@@ -5,14 +5,12 @@ import {
   getCustomPluginIdentifier,
   loadCustomVizPlugin,
 } from "metabase-enterprise/custom_viz/custom-viz-plugins";
-import type { RowValues, VisualizationDisplay } from "metabase-types/api";
+import type { RowValues } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 export const PLUGIN_BASE_URL = "/custom-viz-fixtures/calendar-heatmap";
 export const PLUGIN_IDENTIFIER = "calendar-heatmap";
-export const HEATMAP_DISPLAY = getCustomPluginIdentifier(
-  PLUGIN_IDENTIFIER,
-) as VisualizationDisplay;
+export const HEATMAP_DISPLAY = getCustomPluginIdentifier(PLUGIN_IDENTIFIER);
 
 export const HEATMAP_COLS = [
   createMockColumn(DateTimeColumn({ name: "date", display_name: "Date" })),
@@ -57,14 +55,22 @@ export function useHeatmapPlugin() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    loadCustomVizPlugin({
-      id: 1,
-      bundle_hash: "dev",
-      bundle_url: `${PLUGIN_BASE_URL}/index.js`,
-      display_name: "Calendar Heatmap",
-      identifier: PLUGIN_IDENTIFIER,
-      icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
-    }).then(() => {
+    loadCustomVizPlugin(
+      {
+        id: 1,
+        bundle_hash: "dev",
+        bundle_url: `${PLUGIN_BASE_URL}/index.js`,
+        display_name: "Calendar Heatmap",
+        identifier: PLUGIN_IDENTIFIER,
+        icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
+        warnings: [],
+      },
+      {
+        // Storybook has no backend for the sandbox-host endpoint and no strict
+        // parent CSP, so use about:blank instead of the iframe-src sandbox.
+        sandboxMode: "blank",
+      },
+    ).then(() => {
       if (!cancelled) {
         setReady(true);
       }

@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import {
-  describeQueryStage,
-  getInfoStageIndex,
-} from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/utils";
+import { describeQueryStage, getInfoStageIndex } from "metabase/query_builder";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -45,7 +42,7 @@ export function McpQuestionTitle() {
   }
 
   return (
-    <Text fw={700} fz="h3" px="md" py="sm" truncate>
+    <Text fw={700} truncate>
       {title}
     </Text>
   );

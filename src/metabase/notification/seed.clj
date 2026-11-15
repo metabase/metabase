@@ -3,6 +3,7 @@
   No-op if none of the notifications are changed.
   If a notification is changed, it will be replaced with a new one."
   (:require
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -60,11 +61,10 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                          :path           "metabase/channel/email/new_user_invite.hbs"
+                                                          :path           "new_user_invite"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
-
           ;; alert new confirmation
           {:internal_id   "system-event/alert-new-confirmation"
            :active        true
@@ -78,11 +78,10 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "You set up an alert"
-                                                          :path "metabase/channel/email/notification_card_new_confirmation.hbs"
+                                                          :path "notification_card_new_confirmation"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
-
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"
            :active        true
@@ -96,13 +95,12 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "Your Slack connection stopped working"
-                                                          :path "metabase/channel/email/slack_token_error.hbs"
+                                                          :path "slack_token_error"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
                                             :permissions_group_id (:id (perms/admin-group))}]}]}
-
           ;; new comment appeared
           {:internal_id   "system-event/comment-created"
            :active        true
@@ -116,11 +114,10 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "Comment on {{payload.event_info.entity_title}}"
-                                                          :path           "metabase/channel/email/comment_created.hbs"
+                                                          :path           "comment_created"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.email}}"}}]}]}
-
           ;; support access grant created
           {:internal_id "system-event/support-access-grant-created"
            :active true
@@ -134,12 +131,12 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "Support Access Grant Created"
-                                            :path "metabase/channel/email/support_access_grant.hbs"
+                                            :path "support_access_grant"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
-
-          ;; transform job failed
+          ;; an individual transform within a job failed — notifies the transform's last
+          ;; editor / creator (see metabase.transforms.jobs/notify-transform-failures)
           {:internal_id "system-event/transform-failed"
            :active true
            :payload_type :notification/system-event
@@ -152,16 +149,50 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "The job \"{{payload.event_info.job_name}}\" had failures"
-                                            :path "metabase/channel/email/transform_failed.hbs"
+                                            :path "transform_failed"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
-                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
+                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}
+          ;; DISABLED: replaced by digest
+          {:internal_id "system-event/transform-job-failed"
+           :active false
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/transform-job-failed}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Transform Job Failed email template"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "The job \"{{payload.event_info.job_name}}\" had failures"
+                                            :path "transform_failed"
+                                            :recipient-type "bcc"}}
+                       :recipients [{:type :notification-recipient/group
+                                     :permissions_group_id (:id (perms/admin-group))}]}]}
+          ;; digest of cron transform job failures
+          {:internal_id   "system-event/transform-failure-digest"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/transform-failure-digest}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Transform Failure Digest email template"
+                                           :channel_type :channel/email
+                                           :details      {:type           "email/handlebars-resource"
+                                                          :subject        "Transform jobs that failed in the last day"
+                                                          :path           "transform_failure_digest"
+                                                          :recipient-type "bcc"}}
+                            :recipients   [{:type                 :notification-recipient/group
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
-  (t2/delete! :model/Notification :internal_id internal-id)
+  (notification.db/delete-notification-by-internal-id! internal-id)
   (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
-    (t2/delete! :model/ChannelTemplate :id [:in template-ids])))
+    (notification.db/delete-channel-templates! template-ids)))
 
 (defn- create-notification!
   [notification]
@@ -169,9 +200,7 @@
                    (if-let [template (:template handler)]
                      (-> handler
                          (dissoc :template)
-                         (assoc :template_id (t2/insert-returning-pk!
-                                              :model/ChannelTemplate
-                                              template)))
+                         (assoc :template_id (notification.db/insert-channel-template! template)))
                      handler))]
     (models.notification/create-notification!
      (dissoc notification :handlers :subscriptions)
@@ -194,11 +223,16 @@
     :else
     :skip))
 
+(defn- hydrate-existing-notification
+  "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
+   so we can migrate on schema changes."
+  [notification]
+  (t2/hydrate notification :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
+
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
-  (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
-                                      models.notification/hydrate-notification)]
-
+  (let [existing-notification (some-> (notification.db/notification-by-internal-id internal_id)
+                                      hydrate-existing-notification)]
     (u/prog1 (action existing-notification row)
       (case <>
         :create

@@ -1,0 +1,99 @@
+.nav {
+  border-right: 1px solid var(--mb-color-border-neutral);
+  overflow: auto;
+}
+
+.opened {
+  width: 300px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  transition: opacity 400ms ease;
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-background_surface-selected);
+  }
+}
+
+.tab,
+.toggle {
+  color: var(--mb-color-text-primary);
+  position: relative;
+  transition: opacity 400ms ease;
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-core-brand);
+
+    .icon {
+      color: inherit;
+    }
+  }
+}
+
+.logoWrapper {
+  position: relative;
+
+  .toggle {
+    left: 50%;
+    opacity: 0;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  &.navbarClosed {
+    &:hover,
+    &:focus-within {
+      .toggle {
+        opacity: 1;
+      }
+
+      .logo {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+.groupHeading {
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+}
+
+.badgeOverlay {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+}
+
+.upperGroup {
+  overflow-y: auto;
+
+  /* keep the 4px focus ring (2px outline + 2px offset) inside the scrollport */
+  padding: 4px;
+  margin: -4px;
+}

@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
 import {
+  useIsFullPageMetabot,
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
@@ -22,7 +23,8 @@ export function MetabotAppBarButton({
 }: MetabotAppBarButtonProps) {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
+  const isFullPageMetabot = useIsFullPageMetabot();
 
   if (!hasMetabotAccess) {
     return null;
@@ -42,15 +44,10 @@ export function MetabotAppBarButton({
     <Tooltip label={label}>
       <ActionIcon
         className={className}
-        variant="subtle"
-        c="text-primary"
-        bd="1px solid var(--mb-color-border)"
-        p="sm"
-        h="2.25rem"
-        w="2.25rem"
         aria-label={label}
         onClick={handleClick}
         {...rest}
+        disabled={isFullPageMetabot}
       >
         <MetabotIcon />
       </ActionIcon>

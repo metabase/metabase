@@ -27,14 +27,15 @@
 
 (def ^:private ^:const complexity->char-type->min
   "Minimum counts of each class of character a password should have for a given password complexity level."
-  {:weak   {:total   6} ; total here effectively means the same thing as a minimum password length
-   :normal {:total   6
-            :digit   1}
-   :strong {:total   8
-            :lower   2
-            :upper   2
-            :digit   1
-            :special 1}})
+  {:weak          {:total 6} ; total here effectively means the same thing as a minimum password length
+   :normal        {:total 6
+                   :digit 1}
+   :strong        {:total 8
+                   :lower   2
+                   :upper   2
+                   :digit   1
+                   :special 1}
+   :strong-enough {:total 15}})
 
 (defn- password-has-char-counts?
   "Check that PASSWORD satisfies the minimum count requirements for each character class.
@@ -120,3 +121,11 @@ the result of previously hashing that password."
   ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
   (boolean (u/ignore-exceptions
              (bcrypt-verify (str salt password) hashed-password))))
+
+(def ^:private secret-that-should-never-match (str (random-uuid)))
+(def ^:private hash-that-should-never-match (hash-bcrypt "password"))
+
+(defn do-useless-hash
+  "Runs one bcrypt check that always fails, so a request with nothing to check takes as long as one that has."
+  []
+  (verify-password secret-that-should-never-match "" hash-that-should-never-match))

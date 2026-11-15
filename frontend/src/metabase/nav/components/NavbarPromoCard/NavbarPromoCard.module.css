@@ -1,0 +1,15 @@
+.IconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
+.DismissIconButtonWrapper {
+  composes: textSecondaryHoverPrimary from "style";
+}
+
+.Body {
+  color: var(--mb-color-text-secondary);
+}

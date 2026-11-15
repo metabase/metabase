@@ -1,12 +1,16 @@
 import fetchMock from "fetch-mock";
 
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   CardId,
   CardQueryMetadata,
+  DashboardId,
   Dataset,
+  FieldValue,
   GetPublicCard,
+  ParameterId,
+  ParameterValues,
+  TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -27,6 +31,14 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, [], {
     name: `card-${card.id}-series`,
   });
+}
+
+export function setupDeleteCardEndpoint(cardId: CardId) {
+  fetchMock.delete(`path:/api/card/${cardId}`, 204);
+}
+
+export function setupUpdateCardEndpointWithError(cardId: CardId) {
+  fetchMock.put(`path:/api/card/${cardId}`, { status: 500, body: {} });
 }
 
 export function setupCardByEntityIdEndpoints(card: Card) {
@@ -73,6 +85,17 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
   });
 }
 
+export function setupCardsForTableEndpoint(
+  tableId: TableId,
+  cards: Card[] = [],
+) {
+  fetchMock.get({
+    url: "path:/api/card",
+    query: { f: "table", model_id: tableId },
+    response: cards,
+  });
+}
+
 export function setupCardCreateEndpoint() {
   fetchMock.post(
     "path:/api/card",
@@ -89,9 +112,7 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
     status: 403,
     body: PERMISSION_ERROR,
   });
-
-  const virtualTableId = getQuestionVirtualTableId(card.id);
-  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, {
     status: 403,
     body: PERMISSION_ERROR,
   });
@@ -101,8 +122,73 @@ export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
   cards.forEach((card) => setupUnauthorizedCardEndpoints(card));
 }
 
-export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
-  fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+/**
+ * Makes the card's own endpoints (the card, its query metadata, and running its
+ * query) all return 403, i.e. a card the current user has no access to at all.
+ */
+export function setupForbiddenCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+}
+
+/**
+ * Makes the card's own endpoints return 404, i.e. a card that was permanently
+ * deleted.
+ */
+export function setupNotFoundCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
+type SetupCardQueryEndpointsOpts = {
+  /**
+   * Return the request's parameters in `json_query.parameters`, as the real
+   * API does. The query builder compares them with the next-run parameters.
+   */
+  echoParameters?: boolean;
+};
+
+export function setupCardQueryEndpoints(
+  card: Card,
+  dataset: Dataset,
+  { echoParameters = false }: SetupCardQueryEndpointsOpts = {},
+) {
+  if (!echoParameters) {
+    fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+    return;
+  }
+
+  fetchMock.post(`path:/api/card/${card.id}/query`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body ?? "{}"));
+    const parameters =
+      typeof body === "object" && body != null && "parameters" in body
+        ? body.parameters
+        : [];
+    return {
+      ...dataset,
+      json_query: { ...dataset.json_query, parameters },
+    };
+  });
 }
 
 export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
@@ -121,4 +207,67 @@ export function setupCardPublicLinkEndpoints(cardId: CardId) {
 
 export function setupListPublicCardsEndpoint(publicCards: GetPublicCard[]) {
   fetchMock.get("path:/api/card/public", publicCards);
+}
+
+export function setupCardDashboardsEndpoint(
+  cardId: CardId,
+  dashboards: { id: DashboardId; name: string; enable_embedding: boolean }[],
+) {
+  fetchMock.get(`path:/api/card/${cardId}/dashboards`, dashboards, {
+    name: `card-${cardId}-dashboards`,
+  });
+}
+
+export function setupCardParameterValuesEndpoint({
+  cardId,
+  parameterId,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/values`,
+    parameterValues,
+  );
+}
+
+export function setupCardParameterRemappingEndpoint({
+  cardId,
+  parameterId,
+  remappings,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  remappings: FieldValue[];
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/remapping`,
+    ({ url }) => {
+      const value = new URL(url).searchParams.get("value");
+      return (
+        remappings.find(
+          ([remappedValue]) => String(remappedValue) === value,
+        ) ?? [value]
+      );
+    },
+  );
+}
+
+export function setupCardParameterSearchEndpoint({
+  cardId,
+  parameterId,
+  query,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  query: string;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/search/${encodeURIComponent(query)}`,
+    parameterValues,
+  );
 }

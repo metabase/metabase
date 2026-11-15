@@ -1,10 +1,9 @@
 ---
 title: Druid
+summary: Connect Metabase to Druid, with every connection and sync setting explained.
 ---
 
 # Druid
-
-> Prefer the Druid JDBC connection.
 
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
@@ -34,15 +33,11 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 ### Allow unfolding of JSON columns
 
-> Only available for the Druid JDBC connection.
-
 This enables unfolding of JSON columns into their component fields.
 
-See [JSON unfolding](../../data-modeling/json-unfolding.md).
+See [JSON unfolding](../../data-modeling/metadata/json-unfolding.md).
 
 ### Authentication
-
-> Only available for the Druid JDBC connection.
 
 Toggle on to enable basic authentication with a username and password.
 
@@ -50,7 +45,7 @@ Toggle on to enable basic authentication with a username and password.
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -68,10 +63,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
-
-There aren't (yet) any model features available for Druid.
-
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
@@ -85,6 +76,6 @@ See [Danger Zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

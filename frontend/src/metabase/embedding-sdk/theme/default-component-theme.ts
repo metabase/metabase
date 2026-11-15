@@ -1,10 +1,8 @@
-import { merge } from "icepick";
-
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { MantineThemeOverride } from "metabase/ui";
 import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
-import type { DeepPartial } from "metabase/utils/types";
+import { deepMerge } from "metabase/utils/deep-merge";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -35,9 +33,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     breadcrumbs: {
       expandButton: {
         textColor: "var(--mb-color-text-secondary)",
-        backgroundColor: "var(--mb-color-background-secondary)",
+        backgroundColor: "var(--mb-color-background_page-secondary)",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
     },
     emptyContent: {
@@ -54,9 +52,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-background-primary)",
+    backgroundColor: "var(--mb-color-background_page-primary)",
     card: {
-      backgroundColor: "var(--mb-color-background-primary)",
+      backgroundColor: "var(--mb-color-background_page-primary)",
     },
   },
   question: {
@@ -69,7 +67,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
-      textColor: "var(--mb-color-brand)",
+      textColor: "var(--mb-color-core-brand)",
     },
   },
   pivotTable: {
@@ -78,7 +76,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
+      backgroundColor: "text-disabled", // TODO: should it be "background_page-tertiary-inverse" ?
     },
   },
   cartesian: {
@@ -88,7 +86,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     splitLine: {
       lineStyle: {
-        color: "var(--mb-color-cartesian-grid-line)",
+        color: "var(--mb-color-chart-axis)",
       },
     },
   },
@@ -101,37 +99,35 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
  * Default theme options, with overrides specific to the
  * Embedding SDK environment to provide nicer defaults.
  */
-export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
-  MetabaseComponentTheme,
-  DeepPartial<MetabaseComponentTheme>
->(DEFAULT_METABASE_COMPONENT_THEME, {
-  table: {
-    cell: {
-      fontSize: FONT_SIZES.tableCell.em,
-    },
-  },
-  pivotTable: {
-    cell: {
-      fontSize: FONT_SIZES.pivotTableCell.em,
-    },
-  },
-  cartesian: {
-    padding: "0.5rem 1rem",
-    label: { fontSize: FONT_SIZES.label.em },
-    goalLine: {
-      label: { fontSize: FONT_SIZES.goalLabel.em },
-    },
-  },
-  collectionBrowser: {
-    breadcrumbs: {
-      expandButton: {
-        backgroundColor: "transparent",
-        hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
+export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme =
+  deepMerge(DEFAULT_METABASE_COMPONENT_THEME, {
+    table: {
+      cell: {
+        fontSize: FONT_SIZES.tableCell.em,
       },
     },
-  },
-});
+    pivotTable: {
+      cell: {
+        fontSize: FONT_SIZES.pivotTableCell.em,
+      },
+    },
+    cartesian: {
+      padding: "0.5rem 1rem",
+      label: { fontSize: FONT_SIZES.label.em },
+      goalLine: {
+        label: { fontSize: FONT_SIZES.goalLabel.em },
+      },
+    },
+    collectionBrowser: {
+      breadcrumbs: {
+        expandButton: {
+          backgroundColor: "transparent",
+          hoverTextColor: "var(--mb-color-text-primary-inverse)",
+          hoverBackgroundColor: "var(--mb-color-core-brand)",
+        },
+      },
+    },
+  });
 
 // What's up with the commented `satisfies`?
 // Mantine docs says they don't typecheck default props because of performance reasons.
@@ -148,6 +144,7 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
         },
       },
     },
+    // Also covers `Modal`, which is built from the `Root` parts
     ModalRoot: {
       defaultProps: {
         withinPortal: true,
@@ -155,14 +152,6 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
           target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
       }, // satisfies Partial<ModalRootProps>,
-    },
-    Modal: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: {
-          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-        },
-      }, // satisfies Partial<ModalProps>,
     },
     Popover: {
       defaultProps: {

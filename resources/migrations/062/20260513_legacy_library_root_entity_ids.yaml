@@ -1,0 +1,204 @@
+## Backfill canonical entity IDs for legacy Library root collections
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.legacy-library-root-entity-id-old-id-cleanup
+      author: andsalves
+      comment: >-
+        Delete old changeset rows for the Library Data and Library Metrics entity ID backfills. Those changesets were
+        re-id'd after patching their MySQL/MariaDB SQL to resolve a collation mismatch issue, @see #75458.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v62.2026-05-13T12:00:01',
+                'v62.2026-05-13T12:00:02'
+              ) AND filename = 'migrations/062_update_migrations.yaml';
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.legacy-library-root-entity-id-updated-id-cleanup
+      author: andsalves
+      comment: >-
+        Delete the first updated changeset rows for the Library Data and Library Metrics entity ID backfills. Those
+        changesets were re-id'd after patching their MySQL/MariaDB SQL to avoid hard-coded utf8mb4 collations, @see
+        #76510.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v62.2026-05-13T12:00:01-updated',
+                'v62.2026-05-13T12:00:02-updated'
+              ) AND filename = 'migrations/062_update_migrations.yaml';
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T11:59:58
+      author: andsalves
+      comment: Backfill type column value for Library collections
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET type = 'library'
+              WHERE entity_id = 'librarylibrarylibrary' AND (type IS NULL OR type <> 'library');
+
+              UPDATE collection
+              SET type = 'library-data'
+              WHERE entity_id = 'librarylibrarydatadat' AND (type IS NULL OR type <> 'library-data');
+
+              UPDATE collection
+              SET type = 'library-metrics'
+              WHERE entity_id = 'librarylibrarymetrics' AND (type IS NULL OR type <> 'library-metrics');
+      rollback:
+        - empty: {}
+  - changeSet:
+      id: v62.2026-05-13T11:59:59
+      author: andsalves
+      comment: Make sure the root collection with library type and canonical entity_id is unique
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET type = NULL
+              WHERE type = 'library' AND location = '/' AND entity_id != 'librarylibrarylibrary'
+                AND EXISTS (
+                  SELECT 1 FROM (
+                    SELECT entity_id FROM collection WHERE entity_id = 'librarylibrarylibrary'
+                  ) existing
+                );
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T12:00:00
+      author: andsalves
+      comment: Backfill canonical entity_id for legacy Library root collection
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET entity_id = 'librarylibrarylibrary'
+              WHERE type = 'library' AND location = '/'
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T12:00:01-updated-2
+      author: andsalves
+      comment: Backfill canonical entity_id for legacy Library Data section
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE collection
+              SET entity_id = 'librarylibrarydatadat'
+              WHERE type = 'library-data'
+                AND location IN (
+                  SELECT loc FROM (
+                    SELECT '/' || CAST(id AS VARCHAR) || '/' AS loc
+                    FROM collection
+                    WHERE type = 'library' AND location = '/'
+                  ) lib_loc
+                )
+                AND 1 = (
+                  SELECT cnt FROM (
+                    SELECT COUNT(*) AS cnt
+                    FROM collection child
+                    WHERE child.type = 'library-data'
+                      AND child.location IN (
+                        SELECT '/' || CAST(lib.id AS VARCHAR) || '/'
+                        FROM collection lib
+                        WHERE lib.type = 'library' AND lib.location = '/'
+                      )
+                  ) x
+                )
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection
+              SET entity_id = 'librarylibrarydatadat'
+              WHERE type = 'library-data'
+                AND CAST(location AS BINARY) IN (
+                  SELECT loc FROM (
+                    SELECT CAST(CONCAT('/', CAST(id AS CHAR), '/') AS BINARY) AS loc
+                    FROM collection
+                    WHERE type = 'library' AND location = '/'
+                  ) lib_loc
+                )
+                AND 1 = (
+                  SELECT cnt FROM (
+                    SELECT COUNT(*) AS cnt
+                    FROM collection child
+                    WHERE child.type = 'library-data'
+                      AND CAST(child.location AS BINARY) IN (
+                        SELECT CAST(CONCAT('/', CAST(lib.id AS CHAR), '/') AS BINARY)
+                        FROM collection lib
+                        WHERE lib.type = 'library' AND lib.location = '/'
+                      )
+                  ) x
+                )
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T12:00:02-updated-2
+      author: andsalves
+      comment: Backfill canonical entity_id for legacy Library Metrics section
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE collection
+              SET entity_id = 'librarylibrarymetrics'
+              WHERE type = 'library-metrics'
+                AND location IN (
+                  SELECT loc FROM (
+                    SELECT '/' || CAST(id AS VARCHAR) || '/' AS loc
+                    FROM collection
+                    WHERE type = 'library' AND location = '/'
+                  ) lib_loc
+                )
+                AND 1 = (
+                  SELECT cnt FROM (
+                    SELECT COUNT(*) AS cnt
+                    FROM collection child
+                    WHERE child.type = 'library-metrics'
+                      AND child.location IN (
+                        SELECT '/' || CAST(lib.id AS VARCHAR) || '/'
+                        FROM collection lib
+                        WHERE lib.type = 'library' AND lib.location = '/'
+                      )
+                  ) x
+                )
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection
+              SET entity_id = 'librarylibrarymetrics'
+              WHERE type = 'library-metrics'
+                AND CAST(location AS BINARY) IN (
+                  SELECT loc FROM (
+                    SELECT CAST(CONCAT('/', CAST(id AS CHAR), '/') AS BINARY) AS loc
+                    FROM collection
+                    WHERE type = 'library' AND location = '/'
+                  ) lib_loc
+                )
+                AND 1 = (
+                  SELECT cnt FROM (
+                    SELECT COUNT(*) AS cnt
+                    FROM collection child
+                    WHERE child.type = 'library-metrics'
+                      AND CAST(child.location AS BINARY) IN (
+                        SELECT CAST(CONCAT('/', CAST(lib.id AS CHAR), '/') AS BINARY)
+                        FROM collection lib
+                        WHERE lib.type = 'library' AND lib.location = '/'
+                      )
+                  ) x
+                )
+      rollback:
+        - empty: {}

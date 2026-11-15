@@ -14,6 +14,7 @@ defineGlobalDependencies();
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
+export { DataApp, type DataAppProps } from "./components/public/DataApp";
 export { EditableDashboard } from "./components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";
@@ -29,9 +30,33 @@ export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
-
+export { useAction } from "./hooks/public/use-action";
+export type {
+  ActionExecuteError,
+  ActionKind,
+  ActionResultForCreate,
+  ActionResultForDelete,
+  ActionResultForKind,
+  ActionResultForSql,
+  ActionResultForUpdate,
+  AnyActionResult,
+  UseActionResult,
+} from "./hooks/public/use-action";
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
+
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./components/public/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./components/public/DataAppLink";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./hooks/public/use-data-app-location";
 
 export {
   type CollectionBrowserProps,
@@ -59,6 +84,7 @@ export {
   type InteractiveQuestionQuestionSettingsProps,
   type InteractiveQuestionQuestionSettingsDropdownProps,
   type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionRefreshButtonProps,
   type InteractiveQuestionResetButtonProps,
   type InteractiveQuestionSaveButtonProps,
   type InteractiveQuestionSaveQuestionFormProps,
@@ -77,9 +103,9 @@ export {
 } from "embedding-sdk-bundle/components/public/StaticQuestion";
 export { type MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 
+export type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
 export type {
   CustomDashboardCardMenuItem,
-  DashCardMenuItem,
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   DashboardCardMenu,
@@ -106,6 +132,7 @@ export type {
   MetabaseCollection,
   MetabaseCollectionItem,
   MetabaseDataPointObject,
+  MetabaseQueryObject,
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseEmbeddingColorKeyV2,
@@ -114,6 +141,7 @@ export type {
   MetabaseFontFamily,
   MetabaseGlobalPluginsConfig,
   ProtectedColorKey,
+  MetabaseCard,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
@@ -124,12 +152,17 @@ export type {
   MetabotAgentTextMessage,
   MetabotChartProps,
   MetabotErrorMessage,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotUserTextMessage,
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+  NavigationId,
   ParameterChangeSource,
   ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
+  SdkBrowserCollectionId,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardEntityPublicProps,
@@ -145,7 +178,20 @@ export type {
   SqlParameterChangePayload,
   SdkUserId,
   SqlParameterValues,
+  SdkActionId,
+  SdkActionDefinition,
+  SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types";
+export type {
+  FieldSchema,
+  QueryData,
+  RowValue,
+  SchemaColumn,
+  SchemaJavaScriptType,
+  SchemaRow,
+} from "./hooks/public/data-schema";
+export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
   EmbeddingEntityType,

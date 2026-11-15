@@ -3,10 +3,8 @@ name: E2E Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      specs:
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         type: string
         required: false
         default: ""
@@ -16,50 +14,113 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: e2e_all
+
   e2e-matrix-builder:
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.specs }}
+      test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
-  reset-e2e-test-comment:
-    if: ${{ github.event_name == 'pull_request' }}
+  e2e-snapshots:
+    name: Generate E2E snapshots
+    needs: e2e-matrix-builder
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      MB_EDITION: ee
+      CYPRESS_VIDEO: "false"
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
     steps:
-      - name: Remove test results comment
-        uses: actions/github-script@v7
+      - uses: actions/checkout@v7
         with:
-          script: | # js
-            const { owner, repo } = context.repo;
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: context.issue.number,
-            }).catch(console.error);
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: false
+          openldap: false
+          mocksaml: false
+          postgres: true
+          mysql: true
+          mongo: true
 
-            if (!comments) {
-              return;
-            }
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
-            const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
-            if (comment) {
-              await github.rest.issues.deleteComment({
-                owner,
-                repo,
-                comment_id: comment.id,
-              });
-            }
+      - name: Prepare JDK
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: "25"
+          distribution: "temurin"
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Prepare back-end environment
+        if: steps.prebuilt-cljs.outcome != 'success'
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-snapshots-ee-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            e2e/snapshots/
+            e2e/support/cypress_sample_database.json
+            e2e/support/cypress_sample_instance_data.json
+          if-no-files-found: error
+          overwrite: true
 
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-    if: |
-      !cancelled() && !inputs.skip
+      - e2e-snapshots
+    # Run even if e2e-snapshots fails: each shard then generates its own snapshots. The matrix builder
+    # must succeed, because the strategy below cannot parse a matrix it never produced.
+    if: ${{ !cancelled() && needs.e2e-matrix-builder.result == 'success' && needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -68,6 +129,8 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      test-plan-artifact-id: ${{ needs.e2e-matrix-builder.outputs.test-plan-artifact-id }}
+      snapshots-artifact: e2e-snapshots-ee-${{ github.event.pull_request.head.sha || github.sha }}
       total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
@@ -78,9 +141,9 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             .github
@@ -88,7 +151,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download all timing artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: timing-data-*
           path: timing-files
@@ -98,7 +161,7 @@ jobs:
       - name: Merge split timings
         id: merge
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -129,7 +192,7 @@ jobs:
 
       - name: Upload merged timing files
         if: steps.merge.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: merged-e2e-timings
           path: e2e/support/runTimings.json
@@ -137,24 +200,35 @@ jobs:
 
   e2e-tests-result:
     needs:
+      - gate
+      - e2e-matrix-builder
       - e2e-tests
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+      MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}
+      HAS_TESTS: ${{ needs.e2e-matrix-builder.outputs.hasTests }}
+      GATE_RESULT: ${{ needs.gate.result }}
+      RUN: ${{ needs.gate.outputs.run }}
     steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
-        run: |
-          echo "Didn't run due to conditional filtering"
       - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+          if [ "$GATE_RESULT" != "success" ]; then
+            echo "The test gate failed, so the suite never ran"
+            exit 1
+          elif [ "$RUN" != "true" ]; then
+            echo "Didn't run due to conditional filtering"
+          elif [ "$MATRIX_RESULT" != "success" ]; then
+            echo "E2E matrix builder failed"
+            exit 1
+          elif [ "$HAS_TESTS" = "false" ]; then
+            echo "The plan selected no E2E specs"
+          elif [ "$E2E_TESTS_RESULT" != "success" ]; then
             echo "E2E Tests failed"
             exit 1
+          else
+            echo "E2E Tests passed"
           fi

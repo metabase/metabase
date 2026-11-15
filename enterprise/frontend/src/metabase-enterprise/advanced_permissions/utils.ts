@@ -1,11 +1,14 @@
-import type { EntityId } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
-} from "metabase/admin/permissions/utils/urls";
-import type { GroupId } from "metabase-types/api";
+} from "metabase/permissions";
+import type { Database, GroupId, PermissionEntityId } from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
+
+// for redshift, we impersonate using users, not roles
+export const impersonatesUsers = (database: Database) =>
+  database.engine === "redshift";
 
 export const getImpersonatedDatabaseId = ({
   databaseId,
@@ -22,7 +25,7 @@ export const getImpersonatedDatabaseId = ({
 };
 
 const getDatabaseViewImpersonationModalUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
 ) => {
   const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
@@ -30,7 +33,7 @@ const getDatabaseViewImpersonationModalUrl = (
 };
 
 const getGroupViewImpersonationModalUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
 ) => {
   const baseUrl = getGroupFocusPermissionsUrl(groupId);
@@ -39,7 +42,7 @@ const getGroupViewImpersonationModalUrl = (
 };
 
 export const getEditImpersonationUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
 ) =>

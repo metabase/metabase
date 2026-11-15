@@ -1,36 +1,33 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import NativeQuery, {
+import {
   NATIVE_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/NativeQuery";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
+  CardCreationType,
+  CardDashboardInfo,
   CardDisplayType,
   CardType,
+  Collection,
   CollectionId,
   DashCardId,
-  Dashboard,
   DashboardId,
   DatabaseId,
+  DatasetColumn,
   DatasetData,
   DatasetQuery,
-  Field,
   LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValuesMap,
+  ResultsMetadata,
   TableId,
   UserInfo,
   VisualizationDisplay,
@@ -43,7 +40,7 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
-  metadata?: Metadata;
+  metadata: Lib.JsMetadata;
   parameterValues?: ParameterValuesMap;
   name?: string;
   display?: CardDisplayType;
@@ -74,7 +71,7 @@ class Question {
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
    * need metadata for accessing databases, tables and metrics.
    */
-  _metadata: Metadata;
+  _metadata: Lib.JsMetadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
@@ -90,21 +87,18 @@ class Question {
    * Question constructor
    */
   constructor(
-    card: any,
-    metadata?: Metadata,
+    // This deprecated wrapper is constructed from ~200 call sites with a mix of
+    // saved cards, unsaved/draft cards, and (in tests) partial card mocks, so the
+    // card boundary stays loosely typed. Internally it is treated as a `Card`,
+    // guarding the saved-only fields (id, name, type, ...) where they are read.
+    card: unknown,
+    metadata: Lib.JsMetadata,
     parameterValues?: ParameterValuesMap,
   ) {
-    this._card = card;
-    this._metadata =
-      metadata ||
-      new Metadata({
-        databases: {},
-        tables: {},
-        fields: {},
-        metrics: {},
-        segments: {},
-        questions: {},
-      });
+    // The constructor deliberately accepts loosely typed cards (see above), so
+    // it is asserted to be a `Card` here.
+    this._card = card as Card;
+    this._metadata = metadata;
     this._parameterValues = parameterValues || {};
   }
 
@@ -112,7 +106,7 @@ class Question {
     return new Question(this._card, this._metadata, this._parameterValues);
   }
 
-  metadata(): Metadata {
+  metadata(): Lib.JsMetadata {
     return this._metadata;
   }
 
@@ -134,6 +128,13 @@ class Question {
     return this._card;
   }
 
+  private setDraftCard(card: { [K in keyof Card]?: Card[K] | null }): Question {
+    // Unsaved drafts lack the fields of a saved Card (id, name, ...), and some
+    // setters accept `undefined` for them. The class nevertheless treats
+    // `_card` as a full Card, so the draft shape is asserted here.
+    return this.setCard(card as Card);
+  }
+
   setCard(card: Card): Question {
     const q = this.clone();
     q._card = card;
@@ -141,52 +142,13 @@ class Question {
   }
 
   withoutNameAndId() {
-    return this.setCard(
-      chain(this.card())
-        .dissoc("id")
-        .dissoc("name")
-        .dissoc("description")
-        .value(),
-    );
-  }
-
-  /**
-   * A question contains either a:
-   * - StructuredQuery for queries written in MBQL
-   * - NativeQuery for queries written in data source's native query language
-   *
-   * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
-   */
-  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
-    const datasetQuery = this._card.dataset_query;
-
-    if (this.isNative()) {
-      return new NativeQuery(this, datasetQuery);
-    }
-
-    const isVirtualDashcard = !this._card.id;
-    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-    if (!isVirtualDashcard) {
-      console.warn("Unknown query type: " + datasetQuery?.type);
-    }
-  });
-
-  legacyNativeQuery(): NativeQuery | undefined {
-    return this._legacyNativeQuery();
-  }
-
-  /**
-   * Returns a new Question object with an updated query.
-   * The query is saved to the `dataset_query` field of the Card object.
-   */
-  setLegacyQuery(newQuery: NativeQuery): Question {
-    if (this._card.dataset_query !== newQuery.datasetQuery()) {
-      return this.setCard(
-        assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
-      );
-    }
-
-    return this;
+    const {
+      id: _id,
+      name: _name,
+      description: _description,
+      ...card
+    } = this.card();
+    return this.setDraftCard(card);
   }
 
   datasetQuery(): DatasetQuery {
@@ -194,7 +156,7 @@ class Question {
   }
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
-    return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+    return this.setCard({ ...this.card(), dataset_query: newDatasetQuery });
   }
 
   isNative() {
@@ -213,11 +175,14 @@ class Question {
    * The visualization type of the question
    */
   display(): CardDisplayType {
-    return this._card && this._card.display;
+    // `_card.display` is typed `VisualizationDisplay` because `Card` reuses
+    // `UnsavedCard`, but a Question is never a virtual dashcard, so its display
+    // is always a renderable `CardDisplayType`.
+    return (this._card && this._card.display) as CardDisplayType;
   }
 
   setDisplay(display: VisualizationDisplay) {
-    return this.setCard(assoc(this.card(), "display", display));
+    return this.setCard({ ...this.card(), display });
   }
 
   type(): CardType {
@@ -225,25 +190,26 @@ class Question {
   }
 
   setType(type: CardType) {
-    return this.setCard(assoc(this.card(), "type", type));
+    return this.setCard({ ...this.card(), type });
   }
 
   isPersisted() {
     return this._card && this._card.persisted;
   }
 
-  setPersisted(isPersisted) {
-    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+  setPersisted(isPersisted: boolean) {
+    return this.setCard({ ...this.card(), persisted: isPersisted });
   }
 
   setPinned(pinned: boolean) {
-    return this.setCard(
-      assoc(this.card(), "collection_position", pinned ? 1 : null),
-    );
+    return this.setCard({
+      ...this.card(),
+      collection_position: pinned ? 1 : null,
+    });
   }
 
   setArchived(archived: boolean) {
-    return this.setCard(assoc(this.card(), "archived", archived));
+    return this.setCard({ ...this.card(), archived });
   }
 
   // locking the display prevents auto-selection
@@ -252,11 +218,11 @@ class Question {
   }
 
   setDisplayIsLocked(locked: boolean): Question {
-    return this.setCard(assoc(this.card(), "displayIsLocked", locked));
+    return this.setCard({ ...this.card(), displayIsLocked: locked });
   }
 
   displayIsLocked(): boolean {
-    return this._card && this._card.displayIsLocked;
+    return this._card?.displayIsLocked ?? false;
   }
 
   maybeResetDisplay(
@@ -285,7 +251,7 @@ class Question {
   }
 
   // Switches display to scalar if the data is 1 row x 1 column
-  private _maybeSwitchToScalar({ rows, cols }): Question {
+  private _maybeSwitchToScalar({ rows, cols }: DatasetData): Question {
     const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
     const isOneByOne = rows.length === 1 && cols.length === 1;
     if (!isScalar && isOneByOne && !this.displayIsLocked()) {
@@ -309,20 +275,24 @@ class Question {
     return (this._card && this._card.visualization_settings) || {};
   }
 
-  setting(settingName, defaultValue = undefined) {
+  setting(settingName: keyof VisualizationSettings, defaultValue = undefined) {
+    // `VisualizationSettings` has an `any` index signature and callers (e.g. pivot-options)
+    // rely on the resulting loose type, so tightening it here would ripple into them
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed index signature
     const value = this.settings()[settingName];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- FIXME: any-typed index signature
     return value === undefined ? defaultValue : value;
   }
 
   setSettings(settings: VisualizationSettings) {
-    return this.setCard(assoc(this.card(), "visualization_settings", settings));
+    return this.setCard({ ...this.card(), visualization_settings: settings });
   }
 
   updateSettings(settings: Partial<VisualizationSettings>) {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  creationType(): string {
+  creationType(): CardCreationType | undefined {
     return this.card().creationType;
   }
 
@@ -337,10 +307,12 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative
-      ? this.legacyNativeQuery().canRun()
-      : Lib.canRun(this.query(), this.type());
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    return (
+      Lib.canRun(query, this.type()) &&
+      (!isNative || Lib.validateTemplateTags(query).length === 0)
+    );
   }
 
   canWrite(): boolean {
@@ -348,33 +320,18 @@ class Question {
   }
 
   canWriteActions(): boolean {
-    const database = this.database();
+    const databaseInfo = Lib.databaseDisplayInfo(this.query());
 
     return (
       this.canWrite() &&
-      database != null &&
-      database.canWrite() &&
-      database.hasActionsEnabled()
+      databaseInfo != null &&
+      databaseInfo.nativePermissions === "write" &&
+      databaseInfo.isActionsEnabled
     );
   }
 
-  supportsImplicitActions(): boolean {
-    const query = this.query();
-
-    // we want to check the metadata for the underlying table, not the model
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = this.metadata().table(sourceTableId);
-
-    const hasSinglePk =
-      table?.fields?.filter((field) => field.isPK())?.length === 1;
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
-  }
-
   canAutoRun(): boolean {
-    const db = this.database();
-    return (db && db.auto_run_queries) || false;
+    return Lib.databaseDisplayInfo(this.query())?.autoRunQueries ?? false;
   }
 
   /**
@@ -390,17 +347,16 @@ class Question {
     }
 
     const metadata = this.metadataProvider();
-    const tableId = getQuestionVirtualTableId(this.id());
-    const table = Lib.tableOrCardMetadata(metadata, tableId);
-    if (!table) {
+    const card = Lib.cardMetadata(metadata, this.id());
+    if (!card) {
       return this;
     }
 
-    const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    const query = Lib.queryFromTableOrCardMetadata(metadata, card);
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
+  composeQuestionAdhoc(options: { display?: CardDisplayType } = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -424,11 +380,11 @@ class Question {
   }
 
   setDisplayName(name: string | null | undefined) {
-    return this.setCard(assoc(this.card(), "name", name));
+    return this.setDraftCard({ ...this.card(), name });
   }
 
   collection(): Collection | null | undefined {
-    return this?._card?.collection;
+    return this._card?.collection;
   }
 
   collectionId(): CollectionId | null | undefined {
@@ -436,11 +392,11 @@ class Question {
   }
 
   setCollectionId(collectionId: CollectionId | null | undefined) {
-    return this.setCard(assoc(this.card(), "collection_id", collectionId));
+    return this.setDraftCard({ ...this.card(), collection_id: collectionId });
   }
 
-  dashboard(): Dashboard | undefined {
-    return this._card.dashboard;
+  dashboard(): CardDashboardInfo | null {
+    return this._card.dashboard ?? null;
   }
 
   dashboardId(): DashboardId | null {
@@ -451,12 +407,12 @@ class Question {
     return this._card?.dashboard?.name ?? undefined;
   }
 
-  dashboardCount(): number {
+  dashboardCount(): number | null {
     return this._card.dashboard_count;
   }
 
   setDashboardId(dashboardId: DashboardId | null | undefined) {
-    return this.setCard(assoc(this.card(), "dashboard_id", dashboardId));
+    return this.setDraftCard({ ...this.card(), dashboard_id: dashboardId });
   }
 
   id(): number {
@@ -464,13 +420,12 @@ class Question {
   }
 
   setId(id: number | undefined): Question {
-    return this.setCard(assoc(this.card(), "id", id));
+    return this.setDraftCard({ ...this.card(), id });
   }
 
   markDirty(): Question {
-    return this.setCard(
-      dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
-    );
+    const { id: _id, ...card } = this.card();
+    return this.setDraftCard({ ...card, original_card_id: this.id() });
   }
 
   getDashboardProps(): QuestionDashboardProps {
@@ -482,10 +437,7 @@ class Question {
     dashboardId,
     dashcardId,
   }: QuestionDashboardProps): Question {
-    const card = chain(this.card())
-      .assoc("dashboardId", dashboardId)
-      .assoc("dashcardId", dashcardId)
-      .value();
+    const card = { ...this.card(), dashboardId, dashcardId };
 
     return this.setCard(card);
   }
@@ -494,11 +446,11 @@ class Question {
     return this._card && this._card.description;
   }
 
-  setDescription(description) {
-    return this.setCard(assoc(this.card(), "description", description));
+  setDescription(description: string | null) {
+    return this.setCard({ ...this.card(), description });
   }
 
-  lastEditInfo(): LastEditInfo {
+  lastEditInfo(): LastEditInfo | undefined {
     return this._card && this._card["last-edit-info"];
   }
 
@@ -510,15 +462,8 @@ class Question {
     return !!this.id();
   }
 
-  publicUUID(): string {
+  publicUUID(): string | null {
     return this._card && this._card.public_uuid;
-  }
-
-  database(): Database | null {
-    const metadata = this.metadata();
-    const databaseId = this.databaseId();
-    const database = metadata.database(databaseId);
-    return database;
   }
 
   databaseId(): DatabaseId | null {
@@ -534,7 +479,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  setResultsMetadata(resultsMetadata) {
+  setResultsMetadata(resultsMetadata: ResultsMetadata | null) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
       ...this.card(),
@@ -542,7 +487,7 @@ class Question {
     });
   }
 
-  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<DatasetColumn>>) {
     const metadata = this.getResultMetadata();
     const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];
@@ -554,7 +499,10 @@ class Question {
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
-  isEqual(other, { compareResultsMetadata = true } = {}) {
+  isEqual(
+    other: Question | null | undefined,
+    { compareResultsMetadata = true } = {},
+  ) {
     if (!other) {
       return false;
     }
@@ -590,28 +538,23 @@ class Question {
     return this.setParameters(newParameters);
   }
 
-  setParameters(parameters) {
-    return this.setCard(assoc(this.card(), "parameters", parameters));
+  setParameters(parameters: ParameterObject[] | undefined) {
+    return this.setCard({ ...this.card(), parameters });
   }
 
-  setParameterValues(parameterValues) {
+  setParameterValues(parameterValues: ParameterValuesMap = {}) {
     const question = this.clone();
     question._parameterValues = parameterValues;
     return question;
   }
 
-  private _getParameters = _.memoize((collectionPreview: boolean) => {
-    return getCardUiParameters(
-      this.card(),
-      this.metadata(),
-      this._parameterValues,
-      undefined,
-      collectionPreview,
-    );
-  });
+  private _parameters?: ParameterObject[];
 
-  parameters({ collectionPreview } = {}): ParameterObject[] {
-    return this._getParameters(collectionPreview);
+  parameters(): ParameterObject[] {
+    if (this._parameters == null) {
+      this._parameters = getCardUiParameters(this, this._parameterValues);
+    }
+    return this._parameters;
   }
 
   // predicate function that determines if the question is "dirty" compared to the given question
@@ -661,8 +604,8 @@ class Question {
   }
 
   // Internal methods
-  _getValueForComparison() {
-    const value = {
+  _getValueForComparison(): Record<string, unknown> {
+    const value: Record<string, unknown> = {
       ...this._card,
       ...this._parameterValues,
     };
@@ -681,12 +624,9 @@ class Question {
       "visualization_settings",
     ];
 
-    const res = {};
-    for (const key of keys) {
-      res[key] = value[key] ?? undefined;
-    }
-
-    return res;
+    return Object.fromEntries(
+      keys.map((key) => [key, value[key] ?? undefined]),
+    );
   }
 
   query(): Query {
@@ -727,15 +667,15 @@ class Question {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]) || [];
+    return this._card?.moderation_reviews || [];
   }
 
-  getCreator(): UserInfo {
-    return getIn(this, ["_card", "creator"]) || "";
+  getCreator(): UserInfo | undefined {
+    return this._card?.creator;
   }
 
   getCreatedAt(): string {
-    return getIn(this, ["_card", "created_at"]) || "";
+    return this._card?.created_at || "";
   }
 
   canManageDB(): boolean {
@@ -774,28 +714,39 @@ class Question {
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
-    let card: Card = {
+  }: QuestionCreatorOpts) {
+    // `DatasetQuery` is opaque; the deprecated raw-MBQL options edit the legacy
+    // query shape directly.
+    const rawDatasetQuery = dataset_query as unknown as {
+      query?: Record<string, unknown>;
+    };
+
+    const datasetQueryWithTable =
+      tableId != null
+        ? {
+            ...rawDatasetQuery,
+            query: { ...rawDatasetQuery.query, "source-table": tableId },
+          }
+        : rawDatasetQuery;
+
+    // Back to the opaque type once the raw edits are applied.
+    const datasetQueryWithDatabase = (databaseId != null
+      ? { ...datasetQueryWithTable, database: databaseId }
+      : datasetQueryWithTable) as unknown as DatasetQuery;
+
+    // `create` builds an unsaved draft that lacks the fields a saved Card has
+    // (id, entity_id, name, type, ...). The Question class nevertheless treats
+    // `_card` as a full Card, so we assert the draft shape here.
+    const card = {
       name,
       collection_id: collectionId,
       dashboard_id: dashboardId,
       display,
       visualization_settings,
-      dataset_query,
+      dataset_query: datasetQueryWithDatabase,
       type: cardType,
-    };
-
-    if (type === "native") {
-      card = assocIn(card, ["parameters"], []);
-    }
-
-    if (tableId != null) {
-      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
-    }
-
-    if (databaseId != null) {
-      card = assocIn(card, ["dataset_query", "database"], databaseId);
-    }
+      ...(type === "native" && { parameters: [] }),
+    } as Card;
 
     return new Question(card, metadata, parameterValues);
   }

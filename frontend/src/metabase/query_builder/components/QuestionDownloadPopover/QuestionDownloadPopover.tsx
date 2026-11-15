@@ -42,7 +42,7 @@ const BaseQuestionDownloadPopover = ({
   dashboardId,
   dashcardId,
   visualizationSettings,
-  variant,
+  variant = "subtle",
   floating,
   formatPreference,
 }: BaseQuestionDownloadPopoverProps) => {
@@ -75,7 +75,7 @@ const BaseQuestionDownloadPopover = ({
           </Tooltip>
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown p="0.75rem">
+      <Popover.Dropdown p="md">
         <QuestionDownloadWidget
           question={question}
           result={result}

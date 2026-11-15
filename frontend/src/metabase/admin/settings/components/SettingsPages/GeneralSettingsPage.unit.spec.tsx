@@ -11,6 +11,8 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -33,19 +35,38 @@ const generalSettings = {
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
-  "allowed-iframe-hosts": "https://cooldashboards.limo",
   "search-engine": "appdb",
 } as const;
+
+const originalIsEmbeddingSdkEnabled = PLUGIN_EMBEDDING_SDK.isEnabled;
+
+afterEach(() => {
+  PLUGIN_EMBEDDING_SDK.isEnabled = originalIsEmbeddingSdkEnabled;
+});
 
 const setup = async ({
   isCloudPlan,
   hasAuditApp,
-}: { isCloudPlan?: boolean; hasAuditApp?: boolean } = {}) => {
+  isHosted,
+  hasEmbeddingSdk,
+}: {
+  isCloudPlan?: boolean;
+  hasAuditApp?: boolean;
+  isHosted?: boolean;
+  hasEmbeddingSdk?: boolean;
+} = {}) => {
+  // Direct control, bypassing hasPremiumFeature/MetabaseSettings singleton
+  // timing -- deterministic regardless of what earlier tests in this worker
+  // left behind.
+  PLUGIN_EMBEDDING_SDK.isEnabled = () => hasEmbeddingSdk ?? false;
+
   const settings = createMockSettings({
     ...generalSettings,
+    "is-hosted?": isHosted ?? false,
     "token-features": createMockTokenFeatures({
       hosting: isCloudPlan ?? false,
       audit_app: hasAuditApp ?? true,
+      embedding_sdk: hasEmbeddingSdk ?? false,
     }),
   });
 
@@ -63,6 +84,7 @@ const setup = async ({
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -74,10 +96,16 @@ const setup = async ({
   });
 
   renderWithProviders(
-    <>
-      <GeneralSettingsPage />
-      <UndoListing />
-    </>,
+    <Route
+      path="*"
+      element={
+        <>
+          <GeneralSettingsPage />
+          <UndoListing />
+        </>
+      }
+    />,
+    { withRouter: true, initialRoute: "/admin/settings/general" },
   );
 
   await screen.findByText("Site name");
@@ -91,13 +119,12 @@ describe("GeneralSettingsPage", () => {
       "Site name",
       "Site url",
       "Redirect to HTTPS",
-      "Custom homepage",
+      "Homepage",
       "Email address for help requests",
       "Send anonymous tracking data to Metabase",
       "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
-      "Allowed domains for iframes in dashboards",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -138,13 +165,16 @@ describe("GeneralSettingsPage", () => {
     const nameInput = await screen.findByDisplayValue("Metabased");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Metabasey");
-    blur();
+    await blur();
     await screen.findByDisplayValue("Metabasey");
 
     const emailInput = await screen.findByDisplayValue("help@mysite.biz");
+    await waitFor(() => {
+      expect(emailInput).toBeEnabled();
+    });
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@mySite.biz");
-    blur();
+    await blur();
     await screen.findByDisplayValue("support@mySite.biz");
 
     await waitFor(async () => {
@@ -223,6 +253,40 @@ describe("GeneralSettingsPage", () => {
       await setup({ isCloudPlan: false, hasAuditApp: true });
 
       expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+  });
+
+  describe("Version pinning", () => {
+    it("should offer users version pinning when they have a cloud instance with the SDK", async () => {
+      await setup({ isHosted: true, hasEmbeddingSdk: true });
+
+      expect(screen.getByText("Version pinning")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Metabase Cloud instances are automatically upgraded to new releases/i,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Request version pinning" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not offer version pinning on self-hosted instances", async () => {
+      await setup({ isHosted: false, hasEmbeddingSdk: true });
+
+      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Request version pinning" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer version pinning without the SDK feature", async () => {
+      await setup({ isHosted: true, hasEmbeddingSdk: false });
+
+      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Request version pinning" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

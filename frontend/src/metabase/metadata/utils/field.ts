@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { is_coerceable } from "cljs/metabase.types.core";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getNullDisplayValue } from "metabase/utils/constants";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
   Field,
   FieldFormattingSettings,
-  FieldId,
   SchemaName,
   Table,
 } from "metabase-types/api";
@@ -22,7 +22,10 @@ import { getSchemaDisplayName } from "./schema";
  * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
  * manner could disable some cases that users may depend on.
  */
-export function areFieldsComparable(field1: Field, field2: Field): boolean {
+export function areFieldsComparable(
+  field1: Pick<Field, "effective_type">,
+  field2: Pick<Field, "effective_type">,
+): boolean {
   return field1.effective_type === "type/MongoBSONID" ||
     field2.effective_type === "type/MongoBSONID"
     ? field1.effective_type === field2.effective_type
@@ -41,14 +44,6 @@ export function canCoerceFieldType(field: Field): boolean {
       field.effective_type !== field.base_type) ||
     (!isTypeFK(field.semantic_type) && is_coerceable(field.base_type))
   );
-}
-
-export function getRawTableFieldId(field: Field): FieldId {
-  if (typeof field.id !== "number") {
-    throw new Error("getRawFieldId supports only raw table fields");
-  }
-
-  return field.id;
 }
 
 export function getFieldCurrency(
@@ -79,7 +74,7 @@ export function getFieldDisplayName(
     field.dimensions?.[0]?.name ||
     field.display_name ||
     getFieldRawName(field) ||
-    NULL_DISPLAY_VALUE;
+    getNullDisplayValue();
 
   if (table) {
     if (schema) {

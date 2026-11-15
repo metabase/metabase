@@ -6,7 +6,7 @@ import {
   useLazyGetTransformQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
@@ -48,6 +48,7 @@ export function RunCancelButton({
       {isRunning && (
         <Tooltip label={t`Cancel`} position="bottom">
           <ActionIcon
+            variant="subtle"
             aria-label={t`Cancel run`}
             onClickCapture={(evt) => {
               evt.stopPropagation();

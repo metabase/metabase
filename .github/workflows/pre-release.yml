@@ -33,7 +33,7 @@ jobs:
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
       cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -43,7 +43,7 @@ jobs:
       # note: this block can be removed after we stop needing to be able to test versions before v55
       - name: Get test mode config
         id: config
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -81,7 +81,7 @@ jobs:
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
       - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -95,18 +95,18 @@ jobs:
         id: version-properties
         run: |
           cat version.properties
-          echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
+          echo "commit=$(cat ./COMMIT-ID)" >> "$GITHUB_OUTPUT"
 
           version=$(grep -o '^tag=.*' version.properties | cut -d'=' -f2)
 
           if [[ "${{ matrix.edition }}" == "ee" ]]; then
-            echo "ee_version=$version" >> $GITHUB_OUTPUT
+            echo "ee_version=$version" >> "$GITHUB_OUTPUT"
           else
-            echo "oss_version=$version" >> $GITHUB_OUTPUT
+            echo "oss_version=$version" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
           path: |
@@ -122,16 +122,16 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
-        java-version: [21]
+        java-version: [25]
     steps:
       - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.2.0
         with:
           java-package: jre
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - run: java -version
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         name: Retrieve uberjar artifact
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
@@ -143,7 +143,7 @@ jobs:
 
   run-sanity-check:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [test-mode-config, release-artifact]
     strategy:
       matrix:
@@ -174,9 +174,16 @@ jobs:
       TERM: xterm
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
+      - name: Find pre-release Embedding SDK component tests
+        id: sdk-specs
+        if: ${{ matrix.edition == 'ee' }}
+        run: |
+          specs=$(grep -rl --include='*.cy.spec.tsx' "@prerelease" e2e/test-component/scenarios/embedding-sdk | paste -sd, - || true)
+          echo "Pre-release Embedding SDK component specs: ${specs:-none}"
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -184,16 +191,20 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           snowplow: true
+          metaplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Compile CLJS
         run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
+      - name: Build Embedding SDK package
+        if: ${{ matrix.edition == 'ee' && steps.sdk-specs.outputs.specs != '' }}
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-embedding-sdk-package
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
@@ -223,7 +234,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@smoke+-@EE" \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -232,11 +243,22 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@smoke+-@OSS" \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
+      - name: Run a few important Embedding SDK component tests as sanity check
+        if: ${{ !cancelled() && matrix.edition == 'ee' && steps.sdk-specs.outputs.specs != '' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          SPECS: ${{ steps.sdk-specs.outputs.specs }}
+          CYPRESS_VIDEO: "false"
+        run: |
+          node e2e/runner/run_cypress_ci.js component \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease" \
+            --spec "$SPECS"
+
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-failed-tests-recording
@@ -252,9 +274,9 @@ jobs:
     with:
       edition: oss
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   containerize-ee:
     needs: release-artifact
@@ -263,12 +285,11 @@ jobs:
     with:
       edition: ee
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   tests-complete-message:
-    if: always()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs:
       [
@@ -279,7 +300,7 @@ jobs:
       ]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -287,7 +308,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send tests complete message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -295,17 +316,36 @@ jobs:
           script: | # js
             const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const allJobsSuccessful =
-              '${{ needs.run-sanity-check.result }}' === 'success' &&
-              '${{ needs.check-uberjar-health.result }}' === 'success' &&
-              '${{ needs.containerize-ee.result }}' === 'success' &&
-              '${{ needs.containerize-oss.result }}' === 'success';
-
             await sendTestsCompleteMessage({
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              testStatus: allJobsSuccessful ? 'success' : 'failure',
             }).catch(console.error);
+
+  notify-failure:
+    needs:
+      - test-mode-config
+      - release-artifact
+      - check-uberjar-health
+      - run-sanity-check
+      - containerize-oss
+      - containerize-ee
+      - tests-complete-message
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Pre-release tests for
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

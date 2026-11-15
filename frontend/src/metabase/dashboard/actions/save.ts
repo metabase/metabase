@@ -1,22 +1,23 @@
-import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import { Dashboards } from "metabase/entities/dashboards";
-import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
+import { cardApi, dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
+import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import type {
-  Dispatch,
-  GetState,
-  StoreDashboard,
-  StoreDashcard,
-} from "metabase/redux/store";
-import { CardApi } from "metabase/services";
-import type { DashCardId, ParameterId } from "metabase-types/api";
+  ClickBehavior,
+  DashCardId,
+  Dashboard,
+  ParameterId,
+  UpdateCardRequest,
+} from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
-import { getInlineParameterTabMap } from "../utils";
+import { getDashcardClickBehavior, getInlineParameterTabMap } from "../utils";
 
 import { setEditingDashboard } from "./core";
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
@@ -26,12 +27,33 @@ import {
   trackAddedIFrameDashcards,
 } from "./utils";
 
+function setClickBehavior<T extends StoreDashcard>(
+  card: T,
+  clickBehavior: ClickBehavior | null | undefined,
+): T {
+  if (clickBehavior == null) {
+    if (!card.visualization_settings) {
+      return card;
+    }
+    const { click_behavior: _removed, ...visualizationSettings } =
+      card.visualization_settings;
+    return { ...card, visualization_settings: visualizationSettings };
+  }
+  return {
+    ...card,
+    visualization_settings: {
+      ...card.visualization_settings,
+      click_behavior: clickBehavior,
+    },
+  };
+}
+
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
-  function () {
-    return async function (dispatch: Dispatch, getState: GetState) {
+  function (location?: Omit<Location, "query" | "action">) {
+    return async function (dispatch, getState) {
       const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -68,6 +90,7 @@ export const updateDashboardAndCards = createThunkAction(
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
+          dispatch(setEditingDashboard(null, location));
           return;
         }
       }
@@ -76,16 +99,12 @@ export const updateDashboardAndCards = createThunkAction(
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.dashcards = dashboard.dashcards.map((card, index) => {
-        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
-          const startingValue = getIn(dashboardBeforeEditing?.dashcards ?? [], [
-            index,
-            ...clickBehaviorPath,
-          ]);
-          return startingValue == null
-            ? dissocIn(card, clickBehaviorPath)
-            : assocIn(card, clickBehaviorPath, startingValue);
+        if (!clickBehaviorIsValid(getDashcardClickBehavior(card))) {
+          const startingValue =
+            dashboardBeforeEditing?.dashcards?.[index] &&
+            getDashcardClickBehavior(dashboardBeforeEditing.dashcards[index]);
+          return setClickBehavior(card, startingValue);
         }
         return card;
       });
@@ -152,7 +171,14 @@ export const updateDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.dashcards
           .filter((dc) => "isDirty" in dc.card && Boolean(dc.card.isDirty))
-          .map(async (dc) => CardApi.update(dc.card)),
+          .map((dc) =>
+            dispatch(
+              cardApi.endpoints.updateCard.initiate(
+                // Unjustified type cast. FIXME
+                dc.card as UpdateCardRequest,
+              ),
+            ).unwrap(),
+          ),
       );
 
       trackAddedIFrameDashcards(dashboard);
@@ -186,13 +212,16 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
-      await dispatch(
-        Dashboards.actions.update({
+      // `runRtkEndpoint` is untyped; `updateDashboard` responds with the saved dashboard
+      const updatedDashboard = (await runRtkEndpoint(
+        {
           ...dashboard,
           dashcards: dashcardsToUpdate,
           tabs: tabsToUpdate,
-        }),
-      );
+        },
+        dispatch,
+        dashboardApi.endpoints.updateDashboard,
+      )) as Dashboard;
 
       const endTime = performance.now();
       const duration_milliseconds = Math.trunc(endTime - startTime);
@@ -203,24 +232,22 @@ export const updateDashboardAndCards = createThunkAction(
         });
       }
 
-      dispatch(setEditingDashboard(null));
+      dispatch(setEditingDashboard(null, location));
 
-      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      //
-      // UPD 16.09.2024
-      // This code is a source of race condition on slow network.
-      // it fetches a dashboard without parameters and if `fetchDashboardCardData` from the lines below is slow
-      // the dashboard itself is re-rendered and re-fetches data again without parameters, so later on
-      // dashboard component re-fetches data and cancels correct query with parameters
-      // e.g. `should pass a temporal unit with 'update dashboard filter' click behavior` from temporal-unit-parameters.cy.spec.js
-      // with 3g simulation is an example of such race condition
+      // Reset the dashboard state from the save response instead of re-fetching
+      // it. Re-using the just-returned dashboard avoids an extra round-trip and
+      // the race condition where a parameter-less GET could cancel the
+      // parameterized card-data fetch below on slow networks.
       await dispatch(
         fetchDashboard({
           dashId: dashboard.id,
           queryParams: {},
-          options: { preserveParameters: false },
+          options: {
+            preserveParameters: false,
+            prefetchedDashboard: updatedDashboard,
+          },
         }),
-      ); // disable using query parameters when saving
+      );
 
       // There might have been changes to dashboard card-filter wiring,
       // which require re-fetching card data (issue #35503). We expect
@@ -238,7 +265,7 @@ export const updateDashboardAndCards = createThunkAction(
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
   function ({ attributeNames }: { attributeNames: string[] }) {
-    return async function (dispatch: Dispatch, getState: GetState) {
+    return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
 
@@ -256,8 +283,10 @@ export const updateDashboard = createThunkAction(
       if (attributeNames.length > 0) {
         const attributes = _.pick(dashboard, attributeNames);
 
-        await dispatch(
-          Dashboards.actions.update({ id: dashboardId }, attributes),
+        await runRtkEndpoint(
+          { id: dashboardId, ...attributes },
+          dispatch,
+          dashboardApi.endpoints.updateDashboard,
         );
       }
 

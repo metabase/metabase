@@ -1,5 +1,5 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -21,14 +21,6 @@ const nativeSourceQuestion = {
   },
 };
 
-const targetParameter = {
-  id: "f8ec7c71",
-  type: "string/=",
-  name: "Text",
-  slug: "text",
-  sectionId: "string",
-};
-
 const targetQuestion = {
   display: "scalar",
   query: {
@@ -37,16 +29,40 @@ const targetQuestion = {
   },
 };
 
+const stringLabelSource = {
+  name: "String label source",
+  native: {
+    query:
+      "SELECT DISTINCT CATEGORY, CONCAT(CATEGORY, ' Label') AS LABEL " +
+      "FROM PRODUCTS WHERE CATEGORY != 'Doohickey'",
+  },
+};
+
+const numberLabelSource = {
+  name: "Number label source",
+  native: {
+    query: "SELECT ID, TITLE FROM PRODUCTS ORDER BY ID ASC LIMIT 5",
+  },
+};
+
 describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  describe("structured question source", () => {
-    it("should be able to use a structured question source", () => {
-      H.createQuestion(structuredSourceQuestion, { wrapId: true });
+  describe("question, static list and field sources", () => {
+    it("should be able to use structured, native and labeled question sources, static list sources and field search", () => {
+      H.createQuestion(structuredSourceQuestion, {
+        wrapId: true,
+        idAlias: "structuredSourceQuestionId",
+      });
+      H.createNativeQuestion(nativeSourceQuestion, {
+        wrapId: true,
+        idAlias: "nativeSourceQuestionId",
+      });
+      H.createNativeQuestion(stringLabelSource);
+      H.createNativeQuestion(numberLabelSource);
       H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
@@ -54,229 +70,153 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       });
 
       H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-      mapFilterToQuestion();
-      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      H.saveDashboard();
-      filterDashboard();
 
-      cy.get("@questionId").then(H.visitQuestion);
-      archiveQuestion();
-    });
-
-    it("should be able to use a structured question source when embedded", () => {
-      H.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a structured question source when public", () => {
-      H.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a structured question source with string/contains parameter", () => {
-      H.createQuestion(structuredSourceQuestion, { wrapId: true });
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.editDashboard();
-      H.setFilter("Text or Category", "Contains");
+      H.setFilter("Text or Category", "Contains", "GUI Contains");
       mapFilterToQuestion();
       H.setDropdownFilterType();
       H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      H.saveDashboard();
-      H.getDashboardCard().findByText("200").should("be.visible");
-      H.filterWidget().click();
-      H.popover().findByText("Gizmo").click();
-      H.popover().button("Add filter").click();
-      H.getDashboardCard().findByText("51").should("be.visible");
-    });
-  });
 
-  describe("native question source", () => {
-    it("should be able to use a native question source", () => {
-      H.createNativeQuestion(nativeSourceQuestion, { wrapId: true });
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
+      H.setFilter("Text or Category", "Is", "GUI Is");
+      mapFilterToQuestion();
+      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is", "SQL Is");
       mapFilterToQuestion();
       H.setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
-      H.saveDashboard();
-      filterDashboard();
 
-      cy.get("@questionId").then(H.visitQuestion);
-      archiveQuestion();
-    });
-
-    it("should be able to use a native question source when embedded", () => {
-      H.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a native question source when public", () => {
-      H.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-  });
-
-  describe("static list source (dropdown)", () => {
-    it("should be able to use a static list source", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+      H.setFilter("Text or Category", "Is", "String label");
+      mapFilterToQuestion();
+      H.setFilterQuestionSource({
+        question: "String label source",
+        field: "CATEGORY",
+        labelField: "LABEL",
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      H.setFilter("Number", "Equal to", "Number label");
+      mapFilterToQuestion("Rating");
+      H.setFilterQuestionSource({
+        question: "Number label source",
+        field: "ID",
+        labelField: "TITLE",
+      });
+
+      H.setFilter("ID", undefined, "ID label");
+      mapFilterToQuestion("ID");
+      H.setFilterQuestionSource({
+        question: "Number label source",
+        field: "ID",
+        labelField: "TITLE",
+      });
+
+      H.setFilter("Text or Category", "Is", "List dropdown");
       mapFilterToQuestion();
       H.setFilterListSource({
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
-      H.saveDashboard();
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
 
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
-
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-  });
-
-  describe("static list source (search)", () => {
-    it("should be able to use a static list source (search)", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is", "List search");
       mapFilterToQuestion();
       H.sidebar().findByText("Search box").click();
       H.setFilterListSource({
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
-      H.saveDashboard();
 
-      setSearchFilter("Gizmo Label");
-    });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      setSearchFilter("Gizmo Label");
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
-
-      setSearchFilter("Gizmo Label");
-    });
-  });
-
-  describe("field source", () => {
-    it("should be able to use search box with fields configured for list", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is", "Field search");
       mapFilterToQuestion();
       H.setSearchBoxFilterType();
+
       H.saveDashboard();
-      filterDashboard({ isField: true });
+
+      cy.log("structured question source with string/contains parameter");
+      H.getDashboardCard().findByText("200").should("be.visible");
+      H.filterWidget({ name: "GUI Contains" }).click();
+      H.popover().findByText("Gizmo").click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText("51").should("be.visible");
+
+      cy.log("structured question source with string/= parameter");
+      filterDashboard({ name: "GUI Is" });
+
+      cy.log("native question source");
+      filterDashboard({ name: "SQL Is" });
+
+      cy.log(
+        "string/string: the dropdown shows the labels instead of the raw values",
+      );
+      H.filterWidget({ name: "String label" }).click();
+      H.popover().within(() => {
+        cy.findByText("Gadget Label").should("be.visible");
+        cy.findByText("Gizmo Label").should("be.visible");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Gizmo Label").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log(
+        "string/string: the selected value is shown remapped to its label",
+      );
+      H.filterWidget({ name: "String label" })
+        .findByText("Gizmo Label")
+        .should("be.visible");
+
+      cy.log(
+        "number/string: the dropdown shows the product titles instead of the numeric ids",
+      );
+      H.filterWidget({ name: "Number label" }).click();
+      H.popover().within(() => {
+        cy.findByText("Rustic Paper Wallet").should("be.visible");
+        cy.findByText("1").should("not.exist");
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log(
+        "number/string: the selected value is shown remapped to its label",
+      );
+      H.filterWidget({ name: "Number label" })
+        .findByText("Rustic Paper Wallet")
+        .should("be.visible");
+
+      cy.log(
+        "id/string: the dropdown shows the product titles instead of the numeric ids",
+      );
+      H.filterWidget({ name: "ID label" }).click();
+      H.popover().within(() => {
+        cy.findByText("Rustic Paper Wallet").should("be.visible");
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log("id/string: the selected value and the remapped label are shown");
+      H.filterWidget({ name: "ID label" })
+        .findByText("- 1")
+        .should("be.visible");
+      H.filterWidget({ name: "ID label" })
+        .findByText("Rustic Paper Wallet")
+        .should("be.visible");
+
+      cy.log("static list source (dropdown)");
+      filterDashboard({ name: "List dropdown", isLabeled: true });
+      H.filterWidget({ name: "List dropdown" })
+        .findByText("Gizmo Label")
+        .should("be.visible");
+
+      cy.log("static list source (search)");
+      setSearchFilter({ name: "List search", label: "Gizmo Label" });
+
+      cy.log("field source (search box)");
+      filterDashboard({ name: "Field search", isField: true });
+
+      cy.log("archive question sources");
+      cy.get("@structuredSourceQuestionId").then(H.visitQuestion);
+      archiveQuestion(
+        "It will also be removed from the 2 filters that use it to populate values.",
+      );
+
+      cy.get("@nativeSourceQuestionId").then(H.visitQuestion);
+      archiveQuestion(
+        "It will also be removed from the filter that uses it to populate values.",
+      );
     });
   });
 });
@@ -319,9 +259,10 @@ describe(
       );
     });
 
-    it("should be possible to use custom labels on IP address columns", () => {
+    it("should be possible to use custom labels on IP address columns and type/Quantity fields", () => {
       H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+
+      H.setFilter("Text or Category", "Is", "IP address");
       mapFilterToQuestion("Inet");
       H.setFilterListSource({
         values: [
@@ -330,9 +271,17 @@ describe(
           "0.0.0.1/0",
         ],
       });
+
+      H.setFilter("Text or Category", "Is", "Quantity");
+      mapFilterToQuestion("Count");
+      H.setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+
       H.saveDashboard();
 
-      openFilter();
+      cy.log("IP address column");
+      openFilter("IP address");
       H.popover().within(() => {
         cy.findByText("Router").should("be.visible");
         cy.findByText("Localhost").should("be.visible");
@@ -342,19 +291,10 @@ describe(
         cy.button("Add filter").click();
       });
 
-      cy.findByTestId("fixed-width-filters").should("contain", "Router");
-    });
+      H.filterWidget({ name: "IP address" }).should("contain", "Router");
 
-    it("should be possible to use custom labels on type/Quantity fields", () => {
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-      mapFilterToQuestion("Count");
-      H.setFilterListSource({
-        values: [["10", "Ten"], ["20", "Twenty"], "30"],
-      });
-      H.saveDashboard();
-
-      openFilter();
+      cy.log("type/Quantity field");
+      openFilter("Quantity");
       H.popover().within(() => {
         cy.findByText("Ten").should("be.visible");
         cy.findByText("Twenty").should("be.visible");
@@ -364,71 +304,30 @@ describe(
         cy.button("Add filter").click();
       });
 
-      cy.findByTestId("fixed-width-filters").should("contain", "Twenty");
+      H.filterWidget({ name: "Quantity" }).should("contain", "Twenty");
     });
   },
 );
-
-describe("scenarios > dashboard > filters", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  });
-
-  it("should sandbox parameter values in dashboards", () => {
-    cy.sandboxTable({
-      table_id: PRODUCTS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
-      },
-    });
-
-    H.createQuestion(structuredSourceQuestion).then(
-      ({ body: { id: questionId } }) => {
-        H.createQuestionAndDashboard({
-          questionDetails: targetQuestion,
-          dashboardDetails: getStructuredDashboard(questionId),
-        }).then(({ body: card }) => {
-          H.editDashboardCard(card, getParameterMapping(card));
-          cy.signOut();
-          cy.signInAsSandboxedUser();
-          H.visitDashboard(card.dashboard_id);
-          H.assertDatasetReqIsSandboxed({
-            requestAlias: `@dashcardQuery${card.id}`,
-          });
-        });
-      },
-    );
-
-    filterDashboard({ isSandboxed: true });
-  });
-});
 
 const mapFilterToQuestion = (column = "Category") => {
   cy.findByText("Select…").click();
   H.popover().within(() => cy.findByText(column).click());
 };
 
-const filterDashboard = ({
-  isField = false,
-  isSandboxed = false,
-  isLabeled = false,
-} = {}) => {
-  cy.findByText("Text").click();
+const filterDashboard = ({ name, isField = false, isLabeled = false }) => {
+  openFilter(name);
 
   H.popover().within(() => {
     const GIZMO = isLabeled ? "Gizmo Label" : "Gizmo";
 
     cy.findByText(GIZMO).should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
-    cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
-    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Gadget").should("be.visible");
+    cy.findByText("Widget").should("be.visible");
 
     cy.findByPlaceholderText("Search the list").type("i");
     cy.findByText("Gadget").should("not.exist");
-    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Widget").should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
     cy.findByText(GIZMO).click();
@@ -436,78 +335,20 @@ const filterDashboard = ({
   });
 };
 
-function openFilter() {
-  cy.findByText("Text").click();
+function openFilter(name) {
+  H.filterWidget({ name }).click();
 }
 
-const archiveQuestion = () => {
+const archiveQuestion = (filterWarning) => {
   H.openQuestionActions();
   cy.findByTestId("archive-button").click();
   cy.findByText(
-    "This question will be removed from any dashboards or alerts using it. It will also be removed from the filter that uses it to populate values.",
+    `This question will be removed from any dashboards or alerts using it. ${filterWarning}`,
   );
 };
 
-const getDashboardResource = ({ dashboard_id }) => ({
-  resource: { dashboard: dashboard_id },
-  params: {},
-});
-
-const getTargetDashboard = (sourceSettings) => ({
-  parameters: [
-    {
-      ...targetParameter,
-      ...sourceSettings,
-    },
-  ],
-  enable_embedding: true,
-  embedding_params: {
-    [targetParameter.slug]: "enabled",
-  },
-});
-
-const getStructuredDashboard = (questionId) => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", PRODUCTS.CATEGORY, null],
-    },
-  });
-};
-
-const getNativeDashboard = (questionId) => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", "CATEGORY", { "base-type": "type/Text" }],
-    },
-  });
-};
-
-const getListDashboard = (values_query_type) => {
-  return getTargetDashboard({
-    values_source_type: "static-list",
-    values_query_type,
-    values_source_config: {
-      values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
-    },
-  });
-};
-
-const getParameterMapping = ({ card_id }) => ({
-  parameter_mappings: [
-    {
-      card_id,
-      parameter_id: targetParameter.id,
-      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-    },
-  ],
-});
-
-function setSearchFilter(label) {
-  H.filterWidget().click();
+function setSearchFilter({ name, label }) {
+  H.filterWidget({ name }).click();
   H.popover().within(() => {
     H.fieldValuesCombobox().type(label);
   });
@@ -519,5 +360,5 @@ function setSearchFilter(label) {
     cy.button("Add filter").click();
   });
 
-  H.filterWidget().findByText(label).should("be.visible");
+  H.filterWidget({ name }).findByText(label).should("be.visible");
 }

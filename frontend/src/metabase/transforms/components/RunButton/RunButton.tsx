@@ -7,27 +7,37 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import { useSetting } from "metabase/settings";
+import {
+  Button,
+  type ButtonColor,
+  type ButtonProps,
+  Icon,
+  Loader,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
 import type {
   TransformId,
   TransformJobId,
   TransformRun,
 } from "metabase-types/api";
 
+import { isActiveRunStatus } from "../../utils";
 import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
 
 const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   id: TransformId | TransformJobId | undefined;
-  run: TransformRun | null | undefined;
+  run: Pick<TransformRun, "status"> | null | undefined;
   isDisabled?: boolean;
+  isLoading?: boolean;
   allowCancellation?: boolean;
   size?: ButtonProps["size"];
   onRun: () => void;
   onCancel?: () => void;
+  menuItems?: ReactNode;
 };
 
 export const RunButton = forwardRef(function RunButton(
@@ -35,10 +45,12 @@ export const RunButton = forwardRef(function RunButton(
     id,
     run,
     isDisabled: isExternallyDisabled = false,
+    isLoading = false,
     allowCancellation = false,
     size = "md",
     onRun,
     onCancel,
+    menuItems,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -47,6 +59,7 @@ export const RunButton = forwardRef(function RunButton(
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
     isRecent,
+    isLoading,
     isDisabled: isExternallyDisabled || !!isMeterLocked,
   });
 
@@ -59,6 +72,9 @@ export const RunButton = forwardRef(function RunButton(
   useLayoutEffect(() => {
     setIsRecent(false);
   }, [id]);
+
+  const isRunning = isActiveRunStatus(run?.status);
+  const showMenu = menuItems != null && !isRunning;
 
   const runButton = (
     <Button.Group>
@@ -74,6 +90,23 @@ export const RunButton = forwardRef(function RunButton(
       >
         {label}
       </Button>
+      {showMenu && (
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <Button
+              variant="filled"
+              color={color}
+              disabled={isDisabled}
+              size={size}
+              px="sm"
+              aria-label={t`More run options`}
+              data-testid="run-options-button"
+              leftSection={<Icon name="chevrondown" aria-hidden />}
+            />
+          </Menu.Target>
+          <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+        </Menu>
+      )}
       {allowCancellation && run?.status === "started" && (
         <Tooltip label={t`Cancel`}>
           <Button
@@ -93,14 +126,15 @@ export const RunButton = forwardRef(function RunButton(
 });
 
 type RunButtonOpts = {
-  run: TransformRun | null | undefined;
+  run: Pick<TransformRun, "status"> | null | undefined;
   isRecent: boolean;
+  isLoading: boolean;
   isDisabled: boolean;
 };
 
 type RunButtonInfo = {
   label: string;
-  color?: ColorName;
+  color?: ButtonColor;
   leftSection?: ReactNode;
   isDisabled?: boolean;
 };
@@ -108,6 +142,7 @@ type RunButtonInfo = {
 function getRunButtonInfo({
   run,
   isRecent,
+  isLoading,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
   if (run?.status === "started") {
@@ -122,7 +157,14 @@ function getRunButtonInfo({
     return {
       label: t`Canceling…`,
       leftSection: <Loader size="sm" />,
-      color: "text-secondary",
+      isDisabled: true,
+    };
+  }
+
+  if (isLoading) {
+    return {
+      label: t`Run now`,
+      leftSection: <Loader size="sm" />,
       isDisabled: true,
     };
   }
@@ -138,7 +180,7 @@ function getRunButtonInfo({
   if (run.status === "succeeded") {
     return {
       label: t`Ran successfully`,
-      color: "success",
+      color: "positive",
       leftSection: <Icon name="check" aria-hidden />,
       isDisabled,
     };
@@ -148,14 +190,14 @@ function getRunButtonInfo({
     return {
       label: t`Canceled`,
       color: "warning",
-      leftSection: <Icon name="close" c="white" aria-hidden />,
+      leftSection: <Icon name="close" aria-hidden />,
       isDisabled,
     };
   }
 
   return {
     label: t`Run failed`,
-    color: "error",
+    color: "negative",
     leftSection: <Icon name="warning" aria-hidden />,
     isDisabled,
   };

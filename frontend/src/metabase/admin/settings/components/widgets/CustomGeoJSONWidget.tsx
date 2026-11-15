@@ -1,27 +1,40 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { type ChangeEvent, memo, useCallback, useState } from "react";
+import {
+  type ChangeEvent,
+  Suspense,
+  lazy,
+  memo,
+  useCallback,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
-import { useAdminSetting } from "metabase/api/utils";
+import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
-import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Button, Ellipsified, Image, Stack, Text } from "metabase/ui";
+import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
+import {
+  Box,
+  Button,
+  Ellipsified,
+  Image,
+  Modal,
+  Select,
+  SelectItem,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,
   CustomGeoJSONSetting,
   GeoJSONData,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 export const CustomGeoJSONWidget = () => {
   const [map, setMap] = useState<CustomGeoJSONMap | undefined>();
@@ -42,7 +55,7 @@ export const CustomGeoJSONWidget = () => {
     settingDetails,
   } = useAdminSetting("custom-geojson");
 
-  const customGeoJsonSetting = settingValue as CustomGeoJSONSetting;
+  const customGeoJsonSetting = settingValue;
   const mapsExcludingBuiltIns = getMapsExcludingBuiltIns(customGeoJsonSetting);
 
   const handleSave = useCallback(async (): Promise<void> => {
@@ -123,7 +136,8 @@ export const CustomGeoJSONWidget = () => {
         />
         {!map && (
           <Button
-            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
+            flex="0 0 auto"
+            ml="sm"
             onClick={handleAddMap}
             variant="filled"
           >
@@ -133,9 +147,9 @@ export const CustomGeoJSONWidget = () => {
       </div>
 
       {!hasCustomMaps && (
-        <Stack p="xl" align="center" gap="md">
+        <Stack p="xxl" align="center" gap="lg">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-secondary">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
@@ -148,20 +162,25 @@ export const CustomGeoJSONWidget = () => {
       )}
 
       {map ? (
-        <Modal wide>
-          <div className={CS.p4}>
-            <EditMap
-              map={map}
-              originalMap={originalMap}
-              onMapChange={handleMapChange}
-              geoJson={geoJson}
-              geoJsonLoading={geoJsonLoading}
-              geoJsonError={geoJsonError}
-              onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
-              onCancel={handleCancel}
-              onSave={handleSave}
-            />
-          </div>
+        <Modal
+          opened
+          onClose={handleCancel}
+          size="95%"
+          density="relaxed"
+          title={originalMap ? t`Edit map` : t`Add a new map`}
+          withCloseButton={false}
+        >
+          <EditMap
+            map={map}
+            originalMap={originalMap}
+            onMapChange={handleMapChange}
+            geoJson={geoJson}
+            geoJsonLoading={geoJsonLoading}
+            geoJsonError={geoJsonError}
+            onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
+            onCancel={handleCancel}
+            onSave={handleSave}
+          />
         </Modal>
       ) : null}
     </div>
@@ -208,7 +227,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="danger"
+                    color="negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
@@ -238,6 +257,12 @@ interface GeoJsonPropertySelectProps {
   dataTestId: string;
 }
 
+const SampleValues = ({ values }: { values: string[] }) => (
+  <Ellipsified fz="0.75rem" fw="bold">
+    {t`Sample values:`} {values.join(", ")}
+  </Ellipsified>
+);
+
 const GeoJsonPropertySelect = ({
   value,
   onChange,
@@ -261,35 +286,43 @@ const GeoJsonPropertySelect = ({
     }
   }
 
+  const selectedValues = value !== null ? options[value] : undefined;
+
   return (
-    <div data-testid={dataTestId}>
+    <Stack gap="sm" data-testid={dataTestId}>
       <Select
-        value={value || ""}
-        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value)
-        }
+        value={value}
         placeholder={t`Select…`}
-      >
-        {Object.entries(options).map(([name, values]) => (
-          <Option key={name} value={name}>
-            <div>
-              <div style={{ textAlign: "left" }}>{name}</div>
-              <div
-                className={cx(CS.mt1, CS.h6)}
-                style={{
-                  maxWidth: 250,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {t`Sample values:`} {values.join(", ")}
-              </div>
-            </div>
-          </Option>
-        ))}
-      </Select>
-    </div>
+        comboboxProps={{
+          width: 300,
+          position: "top-start",
+          withinPortal: true,
+          keepMounted: false,
+        }}
+        data={Object.keys(options).map((name) => ({
+          value: name,
+          label: name,
+        }))}
+        onChange={(newValue) => {
+          if (newValue !== null) {
+            onChange(newValue);
+          }
+        }}
+        renderOption={(item) => (
+          <SelectItem selected={item.checked} w="100%">
+            <Stack gap="sm" w="100%">
+              <Ellipsified>{item.option.label}</Ellipsified>
+              <SampleValues values={options[item.option.value] ?? []} />
+            </Stack>
+          </SelectItem>
+        )}
+      />
+      {selectedValues && (
+        <Box w={0} miw="100%">
+          <SampleValues values={selectedValues} />
+        </Box>
+      )}
+    </Stack>
   );
 };
 
@@ -303,17 +336,17 @@ interface SettingContainerProps {
 const SettingContainer = ({
   name,
   description,
-  className = CS.py1,
+  className,
   children,
 }: SettingContainerProps) => (
   <div className={className}>
     {name && (
-      <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.my1)}>
+      <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.mb1)}>
         {name}
       </div>
     )}
     {description && (
-      <div className={cx(CS.textMedium, CS.my1)}>{description}</div>
+      <div className={cx(CS.textMedium, CS.mb1)}>{description}</div>
     )}
     {children}
   </div>
@@ -344,8 +377,7 @@ const EditMap = ({
 }: EditMapProps) => (
   <div data-testid="edit-map-modal">
     <div className={CS.flex}>
-      <div className={CS.flexNoShrink}>
-        <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
+      <Stack className={CS.flexNoShrink} gap="xl">
         <SettingContainer description={t`What do you want to call this map?`}>
           <div className={CS.flex}>
             <input
@@ -384,19 +416,18 @@ const EditMap = ({
                 onMapChange({ ...map, url: e.target.value })
               }
             />
-            <button
+            <Button
+              ml="sm"
+              size="lg"
               disabled={!map.url}
-              className={cx(ButtonsS.Button, CS.ml1, {
-                [ButtonsS.ButtonPrimary]: !geoJson,
-                [CS.disabled]: !map.url,
-              })}
+              variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}
             >
               {geoJson ? t`Refresh` : t`Load`}
-            </button>
+            </Button>
           </div>
         </SettingContainer>
-        <div className={cx({ disabled: !geoJson })}>
+        <Stack className={cx({ disabled: !geoJson })} gap="xl">
           <SettingContainer
             description={t`Which property specifies the region's identifier?`}
           >
@@ -417,8 +448,8 @@ const EditMap = ({
               dataTestId={"map-region-name-select"}
             />
           </SettingContainer>
-        </div>
-      </div>
+        </Stack>
+      </Stack>
       <div
         className={cx(
           CS.flexAuto,
@@ -427,7 +458,6 @@ const EditMap = ({
           CS.bordered,
           CS.rounded,
           CS.flex,
-          CS.my4,
           CS.overflowHidden,
         )}
       >
@@ -458,7 +488,7 @@ const EditMap = ({
               CS.flex,
               CS.layoutCentered,
               CS.textBold,
-              CS.textLight,
+              CS.textSecondary,
               CS.textCentered,
             )}
           >
@@ -467,26 +497,16 @@ const EditMap = ({
         )}
       </div>
     </div>
-    <div className={cx(CS.py1, CS.flex)}>
-      <div className={CS.mlAuto}>
-        <button
-          className={ButtonsS.Button}
-          onClick={onCancel}
-        >{t`Cancel`}</button>
-        <button
-          disabled={
-            !map.name || !map.url || !map.region_name || !map.region_key
-          }
-          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1, {
-            [CS.disabled]:
-              !map.name || !map.url || !map.region_name || !map.region_key,
-          })}
-          onClick={onSave}
-        >
-          {originalMap ? t`Save map` : t`Add map`}
-        </button>
-      </div>
-    </div>
+    <Modal.Footer>
+      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Button
+        variant="filled"
+        disabled={!map.name || !map.url || !map.region_name || !map.region_key}
+        onClick={onSave}
+      >
+        {originalMap ? t`Save map` : t`Add map`}
+      </Button>
+    </Modal.Footer>
   </div>
 );
 
@@ -494,8 +514,18 @@ interface ChoroplethPreviewProps {
   geoJson: GeoJSONData | undefined;
 }
 
+// leaflet (~225KB) is loaded lazily here so it stays out of the admin bundle
+// until someone actually previews a custom GeoJSON map.
+const LeafletChoropleth = lazy(() =>
+  import("metabase/visualizations/components/LeafletChoropleth").then(
+    (module) => ({ default: module.LeafletChoropleth }),
+  ),
+);
+
 const ChoroplethPreview = memo(({ geoJson }: ChoroplethPreviewProps) => (
-  <LeafletChoropleth geoJson={geoJson} />
+  <Suspense fallback={<LoadingAndErrorWrapper loading />}>
+    <LeafletChoropleth geoJson={geoJson} />
+  </Suspense>
 ));
 
 ChoroplethPreview.displayName = "ChoroplethPreview";

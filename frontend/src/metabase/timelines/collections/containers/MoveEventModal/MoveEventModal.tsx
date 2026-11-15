@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -6,31 +6,20 @@ import {
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import MoveEventModal, {
-  type MoveEventModalProps,
-} from "metabase/timelines/common/components/MoveEventModal";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
+import { MoveEventForm } from "metabase/timelines/common/components/MoveEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
-
-interface OwnProps {
-  params: ModalParams;
-  onClose?: () => void;
-}
-
-type ContainerProps = Omit<
-  MoveEventModalProps,
-  "event" | "timelines" | "collection" | "onSubmit"
-> &
-  OwnProps;
-
-function MoveEventModalContainer({ params, ...props }: ContainerProps) {
+function MoveEventModalContainer({ params, onClose }: ModalComponentProps) {
   const setTimeline = useSetTimeline();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
@@ -60,25 +49,32 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
       await setTimeline(event, newTimeline);
     }
     if (oldTimeline) {
-      dispatch(push(Urls.timelineInCollection(oldTimeline)));
+      navigate(Urls.timelineInCollection(oldTimeline));
     }
   };
 
   const isLoading = isEventLoading || isTimelinesLoading || isCollectionLoading;
   const error = eventError ?? timelinesError ?? collectionError;
 
-  if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <MoveEventModal
-      {...props}
-      event={event}
-      timelines={timelines}
-      collection={collection}
-      onSubmit={handleSubmit}
-    />
+    <TimelineModal
+      title={event ? t`Move ${event.name}` : undefined}
+      onClose={onClose}
+      animated={false}
+      tall
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <MoveEventForm
+          event={event}
+          timelines={timelines}
+          collection={collection}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

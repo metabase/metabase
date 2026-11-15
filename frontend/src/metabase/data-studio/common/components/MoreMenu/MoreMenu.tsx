@@ -1,9 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
+import { Icon, Menu } from "metabase/ui";
 
 type MoreMenuProps = {
   previewUrl?: string;
@@ -40,9 +41,7 @@ export function MoreMenu({
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon aria-label={ariaLabel}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
+          <MoreMenuButton aria-label={ariaLabel} />
         </Menu.Target>
         <Menu.Dropdown>
           {previewUrl && (
@@ -56,7 +55,7 @@ export function MoreMenu({
           )}
           {onRemove && (
             <Menu.Item
-              c="danger"
+              c="feedback-negative"
               leftSection={<Icon name="trash" />}
               onClick={openConfirm}
             >

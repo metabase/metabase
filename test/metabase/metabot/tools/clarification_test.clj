@@ -1,39 +1,15 @@
 (ns metabase.metabot.tools.clarification-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.clarification :as ask-clarification]))
+   [metabase.metabot.tools.clarification :as clarification]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.util.malli.registry :as mr]))
 
-(deftest ask-for-sql-clarification-test
-  (testing "returns final-response? flag"
-    (let [result (ask-clarification/ask-for-sql-clarification {:question "What table should I use?"})]
-      (is (map? result))
-      (is (true? (:final-response? result)))))
-
-  (testing "returns question in structured output"
-    (let [result (ask-clarification/ask-for-sql-clarification {:question "What columns do you need?"})]
-      (is (= "What columns do you need?" (get-in result [:structured-output :question])))))
-
-  (testing "returns options in structured output when provided"
-    (let [result (ask-clarification/ask-for-sql-clarification
-                  {:question "Which table?"
-                   :options ["users" "orders" "products"]})]
-      (is (= ["users" "orders" "products"] (get-in result [:structured-output :options])))))
-
-  (testing "returns empty options when not provided"
-    (let [result (ask-clarification/ask-for-sql-clarification {:question "What do you want?"})]
-      (is (= [] (get-in result [:structured-output :options])))))
-
-  (testing "includes instructions for LLM"
-    (let [result (ask-clarification/ask-for-sql-clarification {:question "Any question?"})]
-      (is (contains? result :instructions))
-      (is (string? (:instructions result)))
-      (is (str/includes? (:instructions result) "wait")))))
-
-(deftest final-response-behavior-test
-  (testing "final-response? signals agent should stop"
-    ;; This is a contract test - the agent loop checks for :final-response? true
-    ;; to determine if it should stop processing
-    (let [result (ask-clarification/ask-for-sql-clarification {:question "Test?"})]
-      (is (true? (:final-response? result))
-          "ask_for_sql_clarification must return :final-response? true to stop the agent loop"))))
+(deftest ^:parallel clarification-output-test
+  (doseq [[options expected] [[nil "Which table?"]
+                              [[] "Which table?"]
+                              [["birds" "sightings"] "Which table?\n\nOptions:\n- birds\n- sightings"]]]
+    (let [result (tools/call clarification/ask-for-sql-clarification-tool
+                             {:question "Which table?" :options options} {})]
+      (is (mr/validate ::tools/result result))
+      (is (= {:output expected} result)))))

@@ -3,8 +3,6 @@ import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
-import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -15,25 +13,27 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
-import api from "metabase/api/legacy-client";
-import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+import { type OnBeforeRequestHandler, PLUGIN_API } from "metabase/api/client";
+import { getUserId } from "metabase/current-user";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserId } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
+import { resolveAllowedCustomVisualizations } from "../utils/validate-allowed-custom-visualizations";
 
 import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
@@ -47,28 +47,21 @@ import {
 
 let _embedReferrer: string | undefined;
 
-const embedReferrerHandler = async (
-  config: OnBeforeRequestHandlerConfig,
-): Promise<OnBeforeRequestHandlerConfig | void> => {
+const embedReferrerHandler: OnBeforeRequestHandler = async (config) => {
   if (_embedReferrer) {
     return {
       ...config,
-      options: {
-        ...config.options,
-        headers: {
-          ...config.options.headers,
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-          "X-Metabase-Embed-Referrer": _embedReferrer,
-        },
+      headers: {
+        ...config.headers,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+        "X-Metabase-Embed-Referrer": _embedReferrer,
       },
     };
   }
 };
 
-// Register once — uses a named function ref so it can't be pushed twice
-if (!api.beforeRequestHandlers.includes(embedReferrerHandler)) {
-  api.beforeRequestHandlers.push(embedReferrerHandler);
-}
+// Install the iframe embed-referrer handler into its plugin slot.
+PLUGIN_API.onBeforeRequestHandlers.embedReferrer = embedReferrerHandler;
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
@@ -77,10 +70,19 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 
   // Forward the host page URL so it's sent as X-Metabase-Embed-Referrer on API requests.
   _embedReferrer = settings?._embedReferrer;
+
+  // Custom viz allowlist, read by the plugin loaders via the props store.
+  ensureMetabaseProviderPropsStore().setProps({
+    allowedCustomVisualizations: resolveAllowedCustomVisualizations(settings),
+  });
 };
 
 const store = getSdkStore();
 createSnowplowTracker(() => getUserId(store.getState()));
+initMetaplow({
+  hostUrl: getCollectorHostUrl(),
+  getUserId: () => getUserId(store.getState()),
+});
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
@@ -124,6 +126,7 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeExistingUserSessionInProductionError />;
   }
 
+  // Unjustified type cast. FIXME
   const authConfig = {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
@@ -179,14 +182,7 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-browser",
         },
-        (settings) => (
-          <SdkInternalNavigationProvider keepChildrenMounted>
-            {/*  re-mount breadcrumbs when initial collection changes */}
-            <SdkBreadcrumbsProvider key={settings.initialCollection}>
-              <MetabaseBrowser settings={settings} />
-            </SdkBreadcrumbsProvider>
-          </SdkInternalNavigationProvider>
-        ),
+        (settings) => <MetabaseBrowser settings={settings} />,
       )
       .with(
         // Embedding based on a dashboardId (Metabase Account auth type) with disabled drills
@@ -247,7 +243,7 @@ const SdkIframeEmbedView = ({
         },
         (settings) => (
           <DashboardParametersBridge>
-            {({ onParametersChange }) => (
+            {({ onParametersChange, onNavigatedEntityParametersChange }) => (
               <InteractiveDashboard
                 key={rerenderKey}
                 className={SdkIframeEmbedRouteS.Dashboard}
@@ -262,6 +258,10 @@ const SdkIframeEmbedView = ({
                 onParametersChange={onParametersChange}
                 hiddenParameters={settings.hiddenParameters}
                 enableEntityNavigation={settings.enableEntityNavigation}
+                navigatedEntityParameters={settings.navigatedEntityParameters}
+                onNavigatedEntityParametersChange={
+                  onNavigatedEntityParametersChange
+                }
                 drillThroughQuestionHeight="100%"
                 drillThroughQuestionProps={{ isSaveEnabled: false }}
               />

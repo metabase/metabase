@@ -3,10 +3,10 @@
 }
 
 .headerCell {
-  border-top: 1px solid var(--mb-color-border);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .footer {
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }

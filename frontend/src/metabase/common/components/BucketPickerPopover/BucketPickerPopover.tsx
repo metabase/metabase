@@ -1,6 +1,5 @@
 import cx from "classnames";
 import {
-  type CSSProperties,
   type MouseEvent,
   type TouchEvent,
   useCallback,
@@ -34,13 +33,18 @@ export interface BucketPickerPopoverProps {
   classNames?: { root?: string; chevronDown?: string };
 }
 
+const TRIGGER_BUTTON_VARS = {
+  "--button-color": "var(--bucket-trigger-color)",
+  "--button-hover-color": "var(--bucket-trigger-hover-color)",
+};
+
 export function BucketPickerPopover({
   triggerLabel,
   ariaLabel,
   items,
   onSelect,
   initiallyVisibleItemsCount,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   hasChevronDown,
   className,
   classNames = {},
@@ -98,21 +102,22 @@ export function BucketPickerPopover({
           miw="35%"
           maw="50%"
           h="auto"
-          py={0}
-          variant="subtle"
-          color="white"
+          size="compact-md"
+          variant="transparent"
+          vars={() => ({ root: TRIGGER_BUTTON_VARS })}
           classNames={{ label: S.triggerButtonLabel }}
+          rightSection={
+            hasChevronDown ? (
+              <Icon
+                name="chevrondown"
+                className={cx(S.chevronDown, classNames.chevronDown)}
+              />
+            ) : (
+              <Icon name="chevronright" className={S.chevronIcon} />
+            )
+          }
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
-          {!hasChevronDown && (
-            <Icon name="chevronright" className={S.chevronIcon} />
-          )}
-          {hasChevronDown && (
-            <Icon
-              name="chevrondown"
-              className={cx(S.chevronDown, classNames.chevronDown)}
-            />
-          )}
         </Button>
       </Popover.Target>
       <Popover.Dropdown
@@ -124,12 +129,10 @@ export function BucketPickerPopover({
         <SelectList
           p="sm"
           miw="10rem"
-          style={
-            {
-              "--bucket-picker-active-color": activeColor,
-              overscrollBehavior: "contain",
-            } as CSSProperties
-          }
+          style={{
+            "--bucket-picker-active-color": activeColor,
+            overscrollBehavior: "contain",
+          }}
         >
           {visibleItems.map((item) => (
             <SelectList.Item
@@ -152,8 +155,7 @@ export function BucketPickerPopover({
               variant="subtle"
               color="brand"
               fullWidth
-              px="md"
-              py="sm"
+              px="lg"
               styles={{
                 inner: { display: "flex", justifyContent: "flex-start" },
               }}

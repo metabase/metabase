@@ -1,4 +1,5 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 export function validateSession(session: any) {
   if (!session || typeof session !== "object") {

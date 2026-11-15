@@ -28,6 +28,11 @@ export const ORDERS_COUNT_QUESTION_ID = _.findWhere(
   { name: "Orders, Count" },
 ).id;
 
+export const ORDERS_COUNT_QUESTION_ENTITY_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.questions,
+  { name: "Orders, Count" },
+).entity_id;
+
 export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count, Grouped by Created At (year)" },

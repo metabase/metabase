@@ -7,11 +7,12 @@ import {
   setupLibraryEndpoints,
   setupPublishTablesEndpoint,
   setupPublishTablesEndpointError,
+  setupRootCollectionItemsEndpoint,
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -57,11 +58,12 @@ function setup({
   });
 
   setupEnterpriseOnlyPlugin("library");
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCollectionItemsEndpoint({
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",
@@ -74,6 +76,24 @@ function setup({
     ],
   });
   setupCollectionByIdEndpoint({ collections: [dataCollection] });
+  setupCollectionItemsEndpoint({
+    collection: { id: dataCollection.id },
+    collectionItems: [],
+  });
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems: [
+      createMockCollectionItem({
+        // Unjustified type cast. FIXME
+        id: dataCollection.id as number,
+        name: dataCollection.name,
+        model: "collection",
+        type: dataCollection.type,
+        can_write: true,
+        here: ["table", "collection"],
+        below: ["table", "collection"],
+      }),
+    ],
+  });
 
   setupTableSelectionInfoEndpoint(selectionInfo);
   if (hasPublishError) {
@@ -178,6 +198,26 @@ describe("PublishTablesModal", () => {
     expect(await screen.findByText("People")).toBeInTheDocument();
     await userEvent.click(await screen.findByText("Publish these tables"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
+  });
+
+  it("should allow creating a new collection from the collection picker (UXW-4167)", async () => {
+    setup({
+      selectionInfo: createMockBulkTableSelectionInfo({
+        selected_table: createMockBulkTableInfo({
+          id: 1,
+          display_name: "Orders",
+        }),
+      }),
+    });
+    expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByTestId("collection-picker-button"),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "New collection" }),
+    ).toBeInTheDocument();
   });
 
   it("should show a publish error", async () => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
@@ -10,6 +11,7 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
   dashboardId: Yup.mixed().required(),
   token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
+    dataPicker: Yup.mixed().optional(),
     entityTypes: Yup.mixed().optional(),
   })
     .optional()
@@ -39,6 +41,8 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
   initialParameters: Yup.mixed().optional(),
   parameters: Yup.mixed().optional(),
   onParametersChange: Yup.mixed().optional(),
+  navigatedEntityParameters: Yup.mixed().optional(),
+  onNavigatedEntityParametersChange: Yup.mixed().optional(),
   onLoad: Yup.mixed().optional(),
   onLoadWithoutCards: Yup.mixed().optional(),
   plugins: Yup.object({

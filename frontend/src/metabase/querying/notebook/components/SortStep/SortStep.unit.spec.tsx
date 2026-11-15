@@ -22,7 +22,6 @@ function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
         orderBys: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             direction,
           },
@@ -44,7 +43,7 @@ function setup(step = createMockNotebookStep()) {
       step={step}
       stageIndex={step.stageIndex}
       query={step.query}
-      color="brand"
+      color="core-brand"
       isLastOpened={false}
       reportTimezone="UTC"
       updateQuery={updateQuery}

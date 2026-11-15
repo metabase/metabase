@@ -51,6 +51,11 @@
            (recur new-state more (conj outputs output)))
          [outputs (mlb/flush-state state) @registry])))))
 
+(defn- resolve-parts
+  "Run parts through a fresh [[mlb/resolve-xf]] with no queries or charts."
+  [parts]
+  (into [] (mlb/resolve-xf {} {} (atom {})) parts))
+
 ;;; State machine / buffering tests
 
 (deftest ^:parallel nested-bracket-handling-test
@@ -70,12 +75,10 @@
     (let [[outputs flushed] (process-chunks ["Check [link" "](http://example.com)"])]
       (is (= ["Check " "[link](http://example.com)"] outputs))
       (is (= "" flushed))))
-
   (testing "buffers link split across multiple chunks"
     (let [[outputs flushed] (process-chunks ["See [My " "Link](http:" "//example.com)"])]
       (is (= ["See " "" "[My Link](http://example.com)"] outputs))
       (is (= "" flushed))))
-
   (testing "flushes incomplete link at end of stream"
     (let [[output flushed] (process "Incomplete [link")]
       (is (= "Incomplete " output))
@@ -98,12 +101,10 @@
       (is (=? resolved-link-re output))
       (is (not (re-find #"metabase://" output)))
       (is (= "" flushed))))
-
   (testing "falls back to link text for unknown query"
     (let [[output flushed] (process "[Results](metabase://query/unknown)")]
       (is (= "Results" output))
       (is (= "" flushed))))
-
   (testing "incomplete chunks are also replaced well"
     (let [query (lib.tu/venues-query)
           [output flushed] (process-chunks ["Your [Res" "ults](metabase://qu" "ery/q-123)"] {"q-123" query})]
@@ -119,22 +120,16 @@
       (is (re-find #"\[My Chart\]\(/question#" output))
       (is (not (re-find #"metabase://" output)))
       (is (= "" flushed))))
-
   (testing "falls back to link text for unknown chart"
     (let [[output flushed] (process "[Chart](metabase://chart/unknown)")]
       (is (= "Chart" output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-table-link-test
-  (testing "resolves metabase://table links to ad-hoc question URLs"
+  (testing "resolves metabase://table links to table URLs"
     (let [table-id (mt/id :venues)
           [output flushed] (process (str "[Users Table](metabase://table/" table-id ")"))]
-      (is (re-find #"\[Users Table\]\(/question#.+\)" output))
-      (is (= "" flushed))))
-
-  (testing "falls back to link text for unknown table"
-    (let [[output flushed] (process "[Unknown Table](metabase://table/999999999)")]
-      (is (= "Unknown Table" output))
+      (is (= (str "[Users Table](/table/" table-id ")") output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-entity-link-test
@@ -142,17 +137,14 @@
     (let [[output flushed] (process "[My Model](metabase://model/123)")]
       (is (= "[My Model](/model/123)" output))
       (is (= "" flushed))))
-
   (testing "resolves metabase://metric links"
     (let [[output flushed] (process "[Revenue](metabase://metric/456)")]
       (is (= "[Revenue](/metric/456)" output))
       (is (= "" flushed))))
-
   (testing "resolves metabase://dashboard links"
     (let [[output flushed] (process "[Sales Dashboard](metabase://dashboard/789)")]
       (is (= "[Sales Dashboard](/dashboard/789)" output))
       (is (= "" flushed))))
-
   (testing "resolves metabase://transform links"
     (let [[output flushed] (process "[My Transform](metabase://transform/42)")]
       (is (= "[My Transform](/data-studio/transforms/42)" output))
@@ -172,7 +164,6 @@
     (let [[output flushed] (process "[Model A](metabase://model/1) and [Model B](metabase://model/2)")]
       (is (= "[Model A](/model/1) and [Model B](/model/2)" output))
       (is (= "" flushed))))
-
   (testing "handles mix of resolvable and regular links"
     (let [[output flushed] (process "[Model](metabase://model/1) and [Google](https://google.com)")]
       (is (= "[Model](/model/1) and [Google](https://google.com)" output))
@@ -186,7 +177,6 @@
       (let [[output flushed] (process "<metabase://model/123|My Model>")]
         (is (= "<https://metabase.example.com/model/123|My Model>" output))
         (is (= "" flushed))))
-
     (testing "resolves Slack link without link text"
       (let [[output flushed] (process "<metabase://dashboard/456>")]
         (is (= "<https://metabase.example.com/dashboard/456>" output))
@@ -264,7 +254,6 @@
       (let [[_output _flushed registry] (process-with-registry "<metabase://model/123|My Model>")]
         (is (= {"https://metabase.example.com/model/123" "metabase://model/123"}
                registry))))
-
     (testing "records multiple Slack links in registry"
       (let [[_output _flushed registry] (process-with-registry
                                          "<metabase://model/1|A> and <metabase://dashboard/2|B>")]
@@ -303,6 +292,53 @@
       (is (re-find #"\[Results\]\(/question#" (-> result second :text)))
       (is (= 1 (count @registry)))
       (is (= "metabase://query/q1" (first (vals @registry)))))))
+
+(deftest ^:parallel resolve-xf-flushes-held-text-where-the-text-ends-test
+  (doseq [[where after] [["before the tool call that follows it"
+                          [{:type :tool-input :id "call-1" :function "search" :arguments {}}
+                           {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}]]
+                         ["before an error"
+                          [{:type :error :error {:message "Stream failed"}}]]
+                         ["at the end of the stream"
+                          []]]]
+    (testing (str "text held for a possible link comes out " where ", with the id of its text")
+      (is (= (into [{:type :text :id "t1" :text "Let me check the "}
+                    {:type :text :id "t1" :text "[Orders"}]
+                   after)
+             (resolve-parts (into [{:type :text :id "t1" :text "Let me check the [Orders"}] after)))))))
+
+(deftest ^:parallel resolve-xf-supports-early-termination-test
+  (let [take-parts (fn [n parts]
+                     (into [] (comp (mlb/resolve-xf {} {} (atom {})) (take n)) parts))]
+    (testing "the consumer stops at the held text flushed before a tool call"
+      (is (= [{:type :text :id "t1" :text "a "}
+              {:type :text :id "t1" :text "[b"}]
+             (take-parts 2 [{:type :text :id "t1" :text "a [b"}
+                            {:type :tool-input :id "c1"}
+                            {:type :tool-output :id "c1"}]))))
+    (testing "the consumer stops before the held text flushed at the end of the stream"
+      (is (= [{:type :text :id "t1" :text "a "}]
+             (take-parts 1 [{:type :text :id "t1" :text "a [b"}]))))))
+
+(deftest ^:parallel resolve-xf-holds-text-across-parts-that-do-not-end-it-test
+  (doseq [part [{:type :usage :usage {:promptTokens 1}}
+                {:type :reasoning :id "r1" :text "Thinking"}]]
+    (testing (str "a " (name (:type part)) " part between two chunks of a link doesn't split it")
+      (is (= [{:type :text :id "t1" :text "See "}
+              part
+              {:type :text :id "t1" :text "[My Model](/model/1)"}]
+             (resolve-parts [{:type :text :id "t1" :text "See [My "}
+                             part
+                             {:type :text :id "t1" :text "Model](metabase://model/1)"}]))))))
+
+(deftest ^:parallel resolve-xf-flushes-held-text-after-reasoning-before-tool-call-test
+  (is (= [{:type :text :id "t1" :text "a "}
+          {:type :reasoning :id "r1" :text "Thinking"}
+          {:type :text :id "t1" :text "[b"}
+          {:type :tool-input :id "c1"}]
+         (resolve-parts [{:type :text :id "t1" :text "a [b"}
+                         {:type :reasoning :id "r1" :text "Thinking"}
+                         {:type :tool-input :id "c1"}]))))
 
 (deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"

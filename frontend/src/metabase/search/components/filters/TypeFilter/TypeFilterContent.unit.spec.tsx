@@ -28,7 +28,9 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [
@@ -80,6 +82,7 @@ const setup = async ({
   setupSearchEndpoints(
     availableModels.map((type, index) =>
       createMockSearchResult({
+        // Unjustified type cast. FIXME
         model: type as SearchModel,
         id: index + 1,
         database_id: TEST_DATABASE.id,
@@ -104,9 +107,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {
@@ -124,6 +127,13 @@ describe("TypeFilterContent", () => {
         checkboxWrapper.getByLabelText(MODEL_NAME[type]),
       ).toBeInTheDocument();
     });
+  });
+
+  it("should offer Research when explorations are available", async () => {
+    await setup({ availableModels: ["exploration"] });
+
+    expect(getCheckboxes()).toHaveLength(1);
+    expect(screen.getByLabelText(MODEL_NAME.exploration)).toBeInTheDocument();
   });
 
   it("should only display available types", async () => {

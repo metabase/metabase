@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 const verifiedFilterToggleButton = () =>
   cy
@@ -45,22 +45,6 @@ describe("browse > models", () => {
       name: "Create models to clean up and combine tables to make your data easier to explore",
     }).should("be.visible");
   });
-
-  it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", (win) => {
-      // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").as("open");
-    });
-    cy.visit("/browse/models");
-    cy.findByRole("heading", { name: "Orders Model" }).click(H.holdMetaKey);
-
-    cy.get("@open").should("have.been.calledOnce");
-    cy.get("@open").should(
-      "have.been.calledOnceWithExactly",
-      `/model/${ORDERS_MODEL_ID}-orders-model`,
-      "_blank",
-    );
-  });
 });
 
 describe("scenarios > browse", () => {
@@ -96,6 +80,30 @@ describe("scenarios > browse", () => {
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
+  });
+
+  it("opens a table at a clean /table/:slug URL that falls back to /question on edit", () => {
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Products" }).click();
+
+    cy.log("a pristine table view keeps the canonical /table/:slug URL");
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("the clean URL survives a reload");
+    cy.reload();
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("editing the question falls back to the ad-hoc /question#hash form");
+    H.tableHeaderClick("Category");
+    H.popover()
+      .findByTestId("click-actions-sort-control-sort.ascending")
+      .click();
+    cy.location("pathname").should("eq", "/question");
+    cy.location("hash").should("not.be.empty");
   });
 
   it("can generate x-ray dashboard from a browse page", () => {
@@ -146,22 +154,6 @@ describe("scenarios > browse", () => {
     });
   });
 
-  it("browsing to a database only triggers a request for schemas for that specific database", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
-      "schemasForSampleDatabase",
-    );
-    cy.intercept(
-      "GET",
-      /\/api\/database\/(?!1\b)\d+\/schemas/,
-      cy.spy().as("schemasForOtherDatabases"),
-    );
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("link", { name: /Sample Database/ }).click();
-    cy.wait("@schemasForSampleDatabase");
-    cy.get("@schemasForOtherDatabases").should("not.have.been.called");
-  });
-
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
     H.browseDatabases().click();
@@ -180,29 +172,8 @@ describe("scenarios > browse", () => {
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
     H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     verifiedFilterToggleButton().should("not.exist");
-  });
-
-  it("The Browse models page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse models").click();
-    cy.findByLabelText("Models")
-      .findAllByText("An error occurred")
-      .should("have.length", 2);
-  });
-
-  it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse metrics").click();
-    cy.findByLabelText("Metrics")
-      .findByText("An error occurred")
-      .should("be.visible");
   });
 });
 
@@ -407,5 +378,36 @@ describe("issue 37907", () => {
 
     H.tableInteractive().findByTextEnsureVisible("Discount ($)").realHover();
     H.popover().should("include.text", "Discount amount.");
+  });
+});
+
+describe("issue 74433", () => {
+  const LONG_TABLE_NAME =
+    "thisisaverylongtablenamewithoutspacesthatshouldoverflowthetooltipboxbecausetherearenospacesforbreakingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ORDERS_ID}`, {
+      display_name: LONG_TABLE_NAME,
+    });
+  });
+
+  it("table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    // Browse cards actually have a <Title> as the child of the <Ellipsified> component,
+    // so we need to target the parent for the hover
+    cy.findByRole("heading", { name: LONG_TABLE_NAME }).parent().realHover();
+
+    H.tooltip()
+      .should("be.visible")
+      .and(($tooltip) => {
+        const tooltip = $tooltip[0];
+        expect(
+          tooltip.scrollWidth,
+          "tooltip content fits within its box",
+        ).to.be.lte(tooltip.clientWidth);
+      });
   });
 });

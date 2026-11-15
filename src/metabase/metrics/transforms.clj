@@ -1,29 +1,58 @@
 (ns metabase.metrics.transforms
-  "Shared JSON transform functions for dimension and dimension-mapping columns
-   used by both Card and Measure models."
-  (:require
-   [metabase.models.interface :as mi]))
+  "Toucan JSON transforms for dimension and dimension-mapping columns
+   used by both Card and Measure models.
 
-(defn normalize-dimension
-  "Normalize a dimension after JSON parsing, converting string values to keywords."
-  [dim]
+   Dimensions are kebab-case (`display-name`, `dimension-id`, …) everywhere — in memory,
+   on the wire, and in the JSON at rest. See [[metabase.lib-metric.schema/persisted-dimension]]."
+  (:require
+   [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]))
+
+(mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
+  "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
+  See [[lib-metric.schema/persisted-dimension]]."
+  [dim :- [:map {:closed true}
+           [:id                    [:maybe ::lib-metric.schema/dimension-id]]
+           [:lib/source            {:optional true} [:maybe [:or :keyword :string]]]
+           [:name                  {:optional true} [:maybe :string]]
+           [:display-name          {:optional true} [:maybe :string]]
+           [:description           {:optional true} [:maybe :string]]
+           [:effective-type        {:optional true} [:maybe [:or :string :keyword]]]
+           [:semantic-type         {:optional true} [:maybe [:or :string :keyword]]]
+           [:has-field-values      {:optional true} [:maybe [:or :string :keyword]]]
+           [:status                {:optional true} [:maybe [:or :string :keyword]]]
+           [:status-message        {:optional true} [:maybe :string]]
+           [:sources               {:optional true} [:maybe [:sequential
+                                                             [:map {:closed true}
+                                                              [:type     [:or :string :keyword]]
+                                                              [:field-id {:optional true} [:maybe :int]]
+                                                              [:binning  {:optional true} [:maybe :boolean]]]]]]
+           [:group                 {:optional true} [:maybe ::lib-metric.schema/dimension-group]]
+           [:default-temporal-unit {:optional true} [:or :string :keyword]]
+           [:default               {:optional true} [:maybe :boolean]]]]
   (cond-> dim
-    (:status dim)         (update :status keyword)
-    (:effective-type dim) (update :effective-type keyword)
-    (:semantic-type dim)  (update :semantic-type keyword)
-    (:sources dim)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
+    ;; `:lib/source` arrives as a keyword on a computed dimension and as a string once it has been through the
+    ;; JSON column. Keywordizing it here, like every other enum below, is what keeps a metric's serialization the
+    ;; same before and after the backfill is persisted.
+    (:lib/source dim)            (update :lib/source keyword)
+    (:status dim)                (update :status keyword)
+    (:effective-type dim)        (update :effective-type keyword)
+    (:semantic-type dim)         (update :semantic-type keyword)
+    (:has-field-values dim)      (update :has-field-values keyword)
+    (:default-temporal-unit dim) (update :default-temporal-unit keyword)
+    (:sources dim)               (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
 
 (defn normalize-target-ref
-  "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."
-  [[clause-type opts & rest]]
-  (into [(keyword clause-type)
-         (cond-> opts
-           (:base-type opts)      (update :base-type keyword)
-           (:effective-type opts) (update :effective-type keyword))]
-        rest))
+  "Normalize a target ref after JSON parsing, e.g. [\"field\" {...} id] to a well-formed
+   MBQL 5 [:field {...} id] ref, via the ref schema."
+  [target]
+  (lib/normalize :metabase.lib.schema.ref/ref target))
 
 (defn normalize-dimension-mapping
-  "Normalize a dimension mapping after JSON parsing."
+  "Normalize a dimension mapping after JSON parsing, converting string values to keywords."
   [mapping]
   (-> mapping
       (update :type keyword)
@@ -35,6 +64,7 @@
    :out (fn [dims]
           (some->> dims
                    mi/json-out-with-keywordization
+                   (remove nil?)
                    (mapv normalize-dimension)))})
 
 (def transform-dimension-mappings
@@ -44,3 +74,74 @@
           (some->> mappings
                    mi/json-out-with-keywordization
                    (mapv normalize-dimension-mapping)))})
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; Dimensions and dimension-mappings embed instance-specific Field and Table IDs that must be turned into
+;;; references on export and resolved back to local IDs on import. Only curated (metric v2) entities serialize these;
+;;; others re-derive them from their query on the far side.
+
+(defn- walk-export-dimension
+  "Convert the Field IDs embedded in a persisted dimension's `:sources` to the references `visit` returns."
+  [visit dimension]
+  (cond-> dimension
+    (seq (:sources dimension))
+    (update :sources (fn [sources]
+                       (mapv (fn [source]
+                               (cond-> source
+                                 (pos-int? (:field-id source))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
+                             sources)))))
+
+(defn- walk-import-dimension
+  "Inverse of [[walk-export-dimension]]."
+  [visit dimension]
+  (cond-> dimension
+    (seq (:sources dimension))
+    (update :sources (fn [sources]
+                       (mapv (fn [source]
+                               (cond-> source
+                                 (vector? (:field-id source))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
+                             sources)))))
+
+(defn walk-export-dimensions
+  "Serialize a curated entity's `:dimensions`: convert the Field IDs embedded in each dimension's `:sources` to
+   the references `visit` returns. `nil` in, `nil` out (so the column is elided for non-curated entities);
+   an empty vector is preserved, so a fully cleared dimension set round-trips as cleared rather than being re-seeded
+   on import."
+  [visit dimensions]
+  (when (some? dimensions)
+    (mapv (partial walk-export-dimension visit) dimensions)))
+
+(defn walk-import-dimensions
+  "Inverse of [[walk-export-dimensions]]. Normalized like [[transform-dimensions]] output, since a file-based import
+  reads keyword values back as strings."
+  [visit dimensions]
+  (when (some? dimensions)
+    (mapv #(cond-> (walk-import-dimension visit %)
+             (not (serialization/collecting? visit)) normalize-dimension)
+          dimensions)))
+
+(defn walk-export-dimension-mappings
+  "Serialize a curated entity's `:dimension_mappings`: convert `:table-id` and the Field IDs inside each mapping's
+   `:target` field ref to the references `visit` returns. `nil`/empty handled as in
+   [[walk-export-dimensions]]."
+  [visit mappings]
+  (when (some? mappings)
+    (mapv (fn [mapping]
+            (cond-> mapping
+              (pos-int? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+              (:target mapping)              (update :target (partial serialization/walk-export visit))))
+          mappings)))
+
+(defn walk-import-dimension-mappings
+  "Inverse of [[walk-export-dimension-mappings]]. Normalized like [[transform-dimension-mappings]] output, for the same
+  reason as [[walk-import-dimensions]]."
+  [visit mappings]
+  (when (some? mappings)
+    (mapv (fn [mapping]
+            (cond-> (cond-> mapping
+                      (vector? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+                      (:target mapping)             (update :target (partial serialization/walk-import visit)))
+              (not (serialization/collecting? visit)) normalize-dimension-mapping))
+          mappings)))

@@ -14,7 +14,9 @@
    :model/Document           :document
    :model/Sandbox            :sandbox
    :model/Segment            :segment
-   :model/Measure            :measure})
+   :model/Measure            :measure
+   :model/Action             :action
+   :model/DataApp            :data-app})
 
 (def dependency-type->model
   "A map relating dependency types to their corresponding model."
@@ -23,6 +25,11 @@
 (def dependency-types
   "The set of all dependency types."
   (-> model->dependency-type vals set))
+
+(def backfillable-dependency-types
+  "Dependency types that the dependency job computes dependencies for. Excludes `:table`: tables aren't
+  backfilled directly; links involving tables are found via analysis of the other side of the relation."
+  (disj dependency-types :table))
 
 (def models
   "The set of all models that are handled by dependencies."

@@ -1,1224 +1,401 @@
 (ns metabase-enterprise.remote-sync.api-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [diehard.core :as dh]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.core :as remote-sync.core]
-   [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
-   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.settings :as settings]
-   [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn mock-git-source
-  "Create a mock git source for testing"
-  [& {:keys [branches error-on-branches?]
-      :or {branches ["main" "develop"]}}]
-  (reify source.p/Source
-    (create-branch [_ _branch _base]
-      nil)
-    (branches [_]
-      (if error-on-branches?
-        (throw (Exception. "Repository not found"))
-        branches))
-    (default-branch [_]
-      "main")
-    (snapshot [_]
-      nil)))
-
-(use-fixtures :once
-  (fixtures/initialize :db)
-  ;; TODO (edpaget 10/23/25): this seems silly, maybe there's a better way?
-  (fn [f] (mt/dataset test-data
-            (mt/id)
-            (f))))
-
-(use-fixtures :each
-  test-helpers/clean-remote-sync-state
-  (fn [f]
-    (mt/with-premium-features #{:remote-sync}
-      (f))))
-
-(defn- wait-for-task-completion [task-id]
-  (when task-id
-    (dh/with-retry {:max-retries 10
-                    :delay-ms 500}
-      (u/prog1 (t2/select-one :model/RemoteSyncTask :id task-id)
-        (when (nil? (:ended_at <>))
-          (throw (ex-info "Not finished" {:task-id task-id
-                                          :result <>})))))))
-
-;;; ------------------------------------------------- Branches Endpoint -------------------------------------------------
-
-(deftest branches-endpoint-returns-branches-test
-  (testing "GET /api/ee/remote-sync/branches returns list of branches"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
-      (is (= {:items ["main" "develop" "feature-branch"]}
-             (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches"))))))
-
-(deftest branches-endpoint-requires-superuser-test
-  (testing "GET /api/ee/remote-sync/branches requires superuser permissions"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source))]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/remote-sync/branches"))))))
-
-(deftest branches-endpoint-errors-when-git-not-configured-test
-  (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
-    (with-redefs [source/source-from-settings (constantly nil)]
-      (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
-             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
-
-(deftest branches-endpoint-handles-repository-errors-test
-  (testing "GET /api/ee/remote-sync/branches handles git repository errors"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
-      (is (= "Repository not found: Please check the repository URL"
-             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
-
-;;; ------------------------------------------------- Import Endpoint -------------------------------------------------
-
-(deftest import-with-default-branch-test
-  (testing "POST /api/ee/remote-sync/import succeeds with default branch"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})
-                completed-task (wait-for-task-completion task_id)]
-            (is (=? {:status "success" :task_id int?} resp))
-            (is (remote-sync.task/successful? completed-task))))))))
-
-(deftest import-with-specific-branch-test
-  (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
-    (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-develop)]
-          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch"})
-                completed-task (wait-for-task-completion task_id)]
-            (is (= "success" (:status response)))
-            (is (remote-sync.task/successful? completed-task))))))))
-
-(deftest import-requires-superuser-test
-  (testing "POST /api/ee/remote-sync/import requires superuser permissions"
-    (mt/with-temporary-setting-values [remote-sync-enabled true]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {}))))))
-
-(deftest import-errors-when-remote-sync-disabled-test
-  (testing "POST /api/ee/remote-sync/import errors when remote sync is disabled"
-    (mt/with-temporary-setting-values [remote-sync-url nil]
-      (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))))
-
-(deftest import-handles-network-errors-test
-  (testing "POST /api/ee/remote-sync/import handles network errors during import"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})
-                completed-task (wait-for-task-completion task_id)]
-            (is (= "success" (:status response)))
-            (is (remote-sync.task/failed? completed-task))))))))
-
-(deftest import-errors-when-task-already-exists-test
-  (testing "POST /api/ee/remote-sync/import errors when task already exists"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
-      (let [mock-source (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
-            (is (= "Remote sync task in progress"
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))))))))
-
-(deftest import-errors-when-dirty-changes-test
-  (testing "POST /api/ee/remote-sync/import errors when dirty changes exist"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (t2/insert! :model/RemoteSyncObject {:model_type "Card"
-                                             :model_id 1
-                                             :model_name "Test Card"
-                                             :model_collection_id 1
-                                             :status "updated"
-                                             :status_changed_at (java.time.OffsetDateTime/now)})
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                 (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))
-          (testing "But can force an import"
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
-                  completed-task (wait-for-task-completion task_id)]
-              (is (=? {:status "success" :task_id int?} resp))
-              (is (remote-sync.task/successful? completed-task)))))))))
-
-;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
-
-(deftest export-errors-in-read-only-mode-test
-  (testing "POST /api/ee/remote-sync/export errors when in read-only sync mode"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
-        (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
-
-(deftest export-with-default-settings-test
-  (testing "POST /api/ee/remote-sync/export succeeds with default settings"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                    task (wait-for-task-completion task_id)]
-                (is (remote-sync.task/successful? task))
-                (is (=? {:message string? :task_id int?}
-                        resp))))))))))
-
-(deftest export-with-custom-branch-and-message-test
-  (testing "POST /api/ee/remote-sync/export succeeds with custom branch and message"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                                                     {:branch "feature-branch" :message "Custom export message"})
-                    task (wait-for-task-completion task_id)]
-                (is (=? {:message string? :task_id int?}
-                        resp))
-                (is (remote-sync.task/successful? task))))))))))
-
-(deftest export-requires-superuser-test
-  (testing "POST /api/ee/remote-sync/export requires superuser permissions"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write
-                                       remote-sync-url "file://repo.git"]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {}))))))
-
-(deftest export-errors-when-remote-sync-disabled-test
-  (testing "POST /api/ee/remote-sync/export errors when remote sync is disabled"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write
-                                       remote-sync-url nil]
-      (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))
-
-(deftest export-handles-write-errors-test
-  (testing "POST /api/ee/remote-sync/export handles write errors"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                    task (wait-for-task-completion (:task_id response))]
-                (is (remote-sync.task/failed? task))))))))))
-
-(deftest export-errors-when-task-already-exists-test
-  (testing "POST /api/ee/remote-sync/export errors when task already exists"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
-        (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Remote sync task in progress"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
-
-(deftest export-errors-if-external-changes-test
-  (testing "POST /api/ee/remote-sync/export errors when remote is ahead of the last sync"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                              :ended_at :%now
-                                              :version "other-version"}]
-        (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Cannot export changes that will overwrite new changes in the branch."
-                     (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))
-              (testing "Can export when the versions match"
-                (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                                        :ended_at :%now
-                                                        :version "mock-version"}]
-                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
-
-(deftest export-force-if-external-changes-test
-  (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                              :ended_at :%now
-                                              :version "other-version"}]
-        (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                             remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
-              (testing "Can export with force"
-                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
-
-;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
-
-(deftest current-task-returns-nil-when-no-tasks-test
-  (testing "GET /api/ee/remote-sync/current-task returns nil when there are no tasks"
-    (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task")))))
-
-(deftest current-task-returns-active-task-test
-  (testing "GET /api/ee/remote-sync/current-task returns the current task when one exists"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
-                                            :last_progress_report_at :%now
-                                            :started_at :%now}]
-      (is (=? {:id integer?
-               :started_at some?
-               :ended_at nil?}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
-
-(deftest current-task-returns-completed-task-test
-  (testing "GET /api/ee/remote-sync/current-task returns completed task after completion"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (remote-sync.task/complete-sync-task! id)
-      (is (=? {:id integer?
-               :started_at some?
-               :ended_at some?}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
-
-(deftest current-task-returns-error-for-failed-task-test
-  (testing "GET /api/ee/remote-sync/current-task returns error message for failed task"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (remote-sync.task/fail-sync-task! id "Some error")
-      (is (=? {:error_message "Some error"}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
-
-(deftest current-task-returns-cancelled-status-test
-  (testing "GET /api/ee/remote-sync/current-task returns cancelled status for cancelled task"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (remote-sync.task/cancel-sync-task! id)
-      (is (=? {:cancelled true
-               :error_message "Task cancelled"}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
-
-;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
-
-(deftest cancel-task-errors-when-no-tasks-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel errors when there are no tasks"
-    (is (= "No active task to cancel"
-           (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel")))))
-
-(deftest cancel-task-errors-when-last-task-completed-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel errors when last task completed"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (remote-sync.task/complete-sync-task! id)
-      (is (= "No active task to cancel"
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))))
-
-(deftest cancel-task-errors-when-last-task-errored-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel errors when last task errored"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (remote-sync.task/fail-sync-task! id "Error msg")
-      (is (= "No active task to cancel"
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))))
-
-(deftest cancel-active-task-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel successfully cancels active task"
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                   :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (is (=? {:id id
-               :cancelled true
-               :error_message "Task cancelled"}
-              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
-      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
-
-;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
-
-(deftest is-dirty-returns-false-when-no-changes-test
-  (testing "GET /api/ee/remote-sync/is-dirty returns false when no remote-synced collections have changes"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :is_remote_synced true
-                                          :entity_id "test-collection-1"
-                                          :location "/"}]
-        (is (= {:is_dirty false}
-               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))))))
-
-(deftest is-dirty-returns-true-when-changes-exist-test
-  (testing "GET /api/ee/remote-sync/is-dirty returns true when any remote-synced collection has changes"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :is_remote_synced true
-                                                   :entity_id "test-collection-1"
-                                                   :location "/"}
-                     :model/Card card {:collection_id (:id remote-col)
-                                       :name "Test Card"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
-                                                :model_id (:id card)
-                                                :model_name "Test Card"
-                                                :model_collection_id (:id remote-col)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (is (= {:is_dirty true}
-               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))))))
-
-(deftest is-dirty-requires-superuser-test
-  (testing "GET /api/ee/remote-sync/is-dirty requires superuser permissions"
-    (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))))
-
-;;; ------------------------------------------------- Dirty Models Endpoint -------------------------------------------------
-
-(deftest dirty-returns-empty-list-when-no-dirty-models-test
-  (testing "GET /api/ee/remote-sync/dirty returns empty list when no dirty models"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :is_remote_synced true
-                                          :entity_id "test-collection-1"
-                                          :location "/"}]
-        (is (= {:dirty []}
-               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))
-
-(deftest dirty-returns-all-dirty-models-test
-  (testing "GET /api/ee/remote-sync/dirty returns all dirty models across remote-synced collections"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection remote-col1 {:name "Remote Collection 1"
-                                                    :is_remote_synced true
-                                                    :entity_id "test-collection-1"
-                                                    :location "/"}
-                     :model/Collection remote-col2 {:name "Remote Collection 2"
-                                                    :is_remote_synced true
-                                                    :entity_id "test-collection-2"
-                                                    :location "/"}
-                     :model/Card card1 {:collection_id (:id remote-col1)
-                                        :name "Card 1"}
-                     :model/Card card2 {:collection_id (:id remote-col2)
-                                        :name "Card 2"}
-                     :model/Dashboard dashboard {:collection_id (:id remote-col1)
-                                                 :name "Dashboard 1"}
-                     :model/RemoteSyncObject _ {:model_type "card"
-                                                :model_id (:id card1)
-                                                :model_name "Card 1"
-                                                :model_collection_id (:id remote-col1)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "card"
-                                                :model_id (:id card2)
-                                                :model_name "Card 2"
-                                                :model_collection_id (:id remote-col2)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "dashboard"
-                                                :model_id (:id dashboard)
-                                                :model_name "Dashboard 1"
-                                                :model_collection_id (:id remote-col1)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 3 (count dirty-items)))
-          (is (= #{"Card 1" "Card 2" "Dashboard 1"}
-                 (set (map :name dirty-items))))
-          (is (= #{"card" "dashboard"}
-                 (set (map :model dirty-items)))))))))
-
-(deftest dirty-returns-nested-collection-models-test
-  (testing "GET /api/ee/remote-sync/dirty returns dirty models from nested collections"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :is_remote_synced true
-                                                   :entity_id "test-collection-1"
-                                                   :location "/"}
-                     :model/Collection nested-col {:name "Nested Collection"
-                                                   :is_remote_synced true
-                                                   :location (str "/" (:id remote-col) "/")}
-                     :model/Card nested-card {:collection_id (:id nested-col)
-                                              :name "Nested Card"}
-                     :model/RemoteSyncObject _ {:model_type "card"
-                                                :model_name "Nested Card"
-                                                :model_collection_id (:id nested-col)
-                                                :model_id (:id nested-card)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Nested Card" (:name (first dirty-items)))))))))
-
-(deftest dirty-deduplicates-items-test
-  (testing "GET /api/ee/remote-sync/dirty deduplicates items"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :is_remote_synced true
-                                                   :entity_id "test-collection-1"
-                                                   :location "/"}
-                     :model/Card card {:collection_id (:id remote-col)
-                                       :name "Test Card"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
-                                                :model_id (:id card)
-                                                :model_name "Test Card"
-                                                :model_collection_id (:id remote-col)
-                                                :status "pending"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Test Card" (:name (first dirty-items)))))))))
-
-(deftest dirty-requires-superuser-test
-  (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"
-    (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "ee/remote-sync/dirty")))))
-
-;;; ------------------------------------------------- Settings Endpoint -------------------------------------------------
-
-(deftest settings-update-succeeds-test
-  (testing "PUT /api/ee/remote-sync/settings successfully updates settings"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-main)]
-        (mt/with-temporary-setting-values [remote-sync-url nil
-                                           remote-sync-type :read-write]
-          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                           {:remote-sync-url "https://github.com/test/repo.git"
-                                            :remote-sync-branch "main"})]
-            (is (= {:success true} resp))))))))
-
-(deftest settings-update-triggers-import-in-read-only-test
-  (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-main)]
-        (mt/with-temporary-setting-values [remote-sync-type :read-only
-                                           remote-sync-branch "main"
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:remote-sync-url "file://repo.git"
-                                                :remote-sync-type :read-only})
-                task (wait-for-task-completion (:task_id response))]
-            (is (=? {:success true} response))
-            (is (remote-sync.task/successful? task))))))))
-
-(deftest settings-requires-superuser-test
-  (testing "PUT /api/ee/remote-sync/settings requires superuser permissions"
-    (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :put 403 "ee/remote-sync/settings" {})))))
-
-(deftest settings-handles-invalid-settings-test
-  (testing "PUT /api/ee/remote-sync/settings handles invalid settings"
-    (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:remote-sync-url "asdf://invalid-url"})]
-      (is (= "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)" (:error response))))))
-
-(deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
-    (with-redefs [remote-sync.object/dirty? (constantly true)
-                  settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"
-                                         remote-sync-type :read-write]
-        (testing "cannot change to read-only mode"
-          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode."
-                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :remote-sync-branch "main"
-                                        :remote-sync-url "https://github.com/test/repo.git"
-                                        :remote-sync-token "test-token"}))))))))
-
-(deftest settings-refuses-while-task-running-test
-  (testing "PUT /api/ee/remote-sync/settings refuses with 400 when a RemoteSyncTask is active"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                            :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (t/offset-date-time)
-                                            :progress       0.0}]
-      (let [check-git-call-count (atom 0)]
-        (with-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
-          (mt/with-temporary-setting-values [remote-sync-url    "file://my/repo.git"
-                                             remote-sync-token  nil
-                                             remote-sync-type   :read-only
-                                             remote-sync-branch "main"]
-            (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                                 {:remote-sync-url    "file://different.git"
-                                                  :remote-sync-type   :read-only
-                                                  :remote-sync-branch "feature-x"
-                                                  :remote-sync-token  nil})]
-              (is (= "Remote sync task in progress" (:message response))
-                  "endpoint should return the guard's error message"))
-            (is (= "file://my/repo.git" (settings/remote-sync-url))
-                "remote-sync-url must remain unchanged when the guard fires")
-            (is (= "main" (settings/remote-sync-branch))
-                "remote-sync-branch must remain unchanged when the guard fires")
-            (is (zero? @check-git-call-count)
-                "check-git-settings! must not be called when the guard fires")))))))
-
-;;; ------------------------------------------- Settings Collections Tests -------------------------------------------
-
-(deftest settings-collections-enables-remote-sync-on-single-collection-test
-  (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on a single collection"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {coll-id true}})]
-            (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
-
-(deftest settings-collections-disables-remote-sync-on-single-collection-test
-  (testing "PUT /api/ee/remote-sync/settings with collections disables remote sync on a single collection"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {coll-id false}})]
-            (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
-
-(deftest settings-collections-enables-multiple-collections-test
-  (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on multiple collections"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {coll1-id true coll2-id true}})]
-            (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
-
-(deftest settings-collections-mixed-enable-disable-test
-  (testing "PUT /api/ee/remote-sync/settings with collections handles mixed enable/disable operations"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {coll1-id true coll2-id false}})]
-            (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
-
-(deftest settings-collections-cascades-to-descendants-test
-  (testing "PUT /api/ee/remote-sync/settings with collections cascades to descendants"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
-                     :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}
-                     :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {parent-id true}})]
-            (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
-
-(deftest settings-collections-cascades-disable-to-descendants-test
-  (testing "PUT /api/ee/remote-sync/settings with collections cascades disable to descendants"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
-                     :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}
-                     :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:collections {parent-id false}})]
-            (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
-
-(deftest settings-collections-errors-on-non-remote-synced-dependencies-test
-  (testing "PUT /api/ee/remote-sync/settings with collections errors when enabling a collection with non-remote-synced dependencies"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote Synced" :location "/" :is_remote_synced false}
-                     :model/Collection {regular-coll-id :id} {:name "Regular" :location "/" :is_remote_synced false}
-                     :model/Card {source-card-id :id} {:name "Source Card"
-                                                       :collection_id regular-coll-id
-                                                       :database_id (mt/id)
-                                                       :dataset_query (mt/mbql-query venues)}
-                     :model/Card _ {:name "Dependent Card"
-                                    :collection_id remote-synced-coll-id
-                                    :database_id (mt/id)
-                                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                               {:collections {remote-synced-coll-id true}})]
-            (is (= "Uses content that is not remote synced." (:error response)))))))))
-
-(deftest settings-collections-errors-on-remote-synced-dependents-test
-  (testing "PUT /api/ee/remote-sync/settings with collections errors when disabling a collection that has remote-synced dependents"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
-                     :model/Card {source-card-id :id} {:name "Source Card"
-                                                       :collection_id coll1-id
-                                                       :database_id (mt/id)
-                                                       :dataset_query (mt/mbql-query venues)}
-                     :model/Card _ {:name "Dependent Card"
-                                    :collection_id coll2-id
-                                    :database_id (mt/id)
-                                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
-          (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                               {:collections {coll1-id false}})]
-            (is (= "Used by remote synced content." (:error response)))))))))
-
-(deftest settings-collections-empty-is-no-op-test
-  (testing "PUT /api/ee/remote-sync/settings with empty collections is a no-op"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
-        (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                             {:collections {}})]
-          (is (= {:success true} response))
-          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
-
-(deftest settings-collections-requires-superuser-test
-  (testing "PUT /api/ee/remote-sync/settings with collections requires superuser permissions"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "ee/remote-sync/settings"
-                                   {:collections {coll-id true}}))))))
-
-(deftest settings-collections-rejects-changes-in-read-only-mode-test
-  (testing "PUT /api/ee/remote-sync/settings rejects collection changes when remote-sync-type is read-only"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}
-                   :model/Collection {synced-coll-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
-        (testing "rejects enabling collections when remote-sync-type is explicitly read-only"
-          (is (= "Cannot change synced collections when remote-sync-type is read-only."
-                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :collections {coll-id true}}))))
-        (testing "rejects disabling collections when remote-sync-type is explicitly read-only"
-          (is (= "Cannot change synced collections when remote-sync-type is read-only."
-                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :collections {synced-coll-id false}}))))
-        (testing "rejects collection changes when remote-sync-type is already read-only (default)"
-          (mt/with-temporary-setting-values [remote-sync-type :read-only]
-            (is (= "Cannot change synced collections when remote-sync-type is read-only."
-                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:collections {coll-id true}})))))))))
-
-(deftest settings-collections-no-op-skips-read-only-check-test
-  (testing "PUT /api/ee/remote-sync/settings skips read-only error when collections have no actual changes"
-    (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}
-                   :model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
-        (testing "sending false for already-unsynced collection in read-only mode succeeds"
+(use-fixtures :each (fn [thunk] (mt/with-premium-features #{:remote-sync} (thunk))))
+
+(defn- push!
+  "Pushes the synced content to `main` through the API, returning the ended task."
+  []
+  (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                {:branch "main" :message "Push synced content"})]
+    (remote-sync.tu/wait-for-task! task_id)))
+
+(defn- rename-remotely!
+  "Renames `card` to `new-name` in its YAML file at the tip of `main` of the repository of `url`, as another instance
+  would."
+  [url card new-name]
+  (let [path (remote-sync.tu/entity-path! url "main" card)]
+    (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
+                                                          (str "name: " (:name card))
+                                                          (str "name: " new-name))})))
+
+(deftest endpoints-require-superuser-test
+  (doseq [path ["ee/remote-sync/is-dirty" "ee/remote-sync/dirty" "ee/remote-sync/current-task"
+                "ee/remote-sync/branches" "ee/remote-sync/has-remote-changes"]]
+    (testing path
+      (mt/user-http-request :rasta :get 403 path)))
+  (testing "ee/remote-sync/export-preflight"
+    (mt/user-http-request :rasta :get 403 "ee/remote-sync/export-preflight" :branch "main"))
+  (mt/with-temporary-setting-values [remote-sync-url nil]
+    (let [task-count (t2/count :model/RemoteSyncTask)]
+      (doseq [[method path body] [[:post "ee/remote-sync/import" {}]
+                                  [:post "ee/remote-sync/export" {:branch "main"}]
+                                  [:post "ee/remote-sync/stash" {:new_branch "stashed" :message "Stash"}]
+                                  [:put "ee/remote-sync/settings" {:remote-sync-url "https://example.com/repo.git"}]
+                                  [:post "ee/remote-sync/current-task/cancel" {}]
+                                  [:post "ee/remote-sync/test-connection" {:remote-sync-url "https://example.com/repo.git"}]]]
+        (testing path
+          (mt/user-http-request :rasta method 403 path body)))
+      (testing "a refused request changes nothing"
+        (is (= task-count (t2/count :model/RemoteSyncTask)))
+        (is (nil? (t2/select-one-fn :value :model/Setting :key "remote-sync-url")))))))
+
+(deftest settings-test
+  (remote-sync.tu/with-repository [url]
+    (mt/with-temporary-setting-values [remote-sync-url    nil
+                                       remote-sync-token  nil
+                                       remote-sync-branch nil
+                                       remote-sync-type   :read-write]
+      (mt/with-temp [:model/Collection collection {:name "To sync" :location "/"}]
+        (testing "saving the settings checks the repository, syncs the default branch, and the given collections"
           (is (= {:success true}
                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :collections {unsynced-id false}}))))
-        (testing "sending true for already-synced collection in read-only mode succeeds"
-          (is (= {:success true}
-                 (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :collections {synced-id true}}))))
-        (testing "mix of no-op and real change still rejects in read-only mode"
-          (is (= "Cannot change synced collections when remote-sync-type is read-only."
-                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-only
-                                        :collections {synced-id true unsynced-id true}}))))))))
+                                       {:remote-sync-url  url
+                                        :remote-sync-type "read-write"
+                                        :collections      {(:id collection) true}})))
+          (is (= "main" (mt/user-http-request :crowberto :get 200 "setting/remote-sync-branch")))
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))
+        (testing "a repository URL with a scheme other than http, https or file is refused"
+          (is (re-find #"Use an HTTP or HTTPS repository URL"
+                       (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url "ftp://example.com/repo.git"}))))
+        (testing "a branch the repository lacks is refused"
+          (is (re-find #"The repository has no branch missing"
+                       (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url url :remote-sync-branch "missing"}))))
+        (testing "a blank URL turns remote sync off and stops syncing collections"
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:remote-sync-url ""})
+          (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))))))
 
-(deftest settings-collections-no-op-skips-bulk-set-test
-  (testing "PUT /api/ee/remote-sync/settings skips bulk-set-remote-sync when collections have no actual changes"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}
-                     :model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}]
-        (let [bulk-set-called? (atom false)]
-          (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                        impl/finish-remote-config! (constantly nil)
-                        remote-sync.core/bulk-set-remote-sync (fn [& _] (reset! bulk-set-called? true))]
-            (testing "no-op collections do not call bulk-set-remote-sync"
-              (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                   {:collections {synced-id true unsynced-id false}})]
-                (is (= {:success true} response))
-                (is (false? @bulk-set-called?))))))))))
+(deftest test-connection-test
+  (remote-sync.tu/with-repository [url]
+    (testing "a reachable repository passes"
+      (is (= {:status "success"}
+             (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {:remote-sync-url url}))))
+    (testing "a repository that can't be reached fails"
+      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection"
+                            {:remote-sync-url (str url "-missing")}))))
 
-(deftest settings-collections-allows-changes-in-read-write-mode-test
-  (testing "PUT /api/ee/remote-sync/settings allows collection changes when remote-sync-type is read-write"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
-        (testing "allows enabling collections when remote-sync-type is explicitly read-write"
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:remote-sync-type :read-write
-                                                :collections {coll-id true}})]
-            (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
-        (testing "allows disabling collections when remote-sync-type is explicitly read-write"
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:remote-sync-type :read-write
-                                                :collections {coll-id false}})]
-            (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
-        (testing "allows collection changes when remote-sync-type is already read-write"
-          (mt/with-temporary-setting-values [remote-sync-type :read-write]
-            (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                 {:collections {coll-id true}})]
-              (is (= {:success true} response))
-              (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))))
+(deftest push-and-pull-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+          (testing "the synced content not pushed yet is dirty"
+            (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
+            (is (=? {:dirty [{:id (:id card) :name "Synced card" :model "card" :sync_status "create"
+                              :data {:collection {:id (:id synced) :name "Synced"}}}]}
+                    (update (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                            :dirty #(filterv (comp #{"card"} :model) %)))))
+          (testing "a push commits it, after which nothing is dirty and the remote has no changes"
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                          {:branch "main" :message "Push synced content"})]
+              (is (=? {:id task_id :status "successful" :outcome {:kind "pushed"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (some? (remote-sync.tu/entity-path! url "main" card)))
+            (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
+            (is (=? {:has_changes false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes"))))
+          (testing "a pull loads the changes of the remote"
+            (let [path (remote-sync.tu/entity-path! url "main" card)]
+              (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
+                                                                    "name: Synced card" "name: Renamed remotely")}))
+            (is (=? {:has_changes true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")))
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:id task_id :status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
-(deftest create-branch
-  (testing "POST /api/ee/remote-sync/create-branch creates a new branch")
-  (let [mock-source (test-helpers/create-mock-source)]
-    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                       remote-sync-token "test-token"
-                                       remote-sync-branch "main"
-                                       remote-sync-type :read-write]
-      (with-redefs [source/source-from-settings (constantly mock-source)]
-        (is (= {:status "success"
-                :message "Branch 'feature-branch' created from 'main'"}
-               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/create-branch"
-                                     {:name "feature-branch"})))
-        (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
-               (set (source.p/branches mock-source))))
-        (is (= "feature-branch" (settings/remote-sync-branch)))))))
+(deftest dirty-parents-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Table             table   {:db_id         (mt/id)
+                                                       :name          "synced_table"
+                                                       :is_published  true
+                                                       :collection_id (:id synced)}
+                     :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
+                     :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                     :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
+                     :model/Segment           segment {:table_id   (:id table)
+                                                       :name       "Synced segment"
+                                                       :definition (let [mp (mt/metadata-provider)]
+                                                                     (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                                         (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
+        (testing "the changes of a table's segments and fields carry their table and its collection in their data"
+          (is (=? [{:model "fieldusersettings"
+                    :id    (:id field)
+                    :data  {:field {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}}
+                   {:model "segment"
+                    :id    (:id segment)
+                    :data  {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}]
+                  (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
+                       (filter (comp #{(:id field) (:id segment)} :id))
+                       (filter (comp #{"fieldusersettings" "segment"} :model))
+                       (sort-by :model)))))))))
 
-(deftest stash
-  (testing "POST /api/ee/remote-sync/stash")
-  (let [mock-source (test-helpers/create-mock-source)
-        export-calls (atom 0)]
-    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                       remote-sync-token "test-token"
-                                       remote-sync-branch "main"
-                                       remote-sync-type :read-write]
-      (mt/with-temp [:model/RemoteSyncObject remote-sync {:model_type "Card"
-                                                          :model_id 1
-                                                          :model_name "Test Card"
-                                                          :model_collection_id 1
-                                                          :status "updated"
-                                                          :status_changed_at (java.time.OffsetDateTime/now)}]
-        (with-redefs [source/source-from-settings (constantly mock-source)
-                      impl/async-export!          (fn [_ _ _] (assoc remote-sync :calls (swap! export-calls inc)))]
-          (is (=? {:status "success"
-                   :message "Stashing to feature-branch"}
-                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
-                                        {:new_branch "feature-branch"
-                                         :message "Stash message"})))
-          (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
-                 (set (source.p/branches mock-source))))
-          (is (= 1 @export-calls)))))))
+(deftest dimension-push-and-pull-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "user_id" :base_type :type/Integer}
+                       :model/Field             target    {:table_id (:id table) :name "user_name" :base_type :type/Text}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id                (:id field)
+                                                           :name                    "User"
+                                                           :type                    :external
+                                                           :human_readable_field_id (:id target)}]
+          (testing "a remapping of a synced table's field is dirty, with its field, table and collection in its data"
+            (is (=? [{:model       "dimension"
+                      :id          (:id dimension)
+                      :name        "User"
+                      :sync_status "create"
+                      :data        {:field {:id    (:id field)
+                                            :table {:id (:id table) :collection {:id (:id synced)}}}}}]
+                    (filter (comp #{"dimension"} :model)
+                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+          (testing "a push commits the remapping with its human-readable field by name, after which nothing is dirty"
+            (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+            (let [yaml (remote-sync.tu/read-file! url "main" (remote-sync.tu/entity-path! url "main" dimension))]
+              (is (re-find #"(?s)human_readable_field_id:.*synced_table.*user_name" yaml))
+              (is (not (re-find (re-pattern (str "human_readable_field_id: " (:id target) "\\b")) yaml))))
+            (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty"))))
+          (testing "a pull loads the remapping changed remotely, with its human-readable field by its local id"
+            (rename-remotely! url dimension "Renamed remotely")
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (=? {:name "Renamed remotely" :type :external :human_readable_field_id (:id target)}
+                    (t2/select-one :model/Dimension :id (:id dimension)))))
+          (testing "a remapping removed locally is dirty, and a push removes its file"
+            (let [path (remote-sync.tu/entity-path! url "main" dimension)]
+              (t2/delete! :model/Dimension :id (:id dimension))
+              (is (=? [{:model "dimension" :sync_status "delete"}]
+                      (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))
+              (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+              (is (not (contains? (set (remote-sync.tu/files! url "main")) path))))))))))
 
-;;; ------------------------------------------------- Has Remote Changes Endpoint -------------------------------------------------
+(deftest dimension-removed-remotely-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
+          (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+          (testing "a remapping whose file is removed remotely is deleted by a pull"
+            (remote-sync.tu/commit! url "main" {(remote-sync.tu/entity-path! url "main" dimension) nil})
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (not (t2/exists? :model/Dimension :id (:id dimension))))))))))
 
-(deftest has-remote-changes-requires-superuser-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes requires superuser permissions"
-    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/remote-sync/has-remote-changes"))))))
+(deftest dimension-of-unsynced-table-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection        unsynced    {:name "Unsynced" :location "/"}
+                     :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
+                     :model/Table             elsewhere   {:db_id         (mt/id)
+                                                           :name          "elsewhere_table"
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
+                     :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
+                     :model/TableUserSettings _           {:table_id      (:id unpublished)
+                                                           :is_published  false
+                                                           :collection_id (:id synced)}
+                     :model/TableUserSettings _           {:table_id      (:id elsewhere)
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Dimension         _           {:field_id (:id field-1) :name "Unpublished" :type :internal}
+                     :model/Dimension         _           {:field_id (:id field-2) :name "Elsewhere" :type :internal}]
+        (testing "remappings of unpublished tables and of tables published in unsynced collections are not dirty"
+          (is (empty? (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))))))
 
-(deftest has-remote-changes-errors-when-not-configured-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes errors when remote sync is not configured"
-    (mt/with-temporary-setting-values [remote-sync-url nil]
-      (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/has-remote-changes"))))))
+(deftest data-app-bundle-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-additional-premium-features #{:data-apps}
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/DataApp _ {:slug        "bundled-app"
+                                           :bundle_path "dist/index.js"
+                                           :bundle      (.getBytes "console.log(1);" "UTF-8")}]
+            (testing "a changed data app is named by its slug, which its Data Studio URL takes"
+              (is (=? [{:model "dataapp" :name "bundled-app"}]
+                      (filter (comp #{"dataapp"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+            (testing "a push writes the bundle of a data app, after which the app isn't changed"
+              (push!)
+              (is (= "console.log(1);"
+                     (remote-sync.tu/read-file! url "main" "data_apps/bundled-app/dist/index.js")))
+              (is (not-any? (comp #{"dataapp"} :model)
+                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))))))
 
-(deftest has-remote-changes-returns-true-when-never-imported-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when never imported"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
-          ;; Clear cache before test
-          (impl/invalidate-remote-changes-cache!)
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-            (is (true? (:has_changes response)))
-            (is (= "mock-version" (:remote_version response)))
-            (is (nil? (:local_version response)))
-            (is (= false (:cached response)))))))))
+(deftest export-checks-branch-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (testing "a push to a branch other than the synced one is refused"
+        (is (=? {:branch_mismatch true :current_branch "main"}
+                (mt/user-http-request :crowberto :post 409 "ee/remote-sync/export" {:branch "other"}))))
+      (testing "a push is refused on a read-only instance"
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))
 
-(deftest has-remote-changes-returns-true-when-versions-differ-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when remote version differs from local"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                                :ended_at :%now
-                                                :version "old-version"}]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
-            ;; Clear cache before test
-            (impl/invalidate-remote-changes-cache!)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-              (is (true? (:has_changes response)))
-              (is (= "mock-version" (:remote_version response)))
-              (is (= "old-version" (:local_version response)))
-              (is (= false (:cached response))))))))))
+(deftest branches-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (testing "the branches of the repository are listed"
+        (is (= {:items ["main"]} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")))))))
 
-(deftest has-remote-changes-returns-false-when-versions-match-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes returns false when versions match"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                                :ended_at :%now
-                                                :version "mock-version"}]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
-            ;; Clear cache before test
-            (impl/invalidate-remote-changes-cache!)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-              (is (= false (:has_changes response)))
-              (is (= "mock-version" (:remote_version response)))
-              (is (= "mock-version" (:local_version response)))
-              (is (= false (:cached response))))))))))
+(deftest stash-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+          (testing "stashing pushes the synced content to a new branch and syncs with it"
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
+                                                          {:new_branch "stashed" :message "Stash"})]
+              (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
+            (is (some? (remote-sync.tu/entity-path! url "stashed" card)))
+            (is (nil? (remote-sync.tu/entity-path! url "main" card)))
+            (is (= "stashed" (mt/user-http-request :crowberto :get 200 "setting/remote-sync-branch")))))))))
 
-(deftest has-remote-changes-uses-cache-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes uses cache on subsequent calls"
-    (let [mock-source (test-helpers/create-mock-source)
-          call-count (atom 0)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"
-                                         remote-sync-check-changes-cache-ttl-seconds 60]
-        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                                :ended_at :%now
-                                                :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
-            ;; Clear cache before test
-            (impl/invalidate-remote-changes-cache!)
-            ;; First call - should hit the source
-            (let [response1 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-              (is (= false (:cached response1)))
-              (is (= 1 @call-count)))
-            ;; Second call - should use cache
-            (let [response2 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-              (is (true? (:cached response2)))
-              (is (= 1 @call-count)))))))))
+(deftest cancel-without-task-test
+  (testing "there is nothing to cancel when no task runs"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (t2/delete! :model/RemoteSyncTask)
+      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
 
-(deftest has-remote-changes-force-refresh-bypasses-cache-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes?force-refresh=true bypasses cache"
-    (let [mock-source (test-helpers/create-mock-source)
-          call-count (atom 0)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"
-                                         remote-sync-check-changes-cache-ttl-seconds 60]
-        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                                :ended_at :%now
-                                                :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
-            ;; Clear cache before test
-            (impl/invalidate-remote-changes-cache!)
-            ;; First call - should hit the source
-            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
-            (is (= 1 @call-count))
-            ;; Second call with force-refresh=true - should bypass cache
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes"
-                                                 :force-refresh true)]
-              (is (= false (:cached response)))
-              (is (= 2 @call-count)))))))))
+(deftest dirty-with-unknown-base-version-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       _      {:name "Synced card" :collection_id (:id synced)}
+                       :model/RemoteSyncTask _  {:sync_task_type "export" :version "0000000000000000000000000000000000000000"
+                                                 :started_at :%now :ended_at :%now}]
+          (testing "all synced content is dirty when the repository lacks the version of the last sync"
+            (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
+            (is (=? {:dirty [{:name "Synced card" :sync_status "create"}]}
+                    (update (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                            :dirty #(filterv (comp #{"card"} :model) %))))))))))
 
-(deftest has-remote-changes-cache-invalidated-on-branch-change-test
-  (testing "GET /api/ee/remote-sync/has-remote-changes invalidates cache when branch changes"
-    (let [mock-source (test-helpers/create-mock-source)
-          call-count (atom 0)]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"
-                                         remote-sync-check-changes-cache-ttl-seconds 60]
-        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                                :ended_at :%now
-                                                :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
-            ;; Clear cache before test
-            (impl/invalidate-remote-changes-cache!)
-            ;; First call with main branch
-            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
-            (is (= 1 @call-count))
-            ;; Change branch setting
-            (mt/with-temporary-setting-values [remote-sync-branch "develop"]
-              ;; Should hit source again due to branch change
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
-                (is (= false (:cached response)))
-                (is (= 2 @call-count))))))))))
+(deftest settings-refuse-nested-collections-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection parent {:name "Parent" :location "/"}
+                     :model/Collection child  {:name "Child" :location (format "/%d/" (:id parent))}]
+        (testing "only top-level collections can be synced"
+          (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings" {:collections {(:id child) true}})
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child))))
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {(:id parent) true}})
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id parent)))))))))
 
-;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
+(deftest settings-refuse-unsyncing-library-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection library {:name "Library" :location "/" :type "library" :is_remote_synced true}]
+        (testing "the Library keeps syncing"
+          (is (re-find #"The Library always syncs"
+                       (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:collections {(:id library) false}})))
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id library)))))))))
 
-(deftest settings-preserves-token-when-switching-to-read-only-test
-  (testing "PUT /api/ee/remote-sync/settings preserves token when switching from read-write to read-only"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "secret-token-value"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write]
-          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-type :read-only})]
-            (wait-for-task-completion task_id)
-            (is (= {:success true :task_id task_id} resp))
-            (is (= :read-only (settings/remote-sync-type)))
-            (is (= "secret-token-value" (settings/remote-sync-token))
-                "Token should be preserved when not included in request")))))))
+(deftest settings-refuse-unsynced-dependencies-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection    synced    {:name "Synced" :location "/"}
+                     :model/Collection    unsynced  {:name "Unsynced" :location "/"}
+                     :model/Card          card      {:name "Card in Unsynced" :collection_id (:id unsynced)}
+                     :model/Dashboard     dashboard {:name "Dashboard in Synced" :collection_id (:id synced)}
+                     :model/DashboardCard _         {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (let [synced? #(t2/select-one-fn :is_remote_synced :model/Collection :id (:id %))
+              listed  (fn [response]
+                        (update response :unsynced_dependencies #(filterv (comp #{(:id card)} :id) %)))]
+          (testing "syncing a collection whose content uses content that isn't synced is refused, naming it"
+            (is (=? {:error-code            "unsynced-dependencies"
+                     :unsynced_dependencies [{:id      (:id card)
+                                              :model   "card"
+                                              :data    {:name       "Card in Unsynced"
+                                                        :collection {:id (:id unsynced) :name "Unsynced"}}
+                                              :used_by [{:id    (:id dashboard)
+                                                         :model "dashboard"
+                                                         :data  {:name "Dashboard in Synced"}}]}]}
+                    (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                                  {:collections {(:id synced) true}}))))
+            (is (false? (synced? synced))))
+          (testing "syncing it together with the collection it depends on is saved"
+            (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                  {:collections {(:id synced) true (:id unsynced) true}})
+            (is (true? (synced? synced)))
+            (is (true? (synced? unsynced))))
+          (testing "no longer syncing the collection synced content depends on is refused"
+            (is (=? {:unsynced_dependencies [{:id (:id card)}]}
+                    (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                                  {:collections {(:id unsynced) false}}))))
+            (is (true? (synced? unsynced)))))))))
 
-(deftest settings-preserves-token-when-changing-branch-test
-  (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "secret-token-value"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-branch "develop"})]
-            (wait-for-task-completion task_id)
-            (is (=? {:success true} resp))
-            (is (= "develop" (settings/remote-sync-branch)))
-            (is (= "secret-token-value" (settings/remote-sync-token))
-                "Token should be preserved when not included in request")))))))
-
-(deftest settings-clears-token-when-explicitly-nil-test
-  (testing "PUT /api/ee/remote-sync/settings clears token when explicitly set to nil"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "secret-token-value"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-token nil})]
-            (wait-for-task-completion task_id)
-            (is (=? {:success true} resp))
-            (is (nil? (settings/remote-sync-token))
-                "Token should be cleared when explicitly set to nil")))))))
-
-;;; ------------------------------------------- Transforms Setting Tests -------------------------------------------
-
-(deftest settings-updates-transforms-setting-test
-  (testing "PUT /api/ee/remote-sync/settings can update remote-sync-transforms setting"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write
-                                           remote-sync-transforms false]
-          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
-            (testing "can enable transforms sync"
-              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                     {:remote-sync-transforms true})]
-                (wait-for-task-completion task_id)
-                (is (=? {:success true} resp))
-                (is (true? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
-                    "Built-in transform tags should not be deleted by sync")))
-            (testing "can disable transforms sync"
-              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                     {:remote-sync-transforms false})]
-                (wait-for-task-completion task_id)
-                (is (=? {:success true} resp))
-                (is (false? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
-                    "Built-in transform tags should not be deleted by sync")))))))))
-
-(deftest settings-preserves-transforms-when-not-specified-test
-  (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
-    (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write
-                                           remote-sync-transforms true]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-branch "develop"})]
-            (wait-for-task-completion task_id)
-            (is (=? {:success true} resp))
-            (is (true? (settings/remote-sync-transforms))
-                "Transforms setting should be preserved when not included in request")))))))
-
-;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
-
-(deftest dirty-returns-transforms-root-collection-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                :model_id settings/transforms-root-id
-                                                :model_name "Transforms"
-                                                :status "create"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Transforms" (:name (first dirty-items))))
-          (is (= "collection" (:model (first dirty-items))))
-          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
-
-(deftest dirty-returns-transforms-root-collection-with-delete-status-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                :model_id settings/transforms-root-id
-                                                :model_name "Transforms"
-                                                :status "delete"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Transforms" (:name (first dirty-items))))
-          (is (= "collection" (:model (first dirty-items))))
-          (is (= "delete" (:sync_status (first dirty-items))))
-          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
-
-(deftest dirty-returns-transforms-root-collection-when-setting-disabled-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection when transforms setting is disabled"
-    (test-helpers/with-clean-object
-      (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                  :model_id settings/transforms-root-id
-                                                  :model_name "Transforms"
-                                                  :status "delete"
-                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-                dirty-items (:dirty response)]
-            (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
-            (is (= "Transforms" (:name (first dirty-items))))
-            (is (= "delete" (:sync_status (first dirty-items))))))))))
-
-;; ---------- API-level guard sweep --------------------------------------------------------------
-;;
-;; Boundary tests verifying that every mutating remote-sync HTTP endpoint surfaces the guard's
-;; refusal as a 400 response with `Remote sync task in progress`. Companions to the operation-level
-;; tests; this catches the case where an endpoint is edited to bypass the guarded function.
-
-(deftest import-refuses-while-task-running-test
-  (testing "POST /api/ee/remote-sync/import returns 400 when a RemoteSyncTask is active"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                            :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (t/offset-date-time)
-                                            :progress       0.0}]
-      (let [mock-source     (test-helpers/create-mock-source)
-            tasks-before    (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            (is (= "Remote sync task in progress"
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
-            (is (= tasks-before (t2/count :model/RemoteSyncTask))
-                "no NEW RemoteSyncTask row should be created when the guard fires")))))))
-
-(deftest export-refuses-while-task-running-test
-  (testing "POST /api/ee/remote-sync/export returns 400 when a RemoteSyncTask is active"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                            :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (t/offset-date-time)
-                                            :progress       0.0}]
-      (let [mock-source  (test-helpers/create-mock-source)
-            tasks-before (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            (is (= "Remote sync task in progress"
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export"
-                                         {:message "test export"})))
-            (is (= tasks-before (t2/count :model/RemoteSyncTask))
-                "no NEW RemoteSyncTask row should be created when the guard fires")))))))
-
-(deftest create-branch-refuses-while-task-running-test
-  (testing "POST /api/ee/remote-sync/create-branch returns 400 when a RemoteSyncTask is active"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                            :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (t/offset-date-time)
-                                            :progress       0.0}]
-      (let [mock-source      (test-helpers/create-mock-source)
-            initial-branches @(:branches-atom mock-source)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            ;; The endpoint wraps the guard's exception with "Failed to create branch: ..." in its catch.
-            (is (re-find #"Remote sync task in progress"
-                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/create-branch"
-                                                    {:name "feature-x"}))))
-            (is (= "main" (settings/remote-sync-branch))
-                "remote-sync-branch must remain unchanged when the guard fires")
-            (is (= initial-branches @(:branches-atom mock-source))
-                "no new branch should be pushed to the source when the guard fires")))))))
-
-(deftest stash-refuses-while-task-running-test
-  (testing "POST /api/ee/remote-sync/stash returns 400 when a RemoteSyncTask is active"
-    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
-                                            :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (t/offset-date-time)
-                                            :progress       0.0}]
-      (let [mock-source      (test-helpers/create-mock-source)
-            initial-branches @(:branches-atom mock-source)
-            tasks-before     (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            ;; The endpoint wraps the guard's exception with "Failed to stash changes to branch: ..." in its catch.
-            (is (re-find #"Remote sync task in progress"
-                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/stash"
-                                                    {:new_branch "stash-branch"
-                                                     :message    "stash msg"}))))
-            (is (= "main" (settings/remote-sync-branch))
-                "remote-sync-branch must remain unchanged when the guard fires")
-            (is (= initial-branches @(:branches-atom mock-source))
-                "no new branch should be pushed to the source when the guard fires")
-            (is (= tasks-before (t2/count :model/RemoteSyncTask))
-                "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+(deftest export-preflight-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+          (let [preflight #(mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight" :branch "main")]
+            (push!)
+            (testing "after a push the remote has no changes, and a push merges cleanly"
+              (is (= {:has_changes           false
+                      :clean                 true
+                      :conflicts             []
+                      :summary               {:added 0 :updated 0 :removed 0}
+                      :force_push_casualties {:deleted [] :overwritten []}
+                      :reason                nil}
+                     (preflight))))
+            (rename-remotely! url card "Renamed remotely")
+            (testing "a remote change merges in, and a force push would overwrite it"
+              (is (= {:has_changes           true
+                      :clean                 true
+                      :conflicts             []
+                      :summary               {:added 0 :updated 1 :removed 0}
+                      :force_push_casualties {:deleted [] :overwritten ["Renamed remotely"]}
+                      :reason                nil}
+                     (preflight))))
+            (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
+            (testing "a local change to the entity the remote changed conflicts"
+              (is (=? {:has_changes true :clean false :conflicts ["Renamed locally"]}
+                      (preflight))))
+            (testing "a remote whose history lacks the version of the last sync was rewritten"
+              (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
+                                                      :version        "0000000000000000000000000000000000000000"
+                                                      :started_at     (t/plus (t/offset-date-time) (t/hours 1))
+                                                      :ended_at       (t/plus (t/offset-date-time) (t/hours 1))}]
+                (is (=? {:has_changes true :reason "history-rewritten"}
+                        (preflight)))))
+            (testing "a branch other than the synced one is refused"
+              (is (=? {:branch_mismatch true :current_branch "main"}
+                      (mt/user-http-request :crowberto :get 409 "ee/remote-sync/export-preflight" :branch "other"))))))))))

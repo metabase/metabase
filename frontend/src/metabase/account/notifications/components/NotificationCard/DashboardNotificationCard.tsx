@@ -2,10 +2,12 @@ import type { JSX } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link";
-import { formatTitle } from "metabase/notifications/utils";
+import type { DashboardSubscriptionListItem } from "metabase/notifications/types";
+import {
+  formatCreatorMessage,
+  formatTitle,
+} from "metabase/notifications/utils";
 import { canArchiveLegacyAlert, formatChannel } from "metabase/pulse";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -47,9 +49,9 @@ export const DashboardNotificationCard = ({
     <Flex
       className={S.root}
       align="center"
-      px="lg"
-      py="md"
-      bg="background-primary"
+      px="xl"
+      py="lg"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {dashboardEntityLink ? (
@@ -59,7 +61,7 @@ export const DashboardNotificationCard = ({
         ) : (
           formatTitle(listItem)
         )}
-        <Flex wrap="wrap" mt="xs">
+        <Flex wrap="wrap" mt="xxs">
           {item.channels.map((channel, index) => (
             <Text
               key={index}
@@ -90,7 +92,7 @@ export const DashboardNotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-secondary"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
@@ -100,7 +102,7 @@ export const DashboardNotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-secondary"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />

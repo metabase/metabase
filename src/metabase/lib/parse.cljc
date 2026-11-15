@@ -3,9 +3,7 @@
   (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defn- combine-adjacent-strings
@@ -41,8 +39,8 @@
 (def ^:private param-token-patterns
   [["[[" :optional-begin]
    ["]]" :optional-end]
-    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
-    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
+   ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
+   ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
    [#"(?s)\{\{(?!\{)" :param-begin]
    ["}}" :param-end]
    ["'" :single-quote]])
@@ -182,7 +180,4 @@
    (let [tokenized (tokenize s handle-sql-comments)]
      (if (= [s] tokenized)
        [s]
-       (do
-         (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
-         (u/prog1 (combine-adjacent-strings (first (parse-tokens* opts tokenized 0 0 false nil)))
-           (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))
+       (combine-adjacent-strings (first (parse-tokens* opts tokenized 0 0 false nil)))))))

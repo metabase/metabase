@@ -1,12 +1,16 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { assoc, chain, merge, updateIn } from "icepick";
 
 import { actionApi } from "metabase/api";
-import { Questions } from "metabase/entities/questions";
 import { combineReducers } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
-import type { Card } from "metabase-types/api";
+import type { Card, DashCardId } from "metabase-types/api";
 
+import type {
+  removeParameter,
+  resetParameters,
+  setParameterValue,
+} from "./actions";
 import {
   REMOVE_CARD_FROM_DASH,
   REMOVE_PARAMETER,
@@ -15,20 +19,16 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
-  fetchDashboard,
+  dashboardLayoutFetched,
+  fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
-  type removeCardFromDashboard,
-  type removeParameter,
-  type resetParameters,
   setDashCardAttributes,
   setMultipleDashCardAttributes,
-  type setParameterValue,
-  tabsReducer,
-  type undoRemoveCardFromDashboard,
-} from "./actions";
+} from "./actions/core";
+import { tabsReducer } from "./actions/tabs";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   autoApplyFilters,
@@ -38,12 +38,14 @@ import {
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
+  linkTargets,
   loadingControls,
   loadingDashCards,
   missingActionParameters,
   parameterValues,
   sidebar,
   slowCards,
+  timelineEvents,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -61,9 +63,13 @@ const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   (builder) => {
     builder
-      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+      .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashcard,
       }))
       .addCase(
         setDashCardAttributes,
@@ -91,39 +97,40 @@ const dashcards = createReducer(
       )
       .addCase(
         onUpdateDashCardVisualizationSettings,
-        (state, { payload: { id, settings } }) =>
-          chain(state)
-            .updateIn([id, "visualization_settings"], (value = {}) => ({
-              ...value,
-              ...settings,
-            }))
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          Object.assign((dashcard.visualization_settings ??= {}), settings);
+          dashcard.isDirty = true;
+        },
       )
       .addCase(
         onUpdateDashCardColumnSettings,
-        (state, { payload: { column, id, settings } }) =>
-          chain(state)
-            .updateIn([id, "visualization_settings"], (value = {}) =>
-              updateIn(
-                merge({ column_settings: {} }, value),
-                ["column_settings", column],
-                (columnSettings) => ({
-                  ...columnSettings,
-                  ...settings,
-                }),
-              ),
-            )
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { column, id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          const visualizationSettings = (dashcard.visualization_settings ??=
+            {});
+          const columnSettings = (visualizationSettings.column_settings ??= {});
+          columnSettings[column] = { ...columnSettings[column], ...settings };
+          dashcard.isDirty = true;
+        },
       )
       .addCase(
         onReplaceAllDashCardVisualizationSettings,
-        (state, { payload: { id, settings } }) =>
-          chain(state)
-            .assocIn([id, "visualization_settings"], settings)
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          // Payload settings may be null, while the dashcard field is only optional
+          Object.assign(dashcard, { visualization_settings: settings });
+          dashcard.isDirty = true;
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         // @ts-expect-error -- NewDashboardCard is a partial StoreDashcard, safe to assign here
@@ -147,9 +154,7 @@ const dashcards = createReducer(
         string,
         {
           type: string;
-          payload: PayloadFromThunkActionCreator<
-            typeof removeCardFromDashboard
-          >;
+          payload: { dashcardId: DashCardId };
         }
       >(REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) => {
         if (state[dashcardId]) {
@@ -160,9 +165,7 @@ const dashcards = createReducer(
         string,
         {
           type: string;
-          payload: PayloadFromThunkActionCreator<
-            typeof undoRemoveCardFromDashboard
-          >;
+          payload: { dashcardId: DashCardId };
         }
       >(UNDO_REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) => {
         if (!state[dashcardId]) {
@@ -181,19 +184,16 @@ const dashcards = createReducer(
       .addCase<
         string,
         { type: string; payload: { object: Card | null | undefined } }
-      >(
-        Questions.actionTypes.UPDATE,
-        (state, { payload: { object: card } }) => {
-          if (!card) {
-            return;
+      >(CARD_UPDATED, (state, { payload: { object: card } }) => {
+        if (!card) {
+          return;
+        }
+        Object.values(state).forEach((dashcard) => {
+          if (dashcard.card?.id === card.id) {
+            Object.assign(dashcard.card, card);
           }
-          Object.values(state).forEach((dashcard) => {
-            if (dashcard.card?.id === card.id) {
-              Object.assign(dashcard.card, card);
-            }
-          });
-        },
-      )
+        });
+      })
       .addMatcher(
         actionApi.endpoints.updateAction.matchFulfilled,
         (state, { payload: action }) => {
@@ -218,7 +218,7 @@ const draftParameterValues = createReducer(
       .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
       })
-      .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+      .addCase(fetchDashboardFulfilled, (state, { payload }) =>
         payload.preserveParameters && !payload.dashboard.auto_apply_filters
           ? state
           : payload.parameterValues,
@@ -229,9 +229,13 @@ const draftParameterValues = createReducer(
           type: string;
           payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
         }
-      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
-        assoc(state ?? {}, id, value),
-      )
+      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) => {
+        // Skip equal values, so `undefined` for a missing filter
+        // doesn't add a key and show a fake unapplied change
+        if (state[id] !== value) {
+          state[id] = value;
+        }
+      })
       .addCase<string, { type: string; payload: DraftParameterValuesState }>(
         SET_PARAMETER_VALUES,
         (_state, { payload }) => payload,
@@ -269,11 +273,13 @@ const combinedDashboardReducer = combineReducers({
   editingDashboard,
   loadingControls,
   sidebar,
+  timelineEvents,
   parameterValues,
   dashboards,
   loadingDashCards,
   dashcards,
   dashcardData,
+  linkTargets,
   draftParameterValues,
   // Combined reducer needs to init state for every slice
   selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,

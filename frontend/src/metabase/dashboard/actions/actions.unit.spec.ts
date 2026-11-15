@@ -1,12 +1,11 @@
-import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockLocation,
-  createMockRoutingState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import { DashboardApi } from "metabase/services";
+} from "__support__/state";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { navigate } from "metabase/router";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -18,6 +17,7 @@ import { SIDEBAR_NAME } from "../constants";
 import {
   CLOSE_SIDEBAR,
   SET_DASHBOARD_ATTRIBUTES,
+  SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   closeSidebar,
   openAddQuestionSidebar,
@@ -30,14 +30,17 @@ import {
   updateDashboardAndCards,
 } from "./";
 
-DashboardApi.parameterSearch = jest.fn();
-DashboardApi.parameterValues = jest.fn();
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
+  navigate: jest.fn(),
+}));
 
 describe("dashboard actions", () => {
   let dispatch: jest.MockedFunction<Dispatch>;
   let getState: GetState;
 
   beforeEach(() => {
+    jest.mocked(navigate).mockClear();
     dispatch = jest.fn();
     getState = () =>
       createMockState({
@@ -174,7 +177,7 @@ describe("dashboard actions", () => {
   });
 
   describe("updateDashboardAndCards", () => {
-    it("should not save anything if the dashboard has not changed", async () => {
+    it("should only leave edit mode if the dashboard has not changed", async () => {
       const dashcard1 = createMockDashboardCard({ id: 1, card_id: 1 });
       const dashcard2 = createMockDashboardCard({ id: 2, card_id: 2 });
 
@@ -205,42 +208,53 @@ describe("dashboard actions", () => {
 
       await updateDashboardAndCards()(dispatch, getState);
 
-      // createThunkAction dispatches the result action once;
-      // no additional dispatches means the dashboard was not saved
-      expect(dispatch).toHaveBeenCalledTimes(1);
+      // Leaving edit mode, then createThunkAction's result action; saving
+      // would dispatch more
+      expect(dispatch).toHaveBeenCalledTimes(2);
     });
   });
 
   describe("setEditingDashboard", () => {
-    const getState: GetState = () =>
-      createMockState({
-        routing: createMockRoutingState({
-          locationBeforeTransitions: createMockLocation({
-            pathname: "/dashboard/1",
-            hash: "#hashparam",
-          }),
-        }),
+    it("should remove any hash parameters from url when leaving edit mode", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        hash: "#hashparam",
       });
 
-    it("should remove any hash parameters from url when not editing", () => {
-      setEditingDashboard(null)(dispatch, getState);
+      setEditingDashboard(null, location)(dispatch);
 
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1");
+    });
+
+    // The v3 history rebuilds `search` from `query`, so pushing a location
+    // object without a `query` field silently drops params like the open tab.
+    it("should keep query params when leaving edit mode", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        search: "?tab=2-tab-two",
+        hash: "#hashparam",
+      });
+
+      setEditingDashboard(null, location)(dispatch);
+
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1?tab=2-tab-two");
+    });
+
+    // The location is captured when the caller rendered, so navigating with no
+    // hash to strip would clobber query params written since (the dashboard tab
+    // sync writes `?tab=` as edit mode exits).
+    it("should not navigate when there is no hash to strip", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        search: "?tab=2-tab-two",
+      });
+
+      setEditingDashboard(null, location)(dispatch);
+
+      expect(navigate).not.toHaveBeenCalled();
       expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              action: "POP",
-              hash: "",
-              key: "",
-              pathname: "/dashboard/1",
-              query: {},
-              search: "",
-              state: undefined,
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+        type: SET_EDITING_DASHBOARD,
+        payload: null,
       });
     });
   });

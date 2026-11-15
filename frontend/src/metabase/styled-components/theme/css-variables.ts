@@ -1,12 +1,14 @@
 // WARNING: This file is referenced by CssVarsDeclarationPlugin.
 // If you move or rename it, update the path in css-vars-declaration-plugin.js.
 
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
-import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
+import {
+  getDynamicCssVariables,
+  getIsDarkThemeFromPalette,
+} from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
@@ -15,17 +17,24 @@ import {
 import type { MantineTheme } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
-import { getFontFamilyValue } from "metabase/ui/fonts";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getFontFamilyValue } from "metabase/utils/fonts";
+import { getAtPath } from "metabase/utils/get-at-path";
 import type { ColorSettings } from "metabase-types/api";
 
-const createColorVars = (
-  colorScheme: ResolvedColorScheme,
-  whitelabelColors?: ColorSettings | null,
-): string => {
+const createColorVars = ({
+  colorScheme,
+  whitelabelColors,
+  forceDynamicBrandRamp,
+}: {
+  colorScheme: ResolvedColorScheme;
+  whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
+}): string => {
   const theme = deriveFullMetabaseTheme({
     colorScheme,
     whitelabelColors,
+    forceDynamicBrandRamp,
   });
 
   return Object.entries(theme.colors)
@@ -50,7 +59,7 @@ export function getMetabaseCssVariables({
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      ${createColorVars(colorScheme, whitelabelColors)}
+      ${createColorVars({ colorScheme, whitelabelColors })}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
@@ -61,15 +70,25 @@ export function getMetabaseSdkCssVariables({
   theme,
   font,
   whitelabelColors,
+  forceDynamicBrandRamp,
 }: {
   theme: MantineTheme;
   font: string;
   whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
 }) {
+  const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
+
   return css`
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
-      ${createColorVars("light", whitelabelColors)}
+      --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
+      ${createColorVars({
+        colorScheme,
+        whitelabelColors,
+        forceDynamicBrandRamp,
+      })}
+      --mb-color-chart-axis: ${theme.fn.themeColor("chart-axis")};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
@@ -128,9 +147,9 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
 export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
   ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
     .map(([cssVar, themeKey]) => {
-      const value = getIn(theme.other, themeKey.split("."));
+      const value = getAtPath(theme.other, themeKey.split("."));
 
-      return value ? `${cssVar}: ${value};` : "";
+      return value ? `${cssVar}: ${String(value)};` : "";
     })
     .join("\n")}
 `;

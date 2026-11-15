@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
@@ -10,6 +11,7 @@ const propsSchema: Yup.SchemaOf<CollectionBrowserProps> = Yup.object({
   collectionId: Yup.mixed().optional(),
   onClick: Yup.mixed().optional(),
   pageSize: Yup.mixed().optional(),
+  showDashboardQuestions: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   visibleColumns: Yup.mixed().optional(),
   visibleEntityTypes: Yup.mixed().optional(),

@@ -6,8 +6,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- column->base-type [column-type]
-  (sql-jdbc.sync/database-type->base-type :athena (keyword (re-find #"\w+" column-type))))
+(defn- column->base-type [column-name column-type]
+  (sql-jdbc.sync/database-type->base-type-or-warn :athena [column-name] (re-find #"\w+" column-type)))
 
 #_(defn- create-nested-fields [schema database-position]
     (set (map (fn [[k v]]
@@ -55,6 +55,6 @@
 
     :else
     {:name              (:name field-info)
-     :base-type         (column->base-type (:type field-info))
+     :base-type         (column->base-type (:name field-info) (:type field-info))
      :database-type     (:type field-info)
      :database-position (:database-position field-info)}))

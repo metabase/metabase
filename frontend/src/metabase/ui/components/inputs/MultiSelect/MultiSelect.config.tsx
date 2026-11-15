@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { MultiSelect } from "@mantine/core";
 
 import { DefaultSelectItem, selectOverrides } from "../Select";
@@ -7,7 +8,7 @@ import S from "./MultiSelect.module.css";
 export const multiSelectOverrides = {
   MultiSelect: MultiSelect.extend({
     defaultProps: {
-      radius: "sm",
+      radius: "xs",
       size: "md",
       variant: "default",
       maxDropdownHeight: 512,

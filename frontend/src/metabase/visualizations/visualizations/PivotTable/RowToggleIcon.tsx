@@ -1,21 +1,24 @@
-import { updateIn } from "icepick";
+import cx from "classnames";
 import _ from "underscore";
 
-import { Icon } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Flex, Icon, useMantineTheme } from "metabase/ui";
+import { adjustBrightness, color } from "metabase/ui/colors";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
+  RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { RowToggleIconRoot } from "./PivotTable.styled";
+import S from "./PivotTable.module.css";
 
 interface RowToggleIconProps {
   value: number | string[];
   settings: VisualizationSettings;
   updateSettings: (settings: VisualizationSettings) => void;
   hideUnlessCollapsed?: boolean;
-  rowIndex?: string[];
+  rowIndex?: RowValue[][];
   "data-testid"?: string;
 }
 
@@ -27,9 +30,12 @@ export function RowToggleIcon({
   rowIndex = [],
   "data-testid": testId,
 }: RowToggleIconProps) {
+  const theme = useMantineTheme();
+
   if (value == null) {
     return null;
   }
+  // Unjustified type cast. FIXME
   const setting = settings[
     COLLAPSED_ROWS_SETTING
   ] as PivotTableCollapsedRowsSetting;
@@ -39,6 +45,7 @@ export function RowToggleIcon({
   const settingValue: PivotTableCollapsedRowsSetting["value"] =
     setting.value || [];
   const isColumnCollapsed =
+    // Unjustified type cast. FIXME
     !isColumn && settingValue.includes(columnRef as string);
   const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
 
@@ -54,7 +61,7 @@ export function RowToggleIcon({
       ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
           settingValue
             .filter((v) => {
-              const parsed = JSON.parse(v);
+              const parsed: unknown = JSON.parse(v);
               return !(Array.isArray(parsed) && parsed.length === value);
             }) // remove any already collapsed items in this column
             .concat(ref) // add column to list
@@ -82,17 +89,31 @@ export function RowToggleIcon({
             (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
               settingValue.concat(ref);
 
+  const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
+  const hoverColor = adjustBrightness(backgroundColor, 0.2, 0.2);
+
   return (
-    <RowToggleIconRoot
+    <Flex
+      className={cx(S.rowToggle, CS.cursorPointer)}
+      align="center"
+      p="xxs"
+      style={{
+        "--pivot-row-toggle-color": color(textColor),
+        "--pivot-row-toggle-bg": color(backgroundColor),
+        "--pivot-row-toggle-hover-bg": hoverColor,
+      }}
       data-testid={testId}
       onClick={(e) => {
         e.stopPropagation();
         updateSettings({
-          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+          [COLLAPSED_ROWS_SETTING]: {
+            ...setting,
+            value: toggle(settingValue),
+          },
         });
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </RowToggleIconRoot>
+    </Flex>
   );
 }

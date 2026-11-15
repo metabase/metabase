@@ -1,7 +1,7 @@
 .root {
   --mb-color-upsell-pattern: color-mix(
     in srgb,
-    var(--mb-color-brand),
+    var(--mb-color-core-brand),
     transparent 80%
   );
 

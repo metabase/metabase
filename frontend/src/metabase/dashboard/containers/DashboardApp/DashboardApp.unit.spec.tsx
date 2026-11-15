@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -12,31 +11,49 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRevisionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUserEndpoints,
 } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  setupNotificationChannelsEndpoints,
+  setupSubscriptionsEndpoint,
+} from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
   renderWithProviders,
   screen,
-  waitForLoaderToBeRemoved,
+  waitFor,
+  waitForDashboardToLoad,
+  within,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import { setSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { dashboardSaved } from "metabase/metabot/state";
+import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
   createMockDatabase,
+  createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTable,
+  createMockTextDashboardCard,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -58,22 +75,46 @@ const TestHome = () => <div />;
 
 interface Options {
   dashboard?: Partial<Dashboard>;
+  slug?: string;
+  currentUser?: User;
+  /** Holds the dashboard response until `resolveDashboard` is called. */
+  deferDashboard?: boolean;
+  /** Holds the query metadata response until `resolveQueryMetadata` is called. */
+  deferQueryMetadata?: boolean;
 }
 
-async function setup({ dashboard }: Options = {}) {
+function renderDashboardApp({
+  dashboard,
+  slug,
+  deferQueryMetadata = false,
+  currentUser = createMockUser(),
+  deferDashboard = false,
+}: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
+  const queryMetadata = createMockDashboardQueryMetadata({
+    databases: [TEST_DATABASE_WITH_ACTIONS],
+  });
+  const queryMetadataRequest = defer();
+  const dashboardRequest = defer();
 
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
-  setupDashboardEndpoints(mockDashboard);
-  setupDashboardQueryMetadataEndpoint(
-    mockDashboard,
-    createMockDashboardQueryMetadata({
-      databases: [TEST_DATABASE_WITH_ACTIONS],
-    }),
-  );
+  if (deferDashboard) {
+    fetchMock.get(`path:/api/dashboard/${dashboardId}`, () =>
+      dashboardRequest.promise.then(() => mockDashboard),
+    );
+  } else {
+    setupDashboardEndpoints(mockDashboard);
+  }
+  if (deferQueryMetadata) {
+    fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+      queryMetadataRequest.promise.then(() => queryMetadata),
+    );
+  } else {
+    setupDashboardQueryMetadataEndpoint(mockDashboard, queryMetadata);
+  }
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,
@@ -97,15 +138,16 @@ async function setup({ dashboard }: Options = {}) {
     );
   };
 
-  const { history } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path="/dashboard/:slug" component={DashboardAppContainer} />
+      <Route path="/" element={<TestHome />} />
+      <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
-      initialRoute: `/dashboard/${dashboardId}`,
+      initialRoute: `/dashboard/${slug ?? dashboardId}`,
       withRouter: true,
       storeInitialState: {
+        currentUser,
         dashboard: createMockDashboardState(),
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE_WITH_ACTIONS],
@@ -115,13 +157,22 @@ async function setup({ dashboard }: Options = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
-
   return {
     dashboardId,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
+    store,
     mockEventListener,
+    resolveQueryMetadata: () => queryMetadataRequest.resolve(),
+    resolveDashboard: () => dashboardRequest.resolve(),
   };
+}
+
+async function setup(options: Options = {}) {
+  const view = renderDashboardApp(options);
+
+  await waitForDashboardToLoad();
+
+  return view;
 }
 
 describe("DashboardApp", () => {
@@ -146,7 +197,7 @@ describe("DashboardApp", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not have a beforeunload event when the dashboard is unedited", async function () {
@@ -160,16 +211,20 @@ describe("DashboardApp", () => {
     });
 
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
+      });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
-      history.goBack();
+      act(() => {
+        router.back();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -177,14 +232,14 @@ describe("DashboardApp", () => {
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(screen.getByLabelText("Edit dashboard"));
       await userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -192,7 +247,7 @@ describe("DashboardApp", () => {
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(
@@ -241,6 +296,147 @@ describe("DashboardApp", () => {
         screen.queryByRole("button", { name: "Add a chart" }),
       ).not.toBeInTheDocument();
     });
+
+    describe("in editing mode", () => {
+      const NO_CREATE_PROMPT =
+        "Browse your collections to find and add existing questions.";
+      const CREATE_PROMPT =
+        "Create a new question or browse your collections for an existing one.";
+
+      const userWithPermissions = (canCreateQueries: boolean) =>
+        createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: canCreateQueries,
+            can_create_native_queries: false,
+          }),
+        });
+
+      it("should suggest creating a question to a user who can create queries", async () => {
+        await setup({ currentUser: userWithPermissions(true) });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+        expect(screen.getByText(CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(NO_CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+
+      it("should not suggest creating a question to a user who cannot create queries on an empty dashboard (metabase#44937)", async () => {
+        await setup({ currentUser: userWithPermissions(false) });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+        expect(screen.getByText(NO_CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+
+      it("should not suggest creating a question to a user who cannot create queries on an empty tab (metabase#44937)", async () => {
+        await setup({
+          currentUser: userWithPermissions(false),
+          dashboard: {
+            tabs: [
+              createMockDashboardTab({ id: 1, name: "Tab 1" }),
+              createMockDashboardTab({ id: 2, name: "Tab 2" }),
+            ],
+            dashcards: [
+              createMockTextDashboardCard({
+                id: 1,
+                dashboard_tab_id: 1,
+                text: "Card on the first tab",
+              }),
+            ],
+          },
+        });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+        expect(screen.queryByText(NO_CREATE_PROMPT)).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("tab", { name: "Tab 2" }));
+
+        expect(await screen.findByText(NO_CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  it("should let the values of a filter be edited once the filter linked to it is removed (metabase#49556)", async () => {
+    const targetParameter = createMockParameter({
+      id: "target",
+      name: "Target",
+      slug: "target",
+      type: "category",
+      filteringParameters: ["source"],
+    });
+    const sourceParameter = createMockParameter({
+      id: "source",
+      name: "Source",
+      slug: "source",
+      type: "category",
+    });
+    setupSubscriptionsEndpoint([]);
+    await setup({
+      dashboard: { parameters: [targetParameter, sourceParameter] },
+    });
+
+    await userEvent.click(screen.getByLabelText("Edit dashboard"));
+    const filters = screen.getByTestId("fixed-width-filters");
+
+    await userEvent.click(within(filters).getByText("Target"));
+    const sidebar = await screen.findByTestId("dashboard-parameter-sidebar");
+    expect(
+      within(sidebar).getByRole("button", { name: "Edit" }),
+    ).toBeDisabled();
+
+    await userEvent.click(within(filters).getByText("Source"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove" }),
+    );
+    await waitFor(() =>
+      expect(within(filters).queryByText("Source")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(within(filters).getByText("Target"));
+    expect(
+      within(
+        await screen.findByTestId("dashboard-parameter-sidebar"),
+      ).getByRole("button", { name: "Edit" }),
+    ).toBeEnabled();
+  });
+
+  it("should not show an error when the fetch of a dashboard is cancelled by opening another one (metabase#47170)", async () => {
+    const otherDashboard = createMockDashboard({
+      id: 2,
+      name: "Dashboard A",
+    });
+    setupDashboardEndpoints(otherDashboard);
+    setupDashboardQueryMetadataEndpoint(
+      otherDashboard,
+      createMockDashboardQueryMetadata(),
+    );
+
+    const { router, store, resolveDashboard } = renderDashboardApp({
+      deferDashboard: true,
+    });
+
+    try {
+      expect(
+        await screen.findByTestId("dashboard-header-skeleton"),
+      ).toBeInTheDocument();
+
+      act(() => {
+        router.navigate(`/dashboard/${otherDashboard.id}`);
+      });
+
+      await waitForDashboardToLoad();
+      expect(
+        await screen.findByDisplayValue(otherDashboard.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Something’s gone wrong"),
+      ).not.toBeInTheDocument();
+      expect(store.getState().app.errorPage).toBeNull();
+    } finally {
+      resolveDashboard();
+    }
   });
 
   /**
@@ -272,6 +468,62 @@ describe("DashboardApp", () => {
     );
   });
 
+  it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {
+    const { store } = await setup({ slug: "thisisinvalid" });
+
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    expect(store.getState().app.errorPage).toMatchObject({ status: 404 });
+  });
+
+  describe("loading state (DSN-749)", () => {
+    it("renders the dashboard with skeletons, instead of a loading spinner, while it loads", async () => {
+      renderDashboardApp();
+
+      // The real dashboard page renders right away, with skeletons for its
+      // header and grid, and a loading spinner is never shown.
+      expect(screen.getByTestId("dashboard")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("dashboard-header-skeleton"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      // Once the dashboard arrives, its real header and grid replace them.
+      await waitForDashboardToLoad();
+      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+    });
+
+    it("switches to the dashboard's real card layout as soon as it is known, before the load finishes", async () => {
+      const { resolveQueryMetadata } = renderDashboardApp({
+        dashboard: {
+          dashcards: [
+            createMockHeadingDashboardCard({ id: 1, text: "Heading" }),
+            createMockTextDashboardCard({
+              id: 2,
+              text: "First line\nSecond line",
+            }),
+          ],
+        },
+        deferQueryMetadata: true,
+      });
+
+      try {
+        // These can only come from the dashboard's own layout, drawn while
+        // its query metadata loads.
+        expect(
+          await screen.findAllByTestId("dashboard-skeleton-text"),
+        ).toHaveLength(2);
+      } finally {
+        resolveQueryMetadata();
+      }
+
+      await waitForDashboardToLoad();
+      expect(
+        screen.queryByTestId("dashboard-skeleton-text"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {
     await setup();
 
@@ -280,5 +532,61 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  describe("Metabot saves", () => {
+    const dashboardFetches = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`).length;
+
+    const metabotSaves = (dashboardId: DashboardId) =>
+      dashboardSaved({ dashboardId, saveId: "call-1" });
+
+    it("reloads the dashboard when Metabot saves it", async () => {
+      const { dashboardId, store } = await setup();
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+    });
+
+    it("keeps the open sidebar when it reloads", async () => {
+      const { dashboardId, store } = await setup();
+      // the info sidebar loads the dashboard's history and its last editor
+      setupRevisionsEndpoints([]);
+      setupUserEndpoints(createMockUser({ id: 1 }));
+      act(() => {
+        store.dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      });
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+      expect(store.getState().dashboard.sidebar.name).toBe(SIDEBAR_NAME.info);
+    });
+
+    it("doesn't reload a dashboard being edited", async () => {
+      const { dashboardId, store } = await setup();
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      expect(dashboardFetches(dashboardId)).toBe(fetchesBefore);
+      expect(
+        screen.getByText(/You're editing this dashboard/),
+      ).toBeInTheDocument();
+    });
   });
 });

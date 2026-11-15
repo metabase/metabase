@@ -1,8 +1,8 @@
-import type { LinkProps as RouterLinkProps } from "react-router";
-
 import type { TooltipProps } from "metabase/ui";
 
-export interface LinkProps extends RouterLinkProps {
+import type { BaseLinkProps } from "./BaseLink";
+
+export interface LinkProps extends Omit<BaseLinkProps, "innerRef"> {
   variant?: "default" | "brand" | "brandBold";
   tooltip?: string | TooltipProps;
 }

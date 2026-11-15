@@ -5,8 +5,9 @@
    [metabase.settings.core :as setting]
    [toucan2.core :as t2]))
 
-(defmacro with-sample-db-as-dwh [& body]
+(defmacro with-sample-db-as-dwh
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
+  [& body]
   `(try
      (t2/update! :model/Database :id 1 {:is_attached_dwh true})
      ~@body
@@ -34,7 +35,6 @@
                (#'gsettings/migrate-gsheet-value
                 {:status "not-connected"})))
         (is (= {} @value-updated)))
-
       (testing "old loading values are migrated to current-format"
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890
@@ -50,7 +50,6 @@
                    :created-by-id      1
                    :db-id              1})))
           (is (= expected-value @value-updated))))
-
       (testing "old complete values are migrated to current-format"
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890

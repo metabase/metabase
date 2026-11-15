@@ -1,8 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
-import { Box, Button, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import {
+  ActionIcon,
+  Box,
+  Center,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Revision } from "metabase-types/api";
 
@@ -18,7 +30,9 @@ export type RevisionHistoryEntity =
 interface RevisionHistoryTimelineProps {
   entity: RevisionHistoryEntity;
   events: RevisionOrModerationEvent[];
-  revert: (revision: Revision) => void;
+  // Must reject on failure so the timeline can surface a toast. RTK Query
+  // callers should pipe the trigger result through `.unwrap()`.
+  revert: (revision: Revision) => Promise<unknown>;
   canWrite: boolean;
   className?: string;
   "data-testid": string;
@@ -32,6 +46,25 @@ export function RevisionHistoryTimeline({
   className,
   entity,
 }: RevisionHistoryTimelineProps) {
+  const dispatch = useDispatch();
+
+  const handleRevert = async (revision: Revision) => {
+    trackVersionRevertClicked(entity);
+    try {
+      await revert(revision);
+    } catch (error) {
+      dispatch(
+        addUndo({
+          variant: "negative",
+          message: getErrorMessage(
+            error,
+            t`Failed to revert to previous version.`,
+          ),
+        }),
+      );
+    }
+  };
+
   return (
     <Box className={className} data-testid={dataTestId}>
       <Box className={S.root}>
@@ -71,18 +104,16 @@ export function RevisionHistoryTimeline({
               <Flex>
                 {revision && canWrite && isNotFirstEvent && (
                   <Tooltip label={t`Revert to this version`}>
-                    <Button
+                    <ActionIcon
                       className={S.revertButton}
                       variant="subtle"
-                      onClick={() => {
-                        trackVersionRevertClicked(entity);
-                        revert(revision);
-                      }}
+                      size="sm"
+                      onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
                     >
                       <Icon name="revert" />
-                    </Button>
+                    </ActionIcon>
                   </Tooltip>
                 )}
               </Flex>
@@ -105,10 +136,10 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         w={24}
         h={24}
         className={S.iconCircle}
-        bd="1px solid var(--mb-color-border)"
-        bg="background-primary"
+        bd="1px solid var(--mb-color-border-neutral)"
+        bg="background_page-primary"
       >
-        <Icon name={icon} c="text-tertiary" size={12} />
+        <Icon name={icon} c="text-secondary" size={12} />
       </Center>
     );
   }
@@ -118,8 +149,8 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
   }
 
   return (
-    <Center w={24} h={24} className={S.iconCircle} bg="brand">
-      <Icon name={icon.name} c="white" size={12} />
+    <Center w={24} h={24} className={S.iconCircle} bg="core-brand">
+      <Icon name={icon.name} c="core-white" size={12} />
     </Center>
   );
 }

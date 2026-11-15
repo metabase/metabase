@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { setupPrefetchDashcardValuesEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { ActionFormProps } from "./ActionVizForm";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 
 const idParameter = createMockActionParameter({ id: "id" });
 
@@ -54,16 +54,6 @@ const dashcard = createMockActionDashboardCard();
 
 const dashboard = createMockDashboard();
 
-function setupPrefetch() {
-  fetchMock.get(
-    `path:/api/dashboard/${dashboard.id}/dashcard/${dashcard.id}/execute`,
-    {
-      parameter_1: "uno",
-      parameter_2: "dos",
-    },
-  );
-}
-
 const defaultProps: ActionFormProps = {
   action: mockAction,
   dashcard,
@@ -82,9 +72,12 @@ const defaultProps: ActionFormProps = {
 };
 
 function setup(options?: Partial<ActionFormProps>) {
-  setupPrefetch();
+  setupPrefetchDashcardValuesEndpoint(dashboard.id, dashcard.id, {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
 
-  render(<ActionVizForm {...defaultProps} {...options} />);
+  renderWithProviders(<ActionVizForm {...defaultProps} {...options} />);
 }
 
 describe("Actions > ActionVizForm", () => {
@@ -114,6 +107,8 @@ describe("Actions > ActionVizForm", () => {
 
     await userEvent.click(screen.getByText("Click me"));
 
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Choose a record to update/i),
+    ).toBeInTheDocument();
   });
 });

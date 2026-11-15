@@ -1,15 +1,40 @@
-import type { Collection } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionType,
+  ListCollectionItemsResponse,
+} from "metabase-types/api";
 
-type LibraryResponse = Collection & {
-  effective_children?: Collection[];
+export type LibraryCollectionIds = {
+  libraryCollectionId: CollectionId;
+  dataCollectionId: CollectionId;
+  metricsCollectionId: CollectionId;
 };
 
-export const createLibrary = (): Cypress.Chainable<
-  Cypress.Response<LibraryResponse>
-> => {
-  cy.log("Initialize library");
-
+export function createLibrary(): Cypress.Chainable<LibraryCollectionIds> {
   return cy
-    .request("POST", "/api/ee/library")
-    .then(() => cy.request<LibraryResponse>("GET", "/api/ee/library"));
-};
+    .request<Collection>("POST", "/api/ee/library")
+    .then(({ body: library }) =>
+      cy
+        .request<ListCollectionItemsResponse>({
+          method: "GET",
+          url: `/api/collection/${library.id}/items`,
+          qs: { models: "collection" },
+        })
+        .then(({ body: { data: children } }) => {
+          const childId = (type: CollectionType): CollectionId => {
+            const child = children.find((item) => item.type === type);
+            if (child == null) {
+              throw new Error(`The Library has no ${type} collection`);
+            }
+            return child.id;
+          };
+
+          return {
+            libraryCollectionId: library.id,
+            dataCollectionId: childId("library-data"),
+            metricsCollectionId: childId("library-metrics"),
+          };
+        }),
+    );
+}

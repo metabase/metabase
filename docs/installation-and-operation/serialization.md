@@ -21,7 +21,7 @@ The [Metabase Representation Format](https://github.com/metabase/representations
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
-- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](./remote-sync.md).
+- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
 - **Duplicating assets to other Metabases**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
@@ -53,7 +53,7 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless you explicitly specify them with the [Select collections](#select-collections) option)
 - Dashboards
 - Questions (cards)
-- Transforms (including tags and jobs)
+- Transforms (including tags, jobs, and tests)
 - Documents (without comments)
 - Actions
 - Models
@@ -69,7 +69,6 @@ Metabase will only export the following entities:
 - Notification channels (email and webhook destinations used by alerts and subscriptions)
 - Metabot configuration (AI assistant settings and prompts)
 - Python libraries (shared Python modules used by transforms)
-- Database connection strings (only if specified through the [Include database connection details](#include-database-connection-details) option)
 
 All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported. Those entities are tied to user accounts, and therefore aren't portable between Metabases.
 
@@ -146,6 +145,7 @@ show-homepage-data
 show-homepage-pin-message
 show-homepage-xrays
 show-metabot
+show-modular-embed-terms
 show-sdk-embed-terms
 show-simple-embed-terms
 show-static-embed-terms
@@ -161,7 +161,7 @@ unaggregated-query-row-limit
 
 ### Customize what gets exported
 
-You can customize what gets exported — select specific collections, exclude settings or the data model, include field values or database connection details, and more. The same options are available through both the CLI and the API; only the syntax differs.
+You can customize what gets exported — select specific collections, exclude settings or the data model, include field values, and more. The same options are available through both the CLI and the API; only the syntax differs.
 
 See [Export options](#export-options) for the full list.
 
@@ -216,7 +216,7 @@ A high-level workflow for using Entity IDs when embedding Metabase in your app w
 
 ### Databases, schemas, tables, and fields are identified by name
 
-By default, Metabase exports some database and data model settings. Exports exclude database connection strings by default. You can [explicitly include database connection strings](#include-database-connection-details). You can also choose to exclude the data model entirely.
+By default, Metabase exports some database and data model settings. Exports exclude database connection strings. You can also choose to exclude the data model entirely.
 
 Metabase serializes databases and tables in the `databases` directory. It will include YAML files for every database, table, field, segment, and metric.
 
@@ -267,7 +267,7 @@ Examples:
 CLI (include collections 1, 2, and 3):
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
+java -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 API (include collections 1 and 2):
@@ -307,7 +307,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [table metadata](../data-studio/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-modeling/metadata/managing-tables.md) settings, which admins define in **Data Studio > Connected data**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 
@@ -319,17 +319,6 @@ Type: Boolean.
 Default: Field values are excluded.
 
 Includes sample values for fields, which Metabase uses to present dropdown menus. Excluded by default to keep exports compact.
-
-### Include database connection details
-
-- **CLI:** `-s, --include-database-secrets`
-- **API:** `database_secrets=true`
-
-Type: Boolean.
-
-Default: Database connection details are excluded.
-
-Includes database connection details (including the database username and password) in plain text. Use with caution. If you don't include this option, you'll need to manually input the credentials in the target Metabase.
 
 ### Output directory name
 
@@ -346,7 +335,7 @@ Sets the name of the directory that holds the exported YAML files.
 
 > Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud/) deployments.
+You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud) deployments.
 
 There are two endpoints:
 
@@ -473,7 +462,7 @@ See [How export works](#how-export-works), [How import works](#how-import-works)
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
+java -jar metabase.jar export dir_name
 ```
 
 Where `dir_name` can be whatever you want to call the directory.
@@ -483,13 +472,13 @@ Where `dir_name` can be whatever you want to call the directory.
 To customize what's included in an export, add flags after the `export` command. See [Export options](#export-options) for the full list. You can combine multiple flags:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export my_export -S -D --include-field-values
+java -jar metabase.jar export my_export -S -D --include-field-values
 ```
 
 You can also print all available flags with the `help` command:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
+java -jar metabase.jar help export
 ```
 
 ### Importing with CLI
@@ -497,7 +486,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
 To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
+java -jar metabase.jar import path_to_export
 ```
 
 ### `import` options
@@ -505,7 +494,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
+java -jar metabase.jar help import
 ```
 
 Which prints out:
@@ -529,7 +518,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
 
-Metabase will log a warning if the versions doesn't match, but it won't block the import.
+Metabase will log a warning if the versions don't match, but it won't block the import.
 
 ### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
@@ -588,7 +577,7 @@ This process assumes that your duplicated questions will all use the same data s
 
 If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
 
-If your collections contains dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
+If your collections contain dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
 ### Using serialization to swap the data source for questions within one instance
 
@@ -605,7 +594,6 @@ Your databases must have the same engine, and ideally they should have the same 
 You'll need to keep in mind:
 
 - Databases, tables and fields are [referred to in Metabase by name](#databases-schemas-tables-and-fields-are-identified-by-name)
-- Database connection details are not exported by default. To export database connection details, you'll need to enable the [Include database connection details](#include-database-connection-details) option.
 - Databases, tables and fields referenced by an item should either already exist in the target Metabase, or be included in the import.
 
 For example, if you want to switch all questions in the `Movie reviews` collection to use the `Romance` database instead of the `Horror` database, and _both databases have the same schema_, you could follow a process like this:
@@ -627,7 +615,7 @@ This process assumes that your new data source has exactly the same schema. If t
 If you're upgrading from Metabase version 46.X or older, here's what you need to know:
 
 - The `export` command replaces the `dump` command.
-- The `import` command replace the `load` command.
+- The `import` command replaces the `load` command.
 
 Starting with Metabase 60, the export format changed:
 
@@ -648,7 +636,7 @@ We're interested in how we can improve serialization to suit your workflow. [Upv
 
 ## Further reading
 
-- [Remote Sync](./remote-sync.md)
+- [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
 - [Database routing](../permissions/database-routing.md)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)

@@ -1,12 +1,13 @@
 ---
 title: Running Metabase on Docker
+summary: Run Metabase with the official Docker image, from a quick local start to a production setup.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-docker
 ---
 
 # Running Metabase on Docker
 
-> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud/).
+> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud).
 
 Metabase provides an official Docker image via Docker Hub that can be used for deployments on any system that is running Docker.
 
@@ -46,7 +47,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -355,4 +356,4 @@ See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/run
 
 ## Continue to setup
 
-Now that you've installed Metabase, it's time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you've installed Metabase, it's time to [set it up and connect it to your database](../getting-started/setting-up-metabase.md).

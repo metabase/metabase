@@ -1,5 +1,6 @@
 ---
 title: Metabase release versioning
+summary: How Metabase version numbers work, including the license, major, point, and hotfix parts, and release terms like beta and gold.
 ---
 
 # Metabase release versioning
@@ -47,7 +48,7 @@ You'll see releases ending as `.x` in [releases on GitHub](https://github.com/me
 
 ### The beta release
 
-The beta release is the beta release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
+The beta release is the beta release of a new major version of Metabase. So for Metabase version 57, the beta releases would be:
 
 - `v0.57.0` (the OSS version)
 - `v1.57.0` (the EE version)
@@ -61,7 +62,7 @@ The gold release is the first stable release of a new major version of Metabase.
 
 ### Cloud builds
 
-If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/).
+If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud).
 
 ## Further reading
 

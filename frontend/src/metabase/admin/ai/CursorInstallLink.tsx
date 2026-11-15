@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Anchor } from "metabase/ui";
 
-import { useMCPServerURL } from "./utils";
+import { useMCPServerURL } from "./useMCPServerURL";
 
 const CURSOR_DEEPLINK = {
   url: "cursor://anysphere.cursor-deeplink/mcp/install",

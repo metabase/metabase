@@ -2,12 +2,12 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
+import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
-import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
 import type { Undo } from "metabase/redux/store/undo";
 
 import type { StaleCollectionItem } from "../types";
@@ -33,6 +33,7 @@ export const CleanupCollectionBulkActions = ({
   const handleUndo = async (items: StaleCollectionItem[]) => {
     return Promise.all(
       items.map((item) =>
+        // Unjustified type cast. FIXME
         archive(item as ArchivableItem, false, { notify: false }),
       ),
     )
@@ -44,6 +45,7 @@ export const CleanupCollectionBulkActions = ({
     const actions = selected.map((item) => {
       return archiveAndTrack({
         archive: async () => {
+          // Unjustified type cast. FIXME
           await archive(item as ArchivableItem, true, { notify: false });
         },
         model: item.model,
@@ -66,6 +68,7 @@ export const CleanupCollectionBulkActions = ({
         onArchive({ totalArchivedItems });
 
         const id = Date.now();
+        // Unjustified type cast. FIXME
         const timeoutId = setTimeout(() => {
           setUndo((undo) => (undo?.id === id ? undefined : undo));
         }, 5000) as unknown as number;

@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import {
   isRootPersonalCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,
@@ -79,4 +80,11 @@ export function extractCollectionId(slug = ""): CollectionId | undefined {
     return slug;
   }
   return extractEntityId(slug);
+}
+
+export function extractCollectionIdFromPath(
+  path: string,
+): CollectionId | undefined {
+  const match = path.match(/^\/collection\/([^/]+)/);
+  return match ? extractCollectionId(match[1]) : undefined;
 }

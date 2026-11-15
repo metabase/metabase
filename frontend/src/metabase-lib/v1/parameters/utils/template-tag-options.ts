@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { ParameterOptions, TemplateTag } from "metabase-types/api";
+import type { Field, ParameterOptions, TemplateTag } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks/parameters";
 
 import {
@@ -11,7 +10,10 @@ import {
   PARAMETER_OPERATOR_TYPES,
 } from "../constants";
 
-import { fieldFilterForParameter } from "./filters";
+import {
+  type ParameterFilterableField,
+  fieldFilterForParameter,
+} from "./filters";
 import {
   buildTypedOperatorOptions,
   deriveFieldOperatorFromParameter,
@@ -33,7 +35,7 @@ export function getParameterOptions() {
   ].flat();
 }
 
-export function getParameterOptionsForField(field: Field) {
+export function getParameterOptionsForField(field: ParameterFilterableField) {
   return getParameterOptions()
     .filter((option) =>
       fieldFilterForParameter(createMockParameter(option))(field),
@@ -50,7 +52,10 @@ function fallbackParameterWidgetType(tag: TemplateTag): "none" | undefined {
   return tag.type === "dimension" ? "none" : undefined;
 }
 
-export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
+export function getDefaultParameterWidgetType(
+  tag: TemplateTag,
+  field: ParameterFilterableField & Pick<Field, "fingerprint">,
+) {
   const options = getParameterOptionsForField(field);
   if (options.length === 0) {
     return fallbackParameterWidgetType(tag);

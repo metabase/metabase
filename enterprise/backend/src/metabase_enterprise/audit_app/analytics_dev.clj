@@ -11,19 +11,21 @@
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
+   [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
-   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
+   [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.match :as match])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -35,7 +37,7 @@
   audit-ee/default-db-name)
 
 (def ^:private canonical-db-filename
-  (serialization/slugify-name canonical-db-name))
+  (ee.serialization/slugify-name canonical-db-name))
 
 (def ^:private legacy-canonical-db-filename
   canonical-db-name)
@@ -51,7 +53,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-name :is_audit false))
+  (audit-app.db/non-audit-database-named canonical-db-name))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -63,30 +65,35 @@
 
   Returns the created database map."
   [user-id]
+  ;; An analytics-dev database is a handle onto the app-db and must not exist outside analytics dev mode; refuse to
+  ;; create one unless the mode is on (mirrors the connection-layer guard in
+  ;; [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]]).
+  (when-not (audit/analytics-dev-mode)
+    (throw (ex-info (tru "Analytics dev mode is not enabled.") {:status-code 400})))
   (let [db-type (mdb/db-type)]
     (if-let [existing (find-analytics-dev-database)]
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-name
-                                               :description "Development database for analytics views and content"
-                                               :engine (name db-type)
-                                               :details {:is-audit-dev true}
-                                               :is_audit false ; Important: not an audit DB
-                                               :is_full_sync true
-                                               :is_on_demand false
-                                               :creator_id user-id
-                                               :auto_run_queries true})]
+      (let [db (audit-app.db/insert-returning-database!
+                {:name canonical-db-name
+                 :description "Development database for analytics views and content"
+                 :engine (keyword db-type)
+                 :details {:is-audit-dev true}
+                 :is_audit false ; Important: not an audit DB
+                 :is_full_sync true
+                 :is_on_demand false
+                 :creator_id user-id
+                 :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
-        (sync/sync-database! db {:scan :schema})
+        (sync/sync-database! (u/the-id db) {:scan :schema})
         db))))
 
 (defn delete-analytics-dev-database!
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (t2/delete! :model/Database :id db-id)
+  (audit-app.db/delete-database! db-id)
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -98,12 +105,8 @@
 
   Replaces canonical creator_id with actual user email."
   [yaml-data user-email]
-  (walk/postwalk
-   (fn [node]
-     (if (= node canonical-creator-id)
-       user-email
-       node))
-   yaml-data))
+  (match/replace-all yaml-data
+    #{canonical-creator-id} user-email))
 
 (defn- yaml->canonical
   "Transform YAML from dev format to canonical format.
@@ -111,14 +114,9 @@
   Replaces user email with canonical creator_id.
   For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
-  (let [transformed (walk/postwalk
-                     (fn [node]
-                       (if (map? node)
-                         (dissoc node :metabase_version :is_writable)
-                         (if (= node user-email)
-                           canonical-creator-id
-                           node)))
-                     yaml-data)
+  (let [transformed (match/replace-all yaml-data
+                      #'map? (dissoc &match :metabase_version :is_writable)
+                      #{user-email} canonical-creator-id)
         is-database? (or (= file-name (str canonical-db-filename ".yaml"))
                          (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?
@@ -152,7 +150,6 @@
         (let [yaml-data (yaml/parse-string (slurp file))
               transformed (yaml->dev yaml-data user-email)]
           (spit target-file (yaml/generate-string transformed)))))
-
     (log/info "YAML transformation complete")
     (.getPath temp-path)))
 
@@ -170,13 +167,12 @@
             (throw (ex-info "Analytics plugin directory not found after copy" {:path plugins-dir})))
 
         temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
-
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {:backfill? false}))]
+      (let [report (ee.serialization/load-metabase! (ee.serialization/ingest-yaml temp-dir) {})]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
-          (log/warn "Import had errors:" (:errors report)))
+          (log/warn "Import had errors:" (mapv ex-message (:errors report))))
         report)
       (finally
         (when (.exists (io/file temp-dir))
@@ -196,14 +192,14 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
+      (let [opts {:targets (ee.serialization/make-targets-of-type :model/Collection [collection-id])
                   :no-settings true :no-transforms true
                   :include-field-values true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts)
-                                                            (serialization/file-writer (.getPath temp-path))))]
-        (log/info "Export complete:" (count (:seen report)) "entities exported")
+            report (serialization/with-export-transaction (ee.serialization/store! (ee.serialization/extract opts)
+                                                                                   (ee.serialization/file-writer (.getPath temp-path))))]
+        (log/info "Export complete:" (reduce + 0 (vals (:entity-counts report))) "entities exported")
         (when (seq (:errors report))
-          (log/warn "Export had errors:" (:errors report)))
+          (log/warn "Export had errors:" (mapv ex-message (:errors report))))
         {:report report
          :export-dir (.getPath temp-path)})
       (catch Exception e
@@ -276,12 +272,12 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
+  (audit-app.db/first-superuser))
 
 (defn find-analytics-collection
   "Get the analytics collection"
   []
-  (t2/select-one :model/Collection :entity_id audit/default-audit-collection-entity-id))
+  (audit-app.db/collection-by-entity-id audit/default-audit-collection-entity-id))
 
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."
@@ -290,8 +286,8 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (t2/delete! :model/Database :is_audit true)
-  (t2/delete! :model/Collection :namespace "analytics"))
+  (audit-app.db/delete-audit-databases!)
+  (audit-app.db/delete-analytics-collections!))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)
@@ -308,12 +304,12 @@
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]
             (cleanup-real-analytics)
-            (log/info "Setting up analytics dev environment with user:" (:email admin-user))
+            (log/info "Setting up analytics dev environment with user:" (:id admin-user))
             (create-analytics-dev-database! (:id admin-user))
             (import-analytics-content! (:email admin-user))
             (log/info "Analytics dev environment ready")))
         (catch Exception e
-          (log/error e "Failed to set up analytics dev environment"))))))
+          (log/errorf "Failed to set up analytics dev environment: %s" (ex-message e)))))))
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_] (analytics-dev-mode-setup))

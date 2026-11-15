@@ -1,11 +1,15 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import {
+  BREADCRUMB_TRAIL_CLASS_NAME,
+  Breadcrumb,
+} from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
-import { Breadcrumb } from "./Breadcrumb";
 import { Separator } from "./Separator";
 
 interface Props extends GroupProps {
@@ -13,7 +17,7 @@ interface Props extends GroupProps {
   table: Table;
 }
 
-export const TableNav = ({ rowName, table, ...props }: Props) => {
+export const TableNav = ({ rowName, table, className, ...props }: Props) => {
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
@@ -24,8 +28,19 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
   }
 
   return (
-    <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
-      <Breadcrumb href={`/browse/databases/${table.db_id}`} icon="database">
+    <Group
+      align="center"
+      className={cx(BREADCRUMB_TRAIL_CLASS_NAME, className)}
+      gap="sm"
+      miw={0}
+      wrap="nowrap"
+      {...props}
+    >
+      <Breadcrumb
+        icon="database"
+        to={Urls.browseDatabase(table.db)}
+        showTooltip
+      >
         {table.db.name}
       </Breadcrumb>
 
@@ -34,7 +49,11 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
           <Separator />
 
           <Breadcrumb
-            href={`/browse/databases/${table.db_id}/schema/${encodeURIComponent(table.schema)}`}
+            to={Urls.browseSchemaBySlug(
+              Urls.databaseSlug(table.db),
+              table.schema,
+            )}
+            showTooltip
           >
             {table.schema}
           </Breadcrumb>
@@ -43,7 +62,10 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={Urls.tableRowsQuery(table.db_id, table.id)}>
+      <Breadcrumb
+        to={Urls.table({ id: table.id, name: table.display_name })}
+        showTooltip
+      >
         {table.display_name}
       </Breadcrumb>
 
@@ -51,7 +73,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
         <>
           <Separator />
 
-          <Breadcrumb>{rowName}</Breadcrumb>
+          <Breadcrumb showTooltip>{rowName}</Breadcrumb>
         </>
       )}
     </Group>

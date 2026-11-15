@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot.test-util]}}}}}}
   (:require
    [metabase.lib.core :as lib]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]))
 
 (defn applicable-drivers
@@ -92,3 +93,51 @@
      {:pivot_table.column_split
       {:rows    [(get breakout 1) (get breakout 0)]
        :columns [(get breakout 2)]}}}))
+
+;;; ---- Pivot-path parity check ----
+;;;
+;;; `qp.pivot/run-pivot-query` runs both the native and multi-query paths and reports mismatches whenever
+;;; `qp.pivot/*check-pivot-parity?*` is on. That defaults to `true` in test builds, so every pivot query
+;;; in the test suite gets parity coverage automatically — no fixture required. Tests that intentionally
+;;; exercise behavior that differs between the two paths (e.g. the per-sub-query row cap applied by
+;;; `qp.pivot/pivot-query-max-rows`) can wrap the divergent block in [[without-pivot-parity-check]].
+
+(defmacro without-pivot-parity-check
+  "Disable pivot parity checking inside `body`. Use for tests whose query intentionally exercises behavior
+  that differs between the multi-query and native paths."
+  [& body]
+  `(binding [qp.pivot/*check-pivot-parity?* false]
+     ~@body))
+
+(defmacro with-metadata-only-parity
+  "Compare pivot flows on column metadata (name/field_ref/source/base_type) only inside `body`, skipping the
+  row-frequency check. Use for tests whose query intentionally diverges on rows between the multi-query
+  and native paths (e.g. `:limit N` applied per-subquery) but should still agree on the FE-visible column
+  shape."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [qp.pivot/pivot-outcome-comparator qp.pivot/pivot-cols-equivalent?]
+     ~@body))
+
+(defn do-with-pivot-flow-pinned!
+  "Pin `run-pivot-query` to one flow by toggling `use-native-pivot-tables` to `single?`."
+  [single? thunk]
+  (mt/with-temporary-setting-values [use-native-pivot-tables single?]
+    ;; disable parity checking so the other flows does't run alongside for comparison
+    (binding [qp.pivot/*check-pivot-parity?* false]
+      (thunk))))
+
+(defmacro with-multi-query-pivot!
+  "Force `run-pivot-query` to use the multi-query path inside `body`.
+
+  Use for tests that assert multi-query-specific behavior (per-subquery row cap, subquery skipping, etc.) whose
+  semantics don't translate to the single-query paths."
+  [& body]
+  `(do-with-pivot-flow-pinned! false (fn [] ~@body)))
+
+(defmacro with-single-query-pivot!
+  "Force `run-pivot-query` to use the single-query (native) path inside `body`.
+
+  Use for tests that assert single-query-specific behavior (`:max-results` cap, rollups-first ordering, etc.) whose
+  semantics don't translate to the multi-query path."
+  [& body]
+  `(do-with-pivot-flow-pinned! true (fn [] ~@body)))

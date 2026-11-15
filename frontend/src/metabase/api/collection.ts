@@ -1,20 +1,20 @@
-import {
-  CollectionSchema,
-  ObjectUnionSchema,
-  SnippetCollectionSchema,
-} from "metabase/schema";
 import type {
   Collection,
+  CollectionItemModel,
+  CollectionItemsMetadata,
+  CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetCollectionItemsMetadataRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
+  UpdateCollectionPermissionsGraphRequest,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -28,23 +28,13 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
-const flattenCollectionTree = (tree: Collection[]): Collection[] =>
-  tree.flatMap((collection) => [
-    collection,
-    ...flattenCollectionTree(collection.children ?? []),
-  ]);
-
-// Snippet collections live in their own entity slice (`snippetCollections`),
-// so hydrating them through `CollectionSchema` would clobber regular
-// collections. Hydrate through the matching schema instead.
-const collectionSchemaForRequest = (
-  request: { namespace?: string | null } | void,
-) =>
-  request?.namespace === "snippets"
-    ? SnippetCollectionSchema
-    : CollectionSchema;
+const getCollectionItemTagModels = (
+  models: ListCollectionItemsRequest["models"],
+): CollectionItemModel[] | undefined =>
+  models?.filter(
+    (model): model is CollectionItemModel => model !== "no_models",
+  );
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -61,11 +51,6 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
-        onQueryStarted: (request, lifecycle) =>
-          hydrateLegacyEntities([collectionSchemaForRequest(request)])(
-            request,
-            lifecycle,
-          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -81,11 +66,6 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities<Collection[]>(
-          [collectionSchemaForRequest(request)],
-          flattenCollectionTree,
-        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -97,13 +77,27 @@ export const collectionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response, error, { models, id }) => [
-        ...provideCollectionItemListTags(response?.data ?? [], models),
+        ...provideCollectionItemListTags(
+          response?.data ?? [],
+          getCollectionItemTagModels(models),
+        ),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateLegacyEntities<ListCollectionItemsResponse>(
-        [ObjectUnionSchema],
-        (response) => response.data,
-      ),
+    }),
+    getCollectionItemsMetadata: builder.query<
+      CollectionItemsMetadata,
+      GetCollectionItemsMetadataRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items/metadata`,
+        params,
+      }),
+      // The metadata describes items of every model, so any item change may invalidate it.
+      providesTags: (_response, _error, { id }) => [
+        ...provideCollectionItemListTags([]),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -116,11 +110,26 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities(collectionSchemaForRequest(request))(
-          request,
-          lifecycle,
-        ),
+    }),
+    getCollectionPermissionsGraph: builder.query<
+      CollectionPermissionsGraph,
+      { namespace?: string } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/graph",
+        params: params ?? undefined,
+      }),
+    }),
+    updateCollectionPermissionsGraph: builder.mutation<
+      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/collection/graph?skip-graph=true",
+        body,
+      }),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
@@ -138,9 +147,9 @@ export const collectionApi = Api.injectEndpoints({
           idTag("collection", collection.parent_id ?? "root"),
         ];
 
-        // Creating a shared tenant collection affects the embedding hub checklist
+        // Creating a shared tenant collection affects the setup guide checklist
         if (request.namespace === "shared-tenant-collection") {
-          tags.push(listTag("embedding-hub-checklist"));
+          tags.push(listTag("setup-guide-checklist"));
         }
 
         return invalidateTags(error, tags);
@@ -157,6 +166,8 @@ export const collectionApi = Api.injectEndpoints({
           listTag("collection"),
           idTag("collection", payload.id),
           idTag("collection", payload.parent_id ?? "root"),
+          // archiving a collection resolves content-diagnostics findings in its subtree
+          listTag("content-diagnostics-finding"),
         ];
 
         // When archiving/restoring a collection, invalidate bookmarks
@@ -219,7 +230,10 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,
+  useGetCollectionPermissionsGraphQuery,
+  useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,

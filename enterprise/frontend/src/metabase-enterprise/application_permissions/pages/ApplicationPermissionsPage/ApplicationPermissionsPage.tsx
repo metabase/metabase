@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
 
-import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
+import { ApplicationPermissionsHelp } from "metabase/permissions";
 import { connect } from "metabase/redux";
 import {
   initializeApplicationPermissions,
@@ -38,7 +38,6 @@ interface ApplicationPermissionsPageProps {
   initialize: () => void;
   savePermissions: () => void;
   updatePermission: any;
-  route: Route;
 }
 
 const ApplicationPermissionsPage = ({
@@ -47,7 +46,6 @@ const ApplicationPermissionsPage = ({
   initialize,
   savePermissions,
   updatePermission,
-  route,
 }: ApplicationPermissionsPageProps) => {
   useEffect(() => {
     initialize();
@@ -71,7 +69,6 @@ const ApplicationPermissionsPage = ({
     <PermissionsPageLayout
       tab="application"
       isDirty={isDirty}
-      route={route}
       helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
       onLoad={() => initialize()}

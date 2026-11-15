@@ -1,19 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { isRootTrashCollection } from "metabase/collections/utils";
-import {
-  BulkActionButton,
-  BulkActionDangerButton,
-} from "metabase/common/components/BulkActionBar";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   canDelete,
-  canMoveItem,
   useDeleteItem,
   useSetArchive,
-} from "metabase/common/hooks";
+} from "metabase/archive/hooks";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
+import { BulkActionButton } from "metabase/common/components/BulkActionBar";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { canMoveItem } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -82,18 +80,31 @@ export const ArchivedBulkActions = ({
   };
 
   const handleBulkDeletePermanently = async () => {
-    const actions = selected.filter(canDelete).map((item) => deleteItem(item));
-    Promise.all(actions).finally(unselect);
-    dispatch(
-      addUndo({
-        message: ngettext(
-          msgid`${selected.length} item has been permanently deleted.`,
-          `${selected.length} items have been permanently deleted.`,
-          selected.length,
-        ),
-        canDismiss: true,
-      }),
-    );
+    const itemsToDelete = selected.filter(canDelete);
+    try {
+      await Promise.all(
+        itemsToDelete.map((item) => deleteItem(item, { notify: false })),
+      );
+      dispatch(
+        addUndo({
+          message: ngettext(
+            msgid`${itemsToDelete.length} item has been permanently deleted.`,
+            `${itemsToDelete.length} items have been permanently deleted.`,
+            itemsToDelete.length,
+          ),
+          canDismiss: true,
+        }),
+      );
+    } catch {
+      dispatch(
+        addUndo({
+          message: t`There was an error permanently deleting these items.`,
+          variant: "negative",
+        }),
+      );
+    } finally {
+      unselect();
+    }
   };
 
   // move
@@ -116,12 +127,13 @@ export const ArchivedBulkActions = ({
       <BulkActionButton onClick={handleBulkMoveStart} disabled={!canMove}>
         {t`Move`}
       </BulkActionButton>
-      <BulkActionDangerButton
+      <BulkActionButton
+        danger
         onClick={handleBulkDeletePermanentlyStart}
         disabled={!canDeleteAll}
       >
         {t`Delete permanently`}
-      </BulkActionDangerButton>
+      </BulkActionButton>
 
       {/* This should probably be external so that we can hide
           the bar when any other modals are displayed */}

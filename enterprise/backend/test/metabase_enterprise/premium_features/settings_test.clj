@@ -12,11 +12,13 @@
       (is (false? (premium-features/enable-custom-viz?)))))
   (testing "enable-custom-viz? is true when admin opts in via the setting"
     (tu/with-premium-features #{:custom-viz}
-      (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (mt/with-temporary-setting-values [csp-img-enabled true
+                                         custom-viz-enabled true]
         (is (true? (premium-features/enable-custom-viz?))))))
   (testing "enable-custom-viz? is false without the :custom-viz token feature, even when the setting is on"
     (tu/with-premium-features #{}
-      (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (mt/with-temporary-setting-values [csp-img-enabled true
+                                         custom-viz-enabled true]
         (is (false? (premium-features/enable-custom-viz?))))))
   (testing "MB_CUSTOM_VIZ_ENABLED env var can toggle the setting"
     (tu/with-premium-features #{:custom-viz}

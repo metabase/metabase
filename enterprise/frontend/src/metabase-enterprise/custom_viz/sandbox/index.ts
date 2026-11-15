@@ -1,18 +1,43 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
+import {
+  NEAR_MEMBRANE_SANDBOX_HOST_URL,
+  getSubpathSafeUrl,
+} from "metabase/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { makeDistortionCallback } from "./distortions";
+
+export type SandboxMode = "hosted" | "blank" | { iframeSrc: string };
 
 // Needed for React style declarations to be applied correctly.
 function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-export function createPluginSandbox(pluginId: CustomVizPluginId) {
+function getSandboxIframeSrc(mode: SandboxMode): string | undefined {
+  if (mode === "hosted") {
+    return getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL);
+  }
+  // "blank" skips the sandbox-host endpoint and lets the library fall back to
+  // about:blank. Used in Storybook where no backend serves the endpoint.
+  if (mode === "blank") {
+    return undefined;
+  }
+  return mode.iframeSrc;
+}
+
+export async function createPluginSandbox(
+  pluginId: CustomVizPluginId,
+  mode: SandboxMode = "hosted",
+) {
   let capturedFactory: unknown;
 
-  const env = createVirtualEnvironment(window, {
+  const iframeSrc = getSandboxIframeSrc(mode);
+
+  const env = await createVirtualEnvironment(window, {
+    ...(iframeSrc ? { iframeSrc } : {}),
+    keepAlive: false,
     distortionCallback: makeDistortionCallback(pluginId),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
@@ -23,6 +48,7 @@ export function createPluginSandbox(pluginId: CustomVizPluginId) {
         capturedFactory = value;
       },
       __METABASE_VIZ_API__: window.__METABASE_VIZ_API__,
+      frameElement: null,
     }),
   });
 
@@ -34,6 +60,7 @@ export function createPluginSandbox(pluginId: CustomVizPluginId) {
         // unwrap membrane-proxied Error
         let message: string;
         try {
+          // Unjustified type cast. FIXME
           message = String((e as { message?: unknown })?.message ?? e);
         } catch {
           message = "Unknown error inside plugin sandbox";

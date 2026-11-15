@@ -14,9 +14,9 @@ export function stampMetricCounts(
   const counts = new Map<MetricSourceId, number>();
   return tokens.map((token) => {
     if (token.type === "metric") {
-      const count = (counts.get(token.sourceId) ?? 0) + 1;
-      counts.set(token.sourceId, count);
-      return { ...token, count };
+      const occurrenceCount = (counts.get(token.sourceId) ?? 0) + 1;
+      counts.set(token.sourceId, occurrenceCount);
+      return { ...token, occurrenceCount } satisfies ExpressionSubToken;
     }
     return token;
   });

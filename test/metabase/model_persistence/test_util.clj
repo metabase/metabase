@@ -1,21 +1,24 @@
 (ns metabase.model-persistence.test-util
   (:require
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (defn do-with-persistence-enabled!
   [f]
   (tu/with-temporary-setting-values [:persisted-models-enabled true]
-    (with-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
-      (ddl.i/check-can-persist (data/db))
+    (dynamic-redefs/with-dynamic-fn-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
+      (ddl.i/check-can-persist (driver.u/lib-database (data/id)))
       (persisted-info/ready-database! (data/id))
       (let [persist-fn (fn persist-fn []
                          (#'task.persist-refresh/refresh-tables!
                           (data/id)
-                          (var-get #'task.persist-refresh/dispatching-refresher)))]
+                          (var-get #'task.persist-refresh/dispatching-refresher)
+                          nil))]
         (f persist-fn)))))
 
 (defmacro with-persistence-enabled!

@@ -7,6 +7,6 @@
   text-overflow: ellipsis;
 
   &.labelActive {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

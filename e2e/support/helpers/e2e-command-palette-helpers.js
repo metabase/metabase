@@ -3,8 +3,6 @@ export const shortcutModal = () =>
   cy.findByRole("dialog", { name: "Shortcuts" });
 
 export const openCommandPalette = () => cy.get("body").type("{ctrl+k}{cmd+k}");
-export const openShortcutModal = () => cy.get("body").type("{shift+?}");
-
 export const commandPaletteButton = () =>
   cy
     .findByTestId("app-bar")
@@ -26,7 +24,7 @@ export const commandPaletteInput = () =>
 export const commandPaletteSearch = (query, viewAll = true) => {
   cy.intercept("GET", "/api/search?q=*").as("paletteSearch");
   commandPaletteButton().click();
-  commandPaletteInput().type(query);
+  commandPaletteInput().clear().type(query);
   cy.wait("@paletteSearch");
 
   if (viewAll) {

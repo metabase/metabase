@@ -2,7 +2,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import {
   setupAdhocQueryMetadataEndpoint,
@@ -26,21 +25,31 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import type { RequestState, State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
+import type { State } from "metabase/redux/store";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type {
+  Bookmark,
+  Card,
+  Database,
+  Dataset,
+  Timeline,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -49,11 +58,7 @@ import {
   createMockDataset,
   createMockFieldValues,
   createMockModelIndex,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockSettings,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
@@ -65,6 +70,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { getIsRunning } from "../store/selectors";
+
 import { QueryBuilder } from "./QueryBuilder";
 
 export const TEST_DB = createSampleDatabase();
@@ -73,59 +80,64 @@ export const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
   type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, null]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["expression", "Custom Created At"]],
-      expressions: {
-        "Custom Created At": ["field", ORDERS.CREATED_AT, null],
-      },
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Custom Created At",
+              value: { type: "column", name: "CREATED_AT" },
+            },
+          ],
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "Custom Created At" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_CARD_VISUALIZATION = createMockCard({
   ...TEST_CARD,
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 export const TEST_MODEL_CARD = createMockCard({
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 1,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
+    }),
+  ),
   type: "model",
   display: "table",
   description: "Test description",
@@ -136,23 +148,17 @@ export const TEST_MODEL_CARD_SLUG = [
   TEST_MODEL_CARD.name.toLowerCase(),
 ].join("-");
 
+const TEST_NATIVE_QUERY = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
+
 export const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: createMockNativeQuery({
-      query: "SELECT 1",
-    }),
-  }),
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_NATIVE_CARD_DATASET = createMockDataset({
-  json_query: {
-    database: SAMPLE_DB_ID,
-    type: "native",
-    native: {
-      query: "SELECT 1",
-    },
-  },
+  json_query: Lib.toLegacyQuery(TEST_NATIVE_QUERY),
   database_id: SAMPLE_DB_ID,
   status: "completed",
   row_count: 1,
@@ -160,29 +166,24 @@ export const TEST_NATIVE_CARD_DATASET = createMockDataset({
 });
 
 export const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-  }),
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_STRUCTURED_CARD = createMockCard({
   name: "Orders question",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
-      limit: 1,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
     }),
-  }),
+  ),
 });
 
 export const TEST_UNSAVED_STRUCTURED_CARD = createMockUnsavedCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
     }),
-  }),
+  ),
 });
 
 export const TEST_MODEL_DATASET_COLUMN = createMockColumn({
@@ -228,13 +229,21 @@ const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
 
 interface SetupOpts {
   card: Card | UnsavedCard | null;
+  bookmarks?: Bookmark[];
   dataset?: Dataset;
+  database?: Database;
+  echoQueryParameters?: boolean;
   initialRoute?: string;
+  timelines?: Timeline[];
+  timelinesResponse?: () => Promise<Timeline[]>;
 }
 
 export const setup = async ({
   card,
+  bookmarks = [],
   dataset = createMockDataset(),
+  database = TEST_DB,
+  echoQueryParameters = false,
   initialRoute = `/question${
     card == null
       ? ""
@@ -242,15 +251,17 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  timelines = [],
+  timelinesResponse,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([TEST_DB]);
+  setupDatabasesEndpoints([database]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
-  setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints([]);
+  setupBookmarksEndpoints(bookmarks);
+  setupTimelinesEndpoints(timelinesResponse ?? timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
@@ -263,13 +274,15 @@ export const setup = async ({
     value: false,
   });
 
-  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+  const metadata = createMockCardQueryMetadata({ databases: [database] });
   setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryMetadataEndpoint(card, metadata);
-    setupCardQueryEndpoints(card, dataset);
+    setupCardQueryEndpoints(card, dataset, {
+      echoParameters: echoQueryParameters,
+    });
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
   }
@@ -280,35 +293,30 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const {
-    store: { getState },
-    container,
-    history,
-  } = renderWithProviders(
-    <div>
+  const { container, router, store } = renderWithProviders(
+    <>
       <Route>
-        <Route path="/" component={TestHome} />
+        <Route path="/" element={<TestHome />} />
         <Route path="/model">
-          <Route path="new" component={NewModelOptions} />
-          <Route path="query" component={TestQueryBuilder} />
-          <Route path="columns" component={TestQueryBuilder} />
-          <Route path="metadata" component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/query" component={TestQueryBuilder} />
-          <Route path=":slug/columns" component={TestQueryBuilder} />
-          <Route path=":slug/metadata" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route path="query" element={<TestQueryBuilder />} />
+          <Route path="columns" element={<TestQueryBuilder />} />
+          <Route path="metadata" element={<TestQueryBuilder />} />
+          <Route path="notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug" element={<TestQueryBuilder />} />
+          <Route path=":slug/query" element={<TestQueryBuilder />} />
+          <Route path=":slug/columns" element={<TestQueryBuilder />} />
+          <Route path=":slug/metadata" element={<TestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<TestQueryBuilder />} />
         </Route>
         <Route path="/question">
-          <IndexRoute component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route index element={<TestQueryBuilder />} />
+          <Route path="notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug" element={<TestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<TestQueryBuilder />} />
         </Route>
-        <Route path="/redirect" component={TestRedirect} />
+        <Route path="/redirect" element={<TestRedirect />} />
       </Route>
-    </div>,
+    </>,
     {
       withRouter: true,
       initialRoute,
@@ -324,46 +332,50 @@ export const setup = async ({
     },
   );
 
-  await waitForLoadingRequests(getState);
   await waitForLoaderToBeRemoved();
-  await waitForLoadingRequests(getState);
+  const opensSavedQuestion =
+    isSavedCard(card) &&
+    /^\/(question|model)\//.test(initialRoute) &&
+    !initialRoute.includes("/notebook");
+  if (opensSavedQuestion) {
+    await waitForQueryToFinish(store);
+  } else {
+    await waitForQueryToStart();
+  }
 
   return {
     container,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
     mockEventListener,
+    store,
   };
 };
 
-const waitForLoadingRequests = async (getState: () => State) => {
-  await waitFor(
-    () => {
-      const requests = getRequests(getState());
-      const areRequestsLoading = requests.some((request) => request.loading);
-      expect(areRequestsLoading).toBe(false);
-    },
-    { timeout: 5000 },
-  );
+/**
+ * QueryBuilder starts running a question from a timer, after its loader is gone.
+ * The timer fires here inside act(), so the start of the run cannot update the
+ * page after the test.
+ */
+export const waitForQueryToStart = async () => {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 };
 
-const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap((group) =>
-    Object.values(group).flatMap((entity) =>
-      Object.values(entity).flatMap((request) => Object.values(request)),
-    ),
+const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
+
+/**
+ * A saved question runs its query as it opens. The loader can be gone before
+ * the question is even loaded, so this waits for the run's request and then for
+ * the run to end, and the result cannot update the page after the test.
+ */
+const waitForQueryToFinish = async (store: { getState: () => State }) => {
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory
+        .calls()
+        .some((call) => QUERY_RUN_PATH.test(new URL(call.url).pathname)),
+    ).toBe(true),
   );
-};
-
-export const startNewNotebookModel = async () => {
-  await userEvent.click(screen.getByText("Use the notebook editor"));
-  await waitForLoaderToBeRemoved();
-
-  const modal = await screen.findByTestId("mini-picker");
-  await waitForLoaderToBeRemoved();
-  await userEvent.click(await within(modal).findByText("Sample Database"));
-  await userEvent.click(await within(modal).findByText("Orders"));
-
-  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
+  await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 };
 
 export const triggerNativeQueryChange = async () => {
@@ -440,6 +452,17 @@ export const waitForSaveChangesToBeDisabled = async () => {
 export const waitForSaveToBeEnabled = async () => {
   await waitFor(() => {
     expect(screen.getByText("Save")).toBeEnabled();
+  });
+};
+
+export const saveQuestion = async () => {
+  await waitForSaveToBeEnabled();
+  await userEvent.click(screen.getByText("Save"));
+  await userEvent.click(
+    within(screen.getByTestId("save-question-modal")).getByText("Save"),
+  );
+  await waitFor(() => {
+    expect(screen.queryByTestId("save-question-modal")).not.toBeInTheDocument();
   });
 };
 

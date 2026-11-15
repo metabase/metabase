@@ -5,3 +5,9 @@ export type SortingOptions<SortColumn extends string> = {
   sort_column: SortColumn;
   sort_direction: SortDirection;
 };
+
+export const guardSortDirection = (value: string): value is SortDirection =>
+  (SORT_DIRECTIONS satisfies readonly SortDirection[]).includes(
+    // Unjustified type cast. FIXME
+    value as SortDirection,
+  );

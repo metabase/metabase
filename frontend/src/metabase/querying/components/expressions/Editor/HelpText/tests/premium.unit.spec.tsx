@@ -19,6 +19,10 @@ describe("ExpressionEditorHelpText (EE with token)", () => {
         showMetabaseLinks: true,
       });
 
+      // Wait for the async-formatted example so HighlightExpressionParts
+      // settles before the test ends.
+      await screen.findByText('concat([Last Name], ", ", [First Name])');
+
       expect(
         screen.getByRole("img", { name: "reference icon" }),
       ).toBeInTheDocument();
@@ -30,6 +34,10 @@ describe("ExpressionEditorHelpText (EE with token)", () => {
         enclosingFunction: { name: "concat" },
         showMetabaseLinks: false,
       });
+
+      // Wait for the async-formatted example so HighlightExpressionParts
+      // settles before the test ends.
+      await screen.findByText('concat([Last Name], ", ", [First Name])');
 
       expect(
         screen.queryByRole("img", { name: "reference icon" }),

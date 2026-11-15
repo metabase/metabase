@@ -1,9 +1,15 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
-import { Select } from "metabase/common/components/Select";
-import { Flex } from "metabase/ui";
-import type { ClickBehavior } from "metabase-types/api";
+import {
+  Combobox,
+  DefaultSelectItem,
+  UnstyledButton,
+  useCombobox,
+} from "metabase/ui";
+import type {
+  ClickBehavior,
+  ClickBehaviorParameterMapping,
+} from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
 import type { SourceOption, SourceOptionsByType, TargetItem } from "./types";
@@ -20,50 +26,89 @@ export function ClickMappingsTargetWithoutSource({
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { id, name, type } = target;
+  const combobox = useCombobox();
+
+  const handleOptionSubmit = (value: string) => {
+    const source = Object.values(sourceOptions)
+      .flat()
+      .find((option) => getValueForSource(option) === value);
+
+    // `source` is a dropdown option (which also covers the "None" and user
+    // attribute choices), so it is looser than ClickBehaviorSource.
+    const mapping = {
+      source,
+      target: target.target,
+      id,
+      type,
+    } as ClickBehaviorParameterMapping[string];
+
+    // only crossfilter and custom destination links have parameter mappings
+    if (
+      clickBehavior.type === "crossfilter" ||
+      (clickBehavior.type === "link" && clickBehavior.linkType !== "url")
+    ) {
+      updateSettings({
+        ...clickBehavior,
+        parameterMapping: { ...clickBehavior.parameterMapping, [id]: mapping },
+      });
+    }
+    combobox.closeDropdown();
+  };
 
   return (
-    <Select
+    <Combobox
       key={id}
-      triggerElement={
-        <Flex
+      store={combobox}
+      position="bottom-start"
+      width={300}
+      classNames={{ groupLabel: S.groupLabel }}
+      onOptionSubmit={handleOptionSubmit}
+    >
+      <Combobox.Target>
+        <UnstyledButton
           className={S.TargetTrigger}
+          style={{ outline: "none" }}
           p="sm"
-          mb="sm"
           fw="bold"
-          w="100%"
           data-testid="click-target-column"
+          onClick={() => combobox.toggleDropdown()}
         >
           {name}
-        </Flex>
-      }
-      value={null}
-      sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
-        name: {
-          parameter: t`Dashboard filters`,
-          column: t`Columns`,
-          userAttribute: t`User attributes`,
-        }[sourceType],
-        items,
-      }))}
-      optionValueFn={getKeyForSource}
-      optionNameFn={(option: SourceOption) =>
-        option.type == null ? t`None` : option.name
-      }
-      onChange={({ target: { value } }: { target: { value: string } }) => {
-        updateSettings(
-          assocIn(clickBehavior, ["parameterMapping", id], {
-            source: Object.values(sourceOptions)
-              .flat()
-              .find((option) => getKeyForSource(option) === value),
-            target: target.target,
-            id,
-            type,
-          }),
-        );
-      }}
-    />
+        </UnstyledButton>
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {Object.entries(sourceOptions).map(([sourceType, items]) => (
+            <Combobox.Group
+              key={sourceType}
+              label={
+                {
+                  parameter: t`Dashboard filters`,
+                  column: t`Columns`,
+                  userAttribute: t`User attributes`,
+                }[sourceType]
+              }
+            >
+              {items.map((option) => {
+                const value = getValueForSource(option);
+                return (
+                  <Combobox.Option key={value} value={value} p={0}>
+                    <DefaultSelectItem
+                      pl="xl"
+                      value={value}
+                      fw="700"
+                      label={option.type === undefined ? t`None` : option.name}
+                    />
+                  </Combobox.Option>
+                );
+              })}
+            </Combobox.Group>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 }
 
-const getKeyForSource = (option: SourceOption) =>
-  option.type == null ? null : `${option.type}-${option.id}`;
+const getValueForSource = (option: SourceOption) =>
+  option.type == null ? "none" : `${option.type}-${option.id}`;

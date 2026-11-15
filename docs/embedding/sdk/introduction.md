@@ -1,5 +1,6 @@
 ---
 title: Modular embedding SDK
+summary: Embed individual Metabase components in your React app, with access control per component and deep styling customization.
 redirect_from:
   - /docs/latest/embedding/sdk
 ---
@@ -26,7 +27,7 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 
 ## Modular embedding SDK prerequisites
 
-- React application using React 18 or React 19.
+- React application using React 18 or React 19. Metabase 66 will drop support for React 18. If you need to stay on React 18 for longer, use [Metabase 64 LTS](https://www.metabase.com/version-support).
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
@@ -44,8 +45,8 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Enable the Modular embedding SDK by going to **Admin > Embedding**.
-2. Toggle on **Modular embedding SDK**.
+1. Go to **Embedding hub > Security**.
+2. Toggle on **Modular embedding React SDK**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### Install the SDK in your React application
@@ -97,26 +98,29 @@ To enforce a single `@types/react` version across all dependencies, add an `over
 Starting with Metabase 57, the SDK consists of two parts:
 
 - **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
-- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
+- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's a part of Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
 
 ## Developing with the modular embedding SDK
 
 Start with one of the quickstarts, then see these pages for more info on components, theming, and more.
 
 - [Authentication](../authentication.md)
-- [Questions](./questions.md)
-- [AI chat](./ai-chat.md)
-- [Dashboards](./dashboards.md)
+- [Embed a chart](../chart.md)
+- [Embed an AI chat](../ai-chat.md)
+- [Embed a dashboard](../dashboard.md)
+- [Actions](./actions.md)
 - [Appearance](../appearance.md)
-- [Collections](./collections.md)
+- [Embed a collection browser](../browser.md)
+- [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
-- [Config](./config.md)
+- [Configure your embeds](../config.md)
+- [Customize loading, error, and empty states](./loading-and-errors.md)
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
 ## Modular embedding SDK source code
 
-You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk-package).
 
 ## Modular embedding SDK on npm
 

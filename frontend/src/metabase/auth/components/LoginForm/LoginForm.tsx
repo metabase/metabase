@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -11,8 +11,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/utils/errors";
-
-import type { LoginData } from "../../types";
+import type { LoginData } from "metabase-types/api";
 
 const LOGIN_SCHEMA = Yup.object().shape({
   username: Yup.string()
@@ -80,7 +79,12 @@ export const LoginForm = ({
         {!hasSessionCookies && (
           <FormCheckbox name="remember" label={t`Remember me`} mb="1.25rem" />
         )}
-        <FormSubmitButton label={t`Sign in`} variant="filled" w="100%" />
+        <FormSubmitButton
+          label={t`Sign in`}
+          variant="filled"
+          size="lg"
+          w="100%"
+        />
         <FormErrorMessage mt="1rem" />
       </Form>
     </FormProvider>

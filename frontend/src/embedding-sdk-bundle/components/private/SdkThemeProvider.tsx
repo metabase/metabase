@@ -1,16 +1,20 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { useContext, useId, useMemo } from "react";
 
+import { UnsupportedReactVersionError } from "embedding-sdk-bundle/components/private/UnsupportedReactVersionError/UnsupportedReactVersionError";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
+import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useSetting } from "metabase/common/hooks";
 import {
   type MetabaseEmbeddingTheme,
   isEmbeddingThemeV1,
+  isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
-import { useSelector } from "metabase/redux";
+import { MetabaseReduxProvider, useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -38,6 +42,16 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
 
   const resolvedColorScheme = getResolvedColorSchemeFromTheme(theme);
 
+  const whitelabelColors = useSetting("application-colors");
+
+  const themeBrandColor = isEmbeddingThemeV2(theme)
+    ? theme.colors?.["core-brand"]
+    : theme?.colors?.brand;
+
+  const hasCustomBrandColor = Boolean(
+    themeBrandColor ?? whitelabelColors?.brand,
+  );
+
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
@@ -59,8 +73,13 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
             theme={themeOverride}
             resolvedColorScheme={resolvedColorScheme}
             cssVariablesSelector=".mb-wrapper"
+            forceDynamicBrandRamp={hasCustomBrandColor}
           >
-            {isInstanceToRender && <GlobalSdkCssVariables />}
+            {isInstanceToRender && (
+              <GlobalSdkCssVariables
+                forceDynamicBrandRamp={hasCustomBrandColor}
+              />
+            )}
 
             {children}
           </ThemeProvider>
@@ -70,7 +89,36 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   );
 };
 
-function GlobalSdkCssVariables() {
+/**
+ * `SdkThemeProvider` reads whitelabel colors and the font from the SDK redux
+ * store, so it can only render under a redux provider. Hosts that sit outside
+ * the SDK component tree (the data-app dev preview reaches this through the
+ * bundle global) use this variant, which brings its own provider — the same
+ * pattern as `MetabotSubscriber`.
+ */
+export const SdkThemeProviderWithStore = ({
+  store,
+  theme,
+  children,
+}: Props & { store: SdkStore }) => {
+  // The data-app dev preview is the whole page, so the error replaces it
+  // rather than rendering the app without its providers.
+  if (!isHostReactVersionSupported()) {
+    return <UnsupportedReactVersionError />;
+  }
+
+  return (
+    <MetabaseReduxProvider store={store}>
+      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+    </MetabaseReduxProvider>
+  );
+};
+
+function GlobalSdkCssVariables({
+  forceDynamicBrandRamp,
+}: {
+  forceDynamicBrandRamp: boolean;
+}) {
   const theme = useMantineTheme();
   const whitelabelColors = useSetting("application-colors");
 
@@ -78,8 +126,13 @@ function GlobalSdkCssVariables() {
   const font = useSelector(getFont) ?? DEFAULT_FONT;
 
   const styles = useMemo(() => {
-    return getMetabaseSdkCssVariables({ theme, font, whitelabelColors });
-  }, [theme, font, whitelabelColors]);
+    return getMetabaseSdkCssVariables({
+      theme,
+      font,
+      whitelabelColors,
+      forceDynamicBrandRamp,
+    });
+  }, [theme, font, whitelabelColors, forceDynamicBrandRamp]);
 
   return <Global styles={styles} />;
 }

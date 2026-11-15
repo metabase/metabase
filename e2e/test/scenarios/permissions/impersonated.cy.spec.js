@@ -7,13 +7,6 @@ const PG_DB_ID = 2;
 
 describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
-    beforeEach(() => {
-      H.restore("postgres-12");
-      H.createTestRoles({ type: "postgres" });
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
     describe("impersonated users", () => {
       const setImpersonatedPermission = () => {
         cy.updatePermissionsGraph(
@@ -52,7 +45,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         setImpersonatedPermission();
       });
 
-      it("have limited access", () => {
+      it("have limited access, and caching does not circumvent it", () => {
         cy.signInAsImpersonatedUser();
 
         cy.visit(`/browse/databases/${PG_DB_ID}`);
@@ -94,9 +87,11 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.runNativeQuery();
 
         cy.findAllByTestId("header-cell").contains("subtotal");
-      });
 
-      it("caching should not circumvent impersonation permissions", () => {
+        cy.log("Caching should not circumvent impersonation permissions");
+        cy.signInAsAdmin();
+        cy.visit("/");
+
         cy.log(
           "create a question for a table the impersonated user does not have access to",
         );
@@ -113,12 +108,14 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.log("configure caching");
         H.openQuestionActions("Edit settings");
         cy.findByLabelText("When to get new results").click();
-        H.cacheStrategySidesheet().within(() => {
-          cy.findByText(/Use default/).click();
-          cy.findByText(/Caching settings/).should("be.visible");
-          H.durationRadioButton().click();
-          cy.findByRole("button", { name: /Save/ }).click();
-        });
+        H.cacheStrategySidesheet()
+          .findByText(/Caching settings/)
+          .should("be.visible");
+        H.selectCacheStrategy(/Duration/);
+        H.fillCacheDuration(24);
+        H.cacheStrategySidesheet()
+          .findByRole("button", { name: /Save/ })
+          .click();
 
         cy.log("prime and assert results are cached");
         cy.intercept("POST", "/api/card/*/query").as("query");
@@ -137,6 +134,9 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.signOut();
         cy.signInAsImpersonatedUser();
         cy.reload();
+        // wait for the reloaded query to return before asserting the error UI,
+        // since under load the page can outlast the default assertion timeout
+        cy.wait("@query");
 
         cy.log("check that impersonation enforcement occurrs");
         cy.findByTestId("query-builder-main").within(() => {

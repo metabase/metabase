@@ -1,11 +1,13 @@
 import type {
   CollectionId,
+  Database,
   DatabaseId,
   SchemaName,
   TableId,
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";
+import type { ParameterTarget } from "./parameters";
 import type { UserAttributeKey } from "./user";
 
 export enum DataPermission {
@@ -14,6 +16,16 @@ export enum DataPermission {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   DETAILS = "details",
+  TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
+}
+
+export enum DataPermissionType {
+  ACCESS = "access",
+  NATIVE = "native",
+  DETAILS = "details",
+  DOWNLOAD = "download",
+  DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
   COLLECTIONS = "collections",
 }
@@ -47,6 +59,15 @@ export type PermissionsGraph = {
   revision: number;
 };
 
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
+export type UpdatePermissionsGraphRequest = {
+  groups: GroupsPermissions;
+  revision: number;
+  [key: string]: unknown;
+};
+
 export type GroupsPermissions = {
   [key: GroupId | string]: GroupPermissions;
 };
@@ -69,10 +90,6 @@ export type DetailsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
-export type DetailsPermissions = {
-  [key: DatabaseId]: DetailsPermission;
-};
-
 export type DownloadSchemasPermission =
   | DownloadPermission
   | { [key: SchemaName]: DownloadTablePermission };
@@ -90,7 +107,7 @@ export type DatabasePermissions = {
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
   [DataPermission.DATA_MODEL]?: DataModelPermissions;
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
-  [DataPermission.DETAILS]?: DetailsPermissions;
+  [DataPermission.DETAILS]?: DetailsPermission;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
 };
 
@@ -137,6 +154,12 @@ export type FieldsPermissions =
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
 
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
+
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;
   revision: number;
@@ -148,16 +171,13 @@ export type CollectionPermissions = {
 
 export type CollectionPermission = "write" | "read" | "none";
 
-// FIXME: is there a more suitable type for this?
-export type DimensionRef = ["dimension", any[]];
-
 export type GroupTableAccessPolicy = {
   id: number;
   group_id: number;
   table_id: number;
   card_id: number | null;
   attribute_remappings: {
-    [key: UserAttributeKey]: DimensionRef;
+    [key: UserAttributeKey]: ParameterTarget;
   };
   permission_id: number | null;
 };
@@ -172,3 +192,31 @@ export type DataSegregationStrategy =
   | "row-column-level-security"
   | "connection-impersonation"
   | "database-routing";
+
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+export type PermissionEntityId = DatabaseEntityId &
+  Partial<Omit<TableEntityId, "databaseId">>;
+
+export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+/**
+ * A database as the permissions tree sees it: the API database, with `tables`
+ * from `GET /api/database/:id/metadata` and `router_user_attribute` from
+ * `GET /api/database`. Neither endpoint returns both.
+ */
+export type PermissionsDatabase = Database;
+
+export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;

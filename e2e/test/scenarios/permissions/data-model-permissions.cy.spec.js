@@ -14,7 +14,6 @@ describe("scenarios > admin > permissions", () => {
     H.activateToken("pro-self-hosted");
 
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
-    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept(
       "GET",
       "/api/table/*/query_metadata?include_sensitive_fields=true&include_editable_data_model=true",
@@ -61,6 +60,7 @@ describe("scenarios > admin > permissions", () => {
     H.DataModel.TablePicker.getTable("Changed Name")
       .button("Hide table")
       .click();
+    cy.wait("@tableUpdate");
     H.DataModel.TablePicker.getTable("Changed Name")
       .button("Hide table")
       .should("not.exist");

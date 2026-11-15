@@ -3,7 +3,7 @@
 
   TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
   `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-  also [[metabase.models.interface/normalize-visualization-settings]]."
+  also [[metabase.lib.schema.visualization-settings]]."
   (:require #?@(:cljs [[goog.string :as gstring]]
                 :default [])
             [clojure.test :as t]
@@ -71,6 +71,16 @@
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
+
+(t/deftest ^:parallel currency-position-conversion-test
+  (doseq [position ["before" "after"]]
+    (let [db-form   {:column_settings {"[\"name\",\"Price\"]" {:currency_position position}}}
+          norm-form {::mb.viz/column-settings {{::mb.viz/column-name "Price"}
+                                               {::mb.viz/currency-position position}}}]
+      (t/is (= norm-form (mb.viz/db->norm db-form)))
+      (t/is (= db-form (mb.viz/norm->db norm-form)))
+      (t/is (= {::mb.viz/currency-position position}
+               (mb.viz/db->norm-column-settings-entries {:currency_position position}))))))
 
 (t/deftest ^:parallel form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
@@ -186,3 +196,40 @@
       ;; make sure all keywords have the right namespace in normalized form
       (t/is (empty? (filter #(some? (namespace %)) (all-keywords to-db))))
       (t/is (= db-form to-db)))))
+
+(t/deftest ^:parallel db->norm-column-settings-entries-malformed-entry-test
+  (t/testing "entries that can't be normalized are dropped rather than thrown (SEC-868)"
+    (doseq [bad-click-behavior ["x" [1 2] 42 true]]
+      (t/testing (str "click_behavior = " (pr-str bad-click-behavior))
+        (t/is (= {::mb.viz/column-title "Legit Title"}
+                 (mb.viz/db->norm-column-settings-entries
+                  {:click_behavior bad-click-behavior
+                   :column_title   "Legit Title"})))))
+    (t/testing "a well-formed entry is still normalized"
+      (t/is (= {::mb.viz/click-behavior {::mb.viz/click-behavior-type ::mb.viz/link
+                                         ::mb.viz/link-type           ::mb.viz/url
+                                         ::mb.viz/link-text-template  "http://example.com"}}
+               (mb.viz/db->norm-column-settings-entries
+                {:click_behavior {:type "link" :linkType "url" :linkTextTemplate "http://example.com"}}))))
+    (t/testing "a non-associative settings value normalizes to nothing"
+      (doseq [bad ["x" [1 2] 42]]
+        (t/is (= {} (mb.viz/db->norm-column-settings-entries bad)))))))
+
+(t/deftest ^:parallel db->norm-malformed-blob-test
+  (t/testing "malformed values in a card's visualization_settings are dropped rather than thrown (SEC-868)"
+    (doseq [k   [:click_behavior :column_settings :table.columns]
+            bad ["x" 42 [1 2] true]]
+      (t/testing (str (pr-str k) " = " (pr-str bad))
+        (t/is (map? (mb.viz/db->norm {k bad})))))
+    (t/testing "well-formed sibling keys survive alongside a malformed one"
+      ;; an unusable :column_settings normalizes to no column settings, as it already did for unparseable column refs
+      (t/is (= {:other "kept", ::mb.viz/column-settings {}}
+               (mb.viz/db->norm {:column_settings "x", :other "kept"}))))
+    (t/testing "a blob that isn't a map at all normalizes to no settings"
+      (doseq [bad ["x" 42 [1 2]]]
+        (t/is (= {} (mb.viz/db->norm bad)))))
+    (t/testing "a nil :click_behavior entry is dropped, not normalized to a map of nils"
+      (t/is (= {} (mb.viz/db->norm-column-settings-entries {:click_behavior nil}))))
+    (t/testing "well-formed values still normalize"
+      (t/is (= {::mb.viz/table-columns [{::mb.viz/table-column-enabled true}]}
+               (mb.viz/db->norm {:table.columns [{:enabled true}]}))))))

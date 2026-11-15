@@ -1,0 +1,63 @@
+import type { MetabaseFontFamily } from "metabase-types/api/fonts";
+
+type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
+
+// NOTE: This map is NOT the source of truth for the fonts Metabase ships.
+// The canonical list is the one hard-coded in `src/metabase/util/fonts.clj`,
+// exposed through the `available-fonts` setting, which is what populates the
+// main admin appearance dropdown. It is hard-coded rather than read off the
+// build output so the whitelabel setting validates the same way in a checkout
+// with no frontend build.
+//
+// This map is consumed by the embedding ThemeEditor (its dropdown and the
+// `MetabaseFontFamily` union above) and by `getFontFamilyValue` to pick a
+// per-font CSS fallback chain on a best-effort basis for cases when selected
+// font may lack some glyphs.
+//
+// When adding or removing a directory under `frontend/fonts/`,
+// please keep this map and `MetabaseFontFamily` in sync.
+export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
+  PredefinedFontName,
+  string
+> = {
+  Roboto: '"Noto Sans", sans-serif',
+  Merriweather: '"Lora", serif',
+  "Open Sans": '"Lato", sans-serif',
+  Lato: "Arial, sans-serif",
+  Inter: "sans-serif",
+  "Noto Sans": "sans-serif",
+  "Roboto Slab": "serif",
+  "Source Sans Pro": '"Lato", sans-serif',
+  Raleway: '"Montserrat", sans-serif',
+  "Slabo 27px": '"Roboto Slab", serif',
+  "PT Sans": '"Lato", sans-serif',
+  Poppins: '"Montserrat", sans-serif',
+  "PT Serif": '"Lora", serif',
+  "JetBrains Mono": "monospace",
+  "Roboto Mono": "monospace",
+  "Roboto Condensed": "sans-serif",
+  "Playfair Display": "serif",
+  Oswald: '"Roboto Condensed", sans-serif',
+  Ubuntu: '"Lato", sans-serif',
+  Montserrat: "sans-serif",
+  Lora: "serif",
+};
+
+function isPredefinedFontName(font: string): font is PredefinedFontName {
+  return Object.hasOwn(PREDEFINED_FONT_FAMILIES_FALLBACK_MAP, font);
+}
+
+export function getFontFamilyValue(font: string): string {
+  const families = (font ?? "")
+    .split(",")
+    .map((name) => name.replaceAll(/["']/g, "").trim())
+    .filter(Boolean);
+
+  const [firstFamily] = families;
+  const fallback =
+    firstFamily !== undefined && isPredefinedFontName(firstFamily)
+      ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[firstFamily]
+      : "sans-serif";
+
+  return [...families.map((name) => JSON.stringify(name)), fallback].join(", ");
+}

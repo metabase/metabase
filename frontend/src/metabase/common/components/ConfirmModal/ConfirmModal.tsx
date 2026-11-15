@@ -3,11 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  Box,
   Button,
   type ButtonProps,
-  Flex,
   Modal,
   type ModalProps,
+  Stack,
   Text,
 } from "metabase/ui";
 
@@ -51,29 +52,42 @@ export const ConfirmModal = ({
 
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
-      <Flex direction="column" gap="lg" mt="md">
-        {content ? <Text>{content}</Text> : null}
-        <Text>{message}</Text>
-        <Flex align="center" justify="space-between" gap="md">
-          {errorMessage ? <Text c="danger">{errorMessage} </Text> : <div />}
-          <Flex align="center" justify="flex-end" gap="md">
-            {closeButtonText && (
-              <Button {...closeButtonProps} onClick={onClose}>
-                {closeButtonText}
-              </Button>
-            )}
-            <Button
-              color="danger"
-              variant="filled"
-              {...confirmButtonProps}
-              disabled={confirmButtonProps.disabled || confirming}
-              onClick={handleConfirm}
-            >
-              {confirmButtonText}
-            </Button>
-          </Flex>
-        </Flex>
-      </Flex>
+      <Stack gap="xl">
+        {content ? <ConfirmModalBody>{content}</ConfirmModalBody> : null}
+        <ConfirmModalBody>{message}</ConfirmModalBody>
+      </Stack>
+      <Modal.Footer>
+        {errorMessage && (
+          <Text c="feedback-negative" flex={1}>
+            {errorMessage}
+          </Text>
+        )}
+        {closeButtonText && (
+          <Button {...closeButtonProps} onClick={onClose}>
+            {closeButtonText}
+          </Button>
+        )}
+        <Button
+          color="negative"
+          variant="filled"
+          data-autofocus
+          {...confirmButtonProps}
+          disabled={confirmButtonProps.disabled || confirming}
+          onClick={handleConfirm}
+        >
+          {confirmButtonText}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };
+
+// Plain-string copy is a short confirmation, which uses secondary text. JSX
+// may hold forms or mixed content, so it brings its own typography. The Box
+// keeps fragments as one item in the parent Stack.
+const ConfirmModalBody = ({ children }: { children: ReactNode }) =>
+  typeof children === "string" ? (
+    <Text c="text-secondary">{children}</Text>
+  ) : (
+    <Box>{children}</Box>
+  );

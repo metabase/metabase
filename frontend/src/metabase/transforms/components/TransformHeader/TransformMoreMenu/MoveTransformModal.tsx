@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
 import { useUpdateTransformMutation } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   EntityPickerOptions,
   OmniPickerItem,

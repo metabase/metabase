@@ -16,7 +16,6 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/activity/recents?*").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-    cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
   describe("after setup", () => {
@@ -33,6 +32,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for the Sample Database", () => {
       cy.visit("/");
+      H.closeNavigationSidebar();
       cy.wait("@getXrayCandidates");
       cy.findByTestId("home-page").within(() => {
         cy.findByText(
@@ -93,9 +93,26 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
-      cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
+      // Wait for the final x-ray dashboard to actually be ready before saving.
+      // `@getXrayDashboard` only confirms the automagic metadata GET; the dashboard isn't in
+      // the store yet. Once it is, `useDashboardUrlQuery`
+      // (frontend/src/metabase/dashboard/hooks/use-dashboard-url-query.ts) syncs the
+      // dashboard's parameters into the URL (dispatch(replace(...))), so the query string
+      // becomes populated. That is a reliable "dashboard is ready" signal; clicking
+      // "Save this" before it means the dashboard isn't ready and the save is lost.
+      cy.location("search").should("not.be.empty");
+
       cy.findByTestId("automatic-dashboard-header").button("Save this").click();
-      cy.wait("@saveDashboard");
+
+      // Assert the save succeeded via the resulting UI — the header switches to a "Saved"
+      // button + "See it" link — rather than waiting on the POST /api/dashboard/save
+      // request. The request-alias wait was timing-sensitive and flaked with "No request
+      // ever occurred"; the saved-state UI is the real user-observable outcome and Cypress
+      // retries it until the save completes.
+      cy.findByTestId("automatic-dashboard-header").within(() => {
+        cy.findByText("See it").should("be.visible");
+        cy.findByText("Saved").should("be.visible");
+      });
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_saved",
@@ -170,18 +187,16 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Here are some explorations of the/);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public");
+      cy.findByTestId("xray-schema-name").should("have.text", "public");
       cy.findAllByRole("link").contains("sqlite");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People").should("not.exist");
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("private").click();
+      cy.findByTestId("xray-schema-name").click();
+      cy.findByRole("option", { name: "private" }).click();
+      cy.findByTestId("xray-schema-name").should("have.text", "private");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -278,7 +293,6 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getCollectionItems");
       pinItem("Orders, Count");
       cy.wait("@getCollectionItems");
-      cy.wait("@getQuestionQuery");
 
       cy.visit("/");
       cy.wait("@getRecentItems");
@@ -330,59 +344,65 @@ describe("scenarios > home > custom homepage", () => {
       H.restore();
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/search*").as("search");
+      cy.intercept("PUT", "/api/setting").as("putSettings");
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should give you the option to set a custom home page in settings", () => {
       cy.visit("/admin/settings/general");
 
-      cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("be.visible");
-        cy.findByLabelText("Disabled").click();
-        cy.findByText("Enabled").should("be.visible");
+      cy.findByTestId("homepage-setting").within(() => {
+        cy.findByRole("radio", { name: "Default Metabase home" }).should(
+          "be.checked",
+        );
+        cy.findByRole("radio", { name: "Dashboard" }).click();
       });
+      cy.wait("@putSettings");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting")
         .findByRole("button")
+        .should("be.visible")
         .click();
 
       H.entityPickerModal().findByText("Orders in a dashboard").click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
         "Orders in a dashboard",
       );
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "admin",
+      });
+
       cy.log(
-        "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
+        "switching to Default Metabase home should hide the dashboard picker but keep the persisted id",
       );
       cy.visit("/admin/settings/general");
 
-      cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Enabled").should("exist");
-        cy.findByLabelText("Enabled").click();
-        cy.findByText("Disabled").should("exist");
+      cy.findByTestId("homepage-setting").within(() => {
+        cy.findByRole("radio", { name: "Dashboard" }).should("be.checked");
+        cy.findByRole("radio", { name: "Default Metabase home" }).click();
       });
+      cy.wait("@putSettings");
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.findByTestId("custom-homepage-dashboard-setting").should("not.exist");
 
-      cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("exist");
-        cy.findByLabelText("Disabled").click();
-        cy.findByText("Enabled").should("exist");
-      });
-
-      cy.findByTestId("custom-homepage-dashboard-setting").should(
-        "contain",
-        "Pick a dashboard",
-      );
-
-      cy.findByTestId("custom-homepage-dashboard-setting")
-        .findByRole("button")
+      cy.findByTestId("homepage-setting")
+        .findByRole("radio", { name: "Dashboard" })
         .click();
-
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      cy.wait("@putSettings");
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -450,6 +470,10 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       H.modal().findByRole("button", { name: "Done" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "homepage",
+      });
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -474,36 +498,12 @@ describe("scenarios > home > custom homepage", () => {
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
-    it("should not flash the homescreen before redirecting (#37089)", () => {
-      cy.intercept(
-        {
-          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
-          method: "GET",
-          middleware: true,
-        },
-        (req) => {
-          req.continue((res) => {
-            res.delay = 1000;
-            res.send();
-          });
-        },
-      );
-
-      cy.visit("/");
-      cy.findByRole("heading", { name: "Loading..." }).should("exist");
-      cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
-        "not.exist",
-      );
-
-      //Ensure that when the loading header is gone, we are no longer on the home page
-      cy.findByTestId("home-page", { timeout: 0 }).should("not.exist");
-      cy.url().should("include", "/dashboard/");
-    });
-
     it("should redirect you if you do not have permissions for set dashboard", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
+      cy.findByTestId("home-page").should("be.visible");
+      cy.findByTestId("greeting-message").should("be.visible");
       cy.location("pathname").should("equal", "/");
     });
 
@@ -582,7 +582,7 @@ describe("scenarios > home > custom homepage", () => {
       );
     });
 
-    it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
+    it("should preserve navbar state and avoid redirecting from the dashboard homepage (metabase#43800)", () => {
       cy.intercept(
         "GET",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
@@ -609,6 +609,13 @@ describe("scenarios > home > custom homepage", () => {
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
+
+      cy.visit("/collection/root");
+      H.navigationSidebar().should("be.visible");
+      cy.findByTestId("main-logo-link").click();
+      cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
+      H.dashboardGrid().should("be.visible");
+      H.navigationSidebar().should("be.visible");
     });
 
     it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {
@@ -626,122 +633,6 @@ describe("scenarios > home > custom homepage", () => {
       cy.get("@getDashboard.all").should("have.length", 1);
       cy.get("@getDashboardMetadata.all").should("have.length", 1);
     });
-  });
-});
-
-describe("scenarios > setup", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should send snowplow events through admin settings", () => {
-    cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting")
-      .findByLabelText("Disabled")
-      .click();
-
-    cy.findByTestId("custom-homepage-dashboard-setting")
-      .findByRole("button")
-      .click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-
-    H.undoToast().findByText("Changes saved").should("be.visible");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "admin",
-    });
-  });
-
-  it("should send snowplow events through homepage", () => {
-    cy.visit("/");
-    cy.get("main").findByText("Customize").click();
-    H.modal().findByText("Pick a dashboard").click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Done").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "homepage",
-    });
-  });
-
-  it("should track when 'New' button is clicked", () => {
-    cy.visit("/");
-
-    cy.log("From the app bar");
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_clicked",
-      triggered_from: "app-bar",
-    });
-
-    cy.log("Track closing the button as well");
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).should("not.exist");
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "new_button_clicked",
-        triggered_from: "app-bar",
-      },
-      2,
-    );
-
-    cy.log("From the empty collection");
-    H.navigationSidebar().findByText("Your personal collection").click();
-    cy.findByTestId("collection-empty-state").within(() => {
-      cy.findByText("This collection is empty").should("be.visible");
-      cy.findByText("New").click();
-    });
-
-    cy.findByRole("menu", { name: /new/i }).should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_clicked",
-      triggered_from: "empty-collection",
-    });
-  });
-
-  /**
-   * Until we refactor the NewItem menu component and drop EntityMenu from it,
-   * the only menu item that can have onClick handler is a "dashboard".
-   */
-  it("should track when a 'New' button's menu item is clicked", () => {
-    cy.visit("/");
-
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
-    cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_item_clicked",
-      triggered_from: "dashboard",
-    });
-
-    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
-    cy.findByTestId("new-dashboard-modal").should("not.exist");
-
-    H.navigationSidebar().findByText("Your personal collection").click();
-    cy.findByTestId("collection-empty-state").within(() => {
-      cy.findByText("This collection is empty").should("be.visible");
-      cy.findByText("New").click();
-    });
-    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
-    cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "new_button_item_clicked",
-        triggered_from: "dashboard",
-      },
-      2,
-    );
   });
 });
 

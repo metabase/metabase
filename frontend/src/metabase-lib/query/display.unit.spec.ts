@@ -1,7 +1,13 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
+  createMockDatetimeColumn,
+  createMockField,
+  createMockNumericColumn,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -84,7 +90,9 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [{ type: "column", name: "STATE", sourceName: "PEOPLE" }],
+          breakouts: [
+            { type: "column", name: "STATE", sourceFieldId: ORDERS.USER_ID },
+          ],
         },
       ],
     });
@@ -107,9 +115,7 @@ describe("defaultDisplay", () => {
             id: ACCOUNTS_ID,
           },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "COUNTRY", sourceName: "ACCOUNTS" },
-          ],
+          breakouts: [{ type: "column", name: "COUNTRY" }],
         },
       ],
     });
@@ -136,7 +142,6 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "CREATED_AT",
-              sourceName: "ORDERS",
               unit: "day-of-month",
             },
           ],
@@ -153,14 +158,34 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });
 
     expect(defaultDisplay(query)).toEqual({ display: "line" });
+  });
+
+  it("uses result columns when query metadata is unavailable (UXW-4958)", () => {
+    const queryWithMetadata = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+      ],
+    });
+    const query = Lib.fromJsQueryAndMetadata(
+      createMockMetadata(),
+      Lib.toJsQuery(queryWithMetadata),
+    );
+    const resultColumns = [
+      createMockDatetimeColumn({ source: "breakout" }),
+      createMockNumericColumn({ source: "aggregation" }),
+    ];
+
+    expect(defaultDisplay(query, resultColumns)).toEqual({ display: "line" });
   });
 
   it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {
@@ -173,8 +198,7 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "TOTAL",
-              sourceName: "ORDERS",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
         },
@@ -190,7 +214,7 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+          breakouts: [{ type: "column", name: "TOTAL" }],
         },
       ],
     });
@@ -205,7 +229,11 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
           ],
         },
       ],
@@ -221,8 +249,8 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-            { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+            { type: "column", name: "CREATED_AT" },
+            { type: "column", name: "TOTAL" },
           ],
         },
       ],
@@ -241,14 +269,14 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "LATITUDE",
-              sourceName: "PEOPLE",
-              binWidth: "auto",
+              sourceFieldId: ORDERS.USER_ID,
+              binning: { strategy: "default" },
             },
             {
               type: "column",
               name: "LONGITUDE",
-              sourceName: "PEOPLE",
-              binWidth: "auto",
+              sourceFieldId: ORDERS.USER_ID,
+              binning: { strategy: "default" },
             },
           ],
         },
@@ -270,8 +298,12 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "LATITUDE", sourceName: "PEOPLE" },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            { type: "column", name: "LATITUDE", sourceFieldId: ORDERS.USER_ID },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],
@@ -295,10 +327,14 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "LATITUDE",
-              sourceName: "PEOPLE",
-              // bins: "auto",
+              sourceFieldId: ORDERS.USER_ID,
+              // binning: { strategy: "default" },
             },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],
@@ -319,8 +355,16 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
-            { type: "column", name: "VENDOR", sourceName: "PRODUCTS" },
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+            {
+              type: "column",
+              name: "VENDOR",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
           ],
         },
       ],
@@ -339,8 +383,12 @@ describe("defaultDisplay", () => {
             { type: "operator", operator: "cum-count", args: [] },
           ],
           breakouts: [
-            { type: "column", name: "LATITUDE", sourceName: "PEOPLE" },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            { type: "column", name: "LATITUDE", sourceFieldId: ORDERS.USER_ID },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],

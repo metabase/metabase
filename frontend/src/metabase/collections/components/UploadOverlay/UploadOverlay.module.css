@@ -1,0 +1,6 @@
+.overlay {
+  z-index: 1;
+  border: 1px dashed var(--mb-color-core-brand);
+  transition: opacity 0.2s;
+  pointer-events: none;
+}

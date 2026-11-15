@@ -1,0 +1,55 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
+
+import { NewModelOption } from "./NewModelOption";
+
+const defaultProps = {
+  image: { src: "sql_illustration.png", srcSet: "sql_illustration@2x.png 2x" },
+  title: "Use a native query",
+  description: "Fall back to SQL.",
+  to: "/model/new/native",
+};
+
+const setup = (props = {}) =>
+  renderWithProviders(
+    <Route
+      path="*"
+      element={<NewModelOption {...defaultProps} {...props} />}
+    />,
+    { withRouter: true },
+  );
+
+describe("NewModelOption", () => {
+  it("renders the title and description", () => {
+    setup();
+
+    expect(
+      screen.getByRole("heading", { name: "Use a native query" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Fall back to SQL.")).toBeInTheDocument();
+  });
+
+  it("links to the provided target", () => {
+    setup();
+
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "/model/new/native",
+    );
+  });
+
+  it("renders the image with src, srcSet, and the provided width", () => {
+    setup({ width: 180 });
+
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("src", defaultProps.image.src);
+    expect(img).toHaveAttribute("srcset", defaultProps.image.srcSet);
+    expect(img).toHaveAttribute("width", "180");
+  });
+
+  it("falls back to the default image width when none is provided", () => {
+    setup();
+
+    expect(screen.getByRole("img")).toHaveAttribute("width", "210");
+  });
+});

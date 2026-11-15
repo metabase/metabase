@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -23,7 +24,6 @@
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
                                  :fields       [(lib.tu/field-clause :venues :price)]}]
                  :database     (meta/id)
@@ -237,9 +237,8 @@
     (is (=? [[:field
               (fn expected-opts? [opts]
                 (and
-                 ;; should retain the effective type of `:type/Integer` since `:year` is an extraction operation.
                  (= (:base-type opts) :type/Date)
-                 (= (:effective-type opts) :type/Integer)
+                 (= (:effective-type opts) :type/Date)
                  (not (:temporal-unit opts))))
               "DATE"]]
             (map lib/ref cols)))))
@@ -617,6 +616,30 @@
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
              (map :lib/desired-column-alias (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
 
+(deftest ^:parallel dont-show-remap-target-columns-from-source-card-test
+  (testing "Remapped columns from source cards don't show up in the \"select specific columns\" picker (#74177)"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/remap-metadata-provider (meta/id :orders :user-id) (meta/id :people :email))
+                 (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title)))
+          card-query (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (meta/field-metadata :orders :user-id))
+                         (lib/breakout (meta/field-metadata :orders :product-id)))
+          cols (lib/returned-columns card-query -1 -1 {:include-remaps? true})
+          remap-to->remap-from (into {} (keep (fn [col]
+                                                (when-let [field-id (get-in col [:lib/external-remap :field-id])]
+                                                  [field-id (:name col)])))
+                                     cols)
+          result-md (mapv (fn [col]
+                            (cond-> col
+                              (remap-to->remap-from (:id col)) (assoc :remapped-from (remap-to->remap-from (:id col)))))
+                          cols)
+          card-mp (lib.tu/metadata-provider-with-card-from-query mp 1 card-query {:result-metadata result-md})
+          query (lib/query card-mp (lib.metadata/card card-mp 1))]
+      (is (= ["USER_ID" "PRODUCT_ID" "count"]
+             (map :name (lib.field/fieldable-columns query 0))
+             (map :name (lib/returned-columns query 0)))))))
+
 (deftest ^:parallel propagate-binning-info-test
   (testing "binning info from previous stages should get propagated"
     (let [mp    (lib.tu/mock-metadata-provider
@@ -713,16 +736,18 @@
             base-type               [nil :type/Date]
             effective-type          [nil :type/Date]
             inherited-temporal-unit [nil :default]
-            ;; make sure random keys don't affect this either
-            nonsense-key            [nil 1337]
-            lib-key                 [nil "PRODUCTS"]
+            ;; make sure options that have nothing to do with bucketing don't affect this either. They have to be
+            ;; options the schema actually declares -- a made-up key is dropped before the ref is ever resolved, so it
+            ;; could not tell us anything.
+            irrelevant-option       [nil :type/Category]
+            irrelevant-lib-option   [nil "PRODUCTS"]
             :let                    [opts (cond-> {:join-alias "People"}
                                             temporal-unit           (assoc :temporal-unit temporal-unit)
                                             base-type               (assoc :base-type base-type)
                                             effective-type          (assoc :effective-type effective-type)
                                             inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
-                                            nonsense-key            (assoc :nonsense-key nonsense-key)
-                                            lib-key                 (assoc :lib/nonsense-key lib-key))
+                                            irrelevant-option       (assoc :semantic-type irrelevant-option)
+                                            irrelevant-lib-option   (assoc :lib/source-name irrelevant-lib-option))
                                      clause [:field (meta/id :people :birth-date) opts]]]
       (testing (pr-str (lib/->mbql5 clause))
         (testing `lib/returned-columns
@@ -782,8 +807,30 @@
                 "Q1 → Count"]
                (map :display-name (lib/returned-columns query))))))))
 
+(deftest ^:parallel aggregating-stage-returned-columns-ignore-fields-test
+  (testing "a stage with :aggregation/:breakout should not advertise :fields columns as returned columns. (#62539)"
+    (are [stage expected]
+         (= expected
+            (mapv :display-name
+                  (lib/returned-columns
+                   (lib/query meta/metadata-provider
+                              (lib.tu.macros/mbql-query orders stage)))))
+
+      {:aggregation [[:count]]
+       :fields      [$orders.id $orders.total]}
+      ["Count"]
+
+      {:breakout [$orders.user-id]
+       :fields   [$orders.id $orders.total]}
+      ["User ID"]
+
+      {:aggregation [[:count]]
+       :breakout    [$orders.user-id]
+       :fields      [$orders.id $orders.total]}
+      ["User ID" "Count"])))
+
 (deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
-  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+  (testing "expression refs in :fields on an aggregating stage are stripped from returned columns (#62539)"
     (let [query (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -793,12 +840,11 @@
                                   $orders.product-id->products.category]
                     :expressions {:test-expr [:ltrim "wheeee"]}
                     :fields      [[:expression "test-expr"]]}))]
-      (is (= ["User → State"              ; from breakouts
-              "User → Source"             ; from breakouts
-              "Product → Category"        ; from breakouts
-              "Count"                     ; from aggregations
-              "Sum of Quantity"           ; from aggregations
-              "test-expr"]                ; from expressions/fields ???
+      (is (= ["User → State"
+              "User → Source"
+              "Product → Category"
+              "Count"
+              "Sum of Quantity"]
              (binding [lib.metadata.calculation/*display-name-style* :long]
                (mapv :display-name (lib/returned-columns query))))))))
 

@@ -6,28 +6,34 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
 import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
-const getUsageInfo = (hasContent: boolean) => ({
+const getUsageInfo = (hasContent: boolean): DatabaseUsageInfo => ({
   question: hasContent ? 10 : 0,
   dataset: hasContent ? 20 : 0,
   metric: hasContent ? 30 : 0,
   segment: hasContent ? 40 : 0,
+  transform: hasContent ? 50 : 0,
 });
 
+// Unjustified type cast. FIXME
 const database = { name: "database name", id: 1 } as Database;
+
+type SetupOpts = {
+  onDelete?: DeleteDatabaseModalProps["onDelete"];
+  hasContent?: boolean;
+  usageInfo?: DatabaseUsageInfo;
+};
 
 const setup = async ({
   onDelete = jest.fn(),
   hasContent = true,
-}: {
-  onDelete?: DeleteDatabaseModalProps["onDelete"];
-  hasContent?: boolean;
-} = {}) => {
-  fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
+  usageInfo = getUsageInfo(hasContent),
+}: SetupOpts = {}) => {
+  fetchMock.get("path:/api/database/1/usage_info", usageInfo);
   renderWithProviders(
     <DeleteDatabaseModal
       opened
@@ -89,6 +95,7 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(screen.getByText("Delete 20 models"));
     await userEvent.click(screen.getByText("Delete 30 metrics"));
     await userEvent.click(screen.getByText("Delete 40 segments"));
+    await userEvent.click(screen.getByText("Delete 50 transforms"));
 
     expect(deleteButton).toBeDisabled();
 
@@ -102,6 +109,36 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalled();
+  });
+
+  it("should require confirming transform removal when only transforms use the database", async () => {
+    const { onDelete } = await setup({
+      usageInfo: {
+        question: 0,
+        dataset: 0,
+        metric: 0,
+        segment: 0,
+        transform: 3,
+      },
+    });
+
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this content and the DB connection",
+    });
+    expect(
+      screen.queryByTestId("database-name-confirmation-input"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Delete 3 transforms" }),
+    );
+    await userEvent.type(
+      screen.getByTestId("database-name-confirmation-input"),
+      "database name",
+    );
+    await userEvent.click(deleteButton);
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
   it("shows an error if removal failed", async () => {

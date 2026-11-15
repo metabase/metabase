@@ -1,49 +1,63 @@
-import type { LocationDescriptorObject } from "history";
-import { replace } from "react-router-redux";
-
-import { snippetApi } from "metabase/api";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
+import { canUserCreateQueries, getUser } from "metabase/current-user";
 import {
-  getIsEditingInDashboard,
-  getNotebookNativePreviewSidebarWidth,
-} from "metabase/query_builder/selectors";
+  getShallowTables,
+  paramFieldsFetched,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
+} from "metabase/metadata-store";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import {
+  getTemplateTagCardIds,
+  hasSnippetTemplateTags,
+  updateCardTemplateTagNames,
+  updateSnippetNames,
+} from "metabase/querying/native";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { addFields } from "metabase/redux/metadata";
-import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
+import { INITIALIZE_QB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import type { Location } from "metabase/router";
+import { navigate } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId } from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  SegmentId,
+  SeriesCard,
+  UnsavedCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
+import { resetQB } from "../../store/actions";
+import {
+  getIsEditingInDashboard,
+  getNotebookNativePreviewSidebarWidth,
+} from "../../store/selectors";
+import type { QueryBuilderStoreState } from "../../store/state";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { cancelQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 
 import { loadCard } from "./card";
-import {
-  getParameterValuesForQuestion,
-  propagateDashboardParameters,
-} from "./parameterUtils";
+import { propagateDashboardParameters } from "./parameterUtils";
 
 type BlankQueryOptions = {
   db?: string;
@@ -73,17 +87,16 @@ const NOT_FOUND_ERROR = {
 };
 
 function getCardForBlankQuestion(
-  metadata: Metadata,
+  state: QueryBuilderStoreState,
   options: BlankQueryOptions,
 ) {
   const databaseId = options.db ? parseInt(options.db) : undefined;
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({
+  let question = selectQuestionFromOpts(state, {
     DEPRECATED_RAW_MBQL_databaseId: databaseId,
     DEPRECATED_RAW_MBQL_tableId: tableId,
-    metadata,
   });
 
   if (databaseId && tableId) {
@@ -96,7 +109,7 @@ function getCardForBlankQuestion(
 }
 
 function getCardForBlankNativeQuestion(
-  metadata: Metadata,
+  state: QueryBuilderStoreState,
   options: BlankQueryOptions,
 ) {
   const databaseId = options.db ? parseInt(options.db) : undefined;
@@ -105,10 +118,9 @@ function getCardForBlankNativeQuestion(
   // 1° load the db first
   // 2° use the lib to create a provider
   // 3° then create a native query
-  const question = Question.create({
+  const question = selectQuestionFromOpts(state, {
     DEPRECATED_RAW_MBQL_type: "native",
     DEPRECATED_RAW_MBQL_databaseId: databaseId,
-    metadata,
   });
 
   return question.card();
@@ -147,7 +159,7 @@ async function fetchAndPrepareSavedQuestionCards(
 }
 
 async function fetchAndPrepareAdHocQuestionCards(
-  deserializedCard: Card,
+  deserializedCard: SeriesCard,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -180,7 +192,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 }
 
 type ResolveCardsResult = {
-  card: Card;
+  card: SeriesCard;
   originalCard?: Card | null;
 };
 
@@ -195,29 +207,25 @@ export async function resolveCards({
 }: {
   cardId?: string | number;
   token?: EntityToken | null;
-  deserializedCard?: Card;
+  deserializedCard?: UnsavedCard;
   options: BlankQueryOptions;
   dispatch: Dispatch;
   getState: GetState;
   questionType?: "native" | "gui";
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
-    const metadata = getMetadata(getState());
+    const state = getState();
 
     const card =
       questionType === "native"
-        ? getCardForBlankNativeQuestion(metadata, options)
-        : getCardForBlankQuestion(metadata, options);
+        ? getCardForBlankNativeQuestion(state, options)
+        : getCardForBlankQuestion(state, options);
 
     return { card };
   }
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
-    : fetchAndPrepareAdHocQuestionCards(
-        deserializedCard as Card,
-        dispatch,
-        getState,
-      );
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard!, dispatch, getState);
 }
 
 /**
@@ -226,18 +234,19 @@ export async function resolveCards({
  * they might have changed since the query was last opened.
  */
 export async function updateTemplateTagNames(
-  query: NativeQuery,
+  query: Lib.Query,
   getState: GetState,
   dispatch: Dispatch,
-): Promise<NativeQuery> {
+): Promise<Lib.Query> {
   const referencedCards = (
     await Promise.all(
-      query.referencedQuestionIds().map(async (id) => {
+      getTemplateTagCardIds(query).map(async (id) => {
         try {
-          const actionResult = await dispatch(
-            Questions.actions.fetch({ id }, { noEvent: true }),
+          return await runRtkEndpoint(
+            { id, ignore_error: true },
+            dispatch,
+            cardApi.endpoints.getCard,
           );
-          return Questions.HACK_getObjectFromAction(actionResult);
         } catch {
           return null;
         }
@@ -246,7 +255,8 @@ export async function updateTemplateTagNames(
   ).filter(isNotNull);
 
   query = updateCardTemplateTagNames(query, referencedCards);
-  if (query.hasSnippets()) {
+  if (hasSnippetTemplateTags(query)) {
+    // Unjustified type cast. FIXME
     const action = (dispatch as DispatchFn)(
       snippetApi.endpoints.listSnippets.initiate(undefined, {
         forceRefetch: true,
@@ -254,7 +264,7 @@ export async function updateTemplateTagNames(
     );
     try {
       const snippets = await action.unwrap();
-      query = query.updateSnippetNames(snippets);
+      query = updateSnippetNames(query, snippets);
     } finally {
       action.unsubscribe();
     }
@@ -276,7 +286,7 @@ async function handleQBInit(
     params,
     isStale,
   }: {
-    location: LocationDescriptorObject;
+    location: Location;
     params: QueryParams;
     isStale: () => boolean;
   },
@@ -284,16 +294,54 @@ async function handleQBInit(
   dispatch(resetQB());
   dispatch(cancelQuery());
 
-  const queryParams = location.query;
-  const cardId = Urls.extractEntityId(params.slug);
+  // Preload the full database list up front so the data selector already has it
+  // when it mounts
+  const databasesPromise = runRtkEndpoint(
+    { "can-query": true },
+    dispatch,
+    databaseApi.endpoints.listDatabases,
+    { forceRefetch: false },
+  ).catch((error) => {
+    console.error(
+      "Failed to load database list during QB initialization",
+      error,
+    );
+  });
+
+  const searchParams = new URLSearchParams(location.search ?? "");
+  const queryParams = parseSearchQuery(location.search ?? "");
+  const isTableRoute = location.pathname?.startsWith("/table");
+  const slugEntityId = Urls.extractEntityId(params.slug);
+  // On the /table/:slug route the slug identifies a table, not a saved card.
+  const cardId = isTableRoute ? undefined : slugEntityId;
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
-  const { options, serializedCard } = parseHash(location.hash);
-  const hasCard = cardId || serializedCard;
+  let { options, serializedCard } = parseHash(location.hash);
   const currentUser = getUser(getState());
+
+  if (isTableRoute && slugEntityId != null) {
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: slugEntityId }));
+    if (isStale()) {
+      return;
+    }
+    const table = getShallowTables(getState())[slugEntityId];
+    if (!table) {
+      dispatch(setErrorPage(NOT_FOUND_ERROR));
+      return;
+    }
+    // The /table URL only carries the table id; resolve its db so the QB can
+    // build the table's default ad-hoc question, just like `?db=&table=`.
+    options = {
+      ...options,
+      db: String(table.db_id),
+      table: String(slugEntityId),
+    };
+  }
+
+  const hasCard = cardId || serializedCard;
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
-      dispatch(replace(Urls.unauthorized()));
+      navigate(Urls.unauthorized(), { replace: true });
       return;
     }
   }
@@ -360,12 +408,10 @@ async function handleQBInit(
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(addFields(Object.values(card.param_fields).flat()));
+    await dispatch(paramFieldsFetched(card.param_fields));
   }
 
-  const metadata = getMetadata(getState());
-
-  let question = new Question(card, metadata);
+  let question = selectQuestionFromCard(getState(), card);
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
@@ -398,9 +444,12 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
-    const query = question.legacyNativeQuery() as NativeQuery;
-    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setLegacyQuery(newQuery);
+    const newQuery = await updateTemplateTagNames(
+      question.query(),
+      getState,
+      dispatch,
+    );
+    question = question.setQuery(newQuery);
   }
 
   if (isStale()) {
@@ -409,16 +458,25 @@ async function handleQBInit(
 
   const finalCard = question.card();
 
-  const parameterValues = getParameterValuesForQuestion({
-    card: finalCard,
-    queryParams,
-    metadata,
-  });
+  // `question.parameters()` is `getCardUiParameters` over this same card, so
+  // it saves reading the metadata store a second time.
+  const parameterValues = getParameterValuesByIdFromQueryParams(
+    question.parameters(),
+    queryParams ?? {},
+  );
 
-  const objectId = params?.objectId || queryParams?.objectId;
+  const objectId =
+    params?.objectId || (searchParams.get("objectId") ?? undefined);
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  // make sure db list is loaded
+  await databasesPromise;
+
+  if (isStale()) {
+    return;
+  }
 
   dispatch({
     type: INITIALIZE_QB,
@@ -452,7 +510,7 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (location: LocationDescriptorObject, params: QueryParams) =>
+  (location: Location, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const version = ++latestInitializeQBVersion;
     const isStale = () => version !== latestInitializeQBVersion;

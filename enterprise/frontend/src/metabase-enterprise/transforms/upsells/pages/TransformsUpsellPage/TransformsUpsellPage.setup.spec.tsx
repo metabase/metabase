@@ -1,22 +1,19 @@
-import { Route } from "react-router";
-
 import {
   setupBillingEndpoints,
   setupBugReportingDetailsEndpoint,
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
 type SetupOpts = {
   hadTransforms?: boolean;
+  isAdmin?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
   isOnTrial?: boolean;
@@ -25,10 +22,11 @@ type SetupOpts = {
 export const setup = ({
   isHosted,
   isStoreUser,
+  isAdmin = isStoreUser,
   hadTransforms = false,
   isOnTrial = false,
 }: SetupOpts) => {
-  const currentUser = createMockUser({ is_superuser: isStoreUser });
+  const currentUser = createMockUser({ is_superuser: isAdmin });
   const settings = createMockSettings({
     "is-hosted?": isHosted,
     "token-status": {
@@ -53,10 +51,7 @@ export const setup = ({
   setupBugReportingDetailsEndpoint();
 
   renderWithProviders(
-    <Route
-      component={() => <TransformsUpsellPage />}
-      path="/data-studio/transforms"
-    />,
+    <Route element={<TransformsUpsellPage />} path="/data-studio/transforms" />,
     {
       storeInitialState: state,
       withRouter: true,

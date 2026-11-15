@@ -1,43 +1,40 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/setup/selectors";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
+import { useSetting } from "metabase/settings";
 import {
-  ActionIcon,
   Box,
-  Button,
   Flex,
   Icon,
   Paper,
   Stack,
   Text,
-  Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import {
-  useMetabotAgent,
-  useMetabotName,
+  useIsFullPageMetabot,
+  useMetabotConversation,
   useUserMetabotPermissions,
 } from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import { type MetabotAgentId, isGeneratedEntityPart } from "../../state";
+import type { MetabotChatConfig } from "../Metabot";
+import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
+import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  agentId: "omnibot",
+const defaultConfig: MetabotChatConfig = {
   suggestionModels: [
     "dataset",
     "metric",
@@ -49,11 +46,22 @@ const defaultConfig: MetabotConfig = {
 };
 
 export const MetabotChat = ({
+  conversationId,
+  agentId,
+  onNewConversation,
   config = defaultConfig,
+  className,
+  headerActions,
+  size = "md",
 }: {
-  config?: MetabotConfig;
+  conversationId: string;
+  agentId?: MetabotAgentId;
+  onNewConversation?: () => void;
+  config?: MetabotChatConfig;
+  className?: string;
+  headerActions?: ReactNode;
+  size?: "md" | "lg";
 }) => {
-  const isHosted = useSelector(getIsHosted);
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -61,19 +69,37 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabot = useMetabotConversation(conversationId);
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, headerRef, fillerRef } =
-    useScrollManager(hasMessages);
+  // outside the full page, metabot navigates to generated entities instead of
+  // showing them in the conversation
+  const isFullPageMetabot = useIsFullPageMetabot();
+  const messages = useMemo(
+    () =>
+      isFullPageMetabot
+        ? metabot.messages
+        : metabot.messages.map((message) => ({
+            ...message,
+            parts: message.parts.filter((part) => !isGeneratedEntityPart(part)),
+          })),
+    [metabot.messages, isFullPageMetabot],
+  );
+
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
-      metabot_id: metabot.metabotId,
+      metabot_id: metabot.metabotEntityId,
       limit: 3,
       sample: true,
     },
@@ -83,157 +109,183 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const handleResetChat = () => {
-    metabot.resetConversation();
-    suggestedPromptsReq.refetch();
-  };
+  const untitledLabel = metabot.forkedFromConversationId
+    ? t`Forked conversation`
+    : t`New conversation`;
+  const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
-  const handleClose = () => {
-    metabot.setPrompt("");
-    metabot.setVisible(false);
-  };
-
-  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
+  const shouldShowHeader = headerActions || title;
 
   return (
-    <Box className={Styles.container} data-testid="metabot-chat">
-      {/* header */}
-      <Box ref={headerRef} className={Styles.header}>
-        <Flex align-items="center">
-          <Text lh={1} fz="sm" c="text-secondary">
-            {t`${metabotName} isn't perfect. Double-check results.`}
-          </Text>
-        </Flex>
-
-        <Flex gap="sm">
-          {isConfigured && (
-            <Tooltip label={t`Clear conversation`} position="bottom">
-              <ActionIcon
-                onClick={handleResetChat}
-                data-testid="metabot-reset-chat"
-              >
-                <Icon c="text-primary" name="revert" />
-              </ActionIcon>
-            </Tooltip>
+    <Box
+      className={cx(Styles.container, size === "lg" && Styles.large, className)}
+      data-testid="metabot-chat"
+    >
+      {shouldShowHeader && (
+        <Box className={Styles.header} data-testid="metabot-chat-header">
+          {title && (
+            <Text
+              className={Styles.headerTitle}
+              c={metabot.title ? "text-primary" : "text-secondary"}
+              fw={metabot.title ? "bold" : "normal"}
+              truncate
+              title={title}
+              data-testid="metabot-conversation-title"
+            >
+              {title}
+            </Text>
           )}
-          {!config.preventClose && (
-            <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
-              <Icon c="text-primary" name="close" />
-            </ActionIcon>
+          {headerActions && (
+            <Box className={Styles.headerActions}>{headerActions}</Box>
           )}
-        </Flex>
-      </Box>
+        </Box>
+      )}
 
       {/* chat messages */}
-      <Box
-        ref={scrollContainerRef}
-        className={Styles.messagesContainer}
-        data-testid="metabot-chat-messages"
-      >
-        {!hasMessages && !metabot.isDoingScience && (
-          <>
-            {/* empty state */}
-            <Flex
-              h="100%"
-              gap="md"
-              direction="column"
-              align="center"
-              justify="center"
-              data-testid="metabot-empty-chat-info"
-            >
-              {showIllustrations && (
-                <Box component={EmptyDashboardBot} w="6rem" />
-              )}
-              {!isConfigured ? (
-                <AIProviderConfigurationNotice
-                  featureName={metabotName}
-                  onConfigureAi={openAiProviderConfigurationModal}
-                />
-              ) : (
-                <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
-                  {config.emptyText ??
-                    (showIllustrations
-                      ? t`I can help you explore your metrics and models.`
-                      : t`Explore your metrics and models with AI.`)}
-                </Text>
-              )}
-            </Flex>
-            {isConfigured && !config.hideSuggestedPrompts && (
-              <Stack
-                gap="sm"
-                className={Styles.promptSuggestionsContainer}
-                data-testid="metabot-prompt-suggestions"
+      <Box className={Styles.messagesScrollArea}>
+        <Box
+          ref={scrollContainerRef}
+          className={Styles.messagesContainer}
+          data-testid="metabot-chat-messages"
+          {...{ [METABOT_HOVER_CARD_BOUNDARY_ATTR]: "" }}
+        >
+          {!hasMessages && !metabot.isDoingScience && (
+            <>
+              {/* empty state */}
+              <Flex
+                h="100%"
+                gap="lg"
+                px="lg"
+                direction="column"
+                align="center"
+                justify="center"
+                data-testid="metabot-empty-chat-info"
               >
-                <>
-                  {suggestedPrompts.map(({ prompt }, index) => (
-                    <Box key={index}>
-                      <Button
+                {showIllustrations && (
+                  <Box component={EmptyDashboardBot} w="6rem" />
+                )}
+                {!isConfigured ? (
+                  <AIProviderConfigurationNotice
+                    featureName={metabotName}
+                    onConfigureAi={openAiProviderConfigurationModal}
+                  />
+                ) : (
+                  <Text c="text-secondary" maw="12rem" ta="center" lh="lg">
+                    {showIllustrations
+                      ? t`I can help you explore your metrics and models.`
+                      : t`Explore your metrics and models with AI.`}
+                  </Text>
+                )}
+              </Flex>
+              {isConfigured && (
+                <Stack
+                  gap="sm"
+                  className={cx(
+                    Styles.promptSuggestionsContainer,
+                    metabot.prompt.length > 0 && Styles.promptSuggestionsHidden,
+                  )}
+                  data-testid="metabot-prompt-suggestions"
+                >
+                  <>
+                    {suggestedPrompts.map(({ prompt }, index) => (
+                      <UnstyledButton
+                        key={index}
                         fz="sm"
-                        size="xs"
                         onClick={() => metabot.submitInput(prompt)}
                         className={Styles.promptSuggestionButton}
+                        bg="background_surface-brand-subtle"
+                        bdrs="sm"
+                        lh="xl"
                       >
-                        {prompt}
-                      </Button>
-                    </Box>
-                  ))}
-                </>
-              </Stack>
-            )}
-          </>
-        )}
+                        <Flex gap="sm">
+                          <Icon
+                            name="bolt"
+                            size={16}
+                            c="icon-brand"
+                            flex="0 0 auto"
+                            style={{ transform: "translateY(1px)" }}
+                          />
+                          <Box>{prompt}</Box>
+                        </Flex>
+                      </UnstyledButton>
+                    ))}
+                  </>
+                </Stack>
+              )}
+            </>
+          )}
 
-        {(hasMessages || metabot.isDoingScience) && (
-          <Box
-            className={Styles.messages}
-            data-testid="metabot-chat-inner-messages"
-          >
-            {/* conversation messages */}
-            <Messages
-              messages={metabot.messages}
-              onRetryMessage={
-                config.preventRetryMessage ? undefined : metabot.retryMessage
-              }
-              isDoingScience={metabot.isDoingScience}
-              debug={metabot.debugMode}
-              showFeedbackButtons={isHosted}
-            />
-            {/* loading */}
-            {metabot.isDoingScience && (
-              <MetabotThinking toolCalls={metabot.activeToolCalls} />
-            )}
-            {/* filler - height gets set via ref mutation */}
-            <div ref={fillerRef} data-testid="metabot-message-filler" />
-            {/* long convo warning */}
-            {metabot.isLongConversation && (
-              <MetabotResetLongChatButton
-                onResetConversation={metabot.resetConversation}
+          {(hasMessages || metabot.isDoingScience) && (
+            <Box
+              className={Styles.messages}
+              data-testid="metabot-chat-inner-messages"
+            >
+              {/* conversation messages */}
+              <Messages
+                messages={messages}
+                onRetryMessage={metabot.retryMessage}
+                onContinueMessage={metabot.continueResponse}
+                onRefreshConversation={() => {
+                  metabot.setPrompt("");
+                  metabot.reloadConversation();
+                }}
+                isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
+                debug={metabot.debugMode}
+                agentId={agentId}
+                conversationId={metabot.conversationId}
+                size={size}
               />
-            )}
-          </Box>
-        )}
+              {/* filler - height gets set via ref mutation */}
+              <div ref={fillerRef} data-testid="metabot-message-filler" />
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {isConfigured && (
-        <Box className={Styles.textInputContainer}>
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
+        <Box className={Styles.footerContainer}>
+          <Box className={Styles.textInputContainer}>
+            {metabot.longChatNotice && onNewConversation && (
+              <MetabotLongChatNotice
+                variant={metabot.longChatNotice}
+                onNewChat={onNewConversation}
+              />
             )}
-          >
-            <MetabotChatEditor
-              ref={metabot.promptInputRef}
-              value={metabot.prompt}
-              autoFocus
-              isResponding={metabot.isDoingScience}
-              placeholder={t`How can I help? Type @ to mention items.`}
-              onChange={metabot.setPrompt}
-              onSubmit={handleEditorSubmit}
-              onStop={metabot.cancelRequest}
-              suggestionConfig={{ suggestionModels: config.suggestionModels }}
-            />
-          </Paper>
+            {!metabot.isContextWindowFull && (
+              <Paper
+                className={cx(
+                  Styles.inputContainer,
+                  metabot.isDoingScience && Styles.inputContainerLoading,
+                )}
+              >
+                <MetabotChatEditor
+                  ref={metabot.promptInputRef}
+                  value={metabot.prompt}
+                  autoFocus
+                  isResponding={metabot.isDoingScience}
+                  onChange={metabot.setPrompt}
+                  onSubmit={() => metabot.submitInput(metabot.prompt)}
+                  onStop={metabot.cancelRequest}
+                  suggestionConfig={{
+                    suggestionModels: config.suggestionModels,
+                  }}
+                />
+              </Paper>
+            )}
+          </Box>
+          <Box className={Styles.footerRow}>
+            <Text fz="sm" c="text-secondary" ta="center">
+              {t`${metabotName} isn't perfect. Double-check results.`}
+            </Text>
+            {metabot.contextWindowPercentUsage > 50 &&
+              !metabot.isContextWindowFull && (
+                <MetabotContextUsageRing
+                  className={Styles.contextUsage}
+                  percentUsage={metabot.contextWindowPercentUsage}
+                />
+              )}
+          </Box>
         </Box>
       )}
       <AIProviderConfigurationModal

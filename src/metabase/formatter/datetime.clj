@@ -15,6 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *formatting-locale*
   "Dynamic var to hold the current locale for datetime formatting.
   Defaults to the site locale from system settings."
@@ -235,8 +236,7 @@
       (try
         (reformat-temporal-str timezone-id temporal-str date-format)
         (catch Exception _
-          (log/warnf "Could not format temporal string %s in time zone %s with format %s."
-                     temporal-str
+          (log/warnf "Could not format temporal string in time zone %s with format %s."
                      timezone-id
                      date-format)
           temporal-str)))))

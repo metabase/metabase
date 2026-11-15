@@ -1,14 +1,25 @@
 {
   "teams": [
     {
-      "name": "Querying Platform",
-      "label": ".Team/QueryingPlatform",
+      "name": "Querying",
+      "label": ".Team/Querying",
       "members": [
         "bshepherdson",
+        "dpsutton",
         "metamben",
         "rileythomp",
-        "camsaul",
         "technomancy"
+      ]
+    },
+    {
+      "name": "Data Apps",
+      "label": ".Team/DataApps",
+      "codeowner": "@metabase/data-apps",
+      "members": [
+        "ranquild",
+        "heypoom",
+        "sanex3339",
+        "NevRA"
       ]
     },
     {
@@ -16,12 +27,10 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "ericnormand",
         "galdre",
-        "dpsutton",
         "escherize",
-        "bgrabow",
-        "alxnddr"
+        "alxnddr",
+        "tsplude"
       ]
     },
     {
@@ -31,15 +40,7 @@
         "WiNloSt",
         "npretto",
         "heypoom",
-        "sanex3339",
-        "lorem--ipsum"
-      ]
-    },
-    {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
-      "members": [
-        "eliotmetabase"
+        "sanex3339"
       ]
     },
     {
@@ -48,23 +49,21 @@
       "members": [
         "fraserdrops",
         "nemanjaglumac",
-        "romeovs"
+        "romeovs",
+        "ChrisVandoo"
       ]
     },
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
+      "codeowner": "@metabase/metabot",
       "members": [
-        "appleby",
-        "noahmoss",
-        "retro",
-        "sloansparger",
-        "somtom",
-        "tsplude",
         "lbrdnk",
-        "piranha",
         "crisptrutski",
-        "undrfined"
+        "andreis",
+        "prascuna",
+        "Krever",
+        "svozniuk"
       ]
     },
     {
@@ -75,25 +74,16 @@
       ]
     },
     {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "eliotmetabase"
-      ]
-    },
-    {
       "name": "UX West",
       "label": ".Team/UXWest",
       "members": [
-        "eliotmetabase",
         "npfitz",
-        "johnswanson",
         "nvoxland",
-        "edpaget",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
-        "AndreyChernykh"
+        "AndreyChernykh",
+        "appleby"
       ]
     },
     {
@@ -110,7 +100,11 @@
         "uladzimirdev",
         "egorgrushin",
         "metatyb",
-        "olehk-mb"
+        "olehk-mb",
+        "annatomka",
+        "brybacki",
+        "BillyBobFry",
+        "radex"
       ]
     },
     {
@@ -120,7 +114,16 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos"
+        "tmashara"
+      ]
+    },
+    {
+      "name": "Security Engineering",
+      "label": ".Team/SecurityEngineering",
+      "members": [
+        "bowbahdoe",
+        "enthym-aa",
+        "johnswanson"
       ]
     }
   ]

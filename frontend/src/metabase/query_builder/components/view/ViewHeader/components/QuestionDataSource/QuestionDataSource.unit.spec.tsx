@@ -1,0 +1,740 @@
+import type { ComponentPropsWithoutRef, ErrorInfo, ReactNode } from "react";
+import { Component } from "react";
+
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupCardEndpoints,
+  setupListDatabaseSchemasEndpoint,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
+import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  Table,
+  TableId,
+  TestJoinSpec,
+  TestQuerySpec,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { QuestionDataSource } from "./QuestionDataSource";
+
+const MULTI_SCHEMA_DB_ID = 2;
+const MULTI_SCHEMA_TABLE1_ID = 100;
+const MULTI_SCHEMA_TABLE2_ID = 101;
+
+const SOURCE_QUESTION_ID = 305;
+const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
+
+const ORDERS_TABLE = createOrdersTable();
+const PRODUCTS_TABLE = createProductsTable();
+const PEOPLE_TABLE = createPeopleTable();
+
+const MULTI_SCHEMA_TABLE1 = createMockTable({
+  id: MULTI_SCHEMA_TABLE1_ID,
+  db_id: MULTI_SCHEMA_DB_ID,
+  schema: "first_schema",
+});
+
+const MULTI_SCHEMA_TABLE2 = createMockTable({
+  id: MULTI_SCHEMA_TABLE2_ID,
+  db_id: MULTI_SCHEMA_DB_ID,
+  schema: "second_schema",
+});
+
+function getMetadata() {
+  return createMockMetadata({
+    databases: [
+      createSampleDatabase(),
+      createMockDatabase({
+        id: MULTI_SCHEMA_DB_ID,
+        tables: [MULTI_SCHEMA_TABLE1, MULTI_SCHEMA_TABLE2],
+      }),
+    ],
+  });
+}
+
+type QuerySpecOpts = {
+  databaseId?: number;
+  questions?: Card[];
+};
+
+function createQueryJson(
+  spec: TestQuerySpec,
+  { databaseId = SAMPLE_DB_ID, questions = [] }: QuerySpecOpts = {},
+) {
+  const provider = createMetadataProvider({
+    databaseId,
+    metadata: createMockMetadata({
+      databases: [
+        createSampleDatabase(),
+        createMockDatabase({
+          id: MULTI_SCHEMA_DB_ID,
+          tables: [MULTI_SCHEMA_TABLE1, MULTI_SCHEMA_TABLE2],
+        }),
+      ],
+      questions,
+    }),
+  });
+  return Lib.toJsQuery(Lib.createTestQuery(provider, spec));
+}
+
+function createTableQuery(id: TableId, databaseId = SAMPLE_DB_ID) {
+  return createQueryJson(
+    { stages: [{ source: { type: "table", id } }] },
+    { databaseId },
+  );
+}
+
+const BASE_GUI_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: createTableQuery(ORDERS_ID),
+};
+
+const BASE_NATIVE_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
+  }),
+};
+
+const SAVED_QUESTION: Partial<Card> = {
+  id: 1,
+  name: "Q1",
+  description: null,
+  collection_id: null,
+};
+
+const ORDERS_QUERY = createTableQuery(ORDERS_ID);
+
+const SOURCE_CARD = createMockCard({
+  id: SOURCE_QUESTION_ID,
+  dataset_query: createTableQuery(PRODUCTS_ID),
+});
+
+const PRODUCTS_QUERY = createTableQuery(PRODUCTS_ID);
+
+const PEOPLE_QUERY = createTableQuery(PEOPLE_ID);
+
+const QUERY_IN_MULTI_SCHEMA_DB = createTableQuery(
+  MULTI_SCHEMA_TABLE1_ID,
+  MULTI_SCHEMA_DB_ID,
+);
+
+const PRODUCTS_JOIN: TestJoinSpec = {
+  source: { type: "table", id: PRODUCTS_ID },
+  strategy: "left-join",
+  alias: "Products",
+  conditions: [
+    {
+      operator: "=",
+      left: { type: "column", name: "PRODUCT_ID" },
+      right: { type: "column", name: "ID" },
+    },
+  ],
+};
+
+const PEOPLE_JOIN: TestJoinSpec = {
+  source: { type: "table", id: PEOPLE_ID },
+  strategy: "left-join",
+  alias: "People",
+  conditions: [
+    {
+      operator: "=",
+      left: { type: "column", name: "USER_ID" },
+      right: { type: "column", name: "ID" },
+    },
+  ],
+};
+
+const QUERY_WITH_PRODUCTS_JOIN = createQueryJson({
+  stages: [
+    { source: { type: "table", id: ORDERS_ID }, joins: [PRODUCTS_JOIN] },
+  ],
+});
+
+const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = createQueryJson({
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
+    },
+  ],
+});
+
+const RANDOM_ORDER_ID = 155;
+
+const ORDER_DETAIL_QUERY = createQueryJson({
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      filters: [
+        {
+          type: "operator",
+          operator: "=",
+          args: [
+            { type: "column", name: "ID" },
+            { type: "literal", value: RANDOM_ORDER_ID },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+const TABLES = [
+  ORDERS_TABLE,
+  PRODUCTS_TABLE,
+  PEOPLE_TABLE,
+  MULTI_SCHEMA_TABLE1,
+  MULTI_SCHEMA_TABLE2,
+];
+
+function getSourceTable(question: Question) {
+  const tableId = Lib.primarySourceTableId(question.query());
+  return checkNotNull(TABLES.find((table) => table.id === tableId));
+}
+
+function getTableQuestion(table: Table) {
+  return Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: table.db_id,
+    DEPRECATED_RAW_MBQL_tableId: table.id,
+    metadata: getMetadata(),
+  });
+}
+
+function getQuestion(
+  card: Partial<Card>,
+  metadata: JsMetadata = createMockMetadata(),
+) {
+  return new Question(card, metadata);
+}
+
+function getAdHocQuestion(overrides: Partial<Card>) {
+  return getQuestion({ ...BASE_GUI_QUESTION, ...overrides });
+}
+
+function getAdHocOrdersQuestion() {
+  return getAdHocQuestion({ dataset_query: ORDERS_QUERY });
+}
+
+function getAdHocProductsQuestion() {
+  return getAdHocQuestion({ dataset_query: PRODUCTS_QUERY });
+}
+
+function getAdHocPeopleQuestion() {
+  return getAdHocQuestion({ dataset_query: PEOPLE_QUERY });
+}
+
+interface ErrorBoundaryProps {
+  onError: () => void;
+  children: ReactNode;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps> {
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(error, info);
+    this.props.onError();
+  }
+
+  render() {
+    return this.props.children;
+  }
+}
+
+interface SetupOpts {
+  card?: Partial<Card>;
+  originalCard?: Partial<Card>;
+  subHead?: boolean;
+  isObjectDetail?: boolean;
+  hasPermissions?: boolean;
+}
+
+function setup({
+  card,
+  originalCard,
+  subHead = false,
+  isObjectDetail = false,
+  hasPermissions = true,
+}: SetupOpts = {}) {
+  const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
+  const question = card && new Question(card, metadata);
+  const originalQuestion = originalCard && new Question(originalCard, metadata);
+
+  setupCardEndpoints(SOURCE_CARD);
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
+  setupListDatabaseSchemasEndpoint(MULTI_SCHEMA_DB_ID, [
+    MULTI_SCHEMA_TABLE1.schema,
+    MULTI_SCHEMA_TABLE2.schema,
+  ]);
+  setupTableEndpoints(ORDERS_TABLE);
+  setupTableEndpoints(PRODUCTS_TABLE);
+  setupTableEndpoints(PEOPLE_TABLE);
+  setupTableEndpoints(MULTI_SCHEMA_TABLE1);
+  setupTableEndpoints(MULTI_SCHEMA_TABLE2);
+
+  const onError = jest.fn();
+  renderWithProviders(
+    <ErrorBoundary onError={onError}>
+      <QuestionDataSource
+        question={question || undefined}
+        originalQuestion={originalQuestion || undefined}
+        subHead={subHead}
+        isObjectDetail={isObjectDetail}
+      />
+    </ErrorBoundary>,
+  );
+  return { onError, question };
+}
+
+jest.mock("metabase/common/components/Link", () => ({
+  Link: ({
+    to: href,
+    ...props
+  }: { to: string } & ComponentPropsWithoutRef<"a">) => (
+    <a href={href} {...props} />
+  ),
+}));
+
+function getQuestionFromUrl(relativeUrl: string) {
+  const url = new URL(relativeUrl, document.location.href);
+  const card = deserializeCardFromUrl(url.hash);
+  return new Question(card, getMetadata());
+}
+
+function areQuestionUrlsEquivalent(url1: string, url2: string) {
+  return Lib.areLegacyQueriesEqual(
+    getQuestionFromUrl(url1).datasetQuery(),
+    getQuestionFromUrl(url2).datasetQuery(),
+  );
+}
+
+describe("QuestionDataSource", () => {
+  const GUI_TEST_CASE = {
+    SAVED_GUI_QUESTION: {
+      card: { ...BASE_GUI_QUESTION, ...SAVED_QUESTION },
+      questionType: "saved GUI question",
+    },
+    AD_HOC_QUESTION: {
+      card: BASE_GUI_QUESTION,
+      questionType: "ad-hoc GUI question",
+    },
+    SAVED_GUI_PRODUCTS_JOIN: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
+        dataset_query: QUERY_WITH_PRODUCTS_JOIN,
+      },
+      questionType: "saved GUI question joining a table",
+    },
+    AD_HOC_PRODUCTS_JOIN: {
+      card: { ...BASE_GUI_QUESTION, dataset_query: QUERY_WITH_PRODUCTS_JOIN },
+      questionType: "ad-hoc GUI question joining a table",
+    },
+    SAVED_GUI_PRODUCTS_PEOPLE_JOIN: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
+        dataset_query: QUERY_WITH_PRODUCTS_PEOPLE_JOIN,
+      },
+      questionType: "saved GUI question joining a few tables",
+    },
+    AD_HOC_PRODUCTS_PEOPLE_JOIN: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        dataset_query: QUERY_WITH_PRODUCTS_PEOPLE_JOIN,
+      },
+      questionType: "ad-hoc GUI question joining a few tables",
+    },
+    SAVED_GUI_MULTI_SCHEMA_DB: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
+        dataset_query: QUERY_IN_MULTI_SCHEMA_DB,
+      },
+      questionType: "saved GUI question using multi-schema DB",
+    },
+    AD_HOC_MULTI_SCHEMA_DB: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        dataset_query: QUERY_IN_MULTI_SCHEMA_DB,
+      },
+      questionType: "ad-hoc GUI question using multi-schema DB",
+    },
+    SAVED_OBJECT_DETAIL: {
+      card: {
+        ...BASE_GUI_QUESTION,
+        ...SAVED_QUESTION,
+        dataset_query: ORDER_DETAIL_QUERY,
+      },
+      questionType: "saved object detail",
+    },
+    AD_HOC_OBJECT_DETAIL: {
+      card: { ...BASE_GUI_QUESTION, dataset_query: ORDER_DETAIL_QUERY },
+      questionType: "ad-hoc object detail",
+    },
+  };
+
+  const GUI_TEST_CASES = Object.values(GUI_TEST_CASE);
+
+  const ALL_TEST_CASES = [
+    ...GUI_TEST_CASES,
+    {
+      card: BASE_NATIVE_QUESTION,
+      questionType: "not saved native question",
+    },
+    {
+      card: { ...BASE_NATIVE_QUESTION, ...SAVED_QUESTION },
+      questionType: "saved native question",
+    },
+  ];
+
+  it("does not fail if question is not passed", () => {
+    const { onError } = setup();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  describe("common", () => {
+    ALL_TEST_CASES.forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays database name", async () => {
+          const question = checkNotNull(setup({ card }).question);
+          const database = checkNotNull(
+            Lib.databaseDisplayInfo(question.query()),
+          );
+          const node = await screen.findByText(database.displayName);
+          expect(node).toBeInTheDocument();
+          expect(node.closest("a")).toHaveAttribute(
+            "href",
+            Urls.browseDatabase({
+              id: checkNotNull(Lib.databaseID(question.query())),
+              name: database.name,
+            }),
+          );
+        });
+
+        it("shows nothing if a user doesn't have data permissions", async () => {
+          setup({ card, hasPermissions: false });
+          expect(
+            await screen.findByTestId("head-crumbs-container"),
+          ).toBeEmptyDOMElement();
+        });
+      });
+    });
+  });
+
+  describe("GUI", () => {
+    Object.values(GUI_TEST_CASE).forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays table name", async () => {
+          const question = checkNotNull(setup({ card }).question);
+          const table = getSourceTable(question);
+          await waitFor(() => {
+            const node = screen.getByText(new RegExp(table.display_name));
+            expect(node).toBeInTheDocument();
+            expect(node.closest("a")).not.toBeInTheDocument();
+          });
+        });
+
+        it("displays table link in subhead variant", async () => {
+          const question = checkNotNull(
+            setup({ card, subHead: true }).question,
+          );
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(node.closest("a")).href,
+              Urls.question(getTableQuestion(table)),
+            ),
+          ).toBe(true);
+        });
+
+        it("displays table link in object detail view", async () => {
+          const question = checkNotNull(
+            setup({ card, isObjectDetail: true }).question,
+          );
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(node.closest("a")).href,
+              Urls.question(getTableQuestion(table)),
+            ),
+          ).toBe(true);
+        });
+      });
+    });
+  });
+
+  describe("GUI with schema", () => {
+    [
+      GUI_TEST_CASE.SAVED_GUI_MULTI_SCHEMA_DB,
+      GUI_TEST_CASE.AD_HOC_MULTI_SCHEMA_DB,
+    ].forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays schema name", async () => {
+          const question = checkNotNull(setup({ card }).question);
+          const table = getSourceTable(question);
+          const node = await screen.findByText(checkNotNull(table.schema));
+          expect(node).toBeInTheDocument();
+          expect(node.closest("a")).toHaveAttribute(
+            "href",
+            Urls.browseSchema({
+              db_id: table.db_id,
+              schema_name: table.schema,
+            }),
+          );
+        });
+      });
+    });
+  });
+
+  describe("GUI with joins", () => {
+    [
+      GUI_TEST_CASE.SAVED_GUI_PRODUCTS_JOIN,
+      GUI_TEST_CASE.AD_HOC_PRODUCTS_JOIN,
+    ].forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays 2 joined tables (metabase#17961)", async () => {
+          setup({ card, subHead: true });
+
+          const orders = await screen.findByText(/Orders/);
+          const products = await screen.findByText(/Products/);
+
+          expect(orders).toBeInTheDocument();
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(orders.closest("a")).href,
+              Urls.question(getAdHocOrdersQuestion()),
+            ),
+          ).toBe(true);
+          expect(products).toBeInTheDocument();
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(products.closest("a")).href,
+              Urls.question(getAdHocProductsQuestion()),
+            ),
+          ).toBe(true);
+        });
+      });
+    });
+
+    [
+      GUI_TEST_CASE.SAVED_GUI_PRODUCTS_PEOPLE_JOIN,
+      GUI_TEST_CASE.AD_HOC_PRODUCTS_PEOPLE_JOIN,
+    ].forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays > 2 joined tables (metabase#17961)", async () => {
+          setup({ card, subHead: true });
+
+          const orders = await screen.findByText(/Orders/);
+          const products = await screen.findByText(/Products/);
+          const people = await screen.findByText(/People/);
+
+          expect(orders).toBeInTheDocument();
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(orders.closest("a")).href,
+              Urls.question(getAdHocOrdersQuestion()),
+            ),
+          ).toBe(true);
+          expect(products).toBeInTheDocument();
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(products.closest("a")).href,
+              Urls.question(getAdHocProductsQuestion()),
+            ),
+          ).toBe(true);
+          expect(people).toBeInTheDocument();
+          expect(
+            areQuestionUrlsEquivalent(
+              checkNotNull(people.closest("a")).href,
+              Urls.question(getAdHocPeopleQuestion()),
+            ),
+          ).toBe(true);
+        });
+      });
+    });
+  });
+
+  describe("Nested", () => {
+    const NESTED_QUERY = createQueryJson(
+      { stages: [{ source: { type: "card", id: SOURCE_QUESTION_ID } }] },
+      { questions: [SOURCE_CARD] },
+    );
+
+    const NESTED_QUERY_MULTI_SCHEMA = createQueryJson(
+      { stages: [{ source: { type: "card", id: SOURCE_QUESTION_ID } }] },
+      { databaseId: MULTI_SCHEMA_DB_ID, questions: [SOURCE_CARD] },
+    );
+
+    const NESTED_QUESTION: Partial<Card> = {
+      ...BASE_GUI_QUESTION,
+      dataset_query: NESTED_QUERY,
+    };
+
+    const SAVED_NESTED_QUESTION: Partial<Card> = {
+      ...NESTED_QUESTION,
+      ...SAVED_QUESTION,
+    };
+
+    const NESTED_TEST_CASES = {
+      SAVED: {
+        card: SAVED_NESTED_QUESTION,
+        questionType: "saved nested question",
+      },
+      SAVED_MULTI_SCHEMA: {
+        card: {
+          ...SAVED_NESTED_QUESTION,
+          dataset_query: NESTED_QUERY_MULTI_SCHEMA,
+        },
+        questionType: "saved nested question using multi-schema DB",
+      },
+      AD_HOC: {
+        card: NESTED_QUESTION,
+        questionType: "ad-hoc nested question",
+      },
+      AD_HOC_MULTI_SCHEMA: {
+        card: {
+          ...NESTED_QUESTION,
+          dataset_query: NESTED_QUERY_MULTI_SCHEMA,
+        },
+        questionType: "ad-hoc nested question using multi-schema DB",
+      },
+    };
+
+    Object.values(NESTED_TEST_CASES).forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("does not display virtual schema (metabase#12616)", () => {
+          setup({ card, subHead: true });
+
+          const node = screen.queryByText(
+            SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
+          );
+          expect(node).not.toBeInTheDocument();
+        });
+      });
+    });
+  });
+
+  it("should not display a filter value in the breadcrumbs (metabase#16198)", async () => {
+    setup({
+      card: {
+        ...BASE_GUI_QUESTION,
+        dataset_query: createQueryJson({
+          stages: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              filters: [
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", name: "CATEGORY" },
+                    { type: "literal", value: "Gizmo" },
+                  ],
+                },
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", name: "ID" },
+                    { type: "literal", value: 1 },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    });
+
+    const breadcrumbs = await screen.findByTestId("head-crumbs-container");
+    await waitFor(() => expect(breadcrumbs).toHaveTextContent("Products"));
+    expect(breadcrumbs).not.toHaveTextContent("Gizmo");
+  });
+
+  it("should show info icon on an ad-hoc question header", async () => {
+    setup({ card: SOURCE_CARD });
+    expect(await screen.findByLabelText("More info")).toBeInTheDocument();
+  });
+
+  it("should show info icon on a subheader", async () => {
+    setup({ card: SOURCE_CARD, subHead: true });
+    expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
+
+  it("should show the correct icon when the original question is a native query", () => {
+    const metadataProvider = Lib.metadataProvider(
+      SAMPLE_DB_ID,
+      SAMPLE_METADATA,
+    );
+    const originalQuery = Lib.nativeQuery(
+      SAMPLE_DB_ID,
+      metadataProvider,
+      "SELECT * FROM ORDERS",
+    );
+    const originalQuestion = Question.create({ metadata: createMockMetadata() })
+      .setId(1)
+      .setDisplayName("SQL query")
+      .setQuery(originalQuery);
+    const newMetadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [originalQuestion.card()],
+    });
+    const newMetadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, newMetadata);
+    const newQuery = Lib.queryFromTableOrCardMetadata(
+      newMetadataProvider,
+      checkNotNull(
+        Lib.cardMetadata(newMetadataProvider, originalQuestion.id()),
+      ),
+    );
+    const newQuestion = Question.create({
+      metadata: createMockMetadata(),
+    }).setQuery(newQuery);
+    setup({ card: newQuestion.card(), originalCard: originalQuestion.card() });
+    expect(screen.getByText("SQL query")).toBeInTheDocument();
+    expect(getIcon("table2")).toBeInTheDocument();
+  });
+});

@@ -1,13 +1,18 @@
-import fetchMock from "fetch-mock";
+import { useCallback } from "react";
 
-import { setupActionsEndpoints } from "__support__/server-mocks";
+import {
+  setupActionsEndpoints,
+  setupPrefetchActionValuesEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ActionsApi } from "metabase/services";
+import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch } from "metabase/redux";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
@@ -34,38 +39,43 @@ const implicitUpdateAction = createMockImplicitQueryAction({
   parameters: [parameter1, parameter2],
 });
 
-function setupPrefetch() {
-  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {
-    parameter_1: "uno",
-    parameter_2: "dos",
-  });
-}
+function TestActionExecuteModal(props?: Partial<ActionExecuteModalProps>) {
+  const dispatch = useDispatch();
+  const fetchInitialValues = useCallback(
+    () =>
+      runRtkEndpoint(
+        { id: implicitUpdateAction.id, parameters: {} },
+        dispatch,
+        actionApi.endpoints.prefetchActionValues,
+      ),
+    [dispatch],
+  );
 
-const fetchInitialValues = () =>
-  ActionsApi.prefetchValues({
-    id: implicitUpdateAction.id,
-    parameters: JSON.stringify({}),
-  });
-
-function setup(props?: Partial<ActionExecuteModalProps>) {
-  setupActionsEndpoints([implicitUpdateAction]);
-  setupPrefetch();
-
-  renderWithProviders(
+  return (
     <ActionExecuteModal
       opened
       onClose={() => {}}
+      fetchInitialValues={fetchInitialValues}
       {...props}
       actionId={implicitUpdateAction.id}
-    />,
+    />
   );
+}
+
+function setup(props?: Partial<ActionExecuteModalProps>) {
+  setupActionsEndpoints([implicitUpdateAction]);
+  setupPrefetchActionValuesEndpoint(implicitUpdateAction.id, {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
+
+  renderWithProviders(<TestActionExecuteModal {...props} />);
 }
 
 describe("Actions > ActionExecuteModal", () => {
   it("should fetch and load existing values from API for implicit update actions", async () => {
     await setup({
       actionId: implicitUpdateAction.id,
-      fetchInitialValues,
       shouldPrefetch: true,
     });
 

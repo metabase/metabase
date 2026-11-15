@@ -1,7 +1,6 @@
 (ns metabase.search.semantic.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]))
@@ -16,39 +15,46 @@
 
 (defenterprise supported?
   "Check if semantic search is supported on this instance."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   []
   false)
 
 (defenterprise results
   "Execute a semantic search query and return results."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_search-ctx]
   (oss-semantic-search-error))
 
 (defenterprise update-index!
   "Update the semantic search index with the given documents."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_document-reducible]
   (oss-semantic-search-error))
 
 (defenterprise delete-from-index!
   "Delete documents from the semantic search index."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_model _ids]
   (oss-semantic-search-error))
 
 (defenterprise init!
   "Initialize the semantic search index."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_searchable-documents _opts]
   (oss-semantic-search-error))
 
 (defenterprise repair-index!
   "Brings the semantic search index into consistency with the provided document set.
   Does not promise a full reindex, but will add missing documents and remove stale ones."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_searchable-documents]
+  (oss-semantic-search-error))
+
+(defenterprise diagnose
+  "Engine-owned diagnostic stages (`missing-from-index` / `filtered` / `not-matching` / `candidate`) for the
+  semantic search index. See [[metabase.search.debug/diagnose]]."
+  metabase-enterprise.search.semantic.core
+  [_search-ctx _expected-model _expected-id]
   (oss-semantic-search-error))
 
 ;; Search engine method implementations
@@ -57,23 +63,34 @@
   (try
     (supported?)
     (catch Exception e
-      (log/warn e "Semantic search engine not supported")
+      (log/warnf "Semantic search engine not supported: %s" (ex-message e))
       false)))
+
+(defmethod search.engine/dependencies :search.engine/semantic [_]
+  [:search.engine/appdb])
 
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
   (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/semantic
-  [_search-ctx]
-  search.config/all-models)
+  [search-ctx]
+  ;; The fallback engine applies the permission filters: the app DB index, or in-place search on app DBs that cannot
+  ;; hold the index. A semantic match does not need the search terms, so they must not narrow the types.
+  (search.engine/model-set (assoc search-ctx
+                                  :search-engine (search.engine/fallback-engine :search.engine/semantic)
+                                  :search-string nil)))
+
+(defmethod search.engine/diagnose :search.engine/semantic
+  [search-ctx expected-model expected-id]
+  (diagnose search-ctx expected-model expected-id))
 
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
     (update-index! document-reducible)
     (catch Exception e
-      (log/error e "Error updating semantic search engine")
+      (log/errorf "Error updating semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/delete! :search.engine/semantic
@@ -81,7 +98,7 @@
   (try
     (delete-from-index! model ids)
     (catch Exception e
-      (log/error e "Error deleting from semantic search engine")
+      (log/errorf "Error deleting from semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/init! :search.engine/semantic
@@ -90,7 +107,7 @@
     (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
-      (log/error e "Error initializing semantic search engine")
+      (log/errorf "Error initializing semantic search engine: %s" (ex-message e))
       (throw e))))
 
 (defmethod search.engine/reindex! :search.engine/semantic

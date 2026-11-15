@@ -61,7 +61,7 @@ export const ChartTypeSettings = ({
 
       {collapsibleGroups.map((group) => (
         <div key={group.testId}>
-          <Space h="xl" />
+          <Space h="xxl" />
           <CollapseSection
             header={
               <Text
@@ -84,7 +84,7 @@ export const ChartTypeSettings = ({
             iconSize={10}
           >
             <>
-              <Space h="md" />
+              <Space h="lg" />
               <ChartTypeList
                 data-testid={`display-options-${group.testId}`}
                 visualizationList={group.items}

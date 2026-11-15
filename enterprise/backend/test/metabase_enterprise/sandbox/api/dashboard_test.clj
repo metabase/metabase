@@ -20,7 +20,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
       (mt/with-temp-vals-in-db :model/FieldValues (u/the-id (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-          (with-redefs [metabase.parameters.chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [metabase.parameters.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
               (mt/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
                 (is (= {:values          [["African"] ["American"]]
@@ -82,19 +82,16 @@
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
-
             (is (> (-> (get-values :crowberto) :values count) 3))
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
-
         (testing "when search values"
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]
             (is (= {:values          [["BBQ"]]
                     :has_more_values false}
                    (search :crowberto)))
-
             (is (= {:values          []
                     :has_more_values false}
                    (search :rasta)))))))))

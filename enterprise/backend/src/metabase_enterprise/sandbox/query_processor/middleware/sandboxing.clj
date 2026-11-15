@@ -6,12 +6,15 @@
    [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
@@ -22,8 +25,11 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -31,9 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,16 +45,19 @@
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
 ;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
-  [:map
+  [:map {:closed true}
+   [:id                   {:optional true} [:maybe :int]]
+   [:group_id             {:optional true} [:maybe :int]]
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string
                                              #_target         ::lib.schema.parameter/target]]]])
 
 (mu/defn- query->all-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  [query]
+  [query :- ::lib.schema/query]
   (u/prog1 (lib/all-source-table-ids query)
     (when (seq <>)
       (lib.metadata/bulk-metadata-or-throw query :metadata/table <>))))
@@ -88,14 +95,19 @@
     (when (seq sandboxes)
       (m/index-by :table_id sandboxes))))
 
+(mu/defn- target->field-id :- [:maybe ::lib.schema.id/field]
+  "If a parameter `:target` contains a `:field` clause with an integer Field ID, return that ID."
+  [target :- ::lib.schema.parameter/target]
+  ;; parameter targets still use legacy field refs for whatever wacko reason
+  (match/match-one target
+    [:field (field-id :guard pos-int?) _opts] field-id))
+
 (mu/defn- target-field->base-type :- [:maybe ::lib.schema.common/base-type]
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
-  ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (match/match-one target-field-clause
-                        [:field (field-id :guard pos-int?) _opts] field-id)]
+  (when-let [field-id (target->field-id target-field-clause)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
 (defn- attr-value->param-value
@@ -120,12 +132,22 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   (if (and field-base-type (isa? field-base-type :type/Number))
-               :number/=
-               :string/=)
-     :target target
-     ;; :number/= and :string/= are variadic operators that require a sequential value
-     :value  [(attr-value->param-value field-base-type attr-value)]}))
+    (let [param-value (attr-value->param-value field-base-type attr-value)]
+      (when (nil? param-value)
+        ;; Without this a nil `param-value` propagates as `[nil]`, which
+        ;; `parameters.mbql/expand` treats as "no value" and filter is dropped. (#81821)
+        (throw (ex-info (tru "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
+                             (name attr-name) attr-value field-base-type)
+                        {:type            qp.error-type/invalid-parameter
+                         :attribute-name  attr-name
+                         :attribute-value attr-value
+                         :field-base-type field-base-type})))
+      {:type   (if (and field-base-type (isa? field-base-type :type/Number))
+                 :number/=
+                 :string/=)
+       :target target
+       ;; :number/= and :string/= are variadic operators that require a sequential value
+       :value  [param-value]})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
@@ -138,15 +160,14 @@
   (try
     (lib/without-cleaning
      (fn []
-       (let [preprocess (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-         (request/as-admin
-           ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
-           ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
-           ;; append an extra dummy stage before preprocessing and then toss it when we're done.
-           (-> query
-               lib/append-stage
-               preprocess
-               (update :stages pop))))))
+       (request/as-admin
+         ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
+         ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
+         ;; append an extra dummy stage before preprocessing and then toss it when we're done.
+         (-> query
+             lib/append-stage
+             qp.preprocess/preprocess
+             (update :stages pop)))))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing query when applying Sandbox: {0}" (ex-message e))
                       {:query query}
@@ -164,8 +185,7 @@
         persisted-info (:lib/persisted-info card)
         persisted?     (qp.persisted/can-substitute? card persisted-info)
         query          (lib/card->underlying-query metadata-providerable card)]
-    ;; log the query at this point, it's useful for some purposes
-    (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
+    (log/debugf "Fetched query from Card %s" card-id)
     (cond-> query
       ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
@@ -193,10 +213,10 @@
   (let [result
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        ;; This query gets its own cancellation channel too: finishing closes it, and the outer query has yet to run.
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
-            ((requiring-resolve 'metabase.query-processor/process-query)
-             query)))]
+            (qp.pipeline/do-with-own-canceled-chan #(qp/process-query query))))]
     (when-not (= (:status result) :completed)
       (throw (ex-info "Error running query to determine metadata"
                       {:query query, :result result})))
@@ -210,13 +230,17 @@
   (or (when (= (count (:stages query)) 1)
         (let [first-stage (lib/query-stage query 0)]
           (when (and (lib/native-stage? first-stage)
-                     (not (:lib/stage-metadata first-stage)))
+                     (empty? (get-in first-stage [:lib/stage-metadata :columns])))
             (when-let [cols (not-empty (native-query-metadata query))]
               (when card-id
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (t2/update! :model/Card card-id {:result_metadata cols}))
+                ;;
+                ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
+                ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
+                (request/as-admin
+                  (sandbox.db/set-card-result-metadata! card-id cols)))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
@@ -239,38 +263,50 @@
   We probably should have had this error from day 1 but now there are sandboxes in the wild that do this so I guess we
   just have to work around them going forward."
   [metadata-providerable sandbox-query original-table-id]
-  (let [sandbox-cols (lib/returned-columns sandbox-query)
-        table-cols   (lib.metadata/fields metadata-providerable original-table-id)
-        fixed-cols   (remove (fn [{:keys [table-id], :as sandbox-col}]
-                               (b/cond
-                                 (and table-id
-                                      (not= table-id original-table-id))
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
-                                                    " query included %s from Table %d. This is unsupported and may not"
-                                                    " work in the future.")
-                                               original-table-id
-                                               (pr-str (:name sandbox-col))
-                                               table-id)
-                                   true)
+  (let [sandbox-cols       (lib/returned-columns sandbox-query)
+        table-cols         (lib.metadata/fields metadata-providerable original-table-id)
+        ;; `dissoc nil` guards against the rare case of a table-col without `:id` shadowing the name lookup for
+        ;; sandbox cols (e.g. native) that also have no `:id`.
+        table-by-id        (dissoc (m/index-by :id table-cols) nil)
+        table-by-name      (m/index-by :name table-cols)
+        ;; For nested fields (e.g. Mongo objects), the sandbox col's `:name` comes from
+        ;; `add-parent-column-metadata` as `parent.child.leaf`, while `table-cols` carry the raw leaf `:name`.
+        ;; Index table-cols by their parent-qualified name so name-only matching (native sandboxes, no `:id`)
+        ;; still finds nested fields. See #75305.
+        table-by-flat-name (m/index-by #(lib.field.util/parent-qualified-name metadata-providerable %)
+                                       table-cols)
+        find-table-col     (fn [{col-id :id, col-name :name}]
+                             (or (get table-by-id col-id)
+                                 (get table-by-name col-name)
+                                 (get table-by-flat-name col-name)))
+        fixed-cols         (remove (fn [{:keys [table-id], :as sandbox-col}]
+                                     (b/cond
+                                       (and table-id
+                                            (not= table-id original-table-id))
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
+                                                          " query included column %s from Table %d. This is unsupported and may not"
+                                                          " work in the future.")
+                                                     original-table-id
+                                                     (:id sandbox-col)
+                                                     table-id)
+                                         true)
 
-                                 :let [matching-table-col (m/find-first #(= (:name %)
-                                                                            (:name sandbox-col))
-                                                                        table-cols)]
-                                 (not matching-table-col)
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                    " but query included %s. This is unsupported and may not work in"
-                                                    " the future.")
-                                               (pr-str (:name sandbox-col)))
-                                   true)
+                                       :let [matching-table-col (find-table-col sandbox-col)]
+                                       (not matching-table-col)
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table,"
+                                                          " but query included column %s. This is unsupported and may not work in"
+                                                          " the future.")
+                                                     (:id sandbox-col))
+                                         true)
 
-                                 :else
-                                 (do
-                                   ;; this will throw an exception if types don't match up
-                                   (sandbox/check-column-types-match sandbox-col matching-table-col)
-                                   false)))
-                             sandbox-cols)]
+                                       :else
+                                       (do
+                                         ;; this will throw an exception if types don't match up
+                                         (sandbox/check-column-types-match sandbox-col matching-table-col)
+                                         false)))
+                                   sandbox-cols)]
     (if (= fixed-cols sandbox-cols)
       sandbox-query
       (do
@@ -291,6 +327,39 @@
                     (assoc :qp/native-sandbox-column.force-coercion-strategy (:coercion-strategy table-col)
                            :qp/native-sandbox-column.propagate-coercion?     true)))))
         original-table-cols))
+
+(defn- sandbox-exposed-field-ids
+  "Set of original-table field-ids the sandbox actually returns. MBQL GTAPs' returned columns carry `:id` from the
+  original table, so we take those ids directly. Native GTAPs' columns have only `:name` (no id), so bridge through
+  the original table's `:name → :id` mapping. The `:name` fallback is degenerate for tables with same-name columns —
+  those are unreachable through normal sync but we accept any matching id."
+  [sandbox-query original-table-id]
+  (let [sandbox-cols      (lib/returned-columns sandbox-query)
+        direct-ids        (into #{} (keep :id) sandbox-cols)
+        unresolved-names  (into #{}
+                                (comp (remove :id) (keep :name))
+                                sandbox-cols)
+        name-resolved-ids (when (seq unresolved-names)
+                            (into #{}
+                                  (keep (fn [{col-name :name id :id}]
+                                          (when (and id (contains? unresolved-names col-name))
+                                            id)))
+                                  (lib.metadata/fields sandbox-query original-table-id)))]
+    (into direct-ids name-resolved-ids)))
+
+(defn- filter-stage-fields-to-sandbox
+  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
+  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
+  refer to the previous stage's output and are preserved. See #73339."
+  [stage sandbox-field-ids]
+  (m/update-existing stage :fields
+                     (fn [fields]
+                       (filterv (fn [field-ref]
+                                  (let [[tag _opts id-or-name] field-ref]
+                                    (or (not= tag :field)
+                                        (not (integer? id-or-name))
+                                        (contains? sandbox-field-ids id-or-name))))
+                                fields))))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
                                      [:sequential {:min 1} ::lib.schema/stage]
@@ -328,33 +397,93 @@
                                 (empty? (->> (keys stage)
                                              (remove #{:source-table :fields})
                                              (remove qualified-keyword?))))
+        ;; #73339: an implicit-join sub-stage gets `:fields` populated by the post-implicit-joins
+        ;; `add-implicit-clauses` pass *from the original table's column set*, then we land here and swap
+        ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
+        ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
+        wrapper-stage      (when-not skip-final-stage?
+                             (filter-stage-fields-to-sandbox
+                              (dissoc stage :source-table)
+                              (sandbox-exposed-field-ids sandbox-query source-table)))
         replacement-stages (cond-> new-source-stages
-                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
-    (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
-                (u/cprint-to-str stage)
-                (u/cprint-to-str replacement-stages))
+                             wrapper-stage (conj wrapper-stage))]
+    (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
     replacement-stages))
 
-(mu/defn- apply-sandboxes :- ::lib.schema/query
+(mr/def ::query-with-details
+  "A query that has been through [[apply-sandboxing]]. Carries [[metabase.lib.schema/sandboxing.details]] under the
+  `::details` key once at least one Sandbox has been applied; the key is absent otherwise.
+  [[merge-sandboxing-metadata]] reads it back out during post-processing, and it never leaves the QP: it is an
+  internal namespaced key, so [[metabase.lib.serialize/prepare-for-serialization]] drops it before a query is
+  returned to the client or saved to the application database."
+  [:and
+   ::lib.schema/query
+   ;; `:malli.core/default` because this conjunct constrains only the one key -- every other key of the query is
+   ;; validated by `::lib.schema/query` above, which is where `::details` is declared and closed over
+   [:map
+    [::details {:optional true} ::lib.schema/sandboxing.details]
+    [:malli.core/default :any]]])
+
+(mu/defn- sandbox->details-entry :- ::lib.schema/sandboxing.details.entry
+  "Build the [[metabase.lib.schema/sandboxing.details.entry]] for one applied Sandbox. The user's actual attribute
+  values are included only when [[analytics.settings/analytics-pii-retention-enabled]] is set, mirroring how that
+  setting gates other user-specific data in Usage Analytics."
+  [{table-id   :table_id
+    card-id    :card_id
+    group-id   :group_id
+    sandbox-id :id
+    remappings :attribute_remappings} :- ::sandbox]
+  (let [login-attributes (api/current-user-attributes)
+        include-values?  (analytics.settings/analytics-pii-retention-enabled)]
+    {:table_id   table-id
+     :sandbox_id sandbox-id
+     :group_id   group-id
+     :card_id    card-id
+     :attributes (into {}
+                       (map (fn [[attr-name target]]
+                              [attr-name (cond-> {:field_id (target->field-id target)}
+                                           include-values? (assoc :value (get login-attributes attr-name)))]))
+                       remappings)}))
+
+(mu/defn- sandboxed-table-ids :- [:set ::lib.schema.id/table]
+  "IDs of the Tables whose Sandboxes have been applied to `query`, read back from the
+  `:query-permissions/sandboxed-table` markers that [[apply-sandbox-to-stage]] leaves on each replacement stage. (This
+  is the same marker [[merge-sandboxing-metadata]] uses to compute `is_sandboxed`.)"
+  [query :- ::lib.schema/query]
+  (into #{} (match/match-many query {:query-permissions/sandboxed-table (table-id :guard pos-int?)} table-id)))
+
+(mu/defn- attach-sandbox-details :- ::query-with-details
+  "Attach audit-log details under `::details` for the Sandboxes that have been applied to `query`, merged by Table ID since
+  sandboxing runs in multiple passes (e.g. again after JOINs are resolved) — markers whose Table has no entry in
+  `table-id->sandbox` were applied (and recorded) in an earlier pass. [[merge-sandboxing-metadata]] copies the
+  accumulated entries into the results metadata during post-processing."
+  [query             :- ::query-with-details
+   table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
+  (let [sandboxes (keep table-id->sandbox (sandboxed-table-ids query))]
+    (cond-> query
+      (seq sandboxes) (update ::details merge (into {} (map (juxt :table_id sandbox->details-entry)) sandboxes)))))
+
+(mu/defn- apply-sandboxes :- ::query-with-details
   "Replace `:source-table` entries that refer to Tables for which we have applicable Sandboxes with `:source-query`
   entries from their Sandboxes."
   [query             :- ::lib.schema/query
    table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
   ;; replace stages that have `:source-table` key and a matching entry in `table-id->sandbox`, but do not have
   ;; `::sandbox?` key
-  (lib.walk/walk-stages
-   query
-   (fn [query path stage]
-     (when (and (= (:lib/type stage) :mbql.stage/mbql)
-                (:source-table stage)
-                (not (::sandbox? stage)))
-       (when-let [sandbox (get table-id->sandbox (:source-table stage))]
-         ;; add a `::sandbox?` key to each replacement stage that has `:source-table?` so when we do a second pass after
-         ;; adding JOINs they don't get processed again
-         (mapv (fn [stage]
-                 (cond-> stage
-                   (:source-table stage) (assoc ::sandbox? true)))
-               (apply-sandbox-to-stage query path stage sandbox)))))))
+  (-> (lib.walk/walk-stages
+       query
+       (fn [query path stage]
+         (when (and (= (:lib/type stage) :mbql.stage/mbql)
+                    (:source-table stage)
+                    (not (::sandbox? stage)))
+           (when-let [sandbox (get table-id->sandbox (:source-table stage))]
+             ;; add a `::sandbox?` key to each replacement stage that has `:source-table?` so when we do a second pass after
+             ;; adding JOINs they don't get processed again
+             (mapv (fn [stage]
+                     (cond-> stage
+                       (:source-table stage) (assoc ::sandbox? true)))
+                   (apply-sandbox-to-stage query path stage sandbox))))))
+      (attach-sandbox-details table-id->sandbox)))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]
@@ -369,7 +498,7 @@
       original-query
       (assoc sandboxed-query ::original-metadata (expected-cols original-query)))))
 
-(mu/defn- apply-sandboxing* :- ::lib.schema/query
+(mu/defn- apply-sandboxing* :- ::query-with-details
   [query :- ::lib.schema/query]
   (or (when (not api/*is-superuser?*)
         (when-let [table-id->sandbox (when *current-user-id*
@@ -394,8 +523,7 @@
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
   [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
-   metadata          :- [:map
-                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
+   metadata          :- :metabase.query-processor.schema/metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
@@ -407,10 +535,15 @@
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
   :feature :sandboxes
-  [{::keys [original-metadata] :as query} rff]
+  [{::keys [original-metadata details] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
     (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
                                                             {:query-permissions/sandboxed-table &truthy} true)))
+          ;; only attach the sandbox audit details for userland queries — they're consumed (and stripped back out of
+          ;; the response) by the `process-userland-query` middleware when it records the QueryExecution row
+          metadata (cond-> metadata
+                     (and (seq details) (qp.util/userland-query? query))
+                     (assoc :sandbox_details (->> (vals details) (sort-by :table_id) vec)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

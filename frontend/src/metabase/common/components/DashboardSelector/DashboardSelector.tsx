@@ -4,10 +4,9 @@ import { t } from "ttag";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
-
-import { DashboardPickerButton } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
@@ -37,14 +36,14 @@ export const DashboardSelector = ({
   if (isLoading) {
     return (
       <Flex>
-        <DashboardPickerButton disabled>{t`Loading...`}</DashboardPickerButton>
+        <SelectButton disabled>{t`Loading...`}</SelectButton>
       </Flex>
     );
   }
 
   if (error) {
     return (
-      <Group bg="background-secondary" p="1rem">
+      <Group bg="background_page-secondary" p="1rem">
         <Icon name="warning" />
         {t`Error loading dashboard.`}
         {"  "}
@@ -55,12 +54,9 @@ export const DashboardSelector = ({
 
   return (
     <Flex>
-      <DashboardPickerButton
-        fullWidth={fullWidth}
-        onClick={() => setIsOpen(true)}
-      >
+      <SelectButton fullWidth={fullWidth} onClick={() => setIsOpen(true)}>
         {dashboard?.name || t`Pick a dashboard`}
-      </DashboardPickerButton>
+      </SelectButton>
       {isOpen && (
         <DashboardPickerModal
           value={

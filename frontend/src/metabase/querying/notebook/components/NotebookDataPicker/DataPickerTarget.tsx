@@ -2,8 +2,8 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isEmbedding } from "metabase/embedding/config";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -83,7 +83,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
       onClick={handleClick}
       onAuxClick={handleAuxClick}
     >
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         {tableInfo && (
           <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
         )}

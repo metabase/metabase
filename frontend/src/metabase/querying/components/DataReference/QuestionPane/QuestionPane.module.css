@@ -1,7 +1,7 @@
 .QuestionPaneDetailLink {
   display: flex;
   align-items: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .QuestionPaneIcon {

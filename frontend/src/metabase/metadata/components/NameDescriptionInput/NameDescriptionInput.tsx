@@ -38,6 +38,9 @@ export const NameDescriptionInput = ({
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
   const leftSectionWidth = Math.max(sectionWidth, 40);
+  const readOnlyStyles = readOnly
+    ? { borderColor: "var(--mb-color-border-neutral)", cursor: "default" }
+    : undefined;
 
   const handleDescriptionChange = (value: string) => {
     const newDescription = value.trim();
@@ -58,16 +61,12 @@ export const NameDescriptionInput = ({
   return (
     <Box ref={ref}>
       <Input
-        classNames={{
-          input: S.nameInput,
-          root: S.name,
-          section: S.section,
-        }}
+        classNames={{ root: S.name }}
         fw="bold"
         leftSection={
           <Group
             align="center"
-            c="text-tertiary"
+            c="text-secondary"
             gap={10}
             flex="1"
             fs="lg"
@@ -77,7 +76,7 @@ export const NameDescriptionInput = ({
             ref={sectionRef}
             wrap="nowrap"
           >
-            <Icon flex="0 0 auto" name={nameIcon} size={20} c="brand" />
+            <Icon flex="0 0 auto" name={nameIcon} size={20} c="core-brand" />
 
             {namePrefix && (
               <Ellipsified
@@ -85,7 +84,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-tertiary" component="span" size="lg">
+                <Text c="text-secondary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
@@ -109,11 +108,17 @@ export const NameDescriptionInput = ({
         size="lg"
         styles={{
           section: {
+            width: "auto",
             // limit the flicker when element is being measured for the first time
             visibility: sectionWidth === 0 ? "hidden" : undefined,
           },
           input: {
             paddingLeft: leftSectionWidth,
+            borderStartStartRadius: "var(--mantine-radius-sm)",
+            borderStartEndRadius: "var(--mantine-radius-sm)",
+            borderEndStartRadius: 0,
+            borderEndEndRadius: 0,
+            ...readOnlyStyles,
           },
         }}
         value={name}
@@ -123,13 +128,21 @@ export const NameDescriptionInput = ({
 
       <Textarea
         autosize
-        classNames={{
-          input: S.descriptionInput,
-          root: S.description,
-        }}
         maxRows={4}
         minRows={2}
         placeholder={descriptionPlaceholder}
+        pos="relative"
+        styles={{
+          input: {
+            lineHeight: "var(--mantine-line-height-lg)",
+            borderStartStartRadius: 0,
+            borderStartEndRadius: 0,
+            borderEndStartRadius: "var(--mantine-radius-sm)",
+            borderEndEndRadius: "var(--mantine-radius-sm)",
+            ...readOnlyStyles,
+          },
+        }}
+        top={rem(-2)}
         value={description}
         readOnly={readOnly}
         onChange={handleDescriptionChange}

@@ -1,4 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -12,20 +11,38 @@ function setup({
   filter?: string;
   expressionMode?: Lib.ExpressionMode;
 } = {}) {
-  const sampleDatabase = createSampleDatabase();
-  const metadata = createMockMetadata({ databases: [sampleDatabase] });
-  const database = metadata.database(sampleDatabase.id);
-  if (!database) {
-    throw new Error("Error in test: sample database not found");
-  }
-  database.hasFeature = jest.fn().mockReturnValue(true);
+  // Every feature a clause can require, so this exercises name filtering
+  // rather than feature gating.
+  const sampleDatabase = createSampleDatabase({
+    features: [
+      "advanced-math-expressions",
+      "collate",
+      "convert-timezone",
+      "datetime-diff",
+      "distinct-where",
+      "expressions",
+      "expressions/date",
+      "expressions/datetime",
+      "expressions/float",
+      "expressions/integer",
+      "expressions/text",
+      "expressions/today",
+      "percentile-aggregations",
+      "regex",
+      "regex/lookaheads-and-lookbehinds",
+      "split-part",
+      "standard-deviation-aggregations",
+      "window-functions/offset",
+    ],
+  });
+  const database = sampleDatabase;
 
   const results = getFilteredClauses({
     filter,
     expressionMode,
     database,
   });
-  return { results, database, metadata };
+  return { results, database };
 }
 
 describe("getFilteredClauses", () => {

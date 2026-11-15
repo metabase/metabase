@@ -1,24 +1,21 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { ResizableBoxProps } from "react-resizable";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import type { QueryModalType } from "metabase/querying/constants";
-import type {
-  SelectionRange,
-  SidebarFeatures,
-} from "metabase/querying/editor/types";
+import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
-import type { QueryBuilderMode } from "metabase/redux/store";
+import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -26,14 +23,19 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { useVisualizationResultQBProps } from "../../../../hooks";
+import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
 
+const clickActionMode = new Mode(getQueryMode, {
+  hasColumnShortcutActions: true,
+});
+
 interface ViewMainContainerProps {
   question: Question;
-  query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -43,6 +45,7 @@ interface ViewMainContainerProps {
   isNativeEditorOpen: boolean;
   isRunnable: boolean;
   isRunning: boolean;
+  isDirty: boolean;
   isResultDirty: boolean;
 
   isShowingDataReference: boolean;
@@ -51,19 +54,14 @@ interface ViewMainContainerProps {
 
   readOnly?: boolean;
   canChangeDatabase?: boolean;
-  hasTopBar?: boolean;
-  hasParametersList?: boolean;
-  hasEditingSidebar?: boolean;
-  sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setQuery: (query: Lib.Query) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
@@ -84,7 +82,6 @@ interface ViewMainContainerProps {
   onSetDatabaseId?: (id: DatabaseId) => void;
 
   queryBuilderMode: QueryBuilderMode;
-  mode: Mode;
   showLeftSidebar: boolean;
   showRightSidebar: boolean;
   isLiveResizable: boolean;
@@ -96,8 +93,8 @@ interface ViewMainContainerProps {
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const {
     queryBuilderMode,
-    mode,
     question,
+    isDirty,
     showLeftSidebar,
     showRightSidebar,
     parameters,
@@ -105,6 +102,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     isLiveResizable,
     updateQuestion,
   } = props;
+
+  const visualizationResultProps = useVisualizationResultQBProps();
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
@@ -114,7 +113,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     return;
   }
 
-  const queryMode = mode && mode.queryMode();
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
@@ -148,12 +146,19 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       >
         <QueryVisualization
           {...props}
+          {...visualizationResultProps}
           noHeader
           className={CS.spread}
-          mode={queryMode}
+          mode={clickActionMode}
+          hasColumnReordering
+          noResultsAction={
+            !isDirty && <HasResultsAlertPrompt question={question} />
+          }
+          errorAction={<FixSqlQueryButton />}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
+      <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />

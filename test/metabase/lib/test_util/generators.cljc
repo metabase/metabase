@@ -411,7 +411,6 @@
     (testing "increments the stage-count"
       (is (= (inc (lib/stage-count before))
              (lib/stage-count after))))
-
     (testing "adds a new, empty stage"
       (is (empty? (all-stage-parts after -1))))))
 
@@ -452,7 +451,6 @@
                     "\n\nwith after query\n"  (u/pprint-to-str after))
         (before-and-after before after step))
       ctx'
-
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info "Error in before/after testing" (-> ctx
                                                             (dissoc :query)
@@ -603,6 +601,7 @@
                                            frequencies
                                            (into (sorted-map))))]))])))
 
+  ;; REPL tuning harness in (comment): ASCII histograms print to the console by design
   #_{:clj-kondo/ignore [:discouraged-var]}
   (defn- print-histogram [m]
     (let [mode   (reduce max 0 (vals m))
@@ -621,6 +620,7 @@
 
   (print-histogram (get-in stats [0.04 0.34]))
 
+  ;; REPL tuning harness in (comment): ASCII histograms print to the console by design
   #_{:clj-kondo/ignore [:discouraged-var]}
   (defn- print-stats [st]
     (doseq [[p-reset inner] st

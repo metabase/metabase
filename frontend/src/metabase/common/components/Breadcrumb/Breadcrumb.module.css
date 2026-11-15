@@ -1,0 +1,31 @@
+.breadcrumb {
+  min-width: 0;
+  font-size: 0.875em;
+}
+
+/* Crumbs get equal shares of the trail, capped at their own width, so the longest crumbs truncate first */
+.trail > .breadcrumb {
+  flex: 1 1 0;
+  max-width: max-content;
+}
+
+.content {
+  --color: var(--mb-color-text-secondary);
+  --active-color: var(--mb-color-core-brand);
+}
+
+.icon,
+.text {
+  color: var(--color);
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    .icon,
+    .text {
+      color: var(--active-color);
+    }
+  }
+}

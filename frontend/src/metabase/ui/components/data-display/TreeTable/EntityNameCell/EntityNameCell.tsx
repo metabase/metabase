@@ -10,6 +10,7 @@ interface EntityNameCellProps {
   icon?: IconName;
   name: React.ReactNode;
   iconColor?: ColorName;
+  nameColor?: ColorName;
   wrap?: boolean;
   ellipsifiedProps?: ComponentProps<typeof Ellipsified>;
   tooltipOpenDelay?: number;
@@ -19,7 +20,8 @@ interface EntityNameCellProps {
 export const EntityNameCell = memo(function EntityNameCell({
   icon,
   name,
-  iconColor = "brand",
+  iconColor = "core-brand",
+  nameColor,
   wrap = false,
   tooltipOpenDelay = 600,
   ellipsifiedProps,
@@ -29,11 +31,12 @@ export const EntityNameCell = memo(function EntityNameCell({
     <Group data-testid={testId} gap="sm" wrap="nowrap" miw={0}>
       {icon && <Icon name={icon} c={iconColor} className={CS.flexNoShrink} />}
       {wrap ? (
-        <Text flex={1} miw={0}>
+        <Text c={nameColor} flex={1} miw={0}>
           {name}
         </Text>
       ) : (
         <Ellipsified
+          c={nameColor}
           flex={1}
           miw={0}
           tooltipProps={{ openDelay: tooltipOpenDelay }}

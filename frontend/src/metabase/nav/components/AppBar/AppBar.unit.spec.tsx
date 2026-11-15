@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import {
   createMockMediaQueryList,
@@ -6,22 +8,31 @@ import {
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type { AppBarProps } from "./AppBar";
-import AppBar from "./AppBar";
+import { AppBar, type AppBarProps } from "./AppBar";
 
-const NewItemButtonMock = () => <div data-testid="new-button" />;
-const SearchBarMock = () => <div data-testid="search-bar" />;
-const SearchButtonMock = {
-  SearchButton: () => <div data-testid="search-button" />,
-};
-const BreadcrumbsMock = () => <div data-testid="collection-path" />;
-const QuestionLineageMock = () => <div data-testid="question-lineage" />;
+function NewItemButtonMock() {
+  return <div data-testid="new-button" />;
+}
+
+function SearchBarMock() {
+  return <div data-testid="search-bar" />;
+}
+
+function SearchButton() {
+  return <div data-testid="search-button" />;
+}
+
+function BreadcrumbsMock() {
+  return <div data-testid="collection-path" />;
+}
+
+function QuestionLineageMock() {
+  return <div data-testid="question-lineage" />;
+}
 
 jest.mock("../NewItemButton", () => NewItemButtonMock);
 jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
-jest.mock("../search/SearchButton/SearchButton", () => SearchButtonMock);
-jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
-jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
+jest.mock("../search/SearchButton/SearchButton", () => ({ SearchButton }));
 
 describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
@@ -57,6 +68,19 @@ describe("AppBar", () => {
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
       expect(screen.getByTestId("search-button")).toBeInTheDocument();
       expect(screen.getByTestId("new-button")).toBeInTheDocument();
+    });
+
+    it("should open the navbar when the logo is clicked", async () => {
+      const props = getProps({
+        isNavBarEnabled: true,
+        isNavBarOpen: false,
+        isLogoVisible: true,
+      });
+
+      renderWithProviders(<AppBar {...props} />);
+      await userEvent.click(screen.getByTestId("main-logo-link"));
+
+      expect(props.onOpenNavbar).toHaveBeenCalledTimes(1);
     });
 
     it("should render the desktop app bar for saved questions and dashboards", () => {
@@ -167,7 +191,10 @@ describe("AppBar", () => {
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   detailView: null,
   currentUser: createMockUser(),
+  collectionBreadcrumbs: <BreadcrumbsMock />,
+  questionLineage: <QuestionLineageMock />,
   onToggleNavbar: jest.fn(),
+  onOpenNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
   ...opts,
 });

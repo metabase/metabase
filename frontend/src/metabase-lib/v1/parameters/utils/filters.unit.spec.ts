@@ -1,181 +1,87 @@
-import { createMockMetadata } from "__support__/metadata";
-import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
-import Field from "metabase-lib/v1/metadata/Field";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { FieldId, TemplateTag } from "metabase-types/api";
 import {
-  createMockNativeCard,
   createMockParameter,
+  createMockTemplateTag,
 } from "metabase-types/api/mocks";
+import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
-import { dimensionFilterForParameter } from "./filters";
+import {
+  dimensionTagFilterForParameter,
+  variableTagFilterForParameter,
+} from "./filters";
 
-describe("parameters/utils/field-filters", () => {
-  describe("dimensionFilterForParameter", () => {
-    const field = createMockField({
-      isDate: () => false,
-      isID: () => false,
-      isCity: () => false,
-      isState: () => false,
-      isZipCode: () => false,
-      isCountry: () => false,
-      isNumeric: () => false,
-      isString: () => false,
-      isStringLike: () => false,
-      isBoolean: () => false,
-      isAddress: () => false,
-      isCoordinate: () => false,
-    });
+const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
 
-    const typelessDimension = createMockDimension({
-      field: () => field,
-    });
+function createDimensionTag(fieldId: FieldId): TemplateTag {
+  return createMockTemplateTag({
+    name: "tag",
+    type: "dimension",
+    "field-id": fieldId,
+  });
+}
 
-    [
-      [
-        { type: "date/single" },
-        {
-          type: "date",
-          field: () => ({ ...field, isDate: () => true }),
-        },
-      ],
-      [
-        { type: "id" },
-        {
-          type: "id",
-          field: () => ({ ...field, isID: () => true }),
-        },
-      ],
-      [
-        { type: "category" },
-        {
-          type: "category",
-          field: () => ({ ...field, has_field_values: "list" }),
-        },
-      ],
-      [
-        { type: "location/city" },
-        {
-          type: "location",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            isAddress: () => true,
-            isCity: () => true,
-          }),
-        },
-      ],
-      [
-        { type: "number/!=" },
-        {
-          type: "number",
-          field: () => ({
-            ...field,
-            isNumeric: () => true,
-            isCoordinate: () => false,
-          }),
-        },
-      ],
-      [
-        { type: "string/=" },
-        {
-          type: "category",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            has_field_values: "list",
-          }),
-        },
-      ],
-      [
-        { type: "string/!=" },
-        {
-          type: "category",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            has_field_values: "list",
-          }),
-        },
-      ],
-      [
-        { type: "string/starts-with" },
-        {
-          type: "string",
-          field: () => ({
-            ...field,
-            isString: () => true,
-          }),
-        },
-      ],
-      [
-        { type: "string/=" },
-        {
-          type: "string",
-          field: () => ({
-            ...field,
-            isString: () => false,
-            isStringLike: () => true,
-          }),
-        },
-      ],
-    ].forEach(([parameter, dimension]) => {
-      it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
-        const predicate = dimensionFilterForParameter(
-          createMockParameter(parameter),
+describe("parameters/utils/filters", () => {
+  describe("dimensionTagFilterForParameter", () => {
+    const CASES: [string, string, FieldId][] = [
+      ["date/single", "date", ORDERS.CREATED_AT],
+      ["id", "id", PRODUCTS.ID],
+      ["category", "category", PRODUCTS.CATEGORY],
+      ["location/city", "location", PEOPLE.CITY],
+      ["number/!=", "number", ORDERS.QUANTITY],
+      ["number/between", "coordinate", PEOPLE.LATITUDE],
+      ["string/=", "category", PRODUCTS.CATEGORY],
+      ["string/starts-with", "string", PRODUCTS.TITLE],
+    ];
+
+    it.each(CASES)(
+      "should accept %s parameter for %s field",
+      (parameterType, _fieldName, fieldId) => {
+        const predicate = dimensionTagFilterForParameter(
+          query,
+          createMockParameter({ type: parameterType }),
         );
-        expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(createMockDimension(dimension))).toBe(true);
-      });
-    });
+        expect(predicate(createDimensionTag(fieldId))).toBe(true);
+      },
+    );
 
-    it("should return a predicate that evaluates to true for a coordinate dimension when given a number parameter", () => {
-      const coordinateDimension = createMockDimension({
-        field: () => ({
-          ...field,
-          isNumeric: () => true,
-          isCoordinate: () => true,
-        }),
-      });
-
-      const predicate = dimensionFilterForParameter(
-        createMockParameter({ type: "number/between" }),
+    it("should reject tag without dimension", () => {
+      const predicate = dimensionTagFilterForParameter(
+        query,
+        createMockParameter({ type: "string/=" }),
       );
-      expect(predicate(coordinateDimension)).toBe(true);
+      expect(
+        predicate(createMockTemplateTag({ name: "tag", type: "dimension" })),
+      ).toBe(false);
     });
 
-    it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
-      const locationDimension = createMockDimension({
-        field: () => ({
-          ...field,
-          isAddress: () => true,
-        }),
-      });
-
-      const predicate = dimensionFilterForParameter(
+    it("should reject address field for category parameter", () => {
+      const predicate = dimensionTagFilterForParameter(
+        query,
         createMockParameter({ type: "category" }),
       );
-      expect(predicate(locationDimension)).toBe(false);
+      expect(predicate(createDimensionTag(PEOPLE.ADDRESS))).toBe(false);
+    });
+
+    it("should reject number field for date parameter", () => {
+      const predicate = dimensionTagFilterForParameter(
+        query,
+        createMockParameter({ type: "date/single" }),
+      );
+      expect(predicate(createDimensionTag(ORDERS.QUANTITY))).toBe(false);
+    });
+  });
+
+  describe("variableTagFilterForParameter", () => {
+    it("should match number tag with number parameter", () => {
+      const predicate = variableTagFilterForParameter(
+        createMockParameter({ type: "number/=" }),
+      );
+      expect(predicate(createMockTemplateTag({ type: "number" }))).toBe(true);
+      expect(predicate(createMockTemplateTag({ type: "text" }))).toBe(false);
     });
   });
 });
-
-function createMockField(mocks: Record<string, unknown>): Field {
-  return Object.assign(new Field(), mocks);
-}
-
-function createMockDimension(
-  mocks: Record<string, unknown>,
-): TemplateTagDimension {
-  const card = createMockNativeCard();
-  const metadata = createMockMetadata({ questions: [card] });
-  const question = metadata.question(card.id);
-  if (!question) {
-    throw new TypeError();
-  }
-  const dimension = new TemplateTagDimension(
-    "tag",
-    metadata,
-    question.legacyNativeQuery() as NativeQuery,
-  );
-  return Object.assign(dimension, mocks);
-}

@@ -1,8 +1,6 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 
-import { Button } from "metabase/common/components/Button";
-import { Tooltip } from "metabase/ui";
+import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -31,29 +29,32 @@ export function NotebookActionButton({
   const label = large ? title : undefined;
 
   const button = (
-    <Button
+    <UnstyledButton
       className={cx(
         S.ColorButton,
         {
           [S.secondary]: secondary,
+          [S.large]: large,
+          [S.small]: !large,
         },
         className,
       )}
-      icon={icon}
-      small={!large}
-      iconVertical={large}
-      iconSize={large ? 20 : 16}
       aria-label={label}
       onClick={onClick}
-      style={
-        {
-          "--notebook-action-button-color": `var(--mb-color-${color})`,
-        } as CSSProperties
-      }
+      style={{
+        "--notebook-action-button-color": `var(--mb-color-${color})`,
+      }}
       {...props}
     >
-      {label}
-    </Button>
+      {large ? (
+        <Flex direction="column" align="center" miw="60px">
+          {icon && <Icon name={icon} size={20} />}
+          {label && <span className={S.label}>{label}</span>}
+        </Flex>
+      ) : (
+        icon && <Icon name={icon} size={16} />
+      )}
+    </UnstyledButton>
   );
 
   return large ? button : <Tooltip label={title}>{button}</Tooltip>;

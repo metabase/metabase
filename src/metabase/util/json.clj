@@ -1,6 +1,7 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
   (:require
+   ;; this ns is the JSON facade; it wraps cheshire directly
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [cheshire.factory]
@@ -9,7 +10,7 @@
    [clojure.string :as str])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io InputStream Reader)))
+   (java.io InputStream Reader StringReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -74,10 +75,16 @@
   (cheshire/generate-stream obj writer opt-map))
 
 (defn decode
-  "Decode a value from a JSON from a string, InputStream, or Reader."
+  "Decode a value from a JSON from a string, InputStream, or Reader.
+
+  For strings this uses `cheshire/parse-string-strict`, NOT `parse-string`: for a top-level JSON array `parse-string`
+  returns a *lazy* seq that retains the Jackson parser (and its ~8KB read buffers) until fully realized -- so e.g.
+  every Field's `nfc_path` (a JSON array) would pin a parser, and a wide table's worth of them costs >1GB. The strict
+  variant realizes the value and releases the parser; laziness buys nothing here anyway since the source string is
+  already fully in memory."
   ([source] (decode source nil))
   ([source key-fn]
-   (cond (string? source) (cheshire/parse-string source key-fn)
+   (cond (string? source) (cheshire/parse-string-strict source key-fn)
          (instance? Reader source) (cheshire/parse-stream source key-fn)
          (instance? InputStream source) (with-open [r (io/reader source)]
                                           (cheshire/parse-stream r key-fn))
@@ -90,6 +97,15 @@
   "Decode a value from a JSON from a string, InputStream, or Reader, keywordizing map keys."
   [source]
   (decode source true))
+
+(defn decode-document+kw
+  "Decode the single JSON value that makes up string `s`, keywordizing map keys.
+  Throws if anything other than whitespace follows that value."
+  [^String s]
+  (let [[value & more] (cheshire/parsed-seq (io/reader (StringReader. s)) true)]
+    (when more
+      (throw (ex-info "Expected one JSON value, found more" {})))
+    value))
 
 (defn- parse-charset
   "Parse charset from content-type header, e.g. 'application/json; charset=utf-8' -> 'utf-8'.

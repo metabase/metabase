@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
@@ -58,6 +60,7 @@ export const DashboardPublicLinkPopover = ({
       deletePublicLink={handleDeletePublicDashboardLink}
       url={url}
       onCopyLink={onCopyLink}
+      canRemoveLink={dashboard.can_write}
     />
   );
 };

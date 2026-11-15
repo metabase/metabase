@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import {
   DndContext,
   type DragEndEvent,
@@ -103,7 +104,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         onDragEnd={handleDragEnd}
       >
         {dimension && (
-          <FunnelWellItem mr="md" id="dimension" onRemove={handleRemove}>
+          <FunnelWellItem mr="lg" id="dimension" onRemove={handleRemove}>
             <Text truncate>{dimension.display_name}</Text>
           </FunnelWellItem>
         )}
@@ -147,7 +148,7 @@ function FunnelWellItem({
   const box = (
     <WellItem
       {...props}
-      bg={isDraggable ? "background-primary" : "transparent"}
+      bg={isDraggable ? "background_page-primary" : "transparent"}
       style={{
         cursor: isDraggable ? "grab" : "default",
       }}

@@ -1,0 +1,82 @@
+(ns metabase.core.core-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
+   [metabase.core.core :as core]
+   [metabase.global-system.system :as global-system]
+   [metabase.sample-data.impl :as sample-data.impl]
+   [metabase.sync.core :as sync]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(deftest reconcile-sample-database-migrates-stale-engine-test
+  (testing "A sample database left on the previous bundled engine is migrated at startup. The step keys off the
+           presence of the sample database rather than off `has-user-setup`, which reports a new install on
+           every boot of an instance with no users and so would strand a stale engine forever."
+    (mt/with-model-cleanup [:model/Database]
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
+        (sync/sync-database! (:id h2-db))
+        (let [before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))]
+          (#'core/reconcile-sample-database!)
+          (let [after (t2/select-one :model/Database :id (:id h2-db))]
+            (testing "the record is migrated to the bundled engine, details and all"
+              (is (= :sqlite (:engine after)))
+              (is (= (#'sample-data.impl/try-to-extract-sample-database! :sqlite) (:details after))))
+            (testing "the existing database is reused rather than a second one added"
+              (is (= 1 (t2/count :model/Database :is_sample true)))
+              (is (= before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db)))))))))))
+
+(deftest reconcile-sample-database-is-quiet-when-current-test
+  (testing "Reconciling a sample database that already matches the bundled one logs no error. Routing this
+           case through `extract-and-sync-sample-database!` instead used to derive the database from an
+           update that returns no primary keys when nothing changed, failing with `Not something with an
+           ID: nil` on every boot."
+    (mt/with-model-cleanup [:model/Database]
+      (let [db       (t2/insert-returning-instance! :model/Database
+                                                    {:name "Sample Database" :engine :sqlite :is_sample true
+                                                     :details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
+            _        (sync/sync-database! (:id db))
+            messages (mt/with-log-messages-for-level [messages [metabase.sample-data.impl :error]]
+                       (#'core/reconcile-sample-database!)
+                       (messages))]
+        (is (= [] (mapv :message messages)))
+        (is (= 1 (t2/count :model/Database :is_sample true)))
+        (is (= :sqlite (:engine (t2/select-one :model/Database :id (:id db)))))))))
+
+(deftest reconcile-sample-database-adds-missing-database-test
+  (testing "With no sample database present the bundled one is added, so fresh installs still get it"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
+        (#'core/reconcile-sample-database!))
+      (let [sample-db (t2/select-one :model/Database :is_sample true)]
+        (is (some? sample-db))
+        (is (= :sqlite (:engine sample-db)))))))
+
+(deftest destroy-runs-every-step-test
+  (testing "a step that throws is logged before the next step runs, and does not stop the steps after it"
+    (mt/with-log-messages-for-level [messages [metabase.core.core :warn]]
+      (let [ran         (atom [])
+            logged-yet? #(boolean (some (comp #{"Shutdown step failed: fails"} :message) (messages)))]
+        (mt/with-dynamic-fn-redefs [core/shutdown-steps (constantly [["first" #(swap! ran conj :first)]
+                                                                     ["fails" #(throw (ex-info "boom" {}))]
+                                                                     ["last" #(swap! ran conj [:last (logged-yet?)])]])]
+          (#'core/destroy!)
+          (is (=? {:ran      [:first [:last true]]
+                   :messages [{:level :error, :message "Shutdown step failed: fails"}
+                              {:level :warn, :message "Metabase Shutdown COMPLETE, with 1 failed steps"}]}
+                  {:ran      @ran
+                   :messages (messages)})))))))
+
+(deftest system-dependencies-name-components-test
+  (testing "every key in the halt's dependencies is an installed component, so a renamed one is not silently dropped"
+    (let [installed (set (keys (global-system/snapshot)))
+          named     (into #{} (mapcat (fn [[k uses]] (cons k uses))) @#'core/system-dependencies)]
+      (is (= #{} (into #{} (remove installed) named))))))
+
+(deftest system-dependencies-have-no-cycle-test
+  (testing "the halt's dependencies form a graph a halt accepts"
+    (is (some? (#'global-system/dependency-graph @#'core/system-dependencies)))))

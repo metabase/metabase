@@ -40,13 +40,12 @@
           (respond (u.throttle/throttle-response e {:error (ex-message e)}))
           (raise e))))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- ::api/generic-204-no-content
   "Endpoint for the frontend to report errors. Increments a Prometheus counter
    with the given `type` label."
   [_route-params
    _query-params
-   {:keys [type]} :- [:map [:type ::frontend-error-type]]
+   {:keys [type]} :- [:map {:closed true} [:type ::frontend-error-type]]
    _req]
   (analytics/inc! :metabase-frontend/errors {:type type})
   api/generic-204-no-content)

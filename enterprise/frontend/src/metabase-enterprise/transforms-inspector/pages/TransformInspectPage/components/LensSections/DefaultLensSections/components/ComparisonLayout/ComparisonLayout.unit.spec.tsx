@@ -21,15 +21,18 @@ import { LensContentProvider } from "../../../../LensContent/LensContentContext"
 import { ComparisonLayout } from "./ComparisonLayout";
 import { type CardGroup, sortGroupsByScore } from "./utils";
 
-jest.mock("metabase/transforms/lib/transforms-inspector", () => ({
-  interestingFields: (
-    fields: InspectorField[],
-    _visitedFields: unknown,
-    // we use field ID as the score for testing purposes
-  ): Array<InspectorField & { interestingness: { score: number } }> =>
-    fields.map((f) => ({ ...f, interestingness: { score: f.id ?? 0 } })),
-  computeCardStats: () => null,
-}));
+jest.mock(
+  "metabase-enterprise/transforms-inspector/lib/transforms-inspector",
+  () => ({
+    interestingFields: (
+      fields: InspectorField[],
+      _visitedFields: unknown,
+      // we use field ID as the score for testing purposes
+    ): Array<InspectorField & { interestingness: { score: number } }> =>
+      fields.map((f) => ({ ...f, interestingness: { score: f.id ?? 0 } })),
+    computeCardStats: () => null,
+  }),
+);
 
 const makeSource = (
   tableName: string,

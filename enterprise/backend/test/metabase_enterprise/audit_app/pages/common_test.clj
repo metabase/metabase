@@ -5,7 +5,8 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -20,20 +21,20 @@
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
 (deftest transform-results-test
@@ -56,8 +57,8 @@
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
-                    [:like [:lower :t.name] "%birds%"]
-                    [:like [:lower :db.name] "%birds%"]]}
+                    [:like [:lower :t.name] (h2x/like-substring "birds")]
+                    [:like [:lower :db.name] (h2x/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test
@@ -81,13 +82,11 @@
            (#'common/CTEs->subselects
             {:with [[:most_popular {:from [[:view_log :vl]]}]]
              :from [[:most_popular :mp]]}))))
-
   (testing "JOIN substitution"
     (is (= {:left-join [[{:from [[:query_execution :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
            (#'common/CTEs->subselects
             {:with      [[:qe_count {:from [[:query_execution :qe]]}]]
              :left-join [:qe_count [:= :qe_count.executor_id :u.id]]}))))
-
   (testing "IN subselect substitution"
     (is (= {:from [[{:from  [[:report_dashboardcard :dc]]
                      :where [:in :d.id {:from [[{:from [[:view_log :vl]]} :most_popular]]}]} :dash_avg_running_time]]}
@@ -96,7 +95,6 @@
                     [:dash_avg_running_time {:from  [[:report_dashboardcard :dc]]
                                              :where [:in :d.id {:from [:most_popular]}]}]]
              :from [:dash_avg_running_time]}))))
-
   (testing "putting it all together"
     (is (= {:select    [:mp.dashboard_id]
             :from      [[{:select    [[:d.id :dashboard_id]]
@@ -107,7 +105,6 @@
                           :left-join [[{:select [:qe.card_id]
                                         :from   [[:query_execution :qe]]} :rt]
                                       [:= :dc.card_id :rt.card_id]
-
                                       [:report_dashboard :d]
                                       [:= :dc.dashboard_id :d.id]]
                           :where [:in :d.id {:select [:dashboard_id]

@@ -1,0 +1,24 @@
+## Widen comment_reaction.emoji on H2 only.
+##
+## The API allows 1 to 10 Unicode code points in a reaction (metabase.comments.schema/reaction-emoji). Postgres and
+## MySQL/MariaDB count varchar(10) in code points, so their column already fits. H2 counts UTF-16 units, and 10 code
+## points can take 20 units. varchar(20) on H2 is the same limit in H2's unit.
+##
+## Do not widen the other engines to match. A plain modifyDataType on MySQL/MariaDB drops the utf8mb4_bin collation
+## set by v63.2026-07-06T00:00:00, and distinct emoji collapse into one reaction again.
+##
+## No rollback: narrowing back to varchar(10) fails once a long reaction is stored, and the wider column does not
+## affect older code (same as v62.2026-05-26T00:00:00).
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.xcewmy
+      author: brybacki
+      dbms: h2
+      comment: Widen comment_reaction.emoji to 20 UTF-16 units on H2, the equivalent of 10 code points elsewhere
+      changes:
+        - modifyDataType:
+            tableName: comment_reaction
+            columnName: emoji
+            newDataType: varchar(20)
+      rollback: []

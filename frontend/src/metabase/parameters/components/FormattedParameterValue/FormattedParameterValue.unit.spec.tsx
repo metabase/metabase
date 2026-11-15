@@ -1,9 +1,6 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { setLocalization } from "metabase/utils/i18n";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -34,7 +31,17 @@ function setup({
 }
 
 describe("FormattedParameterValue", () => {
-  it("should render the custom label for a parameter value if it exists", () => {
+  afterEach(() => {
+    setLocalization({
+      headers: {
+        language: "en",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: { "": {} },
+    });
+  });
+
+  it("renders the raw value for a list source without connected fields (remapping is delegated to the field widget)", () => {
     setup({
       value: "A",
       parameter: createMockParameter({
@@ -45,25 +52,15 @@ describe("FormattedParameterValue", () => {
       }),
     });
 
-    expect(screen.getByText("Custom Label")).toBeInTheDocument();
-  });
-
-  it("should render the custom label for a parameter value if does not exist", () => {
-    setup({
-      value: "B",
-      parameter: createMockParameter({
-        values_source_type: "static-list",
-        values_source_config: {
-          values: [["A", "Custom Label"], ["B"]],
-        },
-      }),
-    });
-
-    expect(screen.getByText("B")).toBeInTheDocument();
+    // Without connected fields the raw value is shown; the [value, label] pair
+    // is resolved by ParameterFieldWidgetValue through the remapping endpoint.
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.queryByText("Custom Label")).not.toBeInTheDocument();
   });
 
   it("should render the placeholder with truncation when there is no value", () => {
     setup({
+      // Unjustified type cast. FIXME
       value: null as any,
       parameter: createMockParameter(),
       placeholder: "Filter this long column name",
@@ -107,4 +104,39 @@ describe("FormattedParameterValue", () => {
 
     expect(screen.getByText("Faux")).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      formatting: { date_style: "D MMMM, YYYY", date_abbreviate: false },
+      expected: "1 January, 2027",
+    },
+    {
+      formatting: { date_style: "dddd, MMMM D, YYYY", date_abbreviate: false },
+      expected: "Friday, January 1, 2027",
+    },
+    {
+      formatting: { date_style: "dddd, MMMM D, YYYY", date_abbreviate: true },
+      expected: "Fri, Jan 1, 2027",
+    },
+    { formatting: undefined, expected: "January 1, 2027" },
+  ])(
+    "should format a date value with the custom date formatting setting $formatting (metabase#68574)",
+    ({ formatting, expected }) => {
+      setup({
+        value: "2027-01-01",
+        parameter: createMockParameter({
+          name: "Start",
+          slug: "start",
+          type: "date/single",
+        }),
+        storeInitialState: createMockState({
+          settings: createMockSettingsState({
+            "custom-formatting": { "type/Temporal": formatting },
+          }),
+        }),
+      });
+
+      expect(screen.getByText(expected)).toBeInTheDocument();
+    },
+  );
 });

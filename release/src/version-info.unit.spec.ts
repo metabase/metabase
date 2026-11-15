@@ -1,7 +1,17 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getVersionInfoUrl, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import {
+  generateVersionInfoJson,
+  getOssVersionInfo,
+  getSupportedMajorVersions,
+  getSupportedMajors,
+  getVersionInfoUrl,
+  hasRecentMinorReleaseIn,
+  isLtsVersion,
+  updateVersionInfoLatest,
+  updateVersionInfoLatestJson,
+} from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -28,12 +38,14 @@ describe("version-info", () => {
         existingVersionInfo: oldJson,
       });
 
-      expect(generatedJson.older).toEqual([{
-        version: "v0.3.0",
-        released: expect.any(String),
-        patch: false,
-        highlights: ["see https://www.metabase.com/changelog/3#metabase-30"],
-      }]);
+      expect(generatedJson.older).toEqual([
+        {
+          version: "v0.3.0",
+          released: expect.any(String),
+          patch: false,
+          highlights: ["see https://www.metabase.com/changelog/3#metabase-30"],
+        },
+      ]);
     });
 
     it("should leave old latest version intact", () => {
@@ -138,10 +150,12 @@ describe("version-info", () => {
     });
 
     it("should throw if new version is not in older versions", () => {
-      expect(() => updateVersionInfoLatestJson({
-        newLatestVersion: "v0.2.1",
-        existingVersionInfo: oldJson,
-      })).toThrow();
+      expect(() =>
+        updateVersionInfoLatestJson({
+          newLatestVersion: "v0.2.1",
+          existingVersionInfo: oldJson,
+        }),
+      ).toThrow();
     });
 
     it("should remove the new latest version from the older versions", () => {
@@ -213,7 +227,6 @@ describe("version-info", () => {
     });
 
     it("should remove rollout % on old latest version", () => {
-
       const updatedJson = updateVersionInfoLatestJson({
         newLatestVersion: "v0.2.4",
         existingVersionInfo: oldJson,
@@ -321,6 +334,308 @@ describe("version-info", () => {
       const result = await updateVersionInfoLatest({ newVersion: "v0.2.5" });
 
       expect(result.latest.rollout).toEqual(100);
+    });
+  });
+
+  describe("getSupportedMajorVersions", () => {
+    const fileWith = (major_version_support: any) =>
+      ({
+        latest: {},
+        older: [],
+        major_version_support,
+      }) as unknown as VersionInfoFile;
+
+    it("returns majors whose eol is today or later, newest first", () => {
+      const versionInfo = fileWith([
+        { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" },
+        { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" },
+        { major: 61, released: "2026-05-01", lts: false, eol: "2026-07-01" },
+      ]);
+
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        61, 60,
+      ]);
+    });
+
+    it("treats eol === today as out of support", () => {
+      const versionInfo = fileWith([
+        { major: 88, released: "2026-04-01", lts: true, eol: "2026-06-04" },
+        { major: 89, released: "2026-04-01", lts: true, eol: "2026-06-05" },
+      ]);
+
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        89,
+      ]);
+    });
+
+    it("ignores the lts flag — support is computed from eol only", () => {
+      const versionInfo = fileWith([
+        { major: 60, released: "2026-04-01", lts: false, eol: "2027-06-01" },
+        { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" },
+      ]);
+
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        60,
+      ]);
+    });
+
+    it("de-duplicates repeated majors", () => {
+      const versionInfo = fileWith([
+        { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" },
+        { major: 60, released: "2026-04-01", lts: true, eol: "2027-12-01" },
+      ]);
+
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([
+        60,
+      ]);
+    });
+
+    it("throws when major_version_support is missing or empty", () => {
+      expect(() => getSupportedMajorVersions(fileWith(undefined))).toThrow(
+        /no `major_version_support`/,
+      );
+      expect(() => getSupportedMajorVersions(fileWith([]))).toThrow(
+        /no `major_version_support`/,
+      );
+    });
+
+    it("throws when every line is past end-of-life", () => {
+      const versionInfo = fileWith([
+        { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" },
+      ]);
+
+      expect(() =>
+        getSupportedMajorVersions(versionInfo, "2026-06-04"),
+      ).toThrow(/No in-support major versions/);
+    });
+  });
+
+  describe("getSupportedMajors", () => {
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+    });
+
+    it("fetches the OSS version-info.json and returns supported majors", async () => {
+      mockFetch.mockResolvedValue({
+        json: async () => ({
+          latest: {},
+          older: [],
+          major_version_support: [
+            { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" },
+            { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" },
+          ],
+        }),
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      const majors = await getSupportedMajors("2026-06-04");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
+      expect(majors).toEqual([60]);
+    });
+  });
+
+  describe("hasRecentMinorReleaseIn", () => {
+    const release = (version: string, released: string) => ({
+      version,
+      released,
+      patch: true,
+      highlights: [],
+    });
+
+    const fileWith = (...releases: ReturnType<typeof release>[]) =>
+      ({
+        latest: releases[0],
+        older: releases.slice(1),
+      }) as VersionInfoFile;
+
+    it("skips v0.66.2 on Tuesday when v0.66.1 shipped on Monday", () => {
+      const versionInfo = fileWith(
+        release("v0.66.1", "2026-11-02"),
+        release("v0.66.0", "2026-10-26"),
+      );
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-11-03")).toBe(
+        true,
+      );
+    });
+
+    it("includes the first and last day of the window", () => {
+      expect(
+        hasRecentMinorReleaseIn(
+          fileWith(release("v0.65.2", "2026-11-01")),
+          65,
+          3,
+          "2026-11-03",
+        ),
+      ).toBe(true);
+      expect(
+        hasRecentMinorReleaseIn(
+          fileWith(release("v0.65.2", "2026-11-03")),
+          65,
+          3,
+          "2026-11-03",
+        ),
+      ).toBe(true);
+    });
+
+    it("ignores releases before the window", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-31"));
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
+        false,
+      );
+    });
+
+    it("uses the window size it is given", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-28"));
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
+        false,
+      );
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 7, "2026-11-03")).toBe(
+        true,
+      );
+    });
+
+    it("finds releases in the older list", () => {
+      const versionInfo = fileWith(
+        release("v0.66.1", "2026-10-27"),
+        release("v0.58.38", "2026-10-26"),
+      );
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 58, 3, "2026-10-27")).toBe(
+        true,
+      );
+    });
+
+    it("ignores other majors", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 64, 3, "2026-10-27")).toBe(
+        false,
+      );
+    });
+
+    it("counts a gold release", () => {
+      const versionInfo = fileWith(release("v0.66.0", "2026-10-26"));
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-10-27")).toBe(
+        true,
+      );
+    });
+
+    it("ignores patches and pre-releases", () => {
+      const versionInfo = fileWith(
+        release("v0.66.0-beta", "2026-10-26"),
+        release("v0.65.2.1", "2026-10-27"),
+        release("v0.65.3-rc1", "2026-10-27"),
+      );
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-10-27")).toBe(
+        false,
+      );
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-10-27")).toBe(
+        false,
+      );
+    });
+
+    it("throws on an invalid window", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
+
+      expect(() =>
+        hasRecentMinorReleaseIn(versionInfo, 65, NaN, "2026-10-27"),
+      ).toThrow(/Invalid window/);
+      expect(() =>
+        hasRecentMinorReleaseIn(versionInfo, 65, -1, "2026-10-27"),
+      ).toThrow(/Invalid window/);
+    });
+  });
+
+  describe("getOssVersionInfo", () => {
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+    });
+
+    it("fetches the OSS version-info.json", async () => {
+      const versionInfo = { latest: {}, older: [] };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => versionInfo,
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      expect(await getOssVersionInfo()).toEqual(versionInfo);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
+    });
+
+    it("throws a clear error when the fetch fails", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      await expect(getOssVersionInfo()).rejects.toThrow(
+        "Could not fetch http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json: 403 Forbidden",
+      );
+    });
+  });
+
+  describe("isLtsVersion", () => {
+    const majorVersionSupport = [
+      { major: 55, released: "2025-04-15", lts: true, eol: "2027-06-01" },
+      { major: 56, released: "2025-08-01", lts: false, eol: "2026-08-01" },
+    ];
+
+    const mockVersionInfo = (major_version_support: any) => {
+      mockFetch.mockResolvedValue({
+        json: async () => ({ latest: {}, older: [], major_version_support }),
+      } as Awaited<ReturnType<typeof fetch>>);
+    };
+
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+      mockVersionInfo(majorVersionSupport);
+    });
+
+    it("returns true when the version's major is an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.55.2" })).toEqual(true);
+    });
+
+    it("returns false when the version's major is not an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.56.0" })).toEqual(false);
+    });
+
+    it("returns false when the version's major is absent from the support list", async () => {
+      expect(await isLtsVersion({ version: "v0.99.0" })).toEqual(false);
+    });
+
+    it("returns true for an EE (v1.*) version of an lts major", async () => {
+      expect(await isLtsVersion({ version: "v1.55.0" })).toEqual(true);
+    });
+
+    it("resolves the major from patch and pre-release version strings", async () => {
+      expect(await isLtsVersion({ version: "v0.55.1.2" })).toEqual(true);
+      expect(await isLtsVersion({ version: "v0.55.0-RC1" })).toEqual(true);
+    });
+
+    it("returns false when major_version_support is missing", async () => {
+      mockVersionInfo(undefined);
+      expect(await isLtsVersion({ version: "v0.55.0" })).toEqual(false);
+    });
+
+    it("returns false when major_version_support is empty", async () => {
+      mockVersionInfo([]);
+      expect(await isLtsVersion({ version: "v0.55.0" })).toEqual(false);
     });
   });
 

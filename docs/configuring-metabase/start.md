@@ -1,18 +1,23 @@
 ---
 title: "Configuration overview"
+summary: Everything you can configure in Metabase, from first-time setup to email, Slack, appearance, environment variables, and config files.
 redirect_from:
   - /docs/latest/configuring-metabase
 ---
 
 # Configuration overview
 
-## [Setting up Metabase](./setting-up-metabase.md)
+## [Setting up Metabase](../getting-started/setting-up-metabase.md)
 
 A walkthrough of when you first boot up your Metabase.
 
 ## [General settings](./settings.md)
 
 Site name, report timezone, and more settings.
+
+## [Allow iframes and images from other domains](./domains.md)
+
+Allowlist sites for iframe cards, and restrict which domains images can load from.
 
 ## [Email](./email.md)
 
@@ -34,7 +39,7 @@ Configure Metabase on launch via environment variables.
 
 On self-hosted Pro and Enterprise plans, you can configure Metabase via a configuration file.
 
-## [Metabase logs configuration](./log-configuration.md)
+## [Application logs](../monitor/application-logs.md)
 
 Tell Metabase what to log.
 
@@ -61,6 +66,10 @@ Cache query results for faster loading times.
 ## [Custom maps](./custom-maps.md)
 
 Upload custom maps to your Metabase.
+
+## [Custom visualizations](../questions/visualizations/custom.md)
+
+Add your own chart types by uploading visualization plugins.
 
 ## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
 

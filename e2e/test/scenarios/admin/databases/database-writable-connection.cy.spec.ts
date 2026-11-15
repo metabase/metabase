@@ -34,6 +34,7 @@ describe("scenarios > admin > databases > writable connection", () => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     createUser(READ_ONLY_USER);
     setupTableData();
   });
@@ -44,10 +45,32 @@ describe("scenarios > admin > databases > writable connection", () => {
     dropTable(TRANSFORM_TABLE_NAME);
   });
 
-  it("should be able to create, edit, and remove a writable connection", () => {
+  it("should be able to create, edit, and remove a writable connection and show up-to-date connection health status", () => {
     visitDatabase(WRITABLE_DB_ID);
     createWritableConnection(DEFAULT_USER);
     updateWritableConnection(READ_ONLY_USER);
+
+    cy.log("should show up-to-date connection health status");
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+
+    dropUser(READ_ONLY_USER);
+    visitDatabase(WRITABLE_DB_ID);
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should(
+        "contain.text",
+        "Could not connect",
+      );
+    });
+
+    cy.log("should be able to remove a writable connection");
     removeWritableConnection();
     getWritableConnectionInfoSection()
       .findByText("Add writable connection")
@@ -69,29 +92,6 @@ describe("scenarios > admin > databases > writable connection", () => {
       "contain.text",
       "Metabase tried, but couldn't connect",
     );
-  });
-
-  it("should show up-to-date connection health status", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    createWritableConnection(READ_ONLY_USER);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-
-    dropUser(READ_ONLY_USER);
-    visitDatabase(WRITABLE_DB_ID);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should(
-        "contain.text",
-        "Could not connect",
-      );
-    });
   });
 
   it("should be able to run transforms with a writable connection", () => {
@@ -124,8 +124,8 @@ describe("scenarios > admin > databases > writable connection", () => {
   it("should be able to use model actions with a writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
 
-    cy.log("Model actions should be enabled for this db");
-    cy.findByLabelText("Model actions").should("be.checked");
+    cy.log("Data actions should be enabled for this db");
+    cy.findByLabelText("Data actions").should("be.checked");
 
     createModelWithAction().then((action) => {
       updateMainConnection(READ_ONLY_USER);
@@ -150,6 +150,16 @@ describe("scenarios > admin > databases > writable connection", () => {
 
       createWritableConnection(DEFAULT_USER);
       refreshModelPersistenceAndAwaitSuccess(model.id);
+
+      // Regression for metabase#74449: the Persist model data toggle must
+      // reflect the mutation result without a page reload (persistModel
+      // returns HTTP 204, and the UI relies on RTK cache invalidation to
+      // refetch the persisted state).
+      cy.visit(`/model/${model.id}`);
+      H.openQuestionActions("Edit settings");
+      cy.findByLabelText("Persist model data").should("be.checked").click();
+      cy.findByLabelText("Persist model data").should("not.be.checked").click();
+      cy.findByLabelText("Persist model data").should("be.checked");
     });
   });
 
@@ -293,24 +303,21 @@ function createModel() {
 }
 
 function createModelWithAction() {
-  return createModel()
-    .then((model) =>
-      H.createAction({
-        type: "query",
-        name: "Delete row",
-        database_id: WRITABLE_DB_ID,
-        model_id: model.id,
-        parameters: [],
-        dataset_query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
-          },
+  return createModel().then((model) =>
+    H.createAction({
+      type: "query",
+      name: "Delete row",
+      model_id: model.id,
+      parameters: [],
+      dataset_query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: {
+          query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
         },
-      }),
-    )
-    .then(({ body: action }) => action);
+      },
+    }),
+  );
 }
 
 function runAction(actionId: number) {
@@ -333,7 +340,7 @@ function expectSuccess(response: Cypress.Response<unknown>) {
 }
 
 function enableTableEditing() {
-  cy.findByLabelText("Editable tables").scrollIntoView().click();
+  cy.findByLabelText("Editable tables").scrollIntoView().click({ force: true });
 }
 
 function performTableEdit() {
@@ -359,11 +366,23 @@ function performTableEdit() {
 
 function enableGlobalModelPersistence() {
   cy.visit("/admin/performance/models");
+  cy.intercept("POST", "/api/persist/enable").as("enableGlobalPersistence");
   cy.findByLabelText("Disabled").click({ force: true });
+  // Wait for the global setting to land before navigating away — otherwise the
+  // database page can boot from a stale `persisted-models-enabled` and never
+  // render the per-database "Model persistence" toggle.
+  cy.wait("@enableGlobalPersistence");
 }
 
 function enableModelPersistence() {
+  cy.intercept("POST", "/api/persist/database/*/persist").as(
+    "enableDbPersistence",
+  );
   cy.findByLabelText("Model persistence").click({ force: true });
+  // Wait for the database-level persist setting to be saved before persisting a
+  // model — the persist endpoint returns 400 ("Persisting models not enabled
+  // for database") if the card is persisted before this request lands.
+  cy.wait("@enableDbPersistence");
 }
 
 function enablePersistenceForModel(modelId: CardId) {

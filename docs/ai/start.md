@@ -1,10 +1,9 @@
 ---
 title: "AI in Metabase"
+summary: Set up and control AI in Metabase, including Metabot in the app and in Slack, AI providers, usage limits, and the MCP server for AI clients.
 ---
 
 # AI in Metabase
-
-> AI features are available on [Metabase Cloud](https://www.metabase.com/features/metabot-ai) and on self-hosted Metabase, using either the Metabase AI service or your own AI provider API key. Enable them from **Admin settings > AI**.
 
 ## [Metabot](./metabot.md)
 
@@ -14,9 +13,17 @@ Metabot is an AI assistant that helps you explore and analyze your data.
 
 Connect an AI provider and configure AI features like Metabot.
 
+## [Supported AI providers](./providers.md)
+
+The AI providers Metabase can connect to, the credentials each one needs, and the models each one offers.
+
+## [AI privacy](./privacy.md)
+
+What data Metabase sends to AI providers and MCP clients, and what Metabase collects.
+
 ## [AI usage controls](./usage-controls.md)
 
-Control who can use Metabot, and set token and message limits.
+Control who can use Metabot, which MCP tools each group can use, and set token and message limits.
 
 ## [AI customization](./customization.md)
 
@@ -34,6 +41,10 @@ A REST API for building headless, agentic BI applications on top of Metabase's s
 
 Connect MCP-compatible AI clients to your Metabase.
 
+## [MCP server tools](./mcp-tools.md)
+
+The tools an AI client can call through the MCP server, and the permission each one needs.
+
 ## [Metabot in Slack](./metabot-slack.md)
 
 Chat with Metabot directly in Slack — ask questions, get charts, and manage subscriptions without leaving Slack.
@@ -41,4 +52,3 @@ Chat with Metabot directly in Slack — ask questions, get charts, and manage su
 ## [AI usage auditing](./usage-auditing.md)
 
 See how people are using the AI features in your Metabase.
-

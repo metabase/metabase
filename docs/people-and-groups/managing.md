@@ -1,5 +1,6 @@
 ---
 title: People and groups
+summary: Create, edit, and deactivate accounts, and organize people into the groups that drive your permissions.
 redirect_from:
   - /docs/latest/administration-guide/04-managing-users
 ---
@@ -26,9 +27,11 @@ Click the **grid** icon > **Admin** > **People**. You'll see a list of all the p
 
 Admins can add people to their Metabase. To add a new person manually, click on the grid icon and select **Admin**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
-Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](../cloud/how-billing-works.md)).
+Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/how-billing-works)).
 
-If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet set up email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+
+Admins can also create an account for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**. Enter the person's email, choose their groups, and click **Send invitation**. Once they sign up, Metabase directs them to that dashboard or question.
 
 To create accounts with SSO, check out [authentication options](./start.md#authentication).
 
@@ -86,7 +89,11 @@ Search for a person and look for an icon beside their name.
 - If they log in using Google credentials, Metabase displays a Google icon.
 - If they log in using an email address and password stored in Metabase, no icon is shown.
 
-Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
+The type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
+
+## Signing in via SSO disables your password login
+
+If someone who had originally set up a Metabase account with a username and password first signs in via SSO, Metabase links their account to the SSO provider. The person will no longer be able to sign in with their username and password; they'll only be able to sign in via SSO. If you need to restore password authentication for an account, [contact support](https://www.metabase.com/help-premium).
 
 ## Resetting someone’s password
 
@@ -103,7 +110,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
     ```
-    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar reset-password email@example.com
+    java -jar metabase.jar reset-password email@example.com
     ```
 3.  Metabase will print out a random token like this:
 
@@ -184,17 +191,19 @@ It's important that your All Users group should never have _greater_ access for 
 
 {% include plans-blockquote.html feature="Data Analysts group" %}
 
-You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
+You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-modeling/data-studio.md).
 
 By default (and you can't change this), the Data Analyst group gets:
 
-- Access to [Data Studio](../data-studio/overview.md).
-- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md)
--  [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your Metabase.
+- Access to [Data Studio](../data-modeling/data-studio.md).
+- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-modeling/semantic-layer/library.md)
+- [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your Metabase.
 
 Other than the fixed access listed above, you can assign data, collection, and application permissions to the Data Analyst group as you would normally.
 
-By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-modeling/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+
+If you change to a plan that doesn't include the Data Analyst group feature, your Data Analyst group will still exist, along with the permissions you've granted to it. But Metabase pauses the group's access to Data Studio. You can remove people from the group, but you can't add anyone new, and the group disappears once you've removed the last person. If you return to a plan that includes the Data Analyst group feature, Metabase will restore your Data Analyst group, the permissions you've given it, and its access to Data Studio.
 
 ## Creating a group
 

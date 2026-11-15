@@ -1,6 +1,8 @@
 (ns build.uberjar
   (:require
+   [build.uber :as uber]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.util.zip :as build.zip]
    [clojure.tools.namespace.dependency :as ns.deps]
@@ -9,8 +11,7 @@
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io File OutputStream)
-   (java.nio.file Files OpenOption StandardOpenOption)
+   (java.io File)
    (java.util.jar Manifest)))
 
 (set! *warn-on-reflection* true)
@@ -111,17 +112,22 @@
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
     all))
 
-(defn- compile-sources! [basis]
+(defn- compile-sources!
+  "AOT-compile the sources in `basis`. The compiler runs in a child JVM; pass `:out-file` and `:err-file` to write its
+  output to those files instead of inheriting this process's stdout and stderr."
+  [basis {:keys [out-file err-file]}]
   (u/step "Compile Clojure source files"
     (let [paths    (all-paths basis)
           _        (u/announce "Compiling Clojure files in %s" (pr-str paths))
           ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
-        (b/compile-clj {:basis      basis
-                        :src-dirs   paths
-                        :class-dir  class-dir
-                        :ns-compile ns-decls})
+        (b/compile-clj (cond-> {:basis      basis
+                                :src-dirs   paths
+                                :class-dir  class-dir
+                                :ns-compile ns-decls}
+                         out-file (assoc :out :write, :out-file out-file)
+                         err-file (assoc :err :write, :err-file err-file)))
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (def ^:private resource-ignore-patterns
@@ -141,7 +147,10 @@
    #"\.rej$"
    ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
    ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
-   #"^modules/"])
+   #"^modules/"
+   ;; The frontend build compiles each locale catalogue into a hashed script under app/dist, so these
+   ;; sources are build inputs only. They are ~27 MB and nothing reads them at runtime.
+   #"^frontend_client/app/locales/"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
@@ -167,63 +176,100 @@
    #"META-INF/license.*"
    #"META-INF/LICENSE.*"])
 
-(defn- create-uberjar! [basis]
-  (u/step "Create uberjar"
-    (with-duration-ms [duration-ms]
-      (b/uber {:class-dir         class-dir
-               :uber-file         uberjar-filename
-               ;; merge Log4j2Plugins.dat files. (#50721)
-               :conflict-handlers log4j2-conflict-handler
-               :basis             basis
-               :exclude           dependency-ignore-patterns})
-      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
+(defn- prefer-lib
+  "Returns a conflict handler fn that ensures `preferred` lib's classes always win.
+   The returned fn writes when the incoming class is from `preferred`, skips otherwise."
+  [preferred]
+  (fn prefer-lib' [{:keys [lib path in]}]
+    (when (= lib preferred)
+      {:write {path {:stream in}}})))
+
+;; hive-jdbc bundles javax.activation classes with package-private visibility on LogSupport.
+;; When these overwrite jakarta.activation's public versions, javax.mail (postal) fails with
+;; IllegalAccessError.
+(def ^:private activation-conflict-handler
+  (let [from-com-sun-activation (prefer-lib 'com.sun.activation/jakarta.activation)]
+    {"com/sun/activation/.*" from-com-sun-activation
+     "javax/activation/.*"   from-com-sun-activation}))
+
+;; vertica-jdbc bundles unshaded gson 2.8.9. When these overwrite the pinned 2.12.1,
+;; BigQuery crashes with NoSuchMethodError on JsonWriter.value(float). See #73736.
+(def ^:private gson-conflict-handler
+  {"com/google/gson/.*" (prefer-lib 'com.google.code.gson/gson)})
+
+;; avatica (Hive transitive dep) bundles the entire SLF4J API unshaded.
+(def ^:private slf4j-conflict-handler
+  {"org/slf4j/.*" (prefer-lib 'org.slf4j/slf4j-api)})
+
+(def conflict-handlers
+  "Merged conflict handlers for the uberjar build. Handles Log4j2 plugin merging,
+   jakarta.activation class visibility, gson version pinning, and SLF4J API."
+  (merge log4j2-conflict-handler
+         activation-conflict-handler
+         gson-conflict-handler
+         slf4j-conflict-handler))
 
 (def ^:private manifest-entries
   {"Manifest-Version" "1.0"
    "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.core.bootstrap"})
+   "Main-Class"       "metabase.core.bootstrap"
+   ;; Needed for Apache Arrow, which is used by the Snowflake driver.
+   ;; When we update that driver, check if this is still needed.
+   ;; (https://github.com/apache/arrow-java/pull/1334)
+   ;;
+   ;; This is equivalent to --add-opens java.base/java.nio=ALL-UNNAMED
+   ;; The caveat being it only works when the jar is launched directly
+   ;; like `java -jar metabase.jar`
+   "Add-Opens"        "java.base/java.nio"})
 
 (defn- manifest ^Manifest []
   (doto (Manifest.)
     (build.zip/fill-manifest! manifest-entries)))
 
-(defn- write-manifest! [^OutputStream os]
-  (.write (manifest) os)
-  (.flush os))
-
-(defn- add-non-aot-driver-sources!
-  "Inject source files for drivers excluded from AOT directly into the uberjar.
-  These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
-  ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
-  class-dir."
+(defn- non-aot-driver-sources
+  "`[path file]` for the source files of drivers excluded from AOT. These drivers can't be AOT-compiled (their ns forms
+  reference JDBC classes not bundled due to licensing), so they ship as source and are compiled lazily at runtime. The
+  uberjar's exclusions strip every Metabase `.clj` file, so these go in on their own."
   []
-  (u/step "Add non-AOT driver sources to uberjar"
-    (u/with-open-jar-file-system [fs uberjar-filename]
-      (doseq [driver drivers-excluded-from-aot
-              :let [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
-              :when (.isDirectory src-dir)]
-        (u/step (format "Add source for %s" driver)
-          (doseq [^File f (file-seq src-dir)
-                  :when (.isFile f)]
-            (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
-                  target   (u/get-path-in-filesystem fs rel-path)]
-              (Files/createDirectories (.getParent target) (into-array java.nio.file.attribute.FileAttribute []))
-              (Files/copy (.toPath f) target (into-array java.nio.file.CopyOption [])))))))))
+  (for [driver drivers-excluded-from-aot
+        :let   [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
+        :when  (.isDirectory src-dir)
+        ^File f (file-seq src-dir)
+        :when  (.isFile f)]
+    [(str/replace (str (.relativize (.toPath src-dir) (.toPath f))) \\ \/) f]))
 
-(defn update-manifest!
-  "Start a build step that updates the manifest.
-  The customizations we need to make are not currently supported by tools.build -- see
-  https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
-  to do it by hand for the time being."
-  []
-  (u/step "Update META-INF/MANIFEST.MF"
-    (u/with-open-jar-file-system [fs uberjar-filename]
-      (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
-        (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
-                                                                                    StandardOpenOption/TRUNCATE_EXISTING]))]
-          (write-manifest! os))))))
+(defn- create-uberjar! [basis]
+  (u/step "Create uberjar"
+    (with-duration-ms [duration-ms]
+      (uber/uber {:class-dir         class-dir
+                  :uber-file         uberjar-filename
+                  :conflict-handlers conflict-handlers
+                  :basis             basis
+                  :exclude           dependency-ignore-patterns
+                  :manifest          (manifest)
+                  :extra-files       (non-aot-driver-sources)})
+      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
+
+(defn compile!
+  "Clean the build output and AOT-compile the Clojure sources for `edition`. Returns the basis to pass to
+  [[package!]]. Doesn't need the frontend build, so it can run while the frontend builds. See [[compile-sources!]]
+  for `options`."
+  ([edition]
+   (compile! edition nil))
+  ([edition options]
+   (clean!)
+   (doto (create-basis edition)
+     (compile-sources! options))))
+
+(defn package!
+  "Package the output of [[compile!]] and the resources, including the built frontend, into the uberjar."
+  [basis]
+  (with-duration-ms [duration-ms]
+    (copy-resources! basis)
+    (create-uberjar! basis)
+    (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0))))
 
 (defn uberjar
   "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:
@@ -232,12 +278,44 @@
     clojure -X:build:build/uberjar :edition :ee"
   [{:keys [edition], :or {edition :oss}}]
   (u/step (format "Build %s uberjar" edition)
-    (with-duration-ms [duration-ms]
-      (clean!)
-      (let [basis (create-basis edition)]
-        (compile-sources! basis)
-        (copy-resources! basis)
-        (create-uberjar! basis)
-        (add-non-aot-driver-sources!)
-        (update-manifest!))
-      (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))
+    (package! (compile! edition))))
+
+(defn detect-class-conflicts
+  "Run [[uber/uber]] against `basis` (no AOT, no resources) and return a seq of
+   `{:path ... :lib ...}` for every `.class` file conflict not already handled
+   by our conflict handlers."
+  [basis]
+  (let [conflicts (atom [])]
+    (clean!)
+    (uber/uber {:class-dir         class-dir
+                :uber-file         uberjar-filename
+                :conflict-handlers (merge conflict-handlers
+                                          {:default (fn [{:keys [lib path]}]
+                                                      (when (str/ends-with? path ".class")
+                                                        (swap! conflicts conj {:path path :lib lib}))
+                                                      nil)})
+                :basis             basis
+                :exclude           dependency-ignore-patterns
+                :manifest          (manifest)})
+    @conflicts))
+
+(defn audit-conflicts
+  "Build a bare uberjar (no AOT, no resources) and report all class file conflicts.
+   Useful for detecting vendored/unshaded dependencies in fat JARs.
+
+     clojure -X:build:build/uberjar build.uberjar/audit-conflicts
+     clojure -X:build:build/uberjar build.uberjar/audit-conflicts :edition :ee"
+  [{:keys [edition], :or {edition :ee}}]
+  (u/step (format "Audit %s uberjar class file conflicts" edition)
+    (let [basis     (create-basis edition)
+          conflicts (detect-class-conflicts basis)]
+      (when (seq conflicts)
+        (u/announce "=== %d class file conflicts detected ===" (count conflicts))
+        (let [report-file "target/conflict-report.txt"]
+          (spit report-file
+                (str/join "\n"
+                          (for [[path libs] (->> conflicts
+                                                 (group-by :path)
+                                                 (sort-by key))]
+                            (format "%s — %s" path (str/join ", " (map :lib libs))))))
+          (u/announce "Conflict report written to %s" report-file))))))

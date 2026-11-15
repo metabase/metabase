@@ -50,3 +50,21 @@
 .Horizontal .TextInSecondColumn {
   grid-column: unset;
 }
+
+.FullWidthSelects {
+  width: 100%;
+
+  & .ControlGroup {
+    flex-grow: 1;
+  }
+
+  & .ControlGroup > * {
+    flex-grow: 1;
+  }
+
+  /* AutoWidthSelect sets an inline width on the input wrapper;
+     !important lets the stretched width win over it */
+  & .ControlGroup :global(.mb-mantine-Input-wrapper) {
+    width: 100% !important;
+  }
+}

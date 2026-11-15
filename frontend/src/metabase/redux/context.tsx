@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { Store } from "@reduxjs/toolkit";
 import { type PropsWithChildren, createContext } from "react";
 import {
   Provider,
   type ReactReduxContextValue,
-  // eslint-disable-next-line no-restricted-imports
+  // eslint-disable-next-line eslint-js/no-restricted-imports
   connect as _connect,
 } from "react-redux";
 

@@ -2,11 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -38,6 +35,7 @@ const setup = () => {
       handleModalClose={handleModalClose}
       addOn={mockAdvancedTransformsCloudAddOn}
       freeUnitsIncluded
+      onSuccess={jest.fn()}
     />,
     {
       storeInitialState: state,

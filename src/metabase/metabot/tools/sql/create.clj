@@ -4,13 +4,15 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,13 +26,20 @@
         lib/->legacy-MBQL)))
 
 (defn- validate-database-access
-  "Check if the current user has access to the database."
   [database-id]
-  (when-not (t2/exists? :model/Database :id database-id)
-    (throw (ex-info (tru "Database {0} not found" database-id)
-                    {:agent-error? true
-                     :database-id database-id})))
-  (api/read-check :model/Database database-id))
+  (when-not (metabot.db/database-exists? database-id)
+    (recoverable/unknown-database! {:database-id database-id}))
+  (try
+    (api/read-check :model/Database database-id)
+    (catch clojure.lang.ExceptionInfo e
+      (condp = (:status-code (ex-data e))
+        403 (tools/unrecoverable! ::database-access-denied
+                                  {:user-message (tru "You do not have access to this database.")
+                                   :data {:database-id database-id}
+                                   :cause e})
+        404 (recoverable/unknown-database! {:database-id database-id})
+        (throw e))))
+  (metabot.tools.sql.common/check-native-query-access! database-id))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.
@@ -46,14 +55,17 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql name]}]
+  [{:keys [database-id sql]} :- [:map {:closed true}
+                                 [:database-id :int]
+                                 [:sql :string]
+                                 [:name {:optional true} [:maybe :string]]]]
   (log/info "Creating SQL query"
             {:database-id database-id
-             :name name
              :sql-length (count sql)})
 
   ;; Validate access
   (validate-database-access database-id)
+  (metabot.tools.sql.common/check-nonblank-sql! sql)
 
   (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
 

@@ -1,95 +1,72 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCardQueryDownloadEndpoint,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/utils/types";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { DashCardMenu } from "./DashCardMenu";
 
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+);
+
 const TEST_CARD = createMockCard({
   can_write: true,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_SLUG = `${TEST_CARD.id}-${TEST_CARD.name.toLocaleLowerCase()}`;
 
 const TEST_CARD_NATIVE = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
       query: "SELECT * FROM ORDERS",
-    },
-  }),
+    }),
+  ),
 });
 
 const TEST_CARD_MODEL = createMockCard({
   can_write: true,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_METRIC = createMockCard({
   can_write: true,
   type: "metric",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
-});
-
-const TEST_CARD_NO_DATA_ACCESS = createMockCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {},
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
   can_write: false,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_RESULT = createMockDataset();
@@ -121,7 +98,6 @@ const setup = ({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
-      dashboards: [mockDashboard],
     }),
     dashboard: createMockDashboardState({
       dashboardId: mockDashboard.id,
@@ -134,21 +110,22 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
+  const metadata = createMockMetadataFromState(storeInitialState);
+  const question = new Question(card, metadata);
   const dashcard = createMockDashboardCard({
     ...card,
     dashboard_id: card.dashboard_id ?? undefined,
+    parameter_mappings: [],
   });
 
   setupCardQueryDownloadEndpoint(card, "json");
 
   setupLastDownloadFormatEndpoints();
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route
         path="dashboard/:slug"
-        component={() => (
+        element={
           <MockDashboardContext
             dashboardId={mockDashboard.id}
             dashboard={mockDashboard}
@@ -162,10 +139,10 @@ const setup = ({
               onEditVisualization={onEditVisualization}
             />
           </MockDashboardContext>
-        )}
+        }
       />
-      <Route path="question/:slug" component={() => <div />} />
-      <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="question/:slug" element={<div />} />
+      <Route path="question/:slug/notebook" element={<div />} />
     </>,
     {
       storeInitialState,
@@ -174,57 +151,65 @@ const setup = ({
     },
   );
 
-  return { history };
+  return { router };
 };
 
 describe("DashCardMenu", () => {
+  it("supports opening and closing the menu with the keyboard", async () => {
+    setup();
+
+    const menuButton = screen.getByRole("button", { name: "More options" });
+    menuButton.focus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveFocus();
+  });
+
   it("should display a link to the notebook editor", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit question"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}/notebook`);
   });
 
   it("should display a link to the query builder for native questions", async () => {
-    const { history } = setup({ card: TEST_CARD_NATIVE });
+    const { router } = setup({ card: TEST_CARD_NATIVE });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit question"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}`);
   });
 
   it("should display a link to the editor for models", async () => {
-    const { history } = setup({ card: TEST_CARD_MODEL });
+    const { router } = setup({ card: TEST_CARD_MODEL });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit model"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/model/${TEST_CARD_SLUG}/query`);
   });
 
   it("should display a link to the editor for metrics", async () => {
-    const { history } = setup({ card: TEST_CARD_METRIC });
+    const { router } = setup({ card: TEST_CARD_METRIC });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit metric"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
-  });
-
-  it("should not display a link to the notebook editor if the user does not have the data permission", async () => {
-    setup({ card: TEST_CARD_NO_DATA_ACCESS });
-
-    await userEvent.click(getIcon("ellipsis"));
-
-    expect(await screen.findByText("Download results")).toBeInTheDocument();
-    expect(screen.queryByText("Edit question")).not.toBeInTheDocument();
   });
 
   it("should not display a link to the notebook editor if the user does not have the collection write permission (metabase#35077)", async () => {
@@ -248,6 +233,7 @@ describe("DashCardMenu", () => {
   });
 
   it("should not display query export options when query is running", async () => {
+    // Unjustified type cast. FIXME
     setup({ result: {} as any });
 
     await userEvent.click(getIcon("ellipsis"));
@@ -307,5 +293,64 @@ describe("DashCardMenu", () => {
     // Esc should close the popover
     await userEvent.keyboard("{Esc}");
     expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashCardMenu.shouldRender", () => {
+  const dashboard = createMockDashboard();
+  const metadata = createMockMetadataFromState(
+    createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+        questions: [TEST_CARD],
+      }),
+    }),
+  );
+  const question = new Question(TEST_CARD, metadata);
+
+  it("should render when the question is editable", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when editing is disabled and results cannot be downloaded (#64333)", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("should render when editing is disabled but underlying questions can be opened", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [<div key="question" />],
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when there are no underlying questions to open", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [],
+      }),
+    ).toBe(false);
   });
 });

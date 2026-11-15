@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { forwardRef } from "react";
 import { t } from "ttag";
@@ -9,14 +10,18 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { getCanGoBack, useNavigate } from "metabase/router";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Button, Flex, Icon, Modal, Text, Tooltip } from "metabase/ui";
+import { reload } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import {
   ErrorDiagnosticModalTrigger,
   ErrorExplanationModal,
 } from "./ErrorDiagnosticModal";
-import { ErrorPageRoot } from "./ErrorPages.styled";
+import S from "./ErrorPages.module.css";
 
 interface GenericErrorProps {
   title?: string;
@@ -33,7 +38,15 @@ export const GenericError = forwardRef<HTMLDivElement, GenericErrorProps>(
     ref,
   ) {
     return (
-      <ErrorPageRoot ref={ref}>
+      <Flex
+        ref={ref}
+        className={S.root}
+        direction="column"
+        w="100%"
+        h="100%"
+        justify="center"
+        align="center"
+      >
         <EmptyState
           title={title}
           message={message}
@@ -48,7 +61,7 @@ export const GenericError = forwardRef<HTMLDivElement, GenericErrorProps>(
         />
         <ErrorDetails className={CS.pt2} details={details} centered />
         <ErrorDiagnosticModalTrigger />
-      </ErrorPageRoot>
+      </Flex>
     );
   },
 );
@@ -60,22 +73,82 @@ export const NotFound = ({
   title?: string;
   message?: string;
 }) => (
-  <ErrorPageRoot aria-label="error page">
+  <Flex
+    aria-label="error page"
+    className={S.root}
+    direction="column"
+    w="100%"
+    h="100%"
+    justify="center"
+    align="center"
+  >
     <EmptyState
       illustrationElement={<img src={NoResults} />}
       title={title}
       message={message}
     />
-  </ErrorPageRoot>
+  </Flex>
 );
 
+/**
+ * Shown when a page could not be downloaded.
+ *
+ * Metabase serves its frontend in files named after their contents, so the files
+ * a page asks for are gone once a newer version is deployed. A tab opened before
+ * that deploy asks for files nobody serves any more.
+ *
+ * A modal, because this only renders where the app decided to keep the current
+ * page. The page behind it is intact, and its unsaved work with it, so closing
+ * this returns the user to it. A full page of its own would cover a page that is
+ * still usable, and give no way back to it.
+ */
+export const ChunkLoadFailed = ({
+  hasUnsavedChanges = false,
+}: {
+  hasUnsavedChanges?: boolean;
+}) => {
+  const applicationName = useSelector(getApplicationName);
+  const navigate = useNavigate();
+  // Going back from the first page a tab ever saw leaves Metabase, and this
+  // modal is a route of its own: dismissing it has to land somewhere.
+  const goBack = () => (getCanGoBack() ? navigate(-1) : navigate("/"));
+
+  return (
+    <Modal title={t`${applicationName} was updated`} opened onClose={goBack}>
+      <Text my="lg">
+        {hasUnsavedChanges
+          ? t`This page could not be opened. Your unsaved changes are still here. Save them, then reload to get the latest version.`
+          : t`This page could not be opened. Reload to get the latest version.`}
+      </Text>
+      <Flex justify="flex-end" gap="md">
+        {/* Reloading discards unsaved work, so it leads only where there is none. */}
+        <Button
+          variant={hasUnsavedChanges ? "subtle" : "filled"}
+          onClick={reload}
+        >{t`Reload`}</Button>
+        <Button
+          variant={hasUnsavedChanges ? "filled" : "subtle"}
+          onClick={goBack}
+        >{t`Go back`}</Button>
+      </Flex>
+    </Modal>
+  );
+};
+
 export const Unauthorized = () => (
-  <ErrorPageRoot>
+  <Flex
+    className={S.root}
+    direction="column"
+    w="100%"
+    h="100%"
+    justify="center"
+    align="center"
+  >
     <EmptyState
       title={t`Sorry, you don’t have permission to see that.`}
       illustrationElement={<Icon name="key" size={100} />}
     />
-  </ErrorPageRoot>
+  </Flex>
 );
 
 export const Archived = ({
@@ -85,13 +158,20 @@ export const Archived = ({
   entityName: string;
   linkTo: string;
 }) => (
-  <ErrorPageRoot>
+  <Flex
+    className={S.root}
+    direction="column"
+    w="100%"
+    h="100%"
+    justify="center"
+    align="center"
+  >
     <EmptyState
       title={t`This ${entityName} has been archived`}
       illustrationElement={<Icon name="view_archive" size={100} />}
       link={linkTo}
     />
-  </ErrorPageRoot>
+  </Flex>
 );
 
 export const SmallGenericError = forwardRef<
@@ -107,27 +187,37 @@ export const SmallGenericError = forwardRef<
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const isEmbeddingIframe = getIsEmbeddingIframe();
+  const isEmbeddingIframe = isWithinIframe();
 
   const tooltipMessage = isEmbeddingIframe
     ? message
     : message + t` Click for more information`;
 
   return (
-    <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
+    <Flex
+      ref={ref}
+      className={cx(S.root, { [S.bordered]: bordered })}
+      direction="column"
+      w="100%"
+      h="100%"
+      justify="center"
+      align="center"
+      {...props}
+    >
       <Tooltip label={tooltipMessage}>
         {isEmbeddingIframe ? (
-          <Icon name="warning" size={32} c="text-tertiary" />
+          <Icon name="warning" c="text-secondary" />
         ) : (
           <Button
-            leftSection={<Icon name="warning" size={32} c="text-tertiary" />}
-            color="text-tertiary"
+            variant="transparent"
+            size="compact-md"
+            color="neutral"
+            leftSection={<Icon name="warning" c="text-secondary" />}
             onClick={openModal}
-            variant="subtle"
           />
         )}
       </Tooltip>
       <ErrorExplanationModal isModalOpen={isModalOpen} onClose={closeModal} />
-    </ErrorPageRoot>
+    </Flex>
   );
 });

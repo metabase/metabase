@@ -1,21 +1,21 @@
 import { t } from "ttag";
 
-import { GetCodeStep } from "./components/GetCodeStep";
-import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
-import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
-import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupStep,
-} from "./types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
+
+import { AppearanceStep } from "./components/steps/AppearanceStep/AppearanceStep";
+import { GetCodeStep } from "./components/steps/GetCodeStep/GetCodeStep";
+import { SelectEmbedExperienceStep } from "./components/steps/SelectEmbedExperienceStep/SelectEmbedExperienceStep";
+import type { SdkIframeEmbedSetupStep } from "./types";
 
 /** The maximum number of recent items to show in the resource selection step. */
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const getEmbedExperiences = ({
   isMetabotAvailable,
+  isDataAppsAvailable,
 }: {
   isMetabotAvailable: boolean;
+  isDataAppsAvailable: boolean;
 }) =>
   [
     {
@@ -57,6 +57,17 @@ export const getEmbedExperiences = ({
           },
         ]
       : []),
+    ...(isDataAppsAvailable
+      ? [
+          {
+            value: "data-app" as const,
+            title: t`Data Apps`,
+            description: t`Embed an existing data app`,
+            supportsOss: false,
+            supportsGuestEmbed: false,
+          },
+        ]
+      : []),
   ] satisfies {
     title: string;
     description: string;
@@ -68,10 +79,10 @@ export const getEmbedExperiences = ({
 type EmbedStepConfig = {
   id: SdkIframeEmbedSetupStep;
   component: React.ComponentType;
-  skipFor?: SdkIframeEmbedSetupExperience[];
+  excludedExperiences?: SdkIframeEmbedSetupExperience[];
 };
 
-export const STEPS_WITHOUT_RESOURCE_SELECTION = [
+export const EXPERIENCES_WITHOUT_RESOURCE_SELECTION = [
   "exploration",
   "metabot",
 ] as const satisfies SdkIframeEmbedSetupExperience[];
@@ -82,13 +93,9 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
     component: SelectEmbedExperienceStep,
   },
   {
-    id: "select-embed-resource",
-    component: SelectEmbedResourceStep,
-    skipFor: STEPS_WITHOUT_RESOURCE_SELECTION,
-  },
-  {
     id: "select-embed-options",
-    component: SelectEmbedOptionsStep,
+    component: AppearanceStep,
+    excludedExperiences: ["data-app"],
   },
   {
     id: "get-code",

@@ -1,10 +1,7 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { displayNameForColumn } from "metabase/utils/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
@@ -15,26 +12,26 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import {
-  getDimensionReferenceWithoutBaseType,
-  isDimensionReferenceWithOptions,
-} from "metabase-lib/v1/references";
+  type ComputedVisualizationSettings,
+  columnSettings,
+} from "metabase/viz-core";
+import {
+  getFieldRefForComparison,
+  migratePivotColumnSplitSetting,
+} from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
-  DimensionReference,
   PivotTableColumnSplitSetting,
   RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { getPartitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -46,8 +43,13 @@ export const getTitleForColumn = (
   column: DatasetColumn,
   settings: VisualizationSettings,
 ) => {
+  // `settings.column` is typed `any` via VisualizationSettings' index signature
+  const getColumnSettings = settings.column as (col: DatasetColumn) => {
+    column: DatasetColumn;
+    column_title?: string;
+  };
   const { column: _column, column_title: columnTitle } =
-    settings.column(column);
+    getColumnSettings(column);
   return columnTitle || displayNameForColumn(_column);
 };
 
@@ -92,7 +94,7 @@ export const settings = {
         settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
-      partitions,
+      partitions: getPartitions(),
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {
@@ -116,8 +118,15 @@ export const settings = {
           columnsToPartition,
           isDimension,
         );
-        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
-          getIn(col, ["fingerprint", "global", "distinct-count"]),
+        // The cols of a run whose rows are restricted by a sandbox, an
+        // impersonation role or database routing carry no fingerprint, since
+        // it describes rows the user cannot see. The sort then keeps the
+        // breakout order, so a card saved with `pivot_table.column_split`
+        // (which the query builder persists on save) keeps its layout for
+        // every viewer, while an unsaved split can differ between viewers.
+        const [first, second, ...rest] = _.sortBy(
+          dimensions,
+          (col) => col.fingerprint?.global?.["distinct-count"],
         );
 
         let rows;
@@ -125,7 +134,8 @@ export const settings = {
 
         if (dimensions.length < 2) {
           columns = [];
-          rows = [first];
+          // use `dimensions` so `rows` is `[]` when there are zero dimensions, not `[undefined]` (metabase#56235)
+          rows = dimensions;
         } else if (dimensions.length <= 3) {
           columns = [first];
           rows = [second, ...rest];
@@ -189,7 +199,7 @@ export const settings = {
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
     getSection: () => t`Conditional Formatting`,
-    widget: ChartSettingsTableFormatting,
+    widget: "tableFormatting",
     getDefault: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -226,9 +236,7 @@ export const settings = {
         const hasOnlyFormattableColumns =
           columnFormat.columns
             .map((columnName) =>
-              (data.cols as DatasetColumn[]).find(
-                (column) => column.name === columnName,
-              ),
+              data.cols.find((column) => column.name === columnName),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
@@ -257,11 +265,11 @@ export const _columnSettings = {
     get title() {
       return t`Sort order`;
     },
-    widget: ChartSettingIconRadio,
+    widget: "iconRadio",
     inline: true,
     getWrapperStyle: () => ({
       paddingBottom: "1rem",
-      borderBottom: `1px solid var(--mb-color-border)`,
+      borderBottom: `1px solid var(--mb-color-border-neutral)`,
     }),
     getProps: () => ({
       options: [
@@ -329,14 +337,3 @@ export const _columnSettings = {
     getDefault: displayNameForColumn,
   },
 };
-
-/*
-  When comparing field refs for pivot viz settings, ignore `base-type`.
-  Sometimes it's present, sometimes it's not. New pivot settings use column
-  names only and do not depend on field refs.
- */
-function getFieldRefForComparison(fieldRef: DimensionReference) {
-  return isDimensionReferenceWithOptions(fieldRef)
-    ? getDimensionReferenceWithoutBaseType(fieldRef)
-    : fieldRef;
-}

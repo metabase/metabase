@@ -488,6 +488,7 @@
                     (->> refs
                          (map #(lib.equality/find-matching-column all-4 -1 % ret-4)))))
             (is (=? [0 1 2 3]
+                    ;; the test targets find-column-indexes-for-refs itself
                     #_{:clj-kondo/ignore [:discouraged-var]}
                     (lib.equality/find-column-indexes-for-refs all-4 -1 refs ret-4))))
           (testing "just-3 does not match the joined TAX"
@@ -498,6 +499,7 @@
                     (->> refs
                          (map #(lib.equality/find-matching-column just-3 -1 % ret-3)))))
             (is (=? [0 1 2 -1]
+                    ;; the test targets find-column-indexes-for-refs itself
                     #_{:clj-kondo/ignore [:discouraged-var]}
                     (lib.equality/find-column-indexes-for-refs just-3 -1 refs ret-3)))))))))
 
@@ -632,7 +634,6 @@
       (testing "different columns"
         (is (int? (:id created-at)))
         (is (nil? (:id ca-expr))))
-
       (testing "both refs should match correctly"
         (is (= created-at
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
@@ -1199,7 +1200,7 @@
                {:lib/source-column-alias "BODY",       :display-name "Body",       :selected? true}
                {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? true}
                ;; the following two Card 1 → ID should have :selected? true
-               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true} ; FIXME - these should be true
+               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true}
                {:lib/source-column-alias "o__ID", :display-name "Card 1 → ID", :selected? true}
                ;; these are implicitly joinable fields, :selected? false is right
                {:lib/source-column-alias "ID",         :display-name "ID",         :selected? false}

@@ -1,22 +1,23 @@
+import cx from "classnames";
+import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
-import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, SearchResult } from "metabase-types/api";
 
-import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
 import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
+import S from "./AppBar.module.css";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
@@ -27,7 +28,6 @@ export interface AppBarLargeProps {
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
   isDocumentSidebarOpen?: boolean;
-  isCommentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
@@ -36,17 +36,20 @@ export interface AppBarLargeProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   isMetricsViewer?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
 }
 
-const AppBarLarge = ({
+export const AppBarLarge = ({
   detailView,
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
   isMetabotVisible,
   isDocumentSidebarOpen,
-  isCommentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
@@ -55,24 +58,36 @@ const AppBarLarge = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   isMetricsViewer,
+  collectionBreadcrumbs,
+  questionLineage,
+  onSearchItemSelect,
   onToggleNavbar,
+  onOpenNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
+  const isGitSyncVisible = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncVisible,
+  );
 
   const { hasMetabotAccess: isMetabotVisibleToUser } =
     useUserMetabotPermissions();
 
   return (
-    <AppBarRoot
-      hasSidebarOpen={
-        isNavBarVisible ||
-        isMetabotVisible ||
-        isDocumentSidebarOpen ||
-        isCommentSidebarOpen ||
-        isMetricsViewer
-      }
+    <Flex
+      className={cx(S.navBar, S.withTransition, {
+        [S.withBorder]:
+          isNavBarVisible ||
+          isMetabotVisible ||
+          isDocumentSidebarOpen ||
+          isMetricsViewer,
+      })}
+      align="center"
+      gap="lg"
+      h={APP_BAR_HEIGHT}
+      pl="1.325rem"
+      pr="lg"
+      bg="background_page-primary"
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
@@ -84,23 +99,22 @@ const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
           isGitSyncVisible={isGitSyncVisible}
+          onLogoClick={onOpenNavbar}
         />
-        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
-        <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+        <PLUGIN_REMOTE_SYNC.AppBarControls />
+        <Flex
+          className={cx(S.fade, { [S.hidden]: !isInfoVisible })}
+          opacity={isInfoVisible ? 1 : 0}
+          miw={0}
         >
           {detailView ? (
-            <DetailViewNav
-              ml={DETAIL_VIEW_PADDING_LEFT - 125}
-              rowName={detailView.rowName}
-              table={detailView.table}
-            />
+            <DetailViewNav detailView={detailView} />
           ) : isQuestionLineageVisible ? (
-            <QuestionLineage />
+            questionLineage
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
+            collectionBreadcrumbs
           ) : null}
-        </AppBarInfoContainer>
+        </Flex>
       </Flex>
       {(isSearchVisible ||
         isNewButtonVisible ||
@@ -114,7 +128,11 @@ const AppBarLarge = ({
           flex="1 1 auto"
         >
           {isSearchVisible &&
-            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
+            (isEmbeddingIframe ? (
+              <SearchBar onSearchItemSelect={onSearchItemSelect} />
+            ) : (
+              <SearchButton mr="lg" />
+            ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}
           {isAppSwitcherVisible && (
@@ -124,9 +142,6 @@ const AppBarLarge = ({
           )}
         </Flex>
       )}
-    </AppBarRoot>
+    </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBarLarge;

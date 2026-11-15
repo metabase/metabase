@@ -1,6 +1,6 @@
 import { Box, Loader, Stack } from "metabase/ui";
 
-import styles from "./CardEmbedNode.module.css";
+import styles from "./CardEmbedLoadingState.module.css";
 
 export const CardEmbedLoadingState = () => {
   return (

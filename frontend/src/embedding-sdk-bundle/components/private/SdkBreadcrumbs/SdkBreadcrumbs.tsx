@@ -6,8 +6,8 @@ import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbItemType,
 } from "embedding-sdk-bundle/types/breadcrumb";
-import { Badge } from "metabase/common/components/Badge";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -37,18 +37,16 @@ export const SdkBreadcrumbs = ({
     <PublicComponentStylesWrapper className={className} style={style}>
       <Flex align="center" data-testid="sdk-breadcrumbs">
         {breadcrumbs.map((breadcrumb, index) => (
-          <Fragment key={breadcrumb.id}>
-            <Badge
+          <Fragment key={`${breadcrumb.type}-${breadcrumb.id}`}>
+            <Breadcrumb
               icon={getBreadcrumbIcon(breadcrumb.type)}
-              inactiveColor="text-tertiary"
-              isSingleLine
               onClick={() => {
                 navigateTo(breadcrumb);
                 onBreadcrumbClick?.(breadcrumb);
               }}
             >
               {tc(breadcrumb.name)}
-            </Badge>
+            </Breadcrumb>
 
             {index < breadcrumbs.length - 1 && (
               <div className={S.BreadcrumbsPathSeparator}>/</div>
@@ -62,6 +60,7 @@ export const SdkBreadcrumbs = ({
 
 const getBreadcrumbIcon = (type: SdkBreadcrumbItemType): IconName =>
   match<SdkBreadcrumbItemType, IconName>(type)
+    .with("all-collections", () => "folder")
     .with("collection", () => "folder")
     .with("dashboard", () => "dashboard")
     .with("question", () => "table2")

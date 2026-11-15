@@ -1,20 +1,23 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -38,7 +41,7 @@
   :hidden    - low quality, hidden, not synced"
   #{:final :internal :hidden})
 
-(defn- visibility-type->data-layer
+(defn visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
@@ -46,7 +49,7 @@
     :hidden
     :internal))
 
-(defn- data-layer->visibility-type
+(defn data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
@@ -90,28 +93,34 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def transform-data-authority
+  "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
+  nullable in `metabase_table_user_settings`, where NULL means the user set nothing."
   {:out (fn [value]
-          (let [kw (some-> value keyword)]
-            (if (contains? writable-data-authority-types kw)
-              kw
-              (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
-                  :unknown))))
+          (when (some? value)
+            (let [kw (keyword value)]
+              (if (contains? writable-data-authority-types kw)
+                kw
+                (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
+                    :unknown)))))
    :in  (fn [value]
-          (let [kw (some-> value keyword)]
-            (when-not (contains? writable-data-authority-types kw)
-              (throw (ex-info (str "Illegal value for data_authority: " kw)
-                              {:field       :data_authority
-                               :value       value
-                               :status-code 400}))))
-          (some-> value name))})
+          (when (some? value)
+            (let [kw (keyword value)]
+              (when-not (contains? writable-data-authority-types kw)
+                (throw (ex-info (str "Illegal value for data_authority: " kw)
+                                {:field         :data_authority
+                                 :value         value
+                                 :status-code   400
+                                 :response/keys #{:field}})))
+              (name kw))))})
 
-(def ^:private legacy-data-layer->current
+(def legacy-data-layer->current
   "Map old medallion data_layer values to current values.
    Used to handle values from pre-v59 databases or serialization exports."
   {:copper :hidden
@@ -120,27 +129,69 @@
    :gold   :final})
 
 (t2/deftransforms :model/Table
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-layers)
-                     (some-fn legacy-data-layer->current identity))
-   :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-sources)
-                     (some-fn keyword identity))
+  {:entity_type             mi/transform-keyword
+   :is_published            mi/transform-boolean
+   :show_in_getting_started mi/transform-boolean
+   :visibility_type         mi/transform-keyword
+   :data_layer              (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-layers)
+                             (some-fn legacy-data-layer->current identity))
+   :field_order             mi/transform-keyword
+   :data_source             (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-sources)
+                             (some-fn keyword identity))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_authority          transform-data-authority})
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :table]
-  [_original-model _k]
-  :model/Table)
+(mi/define-batched-hydration-method with-table
+  :table
+  "Hydrate the Table of each of `instances` from its `table_id`, with one query for all of them."
+  [instances]
+  (let [table-ids (into #{} (keep :table_id) instances)
+        id->table (when (seq table-ids)
+                    (m/index-by :id (warehouse-schema.db/tables table-ids)))]
+    (for [instance instances]
+      (m/assoc-some instance :table (get id->table (:table_id instance))))))
 
 (t2/define-after-select :model/Table
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
+
+(defn validate-user-changes!
+  "Throw a 400 for a change in `changes` a user is not allowed to make to `original-table`."
+  [changes original-table]
+  ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+  ;; Tables can be moved out of any collection, however.
+  (when (:collection_id changes)
+    (collection/check-allowed-content :table (:collection_id changes)))
+  ;; Prevent setting data_authority back to unconfigured once configured
+  (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
+             (= (keyword (:data_authority changes)) :unconfigured))
+    (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+                    {:status-code 400})))
+  ;; Prevent changing data_source to/from metabase-transform.
+  ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+  ;; can be migrated to a transform-managed table via serdes.
+  (when (contains? changes :data_source)
+    (let [original-data-source (some-> (:data_source original-table) keyword)
+          new-data-source      (some-> (:data_source changes) keyword)]
+      (when (and (= original-data-source :metabase-transform)
+                 (not= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot change data_source from metabase-transform"
+                        {:status-code 400})))
+      (when (and (not mi/*deserializing?*)
+                 (not= original-data-source :metabase-transform)
+                 (= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot set data_source to metabase-transform"
+                        {:status-code 400})))))
+  (when (and (contains? changes :visibility_type)
+             (contains? changes :data_layer)
+             (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original-table)))
+             (not= (keyword (:data_layer changes)) (keyword (:data_layer original-table))))
+    (throw (ex-info "Cannot update both visibility_type and data_layer"
+                    {:status-code 400}))))
 
 (defn- sync-visibility-fields
   "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
@@ -172,9 +223,13 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :internal}]
+  ;; Default both curation columns here so model inserts are consistent across app DBs; a migration
+  ;; reasserts matching DB-level defaults for non-model insert paths.
+  (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
+                  :field_order    (or (:field_order table)
+                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
+                  :data_layer     :internal
+                  :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 
@@ -182,7 +237,8 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (t2/delete! :model/Field :table_id (:id table)))
+  (warehouse-schema.db/delete-fields-for-table! (:id table))
+  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (t2/define-before-update :model/Table
   [table]
@@ -190,43 +246,18 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-
-    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
-    ;; Tables can be moved out of any collection, however.
-    (when (:collection_id changes)
-      (collection/check-allowed-content :table (:collection_id changes)))
-
-    ;; Prevent setting data_authority back to unconfigured once configured
-    (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
-               (= (keyword (:data_authority changes)) :unconfigured))
-      (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
-                      {:status-code 400})))
-
-    ;; Prevent changing data_source to/from metabase-transform
-    (when (contains? changes :data_source)
-      (let [original-data-source (some-> (:data_source original-table) keyword)
-            new-data-source      (some-> (:data_source changes) keyword)]
-        (when (and (= original-data-source :metabase-transform)
-                   (not= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot change data_source from metabase-transform"
-                          {:status-code 400})))
-        (when (and (not= original-data-source :metabase-transform)
-                   (= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot set data_source to metabase-transform"
-                          {:status-code 400})))))
-
+    (validate-user-changes! changes original-table)
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
         ;; active: true -> false (table being deactivated)
         (and (true? current-active) (false? new-active))
-        (assoc changes :deactivated_at (mi/now))
+        (merge table changes {:deactivated_at (mi/now)})
 
         ;; active: false -> true (table being reactivated)
         (and (false? current-active) (true? new-active))
-        (assoc changes
-               :deactivated_at nil
-               :archived_at nil)
+        (merge table changes {:deactivated_at nil
+                              :archived_at    nil})
 
         :else (merge table changes)))))
 
@@ -260,6 +291,24 @@
       (perms/set-default-table-permissions!
        table
        (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
+
+(defn set-new-tables-permissions!
+  "Batch variant of [[set-new-table-permissions!]] for many newly-inserted
+  tables on the same database. Acquires the cluster lock once and delegates
+  to [[perms/set-default-table-permissions-bulk!]]. All `tables` must share
+  `db-id`."
+  [db-id tables]
+  (when (seq tables)
+    (perms/with-db-scoped-permissions-lock db-id
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)
+            tables+defaults  (mapv (fn [t]
+                                     [t (group-perm-defaults t all-users-group
+                                                             non-magic-groups
+                                                             non-admin-groups)])
+                                   tables)]
+        (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -297,7 +346,7 @@
      (:db_id instance)
      (:id instance))))
   ([_ pk]
-   (mi/can-read? (t2/select-one :model/Table pk))))
+   (mi/can-read? (warehouse-schema.db/table pk))))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
@@ -322,15 +371,14 @@
           ;; Can access via published collection (EE feature)
           (perms/can-access-via-collection? instance)))))
   ([_ pk]
-   (mi/can-query? (t2/select-one :model/Table pk))))
+   (mi/can-query? (warehouse-schema.db/table pk))))
 
 (defenterprise current-user-can-write-table?
-  "OSS implementation. Returns a boolean whether the current user can write the given table.
-   Checks both that the user is a superuser and that the table is editable (not in a remote-synced
-   collection in read-only mode)."
+  "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
+  read-only instance syncs it."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (remote-sync/table-editable? instance)
+  (and (remote-sync/can-write? :model/TableUserSettings (:id instance))
        (mi/superuser?)))
 
 (defmethod mi/can-write? :model/Table
@@ -339,33 +387,12 @@
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Table pk))))
+   (mi/can-write? (warehouse-schema.db/table pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
-   to avoid N+1 queries when checking remote-sync permissions for multiple tables."
+  "Batched hydration for :can_write on tables."
   [_model k tables]
-  (let [;; Get all unique collection IDs (excluding nil)
-        collection-ids (->> tables
-                            (keep :collection_id)
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
-                                {})
-        ;; Associate collection info with each table so table-editable? doesn't need to query
-        tables-with-collection (for [table tables]
-                                 (if-let [coll-id (:collection_id table)]
-                                   (assoc table :collection {:id coll-id
-                                                             :is_remote_synced (get collection-synced-map coll-id false)})
-                                   table))]
-    (mi/instances-with-hydrated-data
-     tables k
-     #(u/index-by :id mi/can-write? tables-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data tables k #(u/index-by :id mi/can-write? tables) :id {:default false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.
@@ -375,8 +402,7 @@
     tables
     (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in owner-user-ids]))]
+                      (warehouse-schema.db/user-summaries-by-id owner-user-ids))]
       (for [table tables]
         (assoc table :owner
                (cond
@@ -402,56 +428,22 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Table
-  [_table]
-  [:schema :name (serdes/hydrated-hash :db :db_id)])
-
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
 (def field-order-rule
   "How should we order fields."
-  [[:position :asc] [:%lower.name :asc]])
+  warehouse-schema.db/field-order-rule)
 
 (defn update-field-positions!
   "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
+                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [:model/Field :id]
-                           :table_id  (u/the-id table)
-                           {:order-by (case (:field_order table)
-                                        :custom       [[:custom_position :asc]]
-                                        :smart        [[[:case
-                                                         (app-db/isa :semantic_type :type/PK)       0
-                                                         (app-db/isa :semantic_type :type/Name)     1
-                                                         (app-db/isa :semantic_type :type/Temporal) 2
-                                                         :else                                     3]
-                                                        :asc]
-                                                       [:%lower.name :asc]]
-                                        :database     [[:database_position :asc]]
-                                        :alphabetical [[:%lower.name :asc]])}))))
-
-(defn- valid-field-order?
-  "Field ordering is valid if all the fields from a given table are present and only from that table."
-  [table field-ordering]
-  (= (t2/select-pks-set :model/Field
-                        :table_id (u/the-id table)
-                        :active   true)
-     (set field-ordering)))
-
-(defn custom-order-fields!
-  "Set field order to `field-order`."
-  [table field-order]
-  {:pre [(valid-field-order? table field-order)]}
-  (t2/with-transaction [_]
-    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
-    (dorun
-     (map-indexed (fn [position field-id]
-                    (t2/update! :model/Field field-id {:position        position
-                                                       :custom_position position}))
-                  field-order))))
+                (warehouse-schema.db/field-ids-for-table-ordered
+                 (u/the-id table)
+                 (:field_order table)))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -460,12 +452,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
-                                       {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
-                                        :where [:and
-                                                [:in :field.table_id [(map :id tables)]]
-                                                [:= :field.visibility_type  "normal"]
-                                                [:= :metabase_fieldvalues.type "full"]]}))
+   #(-> (group-by :table_id (warehouse-schema.db/full-field-values-for-tables (map :id tables)))
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
@@ -476,8 +463,7 @@
    tables k
    #(let [transform-ids (->> tables (keep :transform_id) distinct)
           id->transform (when (seq transform-ids)
-                          (t2/select-fn->fn :id identity :model/Transform
-                                            :id [:in transform-ids]))]
+                          (warehouse-schema.db/transforms-by-id transform-ids))]
       (into {}
             (keep (fn [{:keys [id transform_id]}]
                     (when transform_id
@@ -490,11 +476,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(t2/select-fn->fn :table_id :id
-                      :model/Field
-                      :table_id        [:in (map :id tables)]
-                      :semantic_type   (app-db/isa :type/PK)
-                      :visibility_type [:not-in ["sensitive" "retired"]])
+   #(warehouse-schema.db/pk-field-ids-by-table (map :id tables))
    :id))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
@@ -510,7 +492,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (warehouse-schema.db/unarchived-segments-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -519,20 +501,23 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (warehouse-schema.db/unarchived-measures-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
   :metrics
-  "Efficiently hydrate the Metrics for a collection of `tables`."
+  "Efficiently hydrate the Metrics for a collection of `tables`.
+
+  Consumers of a Table's `:metrics` want an id, a name and a link, never a metric's `:dimensions`, so the
+  `card_schema` 24 backfill is skipped. Without that the upgrade builds the whole implicitly-joined dimension set
+  for every pre-curation metric on these tables -- work proportional to (metrics x columns), then discarded --
+  which is minutes of CPU and enough garbage to exhaust the heap on a wide table with many old metrics (#83937).
+  Every other `card_schema` upgrade still runs."
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (->> (t2/select :model/Card
-                      :table_id [:in table-ids],
-                      :archived false,
-                      :type :metric,
-                      {:order-by [[:name :asc]]})
+      (->> (binding [card-schema/*skip-dimension-backfill?* true]
+             (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
            (filter mi/can-read?)))
     tables))
 
@@ -541,11 +526,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (t2/select :model/Field
-                 :active          true
-                 :table_id        [:in table-ids]
-                 :visibility_type [:not= "retired"]
-                 {:order-by       field-order-rule}))
+      (warehouse-schema.db/active-fields-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method fields
@@ -559,98 +540,42 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (t2/select-one :model/Database :id (:db_id table)))
+  (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
-  (cond-> [[{:model "Database" :id db_id}]]
-    collection_id (conj [{:model "Collection" :id collection_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
-                            {["Field" field-id] {"Table" id}}))
-        segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
-                                                              {:where [:and
-                                                                       [:= :table_id id]
-                                                                       (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))
-        measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
-                                                              {:where [:and
-                                                                       [:= :table_id id]
-                                                                       (when skip-archived [:not :archived])]})]
-                            {["Measure" measure-id] {"Table" id}}))]
-    (merge fields segments measures)))
+(defn- import-owner-ids
+  "A transform fn importing owner emails as User ids, keeping the local user ids that older exports copied, so that
+  re-importing such files on the same instance keeps the right owner."
+  [store _entities values opts]
+  (mapv (fn [v id] (if (int? v) v id))
+        values
+        (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
-(defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
-    (filterv some? [{:model "Database" :id db-name}
-                    (when (:schema table)
-                      {:model "Schema" :id (:schema table)})
-                    {:model "Table" :id (:name table)}])))
+(defmethod serialization/spec :model/Table [_]
+  {:schema    ::warehouse-schema.schema/external-table
+   :identity  [:db_id :schema :name]
+   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+               :database_require_filter :is_writable :data_authority :data_source :data_layer
+               :owner_email :is_published]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :is_defective_duplicate
+               :unique_table_helper]
+   :transform {:archived_at    serialization/date-transform
+               :deactivated_at serialization/date-transform
+               :db_id          serialization/database-transform
+               :collection_id  (serialization/fk-transform :model/Collection)
+               :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+               :transform_id   (serialization/fk-transform :model/Transform)}
+   :defaults  {:is_published            false
+               :is_upload               false
+               :show_in_getting_started false}})
 
-(defmethod serdes/entity-id "Table" [_ {:keys [name]}]
-  name)
-
-(defmethod serdes/load-find-local "Table"
-  [path]
-  (let [db-name     (-> path first :id)
-        schema-name (when (= 3 (count path))
-                      (-> path second :id))
-        table-name  (-> path last :id)
-        db-id       (t2/select-one-pk :model/Database :name db-name)]
-    (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)))
-
-(defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
-   :transform {:created_at     (serdes/date)
-               :archived_at    (serdes/date)
-               :deactivated_at (serdes/date)
-               :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database)
-               :collection_id  (serdes/fk :model/Collection)
-               :transform_id   (serdes/fk :model/Transform)}
-   :defaults {:is_defective_duplicate  false
-              :is_published            false
-              :is_upload               false
-              :show_in_getting_started false}})
-
-(defmethod serdes/storage-path "Table" [table _ctx]
-  (conj (serdes/storage-path-prefixes (serdes/path table))
-        {:label (:name table) :key (:name table)}))
-
-(defmethod serdes/metadata-query :model/Table
-  [model opts]
-  (t2/reducible-query
-   {:select [[:t.id :id]
-             [:t.db_id :db_id]
-             [:t.name :name]
-             [:t.schema :schema]
-             [:t.description :description]]
-    :from   [[(t2/table-name model) :t]]
-    :join   [[(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
-    :where  [:and
-             (serdes/metadata-query-filter :model/Database :db opts)
-             (serdes/metadata-query-filter model :t opts)]}))
-
-(defmethod serdes/metadata-query-filter :model/Table
-  [_model alias {:keys [user-info table-ids schema-ids]}]
-  (let [perm-mapping {:perms/view-data      :unrestricted
-                      :perms/create-queries :query-builder}]
-    (cond-> [:and
-             [:= (u/qualified-key alias :active) true]
-             [:= (u/qualified-key alias :visibility_type) nil]
-             [:in (u/qualified-key alias :id)
-              (perms/visible-table-filter-select :id user-info perm-mapping)]]
-      (seq schema-ids) (conj (into [:or]
-                                   (for [[db-id schemas] schema-ids]
-                                     [:and
-                                      [:= (u/qualified-key alias :db_id) db-id]
-                                      [:in (u/qualified-key alias :schema) schemas]])))
-      (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
+(defmethod serialization/storage-paths :model/Table [_ entities _ctx]
+  (mapv (fn [{:keys [db_id schema name]}]
+          (conj (serialization/storage-path-prefixes [db_id schema name])
+                {:label name :key name}))
+        entities))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -658,15 +583,20 @@
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
-                  :archived      false
+                  :archived        false
                   ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id true
-                  :creator-id    false
-                  :database-id   :db_id
-                  :view-count    true
-                  :created-at    true
-                  :updated-at    true
-                  :is-published  :is_published}
+                  :collection-id   true
+                  :creator-id      false
+                  :database-id     :db_id
+                  :view-count      true
+                  :created-at      true
+                  :updated-at      true
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :data-layer          :data_layer
+                  :data-authority      :data_authority}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -677,18 +607,25 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
-                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
-                                                :else nil]]
-                  :collection-type            :collection.type}
+                                                 [:= :this.collection_id nil]] "Our analytics"
+                                                :else nil]]}
    :where        [:and
-                  :active
-                  [:= :visibility_type nil]
+                  :this.active
+                  [:= :this.visibility_type nil]
                   [:= :db.router_database_id nil]
-                  [:not= :db_id [:inline audit/audit-db-id]]]
+                  [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Table [_ entities]
+  (mapv (fn [{:keys [collection_id transform_id]}]
+          (cond-> []
+            collection_id (conj [:model/Collection collection_id])
+            transform_id  (conj [:model/Transform transform_id])))
+        entities))

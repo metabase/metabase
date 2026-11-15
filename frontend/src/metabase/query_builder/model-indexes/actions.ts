@@ -1,23 +1,23 @@
-import { dissocIn } from "icepick";
 import _ from "underscore";
+
+import type { Dispatch } from "metabase/redux/store";
+import type Question from "metabase-lib/v1/Question";
+import type { DatasetColumn, FieldReference } from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 import {
   createModelIndex,
   deleteModelIndex,
   listModelIndexes,
-} from "metabase/api";
-import type { Dispatch } from "metabase/redux/store";
-import type Question from "metabase-lib/v1/Question";
-import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
+} from "../api/model-index";
 
 import { getPkRef } from "./utils";
 
-export type FieldWithMaybeIndex = Field & {
+export type FieldWithMaybeIndex = DatasetColumn & {
   should_index?: boolean;
 };
 
-type FieldWithIndexAndRef = Field & {
+type FieldWithIndexAndRef = DatasetColumn & {
   should_index: boolean;
   field_ref: FieldReference;
 };
@@ -38,6 +38,7 @@ export const updateModelIndexes =
       return;
     }
 
+    // Unjustified type cast. FIXME
     const { data: existingIndexes = [], error } = await (dispatch(
       listModelIndexes.initiate({ model_id: model.id() }),
     ) as Promise<{ data: ModelIndex[]; error: unknown }>);
@@ -125,15 +126,9 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags<T extends DatasetColumn | Field>(
-  fields: T[] = [],
-): T[] {
+export function cleanIndexFlags(fields: DatasetColumn[] = []): DatasetColumn[] {
   const indexesToClean = fields.reduce(
-    (
-      indexesToClean: number[],
-      field: FieldWithMaybeIndex | DatasetColumn,
-      thisIndex: number,
-    ) => {
+    (indexesToClean: number[], field: DatasetColumn, thisIndex: number) => {
       if ("should_index" in field && field.should_index !== undefined) {
         indexesToClean.push(thisIndex);
       }
@@ -144,9 +139,11 @@ export function cleanIndexFlags<T extends DatasetColumn | Field>(
 
   const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
-    newResultMetadata[index] = dissocIn(newResultMetadata[index], [
-      "should_index",
-    ]);
+    // `undefined` keys are dropped when the question is serialized for the API.
+    newResultMetadata[index] = {
+      ...newResultMetadata[index],
+      should_index: undefined,
+    };
   }
   return newResultMetadata;
 }

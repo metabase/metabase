@@ -1,12 +1,13 @@
 ---
 title: "Developer Guide"
+summary: Everything you need to work on the Metabase codebase, from setting up a dev environment to writing your own driver.
 redirect_from:
   - /docs/latest/developers-guide
 ---
 
 # Developer Guide
 
-This guide contains detailed information on how to work on Metabase codebase.
+This guide contains detailed information on how to work on the Metabase codebase.
 
 ## Contributing
 
@@ -42,6 +43,10 @@ This guide contains detailed information on how to work on Metabase codebase.
 
 - [Community drivers](./community-drivers.md)
 - [Guide to writing a driver](drivers/start.md)
+
+## Customizing Metabase
+
+- [Building custom visualizations](./custom-visualizations.md)
 
 ## Metabase documentation
 

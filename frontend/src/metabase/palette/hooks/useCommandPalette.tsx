@@ -1,27 +1,29 @@
-import type { Query } from "history";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { getCollection } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getCollection } from "metabase/common/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { useSetting } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { trackSearchClick } from "metabase/common/search/analytics";
+import {
+  canAccessSettings,
+  getUserIsAdmin,
+  isSettingsManagerPath,
+} from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
-import { trackSearchClick } from "metabase/search/analytics";
-import {
-  getDocsSearchUrl,
-  getDocsUrl,
-  getSettings,
-} from "metabase/selectors/settings";
-import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
+import { queryToSearch } from "metabase/router";
+import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSettings, useSetting } from "metabase/settings";
 import { Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { modelToUrl } from "metabase/urls";
+import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
@@ -30,7 +32,7 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
-import { getAdminSettingsSections } from "../constants";
+import { METABASE_DOCS_LABELS, getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
@@ -39,10 +41,9 @@ export const useCommandPalette = ({
   locationQuery,
 }: {
   disabled: boolean;
-  locationQuery: Query;
+  locationQuery: SearchQuery;
 }) => {
   const getIcon = useGetIcon();
-  const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
     isVisible: s.visualState !== VisualState.hidden,
@@ -71,6 +72,19 @@ export const useCommandPalette = ({
   );
 
   const hasQuery = searchQuery.length > 0;
+
+  const docsUrl = useSelector((state) => getDocsUrl(state, {}));
+  const docsSearchUrl = useSelector((state) =>
+    debouncedSearchText
+      ? getDocsUrl(state, {
+          searchQuery: debouncedSearchText,
+          utm: {
+            utm_medium: "command-palette",
+            utm_campaign: "docs-search",
+          },
+        })
+      : null,
+  );
 
   const {
     currentData: searchResults,
@@ -103,15 +117,13 @@ export const useCommandPalette = ({
   const settingValues = useSelector(getSettings);
 
   const docsAction = useMemo<PaletteAction[]>(() => {
-    const link = debouncedSearchText
-      ? getDocsSearchUrl({ query: debouncedSearchText })
-      : docsUrl;
+    const link = debouncedSearchText ? docsSearchUrl : docsUrl;
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
         name: debouncedSearchText
-          ? t`Search documentation for "${debouncedSearchText}"`
-          : t`View documentation`,
+          ? METABASE_DOCS_LABELS.searchLabel(debouncedSearchText)
+          : METABASE_DOCS_LABELS.viewLabel,
         section: "docs",
         // Include search query in keywords so kbar always shows it
         keywords: trimmedQuery,
@@ -122,7 +134,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsUrl, trimmedQuery]);
+  }, [debouncedSearchText, docsSearchUrl, docsUrl, trimmedQuery]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
@@ -138,10 +150,10 @@ export const useCommandPalette = ({
 
     const searchLocation = {
       pathname: "search",
-      query: {
+      search: queryToSearch({
         ...locationQuery,
         q: debouncedSearchText,
-      },
+      }),
     };
     if (!isSearchTypeaheadEnabled) {
       return [
@@ -276,12 +288,12 @@ export const useCommandPalette = ({
     }
 
     return Object.entries(getAdminSettingsSections(settingValues))
-      .filter(([_slug, section]) => {
+      .filter(([slug, section]) => {
         if (section.hidden) {
           return false;
         }
 
-        if (section.adminOnly && !isAdmin) {
+        if (!isAdmin && !isSettingsManagerPath(slug)) {
           return false;
         }
 
@@ -354,6 +366,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
+  } else if (wrappedSearchResult.model === "data-app") {
+    // A data app is in no collection, which getCollection would name as the root one.
+    return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
     return (
       <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>

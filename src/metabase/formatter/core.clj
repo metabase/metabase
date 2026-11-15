@@ -15,7 +15,9 @@
   create-formatter
   format-geographic-coordinates
   format-scalar-number
+  get-formatter
   graphing-column-row-fns
+  make-formatters
   make-temporal-str-formatter
   map->NumericWrapper
   map->TextWrapper

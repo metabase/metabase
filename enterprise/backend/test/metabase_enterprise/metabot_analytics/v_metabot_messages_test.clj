@@ -43,8 +43,8 @@
                   row))
           (is (some? (:created_at row))))))))
 
-(deftest deleted-messages-excluded-test
-  (testing "soft-deleted messages (deleted_at IS NOT NULL) are filtered out of the view"
+(deftest deleted-messages-included-test
+  (testing "soft-deleted messages are returned by the view"
     (let [convo-id (str (random-uuid))
           now      (java.time.OffsetDateTime/now)]
       (mt/with-temp [:model/User {user-id :id} {}
@@ -61,9 +61,9 @@
                                                              :data []
                                                              :deleted_at now}]
         (let [rows (query-view [convo-id])]
-          (is (= 1 (count rows)))
+          (is (= 2 (count rows)))
           (is (some? (find-row rows kept-id)))
-          (is (nil?  (find-row rows deleted-id))))))))
+          (is (some? (find-row rows deleted-id))))))))
 
 (deftest user-id-coalesces-to-conversation-owner-test
   (testing "user_id falls back to metabot_conversation.user_id when metabot_message.user_id is null"

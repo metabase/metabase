@@ -1,24 +1,86 @@
 (ns metabase.metabot.agent.memory-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.memory :as memory]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.query-repair-test :as query-repair-test]
+   [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.util.malli.registry :as mr]))
 
-(deftest initialize-test
-  (testing "initializes memory with messages and state"
+(deftest ^:parallel initialize-test
+  (testing "seeds the working state and starts an empty turn-state"
     (let [messages [{:role :user :content "Hello"}]
-          state {:queries {} :charts {}}
+          state {:queries {"q1" {:id "q1"}} :charts {}}
           mem (memory/initialize messages state)]
       (is (= messages (:input-messages mem)))
-      (is (= state (:state mem)))
+      (is (= state (memory/get-state mem)))
+      (is (= {} (:turn-state mem)))
       (is (= [] (:steps-taken mem)))))
+  (testing "defaults the working state when nil"
+    (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
+      (is (= {:queries {} :charts {} :link-registry {}}
+             (memory/get-state mem))))))
 
-  (testing "initializes with default state when nil"
-    (let [messages [{:role :user :content "Hello"}]
-          mem (memory/initialize messages nil)]
-      (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
-             (:state mem))))))
+(deftest ^:parallel initialize-repairs-stripped-queries-test
+  (testing "a structured query without its :lib/* keys is read as valid MBQL 5, wherever state holds it (BOT-2410)"
+    ;; Conversation state persisted before the viewing context kept the `:lib/*` keys holds such queries. Every tool
+    ;; reads them through this normalization, and `metabot_message` normalizes its `:state` the same way on read.
+    (let [stripped (query-repair-test/stripped-aggregated-query (lib/count))
+          mem      (memory/initialize [] {:queries {"q1" stripped}
+                                          :charts  {"c1" {:chart_id "c1", :query_id "q1", :queries [stripped]}}})
+          valid?   (fn [query]
+                     (and (= :mbql/query (:lib/type query))
+                          (mr/validate :metabase.lib.schema/query query)))]
+      (is (valid? (memory/find-query mem "q1")))
+      (is (valid? (-> (memory/find-chart mem "c1") :queries first)))))
+  (testing "a query the repair cannot make valid stays as it was"
+    (let [stripped (query-repair-test/stripped-aggregated-query
+                    (lib/count) (lib/sum (meta/field-metadata :venues :price)))
+          mem      (memory/initialize [] {:queries {"q1" stripped}})]
+      (is (= stripped (memory/find-query mem "q1"))))))
 
-(deftest add-step-test
+(deftest ^:parallel initialize-normalizes-state-registry-keys-test
+  (let [query          {:database 1 :nested/value "preserved"}
+        chart          {:chart_id              "c1"
+                        :queries               [query]
+                        :visualization_settings {:chart_type :bar}}
+        chart-config   {:display_type "bar"}
+        current-query  {:database 2}
+        mem            (memory/initialize
+                        []
+                        {:queries       {:q1 query, :current current-query, "current" {:database 3}}
+                         :charts        {:c1 chart}
+                         :chart-configs {:cc1 chart-config}
+                         :link-registry {(keyword "question/123") "metabase://question/123"}})
+        state          (memory/get-state mem)]
+    (testing "keywordized entity IDs are restored to strings without changing nested payload keys"
+      (is (= query (memory/find-query mem "q1")))
+      (is (= chart (memory/find-chart mem "c1")))
+      (is (= {"cc1" chart-config} (:chart-configs state)))
+      (is (= "preserved" (get-in state [:queries "q1" :nested/value]))))
+    (testing "the string-keyed current-context entry wins if both key representations are present"
+      (is (= {:database 3} (memory/find-query mem "current"))))
+    (testing "link-registry path components retain their namespace"
+      (is (= {"question/123" "metabase://question/123"}
+             (:link-registry state))))
+    (testing "shared tool state and link resolution use the normalized string keys"
+      (binding [shared/*memory-atom* (atom mem)]
+        (is (= query (get (shared/current-queries-state) "q1")))
+        (is (= chart (get (shared/current-charts-state) "c1"))))
+      (is (str/starts-with? (links/resolve-metabase-uri "metabase://query/q1"
+                                                        (:queries state)
+                                                        (:charts state))
+                            "/question#"))
+      (is (str/starts-with? (links/resolve-metabase-uri "metabase://chart/c1"
+                                                        (:queries state)
+                                                        (:charts state))
+                            "/question#")))))
+
+(deftest ^:parallel add-step-test
   (testing "adds step to memory"
     (let [mem (memory/initialize [] {})
           parts [{:type :text :text "Response"}
@@ -26,7 +88,6 @@
           mem' (memory/add-step mem parts)]
       (is (= 1 (count (:steps-taken mem'))))
       (is (= parts (-> mem' :steps-taken first :parts)))))
-
   (testing "adds multiple steps"
     (let [mem (memory/initialize [] {})
           parts1 [{:type :tool-input :function "search"}]
@@ -38,26 +99,96 @@
       (is (= parts1 (-> mem' :steps-taken first :parts)))
       (is (= parts2 (-> mem' :steps-taken second :parts))))))
 
-(deftest get-state-test
-  (testing "retrieves state from memory"
-    (let [state {:queries {"q1" {:id "q1"}} :charts {}}
-          mem (memory/initialize [] state)]
-      (is (= state (memory/get-state mem))))))
+(deftest ^:parallel writers-update-state-and-turn-delta-test
+  (testing "a writer applies to the working state and records the same into the turn delta"
+    (let [mem  (memory/initialize [] {:queries {"q1" {:id "q1"}}})
+          mem' (-> mem
+                   (memory/set-query "q2" {:id "q2"})
+                   (memory/set-chart "c1" {:id "c1"}))]
+      (testing "working state carries the seeded baseline plus this turn's writes"
+        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
+               (memory/get-state mem'))))
+      (testing "turn delta carries only this turn's writes — not the seeded baseline"
+        (is (= {:queries {"q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
+               (memory/turn-state mem'))))))
+  (testing "turn-state is nil until this turn writes something"
+    (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
+      (is (nil? (memory/turn-state mem))))))
 
-(deftest update-state-test
-  (testing "updates state with new values"
-    (let [mem (memory/initialize [] {:queries {}})
-          mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
-      (is (= {:queries {} :charts {"c1" {:id "c1"}}}
-             (memory/get-state mem')))))
+(deftest ^:parallel set-query-redraws-charts-of-that-query-test
+  (testing "a query stored again under its id, as the SQL edit tools do, replaces the copy its charts hold"
+    (let [chart  (fn [query-id sql] {:chart_id "c" :query_id query-id :queries [{:sql sql}]})
+          mem    (memory/initialize [] {:queries {"q1" {:sql "old"} "q2" {:sql "other"}}
+                                        :charts  {"c1" (chart "q1" "old")
+                                                  "c2" (chart "q2" "other")
+                                                  "c3" {:chart_id "c3" :query_id "q1"}}})
+          edited (memory/set-query mem "q1" {:sql "new"})]
+      (is (= {"c1" (chart "q1" "new")
+              "c2" (chart "q2" "other")
+              "c3" {:chart_id "c3" :query_id "q1"}}
+             (:charts (memory/get-state edited))))
+      (testing "and the redrawn chart is part of this turn's delta"
+        (is (= {:queries {"q1" {:sql "new"}} :charts {"c1" (chart "q1" "new")}}
+               (memory/turn-state edited)))))))
 
-  (testing "merges state updates"
-    (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})
-          mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
-      (is (= {:queries {"q1" {:id "q1"}} :charts {"c1" {:id "c1"}}}
-             (memory/get-state mem'))))))
+(deftest ^:parallel client-ids-survive-the-app-db-round-trip-test
+  (testing "JSON has no sets, so state read back out of metabot_message carries a vector here. It
+            has to validate in that shape, since the agent entry point checks it before memory is
+            initialized, and it has to arrive as a set."
+    (let [persisted {:client-ids ["seeded-q"]}]
+      (is (mr/validate ::metabot.schema/state persisted))
+      (is (= #{"seeded-q"}
+             (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
 
-(deftest get-steps-test
+(deftest ^:parallel persisted-todo-lists-validate-test
+  (testing "state persisted while Metabot had todo tools still validates, since the agent entry point checks it"
+    (is (mr/validate ::metabot.schema/state
+                     {:todos [{:id "1" :content "Find the orders table" :status "pending" :priority "high"}]}))))
+
+(deftest ^:parallel client-ids-persist-once-stored-test
+  (let [query   {:database 1}
+        earlier (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
+        memory  (memory/add-client-ids earlier #{"from-an-earlier-turn" "stored-now" "only-viewed"})]
+    (testing "tools see this turn's ids along with the ones earlier turns persisted"
+      (binding [shared/*memory-atom* (atom (memory/add-client-ids earlier #{"stored-now" "only-viewed"}))]
+        (is (= #{"from-an-earlier-turn" "stored-now" "only-viewed"} (shared/current-client-ids)))))
+    (testing "a turn that stores nothing persists no ids"
+      (is (nil? (memory/turn-state memory))))
+    (testing "storing a query or chart under an id persists it with earlier turns' ids"
+      (doseq [store [#(memory/set-query % "stored-now" query)
+                     #(memory/set-chart % "stored-now" {:chart_id "stored-now"})]]
+        (is (= #{"from-an-earlier-turn" "stored-now"}
+               (:client-ids (memory/turn-state (store memory)))))))
+    (testing "storing under an id an earlier turn persisted leaves the client ids unwritten"
+      (is (= {:queries {"from-an-earlier-turn" query}}
+             (memory/turn-state (memory/set-query memory "from-an-earlier-turn" query)))))))
+
+(deftest ^:parallel set-link-registry-test
+  (testing "an empty or unchanged registry is not written into the turn delta"
+    (let [without-registry (memory/initialize [] {})
+          registry        {"/model/1" "metabase://model/1"}
+          with-registry    (memory/initialize [] {:link-registry registry})]
+      (is (= without-registry (memory/set-link-registry without-registry {})))
+      (is (= with-registry (memory/set-link-registry with-registry registry)))
+      (is (nil? (memory/turn-state (memory/set-link-registry without-registry {}))))
+      (is (nil? (memory/turn-state (memory/set-link-registry with-registry registry))))))
+  (testing "a newly resolved link updates live state and the turn delta"
+    (let [mem      (memory/initialize [] {})
+          registry (atom {})
+          _        (links/resolve-links "[Model](metabase://model/1)" {} {} registry)
+          mem'     (memory/set-link-registry mem @registry)]
+      (is (= {"/model/1" "metabase://model/1"}
+             (get-in mem' [:state :link-registry])))
+      (is (= {:link-registry {"/model/1" "metabase://model/1"}}
+             (memory/turn-state mem'))))))
+
+(deftest ^:parallel merge-states-test
+  (testing "map entries merge; other entries take the later value"
+    (is (= {:queries {:q1 1 :q2 2} :client-ids #{"b"}}
+           (memory/merge-states {:queries {:q1 1} :client-ids #{"a"}}
+                                {:queries {:q2 2} :client-ids #{"b"}})))))
+
+(deftest ^:parallel get-steps-test
   (testing "retrieves all steps"
     (let [parts1 [{:type :tool-input}]
           parts2 [{:type :text}]
@@ -68,21 +199,20 @@
       (is (= parts1 (-> mem memory/get-steps first :parts)))
       (is (= parts2 (-> mem memory/get-steps second :parts))))))
 
-(deftest get-input-messages-test
+(deftest ^:parallel get-input-messages-test
   (testing "retrieves input messages"
     (let [messages [{:role :user :content "Hello"}
                     {:role :assistant :content "Hi"}]
           mem (memory/initialize messages {})]
       (is (= messages (memory/get-input-messages mem))))))
 
-(deftest iteration-count-test
+(deftest ^:parallel iteration-count-test
   (testing "counts number of steps"
     (let [mem (-> (memory/initialize [] {})
                   (memory/add-step [{:type :tool-input}])
                   (memory/add-step [{:type :text}])
                   (memory/add-step [{:type :tool-input}]))]
       (is (= 3 (memory/iteration-count mem)))))
-
   (testing "returns 0 for new memory"
     (let [mem (memory/initialize [] {})]
       (is (= 0 (memory/iteration-count mem))))))

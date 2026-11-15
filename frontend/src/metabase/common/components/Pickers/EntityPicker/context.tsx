@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
+
 import { useGetPathFromValue } from "./hooks/use-get-path-from-value";
 import type {
   EntityPickerProps,
@@ -10,7 +12,7 @@ import type {
 import {
   getItemFunctions,
   getNamespacesFromModels,
-  getValidCollectionItemModels,
+  shouldShowDataApps,
 } from "./utils";
 
 export const OmniPickerContext = createContext<
@@ -34,6 +36,7 @@ export const EntityPickerProvider = ({
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
+    showsDataApps: shouldShowDataApps(value),
   });
 
   const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);

@@ -1,43 +1,37 @@
 import React, { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
-import { ThemeProvider } from "metabase/ui";
+import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import "metabase/css/core/fonts.css";
+import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
+import { PortalContainer, ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
-require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
-require("metabase/utils/dayjs");
+
+// EChartsRenderer is loaded as an on-demand chunk in the app (see
+// EChartsRenderer/lazy.ts). Force it into the Storybook bundle so chart stories
+// render echarts synchronously and visual snapshots are deterministic (no
+// lazy-chunk skeleton flash). The dynamic `import()` then resolves from the
+// already-loaded module.
+require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-
 import { Global, css, useTheme } from "@emotion/react";
-
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
-
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-// Inject @font-face declarations synchronously at preview load so that bundled
-// fonts are registered with `document.fonts` before any story's loaders run.
-// Without this, the Emotion <Global /> in the decorator below registers them
-// later, and the fontsReady loader has nothing to wait for on first render.
-if (
-  typeof document !== "undefined" &&
-  !document.head.querySelector("style[data-metabase-font-faces]")
-) {
-  const fontFaceStyle = document.createElement("style");
-  fontFaceStyle.dataset.metabaseFontFaces = "true";
-  fontFaceStyle.textContent = defaultFontFiles({ baseUrl: "/" }).styles;
-  document.head.appendChild(fontFaceStyle);
-}
+import { loadCodeEditor } from "metabase/common/components/CodeEditor";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import {
+  getSaveDomImageStyles,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 
 // Force every registered font to load before the story renders. This ensures we
 // use same fonts for tests every time, instead of using generic fallback
@@ -46,10 +40,22 @@ if (
 // producing inconsistent behavior in code relying on measuring text (e.g., column
 // autosize in table visualization). Awaiting all loads here makes measurements
 // deterministic across platforms.
+//
+// The bundled @font-face rules arrive in the stylesheet fonts.css is extracted
+// into, so wait for the browser to have parsed it before reading document.fonts:
+// the set is empty until then, and there would be nothing to await.
+const PRELOADED_FONT_FAMILIES = ["Lato", "JetBrains Mono"];
+
 const fontsReady = async () => {
+  await document.fonts.ready;
   const loads: Promise<unknown>[] = [];
-  document.fonts.forEach((face) => loads.push(face.load()));
+  document.fonts.forEach((face) => {
+    if (PRELOADED_FONT_FAMILIES.includes(face.family)) {
+      loads.push(face.load());
+    }
+  });
   await Promise.all(loads);
+  await document.fonts.ready;
 };
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
@@ -100,16 +106,33 @@ const argTypes = {
   },
 };
 
-const globalStyles = css`
-  ${defaultFontFiles({ baseUrl: "/" })}
+declare global {
+  interface Window {
+    // Set by Loki before the page's scripts run.
+    loki?: { isRunning?: boolean };
+  }
+}
 
+// Loki widens the window to fit a story, so the page's own scrollbars would
+// only end up in the screenshot. Scrollbars inside the story stay visible.
+const lokiStyles = window.loki?.isRunning
+  ? css`
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none;
+      }
+    `
+  : undefined;
+
+const globalStyles = css`
   body {
     font-size: 0.875em;
     ${rootStyle}
   }
 
-  ${saveDomImageStyles}
+  ${getSaveDomImageStyles(false)}
   ${baseStyle}
+  ${lokiStyles}
 `;
 
 const getResolvedColorScheme = (
@@ -136,11 +159,14 @@ const decorators = [
 
     return (
       <EmotionCacheProvider>
-        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
-          <Global styles={globalStyles} />
-          <CssVariables />
-          <Story />
-        </ThemeProvider>
+        <OverlayStackProvider>
+          <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+            <Global styles={globalStyles} />
+            <CssVariables />
+            {createPortal(<PortalContainer />, document.body)}
+            <Story />
+          </ThemeProvider>
+        </OverlayStackProvider>
       </EmotionCacheProvider>
     );
   },
@@ -164,13 +190,6 @@ function CssVariables() {
 
       :root {
         --mb-default-font-family: "Lato";
-
-        /*
-      Theming-specific CSS variables.
-      These CSS variables are not part of the core design system colors.
-    **/
-        --mb-color-bg-dashboard: var(--mb-color-background-primary);
-        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */
@@ -196,7 +215,16 @@ initialize({
 const preview = {
   parameters,
   decorators,
-  loaders: [mswLoader, fontsReady],
+  // Chart components are loaded on demand, so a story that renders through the
+  // registry would otherwise be captured mid-Suspense, showing the skeleton.
+  // Wrapped because a loader is called with the story context, which would
+  // otherwise be taken for the list of displays to load.
+  loaders: [
+    mswLoader,
+    fontsReady,
+    () => loadVisualizationComponents(),
+    () => loadCodeEditor(),
+  ],
   argTypes,
 };
 

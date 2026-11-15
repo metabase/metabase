@@ -1,5 +1,6 @@
 ---
 title: List of expressions
+summary: Every aggregation and function you can use in custom expressions, with syntax and examples.
 redirect_from:
   - /docs/latest/users-guide/expressions-list
 ---
@@ -150,7 +151,7 @@ Only counts rows where the condition is true.
 
 Syntax: `CountIf(condition)`
 
-Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
+Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal was greater than 100.
 
 ### Distinct
 
@@ -186,7 +187,9 @@ Syntax: `Median(column)`
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server.
+
+Presto only provides approximate results. BigQuery uses the lower of the middle 2 values, rather than their mean, when there is an even number of values.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -208,7 +211,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: Druid, H2, MariaDB, MySQL, MongoDB, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: Druid, MariaDB, MySQL, MongoDB, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -660,7 +663,7 @@ Syntax: `regexExtract(text, regular_expression)`
 
 Example: `regexExtract([Address], "[0-9]+")`
 
-Databases that don't support `regexExtract`: H2, SQL Server, SQLite.
+Databases that don't support `regexExtract`: SQL Server, SQLite.
 
 Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#substring).
 
@@ -1048,9 +1051,9 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here they are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
-
 **Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
+
+**BigQuery**: `Median`.
 
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
@@ -1070,11 +1073,11 @@ Limitations are noted for each aggregation and function above, and here they are
 
 **SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
+**SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
 
 **Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
-If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
+If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
 Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 

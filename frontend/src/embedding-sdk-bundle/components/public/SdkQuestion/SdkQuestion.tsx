@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
@@ -18,6 +18,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SaveButton,
   SdkSaveQuestionForm,
   SqlParametersList,
@@ -60,6 +61,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "withDownloads"
     | "withAlerts"
     | "targetCollection"
+    | "initialCollection"
     | "onRun"
   >;
 
@@ -72,9 +74,16 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
  */
 export type DrillThroughQuestionProps = Omit<
   BaseSdkQuestionProps,
-  "questionId"
+  "questionId" | "initialSqlParameters"
 > &
-  SdkQuestionDefaultViewProps;
+  SdkQuestionDefaultViewProps & {
+    /**
+     * Initial values for SQL parameters, slug-keyed, applied to every SQL question that opens from the dashboard.
+     *
+     * To control a SQL question opened by a click behavior, use the dashboard's `navigatedEntityParameters` and `onNavigatedEntityParametersChange`.
+     */
+    initialSqlParameters?: BaseSdkQuestionProps["initialSqlParameters"];
+  };
 
 /**
  * @interface
@@ -82,7 +91,13 @@ export type DrillThroughQuestionProps = Omit<
  * @category InteractiveQuestion
  */
 export type SdkQuestionProps = SdkQuestionDefaultViewProps &
-  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+  // TEMP: initialVisualization is disabled at the public boundary. The internal
+  // plumbing (provider, use-load-question, run-question-query) is kept; re-enable
+  // by removing it from this Omit and restoring the prop forwarding below.
+  Omit<
+    SdkQuestionProviderProps,
+    "componentPlugins" | "initialVisualization"
+  > & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };
 
@@ -94,6 +109,7 @@ export type SdkQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -135,6 +151,7 @@ export const _SdkQuestion = ({
   entityTypes,
   dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
   sqlParameters,
   onSqlParametersChange,
@@ -143,9 +160,10 @@ export const _SdkQuestion = ({
   withAlerts = false,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCard,
   onDrillThrough,
+  navigatedEntity,
 
   height,
   width,
@@ -166,6 +184,7 @@ export const _SdkQuestion = ({
     withEditorButton,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
     entityTypes,
     onBeforeSave,
     onSave,
@@ -196,6 +215,7 @@ export const _SdkQuestion = ({
         entityTypes={entityTypes}
         dataPicker={dataPicker}
         targetCollection={targetCollection}
+        initialCollection={initialCollection}
         initialSqlParameters={initialSqlParameters}
         sqlParameters={sqlParameters}
         onSqlParametersChange={onSqlParametersChange}
@@ -204,9 +224,10 @@ export const _SdkQuestion = ({
         withAlerts={withAlerts}
         targetDashboardId={targetDashboardId}
         backToDashboard={backToDashboard}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
+        navigatedEntity={navigatedEntity}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
@@ -230,6 +251,7 @@ const subComponents: SdkQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Parameter } from "metabase-types/api";
 
@@ -24,7 +25,6 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
   const {
     setTargets,
     unsetTargets,
-    question,
     sourceOptions: baseSourceOptions,
   } = useClickMappingsData(props);
   const userAttributes = useUserAttributes();
@@ -54,25 +54,21 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
           const targetSourceOptions: SourceOptionsByType = {};
 
           const columnOptions = sourceOptions.column
-            .filter((column) => target.sourceFilters.column(column, question))
+            .filter((column) => target.sourceFilters.column(column))
             .map(getSourceOption.column);
           if (columnOptions.length > 0) {
             targetSourceOptions.column = columnOptions;
           }
 
           const parameterOptions = sourceOptions.parameter
-            .filter((parameter) =>
-              target.sourceFilters.parameter(parameter, question),
-            )
+            .filter((parameter) => target.sourceFilters.parameter(parameter))
             .map(getSourceOption.parameter);
           if (parameterOptions.length > 0) {
             targetSourceOptions.parameter = parameterOptions;
           }
 
           const userAttributeOptions = sourceOptions.userAttribute
-            .filter((name) =>
-              target.sourceFilters.userAttribute(name, question),
-            )
+            .filter((name) => target.sourceFilters.userAttribute(name))
             .map(getSourceOption.userAttribute);
           if (userAttributeOptions.length > 0) {
             targetSourceOptions.userAttribute = userAttributeOptions;
@@ -87,7 +83,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
           ({ sourceOptions }: { sourceOptions: SourceOptionsByType }) =>
             Object.keys(sourceOptions).length > 0,
         ),
-    [question, sourceOptions, unsetTargets],
+    [sourceOptions, unsetTargets],
   );
 
   if (unsetTargetsWithSourceOptions.length === 0 && setTargets.length === 0) {
@@ -116,7 +112,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
           <p className={cx(CS.mb2, CS.textMedium)}>
             {getTargetsHeading(props.object, setTargets)}
           </p>
-          <div data-testid="unset-click-mappings">
+          <Stack data-testid="unset-click-mappings" gap="sm">
             {unsetTargetsWithSourceOptions.map(
               ({
                 target,
@@ -134,7 +130,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
                 />
               ),
             )}
-          </div>
+          </Stack>
         </div>
       )}
     </div>

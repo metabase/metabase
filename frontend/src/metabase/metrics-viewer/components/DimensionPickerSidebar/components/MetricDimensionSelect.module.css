@@ -1,0 +1,22 @@
+.metricSelectInput {
+  min-height: 2rem;
+  height: 2rem;
+  border-color: var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1rem;
+}
+
+.metricSelectInput:not(:focus) {
+  cursor: pointer;
+}
+
+.metricLabel {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 600;
+  line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

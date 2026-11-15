@@ -10,10 +10,9 @@ import {
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -29,6 +28,8 @@ import {
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
+
+const buildQuestion = (card: UnsavedCard) => new Question(card, metadata);
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -90,6 +91,37 @@ describe("metabase/parameters/utils/dashboards", () => {
         sectionId: "abc",
         slug: "foo_bar_2",
         type: "category",
+      });
+    });
+
+    it("should preserve parameter settings when duplicating", () => {
+      expect(
+        createParameter(
+          {
+            name: "Category",
+            type: "string/=",
+            sectionId: "string",
+            default: ["Gadget"],
+            required: true,
+            isMultiSelect: false,
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: { values: ["Gadget", "Widget"] },
+          },
+          [],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "Category",
+        slug: "category",
+        type: "string/=",
+        sectionId: "string",
+        default: ["Gadget"],
+        required: true,
+        isMultiSelect: false,
+        values_query_type: "list",
+        values_source_type: "static-list",
+        values_source_config: { values: ["Gadget", "Widget"] },
       });
     });
   });
@@ -325,6 +357,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   });
 
   describe("getFilteringParameterValuesMap", () => {
+    // Unjustified type cast. FIXME
     const undefinedFilteringParameters = {} as UiParameter;
     const emptyFilteringParameters = createMockUiParameter({
       filteringParameters: [],
@@ -431,7 +464,7 @@ describe("metabase/parameters/utils/dashboards", () => {
                   bar: {
                     type: "dimension",
                     "widget-type": "string/contains",
-                    dimension: PRODUCTS.TITLE,
+                    "field-id": PRODUCTS.TITLE,
                   },
                 },
               }),
@@ -551,7 +584,7 @@ describe("metabase/parameters/utils/dashboards", () => {
         getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         ),
       ).toEqual([
@@ -582,7 +615,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           slug: "slug-d",
           type: "number/=",
           default: [1, 2, 3],
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -598,7 +631,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "f",
           slug: "slug-f",
           type: "string/contains",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -606,7 +639,10 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "g",
           slug: "slug-g",
           type: "string/starts-with",
-          fields: [expect.any(Field), expect.any(Field)],
+          fields: [
+            expect.objectContaining({ id: expect.any(Number) }),
+            expect.objectContaining({ id: expect.any(Number) }),
+          ],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -614,7 +650,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "h",
           slug: "slug-h",
           type: "string/=",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: true,
         },
       ]);

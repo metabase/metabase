@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
-
    [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
@@ -50,7 +49,6 @@
               (mt/with-non-admin-groups-no-root-collection-perms
                 (mt/user-http-request :rasta :get 403
                                       (str "/model-index/" (:id model-index))))))
-
           (testing "DELETE"
             (testing "Must have write access to the underlying model"
               (mt/with-non-admin-groups-no-root-collection-perms
@@ -92,8 +90,7 @@
                                                  {:model_id  (:id model)
                                                   :pk_ref    (by-name "id")
                                                   :value_ref not-in-query})]
-              (is (=? {:cause #"Could not identify field by ref.*"}
-                      response)))))))))
+              (is (re-find #"Could not identify field by ref.*" response)))))))))
 
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"

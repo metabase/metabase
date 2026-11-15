@@ -1,8 +1,9 @@
 import type { TimeInputProps as MantineTimeInputProps } from "@mantine/dates";
 import { TimeInput as MantineTimeInput } from "@mantine/dates";
-import dayjs from "dayjs";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useLayoutEffect, useState } from "react";
+
+import { dayjs } from "metabase/dayjs";
 
 const TIME_FORMAT = "HH:mm";
 

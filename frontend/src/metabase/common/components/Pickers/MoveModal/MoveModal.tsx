@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,15 +7,15 @@ import type {
   MoveCollectionDestination,
   MoveDestination,
   OnMoveWithOneItem,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   isItemCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import {
   EntityPickerModal,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
@@ -58,7 +59,7 @@ export const MoveModal = ({
         return false;
       }
 
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 
@@ -81,8 +82,8 @@ export const MoveModal = ({
       }
 
       if (
-        !isInDbTree(item) &&
-        !isInDbTree(movingItem) &&
+        isInCollectionTree(item) &&
+        isInCollectionTree(movingItem) &&
         item.namespace &&
         movingItem.namespace
       ) {
@@ -91,7 +92,7 @@ export const MoveModal = ({
       }
 
       if (isDisabledItem) {
-        return isDisabledItem(item as OmniPickerCollectionItem);
+        return isDisabledItem(item);
       }
 
       return false;
@@ -101,7 +102,7 @@ export const MoveModal = ({
 
   const canSelectItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return false;
       }
 
@@ -166,7 +167,7 @@ export const MoveModal = ({
         return onMove({
           id: destination.id,
           model: destination.model,
-        } as MoveDestination);
+        });
       }
     },
     [onMove, canMoveToDashboard],
@@ -246,7 +247,7 @@ export const BulkMoveModal = ({
 
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 
@@ -266,10 +267,7 @@ export const BulkMoveModal = ({
       if (item.model === "collection") {
         const hasInvalidItem = selectedItems.some(
           (selectedItem) =>
-            !canMoveCollectionToLibraryDestination(
-              selectedItem as OmniPickerCollectionItem,
-              item,
-            ) ||
+            !canMoveCollectionToLibraryDestination(selectedItem, item) ||
             !canPlaceEntityInCollectionOrDescendants(
               selectedItem.model,
               getCollectionType(item),
@@ -287,7 +285,7 @@ export const BulkMoveModal = ({
 
   const canSelectItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return false;
       }
       if (shouldDisableItem(item)) {
@@ -333,6 +331,7 @@ export const BulkMoveModal = ({
         return !selectedItems.every(
           (selectedItem) =>
             canMoveCollectionToLibraryDestination(
+              // Unjustified type cast. FIXME
               selectedItem as OmniPickerCollectionItem,
               item,
             ) &&
@@ -349,6 +348,7 @@ export const BulkMoveModal = ({
 
   const handleMove = useCallback(
     async (destination: OmniPickerItem) => {
+      // Unjustified type cast. FIXME
       return onMove({
         id: destination.id,
         model: destination.model,

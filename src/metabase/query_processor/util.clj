@@ -4,14 +4,11 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib only soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys get-in]]
@@ -28,23 +25,47 @@
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved
 ;; to [[metabase.legacy-mbql.util]]
 
+(defn- remark-field
+  [field-name value]
+  (when-let [value (cond-> value (keyword? value) name)]
+    (format " %s: %s" field-name value)))
+
+(mu/defn query->remark-data
+  "Returns the data for a query remark as a map. Drivers can format this data as their database requires."
+  [{{:keys [executed-by query-hash card-id dashboard-id pulse-id context], :as _info} :info
+    database-id :database
+    :as query} :- ::qp.schema/any-query]
+  {:user-id      executed-by
+   :query-type   (if (:lib/type query)
+                   (case (keyword (:lib/type (lib/query-stage query -1)))
+                     :mbql.stage/mbql   "MBQL"
+                     :mbql.stage/native "native")
+                   (case (keyword (:type query))
+                     :query  "MBQL"
+                     :native "native"))
+   :query-hash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+   :account-id   (system/site-uuid)
+   :dashboard-id dashboard-id
+   :card-id      card-id
+   :pulse-id     pulse-id
+   :context      context
+   :database-id  database-id})
+
 (mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
-  [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
-  (let [query-type (if (:lib/type query)
-                     (case (keyword (:lib/type (lib/query-stage query -1)))
-                       :mbql.stage/mbql   "MBQL"
-                       :mbql.stage/native "native")
-                     (case (keyword (:type query))
-                       :query  "MBQL"
-                       :native "native"))]
-    (str "Metabase" (when executed-by
-                      (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
-                      (format ":: userID: %s queryType: %s queryHash: %s"
-                              executed-by
-                              query-type
-                              (codecs/bytes->hex query-hash))))))
+  [query :- ::qp.schema/any-query]
+  (let [{:keys [user-id query-type query-hash account-id dashboard-id card-id pulse-id context database-id]}
+        (query->remark-data query)]
+    (str "Metabase" (when user-id
+                      (assert query-hash "If info includes executed-by it should also include query-hash")
+                      (format ":: userID: %s queryType: %s queryHash: %s" user-id query-type query-hash))
+         (remark-field "accountID" account-id)
+         (remark-field "dashboardID" dashboard-id)
+         (remark-field "cardID" card-id)
+         (remark-field "pulseID" pulse-id)
+         (remark-field "context" context)
+         (remark-field "databaseID" database-id))))
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
@@ -76,41 +97,6 @@
       (str/replace #"_" "-")
       keyword))
 
-(def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
-  "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
-  #{:source-field :join-alias})
-
-(defn- field-normalizer
-  {:deprecated "0.57.0"}
-  [field]
-  (let [[type id-or-name options] (lib/normalize ::mbql.s/field field)]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    [type id-or-name (select-keys options field-options-for-identification)]))
-
-;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead
-(defn field->field-info
-  "Given a field ref and result_metadata, return a map of information about the field if result_metadata contains a
-  matched field.
-
-  DEPRECATED -- this is broken, please use Lib instead going forward."
-  {:deprecated "0.57.0"}
-  [field-ref cols]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [[_ttype id-or-name _options :as field-ref] (field-normalizer field-ref)]
-    (or
-     ;; try match field_ref first
-     (first (filter (fn [field-info]
-                      (= field-ref
-                         (-> field-info
-                             :field_ref
-                             field-normalizer)))
-                    cols))
-     ;; if not match name for aggregation or field with string id
-     (first (filter (fn [col]
-                      (= (:name col)
-                         id-or-name))
-                    cols)))))
-
 (def ^:private ^{:deprecated "0.57.0"} preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
@@ -124,34 +110,24 @@
 
   Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
   metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
+  the metadata from a run from the query, and `old-metadata` should be the metadata from the database we wish to
   ensure survives."
   {:deprecated "0.57.0"}
-  [fresh pre-existing]
+  [new-metadata old-metadata]
+  ;; deprecated fn using its own deprecated helper; both leave together
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [by-name (m/index-by :name pre-existing)]
-    (for [col fresh]
-      (if-let [existing (get by-name (:name col))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
+  (map (fn [new-col old-col]
+         (cond-> new-col
+           old-col (merge (select-keys old-col preserved-keys))))
+       new-metadata
+       (lib/match-returned-columns old-metadata new-metadata)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *execute-async?*
-  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
+  queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
+  calling thread."
   true)
-
-(defn do-with-execute-async
-  "Impl of `with-execute-async`"
-  [thunk]
-  (if *execute-async?*
-    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
-    (thunk)))
-
-(defmacro with-execute-async
-  "Execute body asynchronously in a pooled executor.
-
-  Used for side effects during query execution like saving query execution info."
-  [thunk]
-  `(do-with-execute-async ~thunk))
 
 (mu/defn userland-query? :- :boolean
   "Returns true if the query is an userland query, else false."
@@ -160,5 +136,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

@@ -39,7 +39,7 @@ export function SimpleDatePicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Stack p="md">
+      <Stack p="lg">
         <DateOperatorPicker
           value={value}
           availableOperators={availableOperators}

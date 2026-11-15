@@ -1,5 +1,6 @@
 ---
 title: How to find a known bug or limitation
+summary: How to find out whether what you're hitting is a known bug or a known product limitation.
 ---
 
 # How to find a known bug or limitation
@@ -16,7 +17,7 @@ If your work in Metabase is crashing, missing, or not being saved, you might hav
 
    > If you're encountering problems after your Metabase version was recently upgraded, you can add the label `.Regression`.
 
-3. Choose least one value in the **Label** dropdown that matches the feature you're having trouble with.
+3. Choose at least one value in the **Label** dropdown that matches the feature you're having trouble with.
 
    > Add additional keywords to the search bar above the list of results. Hit Enter/Return to run the search.
 

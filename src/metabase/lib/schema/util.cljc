@@ -1,16 +1,16 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref run! every? mapv empty? first second])
+  (:refer-clojure :exclude [ref run! every? mapv reduce empty? first second])
   (:require
    [medley.core :as m]
-   [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv empty? first second]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [run! every? mapv reduce empty? first second]]))
 
 (declare collect-uuids*)
 
 (defn- collect-uuids-in-map [m result]
-  (when-let [our-uuid (or (:lib/uuid (lib.options/options m))
+  (when-let [our-uuid (or (:lib/uuid (:lib/options m))
                           (:lib/uuid m))]
     ;; Keep duplicates in metadata of the result.
     (if (@result our-uuid)
@@ -66,8 +66,7 @@
 (defn- mbql-clauses?
   [xs]
   (and (sequential? xs)
-       (or (empty? xs)
-           (every? mbql-clause? xs))))
+       (every? mbql-clause? xs)))
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
@@ -84,7 +83,7 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [clause]
+  [clause :- :metabase.lib.schema.common/any-clause]
   (let [tag (first clause)
         opts (second clause)
         f #(cond-> %
@@ -101,9 +100,21 @@
   "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
   `:order-by`? (Are they distinct ignoring keys that aren't important such as namespaced keys and type info?)"
   [mbql-clauses]
-  (and (mbql-clauses? mbql-clauses)
-       (or (< (count mbql-clauses) 2)
-           (apply distinct? (map mbql-clause-distinct-key mbql-clauses)))))
+  (let [n (count mbql-clauses)]
+    (and (mbql-clauses? mbql-clauses)
+         (cond (< n 2) true
+               (= n 2) (not= (mbql-clause-distinct-key (first mbql-clauses))
+                             (mbql-clause-distinct-key (second mbql-clauses)))
+               ;; This clause reimplements a specialized version of "all unique by key?" that shortcurcuits on
+               ;; duplicate element.
+               :else (let [found-dup? (true? (reduce (fn [seen x]
+                                                       (let [x-key (mbql-clause-distinct-key x)]
+                                                         (if (contains? seen x-key)
+                                                           (reduced true)
+                                                           (conj! seen x-key))))
+                                                     (transient #{})
+                                                     mbql-clauses))]
+                       (not found-dup?))))))
 
 (mr/def ::distinct-mbql-clauses
   [:fn
@@ -123,23 +134,16 @@
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
   [x]
-  (perf/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :lib/uuid)))
-   x))
+  (match/replace-all x
+    {:lib/uuid _} (dissoc &match :lib/uuid)))
 
 (defn sorted-maps
   "Recursively convert all maps in `x` to sorted maps using the same comparator
    as [[metabase.lib.schema.common/unfussy-sorted-map]]. This ensures consistent
    JSON serialization order regardless of how maps were constructed."
   [x sorted-map-fn]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x) (not (sorted? x)))
-       (into (sorted-map-fn) x)
-       x))
-   x))
+  (match/replace-all x
+    (m :guard (and (map? m) (not (sorted? m)))) (into (sorted-map-fn) m)))
 
 (defn- aggregation-ref?
   "Check if `x` is an aggregation ref clause `[:aggregation opts uuid-string]`."

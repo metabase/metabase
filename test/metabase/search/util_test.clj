@@ -19,7 +19,17 @@
   (is (impossible? [:and [:= 1 :this.id] [:!= "card" "card"]]))
   (is (not (impossible? [:and [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (not (impossible? [:or [:= 1 :this.id] [:!= "card" "dashboard"]])))
-  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]])))
+  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]]))
+  (testing "booleans fold like strings, e.g. the most_recent flag of a superseded revision"
+    (is (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= false true]]))
+    (is (not (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= true true]]))))
+  (testing "0 and 1 compare as booleans, as a MySQL app database can represent them"
+    (is (impossible? [:= 0 true]))
+    (is (not (impossible? [:= 1 true]))))
+  (testing "other numbers never fold, since Clojure equality can disagree with SQL about them"
+    (is (not (impossible? [:= 1 2])))
+    (is (not (impossible? [:= 1M 1])))
+    (is (not (impossible? [:!= 1 1])))))
 
 ;;; ============================================================================
 ;;; Postgres-specific utility tests
@@ -30,22 +40,16 @@
 (deftest to-tsquery-expr-test
   (is (= "'a' & 'b' & 'c':*"
          (search-expr "a b c")))
-
   (is (= "'a' & 'b' & 'c':*"
          (search-expr "a AND b AND c")))
-
   (is (= "'a' & 'b' & 'c'"
          (search-expr "a b \"c\"")))
-
   (is (= "'a' & 'b' | 'c':*"
          (search-expr "a b or c")))
-
   (is (= "'a' | 'b':*"
          (search-expr "a or and or b")))
-
   (is (= "'this' & !'that':*"
          (search-expr "this -that")))
-
   (testing "hyphens"
     (is (= "'[ops' & 'monitoring]' & '-' & 'available':*"
            (search-expr "[ops monitoring] - available")))
@@ -53,39 +57,31 @@
            (search-expr "[ops monitoring] -- available")))
     (is (= "'[ops' & 'monitoring]' & 'not-available':*"
            (search-expr "[ops monitoring] not-available"))))
-
   (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
          (search-expr "a b \" c d\" e or b e")))
-
   (is  (= "'ab' <-> 'and' <-> 'cde' <-> 'f' | !'abc' & 'def' & 'ghi' | 'jkl' <-> 'mno' <-> 'or' <-> 'pqr'"
           (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
-
   (is (= "'big' & 'data' | 'business' <-> 'intelligence' | 'data' & 'wrangling':*"
          (search-expr "Big Data oR \"Business Intelligence\" OR data and wrangling")))
-
   (testing "unbalanced quotes"
     (is (= "'big' <-> 'data' & 'big' <-> 'mistake':*"
            (search-expr "\"Big Data\" \"Big Mistake")))
     (is (= "'something'"
            (search-expr "something \""))))
-
   (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
          (search-expr "\"partial quoted AND OR -split")))
-
   (testing "dangerous characters"
     (is (= "'you' & '<-' & 'pointing':*"
            (search-expr "you <- pointing"))))
-
   (testing "backslash"
     (is (= "'test\\\\':*" (search-expr "test\\"))))
-
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
-    (let [available @#'search.util/available-tsv-languages]
+    (let [available (#'search.util/available-tsv-languages)]
       (is (= :english (:en available)))
       (is (= :german (:de available)))
       (is (nil? (:ko available))))))

@@ -4,10 +4,13 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.sample-data.core :as sample-data]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -29,56 +32,230 @@
                                               :engine  (name db-type)
                                               :details (:details original-db)}]}}]
       (try
-        (binding [advanced-config.file/*config* config]
-          (testing "Create a Database if it does not already exist"
-            (is (= :ok
-                   (advanced-config.file/initialize!)))
-            (let [db (t2/select-one :model/Database :name test-db-name)]
-              (is (partial= {:engine db-type}
-                            db))
+        (testing "Create a Database if it does not already exist"
+          (is (= :ok
+                 (advanced-config.file/initialize! config)))
+          (let [db (t2/select-one :model/Database :name test-db-name)]
+            (is (partial= {:engine db-type}
+                          db))
+            (is (= 1
+                   (t2/count :model/Database :name test-db-name)))
+            (testing "do not duplicate if Database already exists"
+              (is (= :ok
+                     (advanced-config.file/initialize! config)))
               (is (= 1
                      (t2/count :model/Database :name test-db-name)))
-              (testing "do not duplicate if Database already exists"
-                (is (= :ok
-                       (advanced-config.file/initialize!)))
-                (is (= 1
-                       (t2/count :model/Database :name test-db-name)))
-                (is (partial= {:engine db-type}
-                              (t2/select-one :model/Database :name test-db-name))))
-              (testing "updates db"
-                (is (= :ok
-                       (binding [advanced-config.file/*config*
-                                 (assoc-in config [:config :databases 0 :description] "foo")]
-                         (advanced-config.file/initialize!))))
-                (is (partial= {:description "foo"}
-                              (t2/select-one :model/Database :name test-db-name))))
-              (testing "does not re-set attached dwh db keys on update"
-                (is (= :ok
-                       (binding [advanced-config.file/*config*
-                                 (update-in config [:config :databases 0] merge
-                                            {:is_attached_dwh      true
-                                             :uploads_enabled      true
-                                             :uploads_schema_name  "db_123"
-                                             :uploads_table_prefix "upload_"})]
-                         (advanced-config.file/initialize!))))
-                (is (partial= {:is_attached_dwh      true
-                               :uploads_enabled      false
-                               :uploads_schema_name  nil
-                               :uploads_table_prefix nil}
-                              (t2/select-one :model/Database :name test-db-name)))))))
+              (is (partial= {:engine db-type}
+                            (t2/select-one :model/Database :name test-db-name))))
+            (testing "updates db"
+              (is (= :ok
+                     (advanced-config.file/initialize!
+                      (assoc-in config [:config :databases 0 :description] "foo"))))
+              (is (partial= {:description "foo"}
+                            (t2/select-one :model/Database :name test-db-name))))
+            (testing "does not re-set attached dwh db keys on update"
+              (is (= :ok
+                     (advanced-config.file/initialize!
+                      (update-in config [:config :databases 0] merge
+                                 {:is_attached_dwh      true
+                                  :uploads_enabled      true
+                                  :uploads_schema_name  "db_123"
+                                  :uploads_table_prefix "upload_"}))))
+              (is (partial= {:is_attached_dwh      true
+                             :uploads_enabled      false
+                             :uploads_schema_name  nil
+                             :uploads_table_prefix nil}
+                            (t2/select-one :model/Database :name test-db-name))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
 (deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
-    (binding [advanced-config.file/*config* {:version 1
-                                             :config  {:databases [{:name    (str test-db-name "-in-memory")
-                                                                    :engine  "h2"
-                                                                    :details {:db "mem:some-in-memory-db"}}]}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Database cannot be found\."
-           (advanced-config.file/initialize!))))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Database cannot be found\."
+         (advanced-config.file/initialize!
+          {:version 1
+           :config  {:databases [{:name    (str test-db-name "-in-memory")
+                                  :engine  "h2"
+                                  :details {:db "mem:some-in-memory-db"}}]}})))))
+
+(deftest init-attached-dwh-from-config-file-under-external-only-networks-test
+  (mt/with-premium-features #{:config-text-file :attached-dwh}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (let [entry->config (fn [entry] {:version 1, :config {:databases [entry]}})]
+            (try
+              (testing "an attached-DWH entry on a private address is provisioned"
+                (is (= :ok
+                       (advanced-config.file/initialize!
+                        (entry->config {:name            test-db-name
+                                        :engine          "postgres"
+                                        :is_attached_dwh true
+                                        :details         {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
+                (is (partial= {:is_attached_dwh true}
+                              (t2/select-one :model/Database :name test-db-name)))
+                (testing "and updated in place on a later boot"
+                  (is (= :ok
+                         (advanced-config.file/initialize!
+                          (entry->config {:name            test-db-name
+                                          :engine          "postgres"
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.142", :port 5432, :dbname "dwh"}}))))
+                  (is (partial= {:details {:host "10.224.7.142"}}
+                                (t2/select-one :model/Database :name test-db-name)))))
+              (finally
+                (t2/delete! :model/Database :name test-db-name)))
+            (testing "an ordinary entry with the same private address is still refused"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"private or internal network address"
+                   (advanced-config.file/initialize!
+                    (entry->config {:name    "not-the-attached-dwh"
+                                    :engine  "postgres"
+                                    :details {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
+              (is (nil? (t2/select-one :model/Database :name "not-the-attached-dwh"))))))))))
+
+(deftest init-from-config-file-stub-test
+  (testing "stub databases skip the connection test and never trigger sync"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (try
+        (let [submit-calls (atom 0)]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+            (testing "config entry with :is_stub true and empty :details is accepted"
+              (is (= :ok
+                     (advanced-config.file/initialize!
+                      {:version 1
+                       :config  {:databases [{:name    test-db-name
+                                              :engine  "h2"
+                                              :details {}
+                                              :is_stub true}]}}))))
+            (testing "row is created with :is_stub true"
+              (is (true? (t2/select-one-fn :is_stub :model/Database :name test-db-name))))
+            (testing "no sync task is submitted for stubs"
+              (is (zero? @submit-calls)))))
+        (finally
+          (t2/delete! :model/Database :name test-db-name))))))
+
+(deftest init-from-config-file-stub-does-not-clobber-existing-test
+  (testing "Stub config entries with the same name as an existing real DB must not overwrite it, whatever their engine.
+            This protects round-trip workflows where /config emits stubs for the same instance's other DBs."
+    (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+      (mt/with-temp [:model/Database existing {:name    test-db-name
+                                               :engine  "h2"
+                                               :details {:db "real-details"}}]
+        (is (= :ok
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config  {:databases [{:name    test-db-name
+                                        :engine  "postgres"
+                                        :details {}
+                                        :is_stub true}]}})))
+        (let [reloaded (t2/select-one :model/Database :id (:id existing))]
+          (testing "existing :details are preserved"
+            (is (= {:db "real-details"} (:details reloaded))))
+          (testing "existing :is_stub flag is preserved (still false)"
+            (is (false? (:is_stub reloaded)))))))))
+
+(deftest init-from-config-file-connects-existing-stub-test
+  (testing "A real config entry named like an existing stub connects that stub in place, whatever its engine"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (let [db-type      (mdb/db-type)
+            details      (:details (mt/with-driver db-type (mt/db)))
+            submit-calls (atom 0)]
+        (mt/with-temp [:model/Database stub {:name                test-db-name
+                                             :engine              (if (= db-type :postgres) "mysql" "postgres")
+                                             :details             {}
+                                             :is_stub             true
+                                             :initial_sync_status "complete"}]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+            (is (= :ok
+                   (advanced-config.file/initialize!
+                    {:version 1
+                     :config  {:databases [{:name    test-db-name
+                                            :engine  (name db-type)
+                                            :details details}]}}))))
+          (is (= 1 (t2/count :model/Database :name test-db-name)))
+          (is (=? {:engine              db-type
+                   :is_stub             false
+                   :initial_sync_status "incomplete"}
+                  (t2/select-one :model/Database :id (:id stub))))
+          (is (= 1 @submit-calls)))))))
+
+(deftest init-from-config-file-sample-recreates-missing-test
+  (testing "An is_sample entry triggers recreation of the Sample Database when one is not present."
+    (let [delete-existing! (fn []
+                             (when-let [ids (seq (t2/select-pks-vec :model/Database :is_sample true))]
+                               (t2/delete! :model/Database :id [:in ids])))
+          extract-calls    (atom 0)]
+      (delete-existing!)
+      (try
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn []
+                                      (swap! extract-calls inc)
+                                      ;; simulate extract by inserting a sample row
+                                      (t2/insert! :model/Database
+                                                  {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
+          (is (= :ok
+                 (advanced-config.file/initialize!
+                  {:version 1
+                   :config  {:databases [{:name      "Sample Database"
+                                          :engine    "h2"
+                                          :details   {}
+                                          :is_sample true}]}})))
+          (testing "extract-and-sync-sample-database! is invoked exactly once"
+            (is (= 1 @extract-calls)))
+          (testing "a sample DB row now exists"
+            (is (t2/exists? :model/Database :is_sample true))))
+        (finally
+          (delete-existing!))))))
+
+(deftest init-from-config-file-sample-noop-when-present-test
+  (testing "An is_sample entry is a no-op when the Sample Database already exists."
+    (let [extract-calls (atom 0)]
+      (mt/with-temp [:model/Database _existing {:name      "Sample Database"
+                                                :engine    :h2
+                                                :details   {:db "preexisting"}
+                                                :is_sample true}]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn [] (swap! extract-calls inc))]
+          (is (= :ok
+                 (advanced-config.file/initialize!
+                  {:version 1
+                   :config  {:databases [{:name      "Sample Database"
+                                          :engine    "h2"
+                                          :details   {}
+                                          :is_sample true}]}})))
+          (testing "extract-and-sync-sample-database! is NOT invoked"
+            (is (zero? @extract-calls)))
+          (testing "existing sample row is untouched"
+            (is (= {:db "preexisting"}
+                   (:details (t2/select-one :model/Database :is_sample true))))))))))
+
+(deftest init-from-config-file-sample-rejects-wrong-name-test
+  (testing "An is_sample entry with a name other than the canonical Sample Database name is rejected."
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"(?i)sample database"
+         (advanced-config.file/initialize!
+          {:version 1
+           :config  {:databases [{:name      "ABC"
+                                  :engine    "h2"
+                                  :details   {}
+                                  :is_sample true}]}})))))
+
+(deftest init-from-config-file-sample-rejects-wrong-engine-test
+  (testing "An is_sample entry with an engine other than h2 is rejected."
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"(?i)sample database"
+         (advanced-config.file/initialize!
+          {:version 1
+           :config  {:databases [{:name      "Sample Database"
+                                  :engine    "postgres"
+                                  :details   {}
+                                  :is_sample true}]}})))))
 
 (deftest sync-test
   (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
@@ -89,7 +266,8 @@
                                                                                      :engine  "h2"
                                                                                      :details (:details (mt/db))})]
           (is (future? sync-future))
-          (deref sync-future 5000 :timeout)
+          ;; wait for the sync to finish or crash out after 30 seconds
+          (u/deref-with-timeout sync-future (u/seconds->ms 30))
           (is (= 1 (t2/count :model/Database :name test-db-name))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
@@ -103,8 +281,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-tables crufted-table-setting}})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
@@ -127,8 +305,8 @@
                           :engine  "h2"
                           :details (:details (mt/db))})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
@@ -136,7 +314,7 @@
           ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
           ;; and make sure they are still hidden:
           (is (= {:hidden 8} (frequencies vis-types)))
-          (sync-metadata/sync-db-metadata! db)
+          (sync-metadata/sync-db-metadata! (:id db))
           (testing "Hidden tables stay hidden"
             (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
               (is (= {:hidden 8} (frequencies vis-types)))))))
@@ -152,9 +330,9 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-columns crufted-field-setting}})]
         (is (future? sync-future))
-         ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
+        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :name test-db-name)))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               tables (t2/select :model/Table :db_id (u/the-id db))
@@ -174,19 +352,19 @@
     ;; make sure we're actually testing something if it was already set to false locally.
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (try
-        (binding [advanced-config.file/*config* {:version 1
-                                                 :config {:settings {:config-from-file-sync-databases false}}}]
-          (is (= :ok (advanced-config.file/initialize!)))
-          (let [sync-future (@#'advanced-config.file.databases/init-from-config-file! {:name    test-db-name
-                                                                                       :engine  "h2"
-                                                                                       :details (:details (mt/db))})]
-            (is (nil? sync-future))
-            (let [db (t2/select-one :model/Database :name test-db-name)]
-              (is (partial= {:engine :h2}
-                            db))
-              (is (= 1 (t2/count :model/Database :name test-db-name)))
-              (testing "Database should NOT have been synced"
-                (is (zero? (t2/count :model/Table :db_id (u/the-id db))))))))
+        (is (= :ok (advanced-config.file/initialize!
+                    {:version 1
+                     :config {:settings {:config-from-file-sync-databases false}}})))
+        (let [sync-future (@#'advanced-config.file.databases/init-from-config-file! {:name    test-db-name
+                                                                                     :engine  "h2"
+                                                                                     :details (:details (mt/db))})]
+          (is (nil? sync-future))
+          (let [db (t2/select-one :model/Database :name test-db-name)]
+            (is (partial= {:engine :h2}
+                          db))
+            (is (= 1 (t2/count :model/Database :name test-db-name)))
+            (testing "Database should NOT have been synced"
+              (is (zero? (t2/count :model/Table :db_id (u/the-id db)))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
@@ -195,31 +373,31 @@
     (mt/with-temp [:model/Database _ {:name   test-db-name
                                       :engine "h2"}]
       (try
-        (binding [advanced-config.file/*config* {:version 1
-                                                 :config  {:settings  {:config-from-file-sync-databases false}
-                                                           :databases [{:name    test-db-name
-                                                                        :engine  "h2"
-                                                                        :details {}
-                                                                        :delete  (format "DELETE_WITH_DEPENDENTS:%s" test-db-name)}]}}]
-          (is (= :ok
-                 (advanced-config.file/initialize!)))
-          (is (not (t2/exists? :model/Database :name test-db-name))))
+        (is (= :ok
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config  {:settings  {:config-from-file-sync-databases false}
+                           :databases [{:name    test-db-name
+                                        :engine  "h2"
+                                        :details {}
+                                        :delete  (format "DELETE_WITH_DEPENDENTS:%s" test-db-name)}]}})))
+        (is (not (t2/exists? :model/Database :name test-db-name)))
         (finally
           (t2/delete! :model/Database :name test-db-name)))))
   (testing "We should not delete Databases from the config file if the confirmation string mismatches"
     (mt/with-temp [:model/Database _ {:name   test-db-name
                                       :engine "h2"}]
       (try
-        (binding [advanced-config.file/*config* {:version 1
-                                                 :config  {:settings  {:config-from-file-sync-databases false}
-                                                           :databases [{:name    test-db-name
-                                                                        :engine  "h2"
-                                                                        :details {}
-                                                                        :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}}]
-          (is (thrown-with-msg?
-               ExceptionInfo
-               (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
-               (advanced-config.file/initialize!)))
-          (is (t2/exists? :model/Database :name test-db-name)))
+        (is (thrown-with-msg?
+             ExceptionInfo
+             (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
+             (advanced-config.file/initialize!
+              {:version 1
+               :config  {:settings  {:config-from-file-sync-databases false}
+                         :databases [{:name    test-db-name
+                                      :engine  "h2"
+                                      :details {}
+                                      :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}})))
+        (is (t2/exists? :model/Database :name test-db-name))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))

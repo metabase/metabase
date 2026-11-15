@@ -1,0 +1,79 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
+import { t } from "ttag";
+import _ from "underscore";
+
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { CopyCardForm } from "metabase/common/components/CopyCardForm/CopyCardForm";
+import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
+import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
+import { Modal } from "metabase/ui";
+
+import type { CopyModalProps } from "./types";
+
+export function CopyModal(props: CopyModalProps) {
+  const {
+    entityType,
+    entityObject,
+    copy,
+    title,
+    onClose,
+    onSaved,
+    onValuesChange,
+  } = props;
+
+  const resolvedObject =
+    typeof entityObject?.getPlainObject === "function"
+      ? entityObject.getPlainObject()
+      : entityObject;
+  const defaultCollectionId = useGetDefaultCollectionId(
+    resolvedObject?.collection?.id,
+  );
+
+  const resolvedObjectWithDefaultCollection = defaultCollectionId
+    ? { ...resolvedObject, collection_id: defaultCollectionId }
+    : resolvedObject;
+
+  const initialValues = {
+    ..._.omit(resolvedObjectWithDefaultCollection, "id"),
+    name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
+  };
+
+  return (
+    <Modal
+      density="relaxed"
+      title={
+        title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
+      }
+      opened
+      onClose={onClose}
+    >
+      {entityType === "dashboards" && (
+        <CopyDashboardFormConnected
+          onSubmit={copy}
+          onClose={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+          onValuesChange={onValuesChange}
+          originalDashboardId={resolvedObjectWithDefaultCollection.id}
+        />
+      )}
+      {entityType === "cards" && (
+        <CopyCardForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+          model={entityObject?.type}
+        />
+      )}
+      {entityType === "documents" && (
+        <DocumentCopyForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+        />
+      )}
+    </Modal>
+  );
+}

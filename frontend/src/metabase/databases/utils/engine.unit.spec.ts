@@ -3,6 +3,7 @@ import type { Engine } from "metabase-types/api";
 import {
   formatNativeQuery,
   getEngineNativeType,
+  getEngineOptions,
   getNativeQueryLanguage,
   isDeprecatedEngine,
 } from "./engine";
@@ -104,5 +105,36 @@ describe("isDeprecatedEngine", () => {
 
   it("should be false if an engine doesn't exist", () => {
     expect(isDeprecatedEngine(engines, "buzzzzz")).toBe(false);
+  });
+});
+
+describe("getEngineOptions", () => {
+  const engines: Record<string, Engine> = {
+    postgres: {
+      "driver-name": "PostgreSQL",
+      source: { type: "official", contact: null },
+      "superseded-by": null,
+      "extra-info": null,
+    },
+    sqlite: {
+      "driver-name": "SQLite",
+      source: { type: "official", contact: null },
+      "superseded-by": null,
+      "creatable?": false,
+      "extra-info": null,
+    },
+  };
+
+  it("hides a non-creatable engine from the list", () => {
+    const values = getEngineOptions(engines).map((option) => option.value);
+    expect(values).toContain("postgres");
+    expect(values).not.toContain("sqlite");
+  });
+
+  it("still shows a non-creatable engine when it is the selected engine", () => {
+    const values = getEngineOptions(engines, "sqlite").map(
+      (option) => option.value,
+    );
+    expect(values).toContain("sqlite");
   });
 });

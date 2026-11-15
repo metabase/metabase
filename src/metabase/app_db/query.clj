@@ -21,10 +21,11 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -104,21 +105,14 @@
   sql-args)
 
 (defmethod compile clojure.lang.IPersistentMap
-  [honey-sql]
-  (let [sql-args (try
-                   (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
-                   (catch Throwable e
-                     ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
-                     ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
-                     ;; careful enough with the Honey SQL forms we create which is a bug in the Metabase code we should
-                     ;; have caught in tests.
-                     (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
-                                     {:honey-sql honey-sql}
-                                     e))))]
-    (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (app-db.format/format-sql (first sql-args))
-                (pr-str (rest sql-args)))
-    sql-args))
+  [honeysql]
+  (funnysql/format honeysql (mdb.connection/db-type)))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
+  for the `settings-last-updated` marker that instances compare against each other."
+  ^String [db-type]
+  (app-db.db/current-timestamp-string db-type))
 
 ;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query
@@ -251,9 +245,11 @@
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
         select-kvs (mapcat identity select-map)
-        pks        (t2/primary-keys model)
-        _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
-        pk-key     (keyword (first pks))
+        pks        (mapv keyword (t2/primary-keys model))
+        ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
+        ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
+        ;; returns and what `t2/update!` accepts for a composite key.
+        pk-of      (fn [row] (if (= 1 (count pks)) ((first pks) row) (mapv #(% row) pks)))
         update-fn  (fn [existing]
                      (let [updated (update-fn existing)]
                        ;; When called with an existing record, returning nil signals "no update needed".
@@ -265,11 +261,12 @@
                          (merge updated select-map))))]
     (with-conflict-retry
       (if-let [existing (apply t2/select-one model select-kvs)]
-        (let [pk (pk-key existing)]
+        (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
-            (do (t2/update! model pk updated)
+            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
+            (do (t2/update! model :toucan/pk pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
-                (pk-key updated pk))
+                (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.
             pk))
         ;; Wrap INSERT in a savepoint so that a constraint violation inside an existing

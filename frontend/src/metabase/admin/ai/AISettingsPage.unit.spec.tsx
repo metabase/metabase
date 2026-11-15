@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -13,15 +13,20 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { waitForRequest } from "__support__/utils";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSettingDefinition,
@@ -40,9 +45,9 @@ type Page = "ai-features" | "mcp";
 function getPageRoute(page: Page) {
   switch (page) {
     case "mcp":
-      return <Route path="/admin/metabot/mcp" component={McpSettingsPage} />;
+      return <Route path="/admin/metabot/mcp" element={<McpSettingsPage />} />;
     case "ai-features":
-      return <Route path="/admin/metabot*" component={AISettingsPage} />;
+      return <Route path="/admin/metabot*" element={<AISettingsPage />} />;
   }
 }
 
@@ -55,17 +60,20 @@ function getInitialRoute(page: Page) {
   }
 }
 
-const setup = async ({
-  aiFeaturesEnabled = true,
-  enableEmbedding = false,
-  contentVerification = false,
-  initialRoute,
-  isConfigured = true,
-  metabots = buildDefaultMetabots(),
-  collections = defaultSeedCollections,
-  page = "ai-features",
-}: {
+const DEPRECATED_AGENT_API_LABEL = "Agent API (deprecated)";
+
+const deprecatedAgentApiSwitch = () =>
+  screen.findByRole("switch", { name: DEPRECATED_AGENT_API_LABEL });
+
+const getLastSettingUpdateCall = (settingKey: string) =>
+  fetchMock.callHistory.lastCall(
+    `path:/api/setting/${encodeURIComponent(settingKey)}`,
+  );
+
+type SetupOpts = {
   aiFeaturesEnabled?: boolean;
+  deprecatedAgentApiEnabled?: boolean;
+  deprecatedAgentApiEnvName?: string;
   enableEmbedding?: boolean;
   contentVerification?: boolean;
   initialRoute?: string;
@@ -75,7 +83,20 @@ const setup = async ({
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
   page?: Page;
-} = {}) => {
+};
+
+const setup = async ({
+  aiFeaturesEnabled = true,
+  deprecatedAgentApiEnabled = false,
+  deprecatedAgentApiEnvName,
+  enableEmbedding = false,
+  contentVerification = false,
+  initialRoute,
+  isConfigured = true,
+  metabots = buildDefaultMetabots(),
+  collections = defaultSeedCollections,
+  page = "ai-features",
+}: SetupOpts = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
     content_verification: contentVerification,
@@ -86,7 +107,7 @@ const setup = async ({
 
   const settings = createMockSettings({
     "ai-features-enabled?": aiFeaturesEnabled,
-    "agent-api-enabled?": true,
+    "deprecated-agent-api-enabled?": deprecatedAgentApiEnabled,
     "embedded-metabot-enabled?": true,
     "llm-metabot-configured?": isConfigured,
     "llm-metabot-provider": null,
@@ -102,26 +123,24 @@ const setup = async ({
       value: null,
     }),
     createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openrouter-api-key",
-      value: undefined,
+      key: "deprecated-agent-api-enabled?",
+      value: deprecatedAgentApiEnvName ? undefined : deprecatedAgentApiEnabled,
+      is_env_setting: deprecatedAgentApiEnvName != null,
+      env_name: deprecatedAgentApiEnvName,
     }),
   ]);
   setupUpdateSettingEndpoint();
+  setupLlmProviderTypesEndpoint();
+  setupLlmProvidersEndpoint();
+  setupLlmModelsEndpoint();
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
+  // Unjustified type cast. FIXME
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
   setupMetabotsEndpoints(metabots);
 
-  [FIXED_METABOT_IDS.DEFAULT, FIXED_METABOT_IDS.EMBEDDED].forEach((metabotId) =>
+  metabots.forEach(({ id: metabotId }) =>
     setupMetabotPromptSuggestionsEndpoint({
       metabotId,
       prompts: [],
@@ -141,10 +160,24 @@ const setup = async ({
     },
   });
 
+  // Wait for the settings queries to settle before returning.
+  // When AI features are off the MCP toggles stay disabled by design, so there we just await render.
   if (page === "mcp") {
-    await screen.findByRole("switch", { name: "MCP server" });
+    if (aiFeaturesEnabled) {
+      await waitFor(() =>
+        expect(
+          screen.getByRole("switch", { name: "MCP server" }),
+        ).toBeEnabled(),
+      );
+    } else {
+      await screen.findByRole("switch", { name: "MCP server" });
+    }
   } else {
-    await screen.findByText("Disable all AI features");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Disable all AI features" }),
+      ).toBeEnabled(),
+    );
   }
 
   return view;
@@ -163,7 +196,9 @@ describe("AISettingsPage", () => {
     expect(screen.getByText("Metabot settings")).toBeInTheDocument();
     expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
     expect(screen.queryByText("MCP server")).not.toBeInTheDocument();
-    expect(screen.queryByText("Agent API")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Agent API (deprecated)"),
+    ).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Enable Metabot", {
@@ -201,7 +236,82 @@ describe("AISettingsPage", () => {
     await setup({ page: "mcp", isConfigured: false });
 
     expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled();
-    expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled();
+    expect(await deprecatedAgentApiSwitch()).toBeEnabled();
+  });
+
+  it.each([false, true])(
+    "shows the deprecated Agent API opt-in with the setting's value: %s",
+    async (deprecatedAgentApiEnabled) => {
+      await setup({ page: "mcp", deprecatedAgentApiEnabled });
+
+      expect(
+        await screen.findByRole("switch", {
+          name: DEPRECATED_AGENT_API_LABEL,
+          checked: deprecatedAgentApiEnabled,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/removed in Metabase 67/)).toBeInTheDocument();
+    },
+  );
+
+  it("persists opting in to the deprecated Agent API", async () => {
+    await setup({ page: "mcp" });
+
+    await userEvent.click(await deprecatedAgentApiSwitch());
+    await waitForRequest(() =>
+      getLastSettingUpdateCall("deprecated-agent-api-enabled?"),
+    );
+    const call = getLastSettingUpdateCall("deprecated-agent-api-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: true }));
+  });
+
+  it("keeps keyboard focus on the deprecated Agent API opt-in while the write is pending", async () => {
+    await setup({ page: "mcp" });
+    let finishWrite: () => void = () => {};
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/"),
+      new Promise((resolve) => {
+        finishWrite = () => resolve({ status: 204 });
+      }),
+      { name: "update-setting" },
+    );
+
+    const toggle = await deprecatedAgentApiSwitch();
+    toggle.focus();
+    await userEvent.keyboard(" ");
+
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-disabled", "true"),
+    );
+    expect(toggle).toBeEnabled();
+    expect(toggle).toHaveFocus();
+
+    await userEvent.keyboard(" ");
+    expect(
+      fetchMock.callHistory.calls(
+        `path:/api/setting/${encodeURIComponent("deprecated-agent-api-enabled?")}`,
+      ),
+    ).toHaveLength(1);
+
+    finishWrite();
+    await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
+    expect(toggle).toHaveFocus();
+  });
+
+  it("locks the deprecated Agent API opt-in to the value an env var sets", async () => {
+    await setup({
+      page: "mcp",
+      deprecatedAgentApiEnabled: true,
+      deprecatedAgentApiEnvName: "MB_DEPRECATED_AGENT_API_ENABLED",
+    });
+
+    const toggle = await deprecatedAgentApiSwitch();
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent("MB_DEPRECATED_AGENT_API_ENABLED");
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
   });
 
   it("disables MCP settings when all AI features are disabled", async () => {
@@ -212,32 +322,39 @@ describe("AISettingsPage", () => {
         selector: '[aria-disabled="true"] *',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
+    expect(await deprecatedAgentApiSwitch()).toBeDisabled();
   });
 
-  it("keeps the embedded deep link working by selecting the embedded tab", async () => {
-    await setup({
-      enableEmbedding: true,
-      initialRoute: `/admin/metabot?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
-    });
+  it.each([FIXED_METABOT_ENTITY_IDS.EMBEDDED, "2"])(
+    "selects the embedded Metabot for %s",
+    async (metabotId) => {
+      await setup({
+        enableEmbedding: true,
+        initialRoute: `/admin/metabot?metabot_id=${metabotId}`,
+        metabots: buildDefaultMetabots({
+          default: { id: 41 },
+          embedded: { id: 42 },
+        }),
+      });
 
-    expect(
-      screen.getByRole("tab", { name: "Embedded", selected: true }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
-  });
+      expect(
+        screen.getByRole("tab", { name: "Embedded", selected: true }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
+    },
+  );
 
   it("reflects the persisted use_verified_content state from the API", async () => {
     await setup({
       contentVerification: true,
       metabots: buildDefaultMetabots({
-        default: { use_verified_content: true },
+        default: { id: 41, use_verified_content: true },
       }),
     });
 
     expect(
       await screen.findByRole("switch", {
-        name: "Only use Verified content",
+        name: "Only use verified or curated content",
       }),
     ).toBeChecked();
   });
@@ -264,16 +381,16 @@ describe("AISettingsPage", () => {
   });
 
   it("switches tabs using a query param without changing the pathname", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       enableEmbedding: true,
       initialRoute: "/admin/metabot",
     });
 
     await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
 
-    expect(history?.getCurrentLocation()).toMatchObject({
+    expect(router?.location).toMatchObject({
       pathname: "/admin/metabot",
-      query: { metabot_id: String(FIXED_METABOT_IDS.EMBEDDED) },
+      search: `?metabot_id=${FIXED_METABOT_ENTITY_IDS.EMBEDDED}`,
       hash: "",
     });
   });

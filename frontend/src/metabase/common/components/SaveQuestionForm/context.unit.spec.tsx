@@ -1,6 +1,7 @@
 import * as formik from "formik";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -8,10 +9,11 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { useListRecentsQuery } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, CollectionId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -27,9 +29,14 @@ import {
 } from "./context";
 
 const TestComponent = () => {
-  const { values, saveToDashboard } = useSaveQuestionContext();
+  const { values, saveToDashboard, targetCollection } =
+    useSaveQuestionContext();
+  const { data: recentItems } = useListRecentsQuery({
+    context: ["selections"],
+  });
   return (
     <div>
+      {recentItems && <div data-testid="recentsLoaded" />}
       {values.collection_id && (
         <div data-testid="collectionId">{values.collection_id}</div>
       )}
@@ -39,6 +46,9 @@ const TestComponent = () => {
       {saveToDashboard && (
         <div data-testid="saveToDashboard">{saveToDashboard}</div>
       )}
+      {targetCollection != null && (
+        <div data-testid="targetCollection">{targetCollection}</div>
+      )}
     </div>
   );
 };
@@ -46,6 +56,9 @@ const TestComponent = () => {
 interface setupProps {
   question?: Question;
   originalQuestion?: Question | null;
+  initialCollectionId?: number | string | null;
+  targetCollection?: CollectionId;
+  currentUser?: User;
 }
 
 const setup = ({
@@ -55,8 +68,12 @@ const setup = ({
       collection: undefined,
       dashboard_id: undefined,
     }),
+    createMockMetadata(),
   ),
   originalQuestion = null,
+  initialCollectionId,
+  targetCollection,
+  currentUser = createMockUser({ personal_collection_id: 1337 }),
 }: setupProps = {}) => {
   const onCreate = jest.fn();
   const onSave = jest.fn();
@@ -81,14 +98,14 @@ const setup = ({
       originalQuestion={originalQuestion}
       onCreate={onCreate}
       onSave={onSave}
+      initialCollectionId={initialCollectionId}
+      targetCollection={targetCollection}
     >
       <TestComponent />
     </SaveQuestionProvider>,
     {
       storeInitialState: createMockState({
-        currentUser: createMockUser({
-          personal_collection_id: 1337,
-        }),
+        currentUser,
         settings,
       }),
     },
@@ -119,10 +136,8 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -132,12 +147,108 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             "1337", // Users personal collection id
           ),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should use the initialCollectionId prop over recent selections (EMB-1609)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "collection", id: 10 })],
+          ["selections"],
+        );
+
+        setup({ initialCollectionId: 42 });
+
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
+        );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should not suggest a recent dashboard when initialCollectionId is set (EMB-1609)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
+          ["selections"],
+        );
+
+        setup({ initialCollectionId: 42 });
+
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
+        );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should keep the collection a new question was started in over a recently selected dashboard (#51851)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
+          ["selections"],
+        );
+
+        setup({
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 7,
+                collection: undefined,
+                dashboard_id: undefined,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
+        });
+
+        await screen.findByTestId("recentsLoaded");
+
+        expect(screen.getByTestId("collectionId")).toHaveTextContent("7");
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it('should resolve targetCollection="tenant" to the user\'s tenant collection (EMB-2107)', async () => {
+        setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+        setup({
+          targetCollection: "tenant",
+          currentUser: createMockUser({
+            personal_collection_id: 1337,
+            tenant_collection_id: 99,
+          }),
+        });
+
+        expect(await screen.findByTestId("targetCollection")).toHaveTextContent(
+          "99",
+        );
+      });
+
+      it('should resolve targetCollection="personal" to the user\'s personal collection (EMB-2107)', async () => {
+        setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+        setup({ targetCollection: "personal" });
+
+        expect(await screen.findByTestId("targetCollection")).toHaveTextContent(
+          "1337",
+        );
+      });
+
+      it('should resolve initialCollectionId="tenant" to the user\'s tenant collection (EMB-2107)', async () => {
+        setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+        setup({
+          initialCollectionId: "tenant",
+          currentUser: createMockUser({
+            personal_collection_id: 1337,
+            tenant_collection_id: 99,
+          }),
+        });
+
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("99"),
+        );
       });
 
       it("should require saving to a specific dashboard if the question has a dashboard id already", async () => {
@@ -147,14 +258,17 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question({
-            ...createMockCard({
-              collection_id: 11,
-              collection: createMockCollection({ id: 11 }),
-              dashboard_id: 20,
-            }),
-            creationType: "custom_question",
-          }),
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 11,
+                collection: createMockCollection({ id: 11 }),
+                dashboard_id: 20,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
@@ -176,6 +290,7 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -197,13 +312,12 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 20 }),
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "20",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("20"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -221,13 +335,12 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               type: "model",
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "11",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("11"),
         );
 
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
@@ -263,6 +376,7 @@ describe("SaveQuestionContext", () => {
               collection: IACollection,
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
           originalQuestion: new Question(
             createMockCard({
@@ -271,11 +385,12 @@ describe("SaveQuestionContext", () => {
               dashboard_id: undefined,
               can_write: false,
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             defaultAuditInfo.custom_reports.toString(),
           ),
         );
@@ -288,6 +403,7 @@ describe("SaveQuestionContext", () => {
 
         const originalQuestion = new Question(
           createMockCard({ collection, collection_id: 11, dashboard_id: 20 }),
+          createMockMetadata(),
         );
         setup({
           originalQuestion,
@@ -306,9 +422,13 @@ describe("SaveQuestionContext", () => {
           ...opts,
         };
 
-        const question = new Question(createMockCard(card));
+        const question = new Question(
+          createMockCard(card),
+          createMockMetadata(),
+        );
         const originalQuestion = new Question(
           createMockCard({ ...card, can_write: false }),
+          createMockMetadata(),
         );
 
         return { question, originalQuestion };
@@ -341,10 +461,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ ...getProps() });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -355,6 +473,7 @@ describe("SaveQuestionContext", () => {
 describe("FormValuesPatcher", () => {
   const setValuesSpy = jest.fn();
   const setup = (initialValue: unknown) => {
+    // Unjustified type cast. FIXME
     jest.spyOn(formik, "useFormikContext").mockReturnValue({
       values: initialValue,
       setValues: setValuesSpy,

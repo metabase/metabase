@@ -1,33 +1,27 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
-  CheckDependenciesResponse,
+  DependencyCountsResponse,
   DependencyGraph,
   DependencyNode,
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
-export function setupCheckCardDependenciesEndpoint(
-  response: CheckDependenciesResponse,
+import type { MockResponse } from "./types";
+
+export function setupDependencyCountsEndpoint(
+  response: MockResponse<DependencyCountsResponse> = {
+    breaking: 0,
+    unreferenced: 0,
+  },
+  options?: UserRouteConfig,
 ) {
-  fetchMock.post("path:/api/ee/dependencies/check-card", response);
+  fetchMock.get("path:/api/ee/dependencies/counts", response, options);
 }
 
-export function setupCheckCardDependenciesEndpointError() {
-  fetchMock.post("path:/api/ee/dependencies/check-card", { status: 500 });
-}
-
-export function setupCheckSnippetDependenciesEndpoint(
-  response: CheckDependenciesResponse,
-) {
-  fetchMock.post("path:/api/ee/dependencies/check-snippet", response);
-}
-
-export function setupCheckTransformDependenciesEndpoint(
-  response: CheckDependenciesResponse,
-) {
-  fetchMock.post("path:/api/ee/dependencies/check-transform", response);
+export function setupDependencyCountsErrorEndpoint() {
+  fetchMock.get("path:/api/ee/dependencies/counts", { status: 500 });
 }
 
 export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
@@ -50,6 +44,6 @@ export function setupListUnreferencedGraphNodesEndpoint(
   fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
 }
 
-export function setupDependecyGraphEndpoint(response: DependencyGraph) {
+export function setupDependencyGraphEndpoint(response: DependencyGraph) {
   fetchMock.get("path:/api/ee/dependencies/graph", response);
 }

@@ -2,15 +2,16 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.util :as u]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util.files :as u.files]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
@@ -49,7 +50,6 @@
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
      (mt/with-temp ~model-bindings ~@body)))
 
@@ -63,8 +63,8 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+  `(mdb/with-application-db (mdb.connection/application-db :h2 ~data-source)
+     (with-open [conn# (.getConnection (mdb.connection/current-application-db))]
        (binding [t2.conn/*current-connectable* conn#]
          ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
@@ -77,9 +77,12 @@
    (fn [^javax.sql.DataSource data-source]
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
-       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
+       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script-empty)])
        (with-db data-source (mdb/finish-db-setup!))
-       (f data-source)))))
+       ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
+       ;; test-data Database, which would add an unexpected Database to serialization extracts.
+       (binding [data.impl/*skip-dataset-prewarm?* true]
+         (f data-source))))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
@@ -199,7 +202,7 @@
                                                                                 :aggregation [:sum [:field numeric-field-id nil]]
                                                                                 :breakout [[:field category-field-id nil]]}}}
                   :model/Card       {card-id-root :id} {:table_id table-id
-                                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
+                                                        ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                                         :name root-card-name
                                                         :dataset_query {:type :query
                                                                         :database db-id
@@ -248,7 +251,7 @@
                                                                 :card_id card-id}
                   :model/DashboardCard       {dashcard-top-level-click-id :id} {:dashboard_id dashboard-id
                                                                                 :card_id card-id-nested
-                                                                         ;; this is how click actions on a non-table card work (ex: a chart)
+                                                                                ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
                                                                                                                           :linkType :question
                                                                                                                           :type     :link}}}
@@ -317,7 +320,7 @@
                                                                                                     :name         "category-id"
                                                                                                     :display-name "Category ID"
                                                                                                     :type         "dimension"
-                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :field-id     category-field-id
                                                                                                     :widget-type  "id"
                                                                                                     :required     true
                                                                                                     :default      40}}}}}
@@ -528,10 +531,25 @@
                    venues-pk-field-id]}]
       ~@body)))
 
-(defn extract-one [model-name where]
-  (let [where (cond
-                (nil? where)    true
-                (number? where) [:= :id where]
-                (string? where) [:= :entity_id where]
-                :else           where)]
-    (u/rfirst (serdes/extract-all model-name {:where where}))))
+(defn extract-one
+  "The first exported `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL clause, or nil."
+  [model-name where]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))
+        rows  (t2/select model {:where    (cond
+                                            (nil? where)    nil
+                                            (number? where) [:= pk where]
+                                            (string? where) [:= :entity_id where]
+                                            :else           where)
+                                :order-by [[pk :asc]]
+                                :limit    1})]
+    (first (into [] (serialization/export model rows)))))
+
+(defn ingestion-in-memory
+  "An Ingestable serving the exported `entities` under their keys."
+  [entities]
+  (let [by-key (into {} (map (juxt serialization/key-of identity)) entities)]
+    (reify serdes.ingest/Ingestable
+      (ingest-list [_] (map serialization/key-of entities))
+      (ingest-many [_ ks] (mapv by-key ks))
+      (ingest-errors [_] []))))

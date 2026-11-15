@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import _ from "underscore";
 
-import { Databases } from "metabase/entities/databases";
+import { databaseApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
 import type { DatabaseData } from "metabase-types/api";
 
@@ -42,9 +44,11 @@ export const createDatabase = function (inputDatabase: DatabaseData) {
 
   return async function (dispatch: Dispatch) {
     try {
-      const action = await dispatch(Databases.actions.create(database));
-      const savedDatabase = Databases.HACK_getObjectFromAction(action);
-
+      const savedDatabase = await runRtkEndpoint(
+        database,
+        dispatch,
+        databaseApi.endpoints.createDatabase,
+      );
       return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);

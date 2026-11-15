@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 
-import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
-import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
-import type { SearchFilterDropdown } from "metabase/search/types";
+import type { SearchFilterDropdown } from "metabase/common/search/types";
+import { SearchFilterDateDisplay } from "metabase/querying/filters/components/SearchFilterDateDisplay";
+import { SearchFilterDatePicker } from "metabase/querying/filters/components/SearchFilterDatePicker";
 import { Box } from "metabase/ui";
 
 export const LastEditedAtFilter: SearchFilterDropdown<"last_edited_at"> = {

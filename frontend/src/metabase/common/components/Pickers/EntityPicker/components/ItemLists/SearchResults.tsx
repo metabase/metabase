@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DelayedSkeleton } from "metabase/common/components/DelayedLoading";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -28,6 +29,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
+import { getDataAppsRootItem } from "../../hooks/utils";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
@@ -46,10 +48,18 @@ export const SearchResults = ({
   const selectedItem = path?.[path.length - 1];
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
-  if (isLoading || error) {
+  if (error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
+      </Box>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Box h="100%" w="40rem" p="lg">
+        <DelayedSkeleton />
       </Box>
     );
   }
@@ -66,7 +76,7 @@ export const SearchResults = ({
   return (
     <VirtualizedList
       Wrapper={({ children, ...props }) => (
-        <Box py="md" {...props}>
+        <Box py="lg" {...props}>
           {children}
         </Box>
       )}
@@ -79,7 +89,7 @@ export const SearchResults = ({
         return (
           <Box
             key={`${item.model}-${item.id}`}
-            pb="xs"
+            pb="xxs"
             px="sm"
             data-testid="result-item"
             data-model-type={item.model}
@@ -125,7 +135,7 @@ export const SearchResults = ({
                   }
                 }
               }}
-              variant="default"
+              variant="primary"
             />
           </Box>
         );
@@ -154,6 +164,10 @@ const getItemText = (item: OmniPickerItem) => {
 
   if (item.model === "database") {
     return "";
+  }
+
+  if (item.model === "data-app") {
+    return getDataAppsRootItem().name;
   }
 
   if (isMeasure(item)) {
@@ -201,7 +215,7 @@ const LocationInfo = ({
   }
 
   return (
-    <Flex gap="xs" align="center">
+    <Flex gap="xxs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
       <Text
         size="sm"
@@ -230,7 +244,7 @@ export function SearchScopeSelector() {
       : null,
     lastCollection
       ? {
-          label: truncateName(lastCollection.name, 20),
+          label: lastCollection.name,
           value: String(lastCollection.id),
         }
       : null,
@@ -244,25 +258,20 @@ export function SearchScopeSelector() {
     <Flex
       justify="space-between"
       align="center"
-      px="md"
+      px="lg"
       py="sm"
-      bg="background-secondary"
-      mb="xs"
+      bg="background_page-secondary"
+      mb="xxs"
       data-testid="search-scope-selector"
     >
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
+        labelMaxWidth="20ch"
         value={searchScope ? String(searchScope) : "all"}
+        // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}
         data={options}
       />
     </Flex>
   );
 }
-
-const truncateName = (name: string, maxLength: number) => {
-  if (name.length <= maxLength) {
-    return name;
-  }
-  return name.slice(0, maxLength - 1) + "…";
-};

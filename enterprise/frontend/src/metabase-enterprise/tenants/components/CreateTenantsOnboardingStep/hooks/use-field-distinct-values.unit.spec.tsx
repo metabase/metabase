@@ -1,16 +1,21 @@
 import { renderHook } from "@testing-library/react";
 
+import { mainReducers as reducers } from "__support__/entities-store";
 import {
   setupCardDataset,
   setupFieldEndpoints,
+  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { waitFor } from "__support__/ui";
-import { mainReducers as reducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
 import type { FieldId, RowValue } from "metabase-types/api";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { useFieldDistinctValues } from "./use-field-distinct-values";
 
@@ -28,13 +33,21 @@ function setup({ fieldId, rows }: SetupOpts) {
     });
 
     setupFieldEndpoints(field);
+    setupTableQueryMetadataEndpoint(
+      createMockTable({
+        id: 10,
+        db_id: 100,
+        db: createMockDatabase({ id: 100 }),
+        fields: [field],
+      }),
+    );
 
     if (rows) {
       setupCardDataset({ dataset: { data: { rows } } });
     }
   }
 
-  const store = getStore(reducers, undefined, createMockState());
+  const store = getStore(reducers, createMockState());
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (

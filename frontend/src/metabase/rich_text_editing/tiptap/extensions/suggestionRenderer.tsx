@@ -12,8 +12,10 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
-import { merge } from "icepick";
 import type React from "react";
+
+import { deepMerge } from "metabase/utils/deep-merge";
+import { isFunction, isObject } from "metabase-types/guards/common";
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
@@ -33,11 +35,21 @@ const defaultRendererOptions: SuggestionRendererOptions = {
   },
 };
 
+function callRefOnKeyDown(
+  ref: unknown,
+  props: SuggestionKeyDownProps,
+): boolean {
+  if (isObject(ref) && isFunction(ref.onKeyDown)) {
+    return Boolean(ref.onKeyDown(props));
+  }
+  return false;
+}
+
 export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
   SuggestionComponent: React.ComponentType<SuggestionProps<I, TSelected>>,
   options?: DeepPartial<SuggestionRendererOptions>,
 ) => {
-  const config = merge(defaultRendererOptions, options);
+  const config = deepMerge(defaultRendererOptions, options);
 
   return () => {
     let component: ReactRenderer | undefined;
@@ -94,10 +106,10 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             top: `${pos.y}px`,
             position: "fixed",
             zIndex: 200,
-            backgroundColor: "var(--mb-color-background-primary)",
-            border: "1px solid var(--mb-color-border)",
+            backgroundColor: "var(--mb-color-background_page-primary)",
+            border: "1px solid var(--mb-color-border-neutral)",
             borderRadius: "8px",
-            boxShadow: "0 4px 10px var(--mb-color-shadow)",
+            boxShadow: "0 4px 10px var(--mb-color-shadow-default)",
             width: "320px",
             padding: "0.75rem",
             boxSizing: "border-box",
@@ -177,16 +189,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
           }
         }
 
-        const ref = component?.ref;
-        if (
-          ref &&
-          typeof ref === "object" &&
-          "onKeyDown" in ref &&
-          typeof ref.onKeyDown === "function"
-        ) {
-          return ref.onKeyDown(props);
-        }
-        return false;
+        return callRefOnKeyDown(component?.ref, props);
       },
 
       onExit() {
@@ -264,16 +267,7 @@ export const createBareSuggestionRenderer = <I = unknown, TSelected = unknown>(
       },
 
       onKeyDown(props: SuggestionKeyDownProps) {
-        const ref = component?.ref;
-        if (
-          ref &&
-          typeof ref === "object" &&
-          "onKeyDown" in ref &&
-          typeof ref.onKeyDown === "function"
-        ) {
-          return ref.onKeyDown(props);
-        }
-        return false;
+        return callRefOnKeyDown(component?.ref, props);
       },
 
       onExit() {

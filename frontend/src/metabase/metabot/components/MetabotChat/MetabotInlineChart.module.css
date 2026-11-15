@@ -1,0 +1,38 @@
+.container {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  padding-bottom: 0.5rem;
+  overflow: hidden;
+  background: var(--mb-color-background_surface-primary);
+
+  &.large {
+    padding-bottom: 1rem;
+  }
+}
+
+.header {
+  padding: 0.5rem 1rem;
+
+  .large & {
+    padding: 1rem 1.5rem 0.5rem;
+  }
+}
+
+.title {
+  color: var(--mb-color-text-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+    text-decoration: none;
+  }
+}
+
+.viz {
+  height: 18rem;
+  position: relative;
+
+  .large & {
+    height: 21rem;
+  }
+}

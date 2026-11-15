@@ -2,9 +2,9 @@
   "Internal functions used by [[metabase.api.common]]."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
@@ -19,12 +19,12 @@
        (map keyword)))
 
 (defn- requiring-resolve-form [form]
-  (walk/postwalk
-   (fn [x]
-     (if (symbol? x)
-       (try @(requiring-resolve x)
-            (catch Exception _ x)) x))
-   form))
+  (match/replace-all form
+    #'symbol?
+    ;; macro schemas can contain symbols from any module
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (try @(requiring-resolve &match)
+         (catch Exception _ &match))))
 
 (defn- all-non-nil
   [sequence]
@@ -34,10 +34,11 @@
 (defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema      (try #_:clj-kondo/ignore
+  ;; eval runs at macroexpansion time; the schema arg may be a form needing evaluation
+  (let [schema      (try #_{:clj-kondo/ignore [:discouraged-var]}
                      (eval schema)
-                         (catch Exception _ #_:clj-kondo/ignore
-                                (requiring-resolve-form schema)))
+                         (catch Exception _
+                           (requiring-resolve-form schema)))
         schema-type (mc/type schema)
         {regex :api/regex} (mc/properties schema)]
     [schema-type

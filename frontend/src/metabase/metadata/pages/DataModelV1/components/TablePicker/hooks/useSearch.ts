@@ -17,6 +17,7 @@ export function useSearch(query: string) {
       : {
           q: query,
           models: ["table"],
+          context: "data-picker",
         },
   );
 
@@ -28,7 +29,11 @@ export function useSearch(query: string) {
         result;
       const tableSchema = table_schema ?? "";
 
-      if (model !== "table" || database_name === null) {
+      if (
+        model !== "table" ||
+        database_name === null ||
+        typeof id !== "number"
+      ) {
         return;
       }
 

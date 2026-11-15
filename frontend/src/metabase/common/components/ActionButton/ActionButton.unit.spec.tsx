@@ -188,7 +188,9 @@ describe("ActionButton", () => {
     );
 
     const button = screen.getByRole("button");
-    button.click();
+    act(() => {
+      button.click();
+    });
 
     unmount();
 

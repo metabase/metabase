@@ -3,12 +3,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -20,13 +23,13 @@
   run."
   [thunk]
   (mt/with-additional-premium-features #{:scim}
-    (mt/with-temporary-setting-values [scim-enabled true]
+    (mt/with-temporary-setting-values [scim-enabled true
+                                       site-url     "http://localhost:3000"]
       (let [current-masked-key (-> (t2/select-one :model/ApiKey :scope :scim)
                                    (dissoc :masked_key))
             temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
                                    :unmasked_key)]
         (try
-          (#'scim/backfill-required-entity-ids!)
           (binding [*scim-api-key* temp-unmasked-key]
             (thunk))
           (finally
@@ -53,17 +56,13 @@
   (with-scim-setup!
     (testing "SCIM endpoints require a valid SCIM API key passed in the authorization header"
       (scim-client :get 200 "ee/scim/v2/Users"))
-
     (testing "SCIM endpoints cannot be used if SCIM is not enabled"
       (mt/with-temporary-setting-values [scim-enabled false]
         (scim-client :get 401 "ee/scim/v2/Users")))
-
     (testing "The SCIM API key cannot be used for non-SCIM endpoints"
       (scim-client :get 401 "user"))
-
     (testing "SCIM endpoints do not allow normal auth"
       (mt/user-http-request :crowberto :get 401 "ee/scim/v2/Users"))
-
     (testing "A SCIM API key cannot be passed via the x-api-key header"
       (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" *scim-api-key*}}}))))
 
@@ -75,15 +74,13 @@
           (scim-client :get 200 "ee/scim/v2/Users")
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 0 (mt/metric-value system :metabase-scim/response-error))))
-
         (testing "Bad request (400)"
           (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                         (codec/url-encode "id ne \"newuser@metabase.com\"")))
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 1 (mt/metric-value system :metabase-scim/response-error))))
-
         (testing "Unexpected server error (500)"
-          (with-redefs [scim-api/scim-response #(throw (Exception.))]
+          (mt/with-dynamic-fn-redefs [scim-api/scim-response #(throw (Exception.))]
             (scim-client :get 500 "ee/scim/v2/Users")
             (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
             (is (== 2 (mt/metric-value system :metabase-scim/response-error)))))))))
@@ -105,11 +102,10 @@
                 :emails   [{:value "scim-test@metabase.com"}]
                 :active   true
                 :locale   nil
-                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup (:id group))
+                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
                             :display "Test Group"}]
                 :meta     {:resourceType "User"}}
                response)))))
-
     (testing "404 is returned when fetching a non-existent user"
       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
@@ -118,7 +114,6 @@
     (testing "Fetch users with default pagination"
       (let [response (scim-client :get 200 "ee/scim/v2/Users")]
         (is (malli= scim-api/SCIMUserList response))))
-
     (testing "Fetch users with custom pagination"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
         (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
@@ -126,28 +121,24 @@
         (is (= 1 (get response :startIndex)))
         (is (= 2 (get response :itemsPerPage)))
         (is (= 2 (count (get response :Resources))))))
-
     (testing "Fetch user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
-
     (testing "Fetch deactivated user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"trashbird@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
-
     (testing "Fetch non-existent user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 0 (get response :totalResults)))
         (is (= 0 (count (get response :Resources))))))
-
     (testing "Error if unsupported filter operation is provided"
       (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                     (codec/url-encode "id ne \"newuser@metabase.com\""))))))
@@ -171,7 +162,6 @@
                     (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
                                    :entity_id (:id response)))))
           (finally (t2/delete! :model/User :email (:email user))))))
-
     (testing "Error when creating a user with an existing email"
       (let [existing-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                            :userName "rasta@metabase.com"
@@ -202,7 +192,6 @@
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedTest" (get-in response [:name :givenName])))
             (is (= "UpdatedUser" (get-in response [:name :familyName]))))
-
           (testing "Error when trying to update the email of an existing user"
             (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                                :id entity-id
@@ -213,7 +202,6 @@
                   response    (scim-client :put 400 (format "ee/scim/v2/Users/%s" entity-id) update-user)]
               (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
               (is (= "You may not update the email of an existing user." (get response :detail)))))
-
           (testing "Error when trying to update a non-existent user"
             (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                                :id (str (random-uuid))
@@ -241,7 +229,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= false (:active response)))))
-
         (testing "Reactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -251,7 +238,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (true? (:active response)))))
-
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -260,7 +246,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedUser" (get-in response [:name :familyName])))))
-
         (testing "Update multiple attributes of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -278,7 +263,6 @@
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
             (is (true? (response :active)))))
-
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "replace"
@@ -287,7 +271,6 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -312,7 +295,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= false (:active response)))))
-
         (testing "Reactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -320,7 +302,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (true? (:active response)))))
-
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -328,7 +309,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedUser" (get-in response [:name :familyName])))))
-
         (testing "Update multiple attributes of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -343,7 +323,6 @@
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
             (is (true? (response :active)))))
-
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "replace"
@@ -351,73 +330,66 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
                                           :value {"name.familyName" "NonexistentUser"}}]}
                 response   (scim-client :patch 404 (format "ee/scim/v2/Users/%s" (random-uuid)) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
-            (is (= "User not found" (get response :detail)))))
+            (is (= "User not found" (get response :detail)))))))))
 
-        (deftest list-groups-test
-          (with-scim-setup!
-            (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
-              (testing "Fetch groups with default pagination"
-                (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
-                  (is (malli= scim-api/SCIMGroupList response))))
+(deftest list-groups-test
+  (with-scim-setup!
+    (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
+      (testing "Fetch groups with default pagination"
+        (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
+          (is (malli= scim-api/SCIMGroupList response))))
+      (testing "Fetch groups with custom pagination"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
+          (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
+          (is (integer? (get response :totalResults)))
+          (is (= 1 (get response :startIndex)))
+          (is (= 2 (get response :itemsPerPage)))
+          (is (= 2 (count (get response :Resources))))))
+      (testing "Fetch group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Group 1\"")))]
+          (is (malli= scim-api/SCIMGroupList response))
+          (is (= 1 (get response :totalResults)))
+          (is (= 1 (count (get response :Resources))))))
+      (testing "Fetch non-existent group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Fake Group\"")))]
+          (is (malli= scim-api/SCIMUserList response))
+          (is (= 0 (get response :totalResults)))
+          (is (= 0 (count (get response :Resources))))))
+      (testing "Error if unsupported filter operation is provided"
+        (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                      (codec/url-encode "displayName ne \"Group 1\"")))))))
 
-              (testing "Fetch groups with custom pagination"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
-                  (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
-                  (is (integer? (get response :totalResults)))
-                  (is (= 1 (get response :startIndex)))
-                  (is (= 2 (get response :itemsPerPage)))
-                  (is (= 2 (count (get response :Resources))))))
-
-              (testing "Fetch group by name"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                             (codec/url-encode "displayName eq \"Group 1\"")))]
-                  (is (malli= scim-api/SCIMGroupList response))
-                  (is (= 1 (get response :totalResults)))
-                  (is (= 1 (count (get response :Resources))))))
-
-              (testing "Fetch non-existent group by name"
-                (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                             (codec/url-encode "displayName eq \"Fake Group\"")))]
-                  (is (malli= scim-api/SCIMUserList response))
-                  (is (= 0 (get response :totalResults)))
-                  (is (= 0 (count (get response :Resources))))))
-
-              (testing "Error if unsupported filter operation is provided"
-                (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
-                                              (codec/url-encode "displayName ne \"Group 1\"")))))))))
-
-    (deftest fetch-group-test
-      (with-scim-setup!
-        (testing "A single group can be fetched in the SCIM format by entity ID with its members"
-          (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
-                         :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
-            (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
-                  response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
-              (is (malli= scim-api/SCIMGroup response))
-              (is (=?
-                   {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
-                    :id          entity-id
-                    :displayName "Test Group"
-                    :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
-                                   :display "rasta@metabase.com"}]
-                    :meta        {:resourceType "Group"}}
-                   response)))))
-
-        (testing "404 is returned when fetching a non-existent group"
-          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
-
-        (testing "404 is returned when fetching the Admin or All Users group"
-          (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
-                                             {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
-            (doseq [entity-id entity-ids]
-              (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))))
+(deftest fetch-group-test
+  (with-scim-setup!
+    (testing "A single group can be fetched in the SCIM format by entity ID with its members"
+      (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
+                     :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
+          (is (malli= scim-api/SCIMGroup response))
+          (is (=?
+               {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                :id          entity-id
+                :displayName "Test Group"
+                :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
+                               :display "rasta@metabase.com"}]
+                :meta        {:resourceType "Group"}}
+               response)))))
+    (testing "404 is returned when fetching a non-existent group"
+      (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
+    (testing "404 is returned when fetching the Admin or All Users group"
+      (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
+                                         {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+        (doseq [entity-id entity-ids]
+          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
 
 (deftest create-group-test
   (with-scim-setup!
@@ -451,7 +423,18 @@
                           (t2/hydrate :members))]
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
-            (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))))
+            (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))
+    (testing "A members list naming only unknown users leaves the membership alone rather than emptying the group"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              group-update {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                            :id          entity-id
+                            :displayName (:name group)
+                            :members     [{:value (str (random-uuid))}]}]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
+          (is (= #{(mt/user->id :rasta)}
+                 (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id (:id group)))))))))
 
 (deftest delete-group-test
   (with-scim-setup!
@@ -462,12 +445,108 @@
           (scim-client :delete 204 (format "ee/scim/v2/Groups/%s" entity-id))
           (is (not (t2/exists? :model/PermissionsGroup :id (:id group))))
           (is (not (t2/exists? :model/PermissionsGroupMembership :group_id (:id group)))))))
-
     (testing "404 is returned when trying to delete a non-existent group"
       (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
-
     (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"
       (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
           (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
+
+;;; ------------------------- Data Analysts group: additions gated, removals never -------------------------
+
+(defn- data-analyst-scim-group-update
+  "A SCIM Group PUT body setting the Data Analysts group's members to `user-ids`."
+  [user-ids]
+  (let [group (perms-group/data-analyst)]
+    {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+     :id          (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+     :displayName (:name group)
+     :members     (for [user-id user-ids]
+                    {:value (t2/select-one-fn :entity_id :model/User :id user-id)})}))
+
+(defn- data-analyst-group-member-ids []
+  (set (t2/select-fn-set :user_id :model/PermissionsGroupMembership
+                         :group_id (:id (perms-group/data-analyst)))))
+
+(defn- put-data-analyst-group! [expected-status user-ids]
+  (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id (perms-group/data-analyst)))]
+    (scim-client :put expected-status (format "ee/scim/v2/Groups/%s" entity-id)
+                 (data-analyst-scim-group-update user-ids))))
+
+(deftest scim-data-analyst-group-add-requires-advanced-permissions-test
+  (testing "PUT /Groups/:id cannot add a new member to the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {existing-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {new-id :id}      {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before   (data-analyst-group-member-ids)
+                response (put-data-analyst-group! 402 [existing-id new-id])]
+            (testing "the error names the required feature, so provisioning drift is visible at the IdP"
+              (is (= (str perms/fail-to-add-data-analyst-msg) response)))
+            (testing "and the push rolls back, leaving existing memberships untouched"
+              (is (= before (data-analyst-group-member-ids)))
+              (is (contains? (data-analyst-group-member-ids) existing-id))
+              (is (not (contains? (data-analyst-group-member-ids) new-id))))))))))
+
+(deftest scim-data-analyst-group-removal-only-put-is-not-gated-test
+  (testing "PUT /Groups/:id can remove a member of the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {keep-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {drop-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
+        (perms/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [keep-id])
+          (let [members (data-analyst-group-member-ids)]
+            (is (contains? members keep-id))
+            (is (not (contains? members drop-id))))
+          (testing "and the removed member loses the is_data_analyst flag"
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id drop-id)))))))))
+
+(deftest scim-data-analyst-group-idempotent-resync-is-not-gated-test
+  (testing "PUT /Groups/:id with an unchanged member list succeeds without :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before (data-analyst-group-member-ids)]
+            (put-data-analyst-group! 200 [user-id])
+            (is (= before (data-analyst-group-member-ids)))
+            (is (contains? (data-analyst-group-member-ids) user-id))
+            (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))))))
+
+(deftest scim-data-analyst-group-add-with-advanced-permissions-test
+  (testing "PUT /Groups/:id can add members to the Data Analysts group with :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [user-id])
+          (is (contains? (data-analyst-group-member-ids) user-id))
+          (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
+(deftest scim-group-put-is-diff-based-test
+  (testing "PUT /Groups/:id leaves untouched members' rows alone rather than deleting and recreating them"
+    (with-scim-setup!
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/User {keep-id :id} {}
+                     :model/User {drop-id :id} {}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (perms/add-user-to-group! keep-id (:id group))
+          (perms/add-user-to-group! drop-id (:id group)))
+        (let [membership-id #(t2/select-one-pk :model/PermissionsGroupMembership
+                                               :group_id (:id group) :user_id keep-id)
+              original-id   (membership-id)
+              entity-id     (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id)
+                       {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                        :id          entity-id
+                        :displayName (:name group)
+                        :members     [{:value (t2/select-one-fn :entity_id :model/User :id keep-id)}]})
+          (is (= original-id (membership-id)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership
+                               :group_id (:id group) :user_id drop-id))))))))

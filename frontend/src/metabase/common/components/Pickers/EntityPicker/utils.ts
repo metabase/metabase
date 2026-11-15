@@ -1,16 +1,12 @@
 import { useCallback } from "react";
-import _ from "underscore";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import type {
-  CollectionItemModel,
-  CollectionNamespace,
-  CollectionType,
-} from "metabase-types/api";
+import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { DATA_APPS_ROOT_ID } from "./constants";
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -52,7 +48,7 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "clock";
       }
 
-      return { ...icon, color: undefined, c: icon.color ?? "brand" };
+      return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
     [getIcon],
   );
@@ -80,6 +76,15 @@ export const isSelectedItem = (
     isSameNamespace(item, selectedItem)
   );
 };
+
+const isDataAppsRootItem = (item: OmniPickerItem): boolean =>
+  item.model === "collection" && item.id === DATA_APPS_ROOT_ID;
+
+export const shouldShowDataApps = ({
+  options,
+  models,
+}: Pick<EntityPickerProps, "options" | "models">): boolean =>
+  options.hasDataApps === true && models.includes("data-app");
 
 const isValidItem = (item: unknown): item is OmniPickerItem => {
   return (
@@ -129,6 +134,10 @@ export function getItemFunctions({
       return true;
     }
 
+    if (isDataAppsRootItem(item)) {
+      return modelSet.has("data-app");
+    }
+
     if (item.model === OmniPickerFolderModel.Collection) {
       if (!("here" in item) && !("below" in item)) {
         return false;
@@ -168,7 +177,7 @@ export function getItemFunctions({
   // selectable should be narrower than hidden or disabled because
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
-    if (!isValidItem(item)) {
+    if (!isValidItem(item) || isDataAppsRootItem(item)) {
       return false;
     }
 
@@ -209,43 +218,6 @@ export function getItemFunctions({
   };
 }
 
-export const validCollectionModels = new Set<CollectionItemModel>([
-  "collection",
-  "dashboard",
-  "document",
-  "card",
-  "dataset",
-  "metric",
-  "table",
-  "snippet",
-  "transform",
-  "measure",
-]);
-
-export const allCollectionModels = Array.from(validCollectionModels);
-
-const isValidModel = (
-  model: OmniPickerItem["model"],
-): model is CollectionItemModel =>
-  validCollectionModels.has(model as CollectionItemModel);
-
-export const getValidCollectionItemModels = (
-  models: OmniPickerItem["model"][],
-): CollectionItemModel[] =>
-  _.uniq(models.filter(isValidModel).concat(["collection"]));
-
-// this ensures that we get cache hits by sending the same options for collection item requests
-export const getCollectionItemsOptions = ({
-  models,
-}: {
-  models: OmniPickerItem["model"][];
-}) => {
-  return {
-    models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
-  };
-};
-
 export const isCollection = (
   item: OmniPickerItem,
 ): item is OmniPickerCollectionItem => item.model === "collection";
@@ -280,6 +252,7 @@ const namespaceMap: Record<string, CollectionNamespace[]> = {
   normal: [null, "analytics", "shared-tenant-collection", "tenant-specific"],
   snippet: ["snippets"],
   transform: ["transforms"],
+  action: ["data-actions"],
 };
 
 export const getNamespacesFromModels = (
@@ -292,6 +265,10 @@ export const getNamespacesFromModels = (
 
   if (models.includes("transform")) {
     modelNamespaces.push(...namespaceMap.transform);
+  }
+
+  if (models.includes("action")) {
+    modelNamespaces.push(...namespaceMap.action);
   }
 
   if (models.some((model) => model !== "snippet" && model !== "transform")) {

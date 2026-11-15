@@ -32,13 +32,13 @@ export type MetabotAgentChartMessage = {
 };
 
 // Internal variants intentionally omitted. `use-metabot.tsx` only exposes
-// `type === "text"` messages `:
+// `type === "text"` messages and `generated_entity` chart cards:
 // - `tool_call` messages: debug-only, gated on metabot's `debugMode`.
 // - `action` user messages: produced only when replaying historical audit conversations,
 //   never via the SDK input path.
-// - `data_part` messages other than `navigate_to` (`code_edit`, `transform_suggestion`,
-//   `todo_list`, `adhoc_viz`, `static_viz`, `state`): in-app surfaces (Transform editor,
-//   codegen profiles) the SDK does not render.
+// - `data_part` messages other than `generated_entity` cards (`code_edit`,
+//   `transform_suggestion`, `todo_list`, `adhoc_viz`, `static_viz`, `state`): in-app
+//   surfaces (Transform editor, codegen profiles) the SDK does not render.
 export type MetabotAgentMessage =
   | MetabotAgentTextMessage
   | MetabotAgentChartMessage;
@@ -48,10 +48,13 @@ export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
 /** @category useMetabot */
 export type MetabotChartProps =
-  | (Omit<StaticQuestionProps, "questionId" | "token" | "query"> & {
+  | (Omit<StaticQuestionProps, "questionId" | "token" | "query" | "card"> & {
       drills?: false;
     })
-  | (Omit<InteractiveQuestionProps, "questionId" | "token" | "query"> & {
+  | (Omit<
+      InteractiveQuestionProps,
+      "questionId" | "token" | "query" | "card"
+    > & {
       drills: true;
     });
 
@@ -60,6 +63,21 @@ export type MetabotErrorMessage = {
   /** `"alert"` renders with a warning icon and error color; `"message"` renders as plain text. */
   type: "message" | "alert" | "locked";
   message: string;
+};
+
+/** @category useMetabot */
+export type MetabotIncompleteResponse = {
+  /** Why the latest response stopped before it finished. */
+  reason:
+    | "step-limit"
+    | "max-length"
+    | "context-window-full"
+    | "content-filter"
+    | "other";
+  /** User-friendly explanation of why the response stopped. */
+  message: string;
+  /** Resume the response where it left off. Absent when the response can't be continued. */
+  continueResponse?: () => Promise<void>;
 };
 
 /** @category useMetabot */
@@ -80,14 +98,20 @@ export type UseMetabotResult = {
   messages: MetabotMessage[];
   /** Errors are conversation-level, not attached to individual messages. */
   errorMessages: MetabotErrorMessage[];
+  /** Set when the latest agent response stopped before it finished, e.g. at its step limit. */
+  incompleteResponse: MetabotIncompleteResponse | null;
   /**
    * `true` from the moment a message is submitted until the response
    * completes — including success, error, or cancellation.
    */
   isProcessing: boolean;
+  /** How much of the model's context window the conversation occupies, 0-100. */
+  contextWindowPercentUsage: number;
+  /** Whether the conversation has consumed its entire context window. */
+  isContextWindowFull: boolean;
 
   /**
-   * A pre-wired component bound to the latest `navigate_to` path.
+   * A pre-wired component bound to the latest chart the agent produced.
    * `null` until the agent sends a chart — lets consumers detect presence
    * and render a placeholder or swap panel content only when set.
    *

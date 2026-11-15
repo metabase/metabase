@@ -1,5 +1,5 @@
 import type { ScheduleSettings } from "./settings";
-import type { Table } from "./table";
+import type { SchemaName, Table } from "./table";
 
 import type { ISO8601Time, LongTaskStatus } from ".";
 
@@ -59,15 +59,19 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseNativePermissions = "write" | "none";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
-  native_permissions: "write" | "none";
+  default_schema?: string | null;
+  native_permissions: DatabaseNativePermissions;
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
+  initial_sync_error?: string | null;
+  description?: string;
   caveats?: string;
   points_of_interest?: string;
   created_at: ISO8601Time;
@@ -78,18 +82,24 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  // Populated when GET /api/database is called with include=schemas; lists
+  // schema names that contain at least one readable table.
+  schemas?: SchemaName[];
 }
 
 export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
+  /** Hosting provider detected from the connection details, e.g. "AWS RDS" */
+  provider_name?: string | null;
   // If current user lacks write permission to database, `details` will be
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
@@ -115,6 +125,7 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+  transform: number;
 }
 
 export interface GetDatabaseRequest {
@@ -137,7 +148,7 @@ export type DatabaseLocalSettingAvailability =
   | { enabled: true }
   | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
 
-export type DatabaseConnectionType = "default" | "write-data";
+export type DatabaseConnectionType = "default" | "write-data" | "admin";
 
 export type GetDatabaseHealthRequest = {
   id: DatabaseId;
@@ -148,17 +159,16 @@ export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
 
-export interface ListDatabasesRequest {
-  include?: "tables";
-  saved?: boolean;
+export type ListDatabasesRequest = {
+  include?: "tables" | "schemas";
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
-}
+};
 
 export interface ListDatabasesResponse {
   data: Database[];
@@ -175,7 +185,6 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -184,21 +193,16 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
   include_measures?: boolean;
-}
-
-export interface ListVirtualDatabaseTablesRequest {
-  id: DatabaseId;
-  schema: string;
 }
 
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;
+  include_sensitive_fields?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
-  skip_fields?: boolean;
+  skip_fields: true; // make sure we don't get every field of every table
 }
 
 export interface CreateDatabaseRequest {
@@ -229,6 +233,21 @@ export interface UpdateDatabaseRequest {
   settings?: DatabaseSettings | null;
 }
 
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
+
 export type DatabaseEditErrorType = {
   data: {
     message: string;
@@ -240,12 +259,6 @@ export type DatabaseEditErrorType = {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
-}
-
-export interface SavedQuestionDatabase {
-  id: -1337;
-  name: "Saved Questions";
-  is_saved_questions: true;
 }
 
 export interface CreateDestinationDatabaseRequest {

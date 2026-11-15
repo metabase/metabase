@@ -1,20 +1,7 @@
-import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
 window.MetabaseBootstrap = {
   "enable-xrays": true,
-  "available-timezones": [
-    "GMT",
-    "UTC",
-    "US/Alaska",
-    "US/Arizona",
-    "US/Central",
-    "US/Eastern",
-    "US/Hawaii",
-    "US/Mountain",
-    "US/Pacific",
-    "America/Costa_Rica",
-  ],
   "available-locales": [["en", "English"]],
   // NOTE: update this when updating types.cljc
   types: {

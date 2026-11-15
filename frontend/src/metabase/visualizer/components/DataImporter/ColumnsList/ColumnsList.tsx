@@ -174,6 +174,11 @@ export const ColumnsList = (props: ColumnListProps) => {
                     return null;
                   }
 
+                  // Hide remapped display columns; extractRemappedColumns pairs them at render time.
+                  if (column.remapped_from != null) {
+                    return null;
+                  }
+
                   const columnReference = referencedColumns.find((ref) =>
                     isReferenceToColumn(column, source.id, ref),
                   );
@@ -271,7 +276,7 @@ function DraggableColumnListItem({
       {...props}
       {...attributes}
       {...listeners}
-      bg={isSelected ? "background-brand" : undefined}
+      bg={isSelected ? "background_surface-brand-subtle" : undefined}
       column={column}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
       aria-selected={isSelected}

@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -31,10 +32,10 @@
     :druid-jdbc
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
-        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil, :is_writable nil}
-                          {:schema "druid", :name "json" :description nil, :is_writable nil}
-                          {:schema "druid", :name "big_json" :description nil, :is_writable nil}}}
-               (driver/describe-database :druid-jdbc (mt/db)))))
+        (is (= #{{:schema "druid", :name "checkins" :description nil, :is_writable nil}
+                 {:schema "druid", :name "json" :description nil, :is_writable nil}
+                 {:schema "druid", :name "big_json" :description nil, :is_writable nil}}
+               (into #{} (:tables (driver/describe-database :druid-jdbc (lib.metadata/database (mt/metadata-provider))))))))
       (testing "describe-table"
         (is (=? {:schema "druid"
                  :name   "checkins"
@@ -134,11 +135,11 @@
                            :base-type :type/BigInteger,
                            :database-position 9,
                            :json-unfolding false}]}
-                (-> (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"})
+                (-> (driver/describe-table :druid-jdbc (lib.metadata/database (mt/metadata-provider)) {:schema "druid" :name "checkins"})
                     (update :fields (partial sort-by :name))))))
       (testing "Full sync does not throw an exception (field values are calculated only for eligible fields)"
         (is (=? [::success some?]
-                (try (let [result (sync/sync-database! (mt/db))]
+                (try (let [result (sync/sync-database! (mt/id))]
                        [::success result])
                      (catch Throwable t
                        [::failure t]))))))))
@@ -150,7 +151,7 @@
       (mt/with-temporary-setting-values [driver.settings/nested-field-columns-value-length-limit 10]
         (testing "nested fields when length limit is exceeded"
           (is (= #{}
-                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))
+                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :json)))))))
       (testing "nested fields when length limit is exceeded"
         (is (= #{{:name "json_bit → noop",
                   :database-type "timestamp",
@@ -215,7 +216,7 @@
                   :json-unfolding false,
                   :visibility-type :normal,
                   :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
+               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
@@ -232,10 +233,10 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              _                    (t2/update! :model/Database :id (u/the-id db) {:dbms_version nil})
               db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
-              _                    (sync-dbms-ver/sync-dbms-version! db)]
+              _                    (sync-dbms-ver/sync-dbms-version! (driver.u/lib-database (:id db)))]
           (testing "On startup is the dbms-version specified?"
             (is (nil? (check-dbms-version version-on-load))))
           (testing "Check to make sure the test removed the timezone"
@@ -351,7 +352,6 @@
                    {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ 3 args: count + sum + count"
       (is (= [[1  663]
               [2 2460]
@@ -365,7 +365,6 @@
                                    [:count $venue_price]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ a constant: count * 10"
       (is (= [[1 2210]
               [2 6150]
@@ -376,7 +375,6 @@
                    {:aggregation [[:* [:count $id] 10]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [[1  49062]
               [2 757065]
@@ -389,7 +387,6 @@
                                    [:* [:count $id] [:sum $venue_price]]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ avg: count + avg"
       (is (= [[1  721.8506787330316]
               [2 1116.388617886179]
@@ -400,7 +397,6 @@
                    {:aggregation [[:+ [:count $id] [:avg $id]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "aggregation with math inside the aggregation :scream_cat:"
       (is (= [[1  442]
               [2 1845]
@@ -411,7 +407,6 @@
                    {:aggregation [[:sum [:+ $venue_price 1]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
       (is (= [[1 -998]
               [2 -995]
@@ -520,6 +515,25 @@
                   {:aggregation [[:count]]
                    :filter      [:> $__time "2015-10-01T00:00:00Z"]}))))))))
 
+(deftest ^:parallel host-and-port-cannot-add-connection-properties-test
+  ;; both are written into the Avatica connect string, where `;` separates properties and quotes group them
+  (testing "a host or port carrying connect-string syntax is refused"
+    (doseq [details [{:host "http://localhost;truststore=/tmp/x" :port 8082}
+                     {:host "http://localhost" :port "8082;truststore=/tmp/x"}
+                     {:host "http://localhost'" :port 8082}
+                     {:host "http://localhost\"" :port 8082}
+                     {:host "http://local host" :port 8082}
+                     {:host "http://localhost" :port "80 82"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)invalid"
+                              (sql-jdbc.conn/connection-details->spec :druid-jdbc details))))))
+  (testing "ordinary hosts and ports are accepted"
+    (doseq [[details subname] [[{:host "http://localhost" :port 8082}
+                                "url=http://localhost:8082/druid/v2/sql/avatica/;transparent_reconnection=true"]
+                               [{:host "https://druid.example.com" :port "8082"}
+                                "url=https://druid.example.com:8082/druid/v2/sql/avatica/;transparent_reconnection=true"]]]
+      (is (= subname (:subname (sql-jdbc.conn/connection-details->spec :druid-jdbc details)))))))
+
 (deftest ssh-tunnel-test
   (mt/test-driver
     :druid-jdbc
@@ -535,10 +549,10 @@
                           :dbname         "test"
                           :host           "http://localhost"
                           :tunnel-enabled true
-                         ;; we want to use a bogus port here on purpose -
-                         ;; so that locally, it gets a ConnectionRefused,
-                         ;; and in CI it does too. Apache's SSHD library
-                         ;; doesn't wrap every exception in an SshdException
+                          ;; we want to use a bogus port here on purpose -
+                          ;; so that locally, it gets a ConnectionRefused,
+                          ;; and in CI it does too. Apache's SSHD library
+                          ;; doesn't wrap every exception in an SshdException
                           :tunnel-port    21212
                           :tunnel-user    "bogus"}]
              (driver.u/can-connect-with-details? engine details :throw-exceptions))
@@ -599,3 +613,11 @@
                (mt/rows (qp/process-query query))))
         (is (= "select count(1) from checkins where __time >= '2014-04-07'"
                (:query (qp.compile/compile-with-inline-parameters query))))))))
+
+(deftest ^:parallel null-timestamp-test
+  (mt/test-driver :druid-jdbc
+    (is (= [[nil]]
+           (-> (mt/metadata-provider)
+               (lib/native-query "SELECT CAST(NULL AS TIMESTAMP) FROM checkins LIMIT 1")
+               qp/process-query
+               mt/rows)))))

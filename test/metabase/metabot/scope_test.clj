@@ -3,36 +3,31 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.profiles]
-   [metabase.metabot.scope :as scope]))
+   [metabase.metabot.scope :as scope]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel scope-matches?-test
   (testing "exact match"
     (is (api-scope/scope-matches? #{"agent:sql:create"} "agent:sql:create"))
     (is (not (api-scope/scope-matches? #{"agent:sql:edit"} "agent:sql:create"))))
-
   (testing "unrestricted wildcard"
     (is (api-scope/scope-matches? #{"*"} "agent:sql:create"))
     (is (api-scope/scope-matches? api-scope/unrestricted "agent:anything:here")))
-
   (testing "hierarchical wildcard"
     (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:edit"))
     (is (not (api-scope/scope-matches? #{"agent:sql:*"} "agent:notebook:create"))))
-
   (testing "mid-level wildcard"
     (is (api-scope/scope-matches? #{"agent:*"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:*"} "agent:viz:edit"))
     (is (not (api-scope/scope-matches? #{"other:*"} "agent:sql:create"))))
-
   (testing "empty scope set grants nothing"
     (is (not (api-scope/scope-matches? #{} "agent:sql:create")))
     (is (not (api-scope/scope-matches? #{} "agent:search"))))
-
   (testing "multiple granted scopes"
     (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:viz:edit"))
     (is (not (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:notebook:create"))))
-
   (testing "malformed scope strings do not match"
     (is (not (api-scope/scope-matches? #{""} "agent:sql:create")))
     (is (not (api-scope/scope-matches? #{":"} "agent:sql:create")))
@@ -49,15 +44,16 @@
 (deftest ^:parallel perms->scopes-sql-generation-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
     (is (contains? scopes "agent:sql:*"))
-    (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
-    (is (contains? scopes "agent:search"))))
+    (is (contains? scopes "agent:search"))
+    (testing "metric is an MBQL macro gated by NLQ, not SQL generation"
+      (is (not (contains? scopes "agent:metric:*"))))))
 
 (deftest ^:parallel perms->scopes-nql-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
     (is (contains? scopes "agent:notebook:*"))
     (is (contains? scopes "agent:query:*"))
-    (is (contains? scopes "agent:table:*"))
+    (is (contains? scopes "agent:question:*"))
     (is (contains? scopes "agent:metric:*"))))
 
 (deftest ^:parallel perms->scopes-other-tools-test
@@ -67,12 +63,48 @@
     (is (contains? scopes "agent:document:*"))
     (is (contains? scopes "agent:alert:*"))))
 
+(deftest ^:parallel rationalized-mcp-v2-scopes-bucket-membership-test
+  (testing "GHY-4225: each of the five rationalized scopes is reachable from at least one permission bucket"
+    (let [nlq         (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})
+          other       (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})
+          sql-gen     (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
+      (testing "agent:content:read via nlq (read-only)"
+        (is (api-scope/scope-matches? nlq "agent:content:read")))
+      (testing "agent:content:write via other-tools"
+        (is (api-scope/scope-matches? other "agent:content:write")))
+      (testing "agent:query:run via nlq"
+        (is (api-scope/scope-matches? nlq "agent:query:run")))
+      (testing "agent:sql:run via sql-generation"
+        (is (api-scope/scope-matches? sql-gen "agent:sql:run")))
+      (testing "I1: agent:delivery:write via other-tools — no other bucket's wildcard reaches it"
+        (is (api-scope/scope-matches? other "agent:delivery:write"))
+        (is (not (api-scope/scope-matches? nlq "agent:delivery:write")))
+        (is (not (api-scope/scope-matches? sql-gen "agent:delivery:write")))))))
+
+(deftest ^:parallel nlq-does-not-grant-content-write-test
+  (testing "I2: metabot-nlq grants content READ but NOT content write — an NLQ-only user must not be
+            able to create/edit/trash content via the agent:content:* wildcard"
+    (let [nlq (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? nlq "agent:content:read"))
+      (is (not (contains? nlq "agent:content:*")))
+      (is (not (api-scope/scope-matches? nlq "agent:content:write"))))))
+
 (deftest ^:parallel perms->scopes-no-does-not-grant-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :no
                                                   :permission/metabot-nlq            :no})]
     (is (not (contains? scopes "agent:sql:*")))
     (is (not (contains? scopes "agent:notebook:*")))
     (is (contains? scopes "agent:search"))))
+
+(deftest ^:parallel granted-scopes-cover-a-registered-scope-test
+  (testing "every scope we grant covers at least one registered scope — a grant that matches
+            nothing is dead config (its tool was removed, or was never landed)"
+    (let [registered (map :scope (api-scope/all-scopes))
+          granted    (into scope/always-granted-scopes cat (vals @#'scope/perm-type->scopes))
+          dead       (remove (fn [grant]
+                               (some (partial api-scope/scope-matches? #{grant}) registered))
+                             granted)]
+      (is (= [] (vec dead))))))
 
 (deftest ^:parallel perms->scopes-all-yes-test
   (let [scopes (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
@@ -118,6 +150,57 @@
     (is (some? (api-scope/scope-description "agent:sql:create"))))
   (testing "returns nil for unregistered scope"
     (is (nil? (api-scope/scope-description "agent:nonexistent:scope")))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; New scopes added for MCP write tools
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel mcp-write-scopes-registered-test
+  (testing "new MCP write-tool scopes are registered"
+    (is (api-scope/registered-scope? "agent:question:update"))
+    (is (api-scope/registered-scope? "agent:metric:create"))
+    (is (api-scope/registered-scope? "agent:metric:update"))
+    (is (api-scope/registered-scope? "agent:dashboard:update"))
+    (is (api-scope/registered-scope? "agent:collection:create"))
+    (is (api-scope/registered-scope? "agent:sql:execute"))))
+
+(deftest ^:parallel mcp-write-scopes-defscope-vars-test
+  (testing "new scope vars resolve to their string"
+    (is (= "agent:question:update" scope/agent-question-update))
+    (is (= "agent:metric:create" scope/agent-metric-create))
+    (is (= "agent:metric:update" scope/agent-metric-update))
+    (is (= "agent:dashboard:update" scope/agent-dashboard-update))
+    (is (= "agent:collection:create" scope/agent-collection-create))
+    (is (= "agent:sql:execute" scope/agent-sql-execute))))
+
+(deftest ^:parallel mcp-write-scopes-granted-by-toggles-test
+  (testing "agent:question:update granted via metabot-nlq wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? scopes "agent:question:update"))))
+  (testing "agent:metric:create granted via metabot-nlq wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? scopes "agent:metric:create"))))
+  (testing "agent:metric:update granted via metabot-nlq wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? scopes "agent:metric:update"))))
+  (testing "agent:dashboard:update granted via metabot-other-tools wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
+      (is (api-scope/scope-matches? scopes "agent:dashboard:update"))))
+  (testing "agent:collection:create granted via new agent:collection:* wildcard under metabot-other-tools"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
+      (is (contains? scopes "agent:collection:*"))
+      (is (api-scope/scope-matches? scopes "agent:collection:create"))))
+  (testing "agent:sql:execute granted via existing agent:sql:* wildcard under metabot-sql-generation"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
+      (is (api-scope/scope-matches? scopes "agent:sql:execute"))))
+  (testing "MCP write scopes not granted when corresponding toggle is :no"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq            :no
+                                                    :permission/metabot-other-tools    :no
+                                                    :permission/metabot-sql-generation :no})]
+      (is (not (api-scope/scope-matches? scopes "agent:question:update")))
+      (is (not (api-scope/scope-matches? scopes "agent:dashboard:update")))
+      (is (not (api-scope/scope-matches? scopes "agent:collection:create")))
+      (is (not (api-scope/scope-matches? scopes "agent:sql:execute"))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parse-scopes
@@ -167,3 +250,27 @@
     (testing "tool without scope passes validation"
       (let [v (make-tool-var! 'test-legacy-tool {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
         (is (true? (validate! v)))))))
+
+(deftest sql-execution-allowed?-test
+  (let [nlq-only {:permission/metabot                :yes
+                  :permission/metabot-sql-generation :no
+                  :permission/metabot-nlq            :yes
+                  :permission/metabot-other-tools    :no}
+        allowed? (fn [perms granted-scopes]
+                   (binding [scope/*current-user-metabot-permissions* perms
+                             scope/*current-user-scope*               granted-scopes]
+                     (scope/sql-execution-allowed?)))]
+    (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+      (testing "SQL generation permission grants it, through the agent:sql:run scope that permission maps to"
+        (is (true? (allowed? scope/all-yes-permissions (scope/user-metabot-perms->scopes scope/all-yes-permissions)))))
+      (testing "NLQ alone grants agent:query:run but not SQL execution"
+        (is (false? (allowed? nlq-only (scope/user-metabot-perms->scopes nlq-only)))))
+      (testing "the SQL generation permission is required even when the scope is unrestricted"
+        (is (false? (allowed? nlq-only api-scope/unrestricted))))
+      (testing "agent:sql:run is required even with the SQL generation permission"
+        (is (false? (allowed? scope/all-yes-permissions (scope/user-metabot-perms->scopes nlq-only)))))
+      (testing "unbound permissions fall back to the defaults, which deny it"
+        (is (false? (allowed? nil api-scope/unrestricted)))))
+    (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+      (testing "the admin setting is required"
+        (is (false? (allowed? scope/all-yes-permissions api-scope/unrestricted)))))))

@@ -1,15 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type {
   CardId,
+  DatabaseFeature,
   DatabaseId,
+  DatabaseNativePermissions,
   DatasetColumn,
+  DatetimeUnit,
+  FieldFormattingSettings,
   FieldId,
   FieldValuesType,
+  JoinConditionOperator,
   RowValue,
   SchemaId,
+  SchemaName,
   TableId,
   TableVisibilityType,
-  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -42,6 +46,11 @@ export type Query = unknown & { _opaque: typeof QuerySymbol };
 declare const MetadataProviderSymbol: unique symbol;
 export type MetadataProvider = unknown & {
   _opaque: typeof MetadataProviderSymbol;
+};
+
+declare const DatabaseMetadataSymbol: unique symbol;
+export type DatabaseMetadata = unknown & {
+  _opaque: typeof DatabaseMetadataSymbol;
 };
 
 declare const TableMetadataSymbol: unique symbol;
@@ -108,7 +117,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type { JoinConditionOperator } from "metabase-types/api/query";
 
 export type Clause =
   | AggregationClause
@@ -148,21 +157,33 @@ declare const BucketSymbol: unique symbol;
 export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
-  shortName: TemporalUnit;
+  shortName: DatetimeUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;
   isTemporalExtraction?: boolean;
 };
 
+export type DatabaseDisplayInfo = {
+  name: string;
+  displayName: string;
+  engine: string | null;
+  features: DatabaseFeature[];
+  nativePermissions: DatabaseNativePermissions | null;
+  isSample: boolean;
+  isActionsEnabled: boolean;
+  autoRunQueries: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
+  description?: string;
   isSourceTable?: boolean;
   isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
-  schema: SchemaId;
+  schema?: SchemaName | null;
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;
@@ -222,16 +243,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
-// We're setting the values here as unknown even though
-// the API will return numbers most of the time, because
-// sometimes it doesn't!
+// Properties are typed as optional unknown: the API returns numbers most of
+// the time but sometimes returns non-numbers, and sometimes omits the property
+// entirely.
 export type NumberFingerprintDisplayInfo = {
-  avg: unknown;
-  max: unknown;
-  min: unknown;
-  q1: unknown;
-  q3: unknown;
-  sd: unknown;
+  avg?: unknown;
+  max?: unknown;
+  min?: unknown;
+  q1?: unknown;
+  q3?: unknown;
+  sd?: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -457,6 +478,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type AutomaticInsightsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/automatic-insights">;
+
 declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
   _opaque: typeof ColumnExtractionSymbol;
@@ -545,6 +569,7 @@ export type ZoomGeographicDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | AutomaticInsightsDrillThruInfo
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
@@ -585,6 +610,18 @@ export interface ClickObjectDataRow {
   value: RowValue;
 }
 
+export type BrushRange =
+  | {
+      type: "temporal";
+      start: string;
+      end: string;
+    }
+  | {
+      type: "numeric";
+      start: number;
+      end: number;
+    };
+
 export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
@@ -602,14 +639,42 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+  brushRange?: BrushRange;
 }
 
-export interface FieldValuesSearchInfo {
+export interface BrushClickObject extends ClickObject {
+  brushRange: BrushRange;
+  column: DatasetColumn;
+  event: MouseEvent;
+}
+
+export const isBrushClickObject = (
+  clicked: ClickObject | null | undefined,
+): clicked is BrushClickObject =>
+  clicked != null &&
+  clicked.brushRange != null &&
+  clicked.column != null &&
+  clicked.event != null;
+
+export interface FieldSearchInfo {
   fieldId: FieldId | null;
   searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
+
+export type ParameterFieldInfo = {
+  id: FieldId;
+  displayName: string;
+  searchFieldDisplayName: string | null;
+  isString: boolean;
+  isBoolean: boolean;
+  isDate: boolean;
+  isNumeric: boolean;
+  settings: FieldFormattingSettings | null;
+  hasFieldValues: FieldValuesType;
+  hasRemappedValues: boolean;
+};
 
 export type QueryDisplayInfo = {
   isNative: boolean;
@@ -642,6 +707,19 @@ export type ValidationError = { message: string };
 
 export type JsColumnTypeInfo = {
   base_type?: string;
-  effective_type?: string;
+  effective_type?: string | null;
   semantic_type?: string | null;
+};
+
+export type TablePickerInfo = {
+  id: TableId;
+};
+
+export type CardPickerInfo = {
+  id: CardId;
+};
+
+export type ColumnPickerInfo = {
+  id: FieldId | null;
+  tableId: TableId | null;
 };

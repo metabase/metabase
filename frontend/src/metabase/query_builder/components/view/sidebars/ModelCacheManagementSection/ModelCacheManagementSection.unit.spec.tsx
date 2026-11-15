@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -9,11 +8,13 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import { dayjs } from "metabase/dayjs";
+import Question from "metabase-lib/v1/Question";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -23,7 +24,11 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const ordersQuestion = Question.create({
+  DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+  DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+  metadata,
+});
 
 type SetupOpts = Partial<ModelCacheRefreshStatus> & {
   waitForSectionAppearance?: boolean;
@@ -35,7 +40,7 @@ async function setup({
   canManageDB = true,
   ...cacheInfo
 }: SetupOpts = {}) {
-  const question = ordersTable.question();
+  const question = ordersQuestion;
   const model = question.setCard({
     ...question.card(),
     id: 1,
@@ -47,6 +52,7 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
+    // Unjustified type cast. FIXME
     card_name: model.displayName() as string,
   });
 

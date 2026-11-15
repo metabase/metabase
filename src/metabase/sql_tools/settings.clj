@@ -23,18 +23,19 @@
   Once SQLGlot is stable, this env var will be removed and Macaw deprecated."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private available-parser-backends
   #{:macaw :sqlglot})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*
   "Dynamic var for overriding the parser backend in tests.
    When bound, [[current-parser-backend]] returns this instead of the setting."
   nil)
 
 (defsetting sql-tools-parser-backend
-  (deferred-tru "Parser backend of `sql-tools` module.")
+  "Parser backend of `sql-tools` module."
   :visibility :internal
   :export? false
   :type :keyword

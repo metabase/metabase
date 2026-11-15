@@ -36,6 +36,7 @@ export const useListKeyboardNavigation = <
 
   const handleKeyDown: EventListener = useCallback(
     (event) => {
+      // Unjustified type cast. FIXME
       const { key } = event as KeyboardEvent;
       if (list.length === 0) {
         return;
@@ -49,6 +50,11 @@ export const useListKeyboardNavigation = <
           break;
         case "Enter":
           if (cursorIndex != null && !isNaN(cursorIndex)) {
+            // Selecting an item consumes the key. Without this the same Enter
+            // also reaches whatever the list is rendered over, and the search
+            // bar takes it as "show all results" and navigates to /search,
+            // replacing the navigation this selection just started.
+            event.preventDefault();
             onEnter(list[cursorIndex]);
           }
           break;
@@ -69,6 +75,12 @@ export const useListKeyboardNavigation = <
     reset,
     cursorIndex,
     selectedItem,
-    getRef: (item: T) => (item === selectedItem ? selectedRef : undefined),
+    // a ref callback (not the ref object) so it can attach to elements narrower than R
+    getRef: (item: T) =>
+      item === selectedItem
+        ? (element: R | null) => {
+            selectedRef.current = element;
+          }
+        : undefined,
   };
 };

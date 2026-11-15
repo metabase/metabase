@@ -1,9 +1,3 @@
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
-import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types/viewer-state";
-import {
-  type SerializedMetricsViewerPageState,
-  encodeState,
-} from "metabase/metrics-viewer/utils/url-serialization";
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import { card as urlForCard } from "./cards";
@@ -26,39 +20,6 @@ export function exploreMeasure(measureId: number): string {
   return `${METRICS_VIEWER_ROOT}?measureId=${measureId}`;
 }
 
-export interface ExploreMetricDimensionOptions {
-  metricId: number;
-  dimensionId: string;
-  dimensionType: DimensionType;
-  displayType: MetricsViewerDisplayType;
-  label?: string;
-}
-
-export function exploreMetricDimension({
-  metricId,
-  dimensionId,
-  dimensionType,
-  displayType,
-  label,
-}: ExploreMetricDimensionOptions): string {
-  const state: SerializedMetricsViewerPageState = {
-    formulaEntities: [{ type: "metric", id: metricId }],
-    tabs: [
-      {
-        id: dimensionId,
-        type: dimensionType,
-        label: label ?? null,
-        display: displayType,
-        definitions: [{ slotIndex: 0, dimensionId }],
-      },
-    ],
-    selectedTabId: dimensionId,
-  };
-
-  const hash = encodeState(state);
-  return hash ? metricsViewer(hash) : exploreMetric(metricId);
-}
-
 export function metricAbout(cardId: CardId): string {
   return `/metric/${cardId}`;
 }
@@ -71,12 +32,12 @@ export function metricQuery(cardId: CardId): string {
   return `/metric/${cardId}/query`;
 }
 
-export function metricDependencies(cardId: CardId): string {
-  return `/metric/${cardId}/dependencies`;
+export function metricDimensions(cardId: CardId): string {
+  return `/metric/${cardId}/dimensions`;
 }
 
-export function metricCaching(cardId: CardId): string {
-  return `/metric/${cardId}/caching`;
+export function metricDependencies(cardId: CardId): string {
+  return `/metric/${cardId}/dependencies`;
 }
 
 export function metricHistory(cardId: CardId): string {

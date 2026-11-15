@@ -1,11 +1,12 @@
-import type { ReactNode } from "react";
+import type { FC, ReactNode } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { MetabotQuestionProps } from "./types";
 
-type MetabotQuestionComponent = ((props: MetabotQuestionProps) => ReactNode) & {
+type MetabotQuestionComponent = FC<MetabotQuestionProps> & {
   schema?: FunctionSchema;
 };
 
@@ -22,5 +23,9 @@ export const METABOT_SDK_EE_PLUGIN: {
 };
 
 export const MetabotQuestion = (props: MetabotQuestionProps) => {
+  useTrackSdkComponentMount("MetabotQuestion", null, {
+    layout: props.layout,
+  });
+
   return <METABOT_SDK_EE_PLUGIN.MetabotQuestion {...props} />;
 };

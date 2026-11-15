@@ -13,8 +13,7 @@ import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { FormProvider } from "metabase/forms";
 import type { FieldSettings } from "metabase-types/api";
 
-import type { FormFieldEditorProps } from "./FormFieldEditor";
-import FormFieldEditor from "./FormFieldEditor";
+import { FormFieldEditor, type FormFieldEditorProps } from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
   name: "uuid",
@@ -66,6 +65,9 @@ describe("FormFieldEditor", () => {
     expect(screen.getByPlaceholderText(field.placeholder)).toBeInTheDocument();
     expect(screen.getByLabelText("Field settings")).toBeInTheDocument();
     expect(getIcon("grabber")).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Field type" }),
+    ).toBeInTheDocument();
   });
 
   it("handles field type change", async () => {
@@ -112,7 +114,7 @@ describe("FormFieldEditor", () => {
       const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
       await userEvent.click(screen.getByLabelText("Field settings"));
       await userEvent.unhover(screen.getByLabelText("Field settings"));
-      const popover = await screen.findByRole("tooltip");
+      const popover = await screen.findByRole("dialog");
 
       await userEvent.click(
         within(popover).getByRole("radio", { name: "Text" }),
@@ -171,7 +173,7 @@ describe("FormFieldEditor", () => {
 
       await userEvent.click(screen.getByLabelText("Field settings"));
       await userEvent.unhover(screen.getByLabelText("Field settings"));
-      expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("radio", { name: "Long text" }));
 
@@ -193,7 +195,7 @@ describe("FormFieldEditor", () => {
       const { onChange } = setup({ fieldSettings });
       await userEvent.click(screen.getByLabelText("Field settings"));
       await userEvent.unhover(screen.getByLabelText("Field settings"));
-      expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Number"));
       expect(onChange).toHaveBeenLastCalledWith({

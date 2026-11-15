@@ -1,0 +1,379 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+import cx from "classnames";
+import { type JSX, useCallback, useEffect, useMemo, useState } from "react";
+import { useMount, usePrevious } from "react-use";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import {
+  getActionItems,
+  supportsImplicitActions,
+} from "metabase/actions/utils";
+import {
+  actionApi,
+  datasetApi,
+  skipToken,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/redux";
+import { Box, Center, Flex, Loader } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type {
+  DatasetColumn,
+  DatasetData,
+  TableId,
+  WritebackActionId,
+} from "metabase-types/api";
+
+import { ObjectDetailBody } from "./ObjectDetailBody";
+import { ObjectDetailHeader } from "./ObjectDetailHeader";
+import type { ObjectDetailProps, ObjectId } from "./types";
+import { getDisplayId, getObjectName, getSinglePKIndex } from "./utils";
+
+function filterByPk(
+  query: Lib.Query,
+  pkField: DatasetColumn,
+  zoomedRowID: ObjectId | undefined,
+) {
+  if (typeof zoomedRowID === "undefined") {
+    return query;
+  }
+
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pkField);
+  const filterClause =
+    typeof zoomedRowID === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+          options: {},
+        });
+
+  return Lib.filter(query, stageIndex, filterClause);
+}
+
+export function ObjectDetailPanel({
+  data: passedData,
+  question,
+  table,
+  zoomedRow: passedZoomedRow,
+  zoomedRowID,
+  tableForeignKeys,
+  settings,
+  canZoom,
+  canZoomPreviousRow,
+  canZoomNextRow,
+  showControls = true,
+  showHeader,
+  onVisualizationClick,
+  visualizationIsClickable,
+  fetchTableFks,
+  loadObjectDetailFKReferences,
+  viewPreviousObjectDetail,
+  viewNextObjectDetail,
+  closeObjectDetail,
+  onActionSuccess,
+  className,
+  isDashboard,
+}: ObjectDetailProps): JSX.Element | null {
+  const dispatch = useDispatch();
+  const [hasNotFoundError, setHasNotFoundError] = useState(false);
+  const [maybeLoading, setMaybeLoading] = useState(false);
+  const prevZoomedRowId = usePrevious(zoomedRowID);
+  const prevData = usePrevious(passedData);
+  const prevTableForeignKeys = usePrevious(tableForeignKeys);
+  const [data, setData] = useState<DatasetData>(passedData);
+  const [actionId, setActionId] = useState<WritebackActionId>();
+  const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
+
+  const isActionExecuteModalOpen = typeof actionId === "number";
+  const isDeleteModalOpen = typeof deleteActionId === "number";
+  const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
+
+  const hasFks = !_.isEmpty(tableForeignKeys);
+
+  const isDrillThroughDetail = question?.display() !== "object";
+
+  const handleExecuteModalClose = () => {
+    setActionId(undefined);
+  };
+
+  const handleDeleteModalClose = () => {
+    setDeleteActionId(undefined);
+  };
+
+  const pkIndex = useMemo(
+    () => getSinglePKIndex(passedData?.cols),
+    [passedData],
+  );
+
+  const zoomedRow = useMemo(() => {
+    const zoomedRowIDNumber =
+      typeof zoomedRowID === "string" ? parseInt(zoomedRowID) : zoomedRowID;
+
+    return (
+      passedZoomedRow ||
+      (pkIndex !== undefined &&
+        data.rows.find(
+          (row) =>
+            row[pkIndex] === zoomedRowID || row[pkIndex] === zoomedRowIDNumber,
+        )) ||
+      undefined
+    );
+  }, [passedZoomedRow, pkIndex, data, zoomedRowID]);
+
+  const loadFKReferences = useCallback(() => {
+    if (zoomedRowID) {
+      loadObjectDetailFKReferences?.({ objectId: zoomedRowID });
+    }
+  }, [zoomedRowID, loadObjectDetailFKReferences]);
+
+  useMount(() => {
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (data && notFoundObject) {
+      setMaybeLoading(true);
+      setHasNotFoundError(true);
+      return;
+    }
+
+    if (isDrillThroughDetail && table && _.isEmpty(table.fks)) {
+      // Unjustified type cast. FIXME
+      fetchTableFks?.(table.id as TableId);
+    }
+  });
+
+  useEffect(() => {
+    if (hasNotFoundError || !showControls) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const capturedKeys: Record<string, (() => void) | undefined> = {
+        ArrowUp: viewPreviousObjectDetail,
+        ArrowDown: viewNextObjectDetail,
+        Escape: closeObjectDetail,
+      };
+
+      const handler = capturedKeys[event.key];
+      if (handler && !isModalOpen) {
+        event.preventDefault();
+        handler();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [
+    hasNotFoundError,
+    showControls,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+    isModalOpen,
+  ]);
+
+  useEffect(() => {
+    if (maybeLoading && pkIndex !== undefined) {
+      // if we don't have the row in the current data, try to fetch this single row
+      const pkField = passedData.cols[pkIndex];
+      const query = question?.query();
+      const datasetQuery = query
+        ? Lib.toJsQuery(filterByPk(query, pkField, zoomedRowID))
+        : undefined;
+
+      runRtkEndpoint(datasetQuery, dispatch, datasetApi.endpoints.getAdhocQuery)
+        .then((result) => {
+          if (result?.data?.rows?.length > 0) {
+            const newRow = result.data.rows[0];
+            setData((prevData) => ({
+              ...prevData,
+              rows: [newRow, ...prevData.rows],
+            }));
+            setHasNotFoundError(false);
+          }
+        })
+        .catch(() => {
+          setHasNotFoundError(true);
+        })
+        .finally(() => {
+          setMaybeLoading(false);
+        });
+    }
+  }, [dispatch, maybeLoading, passedData, question, zoomedRowID, pkIndex]);
+
+  useEffect(() => {
+    const hadPrevZoomedRow = prevZoomedRowId != null;
+
+    if (hasFks && hadPrevZoomedRow && prevZoomedRowId !== zoomedRowID) {
+      loadFKReferences();
+    }
+  }, [hasFks, prevZoomedRowId, zoomedRowID, loadFKReferences]);
+
+  useEffect(() => {
+    const queryCompleted = !prevData && data;
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (queryCompleted && notFoundObject) {
+      setHasNotFoundError(true);
+    }
+  }, [data, prevData, zoomedRowID, zoomedRow]);
+
+  useEffect(() => {
+    // if the card changed or table metadata loaded then reload fk references
+    const tableFKsJustLoaded = _.isEmpty(prevTableForeignKeys) && hasFks;
+    const hasCardChanged = data !== prevData;
+
+    if (hasCardChanged || tableFKsJustLoaded) {
+      loadFKReferences();
+    }
+  }, [hasFks, data, prevData, prevTableForeignKeys, loadFKReferences]);
+
+  const areImplicitActionsEnabled = Boolean(
+    question &&
+    question.canWrite() &&
+    question.type() === "model" &&
+    supportsImplicitActions(question.query()),
+  );
+
+  const modelId = question?.type() === "model" ? question.id() : undefined;
+
+  const { data: actions = [] } = useListActionsQuery(
+    areImplicitActionsEnabled && modelId != null
+      ? { "model-id": modelId }
+      : skipToken,
+  );
+
+  const { data: databasesResponse } = useListDatabasesQuery(
+    areImplicitActionsEnabled ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
+
+  const actionItems = areImplicitActionsEnabled
+    ? getActionItems({
+        actions,
+        databases,
+        onDelete: (action) => setDeleteActionId(action.id),
+        onUpdate: (action) => setActionId(action.id),
+      })
+    : [];
+
+  const fetchInitialValues = useCallback(async () => {
+    if (typeof actionId !== "number") {
+      return {};
+    }
+
+    return runRtkEndpoint(
+      {
+        id: actionId,
+        parameters: { id: String(zoomedRowID) },
+      },
+      dispatch,
+      actionApi.endpoints.prefetchActionValues,
+    );
+  }, [actionId, zoomedRowID, dispatch]);
+
+  const initialValues = useMemo(
+    () => ({ id: zoomedRowID ?? null }),
+    [zoomedRowID],
+  );
+
+  const handleDeleteSuccess = useCallback(() => {
+    onActionSuccess?.();
+    closeObjectDetail?.();
+  }, [closeObjectDetail, onActionSuccess]);
+
+  if (!data) {
+    return null;
+  }
+
+  const objectName = getObjectName({
+    table,
+    question,
+    cols: data.cols,
+    zoomedRow,
+  });
+
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    tableId: typeof table?.id === "number" ? table.id : undefined,
+    settings,
+  });
+
+  return (
+    <>
+      <Box className={cx(CS.overflowAuto, className)} h="100%">
+        {maybeLoading ? (
+          <Center h="30rem">
+            <Loader />
+          </Center>
+        ) : hasNotFoundError ? (
+          <Center h="30rem">
+            <NotFound message={t`We couldn't find that record`} />
+          </Center>
+        ) : (
+          <Flex
+            className="ObjectDetail"
+            direction="column"
+            h="100%"
+            data-testid="object-detail"
+          >
+            {showHeader && (
+              <ObjectDetailHeader
+                actionItems={actionItems}
+                canZoom={Boolean(
+                  canZoom && (canZoomNextRow || canZoomPreviousRow),
+                )}
+                objectName={objectName}
+                objectId={displayId}
+                canZoomPreviousRow={!!canZoomPreviousRow}
+                canZoomNextRow={canZoomNextRow}
+                showControls={showControls}
+                viewPreviousObjectDetail={viewPreviousObjectDetail}
+                viewNextObjectDetail={viewNextObjectDetail}
+                closeObjectDetail={closeObjectDetail}
+              />
+            )}
+            <ObjectDetailBody
+              columns={passedData.cols}
+              zoomedRow={zoomedRow ?? []}
+              settings={settings}
+              onVisualizationClick={onVisualizationClick}
+              visualizationIsClickable={visualizationIsClickable}
+              isDashboard={isDashboard}
+            />
+          </Flex>
+        )}
+      </Box>
+
+      <ActionExecuteModal
+        opened={isActionExecuteModalOpen}
+        actionId={actionId}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch
+        onClose={handleExecuteModalClose}
+        onSuccess={onActionSuccess}
+      />
+
+      <DeleteObjectModal
+        opened={isDeleteModalOpen}
+        actionId={deleteActionId}
+        objectId={zoomedRowID}
+        onClose={handleDeleteModalClose}
+        onSuccess={handleDeleteSuccess}
+      />
+    </>
+  );
+}

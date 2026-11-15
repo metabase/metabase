@@ -1,0 +1,72 @@
+## curated_search_entries: curated saved-search-prompt -> entity rows. The table is authoritative;
+## an enterprise pgvector mirror (one embedding per row) backs the `curated_search` Metabot tool.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/063_update_migrations.yaml
+
+  - changeSet:
+      id: v63.2026-06-04T00:00:00
+      author: christruter
+      comment: Create curated_search_entries table
+      changes:
+        - createTable:
+            tableName: curated_search_entries
+            remarks: Curated search prompts mapped to the entities that answer them
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: search_prompt
+                  type: ${text.type}
+                  remarks: The saved search prompt text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: usage_instructions
+                  type: ${text.type}
+                  remarks: Agent-facing guidance on how to use the mapped entities
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity
+                  type: ${text.type}
+                  remarks: JSON entity ref ({model, id, name?}) the prompt maps to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified
+                  type: ${boolean.type}
+                  remarks: Whether this prompt-entity mapping has been verified by a curator
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity (serialization)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the mapping was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the mapping was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: curated_search_entries

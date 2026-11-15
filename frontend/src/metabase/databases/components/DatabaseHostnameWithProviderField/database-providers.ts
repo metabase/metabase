@@ -14,5 +14,6 @@ export const detectDBProvider = (
     new RegExp(pattern).test(host),
   );
 
+  // Unjustified type cast. FIXME
   return (provider?.name as DatabaseProviderName) || null;
 };

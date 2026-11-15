@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
+import { setupPrefetchDashcardValuesEndpoint } from "__support__/server-mocks";
 import { getIcon, render, screen, waitFor } from "__support__/ui";
 import {
   createMockActionParameter,
@@ -59,6 +59,7 @@ function setup(options?: Partial<ActionParametersInputModalProps>) {
 async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
+      opened
       showEmptyState={false}
       title="Test Modal"
       onClose={_.noop}
@@ -66,13 +67,6 @@ async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
       {...options}
     />,
   );
-}
-
-function setupPrefetch() {
-  fetchMock.get("path:/api/dashboard/123/dashcard/456/execute", {
-    parameter_1: "uno",
-    parameter_2: "dos",
-  });
 }
 
 describe("Actions > ActionParametersInputForm", () => {
@@ -139,7 +133,7 @@ describe("Actions > ActionParametersInputForm", () => {
     );
     expect(screen.getByPlaceholderText("Parameter 2")).toHaveAttribute(
       "type",
-      "number",
+      "text",
     );
   });
 
@@ -156,7 +150,10 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it('should change the submit button label to "update" for an implicit update action', async () => {
-    setupPrefetch();
+    setupPrefetchDashcardValuesEndpoint(123, 456, {
+      parameter_1: "uno",
+      parameter_2: "dos",
+    });
 
     await setup({
       action: createMockImplicitQueryAction({

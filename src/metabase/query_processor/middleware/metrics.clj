@@ -3,15 +3,17 @@
   (:require
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :refer [*is-superuser?*]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [select-keys some empty? not-empty]]))
 
 (defn- filters->condition
   [filters]
@@ -94,30 +96,13 @@
 
 (defn- case-wrap-metric-aggregation
   [aggregation condition]
-  (cond->> aggregation
-    (seq condition)
-    (perf/postwalk
-     (fn [form]
-       (if-not (and (vector? form)
-                    (not (map-entry? form)))
-         form
-         (let [operator (first form)]
-           (cond
-
-             (= :share operator)
-             (transform-share-aggregation condition form)
-
-             (contains? aggregations-pred-arg operator)
-             (transform-aggregation-with-predicate condition form)
-
-             (contains? nullary-aggregations operator)
-             (transform-0-arity-aggregation condition form)
-
-             (contains? aggregations-expr-1st-arg operator)
-             (assoc form 2 (lib/case [[condition (nth form 2)]]))
-
-             :else
-             form)))))))
+  (if (seq condition)
+    (match/replace-all aggregation
+      [:share & _] (transform-share-aggregation condition &match)
+      [#'aggregations-pred-arg & _] (transform-aggregation-with-predicate condition &match)
+      [#'nullary-aggregations & _] (transform-0-arity-aggregation condition &match)
+      [#'aggregations-expr-1st-arg _ arg & _] (assoc &match 2 (lib/case [[condition arg]])))
+    aggregation))
 
 (defn- metric-query-filters->aggregation
   "Entrypoint into transformation of metric aggregation into one that has case wrapped column arg."
@@ -139,7 +124,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation, metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (match/replace replacement
@@ -154,6 +139,9 @@
                                 %
                                 {:name (lib/column-name query stage-number replacement)}
                                 (select-keys % [:name :display-name])
+                                ;; The metric card's name is the column's display-name externally,
+                                ;; overriding the inner aggregation's display-name (#58307).
+                                (when metric-name {:display-name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
@@ -168,27 +156,36 @@
   [x]
   (first (find-metric-ids x)))
 
+(defn- fetch-metric
+  [query card-metadata]
+  (let [metric-query (->> (:dataset-query card-metadata)
+                          (lib/query query)
+                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                          (lib/query query)
+                          metric-query-filters->aggregation)]
+    (if-let [aggregation (first (lib/aggregations metric-query))]
+      [(:id card-metadata)
+       {:query metric-query
+        ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original name is added
+        ;; in `preprocess` above if metric is defined using unnamed aggregation.
+        :aggregation aggregation
+        :name (:name card-metadata)}]
+      (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))
+
 (defn- fetch-metrics
+  "Preprocess the definitions of `metric-ids`, keyed by metric ID.
+
+  Preprocessing happens as admin so user-context middleware leaves the definitions alone; the consuming query goes
+  through those passes itself and sandboxes the spliced result (#76044). Sandboxing and impersonation both stand down
+  for superusers, which is what `as-admin` makes us, so being one already — whether for real or inside the context an
+  enclosing metric established — means there is nothing to elevate. Entering it again would only re-read the current
+  user and hand out empty request-scoped caches."
   [query metric-ids]
-  (->> metric-ids
-       (lib.metadata/bulk-metadata-or-throw query :metadata/card)
-       (into {}
-             (map (fn [card-metadata]
-                    (let [metric-query (->> (:dataset-query card-metadata)
-                                            (lib/query query)
-                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                            (lib/query query)
-                                            metric-query-filters->aggregation)
-                          metric-name (:name card-metadata)]
-                      (if-let [aggregation (first (lib/aggregations metric-query))]
-                        [(:id card-metadata)
-                         {:query metric-query
-                              ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                              ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
-                          :aggregation aggregation
-                          :name metric-name}]
-                        (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
-       not-empty))
+  (let [cards (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
+        fetch #(not-empty (into {} (map (fn [card] (fetch-metric query card))) cards))]
+    (if *is-superuser?*
+      (fetch)
+      (request/as-admin (fetch)))))
 
 (defn- fetch-referenced-metrics
   [query stage]
@@ -291,9 +288,9 @@
                    stage-a-source
                    (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
                    (= (:type metric-metadata) :metric)
-                    ;; This indicates this stage has not been processed
-                    ;; because metrics must have aggregations
-                    ;; if it is missing, then it has been removed in this process
+                   ;; This indicates this stage has not been processed
+                   ;; because metrics must have aggregations
+                   ;; if it is missing, then it has been removed in this process
                    (:aggregation stage-a))
               [idx-a metric-metadata])))
         (partition-all 2 1 (m/indexed expanded-stages))))

@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.python-runner-test
   (:require
+   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -10,6 +11,7 @@
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -80,7 +82,7 @@
                                                                           :shared-storage @shared-storage-ref})
             events (python-runner/read-events @shared-storage-ref)
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
-      ;; not sure about munging this all together but its what tests expect for now
+        ;; not sure about munging this all together but its what tests expect for now
         (merge (:body response)
                {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
                 :output-manifest output-manifest
@@ -174,12 +176,12 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _              (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -187,7 +189,6 @@
                                   "    return students")
               result         (execute! {:code   transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          (jsonl-output [{:id 1 :name "Alice" :score 85}
                                                    {:id 2 :name "Bob" :score 92}
                                                    {:id 3 :name "Charlie" :score 88}
@@ -242,11 +243,11 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -260,7 +261,6 @@
                                   "    return result")
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          "{\"student_count\":0,\"average_score\":null}\n"
                    :output-manifest {:schema_version 1
                                      :data_format    "jsonl"
@@ -274,12 +274,12 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _              (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -293,7 +293,6 @@
                                   "    return result")
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          "{\"student_count\":4,\"average_score\":88.75}\n"
                    :output-manifest {:schema_version 1
                                      :data_format    "jsonl"
@@ -313,7 +312,7 @@
 (deftest transform-type-test
   (mt/test-drivers #{:postgres}
     (mt/with-empty-db
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             _ (jdbc/execute! db-spec ["DROP TABLE IF EXISTS sample_table"])
             _ (jdbc/execute! db-spec ["CREATE TABLE sample_table (
                                                         id BIGSERIAL PRIMARY KEY,
@@ -333,7 +332,7 @@
                                                         ('Product B', 'Another product with longer description text', 50, 15.50, false, '2024-02-01', '2024-02-01 09:15:30', '2024-02-02 16:30:00-05'),
                                                         ('Product C', NULL, 0, 0.0, true, '2024-03-10', '2024-03-10 18:45:15', '2024-03-11 08:00:00+02')"])
 
-            _ (sync/sync-database! (mt/db))
+            _ (sync/sync-database! (mt/id))
 
             transform-code (str "import pandas as pd\n"
                                 "\n"
@@ -347,18 +346,14 @@
             [row1 row2 row3] rows
             get-col (fn [row col-name] (get row (keyword col-name)))
             metadata (:output-manifest result)]
-
         (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
                (set headers)))
-
         (is (= 1 (get-col row1 "id")))
         (is (= "Product A" (get-col row1 "name")))
         (is (datetime-equal? "2024-01-16T14:00:00Z" (get-col row1 "scheduled_for")))
-
         (is (= 2 (get-col row2 "id")))
         (is (= "Product B" (get-col row2 "name")))
         (is (datetime-equal? "2024-02-02T21:30:00Z" (get-col row2 "scheduled_for")))
-
         (is (= 3 (get-col row3 "id")))
         (is (= "Product C" (get-col row3 "name")))
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
@@ -369,7 +364,7 @@
                   "count"         :type/BigInteger
                   "price"         :type/Float
                   "is_active"     :type/Boolean
-                 ;; Our hack works
+                  ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
@@ -472,7 +467,7 @@
             _ (driver/insert-from-source! driver db-id table-schema
                                           {:type :rows :data row-values})
 
-            _ (sync/sync-database! (mt/db) {:scan :schema})
+            _ (sync/sync-database! (mt/id) {:scan :schema})
 
             transform-code (str "import pandas as pd\n"
                                 "\n"
@@ -482,11 +477,9 @@
                               :tables {table-name (mt/id qualified-table-name)}})
 
             metadata (:output-manifest result)]
-
         (testing "All expected columns are present"
           (is (= #{"id" "price" "active" "created_tz" "created_at" "created_date" "description"}
                  (set (map :name (:fields metadata))))))
-
         (testing "types are preserved correctly"
           (is (= {"id"           (if (= :snowflake driver) :type/BigInteger :type/Integer)
                   "price"        :type/Float
@@ -500,8 +493,7 @@
                   "description"  :type/Text}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
                    [name (python-runner/restricted-insert-type base_type)]))))
-
-       ;; cleanup
+        ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
 
 (deftest python-runner-timeout-test
@@ -518,3 +510,34 @@
           (testing "Script should timeout after 5 seconds"
             (is (contains? result :error))
             (is (str/includes? (:error result) "timeout"))))))))
+
+(deftest python-runner-client-timeout-test
+  (testing "runner requests are bounded so a slow or unreachable runner cannot pin the calling thread"
+    (let [captured (atom nil)
+          ok       (fn [opts & _] (reset! captured opts) {:status 200 :body {}})]
+      (testing "every request carries a connection and read timeout, and callers can lengthen the read timeout"
+        (with-redefs [http/request ok]
+          (#'python-runner/python-runner-request "http://runner" :get "/logs" {})
+          (is (pos-int? (:connection-timeout @captured)))
+          (is (pos-int? (:socket-timeout @captured)))
+          (#'python-runner/python-runner-request "http://runner" :post "/execute" {:socket-timeout 1234567})
+          (is (= 1234567 (:socket-timeout @captured))
+              "a caller-supplied read timeout (as /execute uses) wins over the default")))
+      (testing "/execute waits the run timeout plus the margin, and a client timeout reads back as a runner timeout"
+        (let [storage {:objects {:output {:url "u"} :output-manifest {:url "u"} :events {:url "u"}}}
+              args    {:server-url "http://runner" :code "x" :request-id "r" :run-id 1
+                       :source-tables [] :timeout-secs 7 :shared-storage storage}]
+          (with-redefs [http/request      ok
+                        t2/select-fn->fn  (fn [& _] {})]
+            (python-runner/execute-python-code-http-call! args)
+            (is (= (+ (* 7 1000) @#'python-runner/socket-timeout-ms) (:socket-timeout @captured))))
+          (let [cancelled (atom nil)]
+            (with-redefs [http/request      (fn [opts & _]
+                                              (if (str/ends-with? (:url opts) "/cancel")
+                                                (do (reset! cancelled opts) {:status 200 :body {}})
+                                                (throw (java.net.SocketTimeoutException. "read timed out"))))
+                          t2/select-fn->fn  (fn [& _] {})]
+              (is (:timeout (:body (python-runner/execute-python-code-http-call! args)))
+                  "a hung runner surfaces as a timeout result, not a thrown error")
+              (is (= {:request_id "r"} (some-> @cancelled :body json/decode+kw))
+                  "and the runner is told to drop the run we stopped waiting for"))))))))

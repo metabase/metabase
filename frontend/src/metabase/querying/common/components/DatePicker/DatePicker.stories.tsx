@@ -1,34 +1,27 @@
 import type { Store } from "@reduxjs/toolkit";
-import FakeTimers from "@sinonjs/fake-timers";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { merge } from "icepick";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, type ComponentType, useEffect } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
-
-import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
-const store = getStore(
-  publicReducers,
-  storeInitialState,
-  [],
-) as unknown as Store<State>;
+// Unjustified type cast. FIXME
+const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -36,26 +29,31 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,
   decorators: [ReduxDecorator],
 } as Meta<typeof DatePicker>;
 
-let clock: FakeTimers.InstalledClock | undefined;
-function WithMockDate(StoryFn: StoryFn) {
-  if (!clock) {
-    clock = FakeTimers.install({
-      toFake: ["Date"],
-      // Happy new year 2025! 🥳
-      now: new Date("2025-01-01T00:00:00.000Z"),
-    });
-  }
+const MOCKED_NOW = new Date("2025-01-01T00:00:00.000Z").getTime();
+const OriginalDate = Date;
+
+const MockedDate: DateConstructor = new Proxy(OriginalDate, {
+  construct: (target, args: unknown[]) =>
+    Reflect.construct(target, args.length ? args : [MOCKED_NOW]),
+  get: (target, property, receiver) =>
+    property === "now"
+      ? () => MOCKED_NOW
+      : Reflect.get(target, property, receiver),
+});
+
+function WithMockDate(StoryFn: ComponentType) {
+  window.Date = MockedDate;
 
   useEffect(() => {
     return () => {
-      clock?.uninstall();
-      clock = undefined;
+      window.Date = OriginalDate;
     };
   }, []);
 
@@ -104,11 +102,10 @@ export const AllOptions = {
     yesterday.classList.add("pseudo-hover");
   },
 };
-export const AllOptionsDarkTheme = merge(AllOptions, {
-  args: {
-    theme: "dark",
-  },
-});
+export const AllOptionsDarkTheme = {
+  ...AllOptions,
+  args: { theme: "dark" },
+};
 
 export const Exclude = {
   render: Template,
@@ -124,11 +121,10 @@ export const Exclude = {
       .classList.add("pseudo-hover");
   },
 };
-export const ExcludeDarkTheme = merge(Exclude, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDarkTheme = {
+  ...Exclude,
+  args: { theme: "dark" },
+};
 
 export const ExcludeDayOfWeek = {
   render: Template,
@@ -141,11 +137,10 @@ export const ExcludeDayOfWeek = {
     },
   },
 };
-export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDayOfWeekDarkTheme = {
+  ...ExcludeDayOfWeek,
+  args: { ...ExcludeDayOfWeek.args, theme: "dark" },
+};
 
 export const RelativeCurrent = {
   render: Template,
@@ -154,21 +149,19 @@ export const RelativeCurrent = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
-    const week = canvas.getByRole("button", {
-      name: "Week",
-    });
-    week.classList.add("pseudo-hover");
+    // Chip's hover styles live on its label, not the hidden radio input
+    const week = canvas.getByText("Week").closest("label");
+    week?.classList.add("pseudo-hover");
     const next = canvas.getByRole("tab", {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
   },
 };
-export const RelativeCurrentDarkTheme = merge(RelativeCurrent, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeCurrentDarkTheme = {
+  ...RelativeCurrent,
+  args: { ...RelativeCurrent.args, theme: "dark" },
+};
 
 export const RelativePrevious = {
   render: Template,
@@ -189,11 +182,10 @@ export const RelativePrevious = {
   },
   decorators: [WithMockDate],
 };
-export const RelativePreviousDarkTheme = merge(RelativePrevious, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativePreviousDarkTheme = {
+  ...RelativePrevious,
+  args: { ...RelativePrevious.args, theme: "dark" },
+};
 
 export const RelativeNext = {
   render: Template,
@@ -214,11 +206,10 @@ export const RelativeNext = {
   },
   decorators: [WithMockDate],
 };
-export const RelativeNextDarkTheme = merge(RelativeNext, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeNextDarkTheme = {
+  ...RelativeNext,
+  args: { ...RelativeNext.args, theme: "dark" },
+};
 
 export const SpecificBetween = {
   render: Template,
@@ -239,8 +230,7 @@ export const SpecificBetween = {
   },
 };
 
-export const SpecificBetweenDarkTheme = merge(SpecificBetween, {
-  args: {
-    theme: "dark",
-  },
-});
+export const SpecificBetweenDarkTheme = {
+  ...SpecificBetween,
+  args: { ...SpecificBetween.args, theme: "dark" },
+};

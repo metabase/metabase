@@ -9,9 +9,9 @@ import {
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import {
   Form,
   FormErrorMessage,
@@ -20,7 +20,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import type {
   SchemaName,
   Transform,
@@ -48,6 +48,7 @@ type CreateTransformModalProps = {
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
+  closeOnEscape?: boolean;
 };
 
 export function CreateTransformModal({
@@ -61,6 +62,7 @@ export function CreateTransformModal({
   targetDescription,
   validateOnMount,
   showIncrementalSettings,
+  closeOnEscape,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -117,7 +119,13 @@ export function CreateTransformModal({
   };
 
   return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+    <Modal
+      density="relaxed"
+      title={t`Save your transform`}
+      opened
+      closeOnEscape={closeOnEscape}
+      onClose={onClose}
+    >
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
@@ -163,7 +171,7 @@ function CreateTransformForm({
 
   return (
     <Form>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl">
         <FormTextInput
           name="name"
           label={t`Name`}
@@ -182,7 +190,6 @@ function CreateTransformForm({
           name="collection_id"
           title={t`Collection`}
           collectionPickerModalProps={{ namespaces: ["transforms"] }}
-          style={{ marginBottom: 0 }}
         />
         {showIncrementalSettings && (
           <IncrementalTransformSettings
@@ -191,14 +198,12 @@ function CreateTransformForm({
             onIncrementalChange={handleIncrementalChange}
           />
         )}
-        <Group>
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
-          <Button onClick={onClose}>{t`Back`}</Button>
-          <FormSubmitButton label={t`Save`} variant="filled" />
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <FormErrorMessage flex={1} />
+        <Button onClick={onClose}>{t`Back`}</Button>
+        <FormSubmitButton label={t`Save`} variant="filled" />
+      </Modal.Footer>
     </Form>
   );
 }

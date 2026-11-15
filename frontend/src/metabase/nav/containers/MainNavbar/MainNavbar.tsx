@@ -1,24 +1,26 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
-import _ from "underscore";
 
 import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
-import { getDashboard } from "metabase/dashboard/selectors";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
+import { useNavigate } from "metabase/router";
+import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
+import type { CollectionId } from "metabase-types/api";
 
-import { NavRoot, Sidebar } from "./MainNavbar.styled";
+import S from "./MainNavbar.module.css";
 import MainNavbarContainer from "./MainNavbarContainer";
-import getSelectedItems, {
+import { Sidebar } from "./Sidebar";
+import {
+  getSelectedItems,
   isCollectionPath,
   isMetricPath,
   isModelPath,
@@ -35,27 +37,17 @@ interface EntityLoaderProps {
 }
 
 interface StateProps {
-  dashboard?: Dashboard;
-  questionId?: number;
-  collectionId?: CollectionId;
-}
-
-interface DispatchProps extends MainNavbarDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
+  questionId?: number | null;
+  collectionId?: CollectionId | null;
 }
 
 type Props = MainNavbarOwnProps &
   EntityLoaderProps &
   StateProps &
-  DispatchProps;
+  MainNavbarDispatchProps;
 
 function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
-    // Can't use dashboard entity loader instead.
-    // The dashboard page uses DashboardsApi.get directly,
-    // so we can't re-use data between these components.
-    dashboard: getDashboard(state),
-
     questionId: maybeGetQuestionId(state, props),
     collectionId: maybeGetCollectionId(state, props),
   };
@@ -64,10 +56,9 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
 const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
-  onChangeLocation: push,
 };
 
-function MainNavbar({
+function MainNavbarInner({
   isOpen,
   location,
   params,
@@ -76,9 +67,9 @@ function MainNavbar({
   dashboard,
   openNavbar,
   closeNavbar,
-  onChangeLocation,
   ...props
 }: Props) {
+  const navigate = useNavigate();
   const { currentData: card } = useGetCardQuery(
     questionId
       ? {
@@ -108,9 +99,8 @@ function MainNavbar({
     };
   }, [isOpen, openNavbar, closeNavbar]);
 
+  const question = useQuestionFromCard(card);
   const selectedItems = useMemo<SelectedItem[]>(() => {
-    const question = card && new Question(card);
-
     return getSelectedItems({
       pathname: location.pathname,
       params,
@@ -118,7 +108,7 @@ function MainNavbar({
       collection,
       dashboard,
     });
-  }, [location, params, card, dashboard, collection]);
+  }, [location, params, question, dashboard, collection]);
 
   return (
     <Sidebar
@@ -128,7 +118,13 @@ function MainNavbar({
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >
-      <NavRoot isOpen={isOpen}>
+      <Flex
+        component="nav"
+        className={S.nav}
+        direction="column"
+        pt="sm"
+        h="100%"
+      >
         <MainNavbarContainer
           isOpen={isOpen}
           location={location}
@@ -136,10 +132,11 @@ function MainNavbar({
           selectedItems={selectedItems}
           openNavbar={openNavbar}
           closeNavbar={closeNavbar}
-          onChangeLocation={onChangeLocation}
+          onChangeLocation={navigate}
           {...props}
         />
-      </NavRoot>
+        <NavbarPromoSlot />
+      </Flex>
     </Sidebar>
   );
 }
@@ -149,9 +146,10 @@ function maybeGetQuestionId(
   { location, params }: MainNavbarOwnProps,
 ) {
   const { pathname } = location;
-  const canFetchQuestion =
+  const canFetchCard =
     isQuestionPath(pathname) || isModelPath(pathname) || isMetricPath(pathname);
-  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+  const cardId = isMetricPath(pathname) ? params.cardId : params.slug;
+  return canFetchCard ? Urls.extractEntityId(cardId) : null;
 }
 
 function maybeGetCollectionId(
@@ -163,15 +161,7 @@ function maybeGetCollectionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  /**
-   * Previously the `_.compose` type was broken, so it wasn't checking for type compatibility, and would
-   * return the composed function type as `any`. Now that it works better, legit errors are surfacing.
-   * But I don't have time, or enough context to fix this one.
-   *
-   * It seems the error came from the mismatch of the `dashboard` type, where the component expects
-   * a dashboard response, but the injected prop is from the redux store which has a different type.
-   */
-  MainNavbar as any,
-);
+export const MainNavbar = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(MainNavbarInner);

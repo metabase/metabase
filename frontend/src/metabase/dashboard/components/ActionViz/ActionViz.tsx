@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import Action from "./Action";
+import { Action } from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";
@@ -38,8 +38,9 @@ const ActionViz: VisualizationDefinition = {
     },
     actionDisplayType: {
       getSection: () => t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Action Form Display`,
+      get title() {
+        return t`Action Form Display`;
+      },
       widget: "radio",
       hidden: true,
       getProps: () => ({
@@ -51,15 +52,17 @@ const ActionViz: VisualizationDefinition = {
     },
     "button.label": {
       getSection: () => t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Label`,
+      get title() {
+        return t`Label`;
+      },
       widget: "input",
       getHidden: isForm,
     },
     "button.variant": {
       getSection: () => t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Variant`,
+      get title() {
+        return t`Variant`;
+      },
       widget: "select",
       getDefault: () => "primary",
       getHidden: isForm,

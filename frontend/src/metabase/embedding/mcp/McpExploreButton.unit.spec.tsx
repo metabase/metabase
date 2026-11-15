@@ -1,0 +1,146 @@
+import userEvent from "@testing-library/user-event";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupAlertsEndpoints,
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
+import { screen, waitFor } from "__support__/ui";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
+import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
+import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDataset,
+  createMockDatasetData,
+  createMockNumericColumn,
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { McpExploreButton } from "./McpExploreButton";
+
+const TEST_USER = createMockUser();
+const TEST_DATABASE = createSampleDatabase();
+const TEST_CARD = createMockCard({
+  display: "line",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "quarter" }],
+        },
+      ],
+    }),
+  ),
+});
+
+const QUERY_RESULT = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createMockNumericColumn({
+        name: "count",
+        display_name: "Count",
+        source: "aggregation",
+      }),
+    ],
+    rows: [[26000]],
+  }),
+});
+
+function setup({ applicationName }: { applicationName?: string } = {}) {
+  const { state } = setupSdkState({
+    currentUser: TEST_USER,
+    ...(applicationName && {
+      settingValues: createMockSettings({
+        "enable-embedding-sdk": true,
+        "application-name": applicationName,
+      }),
+      tokenFeatures: createMockTokenFeatures({
+        embedding_sdk: true,
+        whitelabel: true,
+      }),
+    }),
+  });
+  if (applicationName) {
+    setupEnterpriseOnlyPlugin("whitelabel");
+  }
+
+  const app = { openLink: jest.fn() };
+  const instanceUrl = "https://metabase.example";
+
+  setupCardEndpoints(TEST_CARD);
+  setupCardQueryMetadataEndpoint(
+    TEST_CARD,
+    createMockCardQueryMetadata({ databases: [TEST_DATABASE] }),
+  );
+  setupDatabaseEndpoints(TEST_DATABASE);
+
+  setupAlertsEndpoints(TEST_CARD, []);
+  setupCardQueryEndpoints(TEST_CARD, QUERY_RESULT);
+
+  renderWithSDKProviders(
+    <SdkQuestion
+      questionId={TEST_CARD.id}
+      isSaveEnabled={false}
+      withEditorButton={false}
+      withChartTypeSelector={false}
+    >
+      {/* Unjustified type cast. FIXME */}
+      <McpExploreButton app={app as any} instanceUrl={instanceUrl} />
+    </SdkQuestion>,
+    {
+      componentProviderProps: {
+        authConfig: createMockSdkConfig(),
+      },
+      storeInitialState: state,
+    },
+  );
+
+  return { app, instanceUrl };
+}
+
+describe("McpExploreButton", () => {
+  it("opens the current question in Metabase", async () => {
+    const user = userEvent.setup();
+    const { app, instanceUrl } = setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: /explore in metabase/i }),
+    );
+
+    await waitFor(() => {
+      expect(app.openLink).toHaveBeenCalledWith({
+        url:
+          instanceUrl +
+          Urls.serializedQuestion({
+            ...TEST_CARD,
+            original_card_id: TEST_CARD.id,
+          }),
+      });
+    });
+  });
+
+  it("uses the custom application name when white-labelled", async () => {
+    setup({ applicationName: "Acme Analytics" });
+
+    expect(
+      await screen.findByRole("button", { name: "Explore in Acme Analytics" }),
+    ).toBeInTheDocument();
+  });
+});

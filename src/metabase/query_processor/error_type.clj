@@ -3,7 +3,10 @@
   is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!
 
     (throw (ex-info (tru \"Don''t know how to parse {0} {1}\" (class x) x)
-                    {:type qp.error-type/invalid-parameter}))")
+                    {:type qp.error-type/invalid-parameter}))"
+  (:require
+   [metabase.util :as u]
+   [metabase.util.performance :as perf]))
 
 (def ^:private hierarchy
   (make-hierarchy))
@@ -63,6 +66,13 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(defn missing-required-parameter?
+  "Does `e`, or any exception in its cause chain, have `:type` [[missing-required-parameter]]? Middleware wraps the
+  original exception, so the type is usually not on the outermost one."
+  [e]
+  (boolean (perf/some #(= (:type (ex-data %)) missing-required-parameter)
+                      (u/full-exception-chain e))))
+
 (deferror multiple-conflicting-parameter-values
   "The query is parameterized, and multiple filters provided conflicting values."
   :parent invalid-query
@@ -113,6 +123,37 @@
   "The query references a database that we are unable to acquire a connection to."
   :parent client
   :show-in-embeds? true)
+
+;;;; #### Connection-Pool Saturation Errors
+;;;;
+;;;; A database's connection pool is momentarily overloaded. These are transient and retriable — the query itself is
+;;;; fine — so the query processor maps them to an HTTP 503 (Service Unavailable), not a 4xx. Contrast with
+;;;; `unable-to-acquire-connection`, a `client` error meaning we cannot connect to the database at all.
+
+(deferror connection-pool-saturated
+  "Ancestor type for the transient errors raised when a database's connection pool is saturated — every connection is
+  in use and the pool has hit `jdbc-data-warehouse-max-connection-pool-size`. Equivalent of an HTTP 503 (Service
+  Unavailable); the client may retry. Not thrown directly; see the children [[connection-pool-checkout-timeout]] and
+  [[connection-pool-checkout-queue-full]]."
+  :parent :error
+  :show-in-embeds? true)
+
+(deferror connection-pool-checkout-timeout
+  "A query waited for a free connection to its database but gave up once the wait exceeded
+  `jdbc-data-warehouse-connection-pool-checkout-timeout-ms`."
+  :parent connection-pool-saturated)
+
+(deferror connection-pool-checkout-queue-full
+  "A query was rejected immediately, without waiting, because the number of queries already waiting for a free
+  connection to its database had reached `jdbc-data-warehouse-connection-pool-max-pending-checkouts`."
+  :parent connection-pool-saturated)
+
+(defn connection-pool-saturated?
+  "Is `error-type` a connection-pool-saturation error, the equivalent of an HTTP 503 status code? True for both a
+  checkout timeout ([[connection-pool-checkout-timeout]]) and a full checkout queue
+  ([[connection-pool-checkout-queue-full]])."
+  [error-type]
+  (isa? hierarchy error-type connection-pool-saturated))
 
 ;;;; ### Server-Side Errors
 

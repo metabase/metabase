@@ -4,21 +4,29 @@
   --inset-inline-end: 0;
 
   line-height: 1rem;
+  margin-top: min(
+    var(--input-margin-top, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
+  margin-bottom: min(
+    var(--input-margin-bottom, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
 }
 
 .input {
   display: block;
   color: var(--mb-color-text-primary);
-  border-radius: var(--mantine-radius-xs);
-  background-color: var(--mb-color-background-primary);
+  border-radius: var(--mantine-radius-xxs);
+  background-color: var(--mb-color-background_page-primary);
 
   &::placeholder {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   &:disabled {
-    background-color: var(--mb-color-background-disabled);
-    color: var(--mb-color-text-tertiary);
+    background-color: var(--mb-color-background_surface-disabled);
+    color: var(--mb-color-text-disabled);
   }
 
   &[data-size="xs"] {
@@ -32,23 +40,27 @@
   }
 
   &[data-variant="default"] {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
+
+    &:hover:not(:disabled) {
+      border-color: var(--mb-color-core-brand);
+    }
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &[data-error] {
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     }
   }
 
   &[data-error] {
-    color: var(--mb-color-error);
-    border-color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
+    border-color: var(--mb-color-feedback-negative);
 
     &::placeholder {
-      color: var(--mb-color-error);
+      color: var(--mb-color-feedback-negative);
     }
   }
 }
@@ -62,7 +74,7 @@
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: var(--mantine-line-height-md);
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xxs);
 }
 
 .description {
@@ -73,7 +85,7 @@
 }
 
 .error {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
   margin-top: var(--mantine-spacing-sm);
@@ -84,5 +96,5 @@
 }
 
 .required {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /**
  * Early auth initialization that runs in the bootstrap chunk.
  *
@@ -9,20 +10,15 @@
  * bundle since the bootstrap entry is excluded from splitChunks.
  */
 
+import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import * as MetabaseError from "embedding-sdk-shared/errors";
+import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
-
-type SdkAuthState = {
-  status: "idle" | "in-progress" | "completed" | "error" | "skipped";
-  session?: any;
-  user?: any;
-  siteSettings?: Record<string, any>;
-  error?: Error;
-};
 
 const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 
@@ -58,7 +54,10 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
 
   // Subscribe to store changes
   const checkForAuthConfigAndStartJwtAuth = () => {
-    const store = win.METABASE_PROVIDER_PROPS_STORE;
+    // The window global stores its props untyped; the bundle pins the type.
+    const store = win.METABASE_PROVIDER_PROPS_STORE as
+      | MetabaseProviderPropsStore<MetabaseProviderPropsStoreExternalProps>
+      | undefined;
 
     if (!store) {
       return false;
@@ -153,7 +152,7 @@ async function performFullAuthFlow(config: {
 }): Promise<{
   session: any;
   user: any;
-  siteSettings: Record<string, any>;
+  siteSettings: SdkAuthState["siteSettings"];
 } | null> {
   const headers = getSdkRequestHeaders();
 
@@ -162,6 +161,7 @@ async function performFullAuthFlow(config: {
     ? { method: "jwt" as const, url: config.jwtProviderUri }
     : await connectToInstanceAuthSso(config.metabaseInstanceUrl, {
         headers,
+        // Unjustified type cast. FIXME
         preferredAuthMethod: config.preferredAuthMethod as
           | "jwt"
           | "saml"

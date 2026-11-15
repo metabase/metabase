@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -68,13 +69,16 @@ export function Header({
 
   return (
     <Flex
-      p="md"
-      gap="md"
+      p="lg"
+      gap="lg"
       align="center"
       className={className}
       data-testid="visualizer-header"
     >
-      <ActionIcon onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}>
+      <ActionIcon
+        variant="subtle"
+        onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}
+      >
         <Icon name="sidebar_open" />
       </ActionIcon>
       <EditableText
@@ -89,39 +93,38 @@ export function Header({
       {/* Spacer */}
       <div style={{ flexGrow: 1 }} />
 
-      <Button.Group>
+      <Button.Group flex="0 0 auto">
         <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
-            size="sm"
             aria-label={t`Undo`}
             disabled={!canUndo}
             onClick={undo}
             leftSection={
-              <Icon name="undo" c={canUndo ? "none" : "text-tertiary"} />
+              <Icon name="undo" c={canUndo ? "none" : "text-disabled"} />
             }
           />
         </Tooltip>
         <Tooltip withinPortal={false} label={t`Redo`}>
           <Button
-            size="sm"
             aria-label={t`Redo`}
             disabled={!canRedo}
             onClick={redo}
             leftSection={
-              <Icon name="redo" c={canRedo ? "unset" : "text-tertiary"} />
+              <Icon name="redo" c={canRedo ? "unset" : "text-disabled"} />
             }
           />
         </Tooltip>
       </Button.Group>
       <Button
         variant="filled"
-        size="sm"
+        flex="0 0 auto"
         disabled={!saveButtonEnabled}
         onClick={handleSave}
       >
         {saveLabel ?? t`Add to dashboard`}
       </Button>
       <ActionIcon
+        variant="subtle"
         data-testid="visualizer-close-button"
         onClick={() => {
           trackVisualizerCloseClicked();

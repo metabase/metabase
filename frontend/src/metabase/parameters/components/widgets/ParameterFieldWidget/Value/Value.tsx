@@ -1,10 +1,15 @@
 import { isValidElement } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import type { DashboardId, Parameter } from "metabase-types/api";
+import { formatValue } from "metabase/value-formatting";
+import type * as Lib from "metabase-lib";
+import { getParameterFieldFormatColumn } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type {
+  ColumnSettings,
+  DashboardId,
+  Parameter,
+} from "metabase-types/api";
 
 import RemappedValue from "./RemappedValue";
 
@@ -19,7 +24,8 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
-} & OptionsType) => {
+  field?: Lib.ParameterFieldInfo;
+} & ColumnSettings) => {
   const tc = useTranslateContent<unknown>();
   const { uuid, token } = useEmbeddingEntityContext();
 
@@ -33,14 +39,17 @@ export const Value = ({
     ...rawOptions,
     uuid,
     token,
-    displayValue: tc(rawOptions.displayValue),
   };
 
   if (rawOptions.remap) {
     return <RemappedValue value={value} {...options} />;
   }
+  const { field, ...formatOptions } = options;
   const formatted = formatValue(value, {
-    ...options,
+    ...formatOptions,
+    column:
+      formatOptions.column ??
+      (field != null ? getParameterFieldFormatColumn(field) : undefined),
     jsx: true,
   });
   if (isValidElement(formatted)) {

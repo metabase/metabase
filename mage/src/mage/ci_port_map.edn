@@ -19,8 +19,8 @@
  "circleci/mariadb:latest"  3307
 
  ;; MySQL (3308–3309)
- "cimg/mysql:8.0"           3308
- "mysql:8.0"                3308
+ "cimg/mysql:8.4"           3308
+ "mysql:8.4"                3308
  "mysql:latest"             3309
 
  ;; PostgreSQL (5432–5433)
@@ -51,7 +51,7 @@
  "metabase/druid:29.0.1-json-no-ingestion"     8888
 
  ;; Presto
- "metabase/presto-mb-ci:latest"                8443
+ "metabase/presto-mb-ci:0.295"                 8443
 
  ;; SparkSQL
  "metabase/spark:3.2.1"                        10000

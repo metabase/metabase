@@ -1,5 +1,6 @@
 ---
 title: Tables
+summary: Arrange, hide, resize, freeze, and format columns, add conditional formatting, and filter or summarize right from a column heading.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/table
 ---
@@ -20,7 +21,7 @@ When viewing tables, you can click on the **gear** icon in the bottom left to br
 
 ![Adding or removing columns](../images/column-selection.png)
 
-Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#field-visibility).
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata/metadata-editing.md#field-visibility).
 
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 
@@ -39,13 +40,23 @@ For more complicated calculations, you can use the editor to [add a custom colum
 
 ## Add row numbers to a table
 
-To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, and toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
+To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
 
 ![Add row numbers to a table](../images/show-row-index.png)
 
 ## Resize columns
 
 To change the width of a column, you can click and drag the edges of the column's header.
+
+## Stripe rows
+
+To make wide tables easier to read, you can shade every other row.
+
+1. Click the **gear** icon in the bottom left to open visualization settings.
+2. Switch to the **Display** tab.
+3. Toggle on **Striped rows**.
+
+Striped rows also apply when the table is sent in a [dashboard subscription or alert](../../dashboards/subscriptions.md). Any [conditional formatting](#conditional-table-formatting) colors take precedence over the striped row effect.
 
 ## Freeze columns or rows
 
@@ -151,7 +162,7 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
-### Align text
+### Alignment
 
 You can display the text on the left, right, or in the middle (i.e., centered) of the column.
 
@@ -159,7 +170,7 @@ You can display the text on the left, right, or in the middle (i.e., centered) o
 
 You can toggle text wrapping, which is useful for columns with long text values like comments.
 
-### Display as
+### Display as text, link, or image
 
 You can display a column as:
 
@@ -167,7 +178,7 @@ You can display a column as:
 - [Link](#display-text-as-a-link)
 - Email link
 - [Image](#display-url-as-an-image)
-- Automatic (Metabase guesses based on the values).
+- Choose automatically (Metabase guesses based on the values).
 
 #### Display text as a link
 
@@ -193,7 +204,7 @@ If you select image, and the text is a link to an image asset, Metabase will dis
 
 Date formatting options include the same options as [Text formatting](#text-formatting-options), as well as:
 
-### Align date
+### Alignment
 
 You can display the date on the left, right, or in the middle (i.e., centered) of the column.
 
@@ -237,14 +248,14 @@ You can choose either 12-hour clock style, or 24-hour clock style.
 
 This option displays a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
 
-### Style
+### Format
 
-Number styles include:
+Number formats are shown as examples of how the same value would look, using the column's separator style and currency symbol:
 
-- Number
-- Percent
-- Scientific
-- Currency
+- `1.23` (number)
+- `123%` (percent)
+- `$1.23` (currency)
+- `1.23e+0` (scientific)
 
 ### Separator style
 
@@ -258,7 +269,7 @@ Gives you various options for how commas and periods are used to separate the nu
 
 ### Number of decimal places
 
-Forces the number to be displayed with exactly this many decimal places.
+Forces the number to be displayed with exactly this many decimal places (from 0 to 20). Clear the field to go back to the default.
 
 ### Multiply by a number
 

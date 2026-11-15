@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -12,30 +13,35 @@ import {
   setupParameterValuesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  fireEvent,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { defer } from "metabase/utils/promise";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Card, ParameterValues } from "metabase-types/api";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
+  createMockCollectionItem,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
-  createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -44,25 +50,24 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   describe("string parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
+    const [field1, field2] = [
+      getParameterFieldInfo(
         createMockField({
           id: 1,
           base_type: "type/Text",
           effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
+      ),
+      getParameterFieldInfo(
         createMockField({
           id: 2,
           base_type: "type/Text",
           effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+      ),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {
@@ -214,7 +219,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 1,
                   name: "id",
                   display_name: "ID",
@@ -222,7 +227,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -235,20 +240,163 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        await userEvent.click(
-          screen.getByRole("button", { name: /Pick a column/ }),
-        );
+        await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
         expect(
-          screen.queryByRole("heading", { name: "ID" }),
+          screen.queryByRole("option", { name: "ID" }),
         ).not.toBeInTheDocument();
 
-        await userEvent.click(
-          screen.getByRole("heading", { name: "Category" }),
-        );
+        await userEvent.click(screen.getByRole("option", { name: "Category" }));
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
         expect(onSubmit).toHaveBeenCalledWith("card", {
           card_id: 1,
           value_field: ["field", "category", { "base-type": "type/Text" }],
+        });
+      });
+
+      it("should not show the label field selector until a value field is selected", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockColumn({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+              ],
+            }),
+          ],
+        });
+
+        expect(
+          screen.getByText("Column to supply the values"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText("Column to supply the labels"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("should only offer text columns as the label field for remapping", async () => {
+        const { onSubmit } = await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+              // start with a label so we exercise selecting a different one
+              label_field: ["field", 3, null],
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockColumn({
+                  id: 1,
+                  name: "id",
+                  display_name: "ID",
+                  base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
+                  semantic_type: "type/PK",
+                }),
+                createMockColumn({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+                createMockColumn({
+                  id: 3,
+                  name: "title",
+                  display_name: "Title",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Title",
+                }),
+              ],
+            }),
+          ],
+        });
+        expect(
+          screen.getByText("Column to supply the labels"),
+        ).toBeInTheDocument();
+
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const categoryOption = await screen.findByRole("option", {
+          name: "Category",
+        });
+        expect(
+          screen.queryByRole("option", { name: "ID" }),
+        ).not.toBeInTheDocument();
+        await userEvent.click(categoryOption);
+
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(onSubmit).toHaveBeenCalledWith("card", {
+          card_id: 1,
+          value_field: ["field", 2, null],
+          label_field: ["field", "category", { "base-type": "type/Text" }],
+        });
+      });
+
+      it("should allow clearing the label field with the None option", async () => {
+        const { onSubmit } = await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+              label_field: ["field", 3, null],
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockColumn({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+                createMockColumn({
+                  id: 3,
+                  name: "title",
+                  display_name: "Title",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Title",
+                }),
+              ],
+            }),
+          ],
+        });
+
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const noneOption = await screen.findByRole("option", { name: "None" });
+        await userEvent.click(noneOption);
+
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(onSubmit).toHaveBeenCalledWith("card", {
+          card_id: 1,
+          value_field: ["field", 2, null],
+          label_field: undefined,
         });
       });
 
@@ -269,7 +417,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -281,7 +429,67 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
+      });
+
+      it("should show a loader instead of the previous card while the next card loads", async () => {
+        mockGetBoundingClientRect();
+        const nextCard = createMockCard({ id: 2, name: "Reviews" });
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: { card_id: 1 },
+          }),
+          cards: [createMockCard({ id: 1, name: "Products" }), nextCard],
+          rootCollectionItems: [
+            createMockCollectionItem({
+              id: nextCard.id,
+              name: nextCard.name,
+              model: "card",
+            }),
+          ],
+        });
+        const nextCardResponse = defer<Card>();
+        fetchMock.removeRoute("card-2-get");
+        fetchMock.get("path:/api/card/2", nextCardResponse.promise);
+
+        await userEvent.click(screen.getByRole("button", { name: /Products/ }));
+        await userEvent.click(await screen.findByText("Reviews"));
+        await userEvent.click(
+          await screen.findByTestId("entity-picker-select-button"),
+        );
+
+        expect(
+          await screen.findByTestId("loading-indicator"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /Products/ }),
+        ).not.toBeInTheDocument();
+
+        nextCardResponse.resolve(nextCard);
+        await waitForLoaderToBeRemoved();
+
+        expect(
+          screen.getByRole("button", { name: /Reviews/ }),
+        ).toBeInTheDocument();
+      });
+
+      it("should not block scrolling inside the picker", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+          }),
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: /Pick a model or question/ }),
+        );
+        const picker = await screen.findByTestId("entity-picker-modal");
+
+        // `fireEvent` returns false when a handler called `preventDefault`
+        expect(fireEvent.wheel(picker, { deltaY: 100 })).toBe(true);
       });
 
       it("should display a message when the user has no access to the card", async () => {
@@ -301,8 +509,13 @@ describe("ValuesSourceModal", () => {
           hasCollectionAccess: false,
         });
 
+        // The error stays inside the modal, so it keeps its title and close button
+        const modal = screen.getByRole("dialog");
         expect(
-          screen.getByText("You don't have permissions to do that."),
+          within(modal).getByText("You don't have permissions to do that."),
+        ).toBeInTheDocument();
+        expect(
+          within(modal).getByRole("button", { name: "Close" }),
         ).toBeInTheDocument();
       });
 
@@ -337,7 +550,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -372,7 +585,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -383,7 +596,9 @@ describe("ValuesSourceModal", () => {
             }),
           ],
         });
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
 
         await userEvent.click(
           screen.getByRole("radio", { name: "Custom list" }),
@@ -392,6 +607,83 @@ describe("ValuesSourceModal", () => {
           screen.getByRole("radio", { name: "Custom list" }),
         ).toBeChecked();
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      });
+
+      it("should not copy the previous card's values to a custom list", async () => {
+        mockGetBoundingClientRect();
+        const cards = [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockColumn({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+              }),
+            ],
+          }),
+          createMockCard({
+            id: 3,
+            name: "People",
+            result_metadata: [
+              createMockColumn({
+                id: 4,
+                display_name: "Source",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+              }),
+            ],
+          }),
+        ];
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+            },
+          }),
+          parameterValues: createMockParameterValues({
+            values: [["A"], ["B"], ["C"]],
+          }),
+          cards,
+          rootCollectionItems: cards.map(({ id, name }) =>
+            createMockCollectionItem({ id, name, model: "card" }),
+          ),
+        });
+        const pickCard = async (currentName: RegExp, nextName: string) => {
+          await userEvent.click(
+            screen.getByRole("button", { name: currentName }),
+          );
+          const picker = await screen.findByTestId("entity-picker-modal");
+          await userEvent.click(await within(picker).findByText(nextName));
+          await userEvent.click(
+            await within(picker).findByTestId("entity-picker-select-button"),
+          );
+          await waitForLoaderToBeRemoved();
+        };
+
+        await pickCard(/Products/, "People");
+        await userEvent.click(
+          await screen.findByPlaceholderText(/Pick a column/),
+        );
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Source" }),
+        );
+        expect(
+          await screen.findByRole("textbox", { name: "Values" }),
+        ).toHaveValue("A\nB\nC");
+
+        // Products is cached by now, so this pick doesn't show the loader
+        await pickCard(/People/, "Products");
+        expect(await screen.findByText("Pick a column")).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("radio", { name: "Custom list" }),
+        );
+        expect(screen.getByRole("textbox")).toHaveValue("");
       });
     });
 
@@ -486,23 +778,22 @@ describe("ValuesSourceModal", () => {
   });
 
   describe("number parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
+    const [field1, field2] = [
+      getParameterFieldInfo(
         createMockField({
           id: 1,
           base_type: "type/Integer",
           effective_type: "type/Integer",
         }),
+      ),
+      getParameterFieldInfo(
         createMockField({
           id: 2,
           base_type: "type/Integer",
           effective_type: "type/Integer",
         }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+      ),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {
@@ -592,7 +883,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -615,7 +906,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -689,7 +980,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
         });
@@ -711,7 +1002,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -735,7 +1026,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -753,12 +1044,97 @@ describe("ValuesSourceModal", () => {
       });
     });
   });
+
+  describe("id parameter", () => {
+    it("should offer only numeric columns as the value field for a numeric id parameter", async () => {
+      const { onSubmit } = await setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "id",
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockColumn({
+                id: 1,
+                name: "id",
+                display_name: "ID",
+                base_type: "type/BigInteger",
+                effective_type: "type/BigInteger",
+                semantic_type: "type/PK",
+              }),
+              createMockColumn({
+                id: 2,
+                name: "category",
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
+      expect(
+        screen.queryByRole("option", { name: "Category" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("option", { name: "ID" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+      expect(onSubmit).toHaveBeenCalledWith("card", {
+        card_id: 1,
+        value_field: ["field", "id", { "base-type": "type/BigInteger" }],
+      });
+    });
+
+    it("should show a message when a numeric id parameter has no number columns", async () => {
+      await setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "id",
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockColumn({
+                id: 2,
+                name: "category",
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      expect(
+        screen.getByText(/This question doesn’t have any number columns/),
+      ).toBeInTheDocument();
+    });
+  });
 });
 
 interface SetupOpts {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   cards?: Card[];
+  rootCollectionItems?: CollectionItem[];
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
   showMetabaseLinks?: boolean;
@@ -768,6 +1144,7 @@ const setup = async ({
   parameter = createMockUiParameter(),
   parameterValues = createMockParameterValues(),
   cards = [],
+  rootCollectionItems = [],
   hasCollectionAccess = true,
   hasParameterValuesError = false,
   showMetabaseLinks = true,
@@ -776,7 +1153,7 @@ const setup = async ({
   const databases = [createMockDatabase()];
   const rootCollection = createMockCollection(ROOT_COLLECTION);
   const personalCollection = createMockCollection({
-    id: currentUser.personal_collection_id,
+    id: currentUser.personal_collection_id ?? undefined,
   });
   const onSubmit = jest.fn();
   const onClose = jest.fn();
@@ -785,7 +1162,7 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [rootCollection, personalCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
@@ -794,13 +1171,15 @@ const setup = async ({
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections: [rootCollection] });
+    setupCollectionItemsEndpoint({
+      collection: rootCollection,
+      collectionItems: rootCollectionItems,
+    });
     setupCardsEndpoints(cards);
     cards.forEach((card) =>
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: `card__${card.id}`,
-          fields: card.result_metadata ?? [],
-        }),
+      setupCardQueryMetadataEndpoint(
+        card,
+        createMockCardQueryMetadata({ databases: [createMockDatabase()] }),
       ),
     );
   } else {

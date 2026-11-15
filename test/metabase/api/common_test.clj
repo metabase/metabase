@@ -4,7 +4,9 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.measures.models.measure]
    [metabase.models.interface :as mi]
+   [metabase.segments.models.segment]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
@@ -12,6 +14,9 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
+
+(comment metabase.measures.models.measure/keep-me
+         metabase.segments.models.segment/keep-me)
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -21,7 +26,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false false nil false false) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -29,8 +34,7 @@
              "Strict-Transport-Security"         "max-age=31536000"
              "X-Content-Type-Options"            "nosniff"
              "X-Frame-Options"                   "DENY"
-             "X-Permitted-Cross-Domain-Policies" "none"
-             "X-XSS-Protection"                  "1; mode=block"}})
+             "X-Permitted-Cross-Domain-Policies" "none"}})
 
 (defn- mock-api-fn [response-fn]
   ((-> (fn [request respond _]
@@ -56,19 +60,16 @@
             :headers {"Content-Type" "text/plain"}}
            (binding [api/*current-user* (atom "Cam Saul")]
              (my-mock-api-fn)))))
-
   (testing "check that 404 is returned otherwise"
     (is (= (four-oh-four)
            (-> (my-mock-api-fn)
                (update-in [:headers "Last-Modified"] string?)))))
-
   (testing "check-404 can return a custom message"
     (is (= (assoc (four-oh-four) :body "Custom not found.")
            (-> (mock-api-fn
                 (fn [_]
                   (api/check-404 nil (tru "Custom not found."))))
                (update-in [:headers "Last-Modified"] string?)))))
-
   (testing "let-404 should return nil if test fails"
     (is (= (four-oh-four)
            (-> (mock-api-fn
@@ -76,7 +77,6 @@
                   (api/let-404 [user nil]
                     {:user user})))
                (update-in [:headers "Last-Modified"] string?)))))
-
   (testing "otherwise let-404 should bind as expected"
     (is (= {:user {:name "Cam"}}
            ((mw.exceptions/catch-api-exceptions
@@ -88,6 +88,20 @@
             identity
             (fn [e] (throw e)))))))
 
+(deftest ^:parallel check-map-message-is-client-facing-test
+  (testing "a map message is the response body, and its keys stay readable in the ex-data"
+    (let [e (try
+              (api/check false [400 {:message "Nope", :error_code "archived", :errors {:id "bad"}}])
+              (catch ExceptionInfo e e))]
+      (is (=? {:status-code 400, :error_code "archived", :errors {:id "bad"}}
+              (ex-data e)))
+      (is (= {:message "Nope", :error_code "archived", :errors {:id "bad"}}
+             (:body (mock-api-fn (fn [_] (throw e)))))))))
+
+(deftest ^:parallel checkp-errors-are-client-facing-test
+  (is (= {:errors {:name "is bad"}}
+         (:body (mock-api-fn (fn [_] (api/checkp false "name" "is bad")))))))
+
 (methodical/defmethod hawk.approx/=?-diff [java.util.regex.Pattern clojure.lang.Symbol]
   [expected-re sym]
   (hawk.approx/=?-diff expected-re (name sym)))
@@ -95,7 +109,6 @@
 (deftest parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
     (is (= [1] (api/parse-multi-values-param "1" parse-long))))
-
   (testing "multi values a vector as well"
     (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))
 
@@ -108,11 +121,10 @@
 
 (deftest check-functions-publish-events
   ;; setup - derive events so they get dispatched to our test method
-  (derive ::permission-failure-event :metabase/event)
-  (derive :event/write-permission-failure ::permission-failure-event)
-  (derive :event/update-permission-failure ::permission-failure-event)
-  (derive :event/create-permission-failure ::permission-failure-event)
-
+  (events/derive! ::permission-failure-event :metabase/event)
+  (events/derive! :event/write-permission-failure ::permission-failure-event)
+  (events/derive! :event/update-permission-failure ::permission-failure-event)
+  (events/derive! :event/create-permission-failure ::permission-failure-event)
   (try
     (binding [api/*current-user-id* 1]
       (with-redefs [mi/can-read? (constantly false)
@@ -140,10 +152,10 @@
                      @*events*)))))))
     (finally
       ;; teardown - underive events so they aren't dispatched in other tests
-      (underive ::permission-failure-event :metabase/event)
-      (underive :event/write-permission-failure ::permission-failure-event)
-      (underive :event/update-permission-failure ::permission-failure-event)
-      (underive :event/create-permission-failure ::permission-failure-event))))
+      (events/underive! ::permission-failure-event :metabase/event)
+      (events/underive! :event/write-permission-failure ::permission-failure-event)
+      (events/underive! :event/update-permission-failure ::permission-failure-event)
+      (events/underive! :event/create-permission-failure ::permission-failure-event))))
 
 ;;; ---------------------------------------- query-check tests ----------------------------------------
 

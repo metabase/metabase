@@ -1,22 +1,24 @@
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getColumnTitle,
   getRowValue,
   renderValue,
 } from "metabase/detail-view/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValues,
+} from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
 import { Value } from "./Value";
 
 interface Props {
   columns: DatasetColumn[];
-  columnsSettings?: (OptionsType | undefined)[];
+  columnsSettings?: (ColumnSettings | undefined)[];
   responsive?: boolean;
   row: RowValues;
-  table: Table | undefined;
 }
 
 export const DetailsGroup = ({
@@ -24,14 +26,12 @@ export const DetailsGroup = ({
   columnsSettings,
   responsive,
   row,
-  table,
 }: Props) => {
   const tc = useTranslateContent();
 
   return (
-    <Stack data-testid="object-details" gap="lg">
+    <Stack data-testid="object-details" gap="xl">
       {columns.map((column, index) => {
-        const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
         const columnSettings = columnsSettings?.[index] ?? {};
 
@@ -39,7 +39,7 @@ export const DetailsGroup = ({
           <Group
             align="flex-start"
             data-testid="object-details-row"
-            gap="xl"
+            gap="xxl"
             key={index}
             wrap="nowrap"
           >
@@ -54,7 +54,7 @@ export const DetailsGroup = ({
             </Text>
 
             <Flex data-testid="value" flex={responsive ? "0 1 50%" : "1"}>
-              <Value column={column} field={field} value={value}>
+              <Value column={column} value={value}>
                 {renderValue(tc, value, column, columnSettings)}
               </Value>
             </Flex>

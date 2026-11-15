@@ -1,0 +1,10 @@
+.container {
+  gap: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+}
+
+.label {
+  padding-block: 0.25rem;
+  user-select: none;
+}

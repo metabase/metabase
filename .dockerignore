@@ -1,5 +1,6 @@
+.git
 .babel_cache
-target/*
+target
 .circleci
 .cpcache
 .devcontainer
@@ -15,6 +16,7 @@ test_config/*
 test_modules/*
 test_resources/*
 node_modules
+**/node_modules
 **metabase.jar
 
 *.db

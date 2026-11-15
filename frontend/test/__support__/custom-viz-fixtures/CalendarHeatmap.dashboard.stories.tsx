@@ -6,21 +6,18 @@ import { type ReactNode, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { getNextId } from "__support__/utils";
-import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
-import { Api } from "metabase/api";
-// Side-effect import: provides the `#popover-event-target { position: fixed }`
-// rule that ChartTooltip relies on to anchor near the hovered cell.
-import "metabase/common/components/Popover/Popover.module.css";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
-import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getNextId } from "__support__/utils";
+import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { Api } from "metabase/api";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
+import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

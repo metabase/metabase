@@ -99,7 +99,7 @@
                         (into {}
                               (keep (fn [fielddef]
                                       (when (isa? (:base-type fielddef) :type/JSON)
-                                        [(keyword (:field-name fielddef))
+                                        [(:field-name fielddef)
                                          (fn [json]
                                            [::sql.qp/compiled (h2x/cast "json" json)])])))
                               (:field-definitions tabledef)))]
@@ -123,7 +123,7 @@
             tabledef (m/find-first
                       #(= (:table-name %) "json")
                       (:table-definitions dbdef))]
-        (is (=? [[{:json_bit (mt/malli=? [:tuple [:= :metabase.driver.sql.query-processor/compiled] :any])}]]
+        (is (=? [[{"json_bit" (mt/malli=? [:tuple [:= :metabase.driver.sql.query-processor/compiled] :any])}]]
                 (into []
                       (map (fn [chunk]
                              (into [] (take 1) chunk)))

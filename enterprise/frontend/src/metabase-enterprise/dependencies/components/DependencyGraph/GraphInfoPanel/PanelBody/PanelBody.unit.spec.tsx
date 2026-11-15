@@ -1,9 +1,11 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import {
+  createMockActionDependencyNode,
+  createMockActionDependencyNodeData,
+  createMockActionParameter,
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
   createMockLastEditInfo,
@@ -25,7 +27,7 @@ function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <PanelBody node={node} getGraphUrl={getGraphUrl} />}
+      element={<PanelBody node={node} getGraphUrl={getGraphUrl} />}
     />,
     { withRouter: true, initialRoute: "/" },
   );
@@ -102,6 +104,11 @@ describe("PanelBody", () => {
     expect(screen.getByText("Dan Lee")).toBeInTheDocument();
   });
 
+  it("should not display fields section for transforms", () => {
+    setup({ node: createMockTransformDependencyNode() });
+    expect(screen.queryByText(/fields?$/)).not.toBeInTheDocument();
+  });
+
   it("should not display owner section for cards", () => {
     setup({
       node: createMockCardDependencyNode({
@@ -154,5 +161,44 @@ describe("PanelBody", () => {
     expect(screen.getByTestId("entity-creation-info-edited")).toHaveTextContent(
       /Carol White/,
     );
+  });
+
+  it("should display the parameters of an action", () => {
+    setup({
+      node: createMockActionDependencyNode({
+        data: createMockActionDependencyNodeData({
+          parameters: [
+            createMockActionParameter({
+              id: "price",
+              name: "Price",
+              type: "number/=",
+            }),
+            createMockActionParameter({
+              id: "day",
+              name: "Day",
+              type: "date/single",
+            }),
+          ],
+        }),
+      }),
+    });
+    expect(screen.getByText("Parameters")).toBeInTheDocument();
+    expect(screen.getByText("Price")).toBeInTheDocument();
+    expect(screen.getByText("Day")).toBeInTheDocument();
+    expect(screen.queryByText("No parameters")).not.toBeInTheDocument();
+  });
+
+  it("should display 'No parameters' for an action without parameters", () => {
+    setup({
+      node: createMockActionDependencyNode({
+        data: createMockActionDependencyNodeData({ parameters: [] }),
+      }),
+    });
+    expect(screen.getByText("No parameters")).toBeInTheDocument();
+  });
+
+  it("should not display parameters section for cards", () => {
+    setup({ node: createMockCardDependencyNode() });
+    expect(screen.queryByText("Parameters")).not.toBeInTheDocument();
   });
 });

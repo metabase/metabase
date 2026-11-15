@@ -8,7 +8,7 @@
   display: flex;
   overflow: hidden;
   align-items: center;
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .headerTextInput {
@@ -19,7 +19,7 @@
 }
 
 .headerSchema {
-  composes: textLight from "style";
+  composes: textSecondary from "style";
   position: absolute;
   top: -10px;
   font-size: 12px;

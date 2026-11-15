@@ -9,7 +9,7 @@ import type { MetabaseAccentColorKey, MetabaseColorKey } from "./color-keys";
 export interface MetabaseThemeV2 {
   version: 2;
 
-  colors: Record<MetabaseColorKeyWithoutAccents, string>;
+  colors: Record<MetabaseRequiredThemeColorKey, string>;
   chartColors: ChartColorV2[];
 }
 
@@ -44,10 +44,10 @@ export type ChartColorV2 =
   | null;
 
 /**
- * Metabase color keys without accent0 - accent7.
- * Those will be transformed from `chartColors`.
+ * Metabase color keys without colors that are automatically derived.
+ * Accents are transformed from `chartColors`.
  */
-type MetabaseColorKeyWithoutAccents = Exclude<
+type MetabaseRequiredThemeColorKey = Exclude<
   MetabaseColorKey,
   MetabaseAccentColorKey
 >;

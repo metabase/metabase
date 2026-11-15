@@ -1,5 +1,7 @@
 import type {
   ActionDashboardCard,
+  Card,
+  DashCardDataSeriesItem,
   Dashboard,
   DashboardParameterMapping,
   DashboardQueryMetadata,
@@ -7,10 +9,14 @@ import type {
   QuestionDashboardCard,
   VirtualCard,
   VirtualDashboardCard,
+  VisualizerDashboardCard,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";
+import type { MockDatasetOpts } from "./dataset";
 import { createMockEntityId } from "./entity-id";
+import { createMockSingleSeries } from "./series";
 const MOCK_DASHBOARD_ENTITY_ID = createMockEntityId();
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
@@ -103,6 +109,34 @@ export const createMockVirtualCard = (
   archived: false,
   ...opts,
 });
+
+type VisualizerDashboardCardOpts = Partial<
+  Omit<VisualizerDashboardCard, "visualization_settings">
+> & {
+  visualization_settings?: Partial<
+    VisualizerDashboardCard["visualization_settings"]
+  >;
+};
+
+export const createMockVisualizerDashboardCard = (
+  opts?: VisualizerDashboardCardOpts,
+): VisualizerDashboardCard => {
+  const visualization: VisualizerVizDefinition = opts?.visualization_settings
+    ?.visualization ?? {
+    display: "table",
+    columnValuesMapping: {},
+    settings: {},
+  };
+
+  return {
+    ...createMockDashboardCard(opts),
+    ...opts,
+    visualization_settings: {
+      ...opts?.visualization_settings,
+      visualization,
+    },
+  };
+};
 
 export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,
@@ -230,4 +264,15 @@ export const createMockDashboardQueryMetadata = (
   cards: [],
   dashboards: [],
   ...opts,
+});
+
+export const createMockDashCardDataSeries = (
+  cardOpts: Partial<Card>,
+  dataOpts: MockDatasetOpts = {},
+  isSlow: boolean = false,
+  isUsuallyFast: boolean = false,
+): DashCardDataSeriesItem => ({
+  ...createMockSingleSeries(cardOpts, dataOpts),
+  isSlow,
+  isUsuallyFast,
 });

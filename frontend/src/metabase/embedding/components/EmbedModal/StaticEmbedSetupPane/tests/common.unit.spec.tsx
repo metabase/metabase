@@ -84,7 +84,9 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Overview",
         });
 
-        expect(screen.getByText("Setting up a static embed")).toBeVisible();
+        expect(
+          await screen.findByText("Setting up a static embed"),
+        ).toBeVisible();
 
         expect(
           screen.getByText(
@@ -98,7 +100,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=oss",
+          "https://www.metabase.com/docs/latest/embedding/guest-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=oss",
         );
 
         expect(
@@ -124,7 +126,7 @@ describe("Static Embed Setup phase", () => {
           });
 
           expect(
-            screen.getByText(
+            await screen.findByText(
               "You can also hide or lock any of the dashboard’s parameters.",
             ),
           ).toBeVisible();
@@ -146,7 +148,7 @@ describe("Static Embed Setup phase", () => {
         await waitFor(() => {
           expect(
             screen.getByTestId("embed-frontend-select-button"),
-          ).toHaveTextContent("ERB");
+          ).toHaveValue("ERB");
         });
       });
     });
@@ -215,9 +217,7 @@ describe("Static Embed Setup phase", () => {
           });
 
           expect(screen.getByText("My param")).toBeInTheDocument();
-          expect(screen.getByLabelText("My param")).toHaveTextContent(
-            "Disabled",
-          );
+          expect(screen.getByLabelText("My param")).toHaveValue("Disabled");
         });
 
         it("should render saved parameters", async () => {
@@ -249,7 +249,7 @@ describe("Static Embed Setup phase", () => {
           ).toBeInTheDocument();
           expect(
             within(parametersSection).getByLabelText("My param"),
-          ).toHaveTextContent("Locked");
+          ).toHaveValue("Locked");
         });
 
         it("should only render valid parameters", async () => {
@@ -274,9 +274,7 @@ describe("Static Embed Setup phase", () => {
           });
 
           expect(screen.getByText("My param")).toBeInTheDocument();
-          expect(screen.getByLabelText("My param")).toHaveTextContent(
-            "Disabled",
-          );
+          expect(screen.getByLabelText("My param")).toHaveValue("Disabled");
         });
 
         it("should update a card with only valid parameters", async () => {
@@ -302,9 +300,7 @@ describe("Static Embed Setup phase", () => {
           });
 
           expect(screen.getByText("My param")).toBeInTheDocument();
-          expect(screen.getByLabelText("My param")).toHaveTextContent(
-            "Disabled",
-          );
+          expect(screen.getByLabelText("My param")).toHaveValue("Disabled");
 
           await userEvent.click(screen.getByLabelText("My param"));
 
@@ -401,7 +397,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=oss#customizing-the-appearance-of-static-embeds",
+          "https://www.metabase.com/docs/latest/embedding/guest-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=oss#customizing-appearance-of-guest-embeds",
         );
       });
 
@@ -597,7 +593,7 @@ describe("Static Embed Setup phase", () => {
       }),
     );
 
-    expect(screen.getByTestId("embed-backend-select-button")).toHaveTextContent(
+    expect(screen.getByTestId("embed-backend-select-button")).toHaveValue(
       "Python",
     );
 
@@ -607,7 +603,7 @@ describe("Static Embed Setup phase", () => {
       }),
     );
 
-    expect(screen.getByTestId("embed-backend-select-button")).toHaveTextContent(
+    expect(screen.getByTestId("embed-backend-select-button")).toHaveValue(
       "Python",
     );
   });
@@ -700,7 +696,7 @@ describe("Static Embed Setup phase", () => {
     );
 
     await userEvent.click(
-      within(await screen.findByRole("tree")).getByText("Locked"),
+      within(await screen.findByRole("listbox")).getByText("Locked"),
     );
 
     expect(
@@ -714,7 +710,7 @@ describe("Static Embed Setup phase", () => {
     );
 
     await userEvent.click(
-      within(await screen.findByRole("tree")).getByText("Disabled"),
+      within(await screen.findByRole("listbox")).getByText("Disabled"),
     );
 
     expect(
@@ -732,9 +728,9 @@ async function selectServerCodeLanguage({
   currentLanguage?: string;
   newLanguage: string;
 }) {
-  await userEvent.click(screen.getByText(currentLanguage));
+  await userEvent.click(screen.getByDisplayValue(currentLanguage));
 
   await userEvent.click(
-    within(await screen.findByRole("tree")).getByText(newLanguage),
+    within(await screen.findByRole("listbox")).getByText(newLanguage),
   );
 }

@@ -1,13 +1,10 @@
 import { renderHook } from "@testing-library/react";
-import "embedding-sdk-bundle";
 
+import "embedding-sdk-bundle";
 import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
-jest.mock("embedding-sdk-shared/hooks/use-lazy-selector", () => ({
-  useLazySelector: jest.fn((selector) => selector()),
-}));
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
   getBuildInfo: jest.fn(),
 }));
@@ -19,9 +16,11 @@ const setup = async ({
   sdkPackageVersion: string;
   sdkBundleVersion: string;
 }) => {
+  // Unjustified type cast. FIXME
   (getBuildInfo as jest.Mock).mockReturnValueOnce({
     version: sdkPackageVersion,
   });
+  // Unjustified type cast. FIXME
   (getBuildInfo as jest.Mock).mockReturnValueOnce({
     version: sdkBundleVersion,
   });

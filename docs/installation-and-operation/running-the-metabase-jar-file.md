@@ -1,5 +1,6 @@
 ---
 title: Running the Metabase JAR file
+summary: Run the open-source Metabase JAR with Java, either locally to try it out or as a production install.
 redirect_from:
   - /docs/latest/operations-guide/running-the-metabase-jar-file
   - /docs/installation-and-operation/java-versions
@@ -7,11 +8,11 @@ redirect_from:
 
 # Running the Metabase OSS JAR file
 
-> We recommend running Metabase on [Metabase Cloud](https://www.metabase.com/cloud/). If you need to self-host, you _can_ run Metabase as a standalone JAR, but [we recommend running Metabase in a Docker container](./running-metabase-on-docker.md).
+> We recommend running Metabase on [Metabase Cloud](https://www.metabase.com/cloud). If you need to self-host, you _can_ run Metabase as a standalone JAR, but [we recommend running Metabase in a Docker container](./running-metabase-on-docker.md).
 
 To run the free, Open Source version of Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing/) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Quick start
 
@@ -19,12 +20,12 @@ If you have a token for the [Pro or Enterprise editions](https://www.metabase.co
 
 If you have Java installed:
 
-1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar). If you're on a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, download the [JAR for the Enterprise Edition](https://downloads.metabase.com/enterprise/latest/metabase.jar).
+1. [Download the JAR file for Metabase OSS](https://www.metabase.com/start/oss/jar). If you're on a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, download the [JAR for the Enterprise Edition](https://downloads.metabase.com/enterprise/latest/metabase.jar).
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
@@ -45,7 +46,7 @@ You may already have Java installed. To check the version, open a terminal and r
 java -version
 ```
 
-If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 21 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 21 runs. Earlier Java versions aren't supported. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
+If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 25 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 25 runs. Earlier Java versions aren't supported. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
 
 ### 2. Download Metabase
 
@@ -54,11 +55,11 @@ Download the JAR file:
 - [Metabase OSS](https://www.metabase.com/start/oss/jar)
 - [Metabase Enterprise/Pro edition](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
-If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing/) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ### 3. Create a new directory and move the Metabase JAR into it
 
-When you run Metabase, Metabase will create some new files, so it's important to put the Metabase JAR file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
+When you run Metabase, Metabase will create some new files, so it's important to put the Metabase JAR file in a new directory before running it (so move it out of your downloads folder and put it in a new directory).
 
 On posix systems, the commands would look something like this:
 
@@ -85,7 +86,7 @@ cd ~/metabase
 Now that you have Java working you can run the JAR from a terminal with:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 Metabase will start using the default settings. You should see some log entries starting to run in your terminal window showing you the application progress as it starts up. Once Metabase is fully started you'll see a confirmation such as:
@@ -128,7 +129,7 @@ createdb metabaseappdb
 
 You can call your app db whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables for Metabase to use on startup so Metabase knows how to connect to this database.
 
-You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java --add-opens java.base/java.nio=ALL-UNNAMED -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
+You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
 
 ```
 export MB_DB_TYPE=postgres
@@ -137,7 +138,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=username
 export MB_DB_PASS=password
 export MB_DB_HOST=localhost
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`. If you're running Metabase as a service, you'll put these environment variables in a separate configuration file.
@@ -146,7 +147,7 @@ The above command would connect Metabase to your Postgres database, `metabaseapp
 
 If you need to run the JAR in production, you should run Metabase as a service. Running Metabase as a service will:
 
-- Make sure Metabase runs automatically (and stay running).
+- Make sure Metabase runs automatically (and stays running).
 - Allow you to run Metabase with an unprivileged user (which is good for security).
 
 The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase as a systemd service](./running-metabase-as-service.md).
@@ -165,4 +166,4 @@ See [Upgrading Metabase](upgrading-metabase.md).
 
 ## Setting up Metabase
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../getting-started/setting-up-metabase.md).

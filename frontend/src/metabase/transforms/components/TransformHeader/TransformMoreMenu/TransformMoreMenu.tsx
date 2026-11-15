@@ -1,10 +1,10 @@
 import { type MouseEvent, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useNavigate } from "metabase/router";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
@@ -70,9 +70,10 @@ function TransformMenu({
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon size="sm" onClick={handleIconClick}>
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton
+          aria-label={t`Transform options`}
+          onClick={handleIconClick}
+        />
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -114,11 +115,11 @@ function TransformModal({
   onClose,
 }: TransformModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(Urls.transformList()));
+    navigate(Urls.transformList());
     onClose();
   };
 

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Icon, List, Modal } from "metabase/ui";
+import { Button, Icon, List, Modal } from "metabase/ui";
 
 interface MoveQuestionsIntoDashboardsInfoModalProps {
   onConfirm: () => void;
@@ -19,23 +19,30 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
     withCloseButton={false}
     data-testid="move-questions-into-dashboard-info-modal"
   >
-    <List spacing="md" mt="1.25rem">
+    <List spacing="lg">
       <List.Item
-        icon={<Icon name="collection" c="brand" mb="-2px" />}
+        icon={<Icon name="collection" c="core-brand" mb="-2px" />}
         lh="1.5rem"
       >
         {t`If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection.`}
       </List.Item>
-      <List.Item icon={<Icon name="group" c="brand" mb="-2px" />} lh="1.5rem">
+      <List.Item
+        icon={<Icon name="group" c="core-brand" mb="-2px" />}
+        lh="1.5rem"
+      >
         {t`Permissions won’t change.`}
       </List.Item>
     </List>
 
-    <Flex justify="flex-end" gap="md" pt="1rem">
-      <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+    <Modal.Footer>
+      <Button
+        variant="subtle"
+        color="neutral"
+        onClick={onCancel}
+      >{t`Cancel`}</Button>
       <Button variant="filled" onClick={onConfirm}>
         {t`Preview the changes`}
       </Button>
-    </Flex>
+    </Modal.Footer>
   </Modal>
 );

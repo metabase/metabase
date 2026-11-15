@@ -3,13 +3,17 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [medley.core :as m]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.sample-data.core :as sample-data]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -20,11 +24,17 @@
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/details
   map?)
 
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_stub
+  boolean?)
+
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_sample
+  boolean?)
+
 (defn- valid-regex-patterns? [patterns]
   (every? (fn [pattern]
             (try
               (boolean (re-pattern pattern))
-              (catch Exception e (log/error e) false)))
+              (catch Exception e (log/error (ex-message e)) false)))
           patterns))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
@@ -45,7 +55,9 @@
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]
-          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings]))
+          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_stub
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_sample]))
 
 (defmethod advanced-config.file.i/section-spec :databases
   [_section]
@@ -62,9 +74,38 @@
   [database]
   (dissoc database :uploads_enabled :uploads_schema_name :uploads_table_prefix))
 
+(defn- init-sample-database!
+  "Handle an `:is_sample true` config entry. Validates that the entry refers to
+   the canonical Sample Database (name + engine), then recreates it from the
+   bundled fixture if one is not already present. The entry's `:details` are
+   ignored — the sample DB always uses its bundled H2 file."
+  [database]
+  (when (or (not= (:name database) sample-data/sample-database-name)
+            (not= (:engine database) "h2"))
+    (throw (ex-info (format "Invalid is_sample entry: name must be %s and engine must be \"h2\"; got name %s, engine %s"
+                            (pr-str sample-data/sample-database-name)
+                            (pr-str (:name database))
+                            (pr-str (:engine database)))
+                    {:status-code 400
+                     :name        (:name database)
+                     :engine      (:engine database)})))
+  (if (advanced-config.db/sample-database-exists?)
+    (log/info "Sample Database already present; ignoring is_sample config entry")
+    (do
+      (log/info (u/format-color :green "Recreating Sample Database from is_sample config entry"))
+      (sample-data/extract-and-sync-sample-database!))))
+
+(defn- sync-if-configured!
+  "Kick off a sync of `database` when syncing databases from the config file is enabled."
+  [database]
+  (if (advanced-config.settings/config-from-file-sync-databases)
+    (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))
+    (log/info "Sync on database creation when initializing from file is disabled. Skipping sync.")))
+
 (defn- init-from-config-file!
   [database]
-  (if (contains? database :delete)
+  (cond
+    (contains? database :delete)
     ;; Databases can be managed as a service by us.  When the service is canceled, we need to delete any information
     ;; Metabase has about them, including any stored credentials.  This is a config file flag instead of a CLI command,
     ;; so we can ensure the database stays deleted even after restoring backups.
@@ -73,24 +114,44 @@
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
-      (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
-        (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
-        (t2/delete! :model/Database existing-database-id)))
-    (do
+      (when-let [{existing-database-id :id} (advanced-config.db/database-by-name (:name database))]
+        (log/info (u/format-color :blue "Deleting Database with ID %s" existing-database-id))
+        (advanced-config.db/delete-database! existing-database-id)))
+
+    (:is_sample database)
+    (init-sample-database! database)
+
+    :else
+    (let [database (lib/normalize ::warehouses.schema/database.update database)]
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
-      (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
-      (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
-        (let [database (cond-> database
-                         (:is_attached_dwh database) strip-attached-dwh-update-ks)]
-          (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
-          (t2/update! :model/Database existing-database-id (normalize-settings database)))
-        (do
-          (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
-          (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
-            (if (advanced-config.settings/config-from-file-sync-databases)
-              (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
-                (quick-task/submit-task! (fn [] (sync-database! db))))
-              (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))
+      ;; Stubs are placeholders with no usable details, so we skip the connection test.
+      (when-not (:is_stub database)
+        (driver.u/with-database-network-policy database
+          (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
+      (let [existing (advanced-config.db/database-by-name (:name database))]
+        (cond
+          (and existing (:is_stub database))
+          ;; A stub entry only creates a missing database; it never overwrites an existing one with `:details {}`.
+          (log/info (u/format-color :yellow "Database with ID %s already exists; ignoring stub entry" (:id existing)))
+
+          existing
+          (do
+            (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
+            (advanced-config.db/update-database! (:id existing)
+                                                 (cond-> (normalize-settings database)
+                                                   (:is_attached_dwh database) strip-attached-dwh-update-ks
+                                                   (:is_stub existing)         (assoc :is_stub             false
+                                                                                      :initial_sync_status "incomplete")))
+            (when (:is_stub existing)
+              (sync-if-configured! (advanced-config.db/database (:id existing)))))
+
+          :else
+          (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)
+                                                          (:is_stub database) (assoc :initial_sync_status "complete")))]
+            (log/info (u/format-color :green "Created new %s Database" (:engine database)))
+            (if (:is_stub database)
+              (log/info "Created stub database; skipping sync.")
+              (sync-if-configured! db))))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases
   [_section-name databases]

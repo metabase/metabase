@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
+import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
   CollectionId,
@@ -11,7 +13,11 @@ import { browseDatabase } from "./browse";
 import { card } from "./cards";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
-import { dataStudioPublishedTableMeasure } from "./data-studio";
+import { dataApp } from "./data-apps";
+import {
+  dataStudioGlossary,
+  dataStudioPublishedTableMeasure,
+} from "./data-studio";
 import { document } from "./documents";
 import { indexedEntity } from "./indexed-entities";
 import { metric } from "./metrics";
@@ -31,6 +37,7 @@ export type UrlableModel = {
   collection_id?: CollectionId | null;
   model_id?: CardId | null;
   table_id?: TableId;
+  data_app_slug?: string | null;
 };
 
 const NOT_FOUND_URL = "/404";
@@ -58,6 +65,10 @@ export function modelToUrl(item: UrlableModel): string {
       return dashboard(item);
     case "table":
       if (databaseId != null) {
+        // modelToUrl serves collection/search/library contexts where a user may
+        // only have indirect (published-table) access. The /table/:slug route
+        // needs direct table metadata, which 403s for those users, so keep the
+        // ad-hoc question URL here.
         return tableRowsQuery(databaseId, item.id);
       }
       return NOT_FOUND_URL;
@@ -72,6 +83,7 @@ export function modelToUrl(item: UrlableModel): string {
     case "transform":
       return transform(item.id);
     case "indexed-entity":
+      // Unjustified type cast. FIXME
       return indexedEntity(item as IndexedEntity);
     case "action":
       if (item.model_id != null) {
@@ -86,6 +98,17 @@ export function modelToUrl(item: UrlableModel): string {
     case "measure":
       if (item.table_id != null) {
         return dataStudioPublishedTableMeasure(item.table_id, item.id);
+      }
+      return NOT_FOUND_URL;
+    case "exploration":
+      return exploration(item.id);
+    case "glossary":
+      return dataStudioGlossary();
+    case "dataapp":
+      return dataApp(item.name);
+    case "data-app":
+      if (item.data_app_slug !== null && item.data_app_slug !== undefined) {
+        return dataApp(item.data_app_slug);
       }
       return NOT_FOUND_URL;
     default:

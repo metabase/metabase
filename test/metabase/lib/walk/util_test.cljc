@@ -1,5 +1,6 @@
 (ns metabase.lib.walk.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,29 +13,29 @@
 
 (deftest ^:parallel all-source-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
-                "has a `:source-table` and some of its children also have a `:source-table`"))
-  (is (= (lib.tu.macros/$ids nil
-           #{$$checkins $$venues $$users $$categories})
-         (lib.walk.util/all-source-table-ids
-          (lib/query
-           meta/metadata-provider
-           (lib.tu.macros/mbql-query nil
-             {:source-table $$checkins
-              :joins        [{:source-table $$venues
-                              :alias        "V"
-                              :condition    [:=
-                                             $checkins.venue-id
-                                             &V.venues.id]}
-                             {:source-query {:source-table $$users
-                                             :joins        [{:source-table $$categories
-                                                             :alias        "Cat"
-                                                             :condition    [:=
-                                                                            $users.id
-                                                                            &Cat.categories.id]}]}
-                              :alias        "U"
-                              :condition    [:=
-                                             $checkins.user-id
-                                             &U.users.id]}]}))))))
+                "has a `:source-table` and some of its children also have a `:source-table`")
+    (is (= (lib.tu.macros/$ids nil
+             #{$$checkins $$venues $$users $$categories})
+           (lib.walk.util/all-source-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :joins        [{:source-table $$venues
+                                :alias        "V"
+                                :condition    [:=
+                                               $checkins.venue-id
+                                               &V.venues.id]}
+                               {:source-query {:source-table $$users
+                                               :joins        [{:source-table $$categories
+                                                               :alias        "Cat"
+                                                               :condition    [:=
+                                                                              $users.id
+                                                                              &Cat.categories.id]}]}
+                                :alias        "U"
+                                :condition    [:=
+                                               $checkins.user-id
+                                               &U.users.id]}]})))))))
 
 (deftest ^:parallel all-field-ids-test
   (mu/disable-enforcement
@@ -110,7 +111,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :fields [[:field $venues.name {:source-field %checkins.venue-id}]
-                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+                         [:field $users.name {:source-field %checkins.user-id}]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-2
   (testing "Ignores explicit joins (fields with both :source-field and :join-alias)"
     (is (= #{}
            (lib/all-implicitly-joined-field-ids
@@ -122,7 +125,9 @@
                                                :join-alias "V"}]]
                 :joins [{:source-table $$venues
                          :alias "V"
-                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+                         :condition [:= $checkins.venue-id &V.venues.id]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-3
   (testing "Works with breakouts and aggregations"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -131,7 +136,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
-                :aggregation [[:count]]}))))))
+                :aggregation [[:count]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-4
   (testing "Works with filters"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -139,7 +146,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-5
   (testing "Works with aggregations"
     (is (= (lib.tu.macros/$ids nil #{%venues.price})
            (lib/all-implicitly-joined-field-ids
@@ -147,7 +156,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-6
   (testing "Works with order-by"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -155,7 +166,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-7
   (testing "Works in join conditions"
     (is (= (lib.tu.macros/$ids nil #{%categories.name})
            (lib/all-implicitly-joined-field-ids
@@ -165,7 +178,9 @@
                {:source-table $$venues
                 :joins [{:source-table $$users
                          :alias "U"
-                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]}))))))
+                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-8
   (testing "Ignores string field names (should only collect integer field IDs) - GHY-3085"
     (mu/disable-enforcement
       (is (= #{}
@@ -181,7 +196,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :fields [[:field $venues.name {:source-field %checkins.venue-id}]
-                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+                         [:field $users.name {:source-field %checkins.user-id}]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-2
   (testing "Returns empty set when no implicit joins"
     (is (= nil
            (lib/all-implicitly-joined-table-ids
@@ -189,7 +206,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :fields [$checkins.id $checkins.date]}))))))
+                :fields [$checkins.id $checkins.date]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-3
   (testing "Ignores explicit joins"
     (is (= nil
            (lib/all-implicitly-joined-table-ids
@@ -201,7 +220,9 @@
                                                :join-alias "V"}]]
                 :joins [{:source-table $$venues
                          :alias "V"
-                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+                         :condition [:= $checkins.venue-id &V.venues.id]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-4
   (testing "Works with breakouts"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -210,7 +231,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
-                :aggregation [[:count]]}))))))
+                :aggregation [[:count]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-5
   (testing "Works with filters"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -218,7 +241,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-6
   (testing "Works with aggregations"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -226,7 +251,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-7
   (testing "Works with order-by"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -234,7 +261,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-8
   (testing "Works in join conditions"
     (is (= (lib.tu.macros/$ids nil #{$$categories})
            (lib/all-implicitly-joined-table-ids
@@ -303,7 +332,7 @@
                                       "category" {:name         "category"
                                                   :display-name "Category"
                                                   :type         :dimension
-                                                  :dimension    [:field (meta/id :products :category) nil]
+                                                  :field-id     (meta/id :products :category)
                                                   :widget-type  :string/=}
                                       "snippet"  {:name         "snippet"
                                                   :display-name "Snippet"
@@ -317,3 +346,165 @@
             :segment #{}
             :snippet #{snippet-id}}
            (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-table-test
+  (testing ":include-implicitly-joinable? adds the source Table's columns' FK-target Tables to :table"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (= #{(meta/id :orders)}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, only the source Table is referenced")
+      (is (= #{(meta/id :orders) (meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the FK-target Tables of the source columns are included too"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-card-test
+  (testing ":include-implicitly-joinable? adds a source Card's result-metadata columns' FK-target Tables to :table"
+    (let [card-id 1
+          mp      (lib.tu/metadata-provider-with-card-from-query
+                   meta/metadata-provider card-id
+                   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query   (lib/query mp (lib.metadata/card mp card-id))]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, the Card source references no Tables")
+      (is (= #{(meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the Card columns' FK-target Tables are included"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-result-metadata-fk-override-test
+  (testing ":include-implicitly-joinable? follows an FK target set on a Card's result metadata even when the raw Field
+            has no such FK"
+    (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+          returned       (lib/returned-columns products-query)
+          plain-mp       (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 products-query)
+          override-mp    (lib.tu/metadata-provider-with-card-from-query
+                          meta/metadata-provider 2 products-query
+                          {:result-metadata (mapv (fn [col]
+                                                    (cond-> col
+                                                      (= (:id col) (meta/id :products :price))
+                                                      (assoc :fk-target-field-id (meta/id :people :id))))
+                                                  returned)})]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query plain-mp (lib.metadata/card plain-mp 1))]
+                      {:include-implicitly-joinable? true})))
+          "PRODUCTS columns have no raw FKs, so nothing is implicitly joinable")
+      (is (= #{(meta/id :people)}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query override-mp (lib.metadata/card override-mp 2))]
+                      {:include-implicitly-joinable? true})))
+          "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))
+
+(defn- snippet-tag [snippet-name snippet-id]
+  {:name         (str "snippet: " snippet-name)
+   :display-name (str "Snippet: " snippet-name)
+   :type         :snippet
+   :snippet-name snippet-name
+   :snippet-id   snippet-id})
+
+(defn- native-query-with-tags [mp tags]
+  (lib.query/query-with-stages
+   mp
+   [{:lib/type      :mbql.stage/native
+     :native        (str "SELECT * FROM " (str/join " " (map #(str "{{" % "}}") (keys tags))))
+     :template-tags tags}]))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-snippet-test
+  (testing "follows snippet -> snippet and snippet -> card edges through the snippets' stored template tags"
+    (let [card-id  5
+          outer-id 10
+          inner-id 11
+          card-tag (str "#" card-id "-products")
+          mp       (-> meta/metadata-provider
+                       (lib.tu/metadata-provider-with-card-from-query
+                        card-id
+                        (lib/query meta/metadata-provider (meta/table-metadata :products)))
+                       (lib.tu/mock-metadata-provider
+                        {:native-query-snippets
+                         [{:id            outer-id
+                           :name          "outer"
+                           :template-tags {"snippet: inner" (snippet-tag "inner" inner-id)}}
+                          {:id            inner-id
+                           :name          "inner"
+                           :template-tags {card-tag {:name         card-tag
+                                                     :display-name "Products"
+                                                     :type         :card
+                                                     :card-id      card-id}}}]}))
+          query    (native-query-with-tags mp {"snippet: outer" (snippet-tag "outer" outer-id)})]
+      (is (= {:table   #{(meta/id :products)}
+              :card    #{card-id}
+              :metric  #{}
+              :measure #{}
+              :segment #{}
+              :snippet #{outer-id inner-id}}
+             (lib/all-referenced-entity-ids-recursive query))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-measure-segment-test
+  (testing "follows measure -> segment (inside sum-where) and segment -> segment edges"
+    (let [inner-segment-id 200
+          outer-segment-id 201
+          measure-id       300
+          orders           (meta/table-metadata :orders)
+          total            (meta/field-metadata :orders :total)
+          mp1              (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:segments [{:id         inner-segment-id
+                                         :name       "Big orders"
+                                         :table-id   (meta/id :orders)
+                                         :definition (-> (lib/query meta/metadata-provider orders)
+                                                         (lib/filter (lib/> total 100)))}]})
+          mp2              (lib.tu/mock-metadata-provider
+                            mp1
+                            {:segments [{:id         outer-segment-id
+                                         :name       "Big orders, again"
+                                         :table-id   (meta/id :orders)
+                                         :definition (-> (lib/query mp1 orders)
+                                                         (lib/filter (lib.metadata/segment mp1 inner-segment-id)))}]})
+          mp               (lib.tu/mock-metadata-provider
+                            mp2
+                            {:measures [{:id         measure-id
+                                         :name       "Sum of big totals"
+                                         :table-id   (meta/id :orders)
+                                         :definition (lib/aggregate
+                                                      (lib/query mp2 orders)
+                                                      (lib/sum-where total
+                                                                     (lib.metadata/segment mp2 outer-segment-id)))}]})
+          query            (-> (lib/query mp orders)
+                               (lib/aggregate (lib.metadata/measure mp measure-id)))]
+      (is (= {:table   #{(meta/id :orders)}
+              :card    #{}
+              :metric  #{}
+              :measure #{measure-id}
+              :segment #{outer-segment-id inner-segment-id}
+              :snippet #{}}
+             (lib/all-referenced-entity-ids-recursive query))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-cycle-test
+  (testing "a snippet cycle terminates"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:native-query-snippets [{:id 20, :name "a", :template-tags {"snippet: b" (snippet-tag "b" 21)}}
+                                          {:id 21, :name "b", :template-tags {"snippet: a" (snippet-tag "a" 20)}}]})
+          query (native-query-with-tags mp {"snippet: a" (snippet-tag "a" 20)})]
+      (is (= #{20 21}
+             (:snippet (lib/all-referenced-entity-ids-recursive query))))))
+  (testing "a Card cycle (legacy queries) terminates"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :name          "a"
+                           :database-id   (meta/id)
+                           :dataset-query {:database (meta/id), :type :query, :query {:source-table "card__2"}}}
+                          {:id            2
+                           :name          "b"
+                           :database-id   (meta/id)
+                           :dataset-query {:database (meta/id), :type :query, :query {:source-table "card__1"}}}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (= #{1 2}
+             (:card (lib/all-referenced-entity-ids-recursive query)))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-unresolvable-test
+  (testing "ids the metadata provider cannot resolve are kept in the result but not followed"
+    (let [query (native-query-with-tags meta/metadata-provider {"snippet: ghost" (snippet-tag "ghost" 999)})]
+      (is (= #{999}
+             (:snippet (lib/all-referenced-entity-ids-recursive query)))))))

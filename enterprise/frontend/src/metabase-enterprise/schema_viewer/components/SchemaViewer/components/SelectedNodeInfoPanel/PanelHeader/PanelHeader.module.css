@@ -1,0 +1,20 @@
+.root {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.titleButton {
+  display: inline-block;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.breadcrumbLink {
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+    text-decoration: none;
+  }
+}

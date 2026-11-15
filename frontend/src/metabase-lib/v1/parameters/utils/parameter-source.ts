@@ -1,5 +1,6 @@
-import type Field from "metabase-lib/v1/metadata/Field";
+import type * as Lib from "metabase-lib";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
   ValuesQueryType,
@@ -7,10 +8,12 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import type { ParameterWithTemplateTagTarget } from "../types";
-
 import { deriveFieldOperatorFromParameter } from "./operators";
-import { getFields } from "./parameter-fields";
+import {
+  canSearchField,
+  getFields,
+  hasRemappedFieldValues,
+} from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
 export const getQueryType = (
@@ -38,6 +41,36 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
   return parameter.values_source_config ?? {};
 };
 
+/**
+ * Whether the parameter's selected values can be remapped to human-readable
+ * labels. True when a connected field has a remapping, when a static list
+ * includes [value, label] pairs, or when a card/question source configures a
+ * label column.
+ */
+export const hasRemappedParameterValues = (
+  parameter: Parameter | null | undefined,
+  fields: Lib.ParameterFieldInfo[],
+): boolean => {
+  if (hasRemappedFieldValues(fields)) {
+    return true;
+  }
+
+  if (parameter == null) {
+    return false;
+  }
+
+  const sourceType = getSourceType(parameter);
+  const sourceConfig = getSourceConfig(parameter);
+  const sourceLabelField = sourceConfig.label_field;
+  const sourceValues = sourceConfig.values ?? [];
+
+  return (
+    (sourceType === "static-list" &&
+      sourceValues.some((value) => Array.isArray(value) && value.length > 1)) ||
+    (sourceType === "card" && sourceLabelField != null)
+  );
+};
+
 export const canUseCustomSource = (parameter: Parameter) => {
   const type = getParameterType(parameter);
 
@@ -46,6 +79,7 @@ export const canUseCustomSource = (parameter: Parameter) => {
     case "location":
     case "category":
     case "number":
+    case "id":
       return true;
     default:
       return false;
@@ -68,11 +102,11 @@ export const isValidSourceConfig = (
 
 export const getSourceConfigForType = (
   sourceType: ValuesSourceType,
-  { card_id, value_field, values }: ValuesSourceConfig,
+  { card_id, value_field, label_field, values }: ValuesSourceConfig,
 ): ValuesSourceConfig => {
   switch (sourceType) {
     case "card":
-      return { card_id, value_field };
+      return { card_id, value_field, label_field };
     case "static-list":
       return { values };
     default:
@@ -91,19 +125,16 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: Field[]) => {
+export const canListFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const hasFieldValues = fields
-    .filter((field) => !field.isVirtual())
-    .every((field) => field.has_field_values === "list");
+  const hasFieldValues = fields.every(
+    (field) => field.hasFieldValues === "list",
+  );
 
   return hasFields && hasFieldValues;
 };
 
-export const canSearchParameterValues = (
-  parameter: Parameter,
-  disablePKRemapping = false,
-) => {
+export const canSearchParameterValues = (parameter: Parameter) => {
   const operator = deriveFieldOperatorFromParameter(parameter);
   if (operator && isFuzzyOperator(operator) && !canUseCustomSource(parameter)) {
     return false;
@@ -112,25 +143,18 @@ export const canSearchParameterValues = (
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
-  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
+  const canSearchFields = canSearchFieldValues(fields);
 
   return sourceType
     ? queryType === "search"
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (
-  fields: Field[],
-  disablePKRemapping = false,
-) => {
+export const canSearchFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every((field) =>
-    field.searchField(disablePKRemapping),
-  );
+  const canSearch = fields.every(canSearchField);
   const hasFieldValues = fields.some(
-    (field) =>
-      field.has_field_values === "search" ||
-      (field.has_field_values === "list" && field.has_more_values === true),
+    (field) => field.hasFieldValues === "search",
   );
 
   return hasFields && canSearch && hasFieldValues;

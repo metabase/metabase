@@ -12,6 +12,7 @@
   (the table was already upgraded and the query references are the same), so this is rarely an issue."
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
@@ -19,8 +20,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]
    [metabase.queries.models.query :as queries.query]
-   [metabase.source-swap.core :as source-swap]
-   [toucan2.core :as t2]))
+   [metabase.source-swap.core :as source-swap]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,23 +34,41 @@
                       (assoc :source (assoc (:source transform) :query query')))]
         (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
-          (t2/update! :model/Transform (:id transform) changes)
+          (replacement.db/update-transform! (:id transform) changes)
           (events/publish-event! :event/transform-update
                                  {:object (merge transform changes) :user-id api/*current-user-id*}))))))
+
+(defn- swap-parameter-source-card-id
+  "For a parameters collection, replace `values_source_config.card_id` references to `old-source-id` with
+  `new-source-id`. Only applies to card-to-card swaps; returns parameters unchanged for any other swap shape
+  (e.g. card-to-table)."
+  [parameters [old-source-type old-source-id] [new-source-type new-source-id]]
+  (letfn [(swap-card-id [card-id]
+            (if (and (= :card old-source-type)
+                     (= :card new-source-type)
+                     (= old-source-id card-id))
+              new-source-id
+              card-id))]
+    (replacement.walk/walk-parameter-source-card-ids (or parameters []) swap-card-id)))
 
 (defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query     (:dataset_query card)
-          query'    (source-swap/swap-source-in-query query old-source new-source)
-          table-id  (:table_id card)
-          table-id' (:table-id (queries.query/query->database-and-table-ids query'))
-          changes   (cond-> {}
-                      (not= query query')
-                      (assoc :dataset_query query')
+    (let [query       (:dataset_query card)
+          query'      (source-swap/swap-source-in-query query old-source new-source)
+          table-id    (:table_id card)
+          table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
+          parameters  (or (:parameters card) [])
+          parameters' (swap-parameter-source-card-id parameters old-source new-source)
+          changes     (cond-> {}
+                        (not= query query')
+                        (assoc :dataset_query query')
 
-                      (not= table-id table-id')
-                      (assoc :table_id table-id'))
+                        (not= table-id table-id')
+                        (assoc :table_id table-id')
+
+                        (not= parameters parameters')
+                        (assoc :parameters parameters'))
           ;; `:result_metadata` is set to nil for native queries if not present in changes.
           ;; `verified-result-metadata?` prevents the Card model hooks from clearing it.
           changes   (cond-> changes
@@ -60,7 +78,7 @@
                              :verified-result-metadata? true))]
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
-        (t2/update! :model/Card (:id card) changes)
+        (replacement.db/update-card! (:id card) changes)
         (events/publish-event! :event/card-update
                                {:object (merge card changes)
                                 :user-id api/*current-user-id*
@@ -80,7 +98,7 @@
                       (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
-        (t2/update! :model/Segment (:id segment) changes)
+        (replacement.db/update-segment! (:id segment) changes)
         (events/publish-event! :event/segment-update
                                {:object (merge segment changes) :user-id api/*current-user-id*})))))
 
@@ -98,7 +116,7 @@
                       (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       (when (seq changes)
-        (t2/update! :model/Measure (:id measure) changes)
+        (replacement.db/update-measure! (:id measure) changes)
         (events/publish-event! :event/measure-update
                                {:object (merge measure changes) :user-id api/*current-user-id*})))))
 
@@ -128,11 +146,11 @@
                   (not= viz-settings viz-settings')
                   (assoc :visualization_settings viz-settings'))]
     (when (seq changes)
-      (t2/update! :model/DashboardCard (:id dashcard) changes))))
+      (replacement.db/update-dashboard-card! (:id dashcard) changes))))
 
 (defn- dashboard-swap-source!
   [dashboard old-source new-source]
-  (let [dashcards      (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+  (let [dashcards      (replacement.db/dashboard-cards (:id dashboard))
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
@@ -142,17 +160,22 @@
                                          (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
+                        (replacement.db/cards-by-id all-card-ids)
                         {})
-        any-changed? (reduce (fn [changed? dashcard]
-                               (or
-                                (dashcard-swap-source! dashcard card-id->card old-source new-source)
-                                changed?))
-                             false
-                             dashcards)]
-    (when any-changed?
+        any-dashcard-changed? (reduce (fn [changed? dashcard]
+                                        (or
+                                         (dashcard-swap-source! dashcard card-id->card old-source new-source)
+                                         changed?))
+                                      false
+                                      dashcards)
+        parameters    (or (:parameters dashboard) [])
+        parameters'   (swap-parameter-source-card-id parameters old-source new-source)
+        params-changed? (not= parameters parameters')]
+    (when params-changed?
+      (replacement.db/update-dashboard! (:id dashboard) {:parameters parameters'}))
+    (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
-       :event/dashboard-update {:object  (t2/select-one :model/Dashboard :id (:id dashboard))
+       :event/dashboard-update {:object  (replacement.db/dashboard (:id dashboard))
                                 :user-id api/*current-user-id*}))))
 
 (defn swap-source!
@@ -163,11 +186,11 @@
   ([[entity-type entity-id :as entity-ref] old-source new-source]
    (swap-source! entity-ref
                  (case entity-type
-                   :card      (t2/select-one :model/Card :id entity-id)
-                   :transform (t2/select-one :model/Transform :id entity-id)
-                   :segment   (t2/select-one :model/Segment :id entity-id)
-                   :measure   (t2/select-one :model/Measure :id entity-id)
-                   :dashboard (t2/select-one :model/Dashboard :id entity-id)
+                   :card      (replacement.db/card entity-id)
+                   :transform (replacement.db/transform entity-id)
+                   :segment   (replacement.db/segment entity-id)
+                   :measure   (replacement.db/measure entity-id)
+                   :dashboard (replacement.db/dashboard entity-id)
                    nil)
                  old-source new-source))
   ([[entity-type _entity-id] entity old-source new-source]

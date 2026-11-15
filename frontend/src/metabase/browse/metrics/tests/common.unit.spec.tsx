@@ -50,6 +50,20 @@ describe("BrowseMetrics (OSS)", () => {
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
 
+  it("The Browse metrics page shows an error message if the search endpoint throws an error", async () => {
+    setup({ searchError: true });
+
+    const page = screen.getByLabelText("Metrics");
+    expect(
+      await within(page).findByText("An error occurred"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Create Metrics to define the official way to calculate important numbers for your team",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("displays the Our Analytics collection if it has a metric", async () => {
     setup({ metricCount: 25 });
     const table = await screen.findByRole("table", {
@@ -76,7 +90,7 @@ describe("BrowseMetrics (OSS)", () => {
   });
 
   it("should render links that point to metric detail page", async () => {
-    const { history } = setup({ metricCount: 5 });
+    const { router } = setup({ metricCount: 5 });
     const table = await screen.findByRole("table", {
       name: /Table of metrics/,
     });
@@ -90,7 +104,7 @@ describe("BrowseMetrics (OSS)", () => {
     expect(screen.queryByTestId("metric-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(table).getByText("Metric 1"));
     expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
-    const location = history?.getCurrentLocation();
+    const location = router?.location;
     expect(location?.pathname).toBe("/metric/1");
   });
 });

@@ -1,5 +1,6 @@
 ---
 title: SumIf
+summary: Add up a column's values only for the rows that meet a condition.
 ---
 
 # SumIf
@@ -205,7 +206,7 @@ GROUP BY
     DATE_TRUNC("month", date_received)
 ```
 
-The `SELECT` part of the SQl query matches the Metabase `SumIf` expression:
+The `SELECT` part of the SQL query matches the Metabase `SumIf` expression:
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")

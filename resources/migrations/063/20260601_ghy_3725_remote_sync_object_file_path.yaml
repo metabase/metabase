@@ -1,0 +1,22 @@
+## Add file_path column to remote_sync_object for incremental export rename/delete handling (GHY-3725)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-01T00:00:00
+      author: ericnormand
+      comment: Add remote_sync_object.file_path to record each entity's last-exported serialized path, so incremental export can resolve old paths for renames and deletes
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: file_path
+                  type: ${text.type}
+                  remarks: Repo-relative path of this entity's serialized file as of the last export; used to resolve old paths for incremental renames/deletes
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_object
+            columnName: file_path

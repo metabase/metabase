@@ -1,103 +1,62 @@
-import { Fragment, type ReactNode, useCallback } from "react";
-import { push } from "react-router-redux";
+import { Fragment, useCallback } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import {
+  type PermissionAction,
+  type PermissionEditorBreadcrumb,
+  type PermissionEditorEntity,
+  type PermissionSectionConfig,
+  PermissionsSidebar,
+  type RawGroupRouteParams,
+  getDatabasesPermissionEditor,
+  getGroupFocusPermissionsUrl,
+  getGroupsBasePath,
+  getGroupsSidebar,
+  getIsLoadingDatabaseTables,
+  getLoadingDatabaseTablesError,
+  loadDataPermissionsForGroup,
+  parseGroupRouteParams,
+  updateDataPermission,
+} from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { connect, useDispatch, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { useDispatch, useSelector } from "metabase/redux";
+import { Outlet, useNavigate, useParams } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
-import type { GroupId } from "metabase-types/api";
+import type { DataPermissionValue } from "metabase-types/api";
 
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  type UpdateDataPermissionParams,
-  loadDataPermissionsForGroup,
-  updateDataPermission,
-} from "../../permissions";
-import {
-  type DataTreeNodeItem,
-  type GroupSidebarProps,
-  getDatabasesPermissionEditor,
-  getGroupsSidebar,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
-} from "../../selectors/data-permissions";
-import type {
-  DataPermissionValue,
-  PermissionAction,
-  PermissionEditorBreadcrumb,
-  PermissionEditorEntity,
-  PermissionSectionConfig,
-  RawGroupRouteParams,
-} from "../../types";
-import { parseGroupRouteParams } from "../../types";
-import {
-  GROUPS_BASE_PATH,
-  getGroupFocusPermissionsUrl,
-} from "../../utils/urls";
 
-const mapDispatchToProps = {
-  updateDataPermission,
-  switchView: (entityType: string) =>
-    push(`/admin/permissions/data/${entityType}/`),
-  navigateToItem: (item: DataTreeNodeItem) =>
-    push(`${GROUPS_BASE_PATH}/${item.id}`),
-  navigateToTableItem: (
-    item: PermissionEditorEntity,
-    { groupId }: { groupId: GroupId },
-  ) => {
-    return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
-  },
-};
-
-const mapStateToProps = (
-  state: State,
-  props: { params: RawGroupRouteParams },
-) => {
-  return {
-    sidebar: getGroupsSidebar(state, props),
-    isEditorLoading: getIsLoadingDatabaseTables(state, props),
-    editorError: getLoadingDatabaseTablesError(state, props),
-  };
-};
-
-interface GroupsPermissionsPageInnerProps {
-  sidebar: GroupSidebarProps;
-  params: RawGroupRouteParams;
-  children: ReactNode;
-  navigateToItem: (item: any) => void;
-  switchView: (entityType: string) => void;
-  navigateToTableItem: (
-    item: PermissionEditorEntity,
-    { groupId }: { groupId: GroupId },
-  ) => void;
-  updateDataPermission: (params: UpdateDataPermissionParams) => void;
-  isEditorLoading: boolean | undefined;
-  editorError: string | undefined;
-}
-
-function GroupsPermissionsPageInner({
-  sidebar,
-  params,
-  children,
-  navigateToItem,
-  switchView,
-  navigateToTableItem,
-  updateDataPermission,
-  isEditorLoading,
-  editorError,
-}: GroupsPermissionsPageInnerProps) {
-  const groupRouteParams = parseGroupRouteParams(params);
+export function GroupsPermissionsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // These selectors resolve the focused group from the route, so they take the
+  // route params rather than reading them from the store.
+  const params = useParams<RawGroupRouteParams>();
+  const selectorProps = { params };
+  const sidebar = useSelector((state) =>
+    getGroupsSidebar(state, selectorProps),
+  );
+  const isEditorLoading = useSelector((state) =>
+    getIsLoadingDatabaseTables(state, selectorProps),
+  );
+  const editorError = useSelector((state) =>
+    getLoadingDatabaseTablesError(state, selectorProps),
+  );
+
+  const groupRouteParams = parseGroupRouteParams(params);
+
+  const navigateToItem = (item: ITreeNodeItem) =>
+    navigate(`${getGroupsBasePath()}/${item.id}`);
 
   const { loading: isLoading } = useAsync(async () => {
     if (groupRouteParams.groupId) {
@@ -114,9 +73,9 @@ function GroupsPermissionsPageInner({
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      switchView(entityType);
+      navigate(`${getPermissionsBasePath()}/data/${entityType}/`);
     },
-    [switchView],
+    [navigate],
   );
 
   const handleTableItemSelect = useCallback(
@@ -124,9 +83,11 @@ function GroupsPermissionsPageInner({
       if (groupRouteParams.groupId == null) {
         return;
       }
-      navigateToTableItem(item, { groupId: groupRouteParams.groupId });
+      navigate(
+        getGroupFocusPermissionsUrl(groupRouteParams.groupId, item.entityId),
+      );
     },
-    [navigateToTableItem, groupRouteParams.groupId],
+    [groupRouteParams.groupId, navigate],
   );
 
   const handlePermissionChange = useCallback(
@@ -138,15 +99,17 @@ function GroupsPermissionsPageInner({
       if (item.entityId == null || groupRouteParams.groupId == null) {
         return;
       }
-      updateDataPermission({
-        groupId: groupRouteParams.groupId,
-        permission,
-        value,
-        entityId: item.entityId,
-        view: "group",
-      });
+      dispatch(
+        updateDataPermission({
+          groupId: groupRouteParams.groupId,
+          permission,
+          value,
+          entityId: item.entityId,
+          view: "group",
+        }),
+      );
     },
-    [groupRouteParams.groupId, updateDataPermission],
+    [dispatch, groupRouteParams.groupId],
   );
 
   const handleAction = (
@@ -156,14 +119,12 @@ function GroupsPermissionsPageInner({
     if (groupRouteParams.groupId == null) {
       return;
     }
-    dispatch(
-      action.actionCreator(item.entityId, groupRouteParams.groupId, "group"),
-    );
+    action.onSelect(item.entityId, groupRouteParams.groupId, "group");
   };
 
   const handleBreadcrumbsItemSelect = (item: PermissionEditorBreadcrumb) => {
     if (item.url) {
-      dispatch(push(item.url));
+      navigate(item.url);
     }
   };
 
@@ -216,11 +177,7 @@ function GroupsPermissionsPageInner({
         />
       )}
 
-      {children}
+      <Outlet />
     </Fragment>
   );
 }
-
-export const GroupsPermissionsPage = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-)(GroupsPermissionsPageInner);

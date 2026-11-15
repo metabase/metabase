@@ -3,7 +3,9 @@
    Mounted under `/.well-known/`."
   (:require
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.system.core :as system]
    [oidc-provider.core :as oidc]))
@@ -14,8 +16,9 @@
   "Build the OAuth discovery document response, or nil if the provider is unavailable."
   []
   (when-let [provider (oauth-server/get-provider)]
-    (let [metadata (-> (oidc/discovery-metadata provider)
-                       (dissoc :jwks_uri :id_token_signing_alg_values_supported))]
+    (let [metadata (cond-> (-> (oidc/discovery-metadata provider)
+                               (dissoc :jwks_uri :id_token_signing_alg_values_supported))
+                     (jwt-bearer/available?) (update :grant_types_supported conj jwt-bearer/grant-type))]
       {:status  200
        :headers {"Content-Type" "application/json"}
        :body    (if (oauth-settings/oauth-server-dynamic-registration-enabled)
@@ -38,20 +41,48 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
-  :- [:map
-      [:status [:= 200]]
-      [:body [:map
-              [:resource :string]
-              [:authorization_servers [:sequential :string]]
-              [:scopes_supported [:sequential :string]]
-              [:bearer_methods_supported [:sequential :string]]]]]
-  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  []
+(def ^:private resource-metadata-response-schema
+  [:map
+   [:status [:= 200]]
+   [:body [:map
+           [:resource :string]
+           [:authorization_servers [:sequential :string]]
+           [:scopes_supported [:sequential :string]]
+           [:bearer_methods_supported [:sequential :string]]]]])
+
+(defn- protected-resource-metadata
+  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource, with every
+   [[metabase.mcp.core/v2-scopes]] as `:scopes_supported`."
+  [resource-path]
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
-     :body    {:resource                  (str site-url "/api/mcp")
+     :body    {:resource                  (str site-url resource-path)
                :authorization_servers     [site-url]
-               :scopes_supported          (vec (oauth-server/all-agent-scopes))
+               :scopes_supported          (vec (mcp/v2-scopes)) ;; all mcp scopes; this is what clients will request
                :bearer_methods_supported  ["header"]}}))
+
+;; One endpoint per MCP path, kept in sync with [[metabase.mcp.paths/endpoint-paths]]. Each advertises its own
+;; path as `:resource`, so a strict RFC 9728 client connecting via an alias still sees a resource value matching
+;; the URL it hit — and [[metabase.oauth-server.api.oauth/narrow-scope-to-resource]] recognizes all of them, so the
+;; scope narrowing applies whichever path the client came in on.
+(api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
+  :- resource-metadata-response-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
+  []
+  (protected-resource-metadata "/api/metabase-mcp"))
+
+(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
+  :- resource-metadata-response-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
+  []
+  (protected-resource-metadata "/api/mcp"))
+
+;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
+;; request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617). Advertise the
+;; canonical path, matching the URL clients are told to use.
+(api.macros/defendpoint :get "/oauth-protected-resource"
+  :- resource-metadata-response-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
+  []
+  (protected-resource-metadata (mcp/mcp-canonical-path)))

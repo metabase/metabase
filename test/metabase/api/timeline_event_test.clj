@@ -2,7 +2,11 @@
   "Tests for /api/timeline-event endpoints"
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -27,9 +31,9 @@
                                                     :time_matters false
                                                     :timeline_id  (u/the-id timeline)}]
       (testing "check that we get the timeline-event with `id`"
-        (is (= "Very Important Event"
-               (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
-                    :name)))))))
+        (is (= {:name "Very Important Event" :entity_id (:entity_id event)}
+               (select-keys (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
+                            [:name :entity_id])))))))
 
 (deftest create-timeline-event-test
   (testing "POST /api/timeline-event"
@@ -37,12 +41,15 @@
                    :model/Timeline      timeline   {:name          "Important Events"
                                                     :collection_id (u/the-id collection)}]
       (testing "create a timeline event"
-        ;; make an API call to create a timeline
-        (mt/user-http-request :rasta :post 200 "timeline-event" {:name         "Rasta Migrates to Florida for the Winter"
-                                                                 :timestamp    (java.time.OffsetDateTime/now)
-                                                                 :timezone     "US/Pacific"
-                                                                 :time_matters false
-                                                                 :timeline_id  (u/the-id timeline)}))
+        (let [event (mt/user-http-request :rasta :post 200 "timeline-event"
+                                          {:name         "Rasta Migrates to Florida for the Winter"
+                                           :timestamp    (java.time.OffsetDateTime/now)
+                                           :timezone     "US/Pacific"
+                                           :time_matters false
+                                           :timeline_id  (u/the-id timeline)})]
+          (is (=? {:entity_id #(and (string? %) (= 21 (count %)))} event))
+          (is (= (:entity_id event)
+                 (t2/select-one-fn :entity_id :model/TimelineEvent :id (:id event))))))
       ;; check the Timeline to see if the event is there
       (is (= "Rasta Migrates to Florida for the Winter"
              (-> (t2/select-one :model/TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
@@ -63,6 +70,52 @@
           (is (true?
                (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
                     :archived))))))))
+
+(deftest move-timeline-event-test
+  (testing "PUT /api/timeline-event/:id can move an event to another timeline"
+    (mt/with-temp [:model/Collection    {coll-id :id} {:name "Important Data"}
+                   :model/Timeline      {tl-a :id}    {:name "Timeline A" :collection_id coll-id}
+                   :model/Timeline      {tl-b :id}    {:name "Timeline B" :collection_id coll-id}
+                   :model/TimelineEvent {ev-id :id}   {:name "Event" :timeline_id tl-a}]
+      (is (= tl-b
+             (:timeline_id (mt/user-http-request :rasta :put 200 (str "timeline-event/" ev-id)
+                                                 {:timeline_id tl-b}))))
+      (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id))))))
+
+(deftest timeline-event-permissions-test
+  (testing "read-only users cannot create or edit timeline events"
+    (mt/with-temp [:model/Collection    {coll-id :id} {}
+                   :model/Timeline      {tl-id :id}   {:collection_id coll-id}
+                   :model/TimelineEvent {ev-id :id}   {:timeline_id tl-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "timeline-event"
+                                   {:name "nope" :timestamp "2027-10-20" :timezone "UTC" :timeline_id tl-id})))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:name "nope"}))))))
+
+(deftest create-timeline-event-tracks-snowplow-test
+  (testing "POST /api/timeline-event fires a snowplow new_event_created event"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Timeline   {tl-id :id}   {:collection_id coll-id}]
+        (mt/user-http-request :crowberto :post 200 "timeline-event"
+                              {:name "RC1" :timestamp "2027-10-20" :timezone "UTC"
+                               :time_matters false :timeline_id tl-id})
+        (is (some #(nil? (hawk.approx/=?-diff* {:data {"event" "new_event_created"}} %))
+                  (snowplow-test/pop-event-data-and-user-id!)))))))
+
+(deftest create-timeline-event-tracks-dashboard-source-test
+  (testing "POST /api/timeline-event reports a dashboard as the source of a new event"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Timeline   {tl-id :id}   {:collection_id coll-id}]
+        (mt/user-http-request :crowberto :post 200 "timeline-event"
+                              {:name "RC1" :timestamp "2027-10-20" :timezone "UTC"
+                               :time_matters false :timeline_id tl-id :source "dashboard"})
+        (is (some #(nil? (hawk.approx/=?-diff* {:data {"event" "new_event_created" "source" "dashboard"}} %))
+                  (snowplow-test/pop-event-data-and-user-id!)))))))
 
 (deftest delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"

@@ -19,7 +19,18 @@
   ([target]
    `(import-fn ~target nil))
   ([target sym]
-   (redef target sym)))
+   (macros/case
+     :clj `(p/import-fn ~target ~sym)
+     :cljs (redef target sym))))
+
+(defmacro import-macro
+  "Imports a single macro from another namespace, for JVM Clojure only.
+  In CLJS this expands to nothing: a macro has no runtime value to re-export, so CLJS callers must require the
+  defining namespace directly."
+  [target]
+  (macros/case
+    :clj `(p/import-macro ~target)
+    :cljs nil))
 
 (defmacro import-fns
   "Imports defns from other namespaces.

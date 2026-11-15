@@ -22,33 +22,31 @@
            @#'eid-translation.util/api-name->model))))
 
 (deftest ->id-test
-  (#'stats/clear-translation-count!)
-  (is (= (assoc eid-translation/default-counter :total 0)
-         (#'stats/get-translation-count)))
-  (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-    (is (= card-id (eid-translation.util/->id :card card-id)))
-    (is (= card-id (eid-translation.util/->id :model/Card card-id)))
-    (is (partial= {:ok 0 :total 0} (#'stats/get-translation-count))
-        "Translations are not counted when they don't occur")
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
     (#'stats/clear-translation-count!)
-    (is (= card-id (eid-translation.util/->id :card card-eid)))
-    (is (= card-id (eid-translation.util/->id :model/Card card-eid)))
-    (is (partial= {:ok 2 :total 2} (#'stats/get-translation-count))
-        "Translations are counted when they do occur")
-    (#'stats/clear-translation-count!))
-
-  (let [samples (t2/select-fn->fn :id :entity_id [:model/Card :id :entity_id] {:limit 100})]
-    (when (seq samples)
-      (doseq [[card-id entity-id] samples]
-        (testing (str "card-id: " card-id " entity-id: " entity-id)
-
-          (is (= card-id (eid-translation.util/->id :model/Card card-id)))
-          (is (= card-id (eid-translation.util/->id :card card-id)))
-
-          (is (= card-id (eid-translation.util/->id :model/Card entity-id)))
-          (is (= card-id (eid-translation.util/->id :card entity-id)))))
-      (is (malli= [:map [:ok pos-int?] [:total pos-int?]]
-                  (#'stats/get-translation-count))))))
+    (is (= (assoc eid-translation/default-counter :total 0)
+           (#'stats/get-translation-count)))
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
+      (is (= card-id (eid-translation.util/->id :card card-id)))
+      (is (= card-id (eid-translation.util/->id :model/Card card-id)))
+      (is (partial= {:ok 0 :total 0} (#'stats/get-translation-count))
+          "Translations are not counted when they don't occur")
+      (#'stats/clear-translation-count!)
+      (is (= card-id (eid-translation.util/->id :card card-eid)))
+      (is (= card-id (eid-translation.util/->id :model/Card card-eid)))
+      (is (partial= {:ok 2 :total 2} (#'stats/get-translation-count))
+          "Translations are counted when they do occur")
+      (#'stats/clear-translation-count!))
+    (let [samples (t2/select-fn->fn :id :entity_id [:model/Card :id :entity_id] {:limit 100})]
+      (when (seq samples)
+        (doseq [[card-id entity-id] samples]
+          (testing (str "card-id: " card-id " entity-id: " entity-id)
+            (is (= card-id (eid-translation.util/->id :model/Card card-id)))
+            (is (= card-id (eid-translation.util/->id :card card-id)))
+            (is (= card-id (eid-translation.util/->id :model/Card entity-id)))
+            (is (= card-id (eid-translation.util/->id :card entity-id)))))
+        (is (malli= [:map [:ok pos-int?] [:total pos-int?]]
+                    (#'stats/get-translation-count)))))))
 
 (deftest ^:parallel entity-id-single-card-translations-test
   (mt/with-temp
@@ -82,7 +80,7 @@
      :model/Field {field-id :id} {}
 
      ;; eid models:
-     :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :http}
+     :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :query}
      :model/Collection         {collection_id           :id collection_eid           :entity_id} {}
      ;; filling entity id for User doesn't work: do it manually below.
      :model/User               {core_user_id            :id #_#_core_user_eid        :entity_id} {}
@@ -99,7 +97,7 @@
      :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
-      (t2/update! :model/User core_user_id {:entity_id core_user_eid})
+      (t2/update! :model/User :id core_user_id {:entity_id core_user_eid})
       (is (= {action_eid               {:id action_id               :type :action            :status :ok}
               collection_eid           {:id collection_id           :type :collection        :status :ok}
               core_user_eid            {:id core_user_id            :type :user              :status :ok}
@@ -148,11 +146,9 @@
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
       (is (= card-id (eid-translation.util/->id-or-404 :card card-id)))
       (is (= card-id (eid-translation.util/->id-or-404 :card card-eid)))))
-
   (testing "->id-or-404 should throw 404 error for non-existent entity IDs"
     (is (thrown-with-msg? Exception #"Not found\."
                           (eid-translation.util/->id-or-404 :card "abcdefghijklmnopqrstu"))))
-
   (testing "->id-or-404 should preserve original error for invalid format"
     (is (thrown-with-msg? Exception #"problem looking up id from entity_id"
                           (eid-translation.util/->id-or-404 :card "invalid-format")))))

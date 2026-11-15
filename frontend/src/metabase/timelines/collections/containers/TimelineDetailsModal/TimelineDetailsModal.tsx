@@ -1,29 +1,25 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useGetTimelineQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { useSetArchive } from "metabase/archive/hooks";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+import TimelineDetailsContent from "../../components/TimelineDetailsContent";
+import { TimelineQueryModal } from "../../components/TimelineQueryModal";
 import type { ModalParams } from "../../types";
+import { getTimelineDetailsHeaderProps } from "../../utils/timeline-details-header";
 
-interface TimelineDetailsModalContainerProps {
+interface TimelineDetailsModalProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function TimelineDetailsModalContainer({
-  params,
-  ...props
-}: TimelineDetailsModalContainerProps) {
-  const dispatch = useDispatch();
+function TimelineDetailsModal({ params, onClose }: TimelineDetailsModalProps) {
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const id = Urls.extractEntityId(params.timelineId);
   const collectionId = Urls.extractCollectionId(params.slug);
@@ -43,29 +39,32 @@ function TimelineDetailsModalContainer({
   const isLoading = isTimelineLoading || isTimelinesLoading;
   const error = timelineError ?? timelinesError;
 
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
-    );
-  }
-
   const handleArchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
 
   const handleGoBack = (timeline: Timeline) => {
-    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
+    navigate(Urls.timelinesInCollection(timeline.collection));
   };
 
   return (
-    <TimelineDetailsModal
-      {...props}
-      timeline={timeline}
-      isOnlyTimeline={timelines.length <= 1}
-      onArchive={handleArchive}
-      onGoBack={handleGoBack}
-    />
+    <TimelineQueryModal
+      data={timeline}
+      isLoading={isLoading}
+      error={error}
+      getHeaderProps={(timeline) =>
+        getTimelineDetailsHeaderProps(timeline, {
+          isOnlyTimeline: timelines.length <= 1,
+          onGoBack: handleGoBack,
+        })
+      }
+      onClose={onClose}
+    >
+      {(timeline) => (
+        <TimelineDetailsContent timeline={timeline} onArchive={handleArchive} />
+      )}
+    </TimelineQueryModal>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineDetailsModalContainer;
+export default TimelineDetailsModal;

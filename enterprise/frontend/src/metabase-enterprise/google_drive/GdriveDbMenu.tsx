@@ -1,9 +1,9 @@
-import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { dayjs } from "metabase/dayjs";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import {
@@ -29,7 +29,7 @@ export function GdriveDbMenu() {
   );
 
   const isDwh = databaseInfo?.is_attached_dwh;
-  const showGdrive = useShowGdrive();
+  const { showGdrive } = useShowGdrive();
 
   const showMenu = showGdrive && isDwh;
 
@@ -117,7 +117,7 @@ function SyncNowButton({ disabled }: { disabled: boolean }) {
         await doSync();
       }}
     >
-      {t`Sync now`}
+      {t`Sync`}
     </Menu.Item>
   );
 }
@@ -161,6 +161,18 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
+    // transient error, will be automatically retried
+    if (!folderError && lastSync) {
+      const isDelayed = dayjs
+        .unix(lastSync)
+        .isBefore(dayjs().subtract(1, "hour"));
+      return (
+        <GdriveRecoveringMenuItem
+          lastSyncRelative={lastSyncRelative ?? ""}
+          isDelayed={isDelayed}
+        />
+      );
+    }
     return <GdriveErrorMenuItem error={folderError ?? folderInfo} />;
   }
 
@@ -184,3 +196,27 @@ const SyncingText = () => (
     <Loader size="xs" />
   </Flex>
 );
+
+function GdriveRecoveringMenuItem({
+  lastSyncRelative,
+  isDelayed,
+}: {
+  lastSyncRelative: string;
+  isDelayed: boolean;
+}) {
+  if (isDelayed) {
+    return (
+      <>
+        <Text fw="bold">{t`Sync delayed`}</Text>
+        <Text fz="sm">{t`Last synced ${lastSyncRelative}. Your data may be a bit behind. We're retrying the sync.`}</Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Text fw="bold">{t`Retrying shortly`}</Text>
+      <Text fz="sm">{t`Last synced ${lastSyncRelative}. Your data is up to date as of the last sync.`}</Text>
+    </>
+  );
+}

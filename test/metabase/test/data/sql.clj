@@ -3,7 +3,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -17,7 +16,10 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.driver.sql/keep-me)
 
@@ -89,13 +91,10 @@
 
   (if (string? native-ddl)
     [native-ddl]
-    (let [compiled-honeysql (walk/postwalk
-                             (fn [node]
-                               (if (and (vector? node) (= ::table-identifier (first node)))
-                                 (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))]
-                                   (keyword (str/join "." (qualified-name-components driver database-name (name (second node))))))
-                                 node))
-                             native-ddl)]
+    (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))
+          compiled-honeysql (match/replace-all native-ddl
+                              [::table-identifier id & _]
+                              (keyword (str/join "." (qualified-name-components driver database-name (name id)))))]
       (sql.qp/format-honeysql driver compiled-honeysql))))
 
 (sql/register-clause! :add-constraint :modify-column :modify-column)
@@ -172,12 +171,19 @@
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
+(defn- find-method-for-ancestor-type
+  "Find a registered method for `driver` (or any of its ancestors) with `ancestor-type`."
+  [driver ancestor-type]
+  (let [methods* (methods field-base-type->sql-type)]
+    (some #(get methods* [% ancestor-type])
+          (cons driver (ancestors driver/hierarchy driver)))))
+
 (defmethod field-base-type->sql-type :default
   [driver base-type]
   (or (some
        (fn [ancestor-type]
          (when-not (= ancestor-type :type/*)
-           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+           (when-let [method (find-method-for-ancestor-type driver ancestor-type)]
              (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
                         driver base-type ancestor-type)
              (method driver base-type))))
@@ -287,7 +293,7 @@
                               (:native base-type)
 
                               (and (map? base-type) (contains? base-type :natives))
-                              (get-in base-type [:natives driver])
+                              (get-in base-type [:natives (u/qualified-name driver)])
 
                               base-type
                               (field-base-type->sql-type driver base-type))
@@ -362,7 +368,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

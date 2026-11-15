@@ -56,14 +56,14 @@
 
 (deftest ^:parallel subdomain-regex-on-urls-test
   (are [subdomain url] (= subdomain (re-find @#'lib.filter.desugar.jvm/subdomain-regex url))
-       ;; Blanks. "www" doesn't count.
+    ;; Blanks. "www" doesn't count.
     nil "cdbaby.com"
     nil "https://fema.gov"
     nil "http://www.geocities.jp"
     nil "usa.gov/some/page.cgi.htm"
     nil "va.gov"
 
-       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
+    ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
     "sub"        "sub.jalbum.net"
     "subdomains" "subdomains.go.here.jalbum.net"
     "log"        "log.stuff.gmpg.org"
@@ -71,22 +71,22 @@
     "log"        "log.stuff.gmpg.org/some/path"
     "log"        "log.stuff.gmpg.org?search=yes"
 
-       ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
-       ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
-       ;; fragments like .co.uk - see below.
+    ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
+    ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
+    ;; fragments like .co.uk - see below.
     nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
     nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
 
-       ;; Sometimes the second-last part is a short suffix.
-       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
-       ;; we use a best-effort matcher that gets the domain right most of the time.
+    ;; Sometimes the second-last part is a short suffix.
+    ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+    ;; we use a best-effort matcher that gets the domain right most of the time.
     nil         "telegraph.co.uk"
     nil         "https://telegraph.co.uk"
     nil         "telegraph.co.uk/some/article.php"
     "local"     "local.news.telegraph.co.uk"
     nil         "bbc.co.uk#fragment"
     "video"     "video.bbc.co.uk"
-       ;; "www" is disregarded as a possible subdomain.
+    ;; "www" is disregarded as a possible subdomain.
     nil         "www.usa.gov"
     nil         "www.dot.va.gov"
     "licensing" "www.licensing.dot.va.gov"))
@@ -107,19 +107,27 @@
 (deftest ^:parallel desugar-host-and-domain-test-1
   (testing "`host` should desugar to a `regex-match-first` clause with the host regex"
     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/host-regex)]
-            (#'lib.filter.desugar/desugar-expression [:host (opts) [:field (opts) 1]])))))
+            (#'lib.filter.desugar/desugar-expression
+             {:start-of-week :sunday}
+             [:host (opts) [:field (opts) 1]])))))
 
 (deftest ^:parallel desugar-host-and-domain-test-2
   (testing "`domain` should desugar to a `regex-match-first` clause with the domain regex"
     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/domain-regex)]
-            (#'lib.filter.desugar/desugar-expression [:domain (opts) [:field (opts) 1]])))))
+            (#'lib.filter.desugar/desugar-expression
+             {:start-of-week :sunday}
+             [:domain (opts) [:field (opts) 1]])))))
 
 (deftest ^:parallel desugar-host-and-domain-test-3
   (testing "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"
     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/subdomain-regex)]
-            (#'lib.filter.desugar/desugar-expression [:subdomain (opts) [:field (opts) 1]])))))
+            (#'lib.filter.desugar/desugar-expression
+             {:start-of-week :sunday}
+             [:subdomain (opts) [:field (opts) 1]])))))
 
 (deftest ^:parallel desugar-host-and-domain-test-4
   (testing "`path` should desugar to a `regex-match-first` clause with the path regex"
     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/path-regex)]
-            (#'lib.filter.desugar/desugar-expression [:path (opts) [:field (opts) 1]])))))
+            (#'lib.filter.desugar/desugar-expression
+             {:start-of-week :sunday}
+             [:path (opts) [:field (opts) 1]])))))

@@ -2,11 +2,11 @@
   (:require
    [metabase-enterprise.tenants.api :as tenants.api]
    [metabase-enterprise.tenants.auth-provider]
+   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise login-attributes
   "EE version of `login-attributes` - a map of tenant attributes that should be merged into the user's login
@@ -14,7 +14,7 @@
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
   (or (when (and (perms/use-tenants) tenant_id)
-        (when-let [{:keys [slug attributes]} (t2/select-one :model/Tenant tenant_id)]
+        (when-let [{:keys [slug attributes]} (tenants.db/tenant tenant_id)]
           (merge attributes {"@tenant.slug" slug})))
       {}))
 
@@ -27,10 +27,7 @@
           (comp
            (mapcat keys)
            (distinct))
-          (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
-                                  {:where [:and
-                                           [:not= :attributes nil]
-                                           [:not= :attributes "{}"]]}))
+          (tenants.db/tenant-attributes-reducible))
     #{}))
 
 (defenterprise tenant-is-active?
@@ -38,7 +35,7 @@
   :feature :tenants
   [tenant-id]
   (or (nil? tenant-id)
-      (t2/exists? :model/Tenant :id tenant-id :is_active true)))
+      (tenants.db/active-tenant-exists? tenant-id)))
 
 (defenterprise create-tenant!
   "Creates a tenant"
@@ -51,7 +48,7 @@
   :feature :tenants
   [user]
   (when-let [tenant-id (:tenant_id user)]
-    (t2/select-one :model/Tenant :id tenant-id)))
+    (tenants.db/tenant tenant-id)))
 
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."

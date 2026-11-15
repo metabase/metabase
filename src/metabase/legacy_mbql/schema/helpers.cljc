@@ -15,6 +15,11 @@
   [clause-name]
   (keyword "metabase.legacy-mbql.schema" (name clause-name)))
 
+(defn known-clause-tag?
+  "Whether `k` names a registered legacy-MBQL clause."
+  [k]
+  (some? (mr/registered-schema (clause-registry-name k))))
+
 (defn defclause
   "Impl for [[defclause*]]."
   [clause-name schema]
@@ -82,9 +87,11 @@
    [:fn
     {:error/message    (str "must be a `" tag "` clause")
      :decode/normalize (fn [x]
-                         (when (and (sequential? x)
-                                    ((some-fn simple-keyword? string?) (first x)))
-                           (update (vec x) 0 normalize-keyword)))}
+                         (if (and (sequential? x)
+                                  ((some-fn simple-keyword? string?) (first x))
+                                  (known-clause-tag? (normalize-keyword (first x))))
+                           (update (vec x) 0 normalize-keyword)
+                           x))}
     (partial is-clause? tag)]
    (into
     [:catn

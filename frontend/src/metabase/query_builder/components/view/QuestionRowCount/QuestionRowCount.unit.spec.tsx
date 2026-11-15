@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockQueryBuilderState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
@@ -12,26 +13,20 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import { formatNumber } from "metabase/utils/formatting";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDataset,
-  createMockStructuredDatasetQuery,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { QuestionRowCount } from "./QuestionRowCount";
@@ -51,8 +46,9 @@ function patchQuestion(question: Question) {
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setQuery(nextQuery);
   } else {
-    const query = question.legacyNativeQuery() as NativeQuery;
-    return query.setQueryText("SELECT * FROM __ORDERS__").question();
+    return question.setQuery(
+      Lib.withNativeQuery(query, "SELECT * FROM __ORDERS__"),
+    );
   }
 }
 
@@ -67,10 +63,7 @@ async function setup({
     databases,
     questions: "id" in card ? [card] : [],
   });
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   if (isReadOnly) {
     setupUnauthorizedDatabasesEndpoints(databases);
@@ -104,17 +97,51 @@ async function setup({
   return { rowCount };
 }
 
-function getDatasetQueryWithLimit(limit: number) {
-  return createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: { "source-table": ORDERS_ID, limit },
+function getDatasetQueryWithLimit(limit?: number) {
+  return Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit }],
+    }),
+  );
+}
+
+function createAdHocStructuredCard(opts?: Partial<UnsavedCard>) {
+  return createMockUnsavedCard({
+    dataset_query: getDatasetQueryWithLimit(),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>) {
+  return createMockCard({
+    dataset_query: getDatasetQueryWithLimit(),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>) {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>) {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
   });
 }
 
 describe("QuestionRowCount", () => {
   describe("structured query", () => {
     [
-      { getCard: createAdHocCard, type: "ad-hoc" },
+      { getCard: createAdHocStructuredCard, type: "ad-hoc" },
       { getCard: createSavedStructuredCard, type: "saved" },
     ].forEach(({ getCard, type }) => {
       describe(type, () => {
@@ -156,17 +183,109 @@ describe("QuestionRowCount", () => {
           expect(rowCount).toHaveTextContent("Showing 321 rows");
         });
 
-        it("allows setting a limit", async () => {
+        it("renders the limit input and focuses it when selecting the custom option", async () => {
+          await setup({ question: getCard() });
+
+          await userEvent.click(await screen.findByLabelText("Row count"));
+
+          // The input is always rendered, defaulting to the hard row limit
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          expect(input).toHaveDisplayValue("2000");
+          expect(input).not.toHaveFocus();
+
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+
+          expect(input).toHaveFocus();
+        });
+
+        it("activates the custom option when focusing the input", async () => {
+          await setup({ question: getCard() });
+
+          await userEvent.click(await screen.findByLabelText("Row count"));
+
+          const customRadio = await screen.findByRole("radio", {
+            name: /Set custom limit/i,
+          });
+          expect(customRadio).not.toBeChecked();
+
+          await userEvent.click(
+            await screen.findByPlaceholderText("Pick a limit"),
+          );
+
+          expect(customRadio).toBeChecked();
+        });
+
+        it("allows setting a limit with Enter", async () => {
           const { rowCount } = await setup({ question: getCard() });
 
           await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          fireEvent.keyDown(input, { key: "Enter" });
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 25 rows");
           });
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("applies the typed value when the popover is dismissed (metabase#71276)", async () => {
+          const { rowCount } = await setup({ question: getCard() });
+
+          await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+
+          // dismiss the popover without pressing Enter
+          await userEvent.click(rowCount);
+
+          await waitFor(() => {
+            expect(rowCount).toHaveTextContent("Show 25 rows");
+          });
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("discards the typed value when dismissed with Escape", async () => {
+          const { rowCount } = await setup({ question: getCard() });
+
+          await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+
+          fireEvent.keyDown(input, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          expect(rowCount).not.toHaveTextContent("Show 25 rows");
+        });
+
+        it("discards an updated value when dismissed with Escape", async () => {
+          const { rowCount } = await setup({
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
+          });
+
+          await userEvent.click(rowCount);
+          const input = await screen.findByDisplayValue("25");
+          fireEvent.change(input, { target: { value: "400" } });
+
+          fireEvent.keyDown(input, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          expect(rowCount).not.toHaveTextContent("Show 400 rows");
         });
 
         it("allows updating a limit", async () => {
@@ -177,7 +296,7 @@ describe("QuestionRowCount", () => {
           await userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
           fireEvent.change(input, { target: { value: "400" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          fireEvent.keyDown(input, { key: "Enter" });
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 400 rows");
@@ -193,12 +312,35 @@ describe("QuestionRowCount", () => {
           await userEvent.click(
             await screen.findByRole("radio", { name: /Show maximum/i }),
           );
+          // the reset is committed when the popover is dismissed
+          await userEvent.click(rowCount);
 
           await waitFor(() =>
             expect(rowCount).toHaveTextContent(
               `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
             ),
           );
+        });
+
+        it("discards a reset to maximum when dismissed with Escape", async () => {
+          const { rowCount } = await setup({
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
+            result: createMockDataset(),
+            isResultDirty: true,
+          });
+
+          await userEvent.click(rowCount);
+          const maximumRadio = await screen.findByRole("radio", {
+            name: /Show maximum/i,
+          });
+          await userEvent.click(maximumRadio);
+          fireEvent.keyDown(maximumRadio, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          // the limit stays at 25 instead of being reset to the maximum
+          expect(rowCount).toHaveTextContent("Show 25 rows");
         });
 
         it("doesn't allow managing limit if query is read-only", async () => {

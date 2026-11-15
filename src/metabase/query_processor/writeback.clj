@@ -2,6 +2,7 @@
   "Code for executing writeback queries."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -11,10 +12,11 @@
    [metabase.query-processor.middleware.enterprise :as qp.enterprise]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -23,7 +25,12 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.enterprise/swap-destination-db-middleware
+  ;; `capture-execution-context-middleware` is first so it runs INNERMOST, inside the `binding`s that the two EE
+  ;; middlewares establish -- same ordering rule as [[metabase.query-processor.execute/middleware]]; see its docstring
+  ;; for what it captures.
+  [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.enterprise/swap-destination-db-middleware
+   #'qp.enterprise/apply-impersonation-postprocessing-middleware
    #'qp.perms/check-query-action-permissions])
 
 (defn- apply-middleware [qp middleware-fns]
@@ -47,20 +54,21 @@
   (letfn [(qp* [query _rff]
             (let [query (substitute-params query)]
               ;; ok, now execute the query.
-              (log/debugf "Executing query\n\n%s" (u/pprint-to-str query))
+              (log/debug "Executing write query")
               (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]
     (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
 
 (mu/defn execute-write-query!
   "Execute an writeback query (which currently has to be an MBQL 4 native query) from an action."
   [query :- ::lib.schema/native-only-query]
-  (qp.setup/with-qp-setup [query query]
-    (let [query (qp.preprocess/preprocess query)]
-      ;; make sure this is a native query.
-      (when-not (lib/native-only-query? query)
-        (throw (ex-info (tru "Only native queries can be executed as write queries.")
-                        {:type qp.error-type/invalid-query, :status-code 400, :query query})))
-      ((writeback-qp) query (constantly conj)))))
+  (binding [driver.settings/*impersonation-allow-write?* true]
+    (qp.setup/with-qp-setup [query query]
+      (let [query (qp.preprocess/preprocess query)]
+        ;; make sure this is a native query.
+        (when-not (lib/native-only-query? query)
+          (throw (ex-info (tru "Only native queries can be executed as write queries.")
+                          {:type qp.error-type/invalid-query, :status-code 400, :query query})))
+        ((writeback-qp) query (constantly conj))))))
 
 (mu/defn execute-write-sql!
   "Execute a write query in SQL against a database given by `db-id`."
@@ -69,7 +77,7 @@
                          :string
                          [:cat
                           :string
-                          [:* :any]]]]
+                          [:* :metabase.lib.schema.common/field-value]]]]
   (let [mp             (lib-be/application-database-metadata-provider db-id)
         [sql & params] (if (string? sql-or-sql+params)
                          (cons sql-or-sql+params nil)

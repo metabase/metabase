@@ -5,12 +5,17 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-rest.api.util :as transforms-rest.api.u]
+   [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -18,13 +23,28 @@
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
+(mr/def ::hydrated-job
+  [:merge
+   ::transforms.schema/transform-job
+   [:map {:closed true}
+    [:tag_ids  {:optional true} [:sequential ms/PositiveInt]]
+    [:last_run {:optional true} [:maybe ::transforms.schema/transform-job-run]]]])
+
+(mr/def ::job-with-next-run
+  [:merge
+   ::hydrated-job
+   [:map {:closed true}
+    [:next_run {:optional true} [:map {:closed true} [:start_time :string]]]]])
+
 (def ^:private LastRunResponse
   "Schema for a job's last run information."
   [:map {:closed true}
    [:id pos-int?]
    [:job_id pos-int?]
+   [:job_name {:optional true} [:maybe :string]]
+   [:job_entity_id {:optional true} [:maybe :string]]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
@@ -80,13 +100,15 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency {:optional true} :boolean]
+   [:scheduled {:optional true} :boolean]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
   "Create a new transform job."
   [_route-params
    _query-params
-   {:keys [name description schedule ui_display_type tag_ids]} :- [:map
+   {:keys [name description schedule ui_display_type tag_ids]} :- [:map {:closed true}
                                                                    [:name ms/NonBlankString]
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
                                                                    [:schedule ms/NonBlankString]
@@ -94,13 +116,13 @@
                                                                     {:default :cron/raw}
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "Creating transform job:" name "with schedule:" schedule)
+  (log/info "Creating transform job with schedule:" schedule)
   ;; Validate cron expression
   (api/check-400 (transforms.core/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
-    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
+    (let [existing-tags (transforms-rest.db/existing-tag-ids tag_ids)]
       (api/check-400 (= (set tag_ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
   (let [job-data {:name            name
@@ -108,17 +130,16 @@
                   :schedule        schedule
                   :ui_display_type ui_display_type}
         _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
-        job      (t2/insert-returning-instance! :model/TransformJob
-                                                job-data)]
+        job      (transforms-rest.db/insert-job! job-data)]
     (transforms.core/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
-      (t2/insert! :model/TransformJobTransformTag
-                  (map-indexed (fn [idx tag-id]
-                                 {:job_id (:id job)
-                                  :tag_id tag-id
-                                  :position idx})
-                               tag_ids)))
+      (transforms-rest.db/insert-job-tags!
+       (map-indexed (fn [idx tag-id]
+                      {:job_id (:id job)
+                       :tag_id tag-id
+                       :position idx})
+                    tag_ids)))
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -132,18 +153,18 @@
   error during the flip — the row update or Quartz write failed and was logged)."
   [_route-params
    _query-params
-   {:keys [active]} :- [:map [:active :boolean]]]
+   {:keys [active]} :- [:map {:closed true} [:active :boolean]]]
   (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
   (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb       (if active "activate" "deactivate")
-        candidates (t2/select :model/TransformJob :active (not active))
+        candidates (transforms-rest.db/jobs-with-active-flag (not active))
         try-op     (fn [job]
                      (try
                        (op (:id job))
                        :ok
                        (catch Throwable t
-                         (log/errorf t "Failed to %s transform job %d" verb (:id job))
+                         (log/errorf "Failed to %s transform job %d: %s" verb (:id job) (ex-message t))
                          :failed)))
         outcomes   (frequencies (map try-op candidates))]
     {:updated (get outcomes :ok 0)
@@ -151,11 +172,11 @@
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."
-  [{:keys [job-id]} :- [:map
+  [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name description schedule ui_display_type active]} :- [:map
+    :keys [name description schedule ui_display_type active]} :- [:map {:closed true}
                                                                   [:name {:optional true} ms/NonBlankString]
                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:schedule {:optional true} ms/NonBlankString]
@@ -165,7 +186,7 @@
                                                                   [:active {:optional true} :boolean]
                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
+  (let [existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
     ;; Check write permission on both current state and final state (with new tags if provided)
     (api/write-check existing-job)
     (when (some? tag-ids)
@@ -176,7 +197,7 @@
                      (deferred-tru "Invalid cron expression: {0}" schedule)))
     ;; Validate tag IDs if provided
     (when (seq tag-ids)
-      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
+      (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
     (let [was-active     (:active existing-job)
@@ -189,7 +210,7 @@
                                          :description description
                                          :schedule schedule
                                          :ui_display_type ui_display_type)]
-          (t2/update! :model/TransformJob job-id updates))
+          (transforms-rest.db/update-job! job-id updates))
         (when (some? tag-ids)
           (transforms.core/update-job-tags! job-id tag-ids)))
       (when (some? active)
@@ -200,55 +221,63 @@
       ;; activate-job! only runs when :active toggled false→true.
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
-      (-> (t2/select-one :model/TransformJob :id job-id)
-          (t2/hydrate :tag_ids :last_run)))))
+      (-> (transforms-rest.db/job job-id)
+          (t2/hydrate :tag_ids :last_run)
+          (update :last_run transforms-base.u/present-run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
-  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+  [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
-  (t2/delete! :model/TransformJob :id job-id)
+  (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
+  (transforms-rest.db/delete-job! job-id)
   (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
-                                                 [:message :string]
-                                                 [:job_run_id :string]]
-  "Run a transform job manually."
-  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+(api.macros/defendpoint :post "/:job-id/run" :- [:map
+                                                 [:status [:= 202]]
+                                                 [:body [:map {:closed true}
+                                                         [:message :any]
+                                                         [:job_run_id [:maybe pos-int?]]]]]
+  "Run a transform job manually. Returns a 202 with the created `job_run_id`, or a nil `job_run_id`
+  when nothing was run (the job is already running, or has no transforms). By default, fresh
+  pulled-in dependencies are skipped; pass `run_all` to force-refresh the whole plan."
+  [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]
+   _query-params
+   {:keys [run_all]} :- [:map {:closed true}
+                         [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (t2/select-one :model/TransformJob :id job-id))
-  (u.jvm/in-virtual-thread*
-   (try
-     (transforms.core/run-job! job-id {:run-method :manual
-                                       :user-id api/*current-user-id*})
-     (catch Throwable t
-       (log/error "Error executing transform job" job-id)
-       (log/error t))))
-  {:message "Job run started"
-   :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
+  (api/write-check (transforms-rest.db/job job-id))
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "Job run started")
+   :job_run_id
+   (fn [start-promise]
+     (transforms.core/run-job! job-id {:run-method       :manual
+                                       :user-id          api/*current-user-id*
+                                       :skip-fresh-deps? (not run_all)
+                                       :start-promise    start-promise}))))
 
 (api.macros/defendpoint :get "/:job-id" :- TransformJobResponse
   "Get a transform job by ID."
-  [{:keys [job-id]} :- [:map
+  [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
-      (t2/hydrate :tag_ids :last_run)))
+  (-> (api/read-check (transforms-rest.db/job job-id))
+      (t2/hydrate :tag_ids :last_run)
+      (update :last_run transforms-base.u/present-run)))
 
-(defn- add-next-run
-  [{id :id :as job}]
+(mu/defn- add-next-run :- ::job-with-next-run
+  [{id :id :as job} :- ::hydrated-job]
   (if-let [start-time (-> id transforms.core/existing-trigger :next-fire-time)]
     (assoc job :next_run {:start_time (str (transforms-base.u/->instant start-time))})
     job))
 
 (api.macros/defendpoint :get "/:job-id/transforms" :- [:sequential TransformResponse]
   "Get the transforms of job specified by the job's ID."
-  [{:keys [job-id]} :- [:map
+  [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
+  (api/check-404 (transforms-rest.db/job-pk job-id))
   (-> (transforms.core/job-transforms job-id)
       (#(do (api/check-403 (every? mi/can-read? %)) %))
       (t2/hydrate :creator)
@@ -258,23 +287,80 @@
   "Get all transform jobs."
   [_route-params
    {:keys [last-run-start-time next-run-start-time last-run-statuses tag-ids]} :-
-   [:map
+   [:map {:closed true}
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:next-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (api/check-data-analyst)
-  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
+  (api/check-data-studio-access)
+  (let [jobs (transforms-rest.db/jobs)]
     (into []
           (comp (map add-next-run)
                 (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                 (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
                 (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                (map #(update % :next_run transforms-base.u/localize-run-timestamps)))
+                (map #(update % :last_run transforms-base.u/present-run))
+                (map #(update % :next_run transforms-base.u/present-run)))
           (t2/hydrate jobs :tag_ids :last_run))))
+
+(def ^:private JobRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:job_id pos-int?]
+   [:job_name {:optional true} [:maybe :string]]
+   [:job_entity_id {:optional true} [:maybe :string]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]])
+
+(api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
+                                                 [:data [:sequential JobRunResponse]]
+                                                 [:limit pos-int?]
+                                                 [:offset :int]
+                                                 [:total :int]]
+  "Get paginated run history for a transform job."
+  [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]
+   query-params :- [:map {:closed true}
+                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
+                    [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
+                    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
+                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+  (api/read-check :model/TransformJob job-id)
+  (-> (transforms.core/paged-job-runs (assoc query-params
+                                             :job-id job-id
+                                             :offset (request/offset)
+                                             :limit  (request/limit)))
+      (update :data #(map transforms-base.u/present-run %))))
+
+(api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
+  "Get the transform runs that made up a specific job run."
+  [{:keys [job-id run-id]} :- [:map {:closed true}
+                               [:job-id ms/PositiveInt]
+                               [:run-id ms/PositiveInt]]
+   _query-params]
+  (api/read-check :model/TransformJob job-id)
+  (api/check-404 (transforms-rest.db/job-run run-id job-id))
+  (let [runs (transforms.core/transform-runs-for-job-run run-id)]
+    (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
+         (map transforms-base.u/present-run))))
+
+(api.macros/defendpoint :post "/:job-id/runs/:run-id/cancel" :- :nil
+  "Cancel an in-progress job run and request cancellation of its still-running transforms."
+  [{:keys [job-id run-id]} :- [:map {:closed true}
+                               [:job-id ms/PositiveInt]
+                               [:run-id ms/PositiveInt]]]
+  (api/write-check :model/TransformJob job-id)
+  (api/check-404 (transforms-rest.db/job-run run-id job-id))
+  (api/check-400 (transforms.core/cancel-job-run! run-id))
+  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-job` routes."

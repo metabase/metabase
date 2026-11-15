@@ -10,6 +10,7 @@ import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 type InteractiveQuestionComponentProps = ComponentProps<
@@ -32,7 +33,7 @@ export default {
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
-    <Box p="md">
+    <Box p="lg">
       <InteractiveQuestion {...args} />
     </Box>
   );

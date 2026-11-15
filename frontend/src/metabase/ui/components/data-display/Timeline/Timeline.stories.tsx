@@ -1,12 +1,11 @@
-import { Timeline, type TimelineProps } from "metabase/ui";
-import { Box, Text } from "metabase/ui";
+import { Box, Text, Timeline, type TimelineProps } from "metabase/ui";
 
 const args = {
   active: 1,
   align: "left",
   bulletSize: 20,
   lineWidth: 2,
-  color: "var(--mb-color-brand)",
+  color: "var(--mb-color-core-brand)",
 };
 
 const argTypes = {

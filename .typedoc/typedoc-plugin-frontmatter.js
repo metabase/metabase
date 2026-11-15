@@ -28,6 +28,13 @@ export function load(app) {
       .map(([key, value]) => `${key}: ${value}`)
       .join("\n");
 
-    page.contents = `---\n${yamlItems}\n---\n\n${page.contents}`;
+    // Generate a redirect_from for the old `embedding/api/<Name>` path, which inbound links still use.
+    const pageName = page.url.replace(/\.html$/, "");
+    const redirectBlock =
+      pageName && pageName !== "index"
+        ? `\nredirect_from:\n  - /docs/latest/embedding/api/${pageName}`
+        : "";
+
+    page.contents = `---\n${yamlItems}${redirectBlock}\n---\n\n${page.contents}`;
   });
 }

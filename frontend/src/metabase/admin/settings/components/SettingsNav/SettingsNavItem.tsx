@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import React, { type ReactElement } from "react";
 
@@ -5,8 +6,9 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
 } from "metabase/admin/components/AdminNav";
+import { getUserIsAdmin, isSettingsManagerPath } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 
 /**
  * Find the child whose path is the best (longest) prefix match for the current
@@ -20,7 +22,8 @@ const findBestMatchingChild = (
   let bestLen = 0;
 
   for (const child of children) {
-    const childPath = child?.props?.path as string | undefined;
+    // The route children carry an optional `path` prop.
+    const childPath = (child?.props as { path?: string } | undefined)?.path;
     if (!childPath) {
       continue;
     }
@@ -36,6 +39,14 @@ const findBestMatchingChild = (
   return best;
 };
 
+function getNavChildPath(child: ReactElement): string | undefined {
+  const props = child.props;
+  if (typeof props !== "object" || props === null || !("path" in props)) {
+    return undefined;
+  }
+  return typeof props.path === "string" ? props.path : undefined;
+}
+
 export function SettingsNavItem({
   path,
   folderPattern,
@@ -43,11 +54,24 @@ export function SettingsNavItem({
   children: childrenProp,
   ...navItemProps
 }: AdminNavItemProps & { active?: boolean }) {
-  const children = React.Children.toArray(childrenProp) as ReactElement[];
-  const currentPath = useSelector(getLocation)?.pathname ?? "";
+  const isAdmin = useSelector(getUserIsAdmin);
+  // Unjustified type cast. FIXME
+  const allChildren = React.Children.toArray(childrenProp) as ReactElement[];
+  const children = isAdmin
+    ? allChildren
+    : allChildren.filter((child) =>
+        isSettingsManagerPath(getNavChildPath(child)),
+      );
+  const currentPath = useLocation().pathname;
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
     folderPattern ? currentPath.includes(folderPattern) : false,
   );
+
+  const isVisible =
+    isAdmin || isSettingsManagerPath(path) || children.length > 0;
+  if (!isVisible) {
+    return null;
+  }
 
   const bestChild = findBestMatchingChild(children, currentPath);
   const hasActiveDescendant = bestChild != null;
@@ -69,13 +93,15 @@ export function SettingsNavItem({
     >
       {children.length > 0
         ? children.map((child) =>
-            child?.props?.path
-              ? React.cloneElement(child, {
+            // Route children carry an optional `path` prop.
+            (child?.props as { path?: string } | undefined)?.path
+              ? // Unjustified type cast. FIXME
+                React.cloneElement(child, {
                   active: child === bestChild,
                 } as any)
               : child,
           )
-        : childrenProp}
+        : null}
     </AdminNavItem>
   );
 }

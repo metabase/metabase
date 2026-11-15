@@ -6,6 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -14,14 +15,13 @@ import { MetabotToggleWidget } from "./MetabotToggleWidget";
 const TOGGLE_LABEL = "Display welcome message on the homepage";
 
 const setup = (value = true) => {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "show-metabot": !!value,
-    }),
-  );
+  const settings = { "show-metabot": !!value };
+  setupPropertiesEndpoints(createMockSettings(settings));
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
-  renderWithProviders(<MetabotToggleWidget />, {});
+  renderWithProviders(<MetabotToggleWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
+  });
 };
 
 describe("MetabotToggleWidget", () => {

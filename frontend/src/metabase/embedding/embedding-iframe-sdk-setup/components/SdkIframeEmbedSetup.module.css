@@ -22,7 +22,7 @@
 
 .Sidebar {
   height: 100%;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -38,8 +38,8 @@
 
 .Navigation {
   padding: 0.5rem 1rem;
-  background: var(--mb-color-background-primary);
-  border-top: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background_page-primary);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .PreviewPanel {

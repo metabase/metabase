@@ -1,15 +1,10 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  SectionButton,
-  SectionContainer,
-  SectionDescription,
-  SectionHeader,
-  SectionRoot,
-  SectionTitle,
-} from "./SetupSection.styled";
+import { ActionIcon, Box, Flex, Icon, UnstyledButton } from "metabase/ui";
+
+import S from "./SetupSection.module.css";
 
 interface SetupSectionProps {
   title: ReactNode;
@@ -25,21 +20,32 @@ export const SetupSection = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <SectionRoot>
-      <SectionHeader>
-        <SectionContainer>
-          <SectionTitle>{title}</SectionTitle>
-          <SectionDescription>{description}</SectionDescription>
-        </SectionContainer>
-        <SectionButton
-          round
-          icon={isExpanded ? "chevronup" : "chevrondown"}
-          aria-label={t`Setup section`}
-          aria-expanded={isExpanded}
-          onClick={() => setIsExpanded(!isExpanded)}
-        />
-      </SectionHeader>
+    <Box className={S.root} mt="xl" pt="xl">
+      <UnstyledButton
+        w="100%"
+        mb="xxl"
+        aria-label={t`Setup section`}
+        aria-expanded={isExpanded}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Flex align="center">
+          <Box flex="1 1 auto" mr="xxl">
+            <Box c="text-primary" fw={700}>
+              {title}
+            </Box>
+            <Box c="text-secondary" mt="sm">
+              {description}
+            </Box>
+          </Box>
+          <ActionIcon component="span" radius="xl" size="lg">
+            <Icon
+              name={isExpanded ? "chevronup" : "chevrondown"}
+              c="core-brand"
+            />
+          </ActionIcon>
+        </Flex>
+      </UnstyledButton>
       {isExpanded && children}
-    </SectionRoot>
+    </Box>
   );
 };

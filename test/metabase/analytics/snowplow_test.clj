@@ -14,8 +14,11 @@
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
+   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
    (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
-   (java.util LinkedHashMap)))
+   (java.net InetAddress ServerSocket)
+   (java.util LinkedHashMap)
+   (org.apache.http.client.config CookieSpecs RequestConfig)))
 
 (set! *warn-on-reflection* true)
 
@@ -53,11 +56,10 @@
                                      anon-tracking-enabled true]
     (binding [*snowplow-collector* (atom [])]
       (let [collector *snowplow-collector*] ;; get a reference to the atom
-        (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
+        (mt/with-dynamic-fn-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
-;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe and remove the Kondo ignore rule below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
   events are parsed and added to the fake collector.
@@ -107,7 +109,6 @@
                      :application_database         (#'snowplow/app-db-type)
                      :application_database_version (#'snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
-
       (testing "the created_at should have the format be formatted as RFC3339"
         (is (valid-datetime-for-snowplow?
              (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
@@ -131,13 +132,11 @@
         (is (= [{:data    {"event" "new_instance_created"}
                  :user-id nil}]
                (pop-event-data-and-user-id!)))
-
         (let [user-id-str (str (mt/user->id :rasta))]
           (analytics/track-event! :snowplow/account {:event :new-user-created} 1)
           (is (= [{:data    {"event" "new_user_created"}
                    :user-id "1"}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/invite
                                   {:event           :invite-sent
                                    :invited-user-id 2
@@ -145,14 +144,12 @@
           (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/dashboard
                                   {:event        :dashboard-created
                                    :dashboard-id 1})
           (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/dashboard
                                   {:event        :question-added-to-dashboard
                                    :dashboard-id 1
@@ -160,7 +157,6 @@
           (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/database
                                   {:event        :database-connection-successful
                                    :database     :postgres
@@ -174,7 +170,6 @@
                              "source" "admin"}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/database
                                   {:event    :database-connection-failed
                                    :database :postgres
@@ -182,7 +177,6 @@
           (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (analytics/track-event! :snowplow/timeline
                                   {:event       :new-event-created
                                    :source      "question"
@@ -190,8 +184,60 @@
           (is (= [{:data    {"event" "new_event_created", "source" "question", "question_id" 1}
                    :user-id user-id-str}]
                  (pop-event-data-and-user-id!)))
-
           (testing "Snowplow events are not sent when tracking is disabled"
             (mt/with-temporary-setting-values [anon-tracking-enabled false]
               (analytics/track-event! :snowplow/account {:event :new_instance_created} nil)
               (is (= [] (pop-event-data-and-user-id!))))))))))
+
+(deftest ai-service-event-shape-test
+  (testing "an ai_service_event carries the details of one event and nothing else"
+    (let [event (fn [name details]
+                  {:hashed-metabase-license-token "token"
+                   :request-id                    "request"
+                   :source                        "metabot_agent"
+                   :event                         name
+                   :event-details                 details})
+          tool  {"tool_name" "search" "step" 1 "error_class" "validation" "error_code" "invalid-arguments"}
+          turn  {"finish_reason" "stop" "steps" 2}]
+      (with-fake-snowplow-collector
+        (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" tool) nil)))
+        (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_turn_finished" turn) nil)))
+        ;; the collector also holds new_instance_created
+        (is (= ["agent_used_tool" "agent_turn_finished"]
+               (->> (pop-event-data-and-user-id!)
+                    (map #(get-in % [:data "event"]))
+                    (filter #{"agent_used_tool" "agent_turn_finished"})))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" (merge tool turn)) nil))
+          "details of two events in one")
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (snowplow/track-event! :snowplow/ai_service_event
+                                          (event "agent_turn_finished" (assoc turn "tokens" 1)) nil))
+          "a key no event declares"))))
+
+(deftest ^:parallel http-timeouts-test
+  (testing "the Snowplow HTTP client has finite timeouts"
+    (let [^RequestConfig config (#'snowplow/request-config)]
+      ;; Apache HttpClient reads any non-positive value as "wait forever".
+      (is (pos? (.getConnectTimeout config))
+          "connect timeout must be finite")
+      (is (pos? (.getSocketTimeout config))
+          "socket timeout must be finite")
+      (is (pos? (.getConnectionRequestTimeout config))
+          "connection-request timeout must be finite")
+      (testing "and still sets the cookie policy (PR #24579)"
+        (is (= CookieSpecs/STANDARD (.getCookieSpec config)))))))
+
+(deftest ^:parallel unresponsive-collector-test
+  (testing "a collector that accepts connections but never responds cannot hold an emitter thread indefinitely"
+    ;; A `ServerSocket` nobody ever calls `.accept` on still completes the TCP handshake out of its backlog, so this
+    ;; is a connected socket that will never produce a response.
+    (with-open [blackhole (ServerSocket. 0 1 (InetAddress/getLoopbackAddress))]
+      (let [^ApacheHttpClientAdapter adapter (#'snowplow/http-client-adapter
+                                              (str "http://127.0.0.1:" (.getLocalPort blackhole)))
+            event    (SelfDescribingJson. "iglu:com.metabase/instance/jsonschema/1-1-2" {})
+            response (future (.post adapter event))
+            result   (deref response 15000 ::never-returned)]
+        (future-cancel response)
+        (is (= -1 result)
+            "the POST should report a failed request rather than block forever")))))

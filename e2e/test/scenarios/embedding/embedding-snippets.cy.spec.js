@@ -24,14 +24,15 @@ tokens.forEach((token) => {
       H.activateToken(token);
     });
 
-    it("dashboard should have the correct embed snippet", () => {
+    it("dashboard and question should have the correct embed snippets", () => {
       const defaultDownloadsValue =
         token === "pro-self-hosted" ? true : undefined;
+
+      cy.log("Dashboard");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openLegacyStaticEmbeddingModal({
         resource: "dashboard",
         resourceId: ORDERS_DASHBOARD_ID,
-        acceptTerms: false,
       });
 
       H.modal().within(() => {
@@ -56,11 +57,11 @@ tokens.forEach((token) => {
           );
 
         cy.findAllByTestId("embed-backend-select-button")
-          .should("contain", "Node.js")
+          .should("have.value", "Node.js")
           .click();
       });
 
-      H.popover()
+      H.selectDropdown()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
@@ -71,10 +72,10 @@ tokens.forEach((token) => {
 
       H.modal()
         .findAllByTestId("embed-frontend-select-button")
-        .should("contain", "Pug / Jade")
+        .should("have.value", "Pug / Jade")
         .click();
 
-      H.popover()
+      H.selectDropdown()
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
@@ -125,16 +126,12 @@ tokens.forEach((token) => {
           highlightedTexts().should("have.length", 1);
         }
       });
-    });
 
-    it("question should have the correct embed snippet", () => {
-      const defaultDownloadsValue =
-        token === "pro-self-hosted" ? true : undefined;
+      cy.log("Question");
       H.visitQuestion(ORDERS_QUESTION_ID);
       H.openLegacyStaticEmbeddingModal({
         resource: "question",
         resourceId: ORDERS_QUESTION_ID,
-        acceptTerms: false,
       });
 
       H.modal().within(() => {
@@ -177,11 +174,11 @@ tokens.forEach((token) => {
         }
 
         cy.findByTestId("embed-backend-select-button")
-          .should("contain", "Node.js")
+          .should("have.value", "Node.js")
           .click();
       });
 
-      H.popover()
+      H.selectDropdown()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")

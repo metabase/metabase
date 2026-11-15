@@ -1,14 +1,13 @@
-import cx from "classnames";
-import dayjs from "dayjs";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import { Card } from "metabase/common/components/Card";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Text } from "metabase/ui";
+import { dayjs } from "metabase/dayjs";
+import { Box, Card, Flex, Stack, Text } from "metabase/ui";
 import type { UserLoginHistoryItem } from "metabase-types/api";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {
@@ -17,10 +16,7 @@ interface FormattedLoginItem extends UserLoginHistoryItem {
 }
 
 const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
-  <Card
-    className={cx(CS.my2, CS.py1)}
-    style={{ paddingLeft: 20, paddingRight: 20 }}
-  >
+  <Card px="lg" py="sm" my="lg" radius="sm" withBorder>
     <Flex align="flex-start">
       <div>
         <Label>
@@ -33,7 +29,7 @@ const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
       </div>
       <Flex ml="auto">
         {item.active && (
-          <Label c="summarize" className={CS.pr2}>{t`Active`}</Label>
+          <Label c="core-summarize" className={CS.pr2}>{t`Active`}</Label>
         )}
         <Label>{item.time}</Label>
       </Flex>
@@ -48,8 +44,8 @@ const LoginHistoryGroup = ({
   items: FormattedLoginItem[];
   date: string;
 }) => (
-  <Box py="md">
-    <Label>{date}</Label>
+  <Box pb="lg">
+    <Label mb="xl">{date}</Label>
     <div>
       {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
@@ -86,11 +82,11 @@ function LoginHistoryList({
   }
 
   return (
-    <div>
+    <Stack gap="lg">
       {_.map(groups, (items, date) => (
         <LoginHistoryGroup items={items} date={date} key={date} />
       ))}
-    </div>
+    </Stack>
   );
 }
 

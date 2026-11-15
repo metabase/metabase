@@ -28,7 +28,6 @@
             (is (= "Test" (get-in hydrated [:creator :first_name])))
             (is (= "Creator" (get-in hydrated [:creator :last_name])))
             (is (= "test.creator@example.com" (get-in hydrated [:creator :email])))))
-
         (testing "Batch glossary entry hydration"
           (let [glossary-entries (t2/select :model/Glossary :id [:in [(:id glossary1) (:id glossary2)]])
                 hydrated (t2/hydrate glossary-entries :creator)]
@@ -39,7 +38,6 @@
               (is (= user2-id (get-in creators-by-id [(:id glossary2) :id])))
               (is (= "Test" (get-in creators-by-id [(:id glossary1) :first_name])))
               (is (= "Second" (get-in creators-by-id [(:id glossary2) :first_name]))))))
-
         (testing "Glossary created without creator_id defaults to internal user"
           (let [glossary-no-creator (t2/insert-returning-instance! :model/Glossary
                                                                    {:term       "SQL"

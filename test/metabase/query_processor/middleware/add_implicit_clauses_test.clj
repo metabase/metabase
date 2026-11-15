@@ -14,7 +14,10 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- add-implicit-clauses
   ([query]
@@ -358,7 +361,6 @@
                {:fields [{:id                (mt/id :venues :price)
                           :coercion-strategy :Coercion/UNIXSeconds->DateTime
                           :effective-type    :type/Instant}]})]
-
     (is (=? {:status :completed}
             (qp/process-query (assoc query :lib/metadata mp'))))))
 

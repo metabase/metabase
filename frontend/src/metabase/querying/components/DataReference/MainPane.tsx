@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import {
   NodeListItemIcon,
@@ -18,7 +19,15 @@ export const MainPane = ({
   onItemClick,
   onBack,
 }: DataReferencePaneProps) => {
-  const { data, isLoading, error } = useListDatabasesQuery();
+  const {
+    data: databases,
+    isLoading: isLoadingDatabases,
+    error,
+  } = useListDatabasesQuery();
+  const { data: libraryCollection, isLoading: isLoadingLibraryCollection } =
+    PLUGIN_LIBRARY.useGetLibraryCollection();
+
+  const isLoading = isLoadingDatabases || isLoadingLibraryCollection;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -31,7 +40,17 @@ export const MainPane = ({
           {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
         </p>
         <ul>
-          {data?.data?.map((database) => (
+          {PLUGIN_LIBRARY.isEnabled && libraryCollection && (
+            <li>
+              <NodeListItemLink
+                onClick={() => onItemClick({ type: "library" })}
+              >
+                <NodeListItemIcon name="repository" />
+                <NodeListItemName>{t`Library`}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          )}
+          {databases?.data?.map((database) => (
             <li key={database.id}>
               <NodeListItemLink
                 onClick={() =>

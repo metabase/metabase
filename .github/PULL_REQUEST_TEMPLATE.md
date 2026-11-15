@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> For those employed by Metabase: if you are merging into master, please add either a `backport` or a `no-backport` label to this PR. You will not be able to merge until you do this step. Refer to the section [Do I need to backport this PR?](https://www.notion.so/metabase/Metabase-Branching-Strategy-6eb577d5f61142aa960a626d6bbdfeb3?pvs=4#89f80d6f17714a0198aeb66c0efd1b71) in the Metabase Branching Strategy document for more details. If you're not employed by Metabase, this section does not apply to you, and the label will be taken care of by your reviewer.
+> For those employed by Metabase: if you are fixing a P0 or P1 issue, add a `backport` label to this PR. No action is needed otherwise. Refer to the [Backporting](https://app.notion.com/p/metabase/Branching-Strategy-and-Backports-6eb577d5f61142aa960a626d6bbdfeb3?source=copy_link#e71f6e7de2f945d99fbb2d6b764e6f36) section in the Metabase Branching Strategy document for more details. If you're not employed by Metabase, this section does not apply to you, and the label will be taken care of by your reviewer.
 
 > **Warning**
 >

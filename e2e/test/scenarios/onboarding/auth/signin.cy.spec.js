@@ -14,11 +14,6 @@ describe("scenarios > auth > signin", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should redirect to /auth/login", () => {
-    cy.visit("/");
-    cy.url().should("contain", "auth/login");
-  });
-
   it("should redirect to / when logged in", () => {
     cy.signInAsAdmin();
     cy.visit("/auth/login");
@@ -26,50 +21,44 @@ describe("scenarios > auth > signin", () => {
     H.getProfileLink().should("exist");
   });
 
-  it("should display an error for incorrect passwords", () => {
+  it("should reject invalid credentials and allow login regardless of email case", () => {
+    cy.intercept("POST", "/api/session").as("signIn");
     cy.visit("/");
-    cy.findByLabelText("Email address").type(admin.email);
-    cy.findByLabelText("Password").type("INVALID" + admin.password);
-    cy.button("Sign in").click();
-    cy.findByRole("alert")
-      .filter(':contains("did not match stored password")')
-      .should("be.visible");
-  });
+    cy.location("pathname").should("eq", "/auth/login");
+    cy.findByLabelText("Email address").should("be.focused");
+    cy.clock();
 
-  it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
-    cy.visit("/");
-    cy.findByLabelText("Email address").type("INVALID" + admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByRole("alert")
-      .filter(':contains("did not match stored password")')
-      .should("be.visible");
-  });
+    cy.log("reject invalid credentials");
+    [
+      { email: admin.email, password: "INVALID" + admin.password },
+      { email: "INVALID" + admin.email, password: admin.password },
+    ].forEach(({ email, password }) => {
+      cy.findByLabelText("Email address").clear();
+      cy.findByLabelText("Password").clear();
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
+      cy.button("Sign in").click();
+      cy.wait("@signIn").its("response.statusCode").should("eq", 401);
+      cy.findByRole("alert")
+        .filter(':contains("did not match stored password")')
+        .should("be.visible");
+      cy.button("Failed").should("be.visible");
+      cy.tick(5000);
+      cy.button("Sign in").should("be.visible");
+    });
 
-  it("should greet users after successful login", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address").should("be.focused").type(admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
-  it("should allow login regardless of login email case", () => {
-    cy.visit("/auth/login");
+    cy.log("allow login regardless of email case");
+    cy.clock().invoke("restore");
+    cy.findByLabelText("Email address").clear();
+    cy.findByLabelText("Password").clear();
     cy.findByLabelText("Email address").type(admin.email.toUpperCase());
     cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
-  it("should allow toggling of Remember Me", () => {
-    cy.visit("/auth/login");
-
-    // default initial state
-    cy.findByRole("checkbox").should("be.checked");
-
+    cy.findByRole("checkbox", { name: "Remember me" }).should("be.checked");
     cy.findByLabelText("Remember me").click();
-    cy.findByRole("checkbox").should("not.be.checked");
+    cy.findByRole("checkbox", { name: "Remember me" }).should("not.be.checked");
+    cy.button("Sign in").click();
+    cy.wait("@signIn").its("response.statusCode").should("eq", 200);
+    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
   });
 
   it("should redirect to an unsaved question after login", () => {

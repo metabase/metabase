@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, within } from "__support__/ui";
+import { fireEvent, render, screen, waitFor, within } from "__support__/ui";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
 import {
   ChartSettingSegmentsEditor,
-  type ChartSettingSegmentsEditorProps,
+  getColorPalette,
 } from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
@@ -35,9 +36,10 @@ it("Should render a segment editor", () => {
   // Add a row for the header
   expect(screen.getAllByRole("row")).toHaveLength(3);
 
+  // Unjustified type cast. FIXME
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
-  expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
+  expect(within(firstRow).getByPlaceholderText(/Label/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
   expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
 });
@@ -49,14 +51,15 @@ it("Should pass back a new array of segments on change", async () => {
 
   await userEvent.clear(min);
   await userEvent.type(min, "20");
-  fireEvent.blur(min);
 
-  expect(onChange).toHaveBeenCalledWith(
-    expect.arrayContaining([
-      expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
-      // Need to use objectContaining here to account for the 'key' values that are added
-      expect.objectContaining(DEFAULT_VALUE[1]),
-    ]),
+  await waitFor(() =>
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
+        // Need to use objectContaining here to account for the 'key' values that are added
+        expect.objectContaining(DEFAULT_VALUE[1]),
+      ]),
+    ),
   );
 });
 
@@ -64,6 +67,7 @@ it("Should allow you to remove a segment", async () => {
   const { onChange } = setup();
 
   await userEvent.click(
+    // Unjustified type cast. FIXME
     (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
   );
 
@@ -87,6 +91,7 @@ it("Should allow you to remove all segments if canRemoveAll is passed", async ()
   expect(await screen.findAllByRole("img", { name: /trash/ })).toHaveLength(1);
 
   await userEvent.click(
+    // Unjustified type cast. FIXME
     (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
   );
 
@@ -138,6 +143,13 @@ it("Should not call onChange when blurring without changing value", async () => 
   fireEvent.blur(min);
 
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it("should list each palette color once", () => {
+  const palette = getColorPalette();
+
+  expect(palette.length).toBeGreaterThan(0);
+  expect(palette).toEqual([...new Set(palette)]);
 });
 
 it("should show a placeholder if there are no segments", async () => {

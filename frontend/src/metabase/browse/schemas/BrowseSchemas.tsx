@@ -1,49 +1,61 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
+import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { DatabaseId } from "metabase-types/api";
 
-import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
 
 const BrowseSchemasContainer = ({
   schemas,
+  dbId,
   params,
 }: {
   schemas: Schema[];
+  dbId: DatabaseId;
   params: any;
 }) => {
-  const { slug } = params;
-  const dbId = Urls.extractEntityId(slug);
+  const isSingleSchema = schemas.length === 1;
+  const { data: database } = useGetDatabaseQuery(
+    isSingleSchema ? skipToken : { id: dbId },
+  );
+
   return (
     <Flex
       className={S.browseContainer}
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       data-testid="browse-schemas"
     >
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
-          {schemas.length === 1 ? (
+          {isSingleSchema ? (
             <TableBrowser
-              schemas={schemas}
               params={params}
-              slug={slug}
               dbId={dbId}
               schemaName={schemas[0].name}
               // hide the schema since there's only one
@@ -51,28 +63,33 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="md" pr="sm" pb="sm">
+              <Flex
+                align="center"
+                justify="space-between"
+                pt="lg"
+                pr="sm"
+                pb="sm"
+              >
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <Databases.Name id={dbId} /> },
+                    { title: database?.name ?? "" },
                   ]}
                 />
+                <DatabaseQuickLinksMenu databaseId={dbId} />
               </Flex>
               {schemas.length === 0 ? (
                 <h2
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <BrowseGrid pt="lg">
+                <BrowseGrid pt="xl">
                   {schemas.map((schema) => (
                     <BrowseCard
                       key={schema.id}
                       title={schema.name}
                       icon="folder"
-                      to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
-                        schema.name,
-                      )}`}
+                      to={Urls.browseSchemaBySlug(params.slug, schema.name)}
                     />
                   ))}
                 </BrowseGrid>
@@ -85,11 +102,34 @@ const BrowseSchemasContainer = ({
   );
 };
 
-export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
-  const dbId = Urls.extractEntityId(params.slug);
+const BrowseSchemasByDatabaseName = ({
+  databaseName,
+  params,
+}: {
+  databaseName: string;
+  params: { slug: string };
+}) => {
+  const { data, isLoading, error } = useListDatabasesQuery();
+  const database = findDatabaseByName(data?.data ?? [], databaseName);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!database) {
+    return <NotFound />;
+  }
+
+  return <BrowseSchemasForDatabase dbId={database.id} params={params} />;
+};
+
+export const BrowseSchemas = () => {
+  const { slug = "" } = useParams<{ slug: string }>();
+  const params = { slug };
+  const dbId = Urls.extractEntityId(slug);
 
   if (dbId == null) {
-    return <NotFound />;
+    return <BrowseSchemasByDatabaseName databaseName={slug} params={params} />;
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
@@ -109,5 +149,8 @@ const BrowseSchemasForDatabase = ({
   }
 
   const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
-  return <BrowseSchemasContainer schemas={schemas} params={params} />;
+
+  return (
+    <BrowseSchemasContainer schemas={schemas} dbId={dbId} params={params} />
+  );
 };

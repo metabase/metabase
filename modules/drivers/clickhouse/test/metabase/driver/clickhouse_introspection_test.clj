@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -16,7 +18,7 @@
 (defn- desc-table!
   [db table-name]
   (into #{} (map #(select-keys % [:name :database-type :base-type :database-required])
-                 (:fields (driver/describe-table :clickhouse db {:name table-name})))))
+                 (:fields (driver/describe-table :clickhouse (driver.u/ensure-lib-database db) {:name table-name})))))
 
 (mt/defdataset introspection_db
   [["enums_base_types"
@@ -466,7 +468,7 @@
                                 :database-type     "SimpleAggregateFunction(sum, Int64)"
                                 :base-type         :type/BigInteger
                                 :database-position 4})]}
-              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
+              (-> (driver/describe-table :clickhouse (lib.metadata/database (mt/metadata-provider)) {:name "aggregate_functions_filter_test"})
                   (update :fields (partial sort-by :database-position))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
@@ -501,7 +503,7 @@
   (mt/test-driver :clickhouse
     (mt/dataset metabase_db_scan_test
       (is (= {:tables test-tables}
-             (driver/describe-database :clickhouse (mt/db)))))))
+             (driver/describe-database :clickhouse (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel clickhouse-describe-database-all
   (mt/test-driver :clickhouse
@@ -513,17 +515,18 @@
                                               :clickhouse :db
                                               {:database-name "default"})
                                              {:db-filters-type "all"})}]
-        (let [describe-result (driver/describe-database :clickhouse db)]
+        (let [describe-result (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
+              tables          (into #{} (:tables describe-result))]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
-            (is (contains? (:tables describe-result) table)))
+            (is (contains? tables table)))
           ;; should not contain any ClickHouse system tables
           (is (not (some #(= (:schema %) "system")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "information_schema")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
-                         (:tables describe-result)))))))))
+                         tables))))))))
 
 (deftest ^:parallel clickhouse-describe-database-multiple
   (mt/test-driver :clickhouse
@@ -535,7 +538,7 @@
                                              {:db-filters-type "inclusion"
                                               :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
         (let [{:keys [tables] :as _describe-result}
-              (driver/describe-database :clickhouse db)
+              (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
               tables-table  {:name        "tables"
                              :description nil
                              :schema      "information_schema"}
@@ -566,11 +569,10 @@
             ;; Sync the database - this should not crash despite the parameterized view
             (is (not= ::thrown
                       (try
-                        (sync/sync-database! db)
+                        (sync/sync-database! (:id db))
                         (catch Throwable _e
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
-
             ;; Verify that the table AFTER the problematic view was still synced
             (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
               (is (some? table-after)

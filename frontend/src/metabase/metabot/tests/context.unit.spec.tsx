@@ -7,7 +7,9 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockUser,
@@ -26,8 +28,8 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
-jest.mock("metabase/query_builder/actions", () => ({
-  ...jest.requireActual("metabase/query_builder/actions"),
+jest.mock("metabase/redux/query-builder", () => ({
+  ...jest.requireActual("metabase/redux/query-builder"),
   setIsNativeEditorOpen: jest.fn(),
 }));
 
@@ -40,6 +42,7 @@ describe("metabot > context", () => {
     );
     jest.mocked(setIsNativeEditorOpen).mockImplementation(
       (isNativeEditorOpen: boolean) =>
+        // Unjustified type cast. FIXME
         ({
           type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
           isNativeEditorOpen,
@@ -50,7 +53,7 @@ describe("metabot > context", () => {
   it("should send along default context", async () => {
     setup();
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     await enterChatMessage("Who is your favorite?");
@@ -72,13 +75,12 @@ describe("metabot > context", () => {
     fetchMock.removeRoutes({ names: ["database-list"] });
     setupDatabaseListEndpoint([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);
 
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     await enterChatMessage("Who is your favorite?");
@@ -86,13 +88,13 @@ describe("metabot > context", () => {
     expect(
       _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
     ).toEqual({
-      capabilities: ["frontend:navigate_user_v1", "permission:save_questions"],
+      capabilities: ["permission:save_questions"],
     });
   });
 
   it("should allow components to register additional context", async () => {
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     const TestComponent = () => {
@@ -129,12 +131,18 @@ describe("metabot > context", () => {
   });
 
   it("should send SQL profile and SQL error context for SQL fixes", async () => {
-    const rawSql = "SELECT * FROM bad_table";
+    const rawQuery = Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: "SELECT * FROM bad_table",
+      }),
+    );
     const queryError = "bad_table";
+    // Unjustified type cast. FIXME
     const editorOpen = { resolve: undefined as (() => void) | undefined };
 
     jest.mocked(setIsNativeEditorOpen).mockImplementationOnce(
       () =>
+        // Unjustified type cast. FIXME
         (() =>
           new Promise<void>((resolve) => {
             editorOpen.resolve = resolve;
@@ -142,7 +150,7 @@ describe("metabot > context", () => {
     );
 
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     const SqlFixContextRegistration = () => {
@@ -151,13 +159,7 @@ describe("metabot > context", () => {
           user_is_viewing: [
             {
               type: "adhoc",
-              query: {
-                type: "native",
-                database: 1,
-                native: {
-                  query: rawSql,
-                },
-              },
+              query: rawQuery,
               error: queryError,
             },
           ],
@@ -194,12 +196,7 @@ describe("metabot > context", () => {
           expect.objectContaining({
             type: "adhoc",
             error: queryError,
-            query: expect.objectContaining({
-              type: "native",
-              native: expect.objectContaining({
-                query: rawSql,
-              }),
-            }),
+            query: rawQuery,
           }),
         ]),
       }),

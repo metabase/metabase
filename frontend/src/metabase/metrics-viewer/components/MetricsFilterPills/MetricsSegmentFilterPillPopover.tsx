@@ -82,7 +82,7 @@ export function MetricsSegmentFilterPillPopover({
           onRemoveClick={handleRemove}
           aria-label={t`Segment filter: ${segmentName ?? ""}`}
         >
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             {metricName && (
               <Flex align="center">
                 <Text component="span" fw={700} c="inherit" fz="inherit">
@@ -91,10 +91,11 @@ export function MetricsSegmentFilterPillPopover({
                 {(metricCount ?? 0) > 1 && (
                   <Badge
                     circle
-                    color="filter"
+                    color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
-                    ml="xs"
+                    ml="xxs"
+                    variant="light"
                   >
                     {metricCount}
                   </Badge>

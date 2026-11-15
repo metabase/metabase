@@ -18,11 +18,11 @@ describe("getShortStrategyLabel", () => {
     expect(result).toBe("Adaptive");
   });
 
-  it("can abbreviate a 'Use default' aka inherit strategy", () => {
+  it("can abbreviate a 'Default' aka inherit strategy", () => {
     const strategy: InheritStrategy = {
       type: "inherit",
     };
     const result = getShortStrategyLabel(strategy);
-    expect(result).toBe("Use default");
+    expect(result).toBe("Default");
   });
 });

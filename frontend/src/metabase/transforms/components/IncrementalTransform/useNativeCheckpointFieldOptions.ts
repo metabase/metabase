@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import type { SelectOption } from "metabase/ui";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect/KeysetColumnSelect";
+import type { CheckpointFieldOption } from "./useClearUnsupportedLookback";
 import { useTableQueryMetadataResults } from "./useTableQueryMetadataResults";
 
 export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
 
   const tableIds = useMemo(() => {
     if (!query) {
@@ -18,10 +17,10 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
     }
     try {
       const templateTags = Lib.templateTags(query);
-      const tableTags = Object.values(templateTags).filter(
+      const tableTags = templateTags.filter(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       );
-      return tableTags.map((tag) => tag["table-id"]).filter(isConcreteTableId);
+      return tableTags.map((tag) => tag["table-id"]).filter(isNotNull);
     } catch {
       return [];
     }
@@ -30,18 +29,18 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
   const { tables, isLoading, hasError } =
     useTableQueryMetadataResults(tableIds);
 
-  const fieldOptions = useMemo((): Array<SelectOption> => {
+  const fieldOptions = useMemo((): Array<CheckpointFieldOption> => {
     if (tables.length === 0) {
       return [];
     }
 
     try {
-      const allOptions: Array<SelectOption> = [];
+      const allOptions: Array<CheckpointFieldOption> = [];
       const seenFieldIds = new Set<number>();
       const showTablePrefix = tables.length > 1;
 
       for (const table of tables) {
-        const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+        const metadataProvider = getMetadataProvider(table.db_id);
         const tableMetadata = Lib.tableOrCardMetadata(
           metadataProvider,
           table.id,
@@ -73,7 +72,7 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
       );
       return [];
     }
-  }, [tables, metadata]);
+  }, [tables, getMetadataProvider]);
 
   return {
     fieldOptions,

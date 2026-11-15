@@ -1,0 +1,7 @@
+.AttachmentSwitchBody {
+  justify-content: space-between;
+}
+
+.AttachmentSwitchInput {
+  z-index: -1;
+}

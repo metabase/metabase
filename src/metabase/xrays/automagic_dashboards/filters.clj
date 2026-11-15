@@ -9,7 +9,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
@@ -120,14 +120,12 @@
 (mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard :- ::ads/dashboard
-   dimensions
-   max-filters]
+  [dashboard   :- ::ads/dashboard
+   dimensions  :- [:sequential ::ads/field]
+   max-filters :- :int]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
-              (field/with-targets (t2/select :model/Field
-                                             :fk_target_field_id [:not= nil]
-                                             :table_id [:in table-ids])))]
+              (field/with-targets (xrays.db/fk-fields-for-tables table-ids)))]
     (->> dimensions
          remove-unqualified
          sort-by-interestingness

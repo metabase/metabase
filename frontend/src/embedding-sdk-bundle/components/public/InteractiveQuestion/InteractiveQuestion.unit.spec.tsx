@@ -4,8 +4,11 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
+  setupCardDataset,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -32,6 +35,7 @@ import {
 } from "__support__/ui";
 import { addAlertModalTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alert-modal.spec";
 import { addAlertsButtonTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alerts-button.spec";
+import { addCardPropTests } from "embedding-sdk-bundle/components/public/question/shared-tests/card-prop.spec";
 import type { SetupOpts } from "embedding-sdk-bundle/components/public/question/shared-tests/constants.spec";
 import {
   TEST_COLUMN,
@@ -43,13 +47,22 @@ import { addQueryPropTests } from "embedding-sdk-bundle/components/public/questi
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
+import type {
+  MetabaseQueryObject,
+  SdkQuestionId,
+} from "embedding-sdk-bundle/types/question";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { utf8_to_b64url } from "metabase/utils/encoding";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockDataset,
+  createMockDatasetData,
+  createMockModelResult,
+  createMockSearchResult,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -58,6 +71,14 @@ import {
   InteractiveQuestion,
   InteractiveQuestionInternal,
 } from "./InteractiveQuestion";
+
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DB.id,
+  metadata: createMockMetadata({
+    databases: [TEST_DB],
+    tables: [TEST_TABLE],
+  }),
+});
 
 const TEST_CARD_ID = 1;
 const USER_ID = 999;
@@ -121,6 +142,11 @@ const setup = async ({
     type: cardType,
     collection_id: COLLECTION_ID,
     collection: TEST_COLLECTION,
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestQuery(TEST_PROVIDER, {
+        stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+      }),
+    ),
   });
 
   setupCardEndpoints(card);
@@ -178,6 +204,7 @@ const setup = async ({
 };
 
 addQueryPropTests({ Component: InteractiveQuestionInternal });
+addCardPropTests({ Component: InteractiveQuestion });
 
 describe("InteractiveQuestion", () => {
   addAlertsButtonTests(setup, {
@@ -200,6 +227,57 @@ describe("InteractiveQuestion", () => {
     ).toBeVisible();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeVisible();
+  });
+
+  it("should render an ad hoc question from a query-only card object", async () => {
+    const { state } = setupSdkState();
+
+    setupNotificationChannelsEndpoints({ email: { configured: false } });
+    setupAdhocQueryMetadataEndpoint(
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    setupCardDataset({
+      dataset: createMockDataset({
+        data: createMockDatasetData({
+          cols: [TEST_COLUMN],
+          rows: [["Test Row"], ["Test Row 2"]],
+        }),
+      }),
+    });
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+
+    renderWithSDKProviders(
+      <InteractiveQuestion
+        card={{
+          // MetabaseQueryObject is the public structural mirror of the opaque internal query type
+          query: Lib.toLegacyQuery(
+            Lib.createTestQuery(TEST_PROVIDER, {
+              stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+            }),
+          ) as unknown as MetabaseQueryObject,
+        }}
+      />,
+      {
+        componentProviderProps: {
+          authConfig: createMockSdkConfig(),
+        },
+        storeInitialState: state,
+      },
+    );
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+    expect(
+      within(screen.getByTestId("table-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getAllByRole("gridcell")[0]).getByText("Test Row"),
     ).toBeVisible();
   });
 
@@ -253,7 +331,7 @@ describe("InteractiveQuestion", () => {
     });
 
     // Both buttons are visible in view mode
-    expect(screen.queryByRole("button", { name: "Alerts" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Alerts" })).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Download results" }),
     ).toBeVisible();
@@ -293,6 +371,11 @@ describe('questionId: "new"', () => {
       createMockModelResult({
         id: 1,
         name: "Orders model",
+      }),
+      createMockSearchResult({
+        id: 2,
+        name: "Revenue",
+        model: "metric",
       }),
     ]);
 
@@ -345,5 +428,62 @@ describe('questionId: "new"', () => {
     ).not.toBeInTheDocument();
     expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
+    expect(withinPopover.getByText("Metrics")).toBeVisible();
+  });
+});
+
+// Regression test for EMB-2042: the `useMetabot` hook renders `CurrentChart`
+// via `InteractiveQuestionInternal` with a `query` prop (Metabot's
+// `navigate_to` path). When that card is native, the SQL editor must open.
+describe("native query prop (Metabot SQL editor)", () => {
+  const NATIVE_QUERY_PATH = `/question#${utf8_to_b64url(
+    JSON.stringify({
+      dataset_query: Lib.toLegacyQuery(
+        Lib.createTestNativeQuery(TEST_PROVIDER, { query: "" }),
+      ),
+    }),
+  )}`;
+
+  async function setup() {
+    setupDatabasesEndpoints([TEST_DB]);
+    setupAdhocQueryMetadataEndpoint(
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+    setupSearchEndpoints([]);
+
+    renderWithSDKProviders(
+      <InteractiveQuestionInternal query={NATIVE_QUERY_PATH} />,
+      {
+        componentProviderProps: {
+          authConfig: createMockSdkConfig(),
+        },
+      },
+    );
+
+    await waitForLoaderToBeRemoved();
+  }
+
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  beforeEach(() => {
+    setupEnterprisePlugins();
+  });
+
+  it("opens the SQL editor when the query is a native card", async () => {
+    await setup();
+
+    const editor = await screen.findByTestId("mock-native-query-editor");
+    expect(editor).toBeInTheDocument();
+
+    // Assert the SQL builder chrome actually rendered inside the editor, not
+    // just an empty container: the data source selector shows the database.
+    expect(within(editor).getByTestId("selected-database")).toHaveTextContent(
+      TEST_DB.name,
+    );
   });
 });

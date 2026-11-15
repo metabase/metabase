@@ -1,11 +1,26 @@
 import { trackSimpleEvent } from "metabase/analytics";
+import type { CustomVizPluginWarning } from "metabase-types/api";
 
-export const trackCustomVizPluginCreated = (result: "success" | "failure") => {
-  trackSimpleEvent({ event: "custom_viz_plugin_created", result });
+export const trackCustomVizPluginCreated = (
+  result: "success" | "failure",
+  warnings: readonly CustomVizPluginWarning[] = [],
+) => {
+  trackSimpleEvent({
+    event: "custom_viz_plugin_created",
+    result,
+    event_detail: warningsEventDetail(warnings),
+  });
 };
 
-export const trackCustomVizPluginUpdated = (result: "success" | "failure") => {
-  trackSimpleEvent({ event: "custom_viz_plugin_updated", result });
+export const trackCustomVizPluginUpdated = (
+  result: "success" | "failure",
+  warnings: readonly CustomVizPluginWarning[] = [],
+) => {
+  trackSimpleEvent({
+    event: "custom_viz_plugin_updated",
+    result,
+    event_detail: warningsEventDetail(warnings),
+  });
 };
 
 export const trackCustomVizPluginDeleted = () => {
@@ -22,6 +37,8 @@ export const trackCustomVizPluginRefreshed = () => {
   trackSimpleEvent({ event: "custom_viz_plugin_refreshed" });
 };
 
-export const trackCustomVizSelected = () => {
-  trackSimpleEvent({ event: "custom_viz_selected" });
-};
+function warningsEventDetail(warnings: readonly CustomVizPluginWarning[]) {
+  return warnings.length > 0
+    ? warnings.map((warning) => warning.type).join(",")
+    : null;
+}

@@ -1,11 +1,12 @@
 (ns metabase.lib.metadata.invocation-tracker
   (:require
    #?@(:clj
-       (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+       ([clj-yaml.core]
         [metabase.util.json :as json]
         [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *to-track-metadata-types*
   "Set of metadata types to track.
   Currently only `:metadata/card` is tracked for updating report_card.last_used_at.
@@ -22,23 +23,23 @@
 
 ;;; TODO (Cam 9/10/25) -- we're missing stuff here like handling when we fetch by name. When we added support for
 ;;; fetching metadata by name in #62283 we never added it.
-(defn- track-spec! [tracker {metadata-type :lib/type, id-set :id, :keys [table-id card-id], :as _metadata-spec}]
+(defn- track-spec! [tracker {metadata-type :lib/type, id-set :id, :keys [table-ids card-ids], :as _metadata-spec}]
   (cond
     id-set
     (track-ids! tracker metadata-type id-set)
 
-    table-id
+    table-ids
     (let [tracking-type (case metadata-type
                           :metadata/column  ::table-fields
                           :metadata/measure ::table-measures
                           :metadata/metric  ::table-metrics
                           :metadata/segment ::table-segments)]
-      (track-ids! tracker tracking-type [table-id]))
+      (track-ids! tracker tracking-type table-ids))
 
-    card-id
+    card-ids
     (let [tracking-type (case metadata-type
                           :metadata/metric ::card-metrics)]
-      (track-ids! tracker tracking-type [card-id]))))
+      (track-ids! tracker tracking-type card-ids))))
 
 (defn- metadatas
   [tracker metadata-provider metadata-spec]

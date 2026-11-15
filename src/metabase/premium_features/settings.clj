@@ -14,7 +14,7 @@
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -32,6 +32,7 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :encryption :no
   :visibility :admin
   :type       :json
   :audit      :never
@@ -40,7 +41,7 @@
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
 (defsetting locked-meters
-  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  "Locally-mirrored is-locked state per meter, refreshed on each successful token-check."
   :encryption :no
   :type       :json
   :visibility :internal
@@ -174,6 +175,10 @@
   "Should we enable user/group provisioning via SCIM?"
   :scim)
 
+(define-premium-feature enable-multi-factor-auth?
+  "Should we enable native multi-factor authentication for interactive logins?"
+  :multi-factor-auth)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -186,6 +191,10 @@
 (define-premium-feature enable-session-timeout-config?
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
+
+(define-premium-feature ^{:added "0.65.0"} enable-session-management?
+  "Should we enable listing and revoking users' sessions?"
+  :session-management)
 
 (define-premium-feature can-disable-password-login?
   "Can we disable login by password?"
@@ -239,6 +248,10 @@
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
 
+(define-premium-feature ^{:added "0.65.0"} enable-content-diagnostics?
+  "Should we enable Content Diagnostics?"
+  :content-diagnostics)
+
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
   :database-auth-providers)
@@ -276,6 +289,11 @@
   "Should we enable the semantic search backend?"
   :semantic-search)
 
+(define-premium-feature ^{:added "0.63.0"} enable-library-retrieval?
+  "Should we enable the Metabot library entity-retrieval tool (retrieve_library_entities)?
+  Independent of `:semantic-search`: this gates only that tool, not the general semantic search engine."
+  :library-retrieval)
+
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
@@ -284,6 +302,10 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
+  "Should we allow users to publish and run data apps?"
+  :data-apps)
+
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
   :transforms-basic)
@@ -291,6 +313,10 @@
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
   :transforms-python)
+
+(define-premium-feature enable-transform-testing?
+  "Should we allow users to author and run tests against their transforms?"
+  :transforms-testing)
 
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
@@ -305,7 +331,7 @@
   :library)
 
 (defsetting security-center-disabled
-  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  "Globally disable Security Center as a customer-controlled escape hatch."
   :type             :boolean
   :feature          :admin-security-center
   :default          false
@@ -363,6 +389,14 @@
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
 
+(define-premium-feature ^{:added "0.62.0"} enable-schema-viewer?
+  "Should we allow users to view database schemas as ER diagrams?"
+  :schema-viewer)
+
+(define-premium-feature enable-workspaces?
+  "Should we allow users to manage workspaces?"
+  :workspaces)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -373,16 +407,20 @@
    :cloud_custom_smtp              (cloud-custom-smtp?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_diagnostics            (enable-content-diagnostics?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
+   :data-apps                      (enable-data-apps?)
    :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
    :library                        (enable-library?)
+   :library_retrieval              (enable-library-retrieval?)
    :dependencies                   (enable-dependencies?)
+   :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :email_allow_list               (enable-email-allow-list?)
@@ -395,6 +433,7 @@
    :hosting                        (is-hosted?)
    :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :multi-factor-auth              (enable-multi-factor-auth?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
@@ -403,6 +442,7 @@
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
+   :session-management             (enable-session-management?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
    :sso_google                     (enable-sso-google?)
@@ -415,13 +455,16 @@
    :tenants                        (enable-tenants?)
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
+   :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
+   :workspaces                     (enable-workspaces?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     -token-features

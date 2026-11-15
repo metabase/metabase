@@ -13,7 +13,6 @@ export function getEditorOptions(
     canConvertToNative: true,
     convertToNativeTitle: t`SQL for this transform`,
     convertToNativeButtonLabel: t`Convert this transform to SQL`,
-    disableDefaultLimit: true,
     shouldDisableDatabasePickerItem: (item) => {
       const database = databases.find((database) => database.id === item.id);
       return !doesDatabaseSupportTransforms(database);
@@ -61,6 +60,8 @@ export function getEditorOptions(
       return undefined;
     },
     shouldShowLibrary: false,
+    canUseSampleDatabase: false,
+    canRunViaHotkey: true,
     readOnly,
   };
 }

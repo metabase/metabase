@@ -1,13 +1,9 @@
-import { useMemo } from "react";
-import { useAsync } from "react-use";
+import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
+import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/v1/Question";
-import type { Card, Dataset, RawSeries } from "metabase-types/api";
-
-import type { UseCardDataResult } from "./use-card-data";
+import { useExternalCardData } from "../components/editor-extensions/CardEmbed/ExternalCardDataContext";
 
 function buildSeries(card: Card, dataset: Dataset): RawSeries {
   return [
@@ -19,36 +15,26 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
   ];
 }
 
-export function useExternalCardDataLoader(cardId: number): UseCardDataResult {
+export function useExternalCardDataLoader(
+  cardId: CardId,
+  { skip = false }: { skip?: boolean } = {},
+): UseCardDataResult {
   const context = useExternalCardData();
-  const metadata = useSelector(getMetadata);
 
   const card = context?.cards?.[cardId];
-
   const documentUuid = context?.documentUuid;
-  const loadCardQuery = context?.loadCardQuery;
+
+  const shouldSkip = skip || !cardId || !card || !documentUuid;
 
   const {
-    value: dataset,
-    loading: isLoadingDataset,
+    data: dataset,
+    isLoading: isLoadingDataset,
     error: datasetError,
-  } = useAsync(async () => {
-    if (!loadCardQuery || !cardId || !documentUuid || !card) {
-      return undefined;
-    }
-
-    try {
-      return await loadCardQuery(cardId);
-    } catch (error) {
-      console.error("Failed to load external document card data:", error);
-      throw error;
-    }
-  }, [cardId, documentUuid, card]);
-
-  const question = useMemo(
-    () => (card ? new Question(card, metadata) : undefined),
-    [card, metadata],
+  } = useGetPublicDocumentCardQueryQuery(
+    shouldSkip ? skipToken : { uuid: documentUuid, cardId },
   );
+
+  const question = useQuestionFromCard(card);
 
   if (!context) {
     return {

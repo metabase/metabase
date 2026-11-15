@@ -6,6 +6,7 @@ import { reorderFields } from "./utils";
 describe("actions > containers > ActionCreator > FormCreator > utils", () => {
   describe("reorderFields", () => {
     it("should reorder fields", () => {
+      // Unjustified type cast. FIXME
       const fields = {
         a: getDefaultFieldSettings({ order: 0 }),
         b: getDefaultFieldSettings({ order: 1 }),

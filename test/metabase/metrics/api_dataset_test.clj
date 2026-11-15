@@ -15,6 +15,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-dataset-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -1281,3 +1282,33 @@
                                           :projection [[:dimension {} (:id expr-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (< 1 (:row_count response)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Category 12: Segment and BigInteger Filters                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest dataset-segment-filter-test
+  (testing "POST /api/metric/dataset with a [:segment] filter narrows rows exactly like the underlying filter (#2004)"
+    (mt/dataset test-data
+      (let [mp     (mt/metadata-provider)
+            orders (lib.metadata/table mp (mt/id :orders))
+            total  (lib.metadata/field mp (mt/id :orders :total))]
+        (mt/with-temp [:model/Card    metric {:name          "Orders Count Metric"
+                                              :type          :metric
+                                              :dataset_query (-> (lib/query mp orders)
+                                                                 (lib/aggregate (lib/count)))}
+                       :model/Segment {sid :id} {:table_id   (mt/id :orders)
+                                                 :definition {:source-table (mt/id :orders)
+                                                              :filter       (lib.convert/->legacy-MBQL
+                                                                             (lib/> total 100))}}]
+          (let [hydrated    (hydrate-metric (:id metric))
+                total-dim   (find-dimension-by-name hydrated "TOTAL")]
+            (is (some? total-dim))
+            (let [via-filter  (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
+                                                              :filters    [{:lib/uuid "a"
+                                                                            :filter   [:> {} [:dimension {} (:id total-dim)] 100]}]}))
+                  via-segment (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
+                                                              :filters    [{:lib/uuid "a"
+                                                                            :filter   [:segment {} sid]}]}))]
+              (is (pos? via-filter))
+              (is (= via-filter via-segment)))))))))

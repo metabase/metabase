@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
-   [metabase.util.retry-test :as rt]))
+   [metabase.util.retry-test :as rt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,6 +45,26 @@
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
 
+(deftest user-joined-admin-notification-email-test
+  (testing "the joined user's email links to the joined user, not to an admin"
+    (mt/with-temporary-setting-values [admin-email "admin@example.com"]
+      (et/with-fake-inbox
+        (messages/send-user-joined-admin-notification-email! {:first_name  "New"
+                                                              :common_name "New User"
+                                                              :email       "new-user@example.com"})
+        (let [content (-> (@et/inbox "admin@example.com")
+                          (get-in [0 :body 0 :content]))]
+          (is (str/includes? content "href=\"mailto:new-user@example.com\""))
+          (is (not (str/includes? content "mailto:admin@example.com")))))))
+  (testing "a `?` in the joined user's email is percent-encoded, so the link does not add a CC"
+    (mt/with-temporary-setting-values [admin-email "admin@example.com"]
+      (et/with-fake-inbox
+        (messages/send-user-joined-admin-notification-email! {:first_name  "New"
+                                                              :common_name "New User"
+                                                              :email       "x?cc=y@example.com"})
+        (is (str/includes? (get-in (@et/inbox "admin@example.com") [0 :body 0 :content])
+                           "href=\"mailto:x%3Fcc&#x3D;y@example.com\""))))))
+
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"
       (mt/with-log-level [metabase.channel.email :trace]
@@ -68,7 +89,7 @@
   (testing "send email succeeds w/o retry"
     (let [[hook state] (rt/retry-analytics-config-hook)]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! mt/fake-inbox-email-fn]
+        (mt/with-dynamic-fn-redefs [email/send-email! mt/fake-inbox-email-fn]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -78,7 +99,7 @@
   (testing "send email fails b/c retry limit"
     (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! (tu/works-after 2 mt/fake-inbox-email-fn)]
+        (mt/with-dynamic-fn-redefs [email/send-email! (tu/works-after 2 mt/fake-inbox-email-fn)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -89,7 +110,7 @@
   (testing "send email succeeds w/ retry"
     (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
+        (mt/with-dynamic-fn-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -98,12 +119,22 @@
             (is (= 1 (count @mt/inbox)))))))))
 
 (deftest all-admin-recipients
-  (mt/with-temp [:model/ApiKey _ {::api-key/unhashed-key (api-key/generate-key)
-                                  :name                  "Test API key"
-                                  :user_id               (mt/user->id :crowberto)
-                                  :creator_id            (mt/user->id :crowberto)
-                                  :updated_by_id         (mt/user->id :crowberto)}]
-    (testing "all-admin-recipients returns all admin emails"
-      (let [emails (#'messages/all-admin-recipients)]
-        (is (some #(= % "crowberto@metabase.com") emails))
+  (mt/with-temp [:model/User   accepted-admin {:is_superuser true
+                                               :email        "accepted-admin@example.com"}
+                 :model/User   _pending-admin {:is_superuser true
+                                               :email        "pending-admin@example.com"}
+                 :model/ApiKey _              {::api-key/unhashed-key (api-key/generate-key)
+                                               :name                  "Test API key"
+                                               :user_id               (mt/user->id :crowberto)
+                                               :creator_id            (mt/user->id :crowberto)
+                                               :updated_by_id         (mt/user->id :crowberto)}]
+    ;; `mt/with-temp` creates Users with `last_login = nil`, which the recipient filter treats as
+    ;; "invited but not accepted." Mark one as having logged in to represent an accepted admin.
+    (t2/update! :model/User :id (:id accepted-admin) {:last_login :%now})
+    (let [emails (set (#'messages/all-admin-recipients))]
+      (testing "includes admins who have accepted their invitation"
+        (is (contains? emails "accepted-admin@example.com")))
+      (testing "excludes admins who have not yet accepted their invitation"
+        (is (not (contains? emails "pending-admin@example.com"))))
+      (testing "excludes API key users"
         (is (not (some #(str/starts-with? % "api-key-user") emails)))))))

@@ -78,7 +78,7 @@
                  (subs s 1))]
       (format "Run %s %s" s (schedule-timezone)))
     (catch Exception e
-      (log/errorf e "Failed to parse cron expression: %s" cron-string)
+      (log/errorf "Failed to parse cron expression %s: %s" cron-string (ex-message e))
       nil)))
 
 (defn friendly-cron-description

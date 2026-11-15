@@ -16,10 +16,10 @@
 
 (deftest index!-test
   (search.tu/with-temp-index-table
-   ;; TODO this is coupled to appdb engines at the moment
+    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
-     ;; May return falsey if there is nothing to index.
+      ;; May return falsey if there is nothing to index.
       (is (task/init!))
       (is (pos? (index-size))))
     (testing "It will reuse an existing index"
@@ -27,14 +27,14 @@
 
 (deftest reindex!-test
   (search.tu/with-temp-index-table
-   ;; TODO this is coupled to appdb engines at the moment
+    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
       (is (search/reindex! {:async? false}))
       (let [initial-size (index-size)
             table-name (search.index/active-table)]
         (is (pos? initial-size))
-        (t2/delete! table-name (t2/select-one-pk table-name))
+        (t2/delete! table-name :id (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))
         (testing "It can cycle the index gracefully"
           (is (search/reindex! {:async? false}))

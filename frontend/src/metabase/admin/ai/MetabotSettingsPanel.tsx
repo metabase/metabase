@@ -1,22 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useUpdateMetabotMutation,
-} from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils/settings";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useAdminSetting, useSettingSwitch } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
   Button,
@@ -45,7 +43,7 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
     : "metabot-enabled?";
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {isEmbedMetabot && (
         <Text c="text-secondary" maw="40rem">
           {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
@@ -58,6 +56,8 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
       />
 
       <MetabotSettingsBody settingKey={enabledSettingKey}>
+        {!isEmbedMetabot && <MetabotQueryExecutionToggle />}
+
         <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
           metabot={metabot}
         />
@@ -74,6 +74,57 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
         <MetabotPromptSuggestionPane metabot={metabot} />
       </MetabotSettingsBody>
     </Stack>
+  );
+}
+
+function MetabotQueryExecutionToggle() {
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "metabot-query-execution-enabled?",
+  );
+  const label = t`Let Metabot run queries and read their results`;
+  const isSetByEnv = envName != null;
+  const descriptionId = useId();
+  const envMessageId = useId();
+
+  return (
+    <Box>
+      <SettingHeader
+        id="metabot-query-execution"
+        title={t`Allow Metabot to read query results`}
+        description={
+          <span id={descriptionId}>
+            {t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.`}
+          </span>
+        }
+      />
+      <Flex align="center" gap="lg" mt="lg">
+        <Switch
+          id="metabot-query-execution"
+          aria-label={label}
+          aria-describedby={
+            isSetByEnv ? `${descriptionId} ${envMessageId}` : descriptionId
+          }
+          checked={checked}
+          disabled={isSetByEnv}
+          // aria-disabled, not disabled, so focus stays on the switch during a write
+          aria-disabled={isBusy || undefined}
+          onChange={(e) => {
+            if (!isBusy) {
+              onChange(e.target.checked);
+            }
+          }}
+          w="auto"
+        />
+        <Text c={checked ? "text-primary" : "text-secondary"} fw="500">
+          {label}
+        </Text>
+      </Flex>
+      {isSetByEnv && (
+        <Box id={envMessageId}>
+          <SetByEnvVar varName={envName} />
+        </Box>
+      )}
+    </Box>
   );
 }
 
@@ -101,14 +152,13 @@ function MetabotEnabledToggle({
             : t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.`
         }
       />
-      <Flex align="center" gap="md" mt="md">
+      <Flex align="center" gap="lg" mt="lg">
         <Switch
           data-testid="metabot-enabled-toggle"
           checked={!!value}
           onChange={(e) => handleToggle(e.target.checked)}
           disabled={isLoading}
           w="auto"
-          size="sm"
         />
         <Text c={value ? "text-primary" : "text-secondary"} fw="500">
           {isEmbedMetabot
@@ -138,7 +188,7 @@ function MetabotSettingsBody({
     return null;
   }
 
-  return <Stack gap="lg">{children}</Stack>;
+  return <Stack gap="xl">{children}</Stack>;
 }
 
 function MetabotCollectionConfigurationPane({
@@ -184,7 +234,7 @@ function MetabotCollectionConfigurationPane({
     if (result.error) {
       sendToast({
         message: t`Error setting ${newEntity.name}`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };
@@ -196,7 +246,7 @@ function MetabotCollectionConfigurationPane({
     <Box>
       <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
-      <Flex gap="md" mt="md">
+      <Flex gap="lg" mt="lg">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
           {match({ isMutating: isUpdating, collection })
             .with({ isMutating: true }, () => t`Updating collection...`)
@@ -212,6 +262,7 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
+            // Unjustified type cast. FIXME
             handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
@@ -237,11 +288,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
+    <Flex align="center" gap="sm" c="text-secondary" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-tertiary" fw="bold">
+          <Text c="text-secondary" fw="bold">
             /
           </Text>
         </>
@@ -260,7 +311,7 @@ const CollectionDisplay = ({
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">
-      <Icon {...icon} c={icon.color ?? "brand"} />
+      <Icon {...icon} c={icon.color ?? "core-brand"} />
       <Text c="text-secondary" fw="bold">
         {collection.name}
       </Text>

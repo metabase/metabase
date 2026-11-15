@@ -1,5 +1,5 @@
-[:map
- [:value [:map
+[:map {:closed true}
+ [:value [:map {:closed true}
           [:group_types {:optional true} [:sequential [:enum "question" "model" "metric" "table" "transform" "snippet" "dashboard" "document" "sandbox" "segment" "measure"]]]
           [:include_personal_collections {:optional true} :boolean]
           [:sort_column {:optional true} [:enum "name" "location" "dependents-errors" "dependents-with-errors"]]

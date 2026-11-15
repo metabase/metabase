@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { UserProfileFormProps } from "./UserProfileForm";

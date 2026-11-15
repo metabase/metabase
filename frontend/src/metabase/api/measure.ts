@@ -1,4 +1,3 @@
-import { MeasureSchema } from "metabase/schema";
 import type {
   CreateMeasureRequest,
   FieldValue,
@@ -21,7 +20,6 @@ import {
   provideMeasureTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const measureApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,7 +29,6 @@ export const measureApi = Api.injectEndpoints({
         url: "/api/measure",
       }),
       providesTags: (measures = []) => provideMeasureListTags(measures),
-      onQueryStarted: hydrateLegacyEntities([MeasureSchema]),
     }),
     getMeasure: builder.query<Measure, MeasureId>({
       query: (id) => ({
@@ -39,7 +36,6 @@ export const measureApi = Api.injectEndpoints({
         url: `/api/measure/${id}`,
       }),
       providesTags: (measure) => (measure ? provideMeasureTags(measure) : []),
-      onQueryStarted: hydrateLegacyEntities(MeasureSchema),
     }),
     getMeasureDimensionValues: builder.query<
       GetMeasureDimensionValuesResponse,

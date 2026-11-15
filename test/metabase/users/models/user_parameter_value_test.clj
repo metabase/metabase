@@ -27,26 +27,22 @@
                     "param2" "string"
                     "param3" ["A" "B" "C"]}
                    (retrieve-fn))))
-
           (testing "delete if value is nil"
             (store! [{:id "param1" :value "foo"} {:id "param2" :value nil}])
             (is (= {"param1" "foo"
                     "param3" ["A" "B" "C"]}
                    (retrieve-fn))))
-
           (testing "last value wins"
             (store! [{:id "param1" :value "bar"} {:id "param1" :value "baz"}])
             (is (= {"param1" "baz"
                     "param3" ["A" "B" "C"]}
                    (retrieve-fn))))
-
           (testing "update existing param and insert new param"
             (store! [{:id "param1", :value "new-value"} {:id "param2", :value "new-value"}])
             (is (= {"param1" "new-value"
                     "param2" "new-value"
                     "param3" ["A" "B" "C"]}
                    (retrieve-fn))))
-
           (testing "insert nil if param has default value"
             (store! [{:id "param4" :value nil :default "default"}])
             (is (= {"param1" "new-value"

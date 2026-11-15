@@ -1,21 +1,15 @@
-import cx from "classnames";
 import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-
 import "react-resizable/css/styles.css";
-
 import noResultsSource from "assets/img/no_results.svg";
-import { useUpdateSettingsMutation } from "metabase/api";
-import CS from "metabase/css/core/index.css";
-import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { closeModal } from "metabase/redux/ui";
+import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import {
   Box,
   Button,
@@ -26,17 +20,19 @@ import {
   Image,
   Modal,
   Stack,
+  Text,
 } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { useIsDataAppMissing } from "../hooks/use-is-data-app-missing";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
+import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
-  const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const {
     currentStep,
@@ -48,6 +44,7 @@ export const SdkIframeEmbedSetupContent = () => {
     experience,
     resource,
     settings,
+    onClose,
   } = useSdkIframeEmbedSetupContext();
 
   const StepContent = useMemo(
@@ -57,7 +54,7 @@ export const SdkIframeEmbedSetupContent = () => {
   );
 
   function handleEmbedDone() {
-    // Embedding Hub: track step completion
+    // Setup guide: track step completion. The settings keep their embedding-hub names.
     // Test embed = guest or existing user session (for quick testing)
     // Production embed = full SSO setup
     const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
@@ -68,7 +65,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
     updateSettings({ [settingKey]: true });
 
-    dispatch(closeModal());
+    onClose();
   }
 
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
@@ -76,14 +73,23 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
+  const isDataAppMissing = useIsDataAppMissing(settings);
   const isMissingResource =
-    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+    isDataAppMissing ||
+    (isQuestionOrDashboard && !isLoading && (!resource || resource.archived));
+
+  const siteUrl = useSetting("site-url");
+  const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
       <Button
         variant="filled"
-        disabled={resource?.enable_embedding === false}
+        disabled={
+          !allowPreviewAndNavigation ||
+          isMissingResource ||
+          resource?.enable_embedding === false
+        }
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -93,7 +99,7 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("select-embed-options", () => (
       <Button
         variant="filled"
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
         onClick={handleNext}
       >
         {t`Get code`}
@@ -103,9 +109,9 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
       >
-        {t`Next`}
+        {experience === "data-app" ? t`Get code` : t`Next`}
       </Button>
     ));
 
@@ -116,27 +122,15 @@ export const SdkIframeEmbedSetupContent = () => {
     >
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md" flex={1}>
-              <AuthenticationSection />
-
-              <Stack
-                gap="md"
-                flex={1}
-                opacity={allowPreviewAndNavigation ? 1 : 0.5}
-                className={cx(
-                  !allowPreviewAndNavigation && CS.pointerEventsNone,
-                )}
-              >
-                <StepContent />
-              </Stack>
+          <Stack className={S.SidebarContent} gap="lg">
+            <Stack gap="lg" flex={1}>
+              <StepContent />
             </Stack>
           </Stack>
 
           <Group className={S.Navigation} justify="space-between">
             {canGoBack && (
               <Button
-                variant="default"
                 onClick={handleBack}
                 disabled={!allowPreviewAndNavigation}
               >
@@ -156,11 +150,25 @@ export const SdkIframeEmbedSetupContent = () => {
           <SdkIframeGuestEmbedStatusBar />
 
           {allowPreviewAndNavigation && !isMissingResource ? (
-            <SdkIframeEmbedPreview />
+            isSiteUrlMismatched ? (
+              <SdkIframeEmbedSiteUrlMismatchError siteUrl={siteUrl} />
+            ) : (
+              <SdkIframeEmbedPreview />
+            )
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Image w={120} h={120} src={noResultsSource} alt="No results" />
+                <Stack align="center" gap="lg">
+                  <Image
+                    w={120}
+                    h={120}
+                    src={noResultsSource}
+                    alt="No results"
+                  />
+                  <Text c="text-secondary">
+                    {t`Preview will appear when you select what to embed`}
+                  </Text>
+                </Stack>
               </Flex>
             </Card>
           )}
@@ -186,6 +194,12 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
       {children}
     </ResizableBox>
   );
+};
+
+type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 };
 
 export const SdkIframeEmbedSetupModal = ({

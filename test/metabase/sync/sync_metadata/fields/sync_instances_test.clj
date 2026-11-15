@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -59,7 +60,7 @@
   (testing "Make sure nested fields get resynced correctly if their parent field didnt' change"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       ;; delete our entry for the `transactions.toucan.details.age` field
       (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
@@ -67,7 +68,7 @@
             age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
         (t2/delete! :model/Field :id age-field-id)
         ;; now sync again.
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         ;; field should be added back
         (is (= #{"weight" "age"}
                (t2/select-fn-set :name :model/Field :table_id transactions-table-id, :parent_id details-field-id, :active true)))))))
@@ -76,15 +77,15 @@
   (testing "Syncing can reactivate a field"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       ;; delete our entry for the `transactions.toucan.details.age` field
       (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (t2/update! :model/Field age-field-id {:active false})
+        (t2/update! :model/Field :id age-field-id {:active false})
         ;; now sync again.
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         ;; field should be reactivated
         (is (t2/select-one-fn :active :model/Field :id age-field-id))))))
 
@@ -93,15 +94,15 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
         ;; do the initial sync
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         ;; delete our entry for the `transactions.toucan.details.age` field
         (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
               toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
               details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
               age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-          (t2/update! :model/Field details-field-id {:active false})
+          (t2/update! :model/Field :id details-field-id {:active false})
           ;; now sync again.
-          (sync-metadata/sync-db-metadata! db)
+          (sync-metadata/sync-db-metadata! (:id db))
           ;; field should be reactivated
           (is (t2/select-one-fn :active :model/Field :id age-field-id)))))))
 
@@ -109,7 +110,7 @@
   (testing "Nested fields can be marked inactive"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       ;; Add an entry for a `transactions.toucan.details.gender` field
       (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
@@ -121,9 +122,8 @@
                                                                                    :table_id      transactions-table-id
                                                                                    :parent_id     details-field-id
                                                                                    :active        true)))]
-
         ;; now sync again.
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         ;; field should become inactive
         (is (false? (t2/select-one-fn :active :model/Field :id gender-field-id)))))))
 
@@ -131,7 +131,7 @@
   (testing "When a nested field is marked inactive so are its children"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       ;; Add an entry for a `transactions.toucan.details.gender` field
       (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
@@ -151,14 +151,14 @@
                                                                    :parent_id     food-likes-field-id
                                                                    :active        true))]
         ;; now sync again.
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         ;; field should become inactive
         (is (false? (t2/select-one-fn :active :model/Field :id blueberries-field-id)))))))
 
 (defn run-cruft-test [patterns freqs]
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                      :settings {:auto-cruft-columns patterns}}]
-    (sync-metadata/sync-db-metadata! db)
+    (sync-metadata/sync-db-metadata! (:id db))
     (let [tables (t2/select :model/Table :db_id (u/the-id db))
           fields (mapcat (fn [{:keys [id]}] (t2/select :model/Field :table_id id)) tables)]
       (is (= freqs
@@ -189,3 +189,19 @@
 
 (deftest auto-cruft-fields-none-are-crufted-with-no-hit-pattern
   (run-cruft-test ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))
+
+(deftest remove-fields-with-too-long-names-test
+  (testing "Fields whose name is too long to store in the app DB are dropped, so they don't abort the whole batch"
+    (let [remove-too-long @#'sync-instances/remove-fields-with-too-long-names
+          table           (t2/instance :model/Table {:id 1, :name "t", :schema "s"})
+          field           (fn [nm] {:name nm, :database-type "TEXT", :base-type :type/Text, :database-position 0})
+          ok              (field "short_name")
+          too-long        (field (apply str (repeat 300 "a")))]
+      (testing "an over-long name is removed while the rest are kept"
+        (is (= #{ok} (remove-too-long table #{ok too-long}))))
+      (testing "everything is kept when all names fit"
+        (is (= #{ok} (remove-too-long table #{ok}))))
+      (testing "boundary: a name of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   (field (apply str (repeat 254 "a")))
+              over-limit (field (apply str (repeat 255 "a")))]
+          (is (= #{at-limit} (remove-too-long table #{at-limit over-limit}))))))))

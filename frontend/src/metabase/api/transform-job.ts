@@ -1,11 +1,17 @@
 import type {
   CreateTransformJobRequest,
+  ListJobRunTransformRunsRequest,
+  ListTransformJobRunsRequest,
+  ListTransformJobRunsResponse,
   ListTransformJobsRequest,
+  RunTransformJobResponse,
   Transform,
   TransformJob,
   TransformJobId,
+  TransformRunForJobRun,
   UpdateTransformJobRequest,
 } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
@@ -45,7 +51,32 @@ export const transformJobApi = Api.injectEndpoints({
         ...provideTransformListTags(transforms),
       ],
     }),
-    runTransformJob: builder.mutation<void, TransformJobId>({
+    listTransformJobRuns: builder.query<
+      ListTransformJobRunsResponse,
+      ListTransformJobRunsRequest
+    >({
+      query: ({ jobId, ...params }) => ({
+        method: "GET",
+        url: `/api/transform-job/${jobId}/runs`,
+        params,
+      }),
+      providesTags: (_response, _error, { jobId }) => [
+        idTag("transform-job", jobId),
+      ],
+    }),
+    listJobRunTransformRuns: builder.query<
+      TransformRunForJobRun[],
+      ListJobRunTransformRunsRequest
+    >({
+      query: ({ jobId, runId }) => ({
+        method: "GET",
+        url: `/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
+      }),
+      providesTags: (_response, _error, { jobId }) => [
+        idTag("transform-job", jobId),
+      ],
+    }),
+    runTransformJob: builder.mutation<RunTransformJobResponse, TransformJobId>({
       query: (id) => ({
         method: "POST",
         url: `/api/transform-job/${id}/run`,
@@ -53,6 +84,8 @@ export const transformJobApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
           idTag("transform-job", id),
+          listTag("transform-job"),
+          listTag("transform-run"),
           tag("transform"),
           tag("table"),
         ]),
@@ -63,7 +96,7 @@ export const transformJobApi = Api.injectEndpoints({
             id,
             (draft) => {
               draft.last_run = {
-                id: -1,
+                id: PENDING_RUN_ID,
                 status: "started",
                 start_time: new Date().toISOString(),
                 end_time: null,
@@ -153,6 +186,8 @@ export const transformJobApi = Api.injectEndpoints({
 export const {
   useListTransformJobsQuery,
   useListTransformJobTransformsQuery,
+  useListTransformJobRunsQuery,
+  useListJobRunTransformRunsQuery,
   useGetTransformJobQuery,
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,

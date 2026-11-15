@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { cleanup, render, screen } from "__support__/ui";
+import { act, cleanup, render, screen } from "__support__/ui";
 
 import type { TextareaBlurChangeProps } from "./TextareaBlurChange";
 import { TextareaBlurChange } from "./TextareaBlurChange";
@@ -38,7 +38,11 @@ describe("TextareaBlurChange", () => {
     expect(onBlurChange).toHaveBeenCalledTimes(0);
 
     await userEvent.type(inputEl, "test");
-    inputEl.blur();
+    // `blur()` synchronously updates the component's internal value, so it
+    // must be wrapped in `act` to keep the state update flushed.
+    act(() => {
+      inputEl.blur();
+    });
 
     expect(onBlurChange).toHaveBeenCalledTimes(1);
     expect(onBlurChange.mock.results[0].value).toBe("test");
@@ -65,8 +69,9 @@ describe("TextareaBlurChange", () => {
 
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
+    // Unjustified type cast. FIXME
     setup({ value, normalize: (value) => (value as string).trim() });
-    const input = screen.getByDisplayValue(value) as HTMLInputElement;
+    const input = screen.getByDisplayValue<HTMLInputElement>(value);
     await userEvent.clear(input);
     await userEvent.type(input, "           /         ");
 

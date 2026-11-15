@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback, useMemo, useState } from "react";
 
 import type { SortDirection } from "metabase-types/api";
@@ -40,8 +41,10 @@ export const useTableSorting = <Row extends BaseRow>({
 
         const result =
           typeof a === "string"
-            ? compareStrings(a, b as string)
-            : compareNumbers(a, b as number);
+            ? // Unjustified type cast. FIXME
+              compareStrings(a, b as string)
+            : // Unjustified type cast. FIXME
+              compareNumbers(a, b as number);
         return sortDirection === "asc" ? result : -result;
       });
     }

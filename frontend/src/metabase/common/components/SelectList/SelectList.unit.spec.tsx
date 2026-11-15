@@ -8,7 +8,7 @@ import { SelectList } from "./index";
 describe("Components > SelectList", () => {
   it("renders a list of items", () => {
     render(
-      <SelectList color="brand">
+      <SelectList color="core-brand">
         <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />
         <SelectList.Item id="2" name="Item 2" icon="check" onSelect={_.noop} />
       </SelectList>,
@@ -42,7 +42,7 @@ describe("Components > SelectList", () => {
     const selectSpy = jest.fn();
 
     render(
-      <SelectList color="brand">
+      <SelectList color="core-brand">
         <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />
         <SelectList.Item
           id="2"

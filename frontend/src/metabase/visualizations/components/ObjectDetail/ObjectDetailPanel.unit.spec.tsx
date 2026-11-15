@@ -1,0 +1,580 @@
+import userEvent from "@testing-library/user-event";
+
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupActionsEndpoints,
+  setupCardDataset,
+  setupDatabasesEndpoints,
+  setupPrefetchActionValuesEndpoint,
+} from "__support__/server-mocks";
+import { testDataset } from "__support__/testDataset";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getNextId, waitForRequestsToSettle } from "__support__/utils";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type { WritebackAction } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+  createMockImplicitQueryAction,
+  createMockQueryAction,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  PEOPLE,
+  PEOPLE_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { ObjectDetailPanel } from "./ObjectDetailPanel";
+import type { ObjectDetailProps } from "./types";
+
+const mockCard = createMockCard({
+  id: getNextId(),
+  name: "Product",
+});
+
+const mockTable = createMockTable({
+  id: getNextId(),
+});
+
+const mockTableNoPk = createMockTable({
+  id: getNextId(),
+  fields: [],
+});
+
+const mockTableMultiplePks = createMockTable({
+  id: getNextId(),
+  fields: [
+    createMockField({ semantic_type: "type/PK" }),
+    createMockField({ semantic_type: "type/PK" }),
+  ],
+});
+
+const databaseWithActionsEnabled = createMockDatabase({
+  id: SAMPLE_DB_ID,
+  settings: { "database-enable-actions": true },
+});
+
+const databaseWithActionsDisabled = createMockDatabase({
+  id: getNextId(),
+  settings: { "database-enable-actions": false },
+});
+
+const tablesProvider = createMetadataProvider({
+  metadata: createMockMetadata({
+    databases: [createSampleDatabase({ id: databaseWithActionsEnabled.id })],
+    tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
+  }),
+});
+
+const mockDatasetCard = createMockCard({
+  id: getNextId(),
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
+});
+
+const mockDatasetNoPkCard = createMockCard({
+  id: getNextId(),
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableNoPk.id } }],
+    }),
+  ),
+});
+
+const mockDatasetMultiplePksCard = createMockCard({
+  id: getNextId(),
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableMultiplePks.id } }],
+    }),
+  ),
+});
+
+const mockDatasetWithClausesCard = createMockCard({
+  id: getNextId(),
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [
+        {
+          source: { type: "table", id: PEOPLE_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: "contains",
+              args: [
+                { type: "column", fieldId: PEOPLE.NAME },
+                { type: "literal", value: "Macy" },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+});
+
+const mockDatasetNoWritePermissionCard = createMockCard({
+  id: getNextId(),
+  can_write: false,
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
+});
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      id: databaseWithActionsEnabled.id,
+      settings: { "database-enable-actions": true },
+    }),
+  ],
+  tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
+  questions: [
+    mockCard,
+    mockDatasetCard,
+    mockDatasetNoPkCard,
+    mockDatasetMultiplePksCard,
+    mockDatasetWithClausesCard,
+    mockDatasetNoWritePermissionCard,
+  ],
+});
+
+const mockQuestion = new Question(mockCard, metadata);
+
+const mockDataset = new Question(mockDatasetCard, metadata);
+
+const mockDatasetNoPk = new Question(mockDatasetNoPkCard, metadata);
+
+const mockDatasetMultiplePks = new Question(
+  mockDatasetMultiplePksCard,
+  metadata,
+);
+
+const mockDatasetWithClauses = new Question(
+  mockDatasetWithClausesCard,
+  metadata,
+);
+
+const mockDatasetNoWritePermission = new Question(
+  mockDatasetNoWritePermissionCard,
+  metadata,
+);
+
+const implicitCreateAction = createMockImplicitQueryAction({
+  id: getNextId(),
+  database_id: databaseWithActionsEnabled.id,
+  name: "Create",
+  kind: "row/create",
+});
+
+const implicitDeleteAction = createMockImplicitQueryAction({
+  id: getNextId(),
+  database_id: databaseWithActionsEnabled.id,
+  name: "Delete",
+  kind: "row/delete",
+});
+
+const implicitUpdateAction = createMockImplicitQueryAction({
+  id: getNextId(),
+  database_id: databaseWithActionsEnabled.id,
+  name: "Update",
+  kind: "row/update",
+});
+
+const implicitPublicUpdateAction = {
+  ...implicitUpdateAction,
+  id: getNextId(),
+  name: "Public Update",
+  public_uuid: "mock-uuid",
+};
+
+const implicitPublicDeleteAction = {
+  ...implicitDeleteAction,
+  id: getNextId(),
+  name: "Public Delete",
+  public_uuid: "mock-uuid",
+};
+
+const implicitArchivedUpdateAction = {
+  ...implicitUpdateAction,
+  id: getNextId(),
+  name: "Archived Implicit Update",
+  archived: true,
+};
+
+const implicitArchivedDeleteAction = {
+  ...implicitDeleteAction,
+  id: getNextId(),
+  name: "Archived Implicit Delete",
+  archived: true,
+};
+
+const queryAction = createMockQueryAction({
+  id: getNextId(),
+  name: "Query action",
+});
+
+const actions = [
+  implicitCreateAction,
+  implicitDeleteAction,
+  implicitUpdateAction,
+  implicitPublicUpdateAction,
+  implicitPublicDeleteAction,
+  implicitArchivedUpdateAction,
+  implicitArchivedDeleteAction,
+  queryAction,
+];
+
+const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
+  ...action,
+  database_id: databaseWithActionsDisabled.id,
+}));
+
+function setup(
+  options: Partial<ObjectDetailProps> &
+    Required<Pick<ObjectDetailProps, "question">>,
+) {
+  const fetchTableFks = jest.fn();
+
+  renderWithProviders(
+    <ObjectDetailPanel
+      data={testDataset}
+      zoomedRow={testDataset.rows[0]}
+      zoomedRowID={0}
+      tableForeignKeys={[]}
+      tableForeignKeyReferences={[]}
+      settings={{
+        column: () => null,
+      }}
+      showHeader
+      canZoom={true}
+      canZoomPreviousRow={false}
+      canZoomNextRow={false}
+      followForeignKey={() => null}
+      onVisualizationClick={() => null}
+      visualizationIsClickable={() => false}
+      fetchTableFks={fetchTableFks}
+      loadObjectDetailFKReferences={() => null}
+      viewPreviousObjectDetail={() => null}
+      viewNextObjectDetail={() => null}
+      closeObjectDetail={() => null}
+      isDashboard={false}
+      {...options}
+    />,
+  );
+
+  return {
+    fetchTableFks,
+  };
+}
+
+describe("ObjectDetailPanel", () => {
+  it("renders an object detail component", async () => {
+    setup({ question: mockQuestion });
+
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(checkNotNull(testDataset.rows[0][3]).toString()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(checkNotNull(testDataset.rows[0][4]).toString()),
+    ).toBeInTheDocument();
+  });
+
+  it("fetches a missing row", async () => {
+    setupCardDataset({
+      dataset: {
+        data: {
+          rows: [
+            [
+              "101",
+              "1807963902339",
+              "Extremely Hungry Toucan",
+              "Gizmo",
+              "Larson, Pfeffer and Klocko",
+              31.78621880685793,
+              4.3,
+              "2017-01-09T09:51:20.352-07:00",
+            ],
+          ],
+        },
+      },
+    });
+
+    // because this row is not in the test dataset, it should trigger a fetch
+    setup({ question: mockQuestion, zoomedRowID: "101", zoomedRow: undefined });
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Extremely Hungry Toucan/i),
+    ).toBeInTheDocument();
+  });
+
+  it("should fetch table foreign keys on mount", async () => {
+    const { fetchTableFks } = setup({
+      question: mockQuestion,
+      table: mockTable,
+    });
+    await waitFor(() => expect(fetchTableFks).toHaveBeenCalledTimes(1));
+  });
+
+  it("should not fetch table foreign keys in object detail viz (VIZ-1133)", async () => {
+    const { fetchTableFks } = setup({
+      question: mockQuestion.setDisplay("object"),
+      table: mockTable,
+    });
+    await waitFor(() => expect(fetchTableFks).not.toHaveBeenCalled());
+  });
+
+  it("shows not found if it can't find a missing row", async () => {
+    setupCardDataset({ dataset: { data: { rows: [] } } });
+
+    // because this row is not in the test dataset, it should trigger a fetch
+    setup({ question: mockQuestion, zoomedRowID: "102", zoomedRow: undefined });
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
+  });
+
+  describe("renders actions menu", () => {
+    beforeEach(async () => {
+      setupDatabasesEndpoints([databaseWithActionsEnabled]);
+      setupActionsEndpoints(actions);
+      setup({ question: mockDataset });
+      // `ActionExecuteModal` initialises its values state after this render.
+      // Nothing observable changes when it does, and it issues no request to
+      // wait on, so flush that update rather than leaving it for the next test.
+      await waitForRequestsToSettle();
+    });
+
+    it("should not show implicit create action", async () => {
+      const action = await findActionInActionMenu(implicitCreateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should show implicit update action", async () => {
+      const action = await findActionInActionMenu(implicitUpdateAction);
+      expect(action).toBeInTheDocument();
+    });
+
+    it("should show implicit delete action", async () => {
+      const action = await findActionInActionMenu(implicitDeleteAction);
+      expect(action).toBeInTheDocument();
+    });
+
+    it("should not show implicit public update action", async () => {
+      const action = await findActionInActionMenu(implicitPublicUpdateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show implicit public delete action", async () => {
+      const action = await findActionInActionMenu(implicitPublicDeleteAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show implicit archived update action", async () => {
+      const action = await findActionInActionMenu(implicitArchivedUpdateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show implicit archived delete action", async () => {
+      const action = await findActionInActionMenu(implicitArchivedDeleteAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show query action", async () => {
+      const action = await findActionInActionMenu(queryAction);
+      expect(action).not.toBeInTheDocument();
+    });
+  });
+
+  it("should not render actions menu for models based on database with actions disabled", async () => {
+    setupDatabasesEndpoints([databaseWithActionsDisabled]);
+    setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
+    setup({ question: mockDataset });
+
+    await expectNoActionsMenu();
+  });
+
+  it("should not render actions menu for non-model questions", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockQuestion });
+
+    await expectNoActionsMenu();
+  });
+
+  it(`should not render actions menu when "showControls" is "false"`, async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset, showControls: false });
+
+    await expectNoActionsMenu();
+  });
+
+  it("should render actions menu when user has write permission", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+
+    expect(await screen.findByTestId("actions-menu")).toBeInTheDocument();
+  });
+
+  it("should not render actions menu when user has no write permission", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetNoWritePermission });
+
+    await expectNoActionsMenu();
+  });
+
+  /**
+   * This is an exotic case. It's not possible to enable implicit actions
+   * for a model with clauses (joins, expressions, filters, etc.).
+   * Implicit actions are supported only in very simple models.
+   */
+  it("should not render actions menu when model's query has clauses", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetWithClauses });
+
+    await expectNoActionsMenu();
+  });
+
+  it("should not render actions menu when model's source table does not have a primary key", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetNoPk });
+
+    await expectNoActionsMenu();
+  });
+
+  it("should not render actions menu when model's source table has multiple primary keys", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetMultiplePks });
+
+    await expectNoActionsMenu();
+  });
+
+  it("should show update object modal on update action click", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+    setupPrefetchActionValuesEndpoint(implicitUpdateAction.id, {});
+
+    expect(
+      screen.queryByTestId("action-execute-modal"),
+    ).not.toBeInTheDocument();
+
+    const action = await findActionInActionMenu(implicitUpdateAction);
+    expect(action).toBeInTheDocument();
+    await userEvent.click(action!);
+
+    expect(
+      screen.queryByText("Choose a record to update"),
+    ).not.toBeInTheDocument();
+
+    const modal = await screen.findByTestId("action-execute-modal");
+    expect(modal).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("heading", { name: "Update" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should show delete object modal on delete action click", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+
+    expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
+
+    const action = await findActionInActionMenu(implicitDeleteAction);
+    expect(action).toBeInTheDocument();
+    await userEvent.click(checkNotNull(action));
+
+    const modal = await screen.findByTestId("delete-object-modal");
+    expect(modal).toBeInTheDocument();
+
+    expect(
+      within(modal).getByRole("heading", {
+        name: "Are you sure you want to delete this row?",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  describe("keyboard bindings", () => {
+    it("should be added when showControls is true", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: true,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).toHaveBeenCalledTimes(1);
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not be added when showControls is false", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: false,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).not.toHaveBeenCalled();
+    });
+  });
+});
+
+async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
+  const actionsMenu = await screen.findByTestId("actions-menu");
+  await userEvent.click(actionsMenu);
+  const menu = await screen.findByRole("menu");
+  const action = within(menu).queryByText(name);
+  return action;
+}
+
+/**
+ * The menu appears once the actions and databases requests resolve, so settle
+ * them before asserting it is absent.
+ */
+async function expectNoActionsMenu() {
+  await screen.findByTestId("object-detail");
+  await waitForRequestsToSettle();
+  expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
+}

@@ -8,9 +8,9 @@ import S from "./ThemeCard.module.css";
 
 export function getThemeColors(colors?: Partial<MetabaseColors>): string[] {
   return [
-    colors?.brand ?? "var(--mb-color-brand)",
+    colors?.brand ?? "var(--mb-color-core-brand)",
     colors?.["text-primary"] ?? "var(--mb-color-text-primary)",
-    colors?.background ?? "var(--mb-color-background)",
+    colors?.background ?? "var(--mb-color-background_page-primary)",
   ];
 }
 
@@ -35,10 +35,10 @@ export function ThemeCard({
       data-testid={`theme-card-${name}`}
       data-selected={isSelected}
       className={cx(S.card, isSelected && S.cardSelected)}
-      bdrs="md"
+      bdrs="sm"
       h="42px"
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Group gap={4} justify="space-between" wrap="nowrap">
           <Text
             size="xs"

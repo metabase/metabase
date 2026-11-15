@@ -1,4 +1,4 @@
-import type { CallLog } from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
@@ -15,6 +15,58 @@ export const getNextId = (() => {
 export async function delay(duration: number) {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, duration));
+  });
+}
+
+/**
+ * Flushes pending microtasks/timers inside `act` so async effects (notably
+ * floating-ui's `computePosition().then(flushSync(setState))` triggered by
+ * Mantine popovers) settle before assertions. Use after opening a popover
+ * to avoid the "not wrapped in act" warning.
+ */
+export async function waitForFloatingPosition() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+const DEFAULT_BOUNDING_CLIENT_RECT: DOMRect = {
+  height: 1,
+  width: 1,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  x: 0,
+  y: 0,
+  toJSON: () => ({}),
+};
+
+/**
+ * Mocks `HTMLElement.prototype.getBoundingClientRect` for the enclosing
+ * `describe` block. Registers its own `beforeEach`/`afterEach`, so it only
+ * needs to be called once in the `describe` body.
+ *
+ * jsdom always reports a zero-sized rect, which breaks `@tanstack/react-virtual`
+ * (it renders no virtualized rows). See
+ * https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+ *
+ * The default rect has a non-zero `width`/`height` but zeroed positions, so
+ * floating-ui (used by Mantine popovers) does not compute a `NaN` offset from
+ * otherwise-undefined `top`/`left`.
+ */
+export function mockGetBoundingClientRect(rect: Partial<DOMRect> = {}) {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    HTMLElement.prototype.getBoundingClientRect = jest.fn(() => ({
+      ...DEFAULT_BOUNDING_CLIENT_RECT,
+      ...rect,
+    }));
+  });
+
+  afterEach(() => {
+    HTMLElement.prototype.getBoundingClientRect = original;
   });
 }
 
@@ -37,4 +89,15 @@ export const waitForRequest = async (requestFn: () => CallLog | undefined) => {
     }
     throw error;
   }
+};
+
+/**
+ * Resolves every mocked request that has started and lets the state updates
+ * they cause reach the DOM. Use it before asserting that something did not
+ * render, where there is nothing to wait for.
+ */
+export const waitForRequestsToSettle = async () => {
+  await act(() => fetchMock.callHistory.flush(true));
+  // RTK Query commits the results on the next task.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 };

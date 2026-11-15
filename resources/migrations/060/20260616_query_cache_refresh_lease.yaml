@@ -1,0 +1,27 @@
+## Add query_cache.refresh_started_at to coordinate a single cross-process refresh of an expired entry
+## (stale-while-revalidate). One process claims the refresh lease via a conditional UPDATE; the others
+## serve the stale cached result instead of all stampeding the data warehouse.
+##
+## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.query-cache-refresh-lease
+      author: ranquild
+      comment: Add query_cache.refresh_started_at as a cross-process refresh lease for stale-while-revalidate caching
+      changes:
+        - addColumn:
+            tableName: query_cache
+            columns:
+              - column:
+                  name: refresh_started_at
+                  type: ${timestamp_type}
+                  remarks: When a process claimed the lease to recompute this expired entry; NULL when no refresh is in progress. Used to elect a single refresher across processes so the others serve stale results.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: query_cache
+            columnName: refresh_started_at

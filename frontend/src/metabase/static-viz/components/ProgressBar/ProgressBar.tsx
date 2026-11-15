@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { ClipPath } from "@visx/clip-path";
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
 import { c } from "ttag";
 
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
 import {
   calculateProgressMetrics,
   extractProgressValue,

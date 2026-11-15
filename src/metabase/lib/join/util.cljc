@@ -43,7 +43,7 @@
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join]
+  [field-or-join :- [:maybe ::column-or-field-ref-or-partial-join]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field             (:join-alias (lib.options/options field-or-join))
     :metadata/column   (:lib/join-alias field-or-join)

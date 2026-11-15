@@ -1,0 +1,83 @@
+import { c, t } from "ttag";
+import * as Yup from "yup";
+
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Button, Modal, Stack } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
+import type { Document } from "metabase-types/api/document";
+
+export type CopyDocumentProperties = {
+  collection_id: CollectionId | null;
+  name: string;
+};
+
+type DocumentCopyFormProps = {
+  initialValues: Partial<CopyDocumentProperties>;
+  onCancel: () => void;
+  onSubmit: (vals: CopyDocumentProperties) => Promise<Document>;
+  onSaved: (doc: Document) => void;
+};
+
+const VALIDATION_SCHEMA = Yup.object({
+  name: Yup.string().required().default(""),
+  collection_id: Yup.number().nullable().default(null),
+});
+
+export const DocumentCopyForm = ({
+  initialValues,
+  onCancel,
+  onSubmit,
+  onSaved,
+}: DocumentCopyFormProps) => {
+  const handleSubmit = async (vals: CopyDocumentProperties) => {
+    const { name, collection_id } = vals;
+
+    const newDoc = await onSubmit({ name, collection_id });
+
+    onSaved?.(newDoc);
+  };
+
+  return (
+    <FormProvider
+      initialValues={{ ...VALIDATION_SCHEMA.getDefault(), ...initialValues }}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
+      enableReinitialize
+    >
+      {() => (
+        <Form>
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`What is the name of your document?`}
+              autoFocus
+            />
+            <div>
+              <FormCollectionPicker
+                name="collection_id"
+                title={t`Where do you want to save this?`}
+                entityType="document"
+              />
+            </div>
+          </Stack>
+          <Modal.Footer>
+            {!!onCancel && (
+              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            )}
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="filled"
+            />
+          </Modal.Footer>
+        </Form>
+      )}
+    </FormProvider>
+  );
+};

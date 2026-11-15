@@ -30,6 +30,8 @@
 (defmethod driver/database-supports? [:starburst :test/creates-db-on-connect] [_ _ _] true)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor.string-extracts-test/concat-non-string-args] [_ _ _] false)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor.alternative-date-test/yyyymmddhhss-binary-timestamps] [_ _ _] false)
+;; tests for impersonation require creating roles, which trino doesn't support
+(defmethod driver/database-supports? [:starburst :connection-impersonation] [_ _ _] false)
 
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
@@ -182,3 +184,17 @@
 
 (defmethod sql.tx/generated-column-sql :starburst [_ _] nil)
 (defmethod sql.tx/default-column-sql :starburst [_ _] nil)
+
+(defmethod sql.tx/standalone-column-comment-sql :starburst
+  [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
+  (when (seq field-comment)
+    (format "COMMENT ON COLUMN %s IS '%s'"
+            (sql.tx/qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
+
+(defmethod sql.tx/standalone-table-comment-sql :starburst
+  [driver {:keys [database-name]} {:keys [table-name table-comment]}]
+  (when (seq table-comment)
+    (format "COMMENT ON TABLE %s IS '%s'"
+            (sql.tx/qualify-and-quote driver database-name table-name)
+            table-comment)))

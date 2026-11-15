@@ -17,7 +17,7 @@
 .EmbedFrame {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-dashboard);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .EmbedFrameHeader,
@@ -29,7 +29,7 @@
 /* Used by EmbedFrame's ContentContainer and by image/PDF export code */
 .WithThemeBackground {
   background-color: var(--mb-color-bg-dashboard);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 /* ---- Theme transition rules ---- */

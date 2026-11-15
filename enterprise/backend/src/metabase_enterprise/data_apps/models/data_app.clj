@@ -1,0 +1,248 @@
+(ns metabase-enterprise.data-apps.models.data-app
+  (:require
+   [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.api.common :as api]
+   [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)
+   (java.sql Blob)
+   (org.apache.commons.codec.binary Hex)))
+
+(set! *warn-on-reflection* true)
+
+(methodical/defmethod t2/table-name :model/DataApp [_model] :data_app)
+
+(defn- blob->bytes ^bytes [v]
+  (cond
+    (nil? v)           nil
+    (instance? Blob v) (let [^Blob b v] (.getBytes b 1 (int (.length b))))
+    :else              v))
+
+(def ^:private transform-bundle
+  "Coerce JDBC `Blob` values into plain byte arrays on read."
+  {:in  identity
+   :out blob->bytes})
+
+(t2/deftransforms :model/DataApp
+  {:bundle        transform-bundle
+   ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
+   :allowed_hosts mi/transform-json})
+
+(doto :model/DataApp
+  (derive :metabase/model)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
+
+(t2.default-fields/define-default-fields :model/DataApp
+  data-apps.db/non-blob-columns)
+
+(events/derive! ::event :metabase/event)
+(doseq [e [:event/data-app-create :event/data-app-update :event/data-app-delete]]
+  (events/derive! e ::event))
+
+(defn- bytes-hash ^String [^bytes b]
+  (let [^MessageDigest md (MessageDigest/getInstance "SHA-256")]
+    (Hex/encodeHexString ^bytes (.digest md b))))
+
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
+  [row]
+  (cond-> row
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
+
+(defn- prepare
+  "The DataApp `row` normalized and validated against `schema`."
+  [schema row]
+  (->> row
+       (lib/normalize schema)
+       (mu/validate-throw schema)
+       with-bundle-hash))
+
+(defn- check-resource-collection
+  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
+  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
+  remote sync may sync it."
+  [collection-id app-id]
+  (let [collection (data-apps.db/resource-collection collection-id)]
+    (when-not (and collection
+                   (= "data-apps" (some-> (:namespace collection) name))
+                   (= "/" (:location collection))
+                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                   (not-any? collection [:archived :is_sample]))
+      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))
+    (when (data-apps.db/other-app-has-collection? collection-id app-id)
+      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))))
+
+(t2/define-before-insert :model/DataApp
+  [data-app]
+  (let [row (prepare ::data-apps.schema/data-app.create data-app)]
+    (if-let [collection-id (:resource_collection_id row)]
+      (do (check-resource-collection collection-id nil)
+          row)
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:slug row))))))
+
+(t2/define-before-update :model/DataApp
+  [data-app]
+  (let [changes (t2/changes data-app)]
+    (when (contains? changes :resource_collection_id)
+      (when (some? (:resource_collection_id (t2/original data-app)))
+        (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                        {:status-code 400, :data-app-id (:id data-app)})))
+      (check-resource-collection (:resource_collection_id changes) (:id data-app)))
+    (when (contains? changes :bundle_hash)
+      (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
+                      {:status-code 400, :data-app-id (:id data-app)})))
+    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
+
+;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
+;; the column existed has NULL until it's re-synced. Guard on `contains?` so
+;; selects that don't fetch the column (e.g. `select-one-fn :bundle`) are left
+;; untouched rather than gaining a spurious `:allowed_hosts` key.
+(t2/define-after-select :model/DataApp
+  [app]
+  (cond-> app
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+
+(defmethod mi/can-read? :model/DataApp
+  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([_model pk]
+   (and (premium-features/has-feature? :data-apps)
+        (or api/*is-superuser?*
+            (and api/*current-user-id*
+                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
+
+(defmethod mi/can-write? :model/DataApp
+  ([app]       (mi/can-write? :model/DataApp (:id app)))
+  ([_model pk] (and api/*is-superuser?*
+                    (remote-sync/can-write? :model/DataApp pk))))
+
+(defmethod mi/can-create? :model/DataApp
+  [_model _instance]
+  (and api/*is-superuser?*
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-update? :model/DataApp
+  [app changes]
+  (and api/*is-superuser?*
+       (or (not (remote-sync/synced-changes? :model/DataApp app changes))
+           (remote-sync/can-write? :model/DataApp (:id app)))))
+
+;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
+;; it, and the collection's own hooks delete what it holds and the grants on it.
+;; The search index drops the app after the delete commits, through delete capture.
+(t2/define-before-delete :model/DataApp
+  [app]
+  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
+
+(search/define-spec "data-app"
+  {:model        :model/DataApp
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:slug :name :description]
+   ;; A result's `name` can be its display name, and the app's URL needs its slug.
+   :render-terms {:data-app-slug :slug}})
+
+(methodical/defmethod mi/to-json :model/DataApp
+  "Never include the raw bundle bytes in JSON."
+  [data-app json-generator]
+  (next-method (dissoc data-app :bundle) json-generator))
+
+(defn- bundle->file
+  "The `bundle` bytes as the text of its file."
+  [^bytes bundle]
+  (String. bundle StandardCharsets/UTF_8))
+
+(defn file->bundle
+  "The `content` of a bundle file as the bytes the app is served."
+  ^bytes [^String content]
+  (.getBytes content StandardCharsets/UTF_8))
+
+(defn- entity-bundle-path
+  "The normalized bundle path of `entity`, a data app entity."
+  [entity]
+  (lib/normalize ::data-apps.schema/bundle-path (:path entity)))
+
+(defmethod serialization/spec :model/DataApp [_]
+  {:schema    ::data-apps.schema/external-data-app
+   :copy      [:entity_id :slug :name :description :version :allowed_hosts]
+   :skip      [:enabled :bundle_hash]
+   :transform {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
+               :bundle_path            {:as     :path
+                                        :export serialization/export-unchanged
+                                        :import serialization/import-unchanged}
+               :bundle                 {:as     :serdes/resources
+                                        :export (fn [_store apps bundles _opts]
+                                                  (mapv (fn [app bundle]
+                                                          (when bundle
+                                                            {(:bundle_path app) (bundle->file bundle)}))
+                                                        apps
+                                                        bundles))
+                                        :import (fn [_store entities files _opts]
+                                                  (mapv (fn [app files]
+                                                          (let [path (entity-bundle-path app)]
+                                                            (file->bundle
+                                                             (or (get files path)
+                                                                 (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
+                                                                                 {:status-code 400}))))))
+                                                        entities
+                                                        files))}}})
+
+(defmethod serialization/before-load :model/DataApp [_ items]
+  (mapv (fn [{:keys [row local] :as item}]
+          (cond-> item
+            (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
+            (update :row dissoc :bundle)))
+        items))
+
+(defmethod serialization/storage-paths :model/DataApp [_ entities _ctx]
+  (mapv (fn [app]
+          [{:label data-app.config/apps-dir}
+           {:label (:slug app) :key (:entity_id app) :style :slug}
+           {:label "data_app"}])
+        entities))
+
+(defmethod serialization/resource-paths :model/DataApp [entity]
+  [(entity-bundle-path entity)])
+
+(defenterprise data-app-collection-ids
+  "The resource collections of the data apps, which hold the copies an app runs."
+  :feature :none
+  []
+  (data-apps.db/resource-collection-ids))
+
+(defenterprise data-app-collection?
+  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
+  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
+  :feature :none
+  [collection-id]
+  (data-apps.db/data-apps-namespace-collection? collection-id))
+
+(defmethod serialization/import-dependencies :model/DataApp [_ entities]
+  (mapv (fn [{:keys [collection resource_collection_id]}]
+          (when-let [collection-entity-id (or collection resource_collection_id)]
+            [[:model/Collection collection-entity-id]]))
+        entities))
+
+(defmethod remote-sync/spec :model/DataApp
+  [_model]
+  {:name         :slug
+   :synced-items data-apps.db/synced-data-app-items})

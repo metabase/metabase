@@ -2,9 +2,14 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { AggregationPicker } from "metabase/common/components/AggregationPicker";
-import { Button } from "metabase/common/components/Button";
-import { Popover, Tooltip } from "metabase/ui";
+import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
+import {
+  Button,
+  Icon,
+  Popover,
+  Tooltip,
+  useStablePopoverPosition,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import AddAggregationButtonS from "./AddAggregationButton.module.css";
@@ -21,6 +26,7 @@ export function AddAggregationButton({
   onQueryChange,
 }: AddAggregationButtonProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const stablePositionProps = useStablePopoverPosition();
   const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
 
@@ -32,14 +38,19 @@ export function AddAggregationButton({
     );
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
+      opened={isOpened}
+      onChange={setIsOpened}
+    >
       <Popover.Target>
         {renderTooltip(
           <Button
             className={AddAggregationButtonS.AddAggregationButtonRoot}
-            icon="add"
-            borderless
-            onlyIcon={hasAggregations}
+            variant="subtle"
+            leftSection={<Icon name="add" />}
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Add aggregation`}
             data-testid="add-aggregation-button"

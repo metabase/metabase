@@ -2,9 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest update-python-library-source-test
   (testing "update-python-library-source!"
@@ -19,7 +23,6 @@
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (= "def new_func(): return 1"
              (t2/select-one-fn :source :model/PythonLibrary))))
-
     (testing "updates existing record"
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (=? {:source "def updated_func(): return 2"
@@ -31,7 +34,6 @@
       (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate")
       (is (= "def updated_func(): return 2"
              (t2/select-one-fn :source :model/PythonLibrary))))
-
     (testing "rejects invalid paths"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid library path"
@@ -49,7 +51,6 @@
                :created_at some?
                :updated_at some?}
               (python-library/get-python-library-by-path "common"))))
-
     (testing "rejects invalid paths"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid library path"
@@ -59,10 +60,8 @@
   (testing "normalize-path function"
     (testing "adds .py extension when missing"
       (is (= "common.py" (#'python-library/normalize-path "common"))))
-
     (testing "doesn't duplicate .py extension"
       (is (= "common.py" (#'python-library/normalize-path "common.py"))))
-
     (testing "works with paths that already have .py extension when updating"
       (t2/delete! :model/PythonLibrary)
       (python-library/update-python-library-source! "common.py" "def test(): pass")
@@ -76,3 +75,22 @@
       (is (=? {:source "def test(): pass"
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
+
+(deftest is-default-cleared-by-a-source-change-test
+  (testing "Saving the default library with its source unchanged keeps it the default one"
+    (t2/delete! :model/PythonLibrary)
+    (t2/insert! :model/PythonLibrary {:path "common.py" :source "" :entity_id (u/generate-nano-id) :is_default true})
+    (python-library/update-python-library-source! "common" "")
+    (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
+  (testing "while changing its source makes it no longer the default one"
+    (python-library/update-python-library-source! "common" "def f(): pass")
+    (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py")))))
+
+(deftest recreated-library-is-the-built-in-one-test
+  (testing "A recreated common.py takes the built-in entity_id, and is the default one only with an empty source"
+    (doseq [[source default?] [["" true] ["def f(): pass" false]]]
+      (testing (pr-str source)
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" source)
+        (is (=? {:entity_id python-library/builtin-entity-id :is_default default?}
+                (t2/select-one :model/PythonLibrary :path "common.py")))))))

@@ -1,7 +1,8 @@
-import { coerceCollectionId } from "metabase/collections/utils";
+import { coerceCollectionId } from "metabase/common/collections/utils";
+import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
-import type { Collection, Dashboard } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import type { SelectedItem } from "./types";
 
@@ -12,7 +13,7 @@ type Opts = {
     pageId?: string;
   };
   question?: Question;
-  dashboard?: Dashboard;
+  dashboard?: StoreDashboard;
   collection?: Collection;
 };
 
@@ -71,7 +72,7 @@ function isDashboardPath(pathname: string): boolean {
   );
 }
 
-function getSelectedItems({
+export function getSelectedItems({
   pathname,
   params,
   question,
@@ -110,7 +111,12 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
+  if (
+    (isQuestionPath(pathname) ||
+      isModelPath(pathname) ||
+      isMetricPath(pathname)) &&
+    question
+  ) {
     return [
       {
         id: question.id(),
@@ -124,6 +130,3 @@ function getSelectedItems({
   }
   return [{ url: pathname, type: "non-entity" }];
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default getSelectedItems;

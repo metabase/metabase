@@ -1,10 +1,8 @@
 import type {
-  CheckCardDependenciesRequest,
-  CheckDependenciesResponse,
-  CheckSnippetDependenciesRequest,
-  CheckTransformDependenciesRequest,
+  DependencyCountsResponse,
   DependencyGraph,
   DependencyNode,
+  GetDependencyCountsRequest,
   GetDependencyGraphRequest,
   ListBreakingGraphNodesRequest,
   ListBreakingGraphNodesResponse,
@@ -16,12 +14,27 @@ import type {
 
 import { EnterpriseApi } from "./api";
 import {
+  listTag,
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
 } from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getDependencyCounts: builder.query<
+      DependencyCountsResponse,
+      GetDependencyCountsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/counts",
+        params,
+      }),
+      providesTags: () => [
+        ...provideDependencyNodeListTags([]),
+        listTag("collection"),
+      ],
+    }),
     getDependencyGraph: builder.query<
       DependencyGraph,
       GetDependencyGraphRequest
@@ -81,46 +94,17 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (response) =>
         response ? provideDependencyNodeListTags(response.data) : [],
     }),
-    checkCardDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckCardDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-card",
-        body,
-      }),
-    }),
-    checkSnippetDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckSnippetDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-snippet",
-        body,
-      }),
-    }),
-    checkTransformDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckTransformDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-transform",
-        body,
-      }),
-    }),
   }),
 });
 
 export const {
+  useGetDependencyCountsQuery,
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
   useListBreakingGraphNodesQuery,
+  useLazyListBreakingGraphNodesQuery,
   useListBrokenGraphNodesQuery,
+  useLazyListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
-  useLazyCheckCardDependenciesQuery,
-  useLazyCheckSnippetDependenciesQuery,
-  useLazyCheckTransformDependenciesQuery,
+  useLazyListUnreferencedGraphNodesQuery,
 } = dependencyApi;
