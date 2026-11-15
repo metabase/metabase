@@ -623,6 +623,7 @@ describe("DataModelV1 in the admin routes (enterprise)", () => {
       const animalsWithoutFields = { ...DOMESTIC_ANIMALS_TABLE, fields: [] };
       const wildAnimals = {
         ...WILD_ANIMALS_TABLE,
+        description: "Wild animals",
         fields: [createMockField({ id: 301, table_id: WILD_ANIMALS_TABLE.id })],
       };
       setup({
@@ -651,6 +652,10 @@ describe("DataModelV1 in the admin routes (enterprise)", () => {
       // positive control: a table with fields can be sorted
       await userEvent.click(await findTreeItem("schema", "Wild"));
       await userEvent.click(await findTableTreeItem(WILD_ANIMALS_TABLE.id));
+      // the previous table stays on screen until the new metadata arrives
+      await findInTableSection((section) =>
+        within(section).getByDisplayValue("Wild animals"),
+      );
       expect(
         await findInTableSection((section) =>
           within(section).getByRole("button", { name: /Sorting/ }),
