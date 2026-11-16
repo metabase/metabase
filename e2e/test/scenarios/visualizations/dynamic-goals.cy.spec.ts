@@ -109,6 +109,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dynamic-goal/values").as("goalValues");
+    // the dashboard visualizer helpers wait for it
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestion(SINGLE_COLUMN_SOURCE, {
       idAlias: "singleColumnSourceId",

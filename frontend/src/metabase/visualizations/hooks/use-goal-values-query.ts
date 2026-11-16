@@ -1,5 +1,8 @@
-import { type GetGoalValuesRequest, skipToken } from "metabase/api";
-import { useGetGoalValuesQuery } from "metabase/api/dynamic-goal";
+import {
+  type GetGoalValuesRequest,
+  skipToken,
+  useGetGoalValuesQuery,
+} from "metabase/api";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import {
   type GoalValuesScope,
