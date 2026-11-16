@@ -122,7 +122,9 @@
   user-facing-value
   user-readable-values-map
   uuid-nonce-base
+  validate-driver-feature-for-db!
   validate-settings-formatting!
+  validate-settable!
   validate-settable-for-db!
   writable-settings]
  [metabase.settings.models.setting.cache

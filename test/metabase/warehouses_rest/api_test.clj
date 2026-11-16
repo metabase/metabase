@@ -407,15 +407,9 @@
 
 (deftest create-db-provider-name-test
   (testing "POST /api/database"
-    (testing "can we set `provider_name` when creating a Database?"
-      (is (= {:provider_name "AWS RDS"}
-             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))
-    (testing "provider_name is optional and can be nil"
+    (testing "`provider_name` is derived from the engine and the host, not taken from the request"
       (is (= {:provider_name nil}
-             (select-keys (create-db-via-api! {}) [:provider_name]))))
-    (testing "can explicitly set provider_name to nil"
-      (is (= {:provider_name nil}
-             (select-keys (create-db-via-api! {:provider_name nil}) [:provider_name]))))))
+             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))))
 
 (deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
@@ -682,13 +676,12 @@
       (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
 
 (deftest reject-sample-database-edit-test
-  (testing "PUT /api/database/:id rejects any edit to the sample database with a sample-specific message"
+  (testing "PUT /api/database/:id rejects any edit to the sample database"
     (mt/with-temp [:model/Database {db-id :id} {:engine    ::test-driver
                                                 :is_sample true
                                                 :name      "Sample Database"}]
-      (is (re-find #"sample database cannot be edited"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:name "New Name"})))
+      (mt/user-http-request :crowberto :put 403 (format "database/%d" db-id)
+                            {:name "New Name"})
       (testing "the row is unchanged"
         (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
       (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"
@@ -717,18 +710,10 @@
 
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
-    (testing "should be able to set and unset `provider_name`"
+    (testing "`provider_name` in the request is ignored, since it is derived from the engine and the host"
       (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-        (let [updates1 {:provider_name "AWS RDS"}
-              updates2 {:provider_name nil}
-              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
-              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
-          (updates1!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
-            (is (= "AWS RDS" (:provider_name curr-db))))
-          (updates2!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
-            (is (= nil (:provider_name curr-db)))))))))
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) {:provider_name "AWS RDS"})
+        (is (nil? (t2/select-one-fn :provider_name :model/Database :id db-id)))))))
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
@@ -2934,10 +2919,11 @@
                        :model/Database {dest-id :id} {:engine             :h2
                                                       :details            {:host "localhost"}
                                                       :router_database_id router-id}]
-          (is (= "Cannot configure a write connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:write_data_details {:host                  "write-host"
-                                                             :write-data-connection true}}))))))
+          (with-redefs [driver/can-connect? (constantly true)]
+            (is (= "Cannot configure a write connection on a destination database"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                         {:write_data_details {:host                  "write-host"
+                                                               :write-data-connection true}})))))))
     (testing "Cannot set write_data_details on a router database"
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
@@ -3046,21 +3032,19 @@
                                 {:admin_details {:host "admin-host"}}))))))
 
 (deftest update-database-preserves-overlay-details-test
-  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
+  (testing "PUT /api/database/:id without write_data_details/admin_details keys"
     (testing "preserves nullable fields instead of nil-ing them out"
       (mt/with-premium-features #{:writable-connection :workspaces}
         (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
                                                     :details            {:host "localhost"}
                                                     :write_data_details {:host "write-host"}
-                                                    :admin_details      {:host "admin-host"}
-                                                    :provider_name      "AWS RDS"}]
+                                                    :admin_details      {:host "admin-host"}}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:name "Renamed DB"})
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
-                     :admin_details      {:host "admin-host"}
-                     :provider_name      "AWS RDS"}
+                     :admin_details      {:host "admin-host"}}
                     (t2/select-one :model/Database :id db-id)))))))))
 
 (deftest put-validates-admin-details-connection-test
@@ -3121,10 +3105,11 @@
                        :model/Database {dest-id :id}   {:engine             :h2
                                                         :details            {:host "localhost"}
                                                         :router_database_id router-id}]
-          (is (= "Cannot configure an admin connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:admin_details {:host             "admin-host"
-                                                        :admin-connection true}}))))))
+          (with-redefs [driver/can-connect? (constantly true)]
+            (is (= "Cannot configure an admin connection on a destination database"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                         {:admin_details {:host             "admin-host"
+                                                          :admin-connection true}})))))))
     (testing "Cannot set admin_details on a router database"
       (mt/with-premium-features #{:workspaces}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2

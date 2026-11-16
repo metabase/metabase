@@ -28,11 +28,14 @@
   [db-id schema-name]
   (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
-(defenterprise current-user-can-write-db?
-  "Enterprise version. Returns a boolean whether the current user can write the given db"
+(defenterprise current-user-managed-database-ids
+  "Enterprise version. The ids among `db-ids` of the Databases the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [db-id]
-  (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [db-id]))
+  [db-ids]
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (vec db-ids))]
+    (into #{} (filter #(= :yes (get values %))) db-ids)))
 
 (defenterprise table-ids-with-writable-metadata
   "Enterprise version: the ids of those of `tables` whose metadata the current user manages, from one bulk question."
