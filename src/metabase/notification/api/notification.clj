@@ -278,8 +278,8 @@
   Return the updated notification.
 
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
-  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
-  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403.
+  Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]
