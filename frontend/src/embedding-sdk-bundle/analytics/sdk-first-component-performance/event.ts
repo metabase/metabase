@@ -6,6 +6,7 @@ import {
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { SDK_SCRIPT_ADDED_AT_DATASET_KEY } from "embedding-sdk-shared/constants/analytics";
+import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_DASH_CASED } from "embedding-sdk-shared/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { isHostAppInDevMode } from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
 import {
@@ -72,7 +73,7 @@ let isSent = false;
 // When the tab is hidden/in background the browser can slow it down, we skip those to keep data consistent
 let wasPageHidden = false;
 
-const SDK_BUNDLE_SCRIPT_SELECTOR = 'script[data-embedding-sdk-bundle="true"]';
+const SDK_BUNDLE_SCRIPT_SELECTOR = `script[data-${SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_DASH_CASED}="true"]`;
 
 /** Marks and outcome of a public component. We lock on the first component to mount and only send that one. */
 export class SdkComponentPerformance {
