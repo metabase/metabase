@@ -32,6 +32,7 @@
    [metabase.metabot.tools.static-viz :as tools.static-viz]
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.tools.timelines :as tools.timelines]
+   [metabase.metabot.tools.write-dashboard :as tools.write-dashboard]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -77,6 +78,8 @@
   edit-chart-tool]
  [tools.save-entity
   save-entity-tool]
+ [tools.write-dashboard
+  write-dashboard-tool]
  [tools.resources
   read-resource-tool]
  [tools.snippets

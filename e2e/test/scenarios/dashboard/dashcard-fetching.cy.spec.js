@@ -95,7 +95,7 @@ describe("issue 48878", () => {
     cy.log("create model action");
 
     cy.findByTestId("qb-header-info-button").click();
-    H.sidesheet().findByText("Actions").click();
+    H.sidesheet().findByRole("link", { name: "Actions" }).click();
 
     cy.findByTestId("model-actions-header").findByText("New action").click();
 

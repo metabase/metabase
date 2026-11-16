@@ -3,6 +3,7 @@ import MetabaseSettings from "metabase/utils/settings";
 import {
   createMockDatabase,
   createMockField,
+  createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -175,7 +176,7 @@ describe("getFieldDisplayName", () => {
     const field = createMockField({
       name: "Name",
       display_name: "My field",
-      dimensions: [{ id: 1, type: "internal", name: "Dimension Name" }],
+      dimensions: [createMockFieldDimension({ id: 1, name: "Dimension Name" })],
     });
 
     expect(getFieldDisplayName(field)).toBe("Dimension Name");

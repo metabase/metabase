@@ -179,6 +179,13 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     );
   });
 
+  it("should keep the theme's px font size that the column widths are measured with", async () => {
+    setupPivotTable();
+    expect(await screen.findByTestId("pivot-table")).toHaveStyle({
+      fontSize: "12px",
+    });
+  });
+
   TEST_CASES.forEach((testCase) => {
     describe(` > ${testCase.name}`, () => {
       it("should render pivot table wrapper", async () => {

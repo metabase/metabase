@@ -13,7 +13,7 @@ import { getIsRemoteSyncVisible } from "../../selectors";
 
 import { getRemoteSyncChanges, hasRemoteSyncChanges } from "./utils";
 
-export const ChangesBadge = ({ target }: RemoteSyncChangesBadgeProps) => {
+export function ChangesBadge({ target }: RemoteSyncChangesBadgeProps) {
   const isVisible = useSelector(getIsRemoteSyncVisible);
 
   if (!isVisible) {
@@ -21,9 +21,9 @@ export const ChangesBadge = ({ target }: RemoteSyncChangesBadgeProps) => {
   }
 
   return <ChangesBadgeContent target={target} />;
-};
+}
 
-const ChangesBadgeContent = ({ target }: RemoteSyncChangesBadgeProps) => {
+function ChangesBadgeContent({ target }: RemoteSyncChangesBadgeProps) {
   const hasChanges = useHasRemoteSyncChanges(target);
 
   if (!hasChanges) {
@@ -43,9 +43,9 @@ const ChangesBadgeContent = ({ target }: RemoteSyncChangesBadgeProps) => {
       />
     </Tooltip>
   );
-};
+}
 
-const useHasRemoteSyncChanges = (target: RemoteSyncChangesTarget): boolean => {
+function useHasRemoteSyncChanges(target: RemoteSyncChangesTarget): boolean {
   const { data } = useGetRemoteSyncChangesQuery();
   const changes = useMemo(
     () => getRemoteSyncChanges(data?.dirty ?? []),
@@ -53,4 +53,4 @@ const useHasRemoteSyncChanges = (target: RemoteSyncChangesTarget): boolean => {
   );
 
   return hasRemoteSyncChanges(changes, target);
-};
+}

@@ -13,7 +13,6 @@
    and total node budget."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
@@ -270,7 +269,7 @@
                               (throw e)))))
                       table-ids)
                 (schema.table/batch-fetch-table-query-metadatas table-ids nil))
-        by-id (m/index-by :id rows)]
+        by-id (u/index-by :id rows)]
     {:rows    (into [] (keep by-id) table-ids)
      :missing (into [] (remove by-id) table-ids)}))
 
@@ -304,7 +303,7 @@
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
                                 (filter mi/can-read?)
-                                (m/index-by :id)))
+                                (u/index-by :id)))
         expand-ids       (into #{}
                                (mapcat (fn [[_ target-ids]]
                                          (->> target-ids
@@ -381,13 +380,9 @@
                 (update :fields (partial mapv #(dissoc % :fingerprint)))))
             tables))))
 
-(defn- compact
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 (defn- brief-row
   [row]
-  (compact (select-keys row [:id :name :description])))
+  (u/select-non-nil-keys row [:id :name :description]))
 
 (defn- table-metadata-row
   "Build the get_fields response row for one batch-fetched `table`, at detail level `fmt`.
@@ -396,9 +391,9 @@
   (let [field-keys (case fmt
                      :concise  field-concise-keys
                      :detailed field-detailed-keys)]
-    (-> (compact (select-keys table [:id :name :display_name :schema :db_id :description]))
+    (-> (u/select-non-nil-keys table [:id :name :display_name :schema :db_id :description])
         (assoc :fields         (into []
-                                     (map #(compact (select-keys % field-keys)))
+                                     (map #(u/select-non-nil-keys % field-keys))
                                      (sort-by #(or (:position %) 0) (:fields table)))
                :measures       (mapv brief-row (:measures table))
                :segments       (mapv brief-row (:segments table))
