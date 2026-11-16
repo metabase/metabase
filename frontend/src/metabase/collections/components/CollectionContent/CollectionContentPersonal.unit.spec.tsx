@@ -168,6 +168,6 @@ describe("CollectionContent personal collections (admin)", () => {
     });
 
     const table = within(await screen.findByTestId("collection-table"));
-    expect(await table.findByText("Nodata sub-collection")).toBeInTheDocument();
+    expect(await table.findByText("Nodata sub-collection")).toBeVisible();
   });
 });
