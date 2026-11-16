@@ -147,6 +147,15 @@ export function isLibraryCollection(
   return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
+/** Whether the Library `collection` holds a table or a metric, which is what makes the app show it. */
+export function hasLibraryContent(
+  collection: Pick<Collection, "below">,
+): boolean {
+  return Boolean(
+    collection.below?.includes("table") || collection.below?.includes("metric"),
+  );
+}
+
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }

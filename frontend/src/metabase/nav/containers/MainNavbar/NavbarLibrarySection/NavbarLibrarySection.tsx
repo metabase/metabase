@@ -5,6 +5,7 @@ import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   getCollectionIcon,
+  hasLibraryContent,
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
@@ -122,13 +123,7 @@ export function NavbarLibrarySection({
   );
 
   const libraryTree = useMemo(() => {
-    if (
-      !libraryCollection ||
-      !(
-        libraryCollection.below?.includes("table") ||
-        libraryCollection.below?.includes("metric")
-      )
-    ) {
+    if (!libraryCollection || !hasLibraryContent(libraryCollection)) {
       return [];
     }
 

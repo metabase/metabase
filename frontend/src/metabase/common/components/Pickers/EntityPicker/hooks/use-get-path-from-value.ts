@@ -16,7 +16,7 @@ import {
 import {
   allCollectionModels,
   getCollectionItemsOptions,
-  hasLibraryItems,
+  isLibraryOffered,
 } from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_DATA_APPS, PLUGIN_LIBRARY } from "metabase/plugins";
@@ -31,7 +31,6 @@ import type {
 
 import type {
   EntityPickerOptions,
-  OmniPickerCollectionItem,
   OmniPickerCollectionItemValue,
   OmniPickerDbValue,
   OmniPickerItem,
@@ -51,20 +50,18 @@ const getDefaultPath = async ({
   libraryCollection,
   namespaces,
   models,
-  pickedModels,
   dispatch,
 }: {
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
-  models: OmniPickerCollectionItem["model"][];
-  pickedModels: OmniPickerItem["model"][];
+  models: OmniPickerItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
   if (
     libraryCollection &&
     options.hasLibrary &&
-    hasLibraryItems(libraryCollection, pickedModels)
+    isLibraryOffered(libraryCollection, models)
   ) {
     const libraryChildrenResponse = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
@@ -108,15 +105,12 @@ export function useGetPathFromValue({
   options,
   namespaces,
   models,
-  pickedModels,
   showsDataApps = false,
 }: {
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
-  models: OmniPickerCollectionItem["model"][];
-  /** The models the picker picks, without the collections it only navigates; `models` by default. */
-  pickedModels?: OmniPickerItem["model"][];
+  models: OmniPickerItem["model"][];
   showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
@@ -154,7 +148,6 @@ export function useGetPathFromValue({
         libraryCollection,
         namespaces,
         models,
-        pickedModels: pickedModels ?? models,
         dispatch,
       }).then((path) => {
         setPath(path);
@@ -205,7 +198,7 @@ async function getPathFromValue({
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   dataApps?: DataApp[];
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
     return [getFakeDbCollection()];
@@ -399,7 +392,7 @@ async function getCollectionPathFromValue({
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === null || value.id === "root") {
     // if a root was passed, just return the root collection item

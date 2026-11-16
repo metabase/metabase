@@ -24,7 +24,7 @@ import type {
   OmniPickerTableItem,
   SearchScope,
 } from "../..";
-import { hasLibraryItems } from "../../../utils";
+import { isLibraryOffered } from "../../../utils";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -244,7 +244,7 @@ export function SearchScopeSelector() {
 
   const options = [
     { label: t`Everywhere`, value: "all" },
-    libraryCollection?.id && hasLibraryItems(libraryCollection, models)
+    libraryCollection?.id && isLibraryOffered(libraryCollection, models)
       ? { label: libraryCollection.name, value: String(libraryCollection.id) }
       : null,
     lastCollection

@@ -10,7 +10,7 @@ import {
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import {
   getValidCollectionItemModels,
-  hasLibraryItems,
+  isLibraryOffered,
 } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
@@ -200,7 +200,7 @@ async function getRootItems({
     options.hasLibrary &&
     libraryCollection &&
     namespaces.includes(null) &&
-    hasLibraryItems(libraryCollection, models)
+    isLibraryOffered(libraryCollection, models)
   ) {
     collectionItems.push({
       ...libraryCollection,
