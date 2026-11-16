@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
@@ -16,6 +15,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
+   [metabase.search.task.search-index :as search.task]
    [metabase.search.test-util :as search.tu]
    [metabase.search.util :as u.search]
    [metabase.test :as mt]
@@ -53,7 +53,9 @@
      (do ~@body)
      :h2
      ;; Fulltext features not supported
-     nil))
+     nil
+     ;; MySQL has separate coverage for its linguistic differences.
+     :mysql nil))
 
 ;; These helpers only mutate the temp local AppDb.
 ;; TODO make this a :once fixture so that we avoid so much setup and tear down
@@ -666,11 +668,8 @@
       (search.index/reset-index!)
       (let [orphan (search.index/gen-table-name)]
         (search.index/create-table! orphan)
-        ;; Deferring the drops inside a transaction is only safe because this lock opens none on h2.
-        ;; Pin that here, so making it transactional fails a test instead of silently stopping the sweep.
         (testing "the lock leaves the sweep able to drop an orphan"
-          (cluster-lock/with-cluster-lock ::sweep-test-lock
-            (search.index/delete-obsolete-tables!))
+          (#'search.task/do-with-index-lock search.index/delete-obsolete-tables!)
           (is (not (search.index/exists? orphan))))))))
 
 (deftest strip-junk-chars-test
@@ -702,9 +701,7 @@
       (is (= "a   b" (strip "a b"))))))
 
 (deftest document->entry-junk-chars-test
-  ;; document->entry calls (specialization/extra-entry-fields entity), which dispatches on (mdb/db-type)
-  ;; and is only implemented for :postgres and :h2 — running this on MySQL/MariaDB hits the missing-impl error.
-  (when (#{:postgres :h2} (mdb/db-type))
+  (when (#{:postgres :h2 :mysql} (mdb/db-type))
     (let [->entry    @#'search.index/document->entry
           FF         (str (char 0x000C))
           NUL        (str (char 0x0000))
@@ -722,8 +719,12 @@
       (testing "top-level :name column has control chars replaced with spaces"
         (is (= "Title Sub title " (:name entry))))
       (testing "search_vector / extra fields built from the stripped entity contain no raw control chars"
-        (let [printed (pr-str (vals (select-keys entry [:search_vector :with_native_query_vector
-                                                        :search_terms :native_search_terms])))]
+        (let [printed (pr-str (vals (select-keys entry [:search_vector
+                                                        :with_native_query_vector
+                                                        :name_terms
+                                                        :search_terms
+                                                        :native_search_terms
+                                                        :prefix_terms])))]
           (is (false? (.contains printed NUL)) "no NUL byte")
           (is (false? (.contains printed BEL)) "no BEL")
           (is (false? (.contains printed FF))  "no form feed")

@@ -76,6 +76,7 @@
     (case (mdb/db-type)
       :h2       :appdb-h2
       :postgres :appdb-postgres
+      :mysql    :appdb-mysql
       nil)))
 
 (deftest identical-query-semantics-test

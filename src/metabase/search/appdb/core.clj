@@ -41,14 +41,14 @@
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
-  #{:postgres :h2})
+  #{:h2 :mysql :postgres})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (supported-db? (mdb/db-type)))
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    (if (or (= (mdb/db-type) :h2)
+    (if (or (#{:h2 :mysql} (mdb/db-type))
             (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
@@ -118,9 +118,9 @@
           (log/warn "Returning search results before pending index updates finished.")))
       (let [weights     (search.config/weights search-ctx)
             percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
-            scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
-        (->> (search.db/scored-search-rows (search.index/active-table) search-ctx search-string percentiles)
-             (map (partial rehydrate weights scorer-keys))))
+            scorers     (search.scoring/scorers search-ctx percentiles)]
+        (->> (search.db/scored-search-rows (search.index/active-table) search-ctx search-string scorers)
+             (map (partial rehydrate weights (keys scorers)))))
       (catch Exception e
         ;; Rule out the error coming from stale index metadata.
         (#'search.index/sync-tracking-atoms!)

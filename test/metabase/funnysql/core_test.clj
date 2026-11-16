@@ -1684,3 +1684,57 @@
        clojure.lang.ExceptionInfo
        #"Top-level map key :raw is not currently supported"
        (funnysql/format {:raw "x"} :postgres))))
+
+(deftest ^:parallel mysql-fulltext-match-test
+  (is (= ["MATCH (`search_index`.`search_terms`) AGAINST (? IN BOOLEAN MODE)" "+orders -test*"]
+         (funnysql/format [:match-against :search_index.search_terms "+orders -test*"] :mysql)))
+  (testing "the query remains a parameter even when it contains SQL punctuation"
+    (is (= ["MATCH (`txt`) AGAINST (? IN BOOLEAN MODE)" "'); DROP TABLE card; --"]
+           (funnysql/format [:match-against :txt "'); DROP TABLE card; --"] :mysql))))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (funnysql/format [:match-against (keyword "txt); DROP TABLE card") "x"] :mysql))))
+
+(deftest ^:parallel mysql-upsert-test
+  (is (= [(str "INSERT INTO `idx` (`model`, `model_id`, `name`) VALUES (?, ?, ?) "
+               "ON DUPLICATE KEY UPDATE `name` = values(`name`)")
+          "card" "1" "Orders"]
+         (funnysql/format {:insert-into             :idx
+                           :values                  [{:model "card", :model_id "1", :name "Orders"}]
+                           :on-duplicate-key-update {:name [:values :name]}}
+                          :mysql))))
+
+(deftest ^:parallel mysql-search-text-column-test
+  (is (= ["CREATE TABLE `idx` (`txt` longtext CHARACTER SET `utf8mb4` COLLATE `utf8mb4_bin`)"]
+         (funnysql/format {:create-table [:idx]
+                           :with-columns [[:txt :longtext [:character-set :utf8mb4] [:collate :utf8mb4_bin]]]}
+                          :mysql))))
+
+(deftest ^:parallel mysql-regexp-predicate-test
+  (is (= ["NOT (`txt` regexp ?)" "(^|[^[:alnum:]_])id([^[:alnum:]_]|$)"]
+         (funnysql/format [:not [:regexp :txt "(^|[^[:alnum:]_])id([^[:alnum:]_]|$)"]] :mysql))))
+
+(deftest ^:parallel mysql-fulltext-rejects-invalid-arguments-test
+  (doseq [expr [[:match-against :txt]
+                [:match-against :txt "word" :extra]]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql/format expr :mysql))))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format [:match-against :txt "word"] engine)))))
+
+(deftest ^:parallel mysql-upsert-rejects-other-engines-test
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {:insert-into             :idx
+                                   :values                  [{:id 1}]
+                                   :on-duplicate-key-update {:id [:values :id]}}
+                                  engine)))))
+
+(deftest ^:parallel text-column-rejects-invalid-options-test
+  (doseq [option [[:collate]
+                  [:character-set]
+                  [:collate :utf8mb4_bin :extra]
+                  [:character-set :utf8mb4 :extra]
+                  [:collate (keyword "utf8mb4_bin; DROP TABLE card")]
+                  [:character-set (keyword "utf8mb4; DROP TABLE card")]]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {:create-table [:idx], :with-columns [[:txt :longtext option]]} :mysql)))))

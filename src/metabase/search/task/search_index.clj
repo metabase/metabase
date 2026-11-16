@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
@@ -31,21 +32,27 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
+(defn- do-with-index-lock [thunk]
+  (if (= :mysql (mdb/db-type))
+    ;; MySQL index DDL commits implicitly, so keep the cluster lock on a separate connection.
+    (cluster-lock/with-detached-cluster-lock {:lock cluster-lock-name}
+      (thunk))
+    (cluster-lock/with-cluster-lock cluster-lock-name
+      (thunk))))
+
 (defn init!
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
     (tracing/with-span :search "search.task.init" {}
-      (cluster-lock/with-cluster-lock cluster-lock-name
-        (search/init-index! {:force-reset? false, :re-populate? false})))))
+      (do-with-index-lock #(search/init-index! {:force-reset? false, :re-populate? false})))))
 
 (task/defjob SearchIndexReindex
   "Populate a new Search Index"
   {:saved-class "metabase.search.task.search_index.SearchIndexReindex"
    :concurrent? false}
   [_ctx]
-  (cluster-lock/with-cluster-lock cluster-lock-name
-    (search/reindex! {:async? false})))
+  (do-with-index-lock #(search/reindex! {:async? false})))
 
 (task/defjob SearchIndexInit
   "Ensure indexes exist for the active engines"

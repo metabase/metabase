@@ -279,6 +279,14 @@
                 :auto-increment
                 (append-sql! context "AUTO_INCREMENT")
 
+                (:collate :character-set)
+                (do
+                  (when-not (= 1 (count args))
+                    (throw (ex-info "Column charset and collation options require one identifier" {:option option})))
+                  (check-identifier-form (first args))
+                  (append-sql! context (if (= option :collate) "COLLATE " "CHARACTER SET "))
+                  (compile! (first args) context))
+
                 :not-null
                 (append-sql! context "NOT NULL")
 
@@ -359,6 +367,12 @@
 
 (defn- set-clause! [kvs context]
   (append-sql! context "SET ")
+  (kvs-map! kvs context))
+
+(defn- on-duplicate-key-update! [kvs context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "ON DUPLICATE KEY UPDATE requires MySQL" {})))
+  (append-sql! context "ON DUPLICATE KEY UPDATE ")
   (kvs-map! kvs context))
 
 (defn- delete-from! [identifier context]
@@ -580,6 +594,7 @@
    :for             for!
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
+   :on-duplicate-key-update on-duplicate-key-update!
    :returning       returning!
    :nest            parens!))
 
@@ -702,6 +717,7 @@
     :not-like
     :not=
     :or
+    :regexp
     honey.sql.pg-ops/atat})
 
 (defn- unwrap-h2x-typed
@@ -1088,6 +1104,16 @@
   (append-sql! context " @@ ")
   (compile! rhs context))
 
+(defn- mysql-full-text-search-match! [[column query :as args] context]
+  (when-not (and (= (engine context) :mysql) (= 2 (count args)))
+    (throw (ex-info "MATCH AGAINST requires MySQL and two arguments" {:args args})))
+  (check-identifier-form column)
+  (append-sql! context "MATCH (")
+  (compile! column context)
+  (append-sql! context ") AGAINST (")
+  (compile! query context)
+  (append-sql! context " IN BOOLEAN MODE)"))
+
 (defn- fn-call! [[f & args] context]
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
@@ -1109,6 +1135,7 @@
     :in                (in! f args context)
     :inline            (inline! (first args) context)
     :lift              (object! (first args) context)
+    :match-against     (mysql-full-text-search-match! args context)
     :not               (not! args context)
     :not-exists        (exists! "NOT EXISTS " (first args) context)
     :not-in            (in! f args context)
@@ -1118,7 +1145,7 @@
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
+    (:< :<= :> :>= :like :ilike :not-like :regexp :+ :- :/ :* :% :|| :is :is-not)
     (binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
@@ -1187,6 +1214,7 @@
      :to_tsvector
      :trim
      :ts_rank
+     :values
      :upper
      :year)
     (simple-fn! f args context)
