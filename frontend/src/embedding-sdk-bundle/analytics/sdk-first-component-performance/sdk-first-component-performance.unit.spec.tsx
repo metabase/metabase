@@ -37,6 +37,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { SDK_SCRIPT_ADDED_AT_DATASET_KEY } from "embedding-sdk-shared/constants/analytics";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import type * as EmbeddingSdkConfig from "metabase/embedding-sdk/config";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type * as EmbeddingConfig from "metabase/embedding/config";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
@@ -61,9 +62,6 @@ const PRODUCTION_REACT_SDK_PAGE = {
   isLocalhost: false,
   isHostAppInDevMode: false,
   isEmbedPreview: false,
-  isEmbeddingEajs: false,
-  isDataApp: false,
-  isEmbeddingMcpApp: false,
 };
 const mockPage = { ...PRODUCTION_REACT_SDK_PAGE };
 
@@ -85,9 +83,6 @@ jest.mock("metabase/embedding-sdk/config", () => ({
     "metabase/embedding-sdk/config",
   ),
   isEmbeddingSdk: () => true,
-  isEmbeddingEajs: () => mockPage.isEmbeddingEajs,
-  isDataApp: () => mockPage.isDataApp,
-  isEmbeddingMcpApp: () => mockPage.isEmbeddingMcpApp,
 }));
 
 jest.mock("embedding-sdk-bundle/analytics/event", () => ({
@@ -197,6 +192,7 @@ describe("embedding_sdk_first_component_performance", () => {
   beforeEach(() => {
     resetSdkFirstComponentPerformanceForTests();
     Object.assign(mockPage, PRODUCTION_REACT_SDK_PAGE);
+    EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-sdk-react";
     jest.mocked(trackSdkMetaplowEvent).mockClear();
     jest
       .mocked(useLocale)
@@ -523,11 +519,24 @@ describe("embedding_sdk_first_component_performance", () => {
       ["on localhost", "isLocalhost"],
       ["in a host app in dev mode", "isHostAppInDevMode"],
       ["in an embed preview", "isEmbedPreview"],
-      ["in Embedded Analytics JS", "isEmbeddingEajs"],
-      ["in a data app", "isDataApp"],
-      ["in an MCP app", "isEmbeddingMcpApp"],
     ])("sends no event %s", async (_pageName, pageCondition) => {
       mockPage[pageCondition] = true;
+      setupQuestionEndpoints();
+
+      renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);
+
+      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(getPerformanceEvents()).toEqual([]);
+    });
+
+    it.each<
+      [string, (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"]]
+    >([
+      ["in Embedded Analytics JS", "embedding-simple"],
+      ["in a data app", "data-app"],
+      ["in an MCP app", "mcp-apps"],
+    ])("sends no event %s", async (_pageName, clientHeader) => {
+      EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = clientHeader;
       setupQuestionEndpoints();
 
       renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);

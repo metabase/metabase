@@ -9,13 +9,6 @@ import { SDK_SCRIPT_ADDED_AT_DATASET_KEY } from "embedding-sdk-shared/constants/
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_DASH_CASED } from "embedding-sdk-shared/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { isHostAppInDevMode } from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
-import {
-  isDataApp,
-  isEmbeddingEajs,
-  isEmbeddingMcpApp,
-  isEmbeddingSdk,
-} from "metabase/embedding-sdk/config";
-import { isEmbedPreview } from "metabase/embedding/config";
 import { isLoopbackHostname } from "metabase/utils/dom";
 import { getCollectorHostUrl } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
@@ -184,17 +177,10 @@ function sendIfComplete(): void {
 // if we send it, different from the other analytics events. We send it only from the React SDK in
 // production: timings from the embed preview, localhost or dev servers would skew the data
 function shouldSendPerformanceEvent(): boolean {
-  const isReactSdk =
-    isEmbeddingSdk() &&
-    !isEmbeddingEajs() &&
-    !isEmbeddingMcpApp() &&
-    !isDataApp();
-
   const isProduction = !getIsLocalhost() && !isHostAppInDevMode();
 
   return (
-    isReactSdk &&
-    !isEmbedPreview() &&
+    getSdkClient() === "embedding-sdk-react" &&
     (isProduction || shouldSendWhenNotInProduction())
   );
 }
