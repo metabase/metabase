@@ -43,3 +43,12 @@
               :schema   "PUBLIC"
               :name     (str (u/upper-case-en (name table)) "_SUMMARY")
               :database (mt/id)}}))
+
+(defn refusal-type
+  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:error-type (ex-data e)))))

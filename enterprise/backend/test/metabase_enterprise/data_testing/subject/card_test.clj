@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -30,15 +31,6 @@
   "The tables the compiled SQL of `plan` reads."
   [plan]
   (data-testing.compile/referenced-tables :h2 (get-in plan [:compiled :query])))
-
-(defn- refusal-type
-  "The `:error-type` of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      (:error-type (ex-data e)))))
 
 (defn- table-query
   "An MBQL query of the test-data table `table-key`."
@@ -220,4 +212,4 @@
                                                        (supports? driver feature database)))]
           (testing "a card on a database whose driver cannot run tests is refused"
             (is (= ::data-testing.errors/unsupported-driver
-                   (refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id)))))))))))
+                   (data-testing.test-util/refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id)))))))))))

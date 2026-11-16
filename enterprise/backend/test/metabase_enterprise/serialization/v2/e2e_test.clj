@@ -1293,6 +1293,18 @@
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
 
+(defn- create-native-transform!
+  "Create, in the current app DB, a Transform named `transform-name` in the collection `collection-id`, by the User
+  `creator`, that selects `1 AS ID` from Database `db` into the table `PUBLIC`.`target-name`."
+  [db creator collection-id transform-name target-name]
+  (ts/create! :model/Transform
+              :name          transform-name
+              :collection_id collection-id
+              :creator_id    (:id creator)
+              :source        {:type  :query
+                              :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
+              :target        {:database (:id db) :type "table" :schema "PUBLIC" :name target-name}))
+
 (deftest transform-test-round-trip-test
   (testing "A transform test is exported under its transform's path and imported with its transform"
     (mt/with-premium-features #{:transforms-basic}
@@ -1302,13 +1314,7 @@
             (let [db        (ts/create! :model/Database :name "my-db")
                   coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
                   creator   (ts/create! :model/User :email "creator@example.com")
-                  transform (ts/create! :model/Transform
-                                        :name          "Orders Summary"
-                                        :collection_id (:id coll)
-                                        :creator_id    (:id creator)
-                                        :source        {:type  :query
-                                                        :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
-                                        :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
+                  transform (create-native-transform! db creator (:id coll) "Orders Summary" "orders_summary")]
               (ts/create! :model/TransformTest
                           :transform_id (:id transform)
                           :creator_id   (:id creator)
@@ -1403,13 +1409,7 @@
                   (let [db        (ts/create! :model/Database :name "my-db")
                         coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
                         creator   (ts/create! :model/User :email "creator@example.com")
-                        transform (ts/create! :model/Transform
-                                              :name          "Revenue Report"
-                                              :collection_id (:id coll)
-                                              :creator_id    (:id creator)
-                                              :source        {:type  :query
-                                                              :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
-                                              :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
+                        transform (create-native-transform! db creator (:id coll) "Revenue Report" "revenue")]
                     (ts/create! :model/TransformTest
                                 :transform_id (:id transform)
                                 :creator_id   (:id creator)
@@ -1523,13 +1523,7 @@
                     coll      (ts/create! :model/Collection :name "Finance")
                     card      (create-card-with-test! db creator "Pinned card test" :name "Revenue" :collection_id (:id coll))
                     etl       (ts/create! :model/Collection :name "ETL" :namespace :transforms)
-                    transform (ts/create! :model/Transform
-                                          :name          "Revenue Report"
-                                          :collection_id (:id etl)
-                                          :creator_id    (:id creator)
-                                          :source        {:type  :query
-                                                          :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
-                                          :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
+                    transform (create-native-transform! db creator (:id etl) "Revenue Report" "revenue")]
                 (t2/update! :model/CardTest :card_id (:id card) {:now now})
                 (ts/create! :model/TransformTest
                             :transform_id (:id transform)

@@ -122,10 +122,10 @@
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Card {mbql-id :id}   {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
                      :model/Card {native-id :id} (card)]
-        (let [created (mt/user-http-request :crowberto :post 200 "ee/card-test"
-                                            (assoc (body mbql-id) :now "2026-10-13T09:00:00+09:00"))
-              path    (str "ee/card-test/" (:id created))]
-          (try
+        (mt/with-model-cleanup [:model/CardTest]
+          (let [created (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                              (assoc (body mbql-id) :now "2026-10-13T09:00:00+09:00"))
+                path    (str "ee/card-test/" (:id created))]
             (testing "POST saves `now` as the moment it names"
               (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created))))
               (is (= (t/instant "2026-10-13T00:00:00Z")
@@ -145,9 +145,7 @@
                   (is (= "card-test.now-on-native-sql"
                          (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/card-test/" native-test-id)
                                                             {:now "2026-10-13T00:00:00Z"}))))
-                  (is (nil? (t2/select-one-fn :now :model/CardTest :id native-test-id))))))
-            (finally
-              (t2/delete! :model/CardTest :id (:id created)))))))))
+                  (is (nil? (t2/select-one-fn :now :model/CardTest :id native-test-id))))))))))))
 
 (deftest run-saved-test-test
   (mt/with-premium-features #{:transforms-testing}

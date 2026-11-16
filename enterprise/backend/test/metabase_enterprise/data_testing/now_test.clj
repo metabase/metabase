@@ -72,24 +72,31 @@
      :columns [{:name "id" :cast_type int-type}]
      :rows    (mapv (fn [id] {"id" id}) (sort ids))}))
 
+(defn- outcome!
+  "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
+  its one expectation, which is `:error` when that expectation could not run, or the error type of the run's refusal."
+  [subject-type subject test-model test-id]
+  (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (try
+      (let [[expectation & more] (:expectations (data-testing.runner/run-test! subject-type subject
+                                                                               (t2/select-one test-model :id test-id)))]
+        (assert (empty? more))
+        (:status expectation))
+      (catch ExceptionInfo e
+        (:error-type (ex-data e))))))
+
 (defn- run-card-test!
-  "Save a card with the query `query` and a test of it with `inputs`, `expectations` and the further `test-fields`,
-  then run the test. Returns the run's status, or the error type of its refusal."
-  [query test-fields inputs expectations]
+  "Save a card with the query `query` and a test of it with `inputs`, one expectation and the further `test-fields`,
+  then run the test. Returns its [[outcome!]]."
+  [query test-fields inputs [expectation]]
   (mt/with-temp [:model/Card     {card-id :id} {:dataset_query query}
                  :model/CardTest {test-id :id} (merge {:card_id      card-id
                                                        :inputs       inputs
-                                                       :expectations expectations}
+                                                       :expectations [expectation]}
                                                       test-fields)]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (try
-        (:status (data-testing.runner/run-test! :card
-                                                (t2/select-one :model/Card :id card-id)
-                                                (t2/select-one :model/CardTest :id test-id)))
-        (catch ExceptionInfo e
-          (:error-type (ex-data e)))))))
+    (outcome! :card (t2/select-one :model/Card :id card-id) :model/CardTest test-id)))
 
-(defn- pinned-and-unpinned
+(defn- pinned-and-unpinned!
   "The status of a test of a card with `query`, given the rows of `id->created-at`, that expects exactly the orders with
   `ids`: with `now` set, and, as a control, without it."
   [query id->created-at ids]
@@ -101,22 +108,22 @@
     (let [orders (orders-query)]
       (testing "a filter in days: Redshift computes it from the JVM clock, the other drivers from the database's"
         (is (= {:pinned :passed :unpinned :failed}
-               (pinned-and-unpinned (lib/filter orders (lib/time-interval (created-at) -30 :day))
+               (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) -30 :day))
                                     {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
                                     [1]))))
       (testing "a filter in hours: every driver writes the database's current-time function"
         (is (= {:pinned :passed :unpinned :failed}
-               (pinned-and-unpinned (lib/filter orders (lib/time-interval (created-at) -3 :hour))
+               (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) -3 :hour))
                                     {1 (pinned+ -1 :hours) 2 (pinned+ -5 :hours) 3 (real+ -1 :hours)}
                                     [1]))))
       (testing "the current week"
         (is (= {:pinned :passed :unpinned :failed}
-               (pinned-and-unpinned (lib/filter orders (lib/time-interval (created-at) :current :week))
+               (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) :current :week))
                                     {1 (pinned+ 0 :days) 2 (pinned+ -8 :days) 3 (real+ 0 :hours)}
                                     [1]))))
       (testing "the `now` expression"
         (is (= {:pinned :passed :unpinned :failed}
-               (pinned-and-unpinned (lib/filter orders (lib/< (created-at) (lib/now)))
+               (pinned-and-unpinned! (lib/filter orders (lib/< (created-at) (lib/now)))
                                     {1 (pinned+ -1 :days) 2 (pinned+ 30 :days) 3 (real+ 30 :days)}
                                     [1])))))))
 
@@ -129,7 +136,7 @@
                                                                       (lib/filter (lib/time-interval (created-at) -30 :day)))}]
         (testing "a card that filters by a segment of the last 30 days selects the rows of the pinned month"
           (is (= {:pinned :passed :unpinned :failed}
-                 (pinned-and-unpinned (lib/filter (orders-query)
+                 (pinned-and-unpinned! (lib/filter (orders-query)
                                                   (lib.metadata/segment (mt/metadata-provider) segment-id))
                                       {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
                                       [1]))))))))
@@ -156,8 +163,8 @@
 
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
-  one expectation that the target table holds exactly the orders with `ids`, then run the test. Returns the run's
-  status, or the error type of its refusal."
+  one expectation that the target table holds exactly the orders with `ids`, then run the test. Returns its
+  [[outcome!]]."
   [source-query test-fields inputs ids]
   (let [{:keys [schema]} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))]
     (mt/with-temp [:model/Transform     transform {:source {:type :query :query source-query}
@@ -169,12 +176,7 @@
                                                               :inputs       inputs
                                                               :expectations [(selects ids)]}
                                                              test-fields)]
-      (binding [api/*current-user-id* (mt/user->id :crowberto)]
-        (try
-          (:status (data-testing.runner/run-test! :transform transform
-                                                  (t2/select-one :model/TransformTest :id test-id)))
-          (catch ExceptionInfo e
-            (:error-type (ex-data e))))))))
+      (outcome! :transform transform :model/TransformTest test-id))))
 
 (deftest transform-reads-the-pinned-clock-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -216,11 +218,10 @@
           definition {:inputs       [(orders-input {1 (pinned+ -1 :days)})]
                       :expectations [(selects [1])]}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query native}]
-        (let [card     (t2/select-one :model/Card :id card-id)
-              refusal  (fn [definition]
-                         (try (data-testing.runner/validate-test :card card definition)
-                              nil
-                              (catch ExceptionInfo e (:error-type (ex-data e)))))]
+        (let [card    (t2/select-one :model/Card :id card-id)
+              refusal (fn [definition]
+                        (data-testing.test-util/refusal-type
+                         #(data-testing.runner/validate-test :card card definition)))]
           (testing "a test is refused as it is saved, not only when it runs"
             (is (= ::data-testing.errors/now-on-native-sql (refusal (assoc definition :now (t/offset-date-time now))))))
           (testing "control: without `now` the same test is accepted"
