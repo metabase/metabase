@@ -43,9 +43,12 @@ import { SuggestionInput } from "./SuggestionInput";
 import { ValueBox, ValueText, joinValueLabels } from "./ValueText";
 import {
   type AiValuesState,
+  fromAiInputText,
+  getAiInputText,
   getAiPromptText,
-  isAiPrompt,
   useAiFilterValues,
+  useCanAskAi,
+  useIsAiPrompt,
 } from "./ai-filter-values";
 import {
   AI_FILTERS_OPTION,
@@ -189,6 +192,10 @@ export function DraftFilterPill({
   onCancel,
   onRemove,
 }: DraftFilterPillProps) {
+  // A filter that the user edits keeps its place, so the AI only creates new
+  // filters. Without an AI provider, there is no AI.
+  const canAskAi = useCanAskAi(filter);
+  const isAiPrompt = useIsAiPrompt();
   const [draft, setDraft] = useState<DraftState>(
     () => initialState ?? { values: [] },
   );
@@ -311,13 +318,18 @@ export function DraftFilterPill({
     stageIndex,
     onFilters: onSubmitFilters,
   });
-  // Prototype: "@" at the start of the column search switches the pill to a
+  // Prototype: "?" at the start of the column search switches the pill to a
   // request to the AI for new filters.
   const isAiFiltersMode =
     step === "column" && filter == null && isAiPrompt(text);
   const isAiPromptActive =
     step === "value" &&
     (isAiPrompt(text) || values.some((value) => isAiPrompt(value)));
+  // Prototype: the input does not show the "?" of a request to the AI.
+  const isAiPromptText = isAiPrompt(text);
+  const inputText = getAiInputText(text, isAiPromptText);
+  const handleInputTextChange = (newInputText: string) =>
+    handleTextChange(fromAiInputText(newInputText, isAiPromptText));
 
   const latestState = useLatest({ step, submit });
   // A click outside applies the filter in the pill, when it is complete.
@@ -411,6 +423,10 @@ export function DraftFilterPill({
       step === "column" &&
       onColumnKeyDown?.(event, { text, hasSelectedOption })
     ) {
+      return true;
+    }
+    if (isAiPromptText && event.key === "Backspace" && inputText.length === 0) {
+      setText("");
       return true;
     }
     if (isAiFiltersMode) {
@@ -695,9 +711,12 @@ export function DraftFilterPill({
             query={query}
             stageIndex={stageIndex}
             columnGroups={columnGroups}
-            text={text}
-            placeholder={column?.label ?? (hasPlaceholder ? placeholder : "")}
-            onTextChange={handleTextChange}
+            text={inputText}
+            placeholder={getColumnPlaceholder(
+              isAiFiltersMode,
+              column?.label ?? (hasPlaceholder ? placeholder : ""),
+            )}
+            onTextChange={handleInputTextChange}
             onSelect={(newColumn) =>
               updateDraft(changeDraftColumn(draft, newColumn))
             }
@@ -707,9 +726,7 @@ export function DraftFilterPill({
             lastGroups={lastGroups}
             onSelectExtra={onSelectExtra}
             isAiMode={isAiFiltersMode}
-            // A filter that the user edits keeps its place, so the AI only
-            // creates new filters.
-            onAskAi={filter == null ? () => aiFilters.ask(text) : undefined}
+            onAskAi={canAskAi ? () => aiFilters.ask(text) : undefined}
             onKeyDown={handleKeyDown}
           />
         ) : (
@@ -815,8 +832,9 @@ export function DraftFilterPill({
               column={column.column}
               operator={operator}
               values={values}
-              text={text}
-              onTextChange={handleTextChange}
+              text={inputText}
+              isAiPromptText={isAiPromptText}
+              onTextChange={handleInputTextChange}
               onToggleValue={toggleValue}
               onValuesChange={(newValues) =>
                 updateDraft({ ...draft, values: newValues })
@@ -833,6 +851,10 @@ export function DraftFilterPill({
       </div>
     </Tooltip>
   );
+}
+
+function getColumnPlaceholder(isAiFiltersMode: boolean, placeholder: string) {
+  return isAiFiltersMode ? t`Describe the filters` : placeholder;
 }
 
 function getAiTooltip(state: AiValuesState, isAiPromptActive: boolean) {
@@ -1131,6 +1153,8 @@ interface ValueInputProps {
   operator: DraftOperator;
   values: string[];
   text: string;
+  /** The text is a request to the AI, without its "?" prefix. */
+  isAiPromptText: boolean;
   onTextChange: (text: string) => void;
   onToggleValue: (value: string) => void;
   onValuesChange: (values: string[]) => void;
@@ -1150,12 +1174,12 @@ function ValueInput({
   operator,
   values,
   text,
+  isAiPromptText,
   onTextChange,
   onToggleValue,
   onValuesChange,
   onKeyDown,
 }: ValueInputProps) {
-  const isAiPromptText = isAiPrompt(text);
   const hasNoDropdown = isAiPromptText || operator.hasNoValueSuggestions;
   const fieldValues = useFieldValues(query, column, hasNoDropdown ? "" : text);
   const isListed = useMemo(
@@ -1281,7 +1305,11 @@ function ValueInput({
         dropdownHeight={widget.dropdownHeight}
         hasBars={hasBars}
         text={text}
-        placeholder={getValuePlaceholder(operator, values)}
+        placeholder={
+          isAiPromptText
+            ? t`Describe the values`
+            : getValuePlaceholder(operator, values)
+        }
         isMultiSelect={isMultiSelect}
         hasTabHint={!widget.isTiles}
         emptyMessage={t`Press Enter to use “${text}”`}
