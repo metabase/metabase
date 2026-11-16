@@ -46,9 +46,9 @@
      provisioning never started. A delete removes the row with no warehouse
      teardown, and does not set it `deprovisioning`.
 
-   A delete also takes over a `provisioning` or `deprovisioning` row that is
-   older than [[in-flight-stale-after]]: it sets the row `deprovisioning` and
-   tears it down.
+   A delete also takes over a `provisioning` or `deprovisioning` row once every
+   row of the workspace is older than [[in-flight-stale-after]]: it sets the row
+   `deprovisioning` and tears it down.
 
    Deleting a workspace tears down each of its databases, except while a create
    or deprovision is running (409). Only a failure of the warehouse teardown itself
@@ -341,8 +341,8 @@
 
   Two concurrent deletes cannot both mark a row. This one reads the rows before the busy check, and each mark is
   conditional on the status it read. So another delete's mark either shows in the busy check, or makes a mark here
-  update no row. Then this delete sets back the rows it marked and refuses. Rows older than
-  [[in-flight-stale-after]] are not covered: two deletes can both take over a stale `:deprovisioning` row."
+  update no row. Then this delete sets back the rows it marked and refuses. A workspace whose rows are all older
+  than [[in-flight-stale-after]] is not covered: two deletes can both take over a stale `:deprovisioning` row."
   [workspace-id]
   (let [wsds (ws.db/workspace-databases workspace-id)
         now  (t/offset-date-time)]
@@ -368,9 +368,9 @@
   warehouse call (a lock timeout, a failed lookup), or after a destroy that
   succeeded. An error from setting the status back is attached to that row's
   failure as suppressed, and the row stays `:deprovisioning`, so the busy check
-  refuses a delete until the row is older than [[in-flight-stale-after]]. Throws
-  the combined failures when any teardown failed: with the failure's own
-  `:status-code` when there is one failure, else 500."
+  refuses a delete until every row of the workspace is older than
+  [[in-flight-stale-after]]. Throws the combined failures when any teardown
+  failed: with the failure's own `:status-code` when there is one failure, else 500."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
