@@ -143,9 +143,7 @@ describe("SaveQuestionContext", () => {
         setup();
 
         await screen.findByTestId("recentsLoaded");
-        await waitFor(() =>
-          expect(screen.getByTestId("collectionId")).toBeInTheDocument(),
-        );
+        await screen.findByTestId("collectionId");
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
 
