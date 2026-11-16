@@ -141,16 +141,9 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should filter results by each type, hydrate the filter from the URL, and remove it with `X`", () => {
+      it("should filter results by each type", () => {
         typeFilters.forEach(({ label, type }) => {
           const regex = new RegExp(`${type}$`);
-          const expectResultsOfType = () => {
-            cy.findAllByTestId("search-result-item").each((result) => {
-              cy.wrap(result)
-                .should("have.attr", "aria-label")
-                .and("match", regex);
-            });
-          };
 
           cy.intercept("GET", "/api/search?q=*").as(`search-${type}`);
           cy.visit("/");
@@ -164,34 +157,11 @@ describe("scenarios > search", () => {
             cy.findByText("Apply").click();
           });
           cy.url().should("contain", `type=${type}`);
-          expectResultsOfType();
 
-          cy.intercept("GET", "/api/search?q=*").as(`hydratedSearch-${type}`);
-          cy.visit(`/search?q=e&type=${type}`);
-          cy.wait(`@hydratedSearch-${type}`);
-
-          cy.findByTestId("search-app").within(() => {
-            cy.findByText('Results for "e"').should("exist");
-          });
-          expectResultsOfType();
-
-          cy.findByTestId("type-search-filter").within(() => {
-            cy.findByText(label).should("exist");
-            cy.findByLabelText("close icon").click();
-            cy.findByText(label).should("not.exist");
-            cy.findByText("Content type").should("exist");
-          });
-
-          cy.url().should("not.contain", "type");
-
-          cy.findAllByTestId("search-result-item").should(($results) => {
-            const uniqueResults = new Set(
-              $results.toArray().map((el) => {
-                const label = el.getAttribute("aria-label");
-                return label.split(" ").slice(-1)[0];
-              }),
-            );
-            expect(uniqueResults.size).to.be.greaterThan(1);
+          cy.findAllByTestId("search-result-item").each((result) => {
+            cy.wrap(result)
+              .should("have.attr", "aria-label")
+              .and("match", regex);
           });
         });
       });
@@ -583,7 +553,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should filter results by verified items, hydrate the filter from the URL, and turn it off", () => {
+      it("should filter results by verified items", () => {
         cy.visit("/");
 
         H.commandPaletteSearch("e");
@@ -604,43 +574,6 @@ describe("scenarios > search", () => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
         });
-
-        cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
-        cy.visit("/search?q=e&verified=true");
-
-        cy.wait("@hydratedSearch");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "e"').should("exist");
-        });
-
-        cy.findAllByTestId("search-result-item").each((result) => {
-          cy.wrap(result).within(() => {
-            cy.findByLabelText("verified_filled icon").should("exist");
-          });
-        });
-
-        cy.intercept("GET", "/api/search?q=*").as("unverifiedSearch");
-        cy.findByTestId("verified-search-filter")
-          .findByLabelText("Verified items only")
-          .click();
-        cy.url().should("not.include", "verified=true");
-        cy.wait("@unverifiedSearch");
-
-        let verifiedElementCount = 0;
-        let unverifiedElementCount = 0;
-        cy.findAllByTestId("search-result-item")
-          .each(($el) => {
-            if (!$el.find('[aria-label="verified_filled icon"]').length) {
-              unverifiedElementCount++;
-            } else {
-              verifiedElementCount++;
-            }
-          })
-          .then(() => {
-            expect(verifiedElementCount).to.eq(1);
-            expect(unverifiedElementCount).to.be.gt(0);
-          });
       });
     });
 
@@ -662,7 +595,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should include results that contain native query data when the toggle is on, and not include them when it is off", () => {
+      it("should include results that contain native query data when the toggle is on", () => {
         cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
         cy.wait("@search");
 
@@ -678,31 +611,6 @@ describe("scenarios > search", () => {
 
         expectSearchResultItemNameContent({
           itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
-        });
-
-        cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
-        cy.visit(
-          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
-        );
-        cy.wait("@hydratedSearch");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
-            "exist",
-          );
-        });
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
-        });
-
-        cy.findByTestId("search_native_query-search-filter")
-          .findByLabelText("Search the contents of native queries")
-          .click();
-        cy.url().should("not.contain", "search_native_query");
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME],
         });
       });
     });

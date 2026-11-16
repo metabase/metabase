@@ -5,8 +5,10 @@ import { screen, waitFor } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
@@ -25,28 +27,13 @@ describe("DashboardInfoSidebar", () => {
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 
-  it("should render overview tab", async () => {
+  it("should render sections instead of tabs", async () => {
     await setup();
-    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
-  });
 
-  it("should render history tab", async () => {
-    await setup();
-    expect(screen.getByRole("tab", { name: "History" })).toBeInTheDocument();
-  });
-
-  it("should show description when clicking on overview tab", async () => {
-    await setup();
-    await userEvent.click(screen.getByRole("tab", { name: "History" }));
-    await userEvent.click(screen.getByRole("tab", { name: "Overview" }));
-
-    expect(screen.getByText("Description")).toBeInTheDocument();
-  });
-
-  it("should show history when clicking on history tab", async () => {
-    await setup();
-    await userEvent.click(screen.getByRole("tab", { name: "History" }));
-
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    ["Description", "Details", "Contents", "History"].forEach((title) => {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    });
     expect(screen.getByTestId("dashboard-history-list")).toBeInTheDocument();
   });
 
@@ -66,7 +53,6 @@ describe("DashboardInfoSidebar", () => {
       ],
     });
 
-    await userEvent.click(screen.getByRole("tab", { name: "History" }));
     await userEvent.click(await screen.findByTestId("question-revert-button"));
 
     expect(trackSimpleEvent).toHaveBeenCalledWith({
@@ -80,11 +66,24 @@ describe("DashboardInfoSidebar", () => {
     });
   });
 
+  it("should list the dashboard's cards under Contents", async () => {
+    const card = createMockCard({ id: 1, name: "Orders by month" });
+    await setup({
+      dashboard: createMockDashboard({
+        dashcards: [createMockDashboardCard({ card_id: card.id, card })],
+      }),
+    });
+
+    expect(
+      screen.getByRole("link", { name: /Orders by month/ }),
+    ).toBeInTheDocument();
+  });
+
   it("should close when clicking the close button", async () => {
     const { onClose } = await setup();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("should allow to set description", async () => {
@@ -152,7 +151,7 @@ describe("DashboardInfoSidebar", () => {
         },
       }),
     });
-    expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
+    expect(screen.getByText("Last edited")).toBeInTheDocument();
     expect(screen.getByText("September 22, 1793")).toBeInTheDocument();
     expect(screen.getByText("by Frodo Baggins")).toBeInTheDocument();
   });
@@ -171,7 +170,7 @@ describe("DashboardInfoSidebar", () => {
       }),
     });
 
-    expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
+    expect(await screen.findByText("Created")).toBeInTheDocument();
     expect(await screen.findByText("January 1, 2024")).toBeInTheDocument();
     expect(screen.getByText("by Testy Tableton")).toBeInTheDocument();
   });
@@ -233,7 +232,7 @@ describe("DashboardInfoSidebar", () => {
         });
         await setup({ dashboard });
 
-        expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+        expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
         expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
       });
     });

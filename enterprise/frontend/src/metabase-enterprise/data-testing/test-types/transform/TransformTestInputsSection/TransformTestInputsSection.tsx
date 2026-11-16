@@ -1,13 +1,13 @@
 import { msgid, ngettext, t } from "ttag";
 
-import type { TransformTestInput } from "metabase-types/api";
+import type { DataTestInput } from "metabase-types/api";
 
 import { DataTestSection } from "../../../components/DataTestSection";
 import { getTableName } from "../../../utils";
 import { TransformTestDataCard } from "../TransformTestDataCard";
 
 type TransformTestInputsSectionProps = {
-  inputs: TransformTestInput[];
+  inputs: DataTestInput[];
 };
 
 export function TransformTestInputsSection({
@@ -34,7 +34,7 @@ export function TransformTestInputsSection({
   );
 }
 
-function getInputDescription(input: TransformTestInput) {
+function getInputDescription(input: DataTestInput) {
   if (input.format === "sql") {
     return t`Rows returned by a query`;
   }

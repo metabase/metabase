@@ -3,6 +3,7 @@
   (:require
    [malli.util :as mut]
    [metabase.metabot.curation :as curation]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +30,18 @@
   ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
+(def visualization-arg
+  "The optional `visualization` argument of the tools that build a query: the chart type the query is drawn as."
+  [:visualization {:optional true} [:map {:closed true}
+                                    [:chart_type (into [:enum] chart-types)]]])
+
+(defn visualization-chart-type
+  "The chart type keyword a `visualization` argument names, or `:table` when it names none. The tool args keep
+  nested keys as the model sent them, so `chart_type` may be a string or keyword key, in either case style."
+  [visualization]
+  (or (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)) :chart-type keyword)
+      :table))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*

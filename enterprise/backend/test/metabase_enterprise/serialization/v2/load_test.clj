@@ -4,7 +4,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -27,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
@@ -1924,11 +1924,9 @@
                     source-id    (:id @target1s)]
                 (serdes.load/load-metabase!
                  (ts/ingestion-in-memory
-                  (walk/postwalk #(cond
-                                    (= % (display-name @target-eid)) (display-name source-id)
-                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name source-id))
-                                    :else                            %)
-                                 @serialized))))
+                  (match/replace-all @serialized
+                    #{(display-name @target-eid)} (display-name source-id)
+                    #'string? (str/replace &match (tag-name @target-eid) (tag-name source-id))))))
               (is (= query (stored-query))))
             (testing "an export whose tag name names another card's entity_id is repaired from :card-id"
               (let [tag-name     #(str "#" % "-bh-population-model")
@@ -1936,11 +1934,9 @@
                     other-eid    "otherCardEntityId0001"]
                 (serdes.load/load-metabase!
                  (ts/ingestion-in-memory
-                  (walk/postwalk #(cond
-                                    (= % (display-name @target-eid)) (display-name other-eid)
-                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name other-eid))
-                                    :else                            %)
-                                 @serialized))))
+                  (match/replace-all @serialized
+                    #{(display-name @target-eid)} (display-name other-eid)
+                    #'string? (str/replace &match (tag-name @target-eid) (tag-name other-eid))))))
               (is (= query (stored-query))))))))))
 
 (deftest load-database-with-user-scheduled-syncs-test

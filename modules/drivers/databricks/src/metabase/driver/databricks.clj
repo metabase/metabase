@@ -307,7 +307,7 @@
   #{"OIDC"})
 
 (defn- wif-jdbc-properties
-  [{:keys [wif-provider wif-token wif-token-file-path wif-client-id]}]
+  [{:keys [wif-provider wif-token wif-token-file-path wif-client-id wif-audience]}]
   (when (and (driver-api/is-hosted?)
              (not (contains? hosted-allowed-wif-providers wif-provider)))
     (throw (ex-info (tru (str "Workload identity federation with the {0} provider is not available "
@@ -321,7 +321,9 @@
 
                              (not (str/blank? wif-token))
                              wif-token)
-                    (driver.u/wif-ambient-token-file wif-provider))
+                    "GCP"  (driver.u/wif-ambient-token-http wif-provider wif-audience)
+                    (throw (ex-info (format "Unsupported WIF provider: %s" (pr-str wif-provider))
+                                    {:wif-provider wif-provider})))
         expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:AuthMech         11
              :Auth_Flow        0

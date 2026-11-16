@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.actions.schema :as actions.schema]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
@@ -283,3 +284,15 @@
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table :db_id database-id :is_writable nil))
+
+(mu/defn synced-action-items :- [:sequential ::actions.schema/action]
+  "The Actions with `ids`, with their model and its Collection, and their own Collection, with ancestors, as remote
+  sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root         (collection.root/hydrated-root-collection)
+        actions-root (collection.root/hydrated-root-collection :data-actions)]
+    (-> (t2/select [:model/Action :id :name :type :model_id :collection_id] :id [:in ids])
+        (t2/hydrate [:model [:collection :effective_ancestors]] [:collection :effective_ancestors])
+        (->> (mapv (fn [action]
+                     (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
+                         (update :model #(some-> % (collection.root/hydrate-root-collection root))))))))))

@@ -1,0 +1,82 @@
+.root {
+  overflow: hidden;
+}
+
+.scrollX {
+  overflow-x: auto;
+}
+
+.dashboard {
+  border-top: 1px solid var(--mb-color-border-neutral-subtle);
+}
+
+.editing {
+  user-select: none;
+}
+
+.cell {
+  position: relative;
+  flex: 1 0 0;
+  min-width: 0;
+  min-height: 0;
+  line-height: var(--pivot-cell-height);
+  font-weight: normal;
+  color: var(--pivot-cell-color);
+  background-color: var(--pivot-cell-bg);
+  border-bottom: 1px solid var(--mb-color-table-border);
+  cursor: default;
+}
+
+/* a class rule, so an inline conditional-formatting background still wins over it */
+.cell:hover {
+  background-color: var(--pivot-cell-hover-bg);
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.borderedHeader {
+  border-bottom-color: var(--mb-color-border-neutral);
+}
+
+/* compensates the top border */
+.topBorder {
+  line-height: calc(var(--pivot-cell-height) - 1px);
+  border-top: 1px solid var(--mb-color-border-neutral-subtle);
+}
+
+.borderRight::after {
+  content: " ";
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  border-right: 1px solid var(--mb-color-border-neutral-subtle);
+}
+
+.resizeHandle {
+  z-index: 99;
+  cursor: col-resize;
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background-color: var(--mb-color-core-brand);
+}
+
+.rowToggle {
+  color: var(--pivot-row-toggle-color);
+  background-color: var(--pivot-row-toggle-bg);
+  border-radius: var(--mantine-radius-xxs);
+  outline: none;
+  transition: all 200ms;
+}
+
+.rowToggle:hover {
+  background-color: var(--pivot-row-toggle-hover-bg);
+}

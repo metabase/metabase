@@ -1,0 +1,900 @@
+(ns ^:mb/driver-tests metabase.driver.postgres.workspace-test
+  "Tests for the Postgres workspace isolation methods against a real warehouse, run as the database's admin connection,
+  whose login is not a superuser."
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.postgres :as postgres]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private db-name "workspace_isolation_test")
+
+(def ^:private admin-login {:user "mb_ws_test_provisioner" :password "ProvisionerPassw0rd"})
+
+(defn- superuser-details [] (mt/dbdef->connection-details :postgres :db {:database-name db-name}))
+
+(defn- exec! [spec sqls]
+  (doseq [sql sqls]
+    (jdbc/execute! spec [sql])))
+
+(defn- drop-role-if-exists! [spec role]
+  (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))
+    (exec! spec [(format "DROP OWNED BY \"%s\"" role) (format "DROP ROLE \"%s\"" role)])))
+
+(defn- create-warehouse!
+  "In the database of `spec`, an admin login that is not a superuser, and `sales`, an input schema owned by
+  `mb_ws_test_etl`, a role the admin login is a member of. The roles and the schemas `sales` and `noselect` are made
+  again; [[do-with-warehouse!]] makes the database fresh."
+  [spec]
+  (exec! spec ["DROP SCHEMA IF EXISTS sales, noselect, loose, pubwrite, sq, nogrant CASCADE"
+               ;; the default in a cluster created before Postgres 15 or upgraded from one, which init refuses
+               "REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+  (doseq [role ["mb_ws_test_etl" "mb_ws_test_pubwriter" (:user admin-login)]]
+    (drop-role-if-exists! spec role))
+  (exec! spec [(format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" (:user admin-login) (:password admin-login))
+               (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user admin-login))
+               "CREATE ROLE mb_ws_test_etl NOLOGIN"
+               (format "GRANT mb_ws_test_etl TO %s" (:user admin-login))
+               "CREATE SCHEMA sales AUTHORIZATION mb_ws_test_etl"
+               "CREATE TABLE sales.orders (id int)"
+               "ALTER TABLE sales.orders OWNER TO mb_ws_test_etl"
+               "INSERT INTO sales.orders VALUES (1), (2)"
+               ;; tables in `noselect` grant nothing to the admin login
+               "CREATE SCHEMA noselect"
+               "CREATE TABLE noselect.other (id int)"
+               (format "GRANT USAGE ON SCHEMA noselect TO %s WITH GRANT OPTION" (:user admin-login))
+               ;; `nogrant` grants the admin login nothing at all
+               "CREATE SCHEMA nogrant"
+               ;; `pubwrite` and `sq` let PUBLIC write, in each way the precondition names
+               "CREATE ROLE mb_ws_test_pubwriter NOLOGIN"
+               "CREATE SCHEMA pubwrite AUTHORIZATION mb_ws_test_etl"
+               (str "SET ROLE mb_ws_test_etl; "
+                    "CREATE TABLE pubwrite.audit (id int); GRANT INSERT ON pubwrite.audit TO PUBLIC; "
+                    "CREATE TABLE pubwrite.upd (id int); GRANT UPDATE ON pubwrite.upd TO PUBLIC; "
+                    "CREATE TABLE pubwrite.del (id int); GRANT DELETE ON pubwrite.del TO PUBLIC; "
+                    "CREATE TABLE pubwrite.trunc (id int); GRANT TRUNCATE ON pubwrite.trunc TO PUBLIC; "
+                    "CREATE TABLE pubwrite.trig (id int); GRANT TRIGGER ON pubwrite.trig TO PUBLIC; "
+                    "CREATE TABLE pubwrite.refs (id int); GRANT REFERENCES ON pubwrite.refs TO PUBLIC; "
+                    "CREATE TABLE pubwrite.col (id int); GRANT UPDATE (id) ON pubwrite.col TO PUBLIC; "
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA pubwrite GRANT INSERT ON TABLES TO PUBLIC; RESET ROLE")
+               "CREATE TABLE pubwrite.pw (id int)"
+               "ALTER TABLE pubwrite.pw OWNER TO mb_ws_test_pubwriter"
+               "GRANT mb_ws_test_pubwriter TO mb_ws_test_provisioner"
+               "ALTER DEFAULT PRIVILEGES FOR ROLE mb_ws_test_pubwriter GRANT DELETE ON TABLES TO PUBLIC"
+               "CREATE SCHEMA sq AUTHORIZATION mb_ws_test_etl"
+               (str "SET ROLE mb_ws_test_etl; CREATE SEQUENCE sq.s0; GRANT USAGE ON SEQUENCE sq.s0 TO PUBLIC; "
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA sq GRANT UPDATE ON SEQUENCES TO PUBLIC; RESET ROLE")
+               ;; `loose` will grant CREATE to PUBLIC, which init refuses: tests grant it
+               "CREATE SCHEMA loose"]))
+
+(defn- do-with-warehouse!
+  "Calls `(f superuser-spec database)`, with `database` the Lib metadata of a Database whose own login is the superuser
+  and whose admin connection logs in as `admin-login`."
+  [f]
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:workspaces}
+      (tx/drop-if-exists-and-create-db! :postgres db-name)
+      (let [spec (sql-jdbc.conn/connection-details->spec :postgres (superuser-details))]
+        (create-warehouse! spec)
+        (mt/with-temp [:model/Database {db-id :id} {:engine        :postgres
+                                                    :details       (superuser-details)
+                                                    :admin_details admin-login}]
+          ;; teardown runs DROP OWNED in every database of the cluster the workspace user may connect to: here only this
+          ;; test's, since the other databases of a shared test cluster are not this suite's to change
+          (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name])]
+            (f spec (driver.u/lib-database db-id))))))))
+
+(defn- workspace-with-details [database id]
+  (let [workspace {:id id, :name (str "wsd-" id)}]
+    (merge workspace (driver.conn/with-admin-connection
+                       (driver/workspace-isolation-details :postgres database workspace)))))
+
+(defn- provisioning [f]
+  (driver.conn/with-admin-connection (f)))
+
+(defn- new-workspace!
+  "A workspace with its isolation details, and no role left over from an earlier run under its user name."
+  [spec database id]
+  (let [workspace (workspace-with-details database id)]
+    (drop-role-if-exists! spec (-> workspace :database_details :user))
+    workspace))
+
+(defn- role-exists? [spec role]
+  (boolean (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))))
+
+(defn- schema-owner [spec schema]
+  (:owner (first (jdbc/query spec ["SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = ?"
+                                   schema]))))
+
+(deftest methods-run-as-the-admin-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (workspace-with-details database 2001)
+           user      (-> workspace :database_details :user)]
+       (drop-role-if-exists! spec user)
+       (driver.conn/with-admin-connection
+         (testing "init creates the output schema as the admin login"
+           (driver/init-workspace-isolation! :postgres database workspace)
+           (is (= (:user admin-login) (schema-owner spec (:schema workspace))))
+           (is (role-exists? spec user)))
+         (testing "grant reads the input schema with the admin login's grant options"
+           (driver/grant-workspace-read-access! :postgres database workspace ["sales"])
+           (is (= [{:count 2}]
+                  (jdbc/query (sql-jdbc.conn/connection-details->spec
+                               :postgres (merge (superuser-details) (:database_details workspace)))
+                              ["SELECT count(*) FROM sales.orders"]))))
+         (testing "destroy drops the output schema and the user"
+           (driver/destroy-workspace-isolation! :postgres database workspace)
+           (is (nil? (schema-owner spec (:schema workspace))))
+           (is (not (role-exists? spec user)))))))))
+
+(defn- user-spec [workspace]
+  (sql-jdbc.conn/connection-details->spec :postgres (merge (superuser-details) (:database_details workspace))))
+
+(defn- as-workspace-user
+  "Runs `sql` as the workspace user; returns the rows, the update count, or the error message."
+  [workspace sql]
+  (try
+    (if (str/starts-with? sql "SELECT")
+      (jdbc/query (user-spec workspace) [sql])
+      (jdbc/execute! (user-spec workspace) [sql]))
+    (catch java.sql.SQLException e
+      (ex-message e))))
+
+(defn- hold-session!
+  "Opens a session as the workspace user, runs `sqls` in a transaction it leaves open, and returns the connection."
+  ^java.sql.Connection [workspace sqls]
+  ;; a raw connection is the point here: the session must stay open across the code under test
+  (let [{:keys [host port db]} (superuser-details)
+        {:keys [user password]} (:database_details workspace)
+        conn (java.sql.DriverManager/getConnection (format "jdbc:postgresql://%s:%s/%s" host port db)
+                                                   ^String user ^String password)]
+    (.setAutoCommit conn false)
+    (with-open [stmt (.createStatement conn)]
+      (doseq [^String sql sqls]
+        (.execute stmt sql)))
+    conn))
+
+(defn- server-version [spec]
+  (:v (first (jdbc/query spec ["SELECT current_setting('server_version_num')::int AS v"]))))
+
+(defn- grants-to
+  "Every ACL entry naming `role` on a schema or relation."
+  [spec role]
+  (jdbc/query spec [(str "SELECT 'schema' AS kind, nspname::text AS name FROM pg_namespace n, aclexplode(n.nspacl) a "
+                         "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                         "UNION ALL SELECT 'relation', relname::text FROM pg_class c, aclexplode(c.relacl) a "
+                         "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) ORDER BY 1, 2")
+                    role role]))
+
+(defn- within-a-minute
+  "Calls `f` and returns what it returns, or `::timed-out` when it takes longer than a minute, as a statement waiting on
+  a lock without a timeout does."
+  [f]
+  (deref (future (f)) 60000 ::timed-out))
+
+(defn- provisioned!
+  "Inits `workspace` and grants it read access to `sales`, as the admin login."
+  [database workspace]
+  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+  (provisioning #(driver/grant-workspace-read-access! :postgres database workspace ["sales"])))
+
+(deftest init-refuses-an-existing-user-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2101)
+           user      (-> workspace :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (testing "a second init of the same workspace throws a 409 that tells the caller not to clean up"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/init-workspace-isolation!
+                                              :postgres database
+                                              (assoc-in workspace [:database_details :password] "AnotherParents0Password")))))]
+           (is (= {:status-code 409, :workspace/cleanup? false, :user user} (ex-data e)))))
+       (testing "the existing user is unchanged: it still logs in with its own password"
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest concurrent-init-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (testing "two inits of one workspace: one creates the user, the other gets the 409 that forbids cleanup"
+       (dotimes [_ 5]
+         (let [workspace (new-workspace! spec database 2102)
+               latch     (java.util.concurrent.CountDownLatch. 1)
+               inits     (vec (for [_ (range 2)]
+                                (future
+                                  (.await latch)
+                                  (try
+                                    (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+                                    :created
+                                    (catch clojure.lang.ExceptionInfo e
+                                      (ex-data e))))))
+               _         (.countDown latch)
+               results   (mapv #(deref % 60000 :timed-out) inits)]
+           (is (= #{:created {:status-code 409, :workspace/cleanup? false, :user (-> workspace :database_details :user)}}
+                  (set results)))
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
+
+(deftest init-keeps-the-password-out-of-statements-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2103)
+           password  (-> workspace :database_details :password)
+           messages  (fn [^Throwable t]
+                       (->> t
+                            (iterate #(or (ex-cause %) (when (instance? java.sql.SQLException %)
+                                                         (.getNextException ^java.sql.SQLException %))))
+                            (take-while some?)
+                            (map ex-message)))]
+       (exec! spec [(format "ALTER ROLE %s NOCREATEROLE" (:user admin-login))])
+       (testing "the statements sent to the server never carry the password, which the server logs when one fails"
+         ;; the batch wrapper's message quotes the statement as sent
+         ;; past the CREATEROLE precondition, so that CREATE USER itself runs and fails
+         (mt/with-dynamic-fn-redefs [driver.u/batch-exception                     identity
+                                     postgres/check-admin-login-privileges! (constantly nil)]
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (testing "a failed init tells the caller there is nothing to tear down"
+               (is (false? (:workspace/cleanup? (ex-data e)))))
+             (is (some #(str/includes? % "CREATE USER") (messages e)))
+             (is (not-any? #(str/includes? % "PASSWORD") (messages e)))
+             (is (not-any? #(str/includes? % password) (messages e))))))
+       (exec! spec [(format "ALTER ROLE %s CREATEROLE" (:user admin-login))])
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (testing "the password is stored as a SCRAM verifier and logs in"
+         (is (str/starts-with? (:rolpassword (first (jdbc/query spec ["SELECT rolpassword FROM pg_authid WHERE rolname = ?"
+                                                                      (-> workspace :database_details :user)])))
+                               "SCRAM-SHA-256$"))
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest init-lock-timeout-leaves-nothing-to-clean-up-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2112)
+           ws-user   (-> workspace :database_details :user)
+           {:keys [host port db user password]} (superuser-details)
+           ;; a raw connection is the point here: its transaction must stay open across the code under test
+           other     (java.sql.DriverManager/getConnection (format "jdbc:postgresql://%s:%s/%s" host port db)
+                                                           ^String user ^String password)]
+       (try
+         (.setAutoCommit other false)
+         ;; another session creating a role of the same name, not yet committed: init does not see it, and its
+         ;; CREATE USER waits on it
+         (with-open [stmt (.createStatement other)]
+           (.execute stmt (format "CREATE ROLE \"%s\"" ws-user)))
+         (testing "an init that times out on that lock is a 409 that tells the caller not to tear anything down"
+           (with-redefs [postgres/workspace-lock-timeout "2s"]
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+               (is (= {:status-code 409, :workspace/cleanup? false} (ex-data e))))))
+         (finally
+           (.rollback other)
+           (.close other)))
+       (is (nil? (schema-owner spec (:schema workspace))))
+       (is (not (role-exists? spec ws-user)))))))
+
+(deftest init-connection-failure-at-commit-leaves-cleanup-to-the-caller-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2113)
+           ws-user   (-> workspace :database_details :user)
+           commit    jdbc/db-transaction*]
+       (testing "a connection that drops at COMMIT may have committed, so init leaves the error unmarked for destroy"
+         ;; the transaction commits on the server, then the client sees the connection fail, as when it drops during
+         ;; COMMIT
+         (with-redefs [jdbc/db-transaction* (fn [db & more]
+                                              (let [result (apply commit db more)]
+                                                ;; the outermost transaction only: a nested one does not commit
+                                                (if (:connection db)
+                                                  result
+                                                  (throw (java.sql.SQLException. "An I/O error occurred" "08006")))))]
+           (let [e (is (thrown? Exception
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (not (false? (:workspace/cleanup? (ex-data e)))))))
+         (is (role-exists? spec ws-user)))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
+       (is (not (role-exists? spec ws-user)))))))
+
+(deftest init-connection-failure-before-commit-forbids-cleanup-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2114)
+           ws-user   (-> workspace :database_details :user)]
+       ;; a role of the workspace user's name that another parent made: init must leave it, and so must its caller
+       (exec! spec [(format "CREATE ROLE \"%s\"" ws-user)])
+       (testing "a connection that drops before COMMIT committed nothing, so init tells the caller not to tear down"
+         (mt/with-dynamic-fn-redefs [postgres/role-exists? (fn [& _] (throw (java.sql.SQLException. "An I/O error occurred" "08006")))]
+           (let [e (is (thrown? Exception
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (false? (:workspace/cleanup? (ex-data e))))))
+         (is (role-exists? spec ws-user)))
+       (drop-role-if-exists! spec ws-user)))))
+
+(deftest destroy-ends-the-workspace-users-sessions-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2104)
+           user      (-> workspace :database_details :user)
+           output    (:schema workspace)]
+       (provisioned! database workspace)
+       (is (= [0] (as-workspace-user workspace (format "CREATE TABLE \"%s\".t (x int)" output))))
+       (let [reader (hold-session! workspace ["SELECT count(*) FROM sales.orders"])
+             locker (hold-session! workspace [(format "LOCK TABLE \"%s\".t IN ACCESS SHARE MODE" output)])]
+         (try
+           (testing "destroy ends an open session and one holding a lock on an output table, then drops everything"
+             (is (nil? (within-a-minute #(provisioning (fn [] (driver/destroy-workspace-isolation! :postgres database workspace))))))
+             (is (not (role-exists? spec user)))
+             (is (nil? (schema-owner spec output)))
+             (doseq [^java.sql.Connection conn [reader locker]]
+               (is (thrown? java.sql.SQLException
+                            (with-open [stmt (.createStatement conn)]
+                              (.execute stmt "SELECT 1"))))))
+           (finally
+             (doseq [^java.sql.Connection conn [reader locker]]
+               (.close conn)))))))))
+
+(deftest destroy-fails-closed-while-a-session-stays-open-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2105)
+           user      (-> workspace :database_details :user)]
+       (provisioned! database workspace)
+       (let [session (hold-session! workspace ["SELECT 1"])]
+         (try
+           (testing "destroy throws a 409 counting the open sessions, after taking away the login and the input grants"
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  ;; a session this login could not end, as when another role's membership was revoked
+                                  (mt/with-dynamic-fn-redefs [postgres/end-sessions! (constantly nil)]
+                                    (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace)))))]
+               (is (= {:status-code 409, :user user, :sessions 1} (ex-data e)))
+               (is (re-find #"still open" (ex-message e))))
+             (is (= [{:rolcanlogin false}] (jdbc/query spec ["SELECT rolcanlogin FROM pg_roles WHERE rolname = ?" user])))
+             (is (= [{:kind "schema", :name (:schema workspace)}] (distinct (grants-to spec user))))
+             (is (re-find #"permission denied" (with-open [stmt (.createStatement session)]
+                                                 (try
+                                                   (.executeQuery stmt "SELECT count(*) FROM sales.orders")
+                                                   "read"
+                                                   (catch java.sql.SQLException e
+                                                     (ex-message e)))))))
+           (finally
+             (.close session))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest destroy-while-the-user-holds-its-own-role-row-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2106)
+           user      (-> workspace :database_details :user)]
+       (provisioned! database workspace)
+       (when (> 160000 (server-version spec))
+         ;; before Postgres 16 the user may also have taken away the membership that lets teardown end its sessions
+         (is (= [0] (as-workspace-user workspace (format "REVOKE \"%s\" FROM %s" user (:user admin-login))))))
+       (let [session (hold-session! workspace ["ALTER ROLE CURRENT_USER PASSWORD 'HeldOpenPassw0rd'"])]
+         (try
+           (testing "an uncommitted ALTER ROLE on itself, held open in another session, does not stop destroy"
+             (with-redefs [postgres/workspace-lock-timeout "2s"]
+               (is (nil? (within-a-minute #(provisioning (fn [] (driver/destroy-workspace-isolation! :postgres database workspace)))))))
+             (is (not (role-exists? spec user))))
+           (finally
+             (.close session))))))))
+
+(deftest destroy-restores-its-membership-and-drops-other-members-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2107)
+           user      (-> workspace :database_details :user)
+           members   #(map :member (jdbc/query spec [(str "SELECT m.rolname AS member FROM pg_auth_members am "
+                                                          "JOIN pg_roles r ON r.oid = am.roleid "
+                                                          "JOIN pg_roles m ON m.oid = am.member WHERE r.rolname = ?")
+                                                     user]))]
+       (drop-role-if-exists! spec "mb_ws_test_accomplice")
+       (exec! spec ["CREATE ROLE mb_ws_test_accomplice NOLOGIN"])
+       (provisioned! database workspace)
+       (is (= [0] (as-workspace-user workspace "DO $$BEGIN PERFORM lo_create(0); END$$")))
+       (when (> 160000 (server-version spec))
+         (testing "before Postgres 16, the user can revoke the admin login's membership and share itself"
+           (is (= [0] (as-workspace-user workspace (format "REVOKE \"%s\" FROM %s" user (:user admin-login)))))
+           (is (= [0] (as-workspace-user workspace (format "GRANT \"%s\" TO mb_ws_test_accomplice" user))))
+           (is (= ["mb_ws_test_accomplice"] (members)))))
+       ;; a grant the admin login cannot revoke stops destroy at DROP USER, after the lock-out has committed
+       (exec! spec [(format "GRANT SELECT ON noselect.other TO \"%s\"" user)])
+       (testing "a destroy stopped at DROP USER has already restored this login's membership and dropped the other"
+         (is (thrown? clojure.lang.ExceptionInfo
+                      (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+         (is (= [(:user admin-login)] (distinct (members)))))
+       (exec! spec [(format "REVOKE SELECT ON noselect.other FROM \"%s\"" user)])
+       (testing "destroy restores its membership, drops the other, and drops the user"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+         (is (not (role-exists? spec user)))
+         (is (empty? (jdbc/query spec [(str "SELECT 1 FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member "
+                                            "WHERE m.rolname = 'mb_ws_test_accomplice'")]))))
+       (exec! spec ["DROP ROLE mb_ws_test_accomplice"])))))
+
+(deftest a-failed-destroy-leaves-the-user-locked-out-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2108)
+           user      (-> workspace :database_details :user)]
+       (provisioned! database workspace)
+       ;; a grant from a role the admin login cannot act for, which neither REVOKE nor DROP OWNED removes
+       (exec! spec [(format "GRANT SELECT ON noselect.other TO \"%s\"" user)])
+       (testing "destroy fails loudly, but the user can no longer log in and keeps none of the admin login's grants"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))]
+           (is (= {:status-code 409, :user user} (ex-data e))))
+         (is (role-exists? spec user))
+         (is (re-find #"FATAL" (as-workspace-user workspace "SELECT 1 AS one")))
+         (is (= [{:rolcanlogin false}] (jdbc/query spec ["SELECT rolcanlogin FROM pg_roles WHERE rolname = ?" user])))
+         (is (= [{:kind "relation", :name "other"}] (grants-to spec user))))
+       (exec! spec [(format "REVOKE SELECT ON noselect.other FROM \"%s\"" user)])
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(def ^:private other-db-name "workspace_isolation_other")
+
+(defn- other-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name other-db-name}))
+
+(deftest destroy-drops-what-the-user-made-in-another-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2109)
+           user      (-> workspace :database_details :user)]
+       (tx/drop-if-exists-and-create-db! :postgres other-db-name)
+       ;; the default in a cluster created before Postgres 15 or upgraded from one, which init refuses
+       (exec! (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))
+              ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other-db-name])]
+         (provisioned! database workspace)
+         (testing "a large object the user makes in another database it may connect to does not stop destroy"
+           (is (= [0] (jdbc/execute! (sql-jdbc.conn/connection-details->spec
+                                      :postgres (merge (other-db-details) (:database_details workspace)))
+                                     ["DO $$BEGIN PERFORM lo_create(0); END$$"])))
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+           (is (not (role-exists? spec user)))))))))
+
+(deftest destroy-reports-objects-in-another-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2110)
+           user      (-> workspace :database_details :user)
+           other     (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))]
+       (tx/drop-if-exists-and-create-db! :postgres other-db-name)
+       (provisioned! database workspace)
+       ;; in a database teardown does not sweep: here every database but this test's
+       (exec! other ["CREATE TABLE planted (x int)" (format "ALTER TABLE planted OWNER TO \"%s\"" user)])
+       (testing "a DROP USER that fails on objects elsewhere is a 409 naming them"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))]
+           (is (= {:status-code 409, :user user} (ex-data e)))
+           (is (re-find #"(?s)cannot be dropped yet: .*objects? in database workspace_isolation_other" (ex-message e)))))
+       (exec! other ["DROP TABLE planted"])
+       (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+       (is (not (role-exists? spec user)))))))
+
+(deftest destroy-maps-a-refused-drop-to-a-409-test
+  (testing "a DROP OWNED or DROP USER this login may not run is a 409 saying what to grant"
+    (let [e (#'postgres/drop-user-error "mb__isolation_abcde_1"
+                                        (java.sql.SQLException. "ERROR: permission denied to drop objects" "42501"))]
+      (is (= {:status-code 409, :user "mb__isolation_abcde_1"} (ex-data e)))
+      (is (str/includes? (ex-message e) "`GRANT \"mb__isolation_abcde_1\" TO <login>`")))))
+
+(defn- public-create! [spec schema]
+  (exec! spec [(format "GRANT CREATE ON SCHEMA %s TO PUBLIC" schema)]))
+
+(deftest grant-preconditions-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2201)
+           user      (-> workspace :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (doseq [[schema message extra]
+               [["pubwrite" (re-pattern
+                             (java.util.regex.Pattern/quote
+                              (str "run `REVOKE UPDATE (\"id\") ON TABLE \"pubwrite\".\"col\" FROM PUBLIC; "
+                                   "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_pubwriter\" REVOKE DELETE ON TABLES FROM PUBLIC; "
+                                   "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_etl\" IN SCHEMA \"pubwrite\" REVOKE INSERT ON TABLES FROM PUBLIC; "
+                                   "REVOKE INSERT ON TABLE \"pubwrite\".\"audit\" FROM PUBLIC; "
+                                   "REVOKE DELETE ON TABLE \"pubwrite\".\"del\" FROM PUBLIC; "
+                                   "REVOKE REFERENCES ON TABLE \"pubwrite\".\"refs\" FROM PUBLIC; "
+                                   "REVOKE TRIGGER ON TABLE \"pubwrite\".\"trig\" FROM PUBLIC; "
+                                   "REVOKE TRUNCATE ON TABLE \"pubwrite\".\"trunc\" FROM PUBLIC; "
+                                   "REVOKE UPDATE ON TABLE \"pubwrite\".\"upd\" FROM PUBLIC;`")))
+                 {:objects ["col.id" "database-wide default privileges for mb_ws_test_pubwriter"
+                            "default privileges for mb_ws_test_etl" "audit" "del" "refs" "trig" "trunc" "upd"]}]
+                ["sq" (re-pattern
+                       (java.util.regex.Pattern/quote
+                        (str "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_etl\" IN SCHEMA \"sq\" REVOKE UPDATE ON SEQUENCES "
+                             "FROM PUBLIC; REVOKE USAGE ON SEQUENCE \"sq\".\"s0\" FROM PUBLIC;")))
+                 {:objects ["default sequence privileges for mb_ws_test_etl" "sequence s0"]}]
+                ["nogrant" #"run `GRANT USAGE ON SCHEMA \"nogrant\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`" {}]
+                ["noselect" #"run `GRANT SELECT ON ALL TABLES IN SCHEMA \"noselect\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`"
+                 {:objects ["\"noselect\".\"other\""]}]]]
+         (testing (format "grant on %s throws a 412 naming the fix, before any change" schema)
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/grant-workspace-read-access! :postgres database workspace [schema]))))]
+             (is (= (merge {:status-code 412, :schema schema} extra) (ex-data e)))
+             (is (re-find message (ex-message e)))
+             (is (= [{:kind "schema", :name (:schema workspace)}] (distinct (grants-to spec user)))))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest init-refuses-public-create-anywhere-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2202)
+           user      (-> workspace :database_details :user)]
+       (public-create! spec "loose")
+       (testing "init returns a 412 naming each schema that grants CREATE to PUBLIC, before any change"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+           (is (= {:status-code 412, :workspace/cleanup? false, :databases [], :schemas [(str db-name ".loose")], :unverifiable []} (ex-data e)))
+           (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose\" FROM PUBLIC;` in database \"%s\""
+                                                     db-name)))
+           (testing "does not offer REVOKE CONNECT, which cannot exempt this database"
+             (is (not (str/includes? (ex-message e) "keep the workspace user out"))))
+           (is (not (role-exists? spec user)))
+           (is (nil? (schema-owner spec (:schema workspace))))))
+       (testing "after the REVOKE, init succeeds"
+         (exec! spec ["REVOKE CREATE ON SCHEMA loose FROM PUBLIC"])
+         (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+         (is (role-exists? spec user)))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest public-create-check-includes-this-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2203)]
+       (public-create! spec "loose")
+       ;; as when this database does not grant CONNECT to PUBLIC
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [])]
+         (testing "this database is checked even when it is not among those PUBLIC may connect to"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= [(str db-name ".loose")] (:schemas (ex-data e)))))))))))
+
+(deftest cluster-public-create-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace  (new-workspace! spec database 2204)
+           closed     "workspace_isolation_closed"
+           other-spec (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))]
+       (doseq [db [other-db-name closed]]
+         (tx/drop-if-exists-and-create-db! :postgres db))
+       (exec! other-spec ["REVOKE CREATE ON SCHEMA public FROM PUBLIC" "CREATE SCHEMA loose2"
+                          "GRANT CREATE ON SCHEMA loose2 TO PUBLIC"])
+       (exec! (sql-jdbc.conn/connection-details->spec
+               :postgres (mt/dbdef->connection-details :postgres :db {:database-name closed}))
+              ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+       ;; the admin login may not connect to `closed`, but the stubbed list says the workspace user could
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" closed)])
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other-db-name closed])]
+         (testing "init lists each other database's PUBLIC CREATE schema, and each database it could not check"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :workspace/cleanup? false, :databases [], :schemas [(str other-db-name ".loose2")]
+                     :unverifiable [closed]} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose2\" FROM PUBLIC;` in database \"%s\""
+                                                       other-db-name)))
+             (is (str/includes? (ex-message e) (format "`REVOKE CONNECT ON DATABASE \"%s\" FROM PUBLIC;`" closed)))
+             (is (str/includes? (ex-message e) (format "keep the workspace user out of a database other than \"%s\""
+                                                       db-name)))
+             (is (not (role-exists? spec (-> workspace :database_details :user))))))
+         (testing "after the fixes, init succeeds"
+           (exec! other-spec ["REVOKE CREATE ON SCHEMA loose2 FROM PUBLIC"])
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s" closed (:user admin-login))])
+           (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
+
+(deftest cluster-check-reports-a-database-it-cannot-name-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2205)
+           bad       "workspace_isolation_bad?name"]
+       (tx/drop-if-exists-and-create-db! :postgres bad)
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name bad])]
+         (testing "a database whose name the connection guard refuses is listed as unverifiable"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :workspace/cleanup? false, :databases [], :schemas [], :unverifiable [bad]} (ex-data e))))))))))
+
+(deftest connectable-databases-test
+  (do-with-warehouse!
+   (fn [spec _database]
+     (tx/drop-if-exists-and-create-db! :postgres "workspace_isolation_noconnect")
+     (tx/drop-if-exists-and-create-db! :postgres "workspace_isolation_noallow")
+     (exec! spec ["REVOKE CONNECT ON DATABASE workspace_isolation_noconnect FROM PUBLIC"
+                  "ALTER DATABASE workspace_isolation_noallow ALLOW_CONNECTIONS false"])
+     (testing "databases any login may connect to: this one, not one without CONNECT for PUBLIC, one refusing connections, or template0"
+       (let [dbs (set (jdbc/with-db-transaction [conn spec]
+                        (doall (#'postgres/connectable-databases conn))))]
+         (is (contains? dbs db-name))
+         (is (not-any? dbs ["workspace_isolation_noconnect" "workspace_isolation_noallow" "template0"]))))
+     (exec! spec ["ALTER DATABASE workspace_isolation_noallow ALLOW_CONNECTIONS true"]))))
+
+(deftest planted-functions-never-run-as-the-admin-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [planter (new-workspace! spec database 2206)
+           other   (new-workspace! spec database 2207)
+           user    (-> planter :database_details :user)
+           acl     #(:relacl (first (jdbc/query spec ["SELECT relacl::text FROM pg_class WHERE oid = 'sales.orders'::regclass"])))]
+       (provisioned! database planter)
+       ;; public is on every login's default search_path; granted to the user directly, so the PUBLIC CREATE check passes
+       (exec! spec [(format "GRANT CREATE ON SCHEMA public TO \"%s\"" user)])
+       (let [grant-self (fn [privilege]
+                          (format "BEGIN EXECUTE 'GRANT %s ON sales.orders TO \"%s\"'; EXCEPTION WHEN OTHERS THEN NULL; END;"
+                                  privilege user))]
+         ;; better matches than the catalog's for a varchar parameter, so unpinned resolution picks them
+         (is (= [0] (as-workspace-user planter (str "CREATE FUNCTION public.has_schema_privilege(name, varchar, text) "
+                                                    "RETURNS bool LANGUAGE plpgsql AS $f$ BEGIN " (grant-self "INSERT")
+                                                    " RETURN pg_catalog.has_schema_privilege($1, $2::text, $3); END $f$"))))
+         (is (= [0] (as-workspace-user planter (str "CREATE FUNCTION public.evil_eq(name, varchar) RETURNS bool "
+                                                    "LANGUAGE plpgsql AS $f$ BEGIN " (grant-self "DELETE")
+                                                    " RETURN $1::text = $2::text; END $f$"))))
+         (is (= [0] (as-workspace-user planter (str "CREATE OPERATOR public.= (LEFTARG = name, RIGHTARG = varchar, "
+                                                    "FUNCTION = public.evil_eq)")))))
+       (let [before (acl)]
+         (testing "another workspace's init, grant and destroy never call them"
+           (provisioned! database other)
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database other))
+           (is (= before (acl)))
+           (is (re-find #"permission denied" (as-workspace-user planter "INSERT INTO sales.orders VALUES (666)")))))
+       (exec! spec [(format "DROP OWNED BY \"%s\"" user)])
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database planter))))))
+
+(deftest init-refuses-a-noinherit-admin-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2208)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "ALTER ROLE %s NOINHERIT" (:user admin-login))])
+       (try
+         (if (> 160000 (server-version spec))
+           (testing "before Postgres 16, a NOINHERIT login would hold the membership without its privileges: a 412"
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+               (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
+               (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" INHERIT`" (:user admin-login)))))
+             (is (not (role-exists? spec user))))
+           (testing "from Postgres 16, the membership inherits whatever the login's attribute, so init and destroy work"
+             (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+             (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+         (finally
+           (exec! spec [(format "ALTER ROLE %s INHERIT" (:user admin-login))])))))))
+
+(deftest init-gives-connect-where-public-lacks-it-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2209)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" db-name)
+                    (format "GRANT CONNECT ON DATABASE %s TO %s" db-name (:user admin-login))])
+       (try
+         (testing "without the grant option on CONNECT, init returns a 412 naming it"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`GRANT CONNECT ON DATABASE \"%s\" TO \"%s\" WITH GRANT OPTION`"
+                                                       db-name (:user admin-login)))))
+           (is (not (role-exists? spec user))))
+         (testing "with it, init grants CONNECT to the workspace user, which logs in; destroy takes it back"
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s WITH GRANT OPTION" db-name (:user admin-login))])
+           (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+           (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one")))
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+           (is (not (role-exists? spec user))))
+         (finally
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO PUBLIC" db-name)])))))))
+
+(deftest init-names-missing-provisioning-privileges-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2210)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "ALTER ROLE %s NOCREATEROLE" (:user admin-login))
+                    (format "REVOKE CREATE ON DATABASE %s FROM %s" db-name (:user admin-login))])
+       (try
+         (testing "a login without CREATEROLE or CREATE on the database gets a 412 naming both grants, before any change"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" CREATEROLE; GRANT CREATE ON DATABASE \"%s\" TO \"%s\";`"
+                                                       (:user admin-login) db-name (:user admin-login)))))
+           (is (not (role-exists? spec user)))
+           (is (nil? (schema-owner spec (:schema workspace)))))
+         (finally
+           (exec! spec [(format "ALTER ROLE %s CREATEROLE" (:user admin-login))
+                        (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user admin-login))])))))))
+
+(deftest destroy-revokes-grants-the-admin-login-recorded-as-grantor-test
+  ;; The admin login is a member of the input tables' owner role and also holds USAGE and SELECT WITH GRANT OPTION
+  ;; directly, so Postgres's best-grantor rule records the login, not the owner, as grantor of the workspace user's
+  ;; read grants. DROP OWNED BY, which acts as the owner, misses those grants.
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2111)
+           user      (-> workspace :database_details :user)
+           grantors  #(set (map :grantor (jdbc/query spec [(str "SELECT pg_get_userbyid(a.grantor) AS grantor "
+                                                                "FROM pg_class c, aclexplode(c.relacl) a "
+                                                                "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                                                                "UNION ALL SELECT pg_get_userbyid(a.grantor) "
+                                                                "FROM pg_namespace n, aclexplode(n.nspacl) a "
+                                                                "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                                                                "AND n.nspname <> ?")
+                                                           user user (:schema workspace)])))]
+       (exec! spec [(format "GRANT USAGE ON SCHEMA sales TO %s WITH GRANT OPTION" (:user admin-login))
+                    (format "GRANT SELECT ON ALL TABLES IN SCHEMA sales TO %s WITH GRANT OPTION" (:user admin-login))])
+       (provisioned! database workspace)
+       (testing "the admin login, not the owner, is recorded as grantor"
+         (is (contains? (grantors) (:user admin-login))))
+       (testing "destroy revokes those grants and drops the user"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+         (is (not (role-exists? spec user)))
+         (is (nil? (schema-owner spec (:schema workspace)))))))))
+
+(deftest destroy-retries-the-lock-out-after-a-lock-timeout-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2303)
+           user      (-> workspace :database_details :user)
+           real-end  (mt/original-fn #'postgres/end-sessions!)
+           calls     (atom 0)]
+       (provisioned! database workspace)
+       (let [session (hold-session! workspace ["ALTER ROLE CURRENT_USER PASSWORD 'HeldOpenPassw0rd'"])]
+         (try
+           (testing "a lock timeout on NOLOGIN ends the sessions again and retries"
+             (with-redefs [postgres/workspace-lock-timeout "2s"]
+               ;; the first end of sessions misses the session, as when it starts just after
+               (mt/with-dynamic-fn-redefs [postgres/end-sessions! (fn [conn u]
+                                                                    (when (< 1 (swap! calls inc))
+                                                                      (real-end conn u)))]
+                 (is (nil? (within-a-minute #(provisioning (fn [] (driver/destroy-workspace-isolation! :postgres database workspace))))))))
+             (is (not (role-exists? spec user))))
+           (finally
+             (.close session))))))))
+
+(defn- spying-spec
+  "`spec` with a datasource whose connections record into `sent` the SQL text of every statement they prepare,
+  execute or batch."
+  [spec sent]
+  (let [^javax.sql.DataSource ds (:datasource spec)
+        record!    (fn [^objects args] (when (and args (string? (first args))) (swap! sent conj (first args))))
+        invoke     (fn [^java.lang.reflect.Method m real ^objects args]
+                     (try (.invoke m real args)
+                          (catch java.lang.reflect.InvocationTargetException e (throw (.getCause e)))))
+        stmt-proxy (fn [real]
+                     (java.lang.reflect.Proxy/newProxyInstance
+                      (.getClassLoader java.sql.Statement)
+                      (into-array Class [java.sql.Statement])
+                      (reify java.lang.reflect.InvocationHandler
+                        (invoke [_ _ m args]
+                          (when (#{"execute" "executeQuery" "executeUpdate" "executeLargeUpdate" "addBatch"} (.getName m))
+                            (record! args))
+                          (invoke m real args)))))
+        conn-proxy (fn [real]
+                     (java.lang.reflect.Proxy/newProxyInstance
+                      (.getClassLoader java.sql.Connection)
+                      (into-array Class [java.sql.Connection])
+                      (reify java.lang.reflect.InvocationHandler
+                        (invoke [_ _ m args]
+                          (when (#{"prepareStatement" "prepareCall" "nativeSQL"} (.getName m))
+                            (record! args))
+                          (let [result (invoke m real args)]
+                            (if (= "createStatement" (.getName m))
+                              (stmt-proxy result)
+                              result))))))]
+    (assoc spec :datasource (reify javax.sql.DataSource
+                              (getConnection [_] (conn-proxy (.getConnection ds)))
+                              (getConnection [_ u p] (conn-proxy (.getConnection ds u p)))))))
+
+(deftest init-sends-no-statement-with-the-password-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2304)
+           password  (-> workspace :database_details :password)
+           sent      (atom [])
+           real-spec (mt/original-fn #'sql-jdbc.conn/db->pooled-connection-spec)]
+       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [db] (spying-spec (real-spec db) sent))]
+         (provisioning #(driver/init-workspace-isolation! :postgres database workspace)))
+       (testing "control: the spy sees init's statements"
+         (is (some #(str/includes? % "CREATE USER") @sent)))
+       (testing "no statement init sends carries the password"
+         (is (not-any? #(str/includes? % password) @sent)))
+       (testing "the user logs in with that password"
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(defn- login-spec [user password]
+  (sql-jdbc.conn/connection-details->spec :postgres (assoc (superuser-details) :user user :password password)))
+
+(deftest init-refuses-public-create-on-the-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2211)
+           user      (-> workspace :database_details :user)
+           analyst   #(jdbc/query (login-spec "mb_ws_test_analyst" "AnalystPassw0rd") ["SELECT v FROM report"])]
+       (drop-role-if-exists! spec "mb_ws_test_analyst")
+       (exec! spec ["CREATE TABLE public.report (v text)"
+                    "INSERT INTO public.report VALUES ('real')"
+                    "CREATE ROLE mb_ws_test_analyst LOGIN PASSWORD 'AnalystPassw0rd'"
+                    "GRANT SELECT ON public.report TO mb_ws_test_analyst"
+                    (format "GRANT CREATE ON DATABASE %s TO PUBLIC" db-name)])
+       (try
+         (testing "control: the analyst's unqualified name resolves to public.report"
+           (is (= [{:v "real"}] (analyst))))
+         (let [init (try
+                      (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+                      :created
+                      (catch clojure.lang.ExceptionInfo e
+                        (ex-data e)))]
+           (testing "init returns a 412 while PUBLIC may create schemas in the database, before any change"
+             (is (=? {:status-code 412, :workspace/cleanup? false} init))
+             (is (not (role-exists? spec user))))
+           (when (= :created init)
+             (doseq [sql ["CREATE SCHEMA mb_ws_test_analyst"
+                          "GRANT USAGE ON SCHEMA mb_ws_test_analyst TO PUBLIC"
+                          (str "CREATE FUNCTION mb_ws_test_analyst.whoami() RETURNS text LANGUAGE sql AS "
+                               "$f$ SELECT current_user::text $f$")
+                          "CREATE VIEW mb_ws_test_analyst.report AS SELECT mb_ws_test_analyst.whoami() AS v"
+                          "GRANT SELECT ON mb_ws_test_analyst.report TO PUBLIC"]]
+               (as-workspace-user workspace sql))
+             (testing "the workspace user's objects never answer another login's unqualified names"
+               (is (= [{:v "real"}] (analyst))))))
+         (finally
+           (exec! spec [(format "REVOKE CREATE ON DATABASE %s FROM PUBLIC" db-name)])
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
+           (drop-role-if-exists! spec "mb_ws_test_analyst")))))))
+
+(deftest planted-oid-operator-never-runs-as-the-admin-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [planter (new-workspace! spec database 2301)
+           other   (new-workspace! spec database 2302)
+           user    (-> planter :database_details :user)
+           acl     #(:relacl (first (jdbc/query spec ["SELECT relacl::text FROM pg_class WHERE oid = 'sales.orders'::regclass"])))]
+       (provisioned! database planter)
+       (exec! spec [(format "GRANT CREATE ON SCHEMA public TO \"%s\"" user)])
+       ;; `a.grantee = 0` in the catalog queries compares an oid with an integer literal: only the pinned search_path
+       ;; keeps this exact match from being picked over the catalog's `=(oid, oid)`
+       (is (= [0] (as-workspace-user planter (str "CREATE FUNCTION public.evil_oideq(oid, integer) RETURNS bool "
+                                                  "LANGUAGE plpgsql AS $f$ BEGIN "
+                                                  "BEGIN EXECUTE 'GRANT INSERT ON sales.orders TO \"" user "\"'; "
+                                                  "EXCEPTION WHEN OTHERS THEN NULL; END; "
+                                                  "RETURN pg_catalog.oideq($1, $2::oid); END $f$"))))
+       (is (= [0] (as-workspace-user planter (str "CREATE OPERATOR public.= (LEFTARG = oid, RIGHTARG = integer, "
+                                                  "FUNCTION = public.evil_oideq)"))))
+       (let [before (acl)]
+         (testing "another workspace's init, grant and destroy never call it"
+           (provisioned! database other)
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database other))
+           (is (= before (acl)))
+           (is (re-find #"permission denied" (str (as-workspace-user planter "INSERT INTO sales.orders VALUES (666)"))))))
+       (exec! spec [(format "DROP OWNED BY \"%s\"" user)])
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database planter))))))
+
+(deftest init-refuses-public-create-in-a-database-public-may-connect-to-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2305)
+           pre15     "workspace_isolation_pre15"]
+       (tx/drop-if-exists-and-create-db! :postgres pre15)
+       ;; the pre-15 default, granted explicitly so that it holds on every version
+       (exec! (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :db {:database-name pre15}))
+              ["GRANT CREATE ON SCHEMA public TO PUBLIC"])
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (mt/original-fn #'postgres/connectable-databases)]
+         (testing "init finds the other database through the real list of databases, and refuses"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (=? {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+             (is (some #{(str pre15 ".public")} (:schemas (ex-data e))))
+             (is (str/includes? (ex-message e) "created before Postgres 15"))
+             (is (not (role-exists? spec (-> workspace :database_details :user)))))))
+       (jdbc/execute! spec [(str "DROP DATABASE " pre15)] {:transaction? false})))))

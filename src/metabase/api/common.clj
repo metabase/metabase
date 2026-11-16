@@ -349,8 +349,8 @@
 
 (mr/def ::generic-204-no-content
   "Response schema for an endpoint that returns [[generic-204-no-content]].
-  OpenAPI documents it as an empty body rather than as the Ring response map."
-  [:map {:closed true, :openapi/response-schema :nil}
+  OpenAPI documents it as a 204 response with no body, rather than as the Ring response map."
+  [:map {:closed true, :openapi/response {:status "204", :description "No content"}}
    [:status [:= 204]]
    [:body   :nil]])
 

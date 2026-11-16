@@ -16,28 +16,10 @@
   []
   (sort (keys (methods remote-sync.spec/spec))))
 
-(defn synced-label
-  "The name for people of `entity`, an entity of `model`, or nil."
+(defn synced-name
+  "The name for people of `entity`, an exported entity of `model`, or nil."
   [model entity]
-  ((:label (remote-sync.spec/spec model) :name) entity))
-
-(defn synced-collection-from-parent?
-  "Whether the UI shows the changes to the rows of `model` under the collection of their parent."
-  [model]
-  (boolean (:collection-from-parent? (remote-sync.spec/spec model))))
-
-(defn synced-collection-id
-  "The id of the collection the UI shows the changes to `row`, a row of `model`, under, or nil, always nil when that is
-  the collection of its parent, which `row` alone doesn't give."
-  [model row]
-  (when-not (synced-collection-from-parent? model)
-    ((:collection-id (remote-sync.spec/spec model) :collection_id) row)))
-
-(defn synced-parent
-  "The `[model pk]` of the entity the UI shows `row`, a row of `model`, within, or nil."
-  [model row]
-  (when-let [parent (:parent (remote-sync.spec/spec model))]
-    (parent row)))
+  ((:name (remote-sync.spec/spec model) :name) entity))
 
 (defenterprise read-only?
   "Whether remote sync is on and keeps the rows it syncs read-only, which it never is without remote sync."
