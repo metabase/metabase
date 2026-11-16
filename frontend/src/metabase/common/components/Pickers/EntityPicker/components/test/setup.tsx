@@ -359,6 +359,8 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   }>;
   libraryCollection?: Collection;
   libraryCollectionItems?: CollectionItem[];
+  /** Root items, like the trash, that the API lists only with `archived=true`. */
+  archivedRootCollectionItems?: CollectionItem[];
   /** The data apps the user can read; turns on the data apps feature. */
   dataApps?: DataApp[];
   dataAppsDelayMs?: number;
@@ -370,6 +372,7 @@ export const setup = async ({
   databases,
   libraryCollection,
   libraryCollectionItems,
+  archivedRootCollectionItems,
   dataApps,
   dataAppsDelayMs,
   searchResults,
@@ -447,6 +450,7 @@ export const setup = async ({
   // Setup collection items endpoints for the tree structure
   setupRootCollectionItemsEndpoint({
     rootCollectionItems,
+    archivedRootItems: archivedRootCollectionItems,
   });
 
   setupCollectionItemsEndpoint({
