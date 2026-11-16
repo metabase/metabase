@@ -180,6 +180,28 @@
                 ["collection" 2 "collection official"]]
                (appdb.scoring-test/search-results* "collection")))))))
 
+(deftest appdb-semantic-layer-above-official-test
+  (search.tu/with-temp-index-table
+    (testing "with default weights, semantic layer content ranks above official content, and both above the rest"
+      (mt/with-temp [:model/Collection data     {:name "semantic data" :type "library-data" :location "/"}
+                     :model/Collection sub      {:name "semantic sub" :location (format "/%d/" (:id data))}
+                     :model/Collection official {:name "official" :location "/"}
+                     :model/Collection other    {:name "other" :location "/"}]
+        (appdb.scoring-test/with-index-contents
+          [{:model "card" :id 1 :name "card plain" :collection_id (:id other) :collection_location (:location other)}
+           {:model               "card"
+            :id                  2
+            :name                "card official"
+            :collection_id       (:id official)
+            :collection_location (:location official)
+            :official_collection true}
+           {:model "card" :id 3 :name "card semantic" :collection_id (:id sub) :collection_location (:location sub)}]
+          (mt/with-premium-features #{:official-collections}
+            (is (= [["card" 3 "card semantic"]
+                    ["card" 2 "card official"]
+                    ["card" 1 "card plain"]]
+                   (appdb.scoring-test/search-results* "card")))))))))
+
 (deftest appdb-verified-test
   (appdb.scoring-test/with-index-contents
     [{:model "card" :id 1 :name "card normal" :verified false}

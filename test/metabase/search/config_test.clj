@@ -79,8 +79,13 @@
   (testing "an exact name match outranks a single curation tier"
     (is (> (search.config/weight {:context :global} :exact)
            (search.config/weight {:context :global} :verified))))
-  (testing "the library boost is opt-in: off by default, a curation-tier boost for the data picker"
-    (is (= 0 (search.config/weight {:context :global} :library)))
+  (testing "the library boost is a tie-breaker a bit above official content by default, and a curation-tier boost
+            for the data picker"
+    (is (> (search.config/weight {:context :global} :library)
+           (search.config/weight {:context :global} :official-collection)))
+    (is (< (search.config/weight {:context :global} :library)
+           (+ (search.config/weight {:context :global} :official-collection)
+              (search.config/weight {:context :global} :verified))))
     (is (= 80 (search.config/weight {:context :data-picker} :library))))
   (testing "in the data picker, an exact name match can overpower the library boost"
     (is (> (search.config/weight {:context :data-picker} :exact)
