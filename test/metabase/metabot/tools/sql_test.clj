@@ -30,7 +30,8 @@
    [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defn- invoke-sql-tool-with-memory-atom
   "Like [[invoke-sql-tool]], with the agent's memory in `memory-atom`, so several calls can share one turn."
@@ -1291,6 +1292,72 @@
                   (is (str/includes? (:output result) "The query was created, but checking"))
                   (is (= new-sql (get-in result [:structured-output :query-content])))
                   (is (true? (:non-terminal? result))))))))))))
+
+(defn- trace-shape
+  "`query` as the agent memory holds it in a trace: an MBQL 5 query after a JSON round trip."
+  [query]
+  (-> query json/encode json/decode+kw))
+
+(defn- missing-card-message
+  "The error message for SQL whose only missing reference is the card `card-id`."
+  [card-id]
+  (str "Card " card-id " does not exist, is on another database, or you cannot read it. No changes were saved."))
+
+(defn- edit-and-replace-calls
+  "The `edit_sql_query` call that adds `suffix` after `old-string` in the stored `sql`, and the `replace_sql_query` call
+  that gives the same SQL."
+  [sql old-string suffix]
+  [["edit_sql_query" {:edits [{:old_string old-string :new_string (str old-string suffix)}]}]
+   ["replace_sql_query" {:new_query (str/replace-first sql old-string (str old-string suffix))}]])
+
+(defn- check-refused
+  "Call `tool-name` with `args` on the stored query `q1`, and check that it fails with `message` and saves nothing."
+  [stored tool-name args message]
+  (let [memory-atom (atom (assoc editor-memory :state {:queries {"q1" stored}}))
+        result      (invoke-sql-tool-with-memory-atom :sql memory-atom tool-name args)]
+    (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+    (is (str/includes? (:output result) message))
+    ;; The agent loop saves the `:query` of `:structured-output` (`extract-queries`): no structured output, no save.
+    (is (nil? (:structured-output result)))
+    (is (= stored (get-in @memory-atom [:state :queries "q1"])))))
+
+(deftest edit-and-replace-missing-reference-error-test
+  (testing "edit_sql_query and replace_sql_query refuse SQL that references a missing card or snippet"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [sql    "SELECT v.name FROM venues v"
+              stored (trace-shape (lib/native-query (mt/metadata-provider) sql))]
+          (doseq [[reference suffix message]
+                  [["a missing card" (str " JOIN {{#" Integer/MAX_VALUE "}} AS m ON v.id = m.id")
+                    (missing-card-message Integer/MAX_VALUE)]
+                   ["a missing snippet" " WHERE {{snippet: nope}}"
+                    "Snippet \"nope\" does not exist, or you cannot read it. No changes were saved."]]
+                  [tool-name args] (edit-and-replace-calls sql "FROM venues v" suffix)]
+            (testing (str tool-name " with " reference)
+              (check-refused stored tool-name args message))))))))
+
+(deftest edit-and-replace-missing-reference-with-stored-tags-test
+  (testing "a stored query that references a readable card or snippet, edited to add a missing card, names only the
+           missing card"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card              {card-id :id}    (venues-model)
+                       :model/NativeQuerySnippet {snippet-id :id} {:name "cheap_venues" :content "price < 2"}]
+          (let [mp             (mt/metadata-provider)
+                missing        (str " JOIN {{#" Integer/MAX_VALUE "}} AS m ON v.id = m.id")
+                card-sql       (str "SELECT v.name FROM {{#" card-id "}} AS v")
+                snippet-sql    "SELECT v.name FROM venues v WHERE {{snippet: cheap_venues}}"
+                card-stored    (trace-shape (lib/native-query mp card-sql))
+                ;; A snippet can be renamed after a query that uses it is saved. Only the stored tag keeps its id.
+                snippet-stored (trace-shape (lib/native-query mp snippet-sql))]
+            (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "cheapest_venues"})
+            (is (= [snippet-id] (map :snippet-id (sql.common/stored-template-tags snippet-stored))))
+            (doseq [[stored-reference stored sql old-string]
+                    [["a readable card" card-stored card-sql "AS v"]
+                     ["a renamed snippet" snippet-stored snippet-sql "FROM venues v"]]
+                    [tool-name args] (edit-and-replace-calls sql old-string missing)]
+              (testing (str tool-name " on a stored query with " stored-reference)
+                (check-refused stored tool-name args (missing-card-message Integer/MAX_VALUE))))))))))
 
 (deftest hidden-sql-query-reference-warnings-test
   (testing "with show_chart false, the reference warnings and :non-terminal? reach the model on every delivery path"
