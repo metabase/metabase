@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  Box,
   Button,
   type ButtonProps,
   Modal,
@@ -52,8 +53,8 @@ export const ConfirmModal = ({
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
       <Stack gap="xl">
-        {content ? <Text>{content}</Text> : null}
-        <Text>{message}</Text>
+        {content ? <ConfirmModalBody>{content}</ConfirmModalBody> : null}
+        <ConfirmModalBody>{message}</ConfirmModalBody>
       </Stack>
       <Modal.Footer>
         {errorMessage && (
@@ -80,3 +81,13 @@ export const ConfirmModal = ({
     </Modal>
   );
 };
+
+// Plain-string copy is a short confirmation, which uses secondary text. JSX
+// may hold forms or mixed content, so it brings its own typography. The Box
+// keeps fragments as one item in the parent Stack.
+const ConfirmModalBody = ({ children }: { children: ReactNode }) =>
+  typeof children === "string" ? (
+    <Text c="text-secondary">{children}</Text>
+  ) : (
+    <Box>{children}</Box>
+  );

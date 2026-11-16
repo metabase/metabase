@@ -8,7 +8,7 @@
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
