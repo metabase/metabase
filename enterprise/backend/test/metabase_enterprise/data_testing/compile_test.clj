@@ -227,5 +227,5 @@
              (read "SELECT TOTAL * 2 AS DBL FROM ORDERS ORDER BY DBL"))))
     (testing "a wildcard names no column"
       (is (= #{} (read "SELECT * FROM ORDERS"))))
-    (testing "SQL whose references the parser cannot resolve gives nil, so nothing is checked"
+    (testing "SQL in which the parser reports an error, such as a qualifier that names no table, gives nil"
       (is (nil? (read "SELECT X.ID FROM ORDERS"))))))

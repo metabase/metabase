@@ -261,4 +261,12 @@
                 (mt/user-http-request :crowberto :post 400 "ee/card-test"
                                       (assoc (body card-id) :inputs [(assoc (first inputs)
                                                                             :columns [{:name "ID" :cast_type "INTEGER"}]
-                                                                            :rows    [{"ID" 1}])]))))))))
+                                                                            :rows    [{"ID" 1}])])))))
+      (testing "the input's table is found in Metabase's metadata whatever the case of its name"
+        (is (=? {:error-code "card-test.missing-input-columns"
+                 :columns    {:PUBLIC.people ["NAME"]}}
+                (mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                      (assoc (body card-id) :inputs [(-> (first inputs)
+                                                                         (assoc-in [:table :name] "people")
+                                                                         (assoc :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                                :rows    [{"ID" 1}]))]))))))))

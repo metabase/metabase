@@ -158,7 +158,7 @@
               (testing "a segment that does not exist cannot be the test's new segment"
                 (is (false? (boolean (mi/can-update? segment-test {:segment_id Integer/MAX_VALUE}))))))))))))
 
-(deftest moving-a-segment-test-needs-the-write-rule-on-the-old-and-the-new-segment-test
+(deftest moving-a-segment-test-needs-save-rights-on-the-old-and-the-new-segment-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted

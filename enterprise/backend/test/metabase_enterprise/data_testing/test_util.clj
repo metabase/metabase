@@ -25,6 +25,26 @@
   ;; advanced-permissions: the Data Analyst role only opens Data Studio while the plan includes it
   #{:advanced-permissions :transforms-basic :transforms-testing})
 
+(defn refusal
+  "The `:error-type` and message of the refusal `thunk` throws, with the entries of its ex-data under `data-keys`, or
+  nil when it does not throw."
+  [thunk & data-keys]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (merge {:error-type (:error-type (ex-data e))
+              :message    (ex-message e)}
+             (select-keys (ex-data e) data-keys)))))
+
+(defn people-rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names` as text, with no rows."
+  [& column-names]
+  {:table   {:schema "PUBLIC" :name "PEOPLE"}
+   :format  :rows
+   :columns (mapv (fn [column-name] {:name column-name :cast_type "VARCHAR"}) column-names)
+   :rows    []})
+
 (defn from-google-segment
   "Segment columns for a segment on the people table: the people whose source is Google."
   []

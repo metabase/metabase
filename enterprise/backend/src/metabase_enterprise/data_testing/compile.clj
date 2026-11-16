@@ -81,27 +81,24 @@
    [:column :string]])
 
 (defn- field-columns
-  "The `[table column]` pairs `field`, a field spec of `sql-tools/field-references`, can read, one set per way the parser
-  could resolve it; `::unresolved` in a set stands for a resolution that is not a column of a table."
-  [{:keys [type column source-columns used-fields member-fields]}]
-  (case type
-    :single-column  (into #{}
-                          (mapcat (fn [group]
-                                    (for [source group
-                                          pair   (case (:type source)
-                                                   :all-columns   [{:schema (get-in source [:table :schema])
-                                                                    :name   (get-in source [:table :table])
-                                                                    :column column}]
-                                                   :single-column (field-columns source)
-                                                   [::unresolved])]
-                                      pair)))
-                          source-columns)
-    :custom-field    (into #{} (mapcat field-columns) used-fields)
-    :composite-field (into #{} (mapcat field-columns) member-fields)
-    #{::unresolved}))
+  "The `{:schema :name :column}` columns that `field`, a `:single-column` field spec of `sql-tools/field-references`,
+  can read, one per way the parser could resolve it; `::unresolved` stands for a resolution that is not a column of a
+  table."
+  [{:keys [column source-columns]}]
+  (into #{}
+        (for [group  source-columns
+              source group
+              column (case (:type source)
+                       :all-columns   [{:schema (get-in source [:table :schema])
+                                        :name   (get-in source [:table :table])
+                                        :column column}]
+                       :single-column (field-columns source)
+                       [::unresolved])]
+          column)))
 
 (defn- single-columns
-  "`field` and the single-column fields inside it, a custom field's or a composite field's members included."
+  "The single-column fields of `field`: `field` itself when it is one, else those among the members of a custom or
+  composite field, at any depth."
   [{:keys [type used-fields member-fields] :as field}]
   (case type
     :single-column   [field]

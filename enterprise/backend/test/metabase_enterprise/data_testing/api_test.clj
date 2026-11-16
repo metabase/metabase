@@ -386,7 +386,7 @@
                                         {:transform_id transform-id :name "id only" :inputs id-only
                                          :expectations expectations})))
           (is (not (t2/exists? :model/TransformTest :name "id only"))))
-        (testing "a saved test with such an input is refused when it runs, before any query"
+        (testing "a saved test with such an input is refused when it runs"
           (is (= "transform-test.missing-input-columns"
                  (:error-code (mt/user-http-request :crowberto :post 400 (str "ee/transform-test/" saved-id "/run"))))))
         (testing "control: an input declaring every column the transform reads is saved"

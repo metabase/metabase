@@ -5,6 +5,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as errors]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as validator]
    [metabase.driver :as driver])
   (:import
@@ -154,52 +155,82 @@
 
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 
-(defn- rows-input
-  "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names`."
-  [& column-names]
-  {:table   {:schema "PUBLIC" :name "PEOPLE"}
-   :format  :rows
-   :columns (mapv (fn [n] {:name n :cast_type "VARCHAR"}) column-names)
-   :rows    []})
-
 (def ^:private people-test
   "A test of a query that reads `ID` and `SOURCE` of `PUBLIC.PEOPLE`, which has the columns `ID`, `NAME` and
   `SOURCE`, with one expectation."
   (assoc complete-test
-         :expectations   [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
-         :columns-read   #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
-                           {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
-         :table-columns  {{:schema "PUBLIC" :name "PEOPLE"} #{"ID" "NAME" "SOURCE"}}
-         :ignore-case?   false))
+         :expectations    [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
+         :columns-read    #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
+                            {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
+         :metadata-tables [{:schema "PUBLIC" :name "PEOPLE" :columns #{"ID" "NAME" "SOURCE"}}]
+         :ignore-case?    false))
 
-(defn- refused
+(defn- validation-refusal
+  "The refusal of `validator/validate` on H2 with `args`, with its `:columns`, or nil."
   [args]
   (driver/the-initialized-driver :h2)
-  (try
-    (validator/validate :h2 args)
-    nil
-    (catch ExceptionInfo e
-      (assoc (select-keys (ex-data e) [:error-type :tables :columns]) :message (ex-message e)))))
+  (data-testing.test-util/refusal #(validator/validate :h2 args) :columns))
+
+(def ^:private people-rows-input data-testing.test-util/people-rows-input)
 
 (deftest missing-input-columns-test
   (testing "control: a rows input declaring every column the query reads is accepted"
-    (is (nil? (refused (assoc people-test :inputs [(rows-input "ID" "SOURCE")])))))
+    (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "ID" "SOURCE")])))))
   (testing "a rows input lacking a column the query reads is refused, naming the table and the column"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"PUBLIC.PEOPLE" ["SOURCE"]}
-             :message    #"(?s).*PUBLIC\.PEOPLE.*SOURCE.*"}
-            (refused (assoc people-test :inputs [(rows-input "ID" "NAME")])))))
-  (testing "on a database that keeps case, a name that differs only in case is missing, and the message says so"
+             :message    #"(?s).*PUBLIC\.PEOPLE: SOURCE.*"}
+            (validation-refusal (assoc people-test :inputs [(people-rows-input "ID" "NAME")])))))
+  (testing "on a database that keeps case, a name that differs only in case is missing; `columns` holds the table's
+            name, and the message gives the input's spelling"
     (is (=? {:error-type ::errors/missing-input-columns
-             :columns    {"PUBLIC.PEOPLE" ["ID (declared as id)"]}}
-            (refused (assoc people-test :inputs [(rows-input "id" "SOURCE")])))))
+             :columns    {"PUBLIC.PEOPLE" ["ID"]}
+             :message    #"(?s).*ID \(declared as id, which differs in case\).*"}
+            (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "SOURCE")])))))
   (testing "on a database that ignores case, a name that differs only in case is the column"
-    (is (nil? (refused (assoc people-test :inputs [(rows-input "id" "source")] :ignore-case? true)))))
+    (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "source")] :ignore-case? true)))))
   (testing "a column the table does not have in Metabase's metadata is not required"
-    (is (nil? (refused (-> people-test
-                           (assoc :inputs [(rows-input "ID" "SOURCE")])
-                           (update :columns-read conj {:schema "PUBLIC" :name "PEOPLE" :column "T"}))))))
+    (is (nil? (validation-refusal (-> people-test
+                                      (assoc :inputs [(people-rows-input "ID" "SOURCE")])
+                                      (update :columns-read conj {:schema "PUBLIC" :name "PEOPLE" :column "T"}))))))
   (testing "an input given as SQL declares no columns, so nothing is checked"
-    (is (nil? (refused (assoc people-test :inputs [(sql-input "PUBLIC" "PEOPLE")])))))
+    (is (nil? (validation-refusal (assoc people-test :inputs [(sql-input "PUBLIC" "PEOPLE")])))))
   (testing "with no columns read, as when the parser reports an error, nothing is checked"
-    (is (nil? (refused (assoc people-test :inputs [(rows-input "ID")] :columns-read nil))))))
+    (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "ID")] :columns-read nil))))))
+
+(def ^:private mixed-case-test
+  "A test on a database that keeps case, such as Postgres, of a query that reads `id` and `CreatedAt` of
+  `public.events`, which the parser reports lower-cased, as it does on every driver but H2."
+  (assoc complete-test
+         :inputs            []
+         :referenced-tables #{{:schema "public" :name "events"}}
+         :expectations      [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
+         :columns-read      #{{:schema "public" :name "events" :column "id"}
+                              {:schema "public" :name "events" :column "createdat"}}
+         :metadata-tables   [{:schema "public" :name "events" :columns #{"id" "CreatedAt"}}]
+         :default-schema    "public"
+         :ignore-case?      false))
+
+(defn- events-input
+  [& column-names]
+  (assoc (apply people-rows-input column-names) :table {:schema "public" :name "events"}))
+
+(deftest missing-input-columns-with-mixed-case-metadata-test
+  (testing "a column whose name has an upper-case letter is required, by the table's spelling"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"public.events" ["CreatedAt"]}}
+            (validation-refusal (assoc mixed-case-test :inputs [(events-input "id")])))))
+  (testing "control: an input that spells it as the table does is accepted"
+    (is (nil? (validation-refusal (assoc mixed-case-test :inputs [(events-input "id" "CreatedAt")])))))
+  (testing "a table with two columns that differ only in case: a column read that could be either is not required"
+    (is (nil? (validation-refusal (assoc mixed-case-test
+                                         :inputs          [(events-input "id" "Name")]
+                                         :columns-read    #{{:schema "public" :name "events" :column "id"}
+                                                            {:schema "public" :name "events" :column "name"}}
+                                         :metadata-tables [{:schema "public" :name "events"
+                                                            :columns #{"id" "Name" "name"}}])))))
+  (testing "an input that spells its table in another case is checked against that table"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"PUBLIC.Events" ["CreatedAt"]}}
+            (validation-refusal (assoc mixed-case-test
+                                       :inputs [(assoc (events-input "id") :table {:schema "PUBLIC" :name "Events"})]))))))

@@ -35,13 +35,13 @@
    [metabase-enterprise.data-testing.subject.card]
    [metabase-enterprise.data-testing.subject.segment]
    [metabase-enterprise.data-testing.subject.transform]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -214,26 +214,12 @@
                                (data-testing.validator/table-label (:table input)))
                           labels)))))
 
-(defmulti column-names-ignore-case?
-  "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
-  False unless a driver says otherwise."
-  {:arglists '([driver])}
-  identity
-  :hierarchy #'driver/hierarchy)
-
-(defmethod column-names-ignore-case? :default [_driver] false)
-
-;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
-;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on.
-(doseq [driver [:mysql :sqlserver :motherduck :redshift]]
-  (defmethod column-names-ignore-case? driver [_driver] true))
-
 (mu/defn- check-output-columns! :- :nil
   "Refuse the output `columns` of the query under test unless their names are distinct, as `driver` compares column
   names."
   [driver  :- :keyword
    columns :- [:sequential ::data-testing.schema/result-column]]
-  (let [same-name (if (column-names-ignore-case? driver) u/lower-case-en identity)]
+  (let [same-name (partial data-testing.u/column-key (data-testing.u/column-names-ignore-case? driver))]
     (when-let [repeated (seq (for [[_name [column-name & more]] (group-by same-name (map :name columns))
                                    :when (seq more)]
                                column-name))]
@@ -303,13 +289,9 @@
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
         rewritten      (data-testing.compile/rewrite-query driver compiled replacements)
-        table-columns  (into {}
-                             (comp (filter #(= :rows (:format %)))
-                                   (map :table)
-                                   (map (fn [{:keys [schema name] :as table}]
-                                          [table (data-testing.db/table-column-names
-                                                  (:id database) (or schema default-schema) name)])))
-                             inputs)]
+        metadata-tables (data-testing.db/tables-with-columns
+                         (:id database)
+                         (into #{} (comp (filter #(= :rows (:format %))) (map (comp :name :table))) inputs))]
     (data-testing.validator/validate
      driver
      {:inputs              inputs
@@ -320,8 +302,8 @@
       :output-token        output-token
       :default-schema      default-schema
       :columns-read        (data-testing.compile/columns-read driver (:query compiled))
-      :table-columns       table-columns
-      :ignore-case?        (column-names-ignore-case? driver)})
+      :metadata-tables     metadata-tables
+      :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
     {:driver       driver
      :database     database
      :input->table input->table

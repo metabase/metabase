@@ -8,10 +8,11 @@ summary: Breaking changes to the Metabase API, listed by release.
 ## Metabase 0.66.0
 
 - `POST /api/ee/transform-test`, `PUT /api/ee/transform-test/:id` and `POST /api/ee/transform-test/:id/run` refuse a
-  test whose input, given as rows, lacks a column that the transform's query reads, with `400` and the `error-code`
-  `transform-test.missing-input-columns`; the response's `columns` names the missing columns of each table. Such a test
-  could be saved before, and every run of it failed with `422` and `transform-test.query-failed`. On a database that
-  keeps the case of column names, a declared name that differs from the table's only in case is missing.
+  test whose input, given as rows, lacks a column that the transform's query reads from the input's table, with `400`
+  and the `error-code` `transform-test.missing-input-columns`; the response's `columns` names the missing columns of
+  each table. Such a test could be saved before, and every run of it failed with `422` and
+  `transform-test.query-failed`. Only the columns that the SQL parser places on one table are checked. On a database
+  that keeps the case of column names, a declared name that differs from the table's only in case is missing.
 
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in

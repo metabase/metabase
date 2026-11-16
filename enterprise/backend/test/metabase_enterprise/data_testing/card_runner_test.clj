@@ -115,16 +115,6 @@
                                      (t2/select-one :model/Card :id card-id)
                                      (t2/select-one :model/CardTest :id test-id)))))
 
-(defn- refusal
-  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      {:error-type (:error-type (ex-data e))
-       :message    (ex-message e)})))
-
 (defn- outcome!
   "The `:status` of the run of `card`'s test, or the `:error-type` of its refusal."
   [card inputs expectations]
@@ -161,9 +151,9 @@
 (deftest card-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run!   (fn [sql]
-                   (refusal #(run-card-test! (native-card (str sql " FROM " (qualified :people)))
-                                             [(people-input one-person)]
-                                             [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))
+                   (data-testing.test-util/refusal #(run-card-test! (native-card (str sql " FROM " (qualified :people)))
+                                                                    [(people-input one-person)]
+                                                                    [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))
           names? (fn [message] (boolean (re-find #"(?i)named: id\." message)))]
       (testing "a result with two columns of one name is refused, and the message names the column"
         (let [{:keys [error-type message]} (run! "SELECT id, id")]
@@ -264,10 +254,10 @@
                                          [by-category])))))
       (testing "an input with only the columns the card names cannot stand in for the joined table"
         (let [{:keys [error-type message]}
-              (refusal #(run-card-test! (category-count-card)
-                                        [orders-input {:table  (table-ref :products) :format :sql
-                                                       :sql    "SELECT 1 AS id, 'Widget' AS category"}]
-                                        [by-category]))]
+              (data-testing.test-util/refusal #(run-card-test! (category-count-card)
+                                                               [orders-input {:table  (table-ref :products) :format :sql
+                                                                              :sql    "SELECT 1 AS id, 'Widget' AS category"}]
+                                                               [by-category]))]
           (is (= ::data-testing.errors/query-failed error-type))
           (testing "and the message names a column the input lacks"
             (is (re-find #"(?i)ean|title|vendor|price|rating|created_at" message)))))
@@ -289,19 +279,19 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (testing "Guard A: a card reading a table with no input is refused, naming that table, and no run is recorded"
       (let [runs-before                  (card-run-ids)
-            {:keys [error-type message]} (refusal #(run-card-test! (category-count-card)
-                                                                   [(two-orders-of-product-1)]
-                                                                   [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
+            {:keys [error-type message]} (data-testing.test-util/refusal #(run-card-test! (category-count-card)
+                                                                                          [(two-orders-of-product-1)]
+                                                                                          [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
         (is (re-find (re-pattern (str "(?i)" (:name (table-ref :products)))) message))
         (is (= runs-before (card-run-ids)))))
     (testing "Guard B: an expectation reading a real table is refused"
       (is (= ::data-testing.errors/unremapped-reference
-             (:error-type (refusal #(run-card-test! (people-card)
-                                                    [(people-input one-person)]
-                                                    [{:type :empty :name "reads orders"
-                                                      :sql  (str "SELECT * FROM {{output}} o JOIN " (qualified :orders)
-                                                                 " r ON o.id = r.id")}]))))))))
+             (:error-type (data-testing.test-util/refusal #(run-card-test! (people-card)
+                                                                           [(people-input one-person)]
+                                                                           [{:type :empty :name "reads orders"
+                                                                             :sql  (str "SELECT * FROM {{output}} o JOIN " (qualified :orders)
+                                                                                        " r ON o.id = r.id")}]))))))))
 
 (deftest date-column-under-a-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -377,10 +367,10 @@
                                                                              (drop! driver conn table))]
         (testing "a card whose SQL fails on the warehouse is refused as `query-failed`"
           (is (= ::data-testing.errors/query-failed
-                 (:error-type (refusal #(run-card-test! (native-card (str "SELECT id, name, no_such_column FROM "
-                                                                          (qualified :people)))
-                                                        [(people-input one-person)]
-                                                        [{:type :empty :name "never reached" :sql "SELECT * FROM {{output}}"}]))))))
+                 (:error-type (data-testing.test-util/refusal #(run-card-test! (native-card (str "SELECT id, name, no_such_column FROM "
+                                                                                                 (qualified :people)))
+                                                                               [(people-input one-person)]
+                                                                               [{:type :empty :name "never reached" :sql "SELECT * FROM {{output}}"}]))))))
         (testing "every temp table the run created is dropped"
           (is (seq @created))
           (is (set/subset? @created @dropped)))))))

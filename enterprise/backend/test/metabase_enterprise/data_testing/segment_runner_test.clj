@@ -10,9 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,16 +52,6 @@
                                      (t2/select-one :model/Segment :id segment-id)
                                      (t2/select-one :model/SegmentTest :id test-id)))))
 
-(defn- refusal
-  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      {:error-type (:error-type (ex-data e))
-       :message    (ex-message e)})))
-
 (defn- outcomes
   "Each expectation of the run `result` by name: its status."
   [result]
@@ -97,9 +85,9 @@
 (deftest segment-output-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run! (fn [input]
-                 (refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
-                                              [input]
-                                              [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))]
+                 (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
+                                                                     [input]
+                                                                     [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))]
       (testing "an input given as rows need declare only the columns the test reads"
         (is (nil? (run! (people-rows three-people)))))
       (testing "an input given as SQL declares no columns, so the output reads every column of the table, and its SQL
@@ -122,13 +110,13 @@
                                                       :inputs       inputs
                                                       :expectations expectations}]
     (let [segment (t2/select-one :model/Segment :id segment-id)]
-      (if-let [{:keys [error-type]} (refusal #(data-testing.runner/validate-test :segment segment inputs expectations))]
+      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment inputs expectations))]
         {:refused error-type}
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (let [result (atom nil)]
             (if-let [{:keys [error-type message]}
-                     (refusal #(reset! result (data-testing.runner/run-test!
-                                               :segment segment (t2/select-one :model/SegmentTest :id test-id))))]
+                     (data-testing.test-util/refusal #(reset! result (data-testing.runner/run-test!
+                                                                      :segment segment (t2/select-one :model/SegmentTest :id test-id))))]
               {:run-refused error-type :message message}
               {:status (:status @result)})))))))
 
@@ -178,7 +166,7 @@
       (testing "control: with every products column declared, the test runs and finds the one Gizmo order"
         (is (= {:status :passed}
                (validated-outcome! (gizmo-orders) [orders (products every-product-column)] one-order))))
-      (testing "with only the products columns the filter reads declared, the test is refused when saved or it runs"
+      (testing "with only the products columns the filter reads declared, the test is refused when saved, or else it runs to a result"
         (let [outcome (validated-outcome! (gizmo-orders) [orders (products [product-pk category])] one-order)]
           (is (runs-once-accepted? outcome) (pr-str outcome)))))))
 
@@ -198,13 +186,13 @@
           none                 [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}]]
       (testing "control: an input declaring the filter's column, spelled as the warehouse spells it, runs"
         (is (= {:status :passed} (validated-outcome! (data-testing.test-util/from-google-segment) [(input id int-type source text-type)] none))))
-      (testing "an input that does not declare the filter's column is refused when saved or it runs"
+      (testing "an input that does not declare the filter's column is refused when saved, or else it runs to a result"
         (let [outcome (validated-outcome! (data-testing.test-util/from-google-segment) [(input id int-type (field-name :name) text-type)] none)]
           (is (runs-once-accepted? outcome) (pr-str outcome))))
-      (testing "an input that names no column of the table is refused when saved or it runs"
+      (testing "an input that names no column of the table is refused when saved, or else it runs to a result"
         (let [outcome (validated-outcome! (data-testing.test-util/from-google-segment) [(input "NOT_A_COLUMN" int-type)] none)]
           (is (runs-once-accepted? outcome) (pr-str outcome))))
-      (testing "an input whose column names match the table's only when case is ignored is refused when saved or it runs"
+      (testing "an input whose column names match the table's only when case is ignored is refused when saved, or else it runs to a result"
         (let [outcome (validated-outcome! (data-testing.test-util/from-google-segment)
                                           [(input (other-case id) int-type (other-case source) text-type)]
                                           none)]
@@ -213,20 +201,20 @@
 (deftest segment-guards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (testing "Guard A: a segment test without an input for the segment's table is refused, naming it"
-      (let [{:keys [error-type message]} (refusal #(run-segment-test!
-                                                    (data-testing.test-util/from-google-segment)
-                                                    []
-                                                    [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
+      (let [{:keys [error-type message]} (data-testing.test-util/refusal #(run-segment-test!
+                                                                           (data-testing.test-util/from-google-segment)
+                                                                           []
+                                                                           [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
         (is (re-find (re-pattern (str "(?i)" (:name (table-ref :people)))) message))))
     (testing "Guard B: an expectation reading a real table is refused"
       (let [{schema :schema table :name} (table-ref :orders)]
         (is (= ::data-testing.errors/unremapped-reference
-               (:error-type (refusal #(run-segment-test!
-                                       (data-testing.test-util/from-google-segment)
-                                       [(people-rows three-people)]
-                                       [{:type :empty :name "reads orders"
-                                         :sql  (str "SELECT * FROM {{output}} o JOIN " schema "." table " r ON 1 = 1")}])))))))))
+               (:error-type (data-testing.test-util/refusal #(run-segment-test!
+                                                              (data-testing.test-util/from-google-segment)
+                                                              [(people-rows three-people)]
+                                                              [{:type :empty :name "reads orders"
+                                                                :sql  (str "SELECT * FROM {{output}} o JOIN " schema "." table " r ON 1 = 1")}])))))))))
 
 (deftest segment-run-is-persisted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

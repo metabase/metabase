@@ -55,13 +55,15 @@
   refused. The test needs an input for the segment's table, and one for each table that the filter reads through a
   foreign key.
 
-  When the input for the segment's table gives rows, the output has the columns of the table that the input declares.
-  When that input declares none of the table's columns, or is SQL, the output has every column of the table.
+  The output has the columns of the segment's table that its input declares. When that input is SQL, the output has
+  every column of the table.
 
-  An input that gives rows must declare every column that the query under test reads from its table: for the
-  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A test
-  whose input lacks such a column is refused, naming the column. On a database that keeps the case of column names,
-  a declared name that differs from the table's only in case does not match it."
+  An input that gives rows must declare every column that the segment's query reads from the input's table: for the
+  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A rows
+  input for the segment's table that declares none of its columns is therefore refused. A test whose input lacks such
+  a column is refused, naming the table and the columns. The check covers only the columns that the SQL parser places
+  on one table; a test it accepts can still fail when it runs. On a database that keeps the case of column names, a
+  declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]

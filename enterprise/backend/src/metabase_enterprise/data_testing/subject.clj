@@ -91,14 +91,14 @@
        (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject (failure-message e) {} e))))))
 
 (mu/defn query-output-plan :- ::subject-plan
-  "The plan of a subject whose output is the result of `compiled`, its query, on `database`, which messages name
-  `label`. Expectation SQL names that result `{{output}}`."
+  "The plan of a subject that messages name `label`, whose output is the result of `compiled`, its compiled query, run
+  on `database`. Expectation SQL names that result `{{output}}`."
   [database :- ::lib.schema.metadata/database
    compiled :- ::data-testing.compile/compiled-query
    label    :- :string]
   {:database      database
    :compiled      compiled
-   ;; The subject has no table of its own, so expectation SQL names its result by the token, which
+   ;; The output is no table in the database, so expectation SQL names it by the token, which
    ;; [[data-testing.compile/replace-tables]] turns into this reserved name.
    :output-tables [{:schema nil :name data-testing.compile/output-name}]
    :output-token  output-token

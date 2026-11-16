@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -275,15 +276,28 @@
     (t2/select :model/Transform :id [:in transform-ids])
     []))
 
-(mu/defn table-column-names :- [:set :string]
-  "The names of the active Fields of the active Table `table-name` in `schema` of the Database with `database-id`, or
-  an empty set when there is no such Table."
+(mu/defn tables-with-columns :- [:sequential [:map {:closed true}
+                                              [:schema  [:maybe :string]]
+                                              [:name    :string]
+                                              [:columns [:set :string]]]]
+  "The active Tables of the Database with `database-id` whose name, case aside, is one of `table-names`, each with the
+  names of its active Fields."
   [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]
-   table-name  :- :string]
-  (if-let [table-id (t2/select-one-pk :model/Table :db_id database-id :schema schema :name table-name :active true)]
-    (t2/select-fn-set :name :model/Field :table_id table-id :active true)
-    #{}))
+   table-names :- [:set :string]]
+  (if (empty? table-names)
+    []
+    (let [tables (t2/select [:model/Table :id :schema :name]
+                            {:where [:and
+                                     [:= :db_id database-id]
+                                     [:= :active true]
+                                     [:in [:lower :name] (mapv u/lower-case-en table-names)]]})
+          fields (when (seq tables)
+                   (group-by :table_id (t2/select [:model/Field :table_id :name]
+                                                  :table_id [:in (mapv :id tables)]
+                                                  :active true)))]
+      (mapv (fn [{:keys [id schema name]}]
+              {:schema schema :name name :columns (into #{} (map :name) (get fields id))})
+            tables))))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

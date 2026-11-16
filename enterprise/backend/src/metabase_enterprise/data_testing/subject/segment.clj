@@ -14,10 +14,12 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- with-declared-columns :- ::lib.schema/query
-  "`definition` selecting only the columns of its table that the `:rows` input for that table declares, by name, case
-  aside. Unchanged, so selecting every column, when there is no such input or it declares none of the table's columns."
+  "`definition` selecting only the columns of its table that the `:rows` input for that table declares, names compared
+  as `driver` compares column names. Unchanged, so selecting every column, when there is no such input or it declares
+  none of the table's columns."
   [definition     :- ::lib.schema/query
    inputs         :- ::data-testing.schema/inputs
+   driver         :- :keyword
    default-schema :- [:maybe :string]]
   (let [{:keys [schema name]} (lib.metadata/table definition (lib/primary-source-table-id definition))
         input                 (some #(when (and (= :rows (:format %))
@@ -25,8 +27,9 @@
                                                  {:schema schema :name name} (:table %) default-schema))
                                        %)
                                     inputs)
-        declared              (into #{} (map (comp data-testing.u/fold-identifier :name)) (:columns input))
-        columns               (filterv #(contains? declared (data-testing.u/fold-identifier (:name %)))
+        column-key            (partial data-testing.u/column-key (data-testing.u/column-names-ignore-case? driver))
+        declared              (into #{} (map (comp column-key :name)) (:columns input))
+        columns               (filterv #(contains? declared (column-key (:name %)))
                                        (lib/returned-columns definition))]
     (cond-> definition
       (seq columns) (lib/with-fields columns))))
@@ -40,5 +43,5 @@
      database
      ;; A segment names no columns, so its query alone would select every column of its table, and an input would
      ;; have to declare them all.
-     (data-testing.subject/compile-query (with-declared-columns definition inputs (:default-schema database)))
+     (data-testing.subject/compile-query (with-declared-columns definition inputs (keyword (:engine database)) (:default-schema database)))
      segment-name)))

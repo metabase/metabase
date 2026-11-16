@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -38,14 +39,6 @@
   [plan]
   (set (map second (re-seq #"AS \"([^\"]+)\"" (get-in plan [:compiled :query])))))
 
-(defn- rows-input
-  "An input standing in for the people table, declaring `column-names`, with no rows."
-  [& column-names]
-  {:table   {:schema "PUBLIC" :name "PEOPLE"}
-   :format  :rows
-   :columns (mapv (fn [column-name] {:name column-name :cast_type "VARCHAR"}) column-names)
-   :rows    []})
-
 (defn- plan-of
   "The subject plan of the saved Segment `segment-id` for a test with `inputs`."
   [segment-id inputs]
@@ -56,7 +49,7 @@
     (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                     :name       "From Google"
                                                     :definition (:definition (data-testing.test-util/from-google-segment))}]
-      (let [plan (plan-of segment-id [(rows-input "ID" "SOURCE")])]
+      (let [plan (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])]
         (testing "a segment runs on its table's database"
           (is (= (mt/id) (get-in plan [:database :id]))))
         (testing "its compiled SQL reads its table and keeps its filter"
@@ -76,11 +69,14 @@
       (testing "premise: the people table has more columns than the input declares"
         (is (< 2 (count (people-columns)))))
       (testing "the output has the columns the input declares for the segment's table"
-        (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(rows-input "ID" "SOURCE")])))))
-      (testing "column names match whatever their case"
-        (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(rows-input "id" "Source")])))))
+        (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])))))
+      (testing "on a database that keeps case, such as H2, a declared name that differs only in case is another column"
+        (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "Source")])))))
+      (testing "on a database that ignores case, it is the column"
+        (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
+          (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")]))))))
       (testing "a declared column the table lacks adds nothing"
-        (is (= #{"ID"} (selected-columns (plan-of segment-id [(rows-input "ID" "NOT_A_COLUMN")]))))))))
+        (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "NOT_A_COLUMN")]))))))))
 
 (deftest segment-output-has-every-column-without-declared-columns-test
   (mt/test-driver :h2
@@ -93,7 +89,7 @@
                                                        :format :sql
                                                        :sql    "SELECT 1 AS ID"}])))))
       (testing "an input that declares no column of the table leaves every column"
-        (is (= (people-columns) (selected-columns (plan-of segment-id [(rows-input "NOT_A_COLUMN")])))))
+        (is (= (people-columns) (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "NOT_A_COLUMN")])))))
       (testing "with no input for the table, every column"
         (is (= (people-columns) (selected-columns (plan-of segment-id []))))))))
 
@@ -109,7 +105,7 @@
                                                       :definition (-> query
                                                                       (lib/filter (lib.metadata/segment mp inner-id))
                                                                       (lib/filter (lib/> (people-column query :id) 10)))}]
-          (let [{{sql :query params :params} :compiled} (plan-of outer-id [(rows-input "ID" "SOURCE")])]
+          (let [{{sql :query params :params} :compiled} (plan-of outer-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])]
             (testing "the inner segment's filter is expanded into the compiled SQL, beside the outer one's"
               (is (= ["Google"] (vec params)))
               (is (re-find #"\"SOURCE\" = \?" sql) sql)
@@ -118,7 +114,7 @@
 (defn- table-rows-input
   "An input standing in for the `PUBLIC` table `table-name`, declaring `column-names`, with no rows."
   [table-name & column-names]
-  (assoc (apply rows-input column-names) :table {:schema "PUBLIC" :name table-name}))
+  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "PUBLIC" :name table-name}))
 
 (defn- outer-selected-columns
   "The column aliases the outermost SELECT list of the compiled SQL of `plan` selects."
@@ -148,16 +144,6 @@
             (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [orders-input products-input]))))
             (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [products-input orders-input]))))))))))
 
-(defn- refusal
-  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      {:error-type (:error-type (ex-data e))
-       :message    (ex-message e)})))
-
 (deftest segment-whose-definition-cannot-compile-is-refused-test
   (mt/test-driver :h2
     (let [query (people-query)]
@@ -172,9 +158,9 @@
                                                       :name       "From Google"
                                                       :definition (:definition (data-testing.test-util/from-google-segment))}]
         (testing "control: a segment whose fields exist compiles"
-          (is (nil? (refusal #(plan-of control-id [])))))
+          (is (nil? (data-testing.test-util/refusal #(plan-of control-id [])))))
         (testing "a segment whose definition names a field that does not exist is refused as uncompilable"
-          (let [{:keys [error-type message]} (refusal #(plan-of segment-id []))]
+          (let [{:keys [error-type message]} (data-testing.test-util/refusal #(plan-of segment-id []))]
             (is (= ::data-testing.errors/uncompilable-subject error-type))
             (is (re-find #"^The query under test could not be compiled to SQL: " (str message)) message)))))))
 
