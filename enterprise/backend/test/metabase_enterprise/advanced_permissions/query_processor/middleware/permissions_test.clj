@@ -106,6 +106,13 @@
           (testing "If the query does not reference the table, a limit is not added"
             (is (nil? (download-limit (mbql-download-query 'checkins))))))))))
 
+(deftest apply-download-limit-no-current-user-test
+  (testing (str "A public/embed MBQL download, which has no bound current user, is not row-limited even when "
+                "the All Users group has limited download perms -- no user bound means full download perms, "
+                "same as check-download-permissions already treats it (metabase#79779)")
+    (with-download-perms-for-db! (mt/id) :limited
+      (is (nil? (download-limit (mbql-download-query)))))))
+
 ;; Inspired by the similar middleware wrapper [[metabase.query-processor.middleware.limit-test/limit]]
 (defn- limit-download-result-rows [query]
   (let [rff (ee.qp.perms/limit-download-result-rows query qp.reducible/default-rff)
@@ -124,6 +131,14 @@
         (testing "The number of rows in a native query result is not limited if the user has full download permissions"
           (is (= (inc limited-download-max-rows)
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
+
+(deftest limit-download-result-rows-no-current-user-test
+  (testing (str "A query run with no bound current user (e.g. a public/embed download) is not row-limited, and "
+                "does not throw looking up permissions for a nil user id (metabase#79779)")
+    (let [limited-download-max-rows @#'ee.qp.perms/max-rows-in-limited-downloads]
+      (with-download-perms-for-db! (mt/id) :limited
+        (is (= (inc limited-download-max-rows)
+               (-> (native-download-query) limit-download-result-rows mt/rows count)))))))
 
 (defn- check-download-permissions [query]
   (let [qp (ee.qp.perms/check-download-permissions
