@@ -2168,6 +2168,52 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
     H.getDashboardCard(2).findByText("column value: 111").click();
     cy.location("pathname").should("eq", "/foo/111/param-value");
   });
+
+  it("should keep click behavior after resetting chart settings, saving and reloading (metabase#14919)", () => {
+    const LINK_NAME = "Home";
+    const CUSTOM_COLUMN_TITLE = "Custom category";
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "14919",
+        query: { "source-table": SAMPLE_DATABASE.PRODUCTS_ID },
+      },
+      cardDetails: {
+        visualization_settings: {
+          column_settings: {
+            '["name","CATEGORY"]': {
+              column_title: CUSTOM_COLUMN_TITLE,
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: "/",
+                linkTextTemplate: LINK_NAME,
+              },
+            },
+          },
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.getDashboardCard()
+      .findByRole("columnheader", { name: CUSTOM_COLUMN_TITLE })
+      .should("be.visible");
+    H.editDashboard();
+    H.showDashcardVisualizationSettings();
+    H.modal().within(() => {
+      cy.findByRole("button", { name: "Reset to defaults" }).click();
+      cy.findByRole("button", { name: "Done", exact: true }).click();
+    });
+    H.saveDashboard();
+    cy.reload();
+
+    H.getDashboardCard()
+      .findByRole("columnheader", { name: "Category", exact: true })
+      .should("be.visible");
+    H.getDashboardCard().findAllByText(LINK_NAME).should("be.visible");
+  });
 });
 
 const clickLineChartPoint = ({ dashcardIndex } = {}) => {
