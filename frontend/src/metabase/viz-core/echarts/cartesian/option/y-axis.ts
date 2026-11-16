@@ -1,13 +1,20 @@
 import type { YAXisOption } from "echarts/types/dist/shared";
+import { match } from "ts-pattern";
 
 import { isNotNull } from "metabase/utils/types";
+import type { ColumnSettings } from "metabase-types/api";
 
 import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ChartLayout } from "../layout/types";
 import type { BaseCartesianChartModel, YAxisModel } from "../model/types";
 
 import { getGoalLineValue } from "./goal-line";
-import { getResponsiveYAxisTicks } from "./y-axis-ticks";
+import {
+  type ValueAxisOption,
+  getDurationYAxisTicks,
+  getResponsiveDurationYAxisTicks,
+  getResponsiveYAxisTicks,
+} from "./y-axis-ticks";
 
 type ChartAxisModels = Pick<
   BaseCartesianChartModel,
@@ -56,16 +63,63 @@ function getAxisExtent(
   return [min, max];
 }
 
-export function applyResponsiveYAxisTicks(
+function isDurationAxis(
+  axisModel: YAxisModel,
+  columnSettings: ColumnSettings,
+  settings: ComputedVisualizationSettings,
+) {
+  return (
+    !axisModel.isNormalized &&
+    settings["graph.y_axis.scale"] === "linear" &&
+    columnSettings.number_style === "duration"
+  );
+}
+
+function isResponsiveAxis(
+  axisModel: YAxisModel,
+  settings: ComputedVisualizationSettings,
+) {
+  const hasCustomSplitNumber = settings["graph.y_axis.split_number"] > 0;
+  return axisModel.hasResponsiveTicks === true && !hasCustomSplitNumber;
+}
+
+function getYAxisTicks(
+  axis: ValueAxisOption,
+  axisModel: YAxisModel,
+  extent: Extent,
+  height: number,
+  settings: ComputedVisualizationSettings,
+): YAXisOption {
+  const columnSettings = settings.column?.(axisModel.column) ?? {};
+
+  return match({
+    isDuration: isDurationAxis(axisModel, columnSettings, settings),
+    isResponsive: isResponsiveAxis(axisModel, settings),
+  })
+    .with({ isDuration: true, isResponsive: true }, () =>
+      getResponsiveDurationYAxisTicks(extent, axis, height, columnSettings),
+    )
+    .with({ isDuration: true, isResponsive: false }, () =>
+      getDurationYAxisTicks(
+        extent,
+        axis,
+        axisModel.splitNumber,
+        columnSettings,
+      ),
+    )
+    .with({ isDuration: false, isResponsive: true }, () =>
+      getResponsiveYAxisTicks(extent, axis, height),
+    )
+    .with({ isDuration: false, isResponsive: false }, () => axis)
+    .exhaustive();
+}
+
+export function applyYAxisTicks(
   axes: YAXisOption[],
   chartModel: ChartAxisModels,
   chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
 ): YAXisOption[] {
-  if (settings["graph.y_axis.split_number"] > 0) {
-    return axes;
-  }
-
   const isSplitPanels = chartLayout.panelHeight != null;
   const axisModels = isSplitPanels
     ? (chartModel.splitPanelYAxisModels ?? [])
@@ -78,7 +132,7 @@ export function applyResponsiveYAxisTicks(
 
   return axes.map((axis, index) => {
     const axisModel = axisModels[index];
-    if (!axisModel?.hasResponsiveTicks || axis.type !== "value") {
+    if (axisModel == null || axis.type !== "value") {
       return axis;
     }
     const extent = getAxisExtent(
@@ -87,6 +141,6 @@ export function applyResponsiveYAxisTicks(
       settings,
       isSplitPanels || index === 0,
     );
-    return getResponsiveYAxisTicks(extent, axis, height);
+    return getYAxisTicks(axis, axisModel, extent, height, settings);
   });
 }

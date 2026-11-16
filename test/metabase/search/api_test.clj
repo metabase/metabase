@@ -1781,6 +1781,31 @@
                 :type            nil}
                (-> result :data first :collection)))))))
 
+(deftest official-collection-search-result-authority-level-test
+  (testing "Collection search results carry their own official authority level, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            (str search-name "-collection")
+                                                      :authority_level "official"}]
+        (is (=? [{:id                         coll-id
+                  :collection_authority_level "official"}]
+                (:data (mt/user-http-request :crowberto :get 200 "search"
+                                             :q search-name :models ["collection"]))))))))
+
+(deftest official-collection-item-search-result-authority-level-test
+  (testing "Card and dashboard search results carry the official authority level of their collection, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            "Official parent"
+                                                      :authority_level "official"}
+                     :model/Card      {card-id :id} {:name          (str search-name "-card")
+                                                     :collection_id coll-id}
+                     :model/Dashboard {dash-id :id} {:name          (str search-name "-dashboard")
+                                                     :collection_id coll-id}]
+        (let [results (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                   :q search-name :models ["card" "dashboard"]))]
+          (is (=? {"card"      [{:id card-id :collection {:id coll-id :authority_level "official"}}]
+                   "dashboard" [{:id dash-id :collection {:id coll-id :authority_level "official"}}]}
+                  (group-by :model results))))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it

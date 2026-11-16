@@ -96,9 +96,27 @@
                      :number_style
                      :number_separators
                      :currency_position
+                     :duration_unit
+                     :duration_style
+                     :duration_precision
                      :scale
                      :prefix
                      :suffix)))))
+
+(def ^:private duration-format-strings
+  "Format strings for duration columns by style and precision."
+  {"digital" {"minute"      "[h]:mm"
+              "second"      "[h]:mm:ss"
+              "millisecond" "[h]:mm:ss.000"}
+   "narrow"  {"minute"      "[h]\"h \"m\"m\""
+              "second"      "[h]\"h \"m\"m \"s\"s\""
+              "millisecond" "[h]\"h \"m\"m \"s.000\"s\""}})
+
+(defn- duration-format-string
+  "Returns the format string for a duration column, whose cells hold the duration in days."
+  [{duration-style :duration_style, duration-precision :duration_precision}]
+  (let [by-precision (get duration-format-strings duration-style (duration-format-strings "digital"))]
+    (get by-precision duration-precision (by-precision "second"))))
 
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
@@ -129,6 +147,9 @@
 
             "decimal"
             base-strings
+
+            "duration"
+            (repeat 2 (duration-format-string format-settings))
 
             (if (and (= number-style "currency")
                      (false? currency-in-header))
@@ -473,6 +494,34 @@
         new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
     (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
 
+(defn- duration-cell-value
+  "Returns a duration as a number of days, or as text when it is negative, which Excel cannot show as a time."
+  [value {duration-unit      :duration_unit
+          duration-style     :duration_style
+          duration-precision :duration_precision
+          number-separators  :number_separators
+          :keys              [prefix suffix]}]
+  (let [days               (formatter/duration-days value duration-unit duration-precision)
+        [decimal grouping] (or number-separators ".,")]
+    (if (neg? days)
+      (str prefix
+           (formatter/format-duration value {:unit      duration-unit
+                                             :style     duration-style
+                                             :precision duration-precision
+                                             :decimal   decimal
+                                             :grouping  grouping})
+           suffix)
+      days)))
+
+(defn- cell-value
+  "Returns the value to write to a cell: numbers are scaled, and durations in formatted cells are converted for Excel."
+  [value {scale :scale, number-style :number_style, :as settings} styles]
+  (cond
+    (not (number? value))                    value
+    (and styles (= number-style "duration")) (duration-cell-value (* value (or scale 1)) settings)
+    scale                                    (* value scale)
+    :else                                    value))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -503,9 +552,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (:scale settings))
-                              (* value (:scale settings))
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -535,9 +582,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (:scale settings))
-                              (* value (:scale settings))
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -562,9 +607,7 @@
                  :col   {}})
               ^Cell cell   (.createCell excel-row ^Integer col-idx)
               settings     (streaming.common/viz-settings-for-col col viz-settings)
-              scaled-val   (if (and (number? value) (:scale settings))
-                             (* value (:scale settings))
-                             value)
+              scaled-val   (cell-value value settings styles)
               parsed-value (or (maybe-parse-temporal-value value col)
                                (maybe-parse-coordinate-value value col)
                                scaled-val)]
