@@ -146,17 +146,18 @@
   of the workspace's databases is not `:provisioned`; retry later. 422 if a
   database's connection settings need an admin to fix them, or if any emitted
   value contains `{{` or `[[`; retrying does not help.
-  A scoped credential (an `mb:workspace-manager` API key or token) gets the config
-  without the parent databases' SSH tunnel secrets."
+  A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any
+  of the workspace's databases uses an SSH tunnel, because the config would need the
+  parent's tunnel secrets; an unscoped admin credential gets them."
   {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
    {:keys [token-scopes]}]
   (api/write-check :model/Workspace id)
-  (let [scoped? (and (seq token-scopes) (not (contains? token-scopes ::scope/unrestricted)))
-        config  (cond-> (api/check-404 (ws.config/build-workspace-config id))
-                  scoped? ws.config/drop-tunnel-secrets)]
+  (let [config (api/check-404 (ws.config/build-workspace-config id))]
+    (when (and (seq token-scopes) (not (contains? token-scopes ::scope/unrestricted)))
+      (ws.config/check-no-tunnelled-databases id))
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}

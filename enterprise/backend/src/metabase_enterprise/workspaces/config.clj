@@ -456,17 +456,25 @@
                     :workspace {:name      (:name ws)
                                 :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
 
-(def ^:private tunnel-secret-keys
-  "The SSH tunnel secrets in a database's `:details`."
-  [:tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase])
-
-(defn drop-tunnel-secrets
-  "`config`, a [[build-workspace-config]] map, without the SSH tunnel secrets in each database's `:details`. The tunnel
-  host and user stay. For a download by an `mb:workspace-manager` credential: the scope does not let it read the
-  parent database, so its config must not carry the parent's tunnel credential either."
-  [config]
-  (update-in config [:config :databases]
-             (fn [dbs] (mapv #(update % :details (fn [details] (apply dissoc details tunnel-secret-keys))) dbs))))
+(defn check-no-tunnelled-databases
+  "Throw a 422 naming the first database of workspace `workspace-id` whose SSH tunnel is on. A config download by a
+  credential with the `mb:workspace-manager` scope must not carry the parent's tunnel secrets, and a tunnel without them
+  cannot authenticate, so such a download is refused."
+  [workspace-id]
+  (when-let [db (some->> (workspace/get-workspace workspace-id)
+                         :databases
+                         (mapv :database_id)
+                         not-empty
+                         ws.db/databases
+                         (filter (comp :tunnel-enabled :details))
+                         first)]
+    (throw (ex-info (format (str "Database %s uses an SSH tunnel. A credential with the mb:workspace-manager scope "
+                                 "cannot download the config of a workspace with a tunnelled database, because the "
+                                 "config would need the parent's tunnel secrets. Download it with an unscoped admin "
+                                 "credential, or remove the database from the workspace.")
+                            (pr-str (:name db)))
+                    {:status-code 422
+                     :database_id (:id db)}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

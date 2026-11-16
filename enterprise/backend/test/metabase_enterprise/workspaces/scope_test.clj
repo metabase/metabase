@@ -75,25 +75,30 @@
             (testing path
               (is (client/client :get 200 path {:request-options {:headers {"x-api-key" full-key}}})))))))))
 
+(defn- do-with-workspace-manager-oauth-token!
+  "Call `f` with the request options of an OAuth bearer token for crowberto that holds only `mb:workspace-manager`."
+  [f]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (mt/with-temp [:model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
+                                                              :redirect_uris     ["https://example.com/callback"]
+                                                              :grant_types       ["authorization_code"]
+                                                              :response_types    ["code"]
+                                                              :scopes            ["mb:workspace-manager"]
+                                                              :registration_type "static"}]
+      (let [token (str "scope-test-" (random-uuid))]
+        ;; through the provider's store, which hashes tokens at rest
+        (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
+                                      (str (mt/user->id :crowberto)) client-id
+                                      [api-scope.workspace-manager/workspace-manager]
+                                      (+ (System/currentTimeMillis) (* 60 60 1000)) nil)
+        (try
+          (f {:headers {"authorization" (str "Bearer " token)}})
+          (finally
+            (t2/delete! :model/OAuthAccessToken :client_id client-id)))))))
+
 (deftest workspace-manager-oauth-token-test
   (mt/with-premium-features #{:workspaces}
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (mt/with-temp [:model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
-                                                                :redirect_uris     ["https://example.com/callback"]
-                                                                :grant_types       ["authorization_code"]
-                                                                :response_types    ["code"]
-                                                                :scopes            ["mb:workspace-manager"]
-                                                                :registration_type "static"}]
-        (let [token (str "scope-test-" (random-uuid))]
-          ;; through the provider's store, which hashes tokens at rest
-          (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
-                                        (str (mt/user->id :crowberto)) client-id
-                                        [api-scope.workspace-manager/workspace-manager]
-                                        (+ (System/currentTimeMillis) (* 60 60 1000)) nil)
-          (try
-            (reaches-only-workspace-routes {:headers {"authorization" (str "Bearer " token)}})
-            (finally
-              (t2/delete! :model/OAuthAccessToken :client_id client-id))))))))
+    (do-with-workspace-manager-oauth-token! reaches-only-workspace-routes)))
 
 (deftest workspace-manager-scope-description-names-the-config-download-test
   (testing "the consent text says the scope can download config files that hold database credentials"
@@ -101,53 +106,80 @@
       (is (str/includes? description "config"))
       (is (str/includes? description "credentials")))))
 
-(deftest workspace-manager-api-key-cannot-read-parent-tunnel-secrets-test
+(defn- do-with-config-download-credentials!
+  "Call `f` with a map of request options by credential: `:scoped-key` (an API key with scope `workspace-manager`),
+  `:oauth-token` (an OAuth token with `mb:workspace-manager`), and `:full-key` (an unscoped admin API key)."
+  [f]
+  (mt/with-model-cleanup [:model/ApiKey]
+    (let [create-key! (fn [body]
+                        (:unmasked_key (mt/user-http-request :crowberto :post 200 "api-key"
+                                                             (merge {:group_id (:id (perms-group/admin))} body))))
+          as-key      (fn [k] {:headers {"x-api-key" k}})
+          scoped-key  (create-key! {:name "CI workspaces", :scope "workspace-manager"})
+          full-key    (create-key! {:name "full admin"})]
+      (do-with-workspace-manager-oauth-token!
+       (fn [oauth-token]
+         (f {:scoped-key  (as-key scoped-key)
+             :oauth-token oauth-token
+             :full-key    (as-key full-key)}))))))
+
+(defn- download-config [expected-status ws-id request-options]
+  (client/client :get expected-status (str "ee/workspace-manager/" ws-id "/config")
+                 {:request-options request-options}))
+
+(deftest scoped-config-download-of-a-tunnelled-database-answers-422-test
   (mt/with-premium-features #{:workspaces}
-    (mt/with-model-cleanup [:model/ApiKey]
-      (mt/with-temp [:model/Database {db-id :id} {:name    "Tunnel DW"
-                                                  :engine  :postgres
-                                                  :details {:host                          "db.example"
-                                                            :port                          5432
-                                                            :tunnel-enabled                true
-                                                            :tunnel-host                   "bastion.example"
-                                                            :tunnel-user                   "tunnel"
-                                                            :tunnel-auth-option            "ssh-key"
-                                                            :tunnel-pass                   "PARENT-TUNNEL-PASSWORD"
-                                                            :tunnel-private-key            "PARENT-TUNNEL-PRIVATE-KEY"
-                                                            :tunnel-private-key-passphrase "PARENT-TUNNEL-PASSPHRASE"}}
-                     :model/Workspace {ws-id :id} {:name       "tunnel"
-                                                   :creator_id (mt/user->id :crowberto)}
-                     :model/WorkspaceDatabase _ {:workspace_id     ws-id
-                                                 :database_id      db-id
-                                                 :database_details {:user "ws_user" :password "ws-pass"}
-                                                 :output_namespace "ws_tunnel"
-                                                 :input_schemas    ["public"]
-                                                 :status           :provisioned}]
-        (let [{scoped-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
-                                                               {:group_id (:id (perms-group/admin))
-                                                                :name     "CI workspaces"
-                                                                :scope    "workspace-manager"})
-              {full-key :unmasked_key}   (mt/user-http-request :crowberto :post 200 "api-key"
-                                                               {:group_id (:id (perms-group/admin))
-                                                                :name     "full admin"})
-              as-key                     (fn [k] {:request-options {:headers {"x-api-key" k}}})
-              config-body                (fn [k]
-                                           (str (client/client :get 200 (str "ee/workspace-manager/" ws-id "/config")
-                                                               (as-key k))))
-              secrets                    ["PARENT-TUNNEL-PASSWORD" "PARENT-TUNNEL-PRIVATE-KEY" "PARENT-TUNNEL-PASSPHRASE"]]
-          (testing "the scoped key cannot read the database"
-            (is (= "unsupported_scope"
-                   (:error (client/client :get 403 (str "database/" db-id) (as-key scoped-key))))))
-          (testing "the scoped key's config download keeps the tunnel host and drops the parent's tunnel secrets"
-            (let [body (config-body scoped-key)]
-              (is (str/includes? body "bastion.example"))
-              (is (str/includes? body "ws-pass"))
-              (doseq [secret secrets]
-                (testing secret
-                  (is (not (str/includes? body secret)))))))
-          (testing "an unscoped admin key's config download carries the private key and its passphrase"
-            (let [body (config-body full-key)]
-              (is (str/includes? body "PARENT-TUNNEL-PRIVATE-KEY"))
-              (is (str/includes? body "PARENT-TUNNEL-PASSPHRASE"))
-              (testing "and not the tunnel password, which the `ssh-key` auth option does not use"
-                (is (not (str/includes? body "PARENT-TUNNEL-PASSWORD")))))))))))
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Tunnel DW"
+                                                :engine  :postgres
+                                                :details {:host               "db.example"
+                                                          :port               5432
+                                                          :tunnel-enabled     true
+                                                          :tunnel-host        "bastion.example"
+                                                          :tunnel-user        "tunnel"
+                                                          :tunnel-auth-option "password"
+                                                          :tunnel-pass        "PARENT-TUNNEL-PASSWORD"}}
+                   :model/Workspace {ws-id :id} {:name       "tunnel"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {:user "ws_user" :password "ws-pass"}
+                                               :output_namespace "ws_tunnel"
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (do-with-config-download-credentials!
+       (fn [{:keys [scoped-key oauth-token full-key]}]
+         (testing "the scoped key cannot read the database"
+           (is (= "unsupported_scope"
+                  (:error (client/client :get 403 (str "database/" db-id) {:request-options scoped-key})))))
+         (doseq [[credential request-options] {"a scoped API key" scoped-key, "a scoped OAuth token" oauth-token}]
+           (testing (str "a config download with " credential " answers 422 and names the database")
+             (is (= (str "Database \"Tunnel DW\" uses an SSH tunnel. A credential with the mb:workspace-manager scope "
+                         "cannot download the config of a workspace with a tunnelled database, because the config "
+                         "would need the parent's tunnel secrets. Download it with an unscoped admin credential, or "
+                         "remove the database from the workspace.")
+                    (download-config 422 ws-id request-options)))))
+         (testing "an unscoped admin key's config download carries the tunnel password"
+           (let [body (str (download-config 200 ws-id full-key))]
+             (is (str/includes? body "bastion.example"))
+             (is (str/includes? body "PARENT-TUNNEL-PASSWORD")))))))))
+
+(deftest scoped-config-download-without-a-tunnelled-database-is-unchanged-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Plain DW"
+                                                :engine  :postgres
+                                                :details {:host "db.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "plain"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {:user "ws_user" :password "ws-pass"}
+                                               :output_namespace "ws_plain"
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (do-with-config-download-credentials!
+       (fn [{:keys [scoped-key oauth-token full-key]}]
+         (let [full-body (download-config 200 ws-id full-key)]
+           (is (str/includes? full-body "ws-pass"))
+           (doseq [[credential request-options] {"a scoped API key" scoped-key, "a scoped OAuth token" oauth-token}]
+             (testing (str "a config download with " credential " answers 200 with the unscoped admin's config")
+               (is (= full-body (download-config 200 ws-id request-options)))))))))))
