@@ -60,16 +60,28 @@
   (when-let [f @shadow-difference-recorder]
     (f difference)))
 
+(defn- shadow-parser
+  "The shadow parser that answers with `primary-backend` and compares with `shadow-backend`, or the
+  `primary-backend` parser alone when the shadow parser cannot start."
+  [primary-backend shadow-backend]
+  (let [primary (base-parser primary-backend)]
+    (try
+      (shadow/parser {:primary-backend    primary-backend
+                      :primary            primary
+                      :shadow-backend     shadow-backend
+                      :shadow             (base-parser shadow-backend)
+                      :sample?            sample?
+                      :record-difference! record-shadow-difference!})
+      (catch Throwable e
+        (log/warnf "Could not start the %s SQL parser, so %s answers with no shadow comparisons: %s"
+                   (name shadow-backend) (name primary-backend) (.getName (class e)))
+        primary))))
+
 (def ^:private shadow-parsers
   "One parser per shadow backend for the life of the process: each owns the thread pool its comparisons run on."
   (update-vals shadow-backends
                (fn [[primary-backend shadow-backend]]
-                 (delay (shadow/parser {:primary-backend    primary-backend
-                                        :primary            (base-parser primary-backend)
-                                        :shadow-backend     shadow-backend
-                                        :shadow             (base-parser shadow-backend)
-                                        :sample?            sample?
-                                        :record-difference! record-shadow-difference!})))))
+                 (delay (shadow-parser primary-backend shadow-backend)))))
 
 (def backends
   "Every backend name [[parser]] accepts."

@@ -207,14 +207,16 @@
 
 (defn- schedule-comparison!
   "Queue the comparison of the call `call-info` on the background thread pool, or count it as dropped when the pool
-  is full."
+  is full or cannot start a thread."
   [{:keys [shadow-backend ^ThreadPoolExecutor executor ^AtomicLong in-flight] :as ctx}
    {:keys [method dialect] :as call-info}]
   (.incrementAndGet in-flight)
   (try
     (.execute executor ^Runnable #(compare! ctx call-info))
-    (catch RejectedExecutionException _
+    (catch Throwable e
       (.decrementAndGet in-flight)
+      (when-not (instance? RejectedExecutionException e)
+        (log/debugf "Could not start a shadow parser comparison: %s" (.getName (class e))))
       (quietly #(record-comparison! method dialect :dropped))))
   (quietly #(record-in-flight! shadow-backend in-flight)))
 

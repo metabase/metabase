@@ -226,3 +226,15 @@
       (testing "a list past the ceiling comes back unchecked, not stripped and vouched for"
         (is (= {:verdict :unknown, :reason "large-literal-list", :sql over}
                (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) "postgres" over "read")))))))
+
+;;; ------------------------------------------------ shadow backends -----------------------------------------------
+
+(deftest shadow-parser-that-cannot-start-answers-with-the-primary-test
+  (testing "a shadow parser that cannot start leaves the primary parser to answer alone"
+    (let [base-parser @#'sql-parsing/base-parser]
+      (with-redefs [sql-parsing/base-parser (fn [backend]
+                                              (if (= :sqlglot backend)
+                                                (throw (NoClassDefFoundError. "org/graalvm/polyglot/Context"))
+                                                (base-parser backend)))]
+        (let [parser (#'sql-parsing/shadow-parser :sqlglot-java :sqlglot)]
+          (is (= [[nil nil "t"]] (sql-parsing/referenced-tables parser "postgres" "select a from t"))))))))

@@ -4,7 +4,9 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.shadow :as shadow]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util.concurrent ArrayBlockingQueue ThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -337,3 +339,16 @@
       (wait-for-comparisons system "referenced-tables" 5)
       (Thread/sleep 50)
       (is (zero? (mt/metric-value system :metabase-sql-parsing/shadow-in-flight {:parser "sqlglot-java"}))))))
+
+(deftest thread-start-failure-answers-with-the-primary-test
+  (testing "a comparison whose thread cannot start is dropped, and the caller gets the primary's value"
+    (mt/with-prometheus-system! [_ system]
+      (let [parser (with-redefs [shadow/executor (fn []
+                                                   (proxy [ThreadPoolExecutor] [1 1 60 TimeUnit/SECONDS
+                                                                                (ArrayBlockingQueue. 1)]
+                                                     (execute [_]
+                                                       (throw (OutOfMemoryError. "unable to create native thread")))))]
+                     (shadow-parser (stub-parser (fn [_ _] [[nil nil "t"]])) (stub-parser (fn [_ _] []))))]
+        (is (= [[nil nil "t"]] (protocol/referenced-tables parser "postgres" "sql")))
+        (is (== 1 (comparisons system "referenced-tables" "dropped")))
+        (is (zero? (mt/metric-value system :metabase-sql-parsing/shadow-in-flight {:parser "sqlglot-java"})))))))
