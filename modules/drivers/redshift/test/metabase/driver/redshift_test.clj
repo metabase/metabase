@@ -1213,6 +1213,36 @@
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" (:schema workspace)))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))))
 
+(deftest ^:synchronized workspace-init-refuses-non-superuser-login-live-test
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          login      (str "ws_plain_admin_" suffix)
+          password   "Pwd_ws_plain_1!"
+          workspace  {:id (rand-int Integer/MAX_VALUE), :name (str "wsd-plain-admin-" suffix)}
+          workspace  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+          iso-user   (-> workspace :database_details :user)]
+      (try
+        (execute! "CREATE USER \"%s\" WITH PASSWORD '%s'" login password)
+        (mt/with-temp [:model/Database database {:engine  :redshift
+                                                 :details (assoc (tx/dbdef->connection-details :redshift)
+                                                                 :user login :password password)}]
+          (let [error (try
+                        (driver/init-workspace-isolation! :redshift database workspace)
+                        nil
+                        (catch clojure.lang.ExceptionInfo e
+                          e))]
+            (testing "init refuses an admin login that is not a superuser with a 412 that needs no teardown"
+              (is (=? {:status-code 412, :workspace/cleanup? false} (ex-data error)))
+              (is (re-find #"need a superuser admin login" (str (ex-message error)))))
+            (testing "and leaves no workspace user and no workspace schema"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user])))
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_namespace WHERE nspname = ?" (:schema workspace)]))))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" (:schema workspace)))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" login)))))))
+
 (deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
   ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
   ;; privilege on some object` when the iso-user holds a schema-level USAGE
@@ -1302,13 +1332,18 @@
                         (run)))]
      {:log @log, :error error})))
 
+(def ^:private usesuper-query
+  "SELECT usesuper FROM pg_user WHERE usename = current_user")
+
 (defn- answer-with
   "An `answer` for [[run-with-fake-jdbc]]: rows for the queries whose SQL contains one of the keys of `rows-by-table`,
-  none for the rest."
+  none for the rest. The admin connection's login is a superuser unless `rows-by-table` answers [[usesuper-query]]."
   [rows-by-table]
   (fn [sql]
-    (or (some (fn [[table rows]] (when (str/includes? sql table) rows)) rows-by-table)
-        [])))
+    (if (= usesuper-query sql)
+      (get rows-by-table usesuper-query [{:usesuper true}])
+      (or (some (fn [[table rows]] (when (str/includes? sql table) rows)) rows-by-table)
+          []))))
 
 (def ^:private unit-workspace
   {:id               1
@@ -1329,6 +1364,35 @@
               "CREATE USER \"mb__isolation_user_1\" WITH PASSWORD 'pa''ss'"
               "GRANT USAGE, CREATE ON SCHEMA \"mb__isolation_ws_1\" TO \"mb__isolation_user_1\""]
              (executed log))))))
+
+(deftest workspace-init-requires-superuser-test
+  (testing "init passes the check when the admin connection's login is a superuser"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {})
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (nil? error))
+      (is (some #{[:query usesuper-query []]} log))))
+  (testing "init refuses a login that is not a superuser with a 412, before any other check or change"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {usesuper-query [{:usesuper false}]})
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= {:status-code 412, :workspace/cleanup? false} (ex-data error)))
+      (is (= (str "Workspaces on Redshift need a superuser admin login. Only a superuser can end the sessions of "
+                  "another user, which teardown must do. A login that is not a superuser may not see every grant to "
+                  "PUBLIC in every database, which init must check. Connect the database with a superuser login and "
+                  "retry.")
+             (ex-message error)))
+      (is (= [[:execute "SET LOCAL search_path TO pg_catalog"] [:query usesuper-query []]] log))))
+  (testing "a failure to read the superuser flag is marked so that the caller does not tear down"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (fn [sql]
+                                 (if (= usesuper-query sql)
+                                   (throw (java.sql.SQLException. "permission denied for relation pg_user" "42501"))
+                                   []))
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= "permission denied for relation pg_user" (ex-message error)))
+      (is (=? {:workspace/cleanup? false} (ex-data error)))
+      (is (= ["SET LOCAL search_path TO pg_catalog"] (executed log))))))
 
 (deftest workspace-init-refuses-before-any-change-test
   (doseq [[desc rows expected-data expected-message]

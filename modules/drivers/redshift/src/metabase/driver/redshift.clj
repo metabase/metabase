@@ -1169,10 +1169,36 @@
     (when-let [error (public-create-error (public-create-databases conn) schemas unverifiable)]
       (throw error))))
 
+(defn- current-user-usesuper?
+  "True when `current_user` has `usesuper`. Superusers can ALTER DEFAULT
+   PRIVILEGES FOR USER <anyone>, so they bypass the membership check below.
+
+   Redshift's user-membership model differs from PostgreSQL's: there is no
+   `pg_has_role(name, name, text)` overload (the function doesn't exist on
+   Redshift at all on RA3 clusters), and `pg_group` is not generally populated.
+   The practical membership graph collapses to: you are `current_user`, or you
+   are a superuser. Anything else fails at REVOKE time."
+  [conn]
+  (boolean (:usesuper (first (jdbc/query conn ["SELECT usesuper FROM pg_user WHERE usename = current_user"])))))
+
+(defn- check-superuser!
+  "Throws a 412 unless the admin connection's login is a superuser. Teardown ends the workspace user's sessions, and
+  only a superuser may end another user's session. The system views that init reads for grants to PUBLIC show a login
+  that is not a superuser only the identities it has access to or owns."
+  [conn]
+  (when-not (current-user-usesuper? conn)
+    (throw (ex-info (str "Workspaces on Redshift need a superuser admin login. Only a superuser can end the sessions of "
+                         "another user, which teardown must do. A login that is not a superuser may not see every grant "
+                         "to PUBLIC in every database, which init must check. Connect the database with a superuser "
+                         "login and retry.")
+                    {:status-code 412, :workspace/cleanup? false}))))
+
 (defn- check-init-preconditions!
-  "Throws before init makes any change: a 409 when the workspace user or its output schema already exists, a 412 when
-  PUBLIC can create in a database of the cluster or in a schema of one."
+  "Throws before init makes any change: a 412 when the admin connection's login is not a superuser, a 409 when the
+  workspace user or its output schema already exists, a 412 when PUBLIC can create in a database of the cluster or in
+  a schema of one."
   [database conn user schema]
+  (check-superuser! conn)
   (let [existing (cond-> []
                    (schema-exists? conn schema) (conj (existing-schema schema))
                    (user-exists? conn user)     (conj (existing-user user)))]
@@ -1282,18 +1308,6 @@
   [conn schema]
   (when-let [error (public-writes-error schema (public-writes conn schema))]
     (throw error)))
-
-(defn- current-user-usesuper?
-  "True when `current_user` has `usesuper`. Superusers can ALTER DEFAULT
-   PRIVILEGES FOR USER <anyone>, so they bypass the membership check below.
-
-   Redshift's user-membership model differs from PostgreSQL's: there is no
-   `pg_has_role(name, name, text)` overload (the function doesn't exist on
-   Redshift at all on RA3 clusters), and `pg_group` is not generally populated.
-   The practical membership graph collapses to: you are `current_user`, or you
-   are a superuser. Anything else fails at REVOKE time."
-  [conn]
-  (boolean (:usesuper (first (jdbc/query conn ["SELECT usesuper FROM pg_user WHERE usename = current_user"])))))
 
 (defn- relation-owners-in-schema
   "Distinct relation owners in `schema-name`. Caller filters out the ones
