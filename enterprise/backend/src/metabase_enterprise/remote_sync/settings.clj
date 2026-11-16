@@ -183,7 +183,7 @@
           (throw (ex-info (tru "Only top-level collections that are not personal can be synced.")
                           {:status-code 400 :collection-id id})))
         (when (and (not synced?) (= collections/library-collection-type (:type collection)))
-          (throw (ex-info (tru "The Library always syncs.") {:status-code 400 :collection-id id})))
+          (throw (ex-info (tru "The semantic layer always syncs.") {:status-code 400 :collection-id id})))
         (collections/set-remote-synced! collection synced?))
       (when-let [dependencies (seq (remote-sync.dependencies/unsynced-dependencies))]
         (throw (ex-info (tru "Synced content uses content that isn''t synced.")
