@@ -28,7 +28,7 @@
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.custom-values :as custom-values]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries-rest.api.card :as api.card]
@@ -2999,25 +2999,33 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
-                                                                     (apply orig card export-format
-                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                                    {:constraints constraints}))
-                                                                            options))]
+      (let [orig                (mt/original-fn #'qp.card/process-query-for-card)
+            constraints         (atom ::not-run)
+            ;; record the constraints each query runs with, then run it for real: the endpoint still has to return a
+            ;; streaming response to pass its response schema
+            make-run            (fn [qp export-format]
+                                  (let [run (qp.card/process-query-for-card-default-run-fn qp export-format)]
+                                    (fn [query info]
+                                      (reset! constraints (:constraints query))
+                                      (run query info))))
+            request-constraints (fn [status url]
+                                  (reset! constraints ::not-run)
+                                  (mt/user-http-request :rasta :post status url)
+                                  @constraints)]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card
+                                    (fn [card export-format & options]
+                                      (apply orig card export-format :make-run make-run options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
-            (is (= {:constraints nil}
-                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
+            (is (nil? (request-constraints 200 (format "card/%d/query/csv" (u/the-id card))))))
           (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
-              (is (= {:constraints nil}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-            (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
+              (is (nil? (request-constraints 200 (format "card/%d/query/csv" (u/the-id card))))))
+            (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanity "
                           "check to make sure the `with-redefs` in the test above actually works)")
-              (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+              (is (= {:max-results 10, :max-results-bare-rows 10}
+                     (request-constraints 202 (format "card/%d/query" (u/the-id card))))))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -4578,8 +4586,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
             (perms/revoke-collection-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (not (mi/can-read? collection)))
-              (is (not (mi/can-read? card))))
+              (is (not (mi/can-read? (t2/hydrate collection :can_read))))
+              (is (not (mi/can-read? (t2/hydrate card :can_read)))))
             (is (blocked? (process-query))))))
       (testing "Should NOT be able to run the parent Card with valid data-perms and no collection perms"
         (mt/with-no-data-perms-for-all-users!
@@ -4587,8 +4595,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
             (perms/revoke-collection-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (not (mi/can-read? collection)))
-              (is (not (mi/can-read? card))))
+              (is (not (mi/can-read? (t2/hydrate collection :can_read))))
+              (is (not (mi/can-read? (t2/hydrate card :can_read)))))
             (is (blocked? (process-query))))))
       (testing "should NOT be able to run native queries with :blocked data-perms on any table"
         (mt/with-no-data-perms-for-all-users!
@@ -4596,8 +4604,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (mi/can-read? collection))
-              (is (mi/can-read? card)))
+              (is (mi/can-read? (t2/hydrate collection :can_read)))
+              (is (mi/can-read? (t2/hydrate card :can_read))))
             (is (process-query)))))
       ;; delete these in place so we can reset them below, you cannot set them twice in a row
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
@@ -4607,8 +4615,8 @@
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (mi/can-read? collection))
-              (is (mi/can-read? card)))
+              (is (mi/can-read? (t2/hydrate collection :can_read)))
+              (is (mi/can-read? (t2/hydrate card :can_read))))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
 (deftest blocked-database-permissions-card-query-test
@@ -4727,13 +4735,11 @@
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card)))))))))
 
 (deftest ^:mb/driver-tests pivot-tables-with-model-sources-show-row-totals
   (testing "Pivot Tables with a model source will return row totals (#46575)"

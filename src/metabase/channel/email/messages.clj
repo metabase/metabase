@@ -255,7 +255,7 @@
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
                                    (mapv :user_id (channel.db/user-ids-with-permission monitoring)))
         user-ids (filter
-                  #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  #(perms/user-has-permission-for-databases? (perms/user-info %) :perms/manage-database :yes [database-id])
                   user-ids-with-monitoring)]
     (into
      []

@@ -13,7 +13,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [select-keys some empty? not-empty]]))
 
 (defn- filters->condition
   [filters]
@@ -96,30 +96,13 @@
 
 (defn- case-wrap-metric-aggregation
   [aggregation condition]
-  (cond->> aggregation
-    (seq condition)
-    (perf/postwalk
-     (fn [form]
-       (if-not (and (vector? form)
-                    (not (map-entry? form)))
-         form
-         (let [operator (first form)]
-           (cond
-
-             (= :share operator)
-             (transform-share-aggregation condition form)
-
-             (contains? aggregations-pred-arg operator)
-             (transform-aggregation-with-predicate condition form)
-
-             (contains? nullary-aggregations operator)
-             (transform-0-arity-aggregation condition form)
-
-             (contains? aggregations-expr-1st-arg operator)
-             (assoc form 2 (lib/case [[condition (nth form 2)]]))
-
-             :else
-             form)))))))
+  (if (seq condition)
+    (match/replace-all aggregation
+      [:share & _] (transform-share-aggregation condition &match)
+      [#'aggregations-pred-arg & _] (transform-aggregation-with-predicate condition &match)
+      [#'nullary-aggregations & _] (transform-0-arity-aggregation condition &match)
+      [#'aggregations-expr-1st-arg _ arg & _] (assoc &match 2 (lib/case [[condition arg]])))
+    aggregation))
 
 (defn- metric-query-filters->aggregation
   "Entrypoint into transformation of metric aggregation into one that has case wrapped column arg."

@@ -84,22 +84,15 @@
   matches that of SQL, i.e. things like source query and joins come before order by or limit), which is easier to look
   at (maybe)."
   [query]
-  (walk/postwalk
-   (fn [form]
-     (cond
-       (map? form)
-       (into (sorted-mbql-query-map) form)
-
-       (and *shorten-namespaced-keywords?*
-            (keyword? form)
-            (namespace form))
-       (if-let [ns-alias (alias-for-namespace-in-*ns* (symbol (namespace form)))]
-         (symbol (format "::%s/%s" ns-alias (name form)))
-         form)
-
-       :else
-       form))
-   query))
+  (match/replace-all query
+    #'map?
+    (into (sorted-mbql-query-map) &match)
+    (kw :guard (and *shorten-namespaced-keywords?*
+                    (keyword? kw)
+                    (namespace kw)))
+    (if-let [ns-alias (alias-for-namespace-in-*ns* (symbol (namespace kw)))]
+      (symbol (format "::%s/%s" ns-alias (name kw)))
+      kw)))
 
 ;;;; [[add-names]]
 

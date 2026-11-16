@@ -20,7 +20,7 @@ export const DeleteAlertConfirmModal = ({
     size="lg"
     onClose={onClose}
   >
-    <Text>{t`This can't be undone.`}</Text>
+    <Text c="text-secondary">{t`This can't be undone.`}</Text>
     <Modal.Footer>
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button

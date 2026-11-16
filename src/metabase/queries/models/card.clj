@@ -124,7 +124,7 @@
    :embedding_params       mi/transform-json-no-keywordization
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
-   :visualization_settings mi/transform-visualization-settings
+   :visualization_settings lib-be/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword
@@ -133,28 +133,9 @@
 
 (doto :model/Card
   (derive :metabase/model)
-  ;; You can read/write a Card if you can read/write its parent Collection
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
-
-(defn- parent-document-id
-  "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
-  nor a primary key to resolve it from.
-
-  A narrowed `t2/select` that dropped the column must not read as \"belongs to no document\" — that
-  would let a caller widen access just by shortening its column list — so the column is resolved
-  from the primary key rather than assumed. The one shape that cannot be resolved is the synthetic
-  `{:collection_id …}` stub [[metabase.query-permissions.impl]] builds for source-card permission
-  checks: it carries no identity at all. Those decide whether a query may *run*, have never been
-  document-aware, and denying them would break every query with a source card — so they keep the
-  collection-perms answer they have always had."
-  [card]
-  (cond
-    (contains? card :document_id) (:document_id card)
-    (:id card)                    (queries.db/card-document-id (:id card))
-    :else                         ::not-adjudicable))
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
@@ -164,64 +145,87 @@
   (when (and (:exploration_id document) (:id card))
     (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
 
-(defn- parent-document-permits?
-  "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
+(defn- parent-documents
+  "The parent Documents of `cards`, hydrated with the permission `k`, as `{:document-id f, :documents {id document}}`,
+  where `f` gives the parent Document id of a Card, or nil. A Card selected without `:document_id` has it resolved
+  from its `:id`, so that a narrowed select can't pass for a Card of no Document; a Card with neither has none."
+  [cards k]
+  (let [unresolved  (into [] (comp (remove #(contains? % :document_id)) (keep :id)) cards)
+        resolved    (if (seq unresolved)
+                      (queries.db/card-document-ids unresolved)
+                      {})
+        document-id (fn [card]
+                      (if (contains? card :document_id)
+                        (:document_id card)
+                        (get resolved (:id card))))
+        ids         (into [] (comp (keep document-id) (distinct)) cards)]
+    {:document-id document-id
+     :documents   (if (seq ids)
+                    (u/index-by :id (t2/hydrate (queries.db/documents-collection-and-exploration ids) k))
+                    {})}))
 
-  A Card scoped to a Document is a child of it, and the Document — not the collection — is the
-  authority on who may see it. An exploration Summary materializes ephemeral Cards whose `name` and
-  `dataset_query` are copied from the `ExplorationQuery` they render, and those embed dimension
-  values discovered under the *creator's* data-access lens (see
-  [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
-  material — withholding it is the entire reason the Document's content gate exists — so a Card
-  that carries those values is gated by the document embedding it: on read, by its own snapshots
-  where it has any (see [[summary-card-snapshots]]) plus the Summary's collection-level read. A
-  Summary's cards are never writable, by anyone: each renders a stored snapshot, and editing the
-  card would desynchronise the two. Edits to a Summary chart save as new draft cards through the
-  document instead."
-  [card read-or-write]
-  (let [document-id (parent-document-id card)]
-    (if (or (= ::not-adjudicable document-id) (nil? document-id))
-      true
-      (let [document (queries.db/document-collection-and-exploration document-id)]
-        (case read-or-write
-          :read  (if-let [snapshots (summary-card-snapshots card document)]
-                   (and (mi/current-user-has-full-permissions? :read document)
-                        (every? cached-result/viewer-can-view-cached-result? snapshots))
-                   (mi/can-read? document))
-          :write (and (nil? (:exploration_id document))
-                      (mi/can-write? document)))))))
+(defn- check-can-read-keys
+  "Throws unless `card` has the columns its `:can_read` hydration reads."
+  [card]
+  (api/check-500 (contains? card :collection_id) "No :collection_id is set for a Card."))
 
-;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
-;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
-;; being true for Cards once a Card could be scoped to a Document (see [[parent-document-permits?]]).
-;; Its docstring prescribes exactly this: drop the macro call and write the richer method by hand.
-;; The collection half still delegates to the same helper the macro installed, so the audit-collection
-;; rule it carries is preserved verbatim.
-;;
-;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
-;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
-;; so the document check below adds no further queries.
-(defmethod mi/can-read? :model/Card
-  ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
-        (parent-document-permits? instance :read)))
-  ([_ pk]
-   (mi/can-read? (queries.db/card pk))))
+(defn- check-can-write-keys
+  "Throws unless `card` has the columns its `:can_write` hydration reads."
+  [card]
+  (api/check-500 (contains? card :collection_id) "No :collection_id is set for a Card."))
 
-(defmethod mi/can-write? :model/Card
-  ([instance]
-   ;; Cards in audit collection should not be writable.
-   (and
-    (not (and
-          ;; We want to make sure there's an existing audit collection before doing the equality check below.
-          ;; If there is no audit collection, this will be nil:
-          (some? (:id (audit/default-audit-collection)))
-          ;; Is a direct descendant of audit collection
-          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-    (parent-document-permits? instance :write)))
-  ([_ pk]
-   (mi/can-write? (queries.db/card pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_read]
+  "Whether the current user reads each of `cards`: its Collection's content, and, for a Card of a Document, the
+  Document, or, for a Card of an exploration Summary with snapshots, the Summary's Collection and each snapshot."
+  [_model _k cards]
+  (run! #(when % (check-can-read-keys %)) cards)
+  (let [rows                            (remove nil? cards)
+        readable                        (collection/content-readable-collection-ids (map :collection_id rows)
+                                                                                    {:root-namespace nil, :audit-rules? true})
+        {:keys [document-id documents]} (parent-documents rows :can_read)
+        summary-readable                (delay (collection/content-readable-collection-ids
+                                                (map :collection_id (vals documents))
+                                                {:root-namespace nil, :audit-rules? false}))]
+    (for [card cards]
+      (when card
+        (vary-meta card assoc :can_read
+                   (boolean
+                    (and (contains? readable (:collection_id card))
+                         (let [id (document-id card)]
+                           (or (nil? id)
+                               (when-let [document (get documents id)]
+                                 (if-let [snapshots (summary-card-snapshots card document)]
+                                   (and (contains? @summary-readable (:collection_id document))
+                                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                                   (mi/can-read? (t2/hydrate document :can_read)))))))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
+  "Whether the current user writes each of `cards`: its Collection's content, and, for a Card of a Document, the
+  Document, which a Card of an exploration Summary never is."
+  [_model _k cards]
+  (run! #(when % (check-can-write-keys %)) cards)
+  (let [rows                            (remove nil? cards)
+        writable                        (collection/content-writable-collection-ids (map :collection_id rows)
+                                                                                    {:root-namespace nil, :audit-rules? true})
+        {:keys [document-id documents]} (parent-documents rows :can_write)]
+    (for [card cards]
+      (when card
+        (assoc card :can_write
+               (boolean
+                (and (contains? writable (:collection_id card))
+                     (let [id (document-id card)]
+                       (or (nil? id)
+                           (when-let [document (get documents id)]
+                             (and (nil? (:exploration_id document))
+                                  (mi/can-write? (t2/hydrate document :can_write)))))))))))))
+
+(defmethod mi/can-create? :model/Card
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(def card-read-check-columns
+  "The columns the `:can_read` hydration reads from a Card."
+  [:id :collection_id :document_id])
 
 (defn model?
   "Returns true if `card` is a model."
@@ -236,9 +240,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
-                                                                :include-archived-items    :exclude
-                                                                :permission-level          :read})])
+   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
+                                                                                                :include-archived-items    :exclude
+                                                                                                :permission-level          :read
+                                                                                                :root-namespace            nil})])
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -283,7 +288,7 @@
    (fn [card]
      (assoc card
             :can_manage_db
-            (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
    cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
@@ -319,7 +324,7 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (->> (queries.db/metric-cards-for-source-cards (map :id cards))
+              (->> (t2/hydrate (queries.db/metric-cards-for-source-cards (map :id cards)) :can_read)
                    (filter mi/can-read?)))
    :id))
 
@@ -935,8 +940,9 @@
                                  (tru "Selected timeline IDs must be a sequence of positive integers."))
           ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
           ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (queries.db/timelines
-                            (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+          (doseq [timeline (t2/hydrate (queries.db/timelines
+                                        (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
+                                       :can_read)]
             (api/read-check timeline)))))))
 
 (defn card-exposed-timeline-ids
@@ -963,7 +969,7 @@
   (when (and api/*current-user-id*
              (or (:public_uuid dashboard) (:enable_embedding dashboard)))
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
-      (doseq [timeline (queries.db/timelines timeline-ids)]
+      (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
 
 (defn check-shared-dashboard-timeline-permissions-for-card-ids!

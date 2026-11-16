@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.version.core :as version]))
 
 (set! *warn-on-reflection* true)
@@ -531,9 +532,8 @@
 (defn- deep-string-keywords
   "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
   [data]
-  (walk/postwalk
-   (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
-   data))
+  (match/replace-all data
+    #'keyword? (-> &match u/->snake_case_en name)))
 
 (defn- get-query-exeuction-counts
   [executions]
