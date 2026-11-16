@@ -1,3 +1,5 @@
+import { selectedCompletion } from "@codemirror/autocomplete";
+import { EditorView } from "@codemirror/view";
 import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -61,6 +63,18 @@ type PreviewRun = {
 };
 
 const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
+
+/**
+ * True when the key goes to the code itself, with no autocomplete open. The
+ * AI prompt and the autocomplete use Enter for themselves.
+ */
+function isOnPlainCode(target: EventTarget) {
+  if (!(target instanceof HTMLElement) || !target.matches(".cm-content")) {
+    return false;
+  }
+  const view = EditorView.findFromDOM(target);
+  return view != null && selectedCompletion(view.state) == null;
+}
 
 export function InlineExpressionEditor({
   query,
@@ -199,9 +213,27 @@ export function InlineExpressionEditor({
   };
 
   // Cmd/Ctrl+Enter opens the preview, runs it again, or sends a request to
-  // the AI. The capture phase comes before the keymap of the code editor.
+  // the AI. Enter in the code saves, or sends the request, and Shift+Enter
+  // starts a new line. The capture phase comes before the keymap of the code
+  // editor.
   const handleKeyDownCapture = (event: KeyboardEvent) => {
-    if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) {
+    if (event.key !== "Enter") {
+      return;
+    }
+    if (event.metaKey || event.ctrlKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (canGenerate) {
+        runGenerate();
+      } else {
+        runPreview();
+      }
+      return;
+    }
+    if (event.shiftKey || event.altKey || !isOnPlainCode(event.target)) {
+      return;
+    }
+    if (readOnly || proposal != null) {
       return;
     }
     // Text fields in the editor, like the "@" prompt, handle Enter themselves.
@@ -213,7 +245,7 @@ export function InlineExpressionEditor({
     if (canGenerate) {
       runGenerate();
     } else {
-      runPreview();
+      handleSave();
     }
   };
 
