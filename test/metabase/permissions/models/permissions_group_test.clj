@@ -242,12 +242,12 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     (testing "changing whether a group is a tenant group is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tenant group"
-                            (t2/update! :model/PermissionsGroup group-id {:is_tenant_group true})))
-      (is (false? (t2/select-one-fn :is_tenant_group :model/PermissionsGroup group-id))))
+                            (t2/update! :model/PermissionsGroup :id group-id {:is_tenant_group true})))
+      (is (false? (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))))
     (testing "changing the type of a group is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"type of a group"
-                            (t2/update! :model/PermissionsGroup group-id {:magic_group_type "data-analyst"})))
-      (is (nil? (t2/select-one-fn :magic_group_type :model/PermissionsGroup group-id))))
+                            (t2/update! :model/PermissionsGroup :id group-id {:magic_group_type "data-analyst"})))
+      (is (nil? (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id group-id))))
     (testing "renaming a group that is not magic works"
-      (t2/update! :model/PermissionsGroup group-id {:name "Renamed Test Group"})
-      (is (= "Renamed Test Group" (t2/select-one-fn :name :model/PermissionsGroup group-id))))))
+      (t2/update! :model/PermissionsGroup :id group-id {:name "Renamed Test Group"})
+      (is (= "Renamed Test Group" (t2/select-one-fn :name :model/PermissionsGroup :id group-id))))))

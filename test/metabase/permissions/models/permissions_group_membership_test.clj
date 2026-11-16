@@ -153,11 +153,11 @@
     (perms/add-user-to-group! user-id group-id)
     (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another user"
-                            (t2/update! :model/PermissionsGroupMembership membership-id {:user_id other-user-id})))
+                            (t2/update! :model/PermissionsGroupMembership :id membership-id {:user_id other-user-id})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another group"
-                            (t2/update! :model/PermissionsGroupMembership membership-id {:group_id other-group-id})))
+                            (t2/update! :model/PermissionsGroupMembership :id membership-id {:group_id other-group-id})))
       (is (=? {:user_id user-id :group_id group-id}
-              (t2/select-one :model/PermissionsGroupMembership membership-id))))))
+              (t2/select-one :model/PermissionsGroupMembership :id membership-id))))))
 
 (defn- data-analyst-group-id []
   (u/the-id (perms-group/data-analyst)))
