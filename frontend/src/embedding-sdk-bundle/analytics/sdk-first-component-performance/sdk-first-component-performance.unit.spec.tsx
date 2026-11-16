@@ -447,9 +447,10 @@ describe("embedding_sdk_first_component_performance", () => {
       expect(getPerformanceEvents()).toHaveLength(1);
     });
 
-    it("does not move to another component when the first one unmounts", async () => {
+    it("does not move to another component when the first one unmounts without sending an event", async () => {
       setupQuestionEndpoints({
         card: TEST_CARD,
+        // We defer the query so it never sends an event
         cardQueryResponse: defer<Dataset>().promise,
       });
       setupQuestionEndpoints({ card: OTHER_CARD });
