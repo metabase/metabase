@@ -412,38 +412,73 @@
       (log/warn e "Omitting the column list of an ad-hoc query")
       nil)))
 
-(defn- readable-source-card
-  "The stage-0 source card of a cleared lib `query`, or nil when it has none or Metabot may not read it as a resource.
+(defn- resource-card
+  "`card` of a cleared query, or nil when Metabot may not read it as a resource.
 
   Throws a 404 when the card's database is not addressable as a resource."
-  [query]
-  (when-let [{card-id :id card-type :type :as card}
-             (some->> (lib/primary-source-card-id query) (lib.metadata/card query))]
-    ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
-    ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
-    (when (mi/can-read? :model/Database (:database-id card))
-      ;; The checks of a `read_resource` call on the card's URI, so the line never points at a read that fails.
-      (resources-tools/check-card-resource-database card-id)
-      (when (or (not (shared/curated-only?))
-                (curation/subject-curated? [(if (= :metric card-type) "metric" "card") card-id]))
-        card))))
+  [{card-id :id card-type :type :as card}]
+  ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
+  ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
+  (when (mi/can-read? :model/Database (:database-id card))
+    ;; The checks of a `read_resource` call on the card's URI, so the line never points at a read that fails.
+    (resources-tools/check-card-resource-database card-id)
+    (when (or (not (shared/curated-only?))
+              (curation/subject-curated? [(if (= :metric card-type) "metric" "card") card-id]))
+      card)))
+
+(defn- card-uris
+  "The quoted name of `card` and its numeric-id URIs.
+
+    \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
+  [{card-id :id card-type :type card-name :name}]
+  ;; `read_resource` lists the columns of a metric at `dimensions`, and of any other card at `fields`.
+  (str (quoting/quoted card-name) ": " (llm-shape/metabase-uri card-type card-id)
+       " (read its columns at "
+       (llm-shape/metabase-uri card-type card-id (if (= :metric card-type) "dimensions" "fields")) ")"))
+
+(defn- omitted-on-failure
+  "The result of `(line-fn)`, or nil when it throws. `what` names the omitted line in the log."
+  [what line-fn]
+  (try
+    (line-fn)
+    (catch Exception e
+      (if (= 404 (:status-code (ex-data e)))
+        (log/debugf "Omitting %s of an ad-hoc query: its database is not addressable as a resource" what)
+        (log/warnf e "Omitting %s of an ad-hoc query" what))
+      nil)))
 
 (defn- source-card-line
   "The line that names the stage-0 source card of a cleared lib `query` by its numeric-id URI, or nil.
 
     Source model \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
   [query]
-  (try
-    (when-let [{card-id :id card-type :type card-name :name} (readable-source-card query)]
-      ;; `read_resource` lists the columns of a metric at `dimensions`, and of any other card at `fields`.
-      (str "Source " (name card-type) " " (quoting/quoted card-name) ": " (llm-shape/metabase-uri card-type card-id)
-           " (read its columns at "
-           (llm-shape/metabase-uri card-type card-id (if (= :metric card-type) "dimensions" "fields")) ")"))
-    (catch Exception e
-      (if (= 404 (:status-code (ex-data e)))
-        (log/debug "Omitting the source card of an ad-hoc query: its database is not addressable as a resource")
-        (log/warn e "Omitting the source card of an ad-hoc query"))
-      nil)))
+  (omitted-on-failure
+   "the source card"
+   #(when-let [card (some->> (lib/primary-source-card-id query) (lib.metadata/card query) resource-card)]
+      (str "Source " (name (:type card)) " " (card-uris card)))))
+
+(defn- metric-ids
+  "The ids of the metrics that a cleared lib `query` aggregates, sorted, without its stage-0 source card."
+  [query]
+  ;; The frontend keeps the base table or model of a metric as the source, and aggregates `[:metric {} id]`.
+  (sort (disj (set (lib/all-metric-ids query)) (lib/primary-source-card-id query))))
+
+(defn- metric-lines
+  "The lines that name each metric that a cleared lib `query` aggregates by its numeric-id URI, or nil.
+
+    Metric \"Revenue\": metabase://metric/7 (read its columns at metabase://metric/7/dimensions)"
+  [query]
+  ;; The permission check of the query already read-checked each metric: it collects the ids of `:metric`
+  ;; clauses as card ids.
+  (not-empty
+   (into []
+         (keep (fn [metric-id]
+                 (omitted-on-failure
+                  "a metric"
+                  #(let [card (lib.metadata/card query metric-id)]
+                     (when (= :metric (:type card))
+                       (some->> (resource-card card) card-uris (str "Metric ")))))))
+         (omitted-on-failure "the metrics" #(metric-ids query)))))
 
 (defn- cleared-lib-query
   "The lib query of a cleared `query` with its metadata provider `mp`, or nil when it cannot be built."
@@ -451,14 +486,14 @@
   (try
     (lib/query mp query)
     (catch Exception e
-      (log/warn e "Omitting the source card and the column list of an ad-hoc query")
+      (log/warn e "Omitting the source card, the metrics and the column list of an ad-hoc query")
       nil)))
 
 (defn- exported-query
   "The client-supplied query rendered for the LLM, or nil when the current user may not see the query.
 
-  The result also holds the source-card line and the column list. They are present only when the permission check
-  cleared the query with a metadata provider."
+  The result also holds the source-card line, the metric lines and the column list. They are present only when the
+  permission check cleared the query with a metadata provider."
   [query]
   ;; The database refusal is audited for the same reason that the query's card ids get the audited
   ;; store: the id is the caller's own.
@@ -470,6 +505,8 @@
         {:text        text
          :source-card (when lib-query
                         (source-card-line lib-query))
+         :metrics     (when lib-query
+                        (metric-lines lib-query))
          :columns     (when lib-query
                         (permitted-column-list lib-query))}))))
 
@@ -478,11 +515,12 @@
   [item]
   (if (native-query-item? item)
     (format-native-query item)
-    (let [{:keys [text source-card columns]} (exported-query (:query item))]
+    (let [{:keys [text source-card metrics columns]} (exported-query (:query item))]
       (te/lines "The user is currently in the notebook editor viewing a query."
                 (te/field "Query ID" (:id item))
                 (te/field "Database ID" (get-in item [:query :database]))
                 source-card
+                metrics
                 (te/field "Query" text)
                 (when columns
                   (te/lines columns-header columns ""))

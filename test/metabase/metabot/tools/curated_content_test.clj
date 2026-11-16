@@ -1640,7 +1640,7 @@
            vec))
 
 (deftest viewing-context-source-card-uris-read-test
-  ;; `readable-source-card` in `metabase.metabot.agent.user-context` repeats the gates of `read_resource` by hand.
+  ;; `resource-card` in `metabase.metabot.agent.user-context` repeats the gates of `read_resource` by hand.
   ;; This test reads the URIs that the line names, so a change on one side only fails here.
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)]
@@ -1681,3 +1681,44 @@
                     (is (denied? (first (read-uris metabot profile-id
                                                    (str "metabase://" card-type "/" card-id))))
                         "read_resource refuses the card")))))))))))
+
+(defn- metric-line-uris
+  "The entity URI and the columns URI that the first `Metric …` line of a viewing context names, or nil when it has
+  none."
+  [viewing-context]
+  (some->> (re-find #"Metric \"[^\"]*\": (metabase://\S+) \(read its columns at (metabase://[^)\s]+)\)"
+                    viewing-context)
+           rest
+           vec))
+
+(deftest viewing-context-metric-aggregation-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          ;; `adhoc-viewing-context` builds the query as the frontend does: the metric's table is the source, and the
+          ;; stage aggregates the metric.
+          (doseq [[profile-id metric-id line?] [[:internal orders-metric  true]
+                                                [:sql      reviews-metric true]
+                                                [:internal reviews-metric false]]]
+            (testing (str profile-id " metric " metric-id)
+              (let [text (adhoc-viewing-context metabot profile-id metric-id)
+                    uris (metric-line-uris text)]
+                (is (str/includes? text "notebook editor"))
+                (if line?
+                  (do
+                    (is (= [(str "metabase://metric/" metric-id) (str "metabase://metric/" metric-id "/dimensions")]
+                           uris)
+                        "the line names the metric and its columns")
+                    (doseq [{:keys [uri error]} (apply read-uris metabot profile-id uris)]
+                      (is (nil? error) (str "read_resource reads " uri))))
+                  (do
+                    (is (nil? uris) "no line")
+                    (is (denied? (first (read-uris metabot profile-id (str "metabase://metric/" metric-id))))
+                        "read_resource refuses the metric")))))))))))

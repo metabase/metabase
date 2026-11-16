@@ -839,6 +839,91 @@
           (is (str/includes? out "Columns the query can use") "precondition: the column list renders")
           (is (= 1 @built) "the cleared query is built once"))))))
 
+(defn- metric-line
+  "The line that names the metric with `metric-id` and `metric-name` in an ad-hoc viewing context."
+  [metric-id metric-name]
+  (str "Metric \"" metric-name "\": metabase://metric/" metric-id
+       " (read its columns at metabase://metric/" metric-id "/dimensions)"))
+
+(deftest adhoc-viewing-context-metric-aggregation-test
+  (testing "an ad-hoc query that aggregates a metric, as the frontend builds it, names the metric by its URI"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {model-id :id}  {:name          "Venues model"
+                                                  :type          :model
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (legacy-table-query (mt/id :venues))}
+                     :model/Card {metric-id :id} {:name          "Venues count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))}
+                     :model/Card {model-metric-id :id}
+                     {:name          "Model count"
+                      :type          :metric
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
+                                         (lib/aggregate (lib/count)))}]
+        (mt/with-test-user :crowberto
+          (testing "on a table"
+            (let [query (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id))))]
+              (is (:mp (shared.content-store/query-for-export query true)) "the permission check clears the query")
+              (let [out (adhoc-card-viewing-context metric-id)]
+                (is (str/includes? out (metric-line metric-id "Venues count")))
+                (is (not (str/includes? out "Source "))))))
+          (testing "on a model, the model stays the source"
+            (let [out (adhoc-card-viewing-context model-metric-id)]
+              (is (str/includes? out (str "Source model \"Venues model\": metabase://model/" model-id)))
+              (is (str/includes? out (metric-line model-metric-id "Model count"))))))))))
+
+(deftest adhoc-viewing-context-metric-aggregation-gates-test
+  (testing "a metric that Metabot may not read as a resource gives no metric line, and the query still renders"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venues count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))}]
+        (let [query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))
+              out   (fn [] (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))]
+          (testing "a database that is not addressable as a resource"
+            (mt/with-test-user :crowberto
+              (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database
+                                          (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
+                (let [out (out)]
+                  (is (str/includes? out "The user is currently in the notebook editor"))
+                  (is (not (str/includes? out "metabase://metric/")))))))
+          (testing "a database that the user cannot read: no failed read check"
+            (let [checks (atom [])]
+              (mt/with-no-data-perms-for-all-users!
+                (mt/with-test-user :rasta
+                  (is (not (mi/can-read? :model/Database (mt/id))) "precondition: the database is not readable")
+                  (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database #(swap! checks conj %)]
+                    (is (not (str/includes? (out) "metabase://metric/")))
+                    (is (= [] @checks) "the database read check does not run")))))))))
+    (testing "a metric that the user cannot read withholds the whole query"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card       {metric-id :id} {:name          "Hidden metric"
+                                                          :type          :metric
+                                                          :collection_id coll-id
+                                                          :database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (let [mp (mt/metadata-provider)]
+                                                                           (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                               (lib/aggregate (lib/count))))}]
+          (let [query (mt/with-test-user :crowberto
+                        (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))))]
+            (mt/with-test-user :rasta
+              (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+                (is (not (str/includes? out "metabase://metric/")))
+                (is (not (str/includes? out "Hidden metric")))))))))))
+
 (deftest adhoc-viewing-context-source-card-destination-database-test
   (testing "a source card whose database is not addressable as a resource gives no URI, and the query still renders"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Routed model"
