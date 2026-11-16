@@ -7,7 +7,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
    [metabase.request.core :as request]
@@ -167,7 +167,7 @@
                   [:visibility_type    {:optional true} FieldVisibilityType]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
-                  [:settings           {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+                  [:settings           {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
                   [:json_unfolding     {:optional true} :boolean]]]
   (let [field             (-> (warehouse-schema-rest.db/field id)
                               api/write-check
@@ -386,8 +386,8 @@
     (api/check-400 (request/limit) "Limit required if value is omitted"))
   (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
         search-field (api/check-404 (warehouse-schema-rest.db/field search-id))]
-    (api/check-403 (mi/can-read? field))
-    (api/check-403 (mi/can-read? search-field))
+    (api/check-403 (mi/can-read? (t2/hydrate field :can_read)))
+    (api/check-403 (mi/can-read? (t2/hydrate search-field :can_read)))
     (parameters.field/search-values field search-field value (request/limit))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

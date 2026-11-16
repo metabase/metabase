@@ -477,7 +477,8 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
     base-table reference into a self-UNION subquery so the new table doesn't inherit a source
-    column's IDENTITY property.
+    column's IDENTITY property. A set operation (UNION, INTERSECT, EXCEPT) takes the INTO in its
+    first SELECT.
 
     Transforms: SELECT * FROM products
     Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
@@ -506,8 +507,12 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
-    if not isinstance(ast, exp.Select):
-        raise ValueError("SQL must be a SELECT statement")
+    # T-SQL takes the INTO of a set operation (UNION, INTERSECT, EXCEPT) in its first SELECT.
+    into_select = ast
+    while isinstance(into_select, exp.SetOperation):
+        into_select = into_select.this
+    if not isinstance(into_select, exp.Select):
+        raise ValueError("SQL must be a SELECT statement, or a set operation whose first query is one")
 
     cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
     seen_ids = set()
@@ -543,8 +548,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     # The table_name is pre-formatted, so parse it to preserve quotes
     into = exp.Into(this=exp.to_table(table_name))
 
-    # Set the into clause on the select
-    ast.set("into", into)
+    into_select.set("into", into)
 
     # Generate SQL in the target dialect
     return ast.sql(dialect=dialect)

@@ -19,7 +19,10 @@
   [:and
    (when-not (:include-archived? opts)
      [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
+   [:in (u/qualified-key alias :table_id)
+    ^:allow-subquery {:select [:settings.table_id]
+                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                      :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
 (mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."
@@ -42,11 +45,6 @@
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
 
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
