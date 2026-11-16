@@ -1933,11 +1933,22 @@
            {:status-code 409, :workspace/cleanup? false, :user user}
            cause))
 
+(defn- schema-exists? [conn schema-name]
+  (boolean (seq (jdbc/query conn ["SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = ?::text" schema-name]))))
+
+(defn- schema-exists-error [user schema-name cause]
+  (ex-info (format (str "The warehouse already has a schema named %s, the name this workspace's output schema would "
+                        "take. Removing a workspace drops its output schema with every table in it, and this schema "
+                        "may hold tables that are not the workspace's, so it was left unchanged.")
+                   (quote-schema schema-name))
+           {:status-code 409, :workspace/cleanup? false, :user user, :schema schema-name}
+           cause))
+
 (defn- concurrent-init-error [user schema-name cause]
   (ex-info (format (str "Another session created a role named %s or a schema named %s at the same time. It may "
                         "belong to another workspace, so it was left unchanged.")
                    (quote-field user) (quote-schema schema-name))
-           {:status-code 409, :workspace/cleanup? false, :user user}
+           {:status-code 409, :workspace/cleanup? false, :user user, :schema schema-name}
            cause))
 
 (defn- connectable-databases
@@ -2145,9 +2156,12 @@
          ;; one, and cleaning up after this init would drop it
          (when (role-exists? conn user)
            (throw (role-exists-error user nil)))
+         ;; a schema of this name may hold tables that are not this workspace's: teardown drops the output schema
+         ;; with everything in it
+         (when (schema-exists? conn schema-name)
+           (throw (schema-exists-error user schema-name nil)))
          (check-admin-login-privileges! conn user)
-         [;; PostgreSQL supports IF NOT EXISTS for schemas
-          (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
+         [(format "CREATE SCHEMA %s" quoted-schema)
           (format "CREATE USER %s" quoted-user)
           ;; Schema-level grant only (Postgres' two schema privileges):
           ;;   USAGE  - access the schema
@@ -2161,10 +2175,11 @@
          (grant-connect! conn user)
          (vreset! committing? true)))
       (catch java.sql.SQLException e
-        ;; a concurrent init of the same workspace created the role between the check and CREATE USER: a duplicate
-        ;; role, or a duplicate key in pg_authid or pg_namespace when both inserted the role or the schema at once
+        ;; another session created the role or the schema between the check and the CREATE: a duplicate role or
+        ;; schema, or a duplicate key in pg_authid or pg_namespace when both inserted the role or the schema at once
         (case (sql-state e)
           "42710" (throw (role-exists-error user e))
+          "42P06" (throw (schema-exists-error user schema-name e))
           "23505" (throw (concurrent-init-error user schema-name e))
           (throw (init-error e @committing?))))
       (catch Throwable t
