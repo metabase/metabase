@@ -137,13 +137,25 @@ const STEP_COLUMN = createMockCard({
   id: 5,
   name: "Step Column",
   display: "table",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: Lib.toJsQuery(
+    Lib.nativeQuery(
+      DATABASE.id,
+      SAMPLE_PROVIDER,
+      "SELECT 'Landing page' AS \"Step\" UNION ALL SELECT 'Checkout page' UNION ALL SELECT 'Payment done page'",
+    ),
+  ),
 });
 const VIEWS_COLUMN = createMockCard({
   id: 6,
   name: "Views Column",
   display: "table",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: Lib.toJsQuery(
+    Lib.nativeQuery(
+      DATABASE.id,
+      SAMPLE_PROVIDER,
+      'SELECT 1000 AS "Views" UNION ALL SELECT 600 UNION ALL SELECT 100',
+    ),
+  ),
 });
 const ORDERS_TABLE = createMockCard({
   id: 7,
@@ -452,11 +464,37 @@ function getSeriesCardIds(series: unknown): number[] {
  * Stands in for the dashboard API: a save stores the dashcards, gives new
  * dashcards an id and returns full cards, and a later load returns the save.
  */
-function setupDashboardApi(initialDashboard: Dashboard, cards: Card[]) {
+function setupDashboardApi(
+  initialDashboard: Dashboard,
+  cards: Card[],
+  datasets: Record<CardId, Dataset>,
+) {
   const cardsById = new Map(cards.map((card) => [card.id, card]));
   let savedDashboard = initialDashboard;
   let nextDashcardId = FIRST_NEW_DASHCARD_ID;
 
+  fetchMock.post(
+    "express:/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+    ({ expressParams }) => {
+      const dashcard = savedDashboard.dashcards.find(
+        ({ id }) => id === Number(expressParams?.dashcardId),
+      );
+      const cardId = Number(expressParams?.cardId);
+      const belongsToDashcard =
+        dashcard?.card_id === cardId ||
+        (dashcard &&
+          "series" in dashcard &&
+          dashcard.series?.some(({ id }) => id === cardId));
+      if (
+        Number(expressParams?.dashboardId) !== savedDashboard.id ||
+        !belongsToDashcard
+      ) {
+        return { status: 404, body: "Not found" };
+      }
+      return datasets[cardId] ?? { status: 404, body: "Not found" };
+    },
+    { name: "dashcard-query" },
+  );
   fetchMock.get(`path:/api/dashboard/${DASHBOARD_ID}`, () => savedDashboard);
   fetchMock.put(
     `path:/api/dashboard/${DASHBOARD_ID}`,
@@ -499,7 +537,7 @@ function setupEndpoints({
     collection_id: null,
   });
 
-  setupDashboardApi(dashboard, cards);
+  setupDashboardApi(dashboard, cards, datasets);
   setupNotificationChannelsEndpoints({});
   setupDatabasesEndpoints([DATABASE]);
   setupDashboardQueryMetadataEndpoint(
@@ -553,11 +591,6 @@ function setupEndpoints({
     "express:/api/card/:cardId/query",
     ({ expressParams }) => datasetFor(expressParams?.cardId),
     { name: "card-query" },
-  );
-  fetchMock.post(
-    `express:/api/dashboard/${DASHBOARD_ID}/dashcard/:dashcardId/card/:cardId/query`,
-    ({ expressParams }) => datasetFor(expressParams?.cardId),
-    { name: "dashcard-query" },
   );
 }
 
@@ -1611,6 +1644,14 @@ describe("DashboardApp > visualizer", () => {
       unmount();
       await renderDashboard();
       await assertBothSeriesShown();
+      const queryTargets = fetchMock.callHistory
+        .calls("dashcard-query")
+        .map(({ url }) => new URL(url).pathname);
+      for (const card of [ORDERS_BY_CREATED_AT, PRODUCTS_BY_CREATED_AT]) {
+        expect(queryTargets).toContain(
+          `/api/dashboard/${DASHBOARD_ID}/dashcard/${FIRST_NEW_DASHCARD_ID}/card/${card.id}/query`,
+        );
+      }
     });
   });
 
@@ -1649,7 +1690,7 @@ describe("DashboardApp > visualizer", () => {
         size_x: 16,
         size_y: 10,
       });
-      await setup({
+      const { unmount } = await setup({
         dashcards: [baseDashcard],
         cards: CARDS,
         datasets: {
@@ -1686,13 +1727,14 @@ describe("DashboardApp > visualizer", () => {
           `/api/card/${INVALID_QUESTION.id}/query_metadata`,
         ]),
       );
+      await saveDashboard();
+      unmount();
+      await renderDashboard();
       expect(
         await within(getDashcard(baseDashcard.id)).findByText(
           INVALID_QUESTION.name,
         ),
       ).toBeInTheDocument();
-
-      await saveDashboard();
       expect(getSavedVisualization(baseDashcard.id)).toMatchObject({
         display: "funnel",
         settings: {

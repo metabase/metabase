@@ -97,9 +97,26 @@ describe("scenarios > visualizer > basics", () => {
       });
 
       cy.findByTestId("visualizer-title").clear().type("Renamed chart").blur();
+
+      H.toggleVisualizerSettingsSidebar();
+      cy.findByTestId("chartsettings-sidebar")
+        .should("be.visible")
+        .findByText("Goal line")
+        .click();
+      H.goalLine().should("exist");
+      H.clickUndoButton();
+      H.goalLine().should("not.exist");
+      cy.findByTestId("chartsettings-sidebar").should("be.visible");
     });
 
     H.saveDashcardVisualizerModal();
+
+    H.showDashcardVisualizerModal(1);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").should("have.value", "Renamed chart");
+      cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+    H.closeDashcardVisualizerModal();
 
     H.getDashboardCard(1).within(() => {
       cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
