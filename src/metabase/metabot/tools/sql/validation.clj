@@ -213,8 +213,8 @@
   "The names of the snippets that `tags` reference and that do not exist or are not readable, sorted."
   [tags]
   (let [snippet-tags (filter #(= :snippet (:type %)) tags)
-        snippet-ids  (into #{} (keep :snippet-id) snippet-tags)
-        readable     (if (seq snippet-ids) (readable-ids (metabot.db/snippet-read-rows (vec snippet-ids))) #{})]
+        snippet-ids  (lib/template-tags->snippet-ids (vec tags))
+        readable     (if snippet-ids (readable-ids (metabot.db/snippet-read-rows (vec snippet-ids))) #{})]
     (vec (sort (keep #(when-not (readable (:snippet-id %)) (:snippet-name %)) snippet-tags)))))
 
 (mu/defn- missing-references :- [:maybe ::missing-references]
