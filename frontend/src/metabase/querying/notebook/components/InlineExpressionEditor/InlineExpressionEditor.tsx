@@ -4,9 +4,14 @@ import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
+  EXPRESSION_HIDE_AI_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
+import {
   type ExpressionError,
   isRequestText,
 } from "metabase/querying/expressions";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Button, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
@@ -62,6 +67,13 @@ type PreviewRun = {
   /** The name of a proposed change, when it has one. */
   name?: string;
 };
+
+/** True when the instance has a working AI provider, and the prototype doesn't hide the AI. */
+function useIsAiAvailable() {
+  const isConfigured = Boolean(useSetting("llm-metabot-configured?"));
+  const [isHidden] = usePrototypeSetting(EXPRESSION_HIDE_AI_SETTING);
+  return isConfigured && !isHidden;
+}
 
 const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
 
@@ -198,7 +210,9 @@ export function InlineExpressionEditor({
   const [isNewExpression] = useState(
     () => clause == null && (initialSource ?? "").trim() === "",
   );
+  const isAiAvailable = useIsAiAvailable();
   const canGenerate =
+    isAiAvailable &&
     isNewExpression &&
     !readOnly &&
     proposal == null &&
@@ -312,7 +326,8 @@ export function InlineExpressionEditor({
         showErrors={isErrorShown}
         validateRef={validateRef}
         generateRef={generateRef}
-        canGenerateFromText={isNewExpression && !readOnly}
+        canGenerateFromText={isAiAvailable && isNewExpression && !readOnly}
+        isAiAvailable={isAiAvailable}
         readOnly={readOnly}
         askAiRef={askAiRef}
         toolbarStart={
@@ -326,11 +341,13 @@ export function InlineExpressionEditor({
                   onClick={runGenerate}
                 />
               ) : (
-                <ToolbarSegment
-                  icon={<AiIcon />}
-                  label={t`Edit with AI`}
-                  onClick={() => askAiRef.current?.()}
-                />
+                isAiAvailable && (
+                  <ToolbarSegment
+                    icon={<AiIcon />}
+                    label={t`Edit with AI`}
+                    onClick={() => askAiRef.current?.()}
+                  />
+                )
               )}
               <ToolbarSegment
                 icon={<PlayIcon />}

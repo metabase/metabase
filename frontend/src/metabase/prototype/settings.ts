@@ -58,6 +58,15 @@ export const EXPRESSION_DEBUGGER_DISPLAY_SETTING: SegmentedPrototypeSetting = {
   defaultValue: "stepper",
 };
 
+export const EXPRESSION_HIDE_AI_SETTING: BooleanPrototypeSetting = {
+  key: "expression-hide-ai",
+  type: "boolean",
+  label: "Custom expressions as without an AI provider",
+  description:
+    "Hide the AI in custom expressions, as on an instance with no AI provider. Without a provider the AI is always hidden.",
+  defaultValue: false,
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -69,4 +78,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_CASE_COUNTS_SETTING,
   EXPRESSION_DEBUGGER_DISPLAY_SETTING,
+  EXPRESSION_HIDE_AI_SETTING,
 ];

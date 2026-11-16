@@ -144,6 +144,8 @@ export type EditorProps = {
   validateRef?: MutableRefObject<ValidateNow | null>;
   /** Set to a function that sends the whole text to the AI as a request. */
   generateRef?: MutableRefObject<GenerateNow | null>;
+  /** False or missing hides the AI: no prompt on "?", and a placeholder with no AI. */
+  isAiAvailable?: boolean;
   /** Set to a function that opens the prompt to the AI at the end of the code. */
   askAiRef?: MutableRefObject<(() => void) | null>;
   /**
@@ -177,6 +179,26 @@ const INLINE_BASIC_SETUP = {
   highlightActiveLineGutter: false,
 };
 
+function getPlaceholder({
+  isPromptOpen,
+  inline,
+  isAiAvailable,
+}: {
+  isPromptOpen: boolean;
+  inline?: boolean;
+  isAiAvailable?: boolean;
+}) {
+  if (isPromptOpen) {
+    return undefined;
+  }
+  if (!inline) {
+    return t`Type your expression, press '[' for columns…`;
+  }
+  return isAiAvailable
+    ? t`AI prompt, expression, SQL code, or Excel formula...`
+    : t`Type your expression...`;
+}
+
 const EDITOR_WIDGET_HEIGHT = 220;
 const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
 const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
@@ -209,6 +231,7 @@ export function Editor(props: EditorProps) {
     validateRef,
     generateRef,
     askAiRef,
+    isAiAvailable,
     canGenerateFromText,
   } = props;
 
@@ -506,13 +529,20 @@ export function Editor(props: EditorProps) {
 
   const inlinePromptExtensions = useMemo(
     () =>
-      inline && !readOnly && !isProposing
+      inline && isAiAvailable && !readOnly && !isProposing
         ? inlinePrompt({
             container: promptContainer,
             onChange: handlePromptChange,
           })
         : [],
-    [inline, readOnly, isProposing, promptContainer, handlePromptChange],
+    [
+      inline,
+      isAiAvailable,
+      readOnly,
+      isProposing,
+      promptContainer,
+      handlePromptChange,
+    ],
   );
 
   if (askAiRef) {
@@ -743,13 +773,11 @@ export function Editor(props: EditorProps) {
       id={id}
       ref={ref}
       data-testid="custom-expression-query-editor"
-      placeholder={
-        promptPos != null
-          ? undefined
-          : inline
-            ? t`AI prompt, expression, SQL code, or Excel formula...`
-            : t`Type your expression, press '[' for columns…`
-      }
+      placeholder={getPlaceholder({
+        isPromptOpen: promptPos != null,
+        inline,
+        isAiAvailable,
+      })}
       className={S.editor}
       extensions={extensions}
       readOnly={readOnly || isFormatting || textRequest.isLoading}
