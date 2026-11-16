@@ -47,6 +47,7 @@
   do-before-commit
   do-after-commit
   in-transaction?
+  mariadb?
   quartz-data-source
   quoting-style
   unique-identifier
