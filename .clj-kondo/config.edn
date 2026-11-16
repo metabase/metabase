@@ -907,6 +907,10 @@
  {:linters {:unresolved-symbol {:level :off}
             :metabase/modules  {:level :off}}}
 
+ :config-in-call
+ {;; defrecord has no docstring slot, yet kondo's CLJS pass asks for one on every record.
+  cljs.core/defrecord {:linters {:missing-docstring {:level :off}}}}
+
  ;;
  ;; TEST CONFIG
  ;;
