@@ -458,8 +458,20 @@ export type VisualizationSettings = {
   /** Per-series labels, colors, and display tweaks. Keys are data-dependent. */
   series_settings?: Record<string, SeriesSettings | undefined>;
 
-  /** Explicit order, labels, colors, and enabled state for breakout series. */
+  /**
+   * Explicit order, labels, colors, and enabled state for breakout series.
+   * Applied only when `graph.series_order_dimension` names the breakout column
+   * and every entry has a `color`; otherwise the series keep the result's
+   * order. On a stacked bar or area chart, the first entry is the top of the
+   * stack.
+   */
   "graph.series_order"?: SeriesOrderSetting[];
+
+  /**
+   * Result column name of the breakout that `graph.series_order` orders: the
+   * second `graph.dimensions` entry. Set it together with `graph.series_order`.
+   */
+  "graph.series_order_dimension"?: string;
 
   // Timeline events settings
   "timeline.selected_timeline_ids"?: TimelineId[];

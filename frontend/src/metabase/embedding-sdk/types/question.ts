@@ -35,6 +35,7 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.dimensions"
   | "graph.metrics"
   | "graph.series_order"
+  | "graph.series_order_dimension"
   | "graph.show_values"
   | "graph.show_trendline"
   | "graph.show_goal"
