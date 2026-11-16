@@ -150,7 +150,7 @@
     (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 82))))
-  (when-not (:mariadb (mdb/db-type))
+  (when-not (= :mariadb (mdb/db-type))
     (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture, and the delete still runs"
       (reset-capture!)
       (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
