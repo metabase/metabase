@@ -1041,6 +1041,12 @@
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
+(defn- llm-span-usages
+  "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
+  [spans]
+  (map #(get-in % [:attributes :ai/usage])
+       (sort-by #(get-in % [:attributes :ai/iteration]) spans)))
+
 (deftest step-limit-reply-eval-usage-test
   (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
     (mt/as-admin
@@ -1052,8 +1058,7 @@
         (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
                 {test-provider {:promptTokens 100 :completionTokens 20}}
                 {test-provider {:promptTokens 700 :completionTokens 30}}]
-               (map #(get-in % [:attributes :ai/usage])
-                    (sort-by #(get-in % [:attributes :ai/iteration]) (:children turn)))))
+               (llm-span-usages (:children turn))))
         (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
                (get-in turn [:attributes :ai/usage])))))))
 
@@ -1650,8 +1655,7 @@
                 (testing "each llm.call has the usage of its own call, and the turn has the sum"
                   (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
                           {test-provider {:promptTokens 200 :completionTokens 10}}]
-                         (map #(get-in % [:attributes :ai/usage])
-                              (sort-by #(get-in % [:attributes :ai/iteration]) llms))))
+                         (llm-span-usages llms)))
                   (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
                          (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"

@@ -697,8 +697,8 @@
   Non-usage parts pass through unchanged.
 
   One reduction is the stream of one LLM call. The transducer also records the usage of that call only, as
-  `:ai/usage` with the same shape as the turn's, on the eval span of the call. Some models have a rate that changes
-  with the size of one request, so the evals price each call, not the sum of the turn."
+  `:ai/usage {model usage}`, on the eval span of the call. Some models have a rate that changes with the size of one
+  request, so the evals price each call, not the sum of the turn."
   [usage-atom provider-and-model]
   (let [model     (or (some-> provider-and-model llm.provider/strip-managed-prefix)
                       "unknown")
@@ -708,8 +708,7 @@
         ((map (fn [{:keys [usage] :as part}]
                 (if (= (:type part) :usage)
                   (do
-                    (when (ait/capture-active?)
-                      (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}}))
+                    (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}})
                     (assoc part
                            :model model
                            :usage (-> (swap! usage-atom update model add-usage usage)
