@@ -76,6 +76,7 @@
                             [:api_key.creator_id :api-key-creator-id]
                             [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
+                            [:api_key.scope :api-key-scope]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
@@ -140,8 +141,8 @@
     (t2/query-one (cons sql params))))
 
 (mu/defn api-key-user-info
-  "The API key id, user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User
-  whose ApiKey starts with `key-prefix`, or nil if there is none."
+  "The API key id, user id, api key, key scope, superuser/data-analyst/group-manager flags, and locale for the active
+  User whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))

@@ -116,7 +116,6 @@
     "frontend/src/metabase/common/components/dnd/PinnedItemSortDropTarget.tsx": "self",
     "frontend/src/metabase/common/components/tree/TreeNode.tsx": "self",
     "frontend/src/metabase/common/utils/chart-clipboard.ts": "self",
-    "frontend/src/metabase/css/core/base.styled.ts": "self",
     "frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx": "self",
     "frontend/src/metabase/dashboard/components/grid/GridLayout.tsx": "self",
     "frontend/src/metabase/dashboard/visualizations/Heading/index.ts": "self",

@@ -82,25 +82,23 @@
                         ^:allow-subquery
                         {:select [:id]
                          :from   [table-name]
-                         :where  [:in :source_database_id
-                                  (perms/visible-database-filter-select
-                                   {:user-id          user-id
-                                    :is-superuser?    is-superuser?
-                                    :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]}]])
+                         :where  (perms/visible-databases-filter-clause
+                                  :source_database_id
+                                  {:user-id          user-id
+                                   :is-superuser?    is-superuser?
+                                   :is-data-analyst? is-data-analyst?}
+                                  {:perms/create-queries :query-builder})}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
                     (let [archived-column (u/qualified-key table-name :archived)
                           visible-in-root (fn [root-namespace]
-                                            (collection/visible-collection-filter-clause
-                                             (u/qualified-key table-name :collection_id)
-                                             {:include-archived-items include-archived-items
-                                              :root-namespace         root-namespace}
-                                             {:current-user-id user-id
-                                              :is-superuser?   is-superuser?}))]
+                                            (perms/visible-collections-filter-clause (u/qualified-key table-name :collection_id) {:user-id          user-id
+                                                                                                                                  :is-superuser?    (boolean is-superuser?)
+                                                                                                                                  :is-data-analyst? (boolean is-data-analyst?)} {:include-archived-items include-archived-items
+                                                                                                                                                                                 :root-namespace         root-namespace}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
-                                         (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
+                                         (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries))))
                         [:and
                          [:= entity-type-field (name entity-type)]
                          [:in entity-id-field
@@ -130,11 +128,11 @@
                       ^:allow-subquery
                       {:select [:id]
                        :from   [table-name]
-                       :where  [:in id-column
-                                (perms/visible-table-filter-select
-                                 :id
-                                 {:user-id user-id :is-superuser? is-superuser?}
-                                 {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
+                       :where  (perms/visible-tables-filter-clause
+                                id-column
+                                (assoc (perms/user-info user-id) :is-superuser? is-superuser?)
+                                {:perms/view-data :unrestricted :perms/create-queries :query-builder}
+                                {:active-only? false, :include-published-via-collection? false})}]]
 
                     (:model/Segment :model/Measure)
                     (let [archived-column (u/qualified-key table-name :archived)
@@ -150,11 +148,11 @@
                                    ^:allow-subquery
                                    {:select [:metabase_table.id]
                                     :from   [:metabase_table]
-                                    :where  [:in :metabase_table.id
-                                             (perms/visible-table-filter-select
-                                              :id
-                                              {:user-id user-id :is-superuser? is-superuser?}
-                                              {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]
+                                    :where  (perms/visible-tables-filter-clause
+                                             :metabase_table.id
+                                             (assoc (perms/user-info user-id) :is-superuser? is-superuser?)
+                                             {:perms/view-data :unrestricted :perms/create-queries :query-builder}
+                                             {:active-only? false, :include-published-via-collection? false})}]
                                   (case include-archived-items
                                     :exclude [:= archived-column false]
                                     :only    [:= archived-column true]

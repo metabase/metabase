@@ -4,13 +4,13 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -27,7 +27,7 @@
    (stringify-keys x false))
   ([x recursive?]
    (if recursive?
-     (walk/postwalk stringify-keys x)
+     (match/replace-all x #'map? (stringify-keys &match))
      (cond-> x
        (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
 
@@ -248,10 +248,6 @@
 (def RingResponseBody
   "What an endpoint returns, before its response schema encodes it."
   (open-json ::ring-response-body "response body"))
-
-(def VisualizationSettingsValue
-  "A value nested inside visualization settings, whose shape the frontend owns."
-  (open-json ::visualization-settings-value "visualization settings value"))
 
 (def HttpRequestBody
   "The body the test HTTP client sends, as written by the test calling the endpoint: a JSON-shaped value, or (for a

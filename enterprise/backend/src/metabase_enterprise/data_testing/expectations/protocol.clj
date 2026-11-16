@@ -16,15 +16,16 @@
   (temp-tables [this context]
     "The queries this expectation needs materialized before its probes run, as `{id compiled-query}`.
 
-  The runner creates each one as a temp table on the test connection and passes their names to [[probes]] as
-  `:temp-tables` in its context, `{id table}`. Pure.")
+  The runner creates each one as a temp table on the test connection, and passes their names to [[probes]] and
+  [[interpret]] as `:temp-tables` in their context, `{id table}`, and their columns as `:temp-table-columns`,
+  `{id columns}`. Pure.")
   (probes [this context]
     "The queries this expectation needs, as `{probe-id {:query :params :max-rows}}`.
 
   `context` carries the driver, the name of the output temp table, the columns that table actually
-  has, the input-table replacements, and this expectation's own [[temp-tables]] by name. Pure.")
+  has, the input-table replacements, and this expectation's own [[temp-tables]] by name, with their columns. Pure.")
   (interpret [this context results]
-    "This expectation's result map, given `context` and `{probe-id {:rows :columns}}` from the probes.
+    "This expectation's result map, given the `context` [[probes]] had and `{probe-id {:rows :columns}}` from the probes.
 
   Always carries `:name`, `:type` and `:status`; what else it says about a failure is the type's
   own business. Pure."))

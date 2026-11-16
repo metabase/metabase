@@ -738,10 +738,8 @@
              (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
              (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
              (testing "precondition: venues is authorable and checkins is not"
-               (is (true? (perms/user-has-permission-for-table?
-                           analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
-               (is (false? (perms/user-has-permission-for-table?
-                            analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
+               (is (true? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :venues) (mt/id)})))
+               (is (false? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :checkins) (mt/id)}))))
              (let [segment (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write"
                                                     {:method     "create" :table_id (mt/id :venues)
                                                      :name       "definitions-test move segment"

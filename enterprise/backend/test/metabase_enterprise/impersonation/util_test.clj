@@ -4,7 +4,7 @@
    [metabase-enterprise.impersonation.util :as impersonation.util]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]

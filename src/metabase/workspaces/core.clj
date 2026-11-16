@@ -21,8 +21,8 @@
    ## What this namespace gates
 
    `check-not-in-workspace-mode!` uses concept (1) — the *instance-level*
-   check. Features blocked here (DB routing, impersonation, writeback, CSV
-   upload, model persistence enable) are refused on a child instance entirely,
+   check. Features blocked here (DB routing, actions, editing table data, CSV
+   upload, model persistence) are refused on a child instance entirely,
    not per-database. Rationale: workspace children boot with empty everything
    except content; per Dan in proj-workspaces 2026-04-30, those features can't
    already be configured. The instance-level gate is simpler and defensive —
@@ -100,9 +100,9 @@
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.
 
-   Use at API entry points for features that must be refused on a workspace
-   child instance (DB routing, connection impersonation, writeback, CSV upload,
-   model persistence enable). The check is *instance-level*, not per-database
+   Use at API entry points and at write points for features that must be refused
+   on a workspace child instance (DB routing, actions, editing table data, CSV
+   upload, model persistence). The check is *instance-level*, not per-database
    — see namespace docstring for the rationale."
   [feature-name]
   (when (workspace-mode?)
