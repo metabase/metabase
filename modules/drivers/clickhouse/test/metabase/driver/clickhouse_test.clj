@@ -1002,11 +1002,13 @@
               "GRANT SHOW DATABASES ON `canon`.* TO `mb_iso_user`"]
              sqls))
       (is (not-any? #(re-find #"IF NOT EXISTS|ALTER USER" %) sqls))))
-  (testing "teardown locks the user out, ends its running queries, drops the database, then drops the user"
+  (testing (str "teardown locks the user out, ends its running queries, drops the database, drops the user, then ends "
+                "the queries that started before DROP USER")
     (is (= ["ALTER USER IF EXISTS `mb_iso_user` HOST NONE"
             "KILL QUERY WHERE user = 'mb_iso_user' SYNC"
             "DROP DATABASE IF EXISTS `mb_iso_db` SYNC"
-            "DROP USER IF EXISTS `mb_iso_user`"]
+            "DROP USER IF EXISTS `mb_iso_user`"
+            "KILL QUERY WHERE user = 'mb_iso_user' SYNC"]
            (#'clickhouse/destroy-workspace-sqls "mb_iso_db" "mb_iso_user"))))
   (testing "string literals escape backslashes too: ClickHouse always reads \\ as an escape"
     (is (= "KILL QUERY WHERE user = 'a\\\\b''c' SYNC"
@@ -1019,6 +1021,17 @@
     (^boolean execute [_ ^String sql]
       (let [r (get results sql)]
         (if (instance? SQLException r) (throw ^SQLException r) true)))))
+
+(defn- statement-failing-at
+  "A Statement whose `execute` throws `(errors n)` on its nth call, counting from 0, and returns on any other call.
+  Teardown runs the same KILL QUERY twice, so only the call's position tells the two apart."
+  ^Statement [errors]
+  (let [calls (atom -1)]
+    (reify Statement
+      (^boolean execute [_ ^String _sql]
+        (if-let [e (get errors (swap! calls inc))]
+          (throw ^SQLException e)
+          true)))))
 
 (deftest create-workspace-object-failed-undo-test
   (testing "a late collision whose undo fails still throws the 409, and logs the undo error"
@@ -1034,10 +1047,9 @@
 
 (deftest destroy-workspace-keeps-kill-error-test
   (testing "when KILL QUERY and DROP DATABASE both fail, the KILL error is suppressed on the DROP DATABASE error"
-    (let [[_ kill drop-db] (#'clickhouse/destroy-workspace-sqls "d" "u")
-          kill-error       (SQLException. "kill failed")
-          stmt             (failing-statement {kill kill-error drop-db (SQLException. "drop failed")})
-          e                (is (thrown? SQLException (#'clickhouse/destroy-workspace! stmt "d" "u")))]
+    (let [kill-error (SQLException. "kill failed")
+          stmt       (statement-failing-at {1 kill-error 2 (SQLException. "drop failed")})
+          e          (is (thrown? SQLException (#'clickhouse/destroy-workspace! stmt "d" "u")))]
       (is (= "drop failed" (ex-message e)))
       (is (= [kill-error] (vec (.getSuppressed ^Throwable e))))))
   (testing "when DROP DATABASE fails, DROP USER does not run: a view in the database may have the user as its definer"
@@ -1056,20 +1068,33 @@
                       (try (#'clickhouse/destroy-workspace! (failing-statement {drop-user drop-user-error}) "d" "u")
                            nil
                            (catch Throwable t t))))))
-  (testing "when only KILL QUERY fails, for lack of the grant, the error names the grant"
-    (let [[_ kill]   (#'clickhouse/destroy-workspace-sqls "d" "u")
-          kill-error (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
+  (testing "when only the first KILL QUERY fails, for lack of the grant, the error names the grant"
+    (let [kill-error (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
           e          (is (thrown? clojure.lang.ExceptionInfo
-                                  (#'clickhouse/destroy-workspace! (failing-statement {kill kill-error}) "d" "u")))]
+                                  (#'clickhouse/destroy-workspace! (statement-failing-at {1 kill-error}) "d" "u")))]
       (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
       (is (identical? kill-error (ex-cause e)))))
-  (testing "when only KILL QUERY fails for another reason, its error is rethrown as is"
-    (let [[_ kill]   (#'clickhouse/destroy-workspace-sqls "d" "u")
-          kill-error (SQLException. "kill failed")]
+  (testing "when only the first KILL QUERY fails for another reason, its error is rethrown as is"
+    (let [kill-error (SQLException. "kill failed")]
       (is (identical? kill-error
-                      (try (#'clickhouse/destroy-workspace! (failing-statement {kill kill-error}) "d" "u")
+                      (try (#'clickhouse/destroy-workspace! (statement-failing-at {1 kill-error}) "d" "u")
                            nil
-                           (catch Throwable t t)))))))
+                           (catch Throwable t t))))))
+  (testing "when only the KILL QUERY after DROP USER fails, its error is thrown"
+    (let [kill-error (SQLException. "kill failed")]
+      (is (identical? kill-error
+                      (try (#'clickhouse/destroy-workspace! (statement-failing-at {4 kill-error}) "d" "u")
+                           nil
+                           (catch Throwable t t))))))
+  (testing "when both KILL QUERYs fail for lack of the grant, one error names the grant"
+    (let [kill-error  (SQLException. "Code: 497. DB::Exception: Not enough privileges" "" 497)
+          kill-error2 (SQLException. "Code: 497. DB::Exception: Not enough privileges" "" 497)
+          e           (is (thrown? clojure.lang.ExceptionInfo
+                                   (#'clickhouse/destroy-workspace!
+                                    (statement-failing-at {1 kill-error 4 kill-error2}) "d" "u")))]
+      (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
+      (is (identical? kill-error (ex-cause e)))
+      (is (empty? (.getSuppressed ^Throwable e))))))
 
 (deftest destroy-workspace-alter-user-error-test
   (testing "when only ALTER USER fails, the other statements still run, and its error is logged, not thrown"
@@ -1088,12 +1113,11 @@
                 (messages)))
         (is (identical? lock-error (some-> (messages) first :e))))))
   (testing "when ALTER USER and KILL QUERY both fail for lack of grants, the error names the KILL QUERY grant"
-    (let [[lock kill] (#'clickhouse/destroy-workspace-sqls "d" "u")
-          kill-error  (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
-          e           (is (thrown? clojure.lang.ExceptionInfo
-                                   (#'clickhouse/destroy-workspace!
-                                    (failing-statement {lock (SQLException. "lock failed" "" 497) kill kill-error})
-                                    "d" "u")))]
+    (let [kill-error (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
+          e          (is (thrown? clojure.lang.ExceptionInfo
+                                  (#'clickhouse/destroy-workspace!
+                                   (statement-failing-at {0 (SQLException. "lock failed" "" 497) 1 kill-error})
+                                   "d" "u")))]
       (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
       (is (identical? kill-error (ex-cause e)))))
   (testing "when ALTER USER and DROP DATABASE fail, the DROP DATABASE error is thrown with the ALTER USER error suppressed"
@@ -1220,6 +1244,56 @@
                  (is (instance? Throwable result))
                  (is (re-find #"(?i)cancel" (str (ex-message result) (some-> result ex-cause ex-message)))))))
            (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
+
+(deftest ^:synchronized destroy-workspace-ends-a-query-that-starts-before-drop-user-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace (workspace-for-test "ws-late-query")
+             user      (-> workspace :database_details :user)
+             admin     (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             running?  #(seq (jdbc/query admin ["SELECT 1 FROM system.processes WHERE user = ?" user]))
+             slow      (atom nil)
+             started?  (atom nil)]
+         (try
+           (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)
+           (sql-jdbc.execute/do-with-connection-with-options
+            :clickhouse (mt/id) {:write? true}
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (#'clickhouse/destroy-workspace!
+                 (reify Statement
+                   (^boolean execute [_ ^String sql]
+                     (cond
+                       ;; as for an admin login without ALTER USER: the user is not locked out
+                       (str/starts-with? sql "ALTER USER")
+                       (throw (SQLException. "Code: 497. DB::Exception: Not enough privileges" "" 497))
+
+                       ;; the user starts a query after the first KILL QUERY, before DROP USER
+                       (str/starts-with? sql "DROP USER")
+                       (do (reset! slow (future
+                                          (try
+                                            (jdbc/query (workspace-user-spec workspace)
+                                                        [(str "SELECT sleepEachRow(1) FROM numbers(120) "
+                                                              "SETTINGS max_block_size = 1, "
+                                                              "function_sleep_max_microseconds_per_block = 1000000000")])
+                                            :finished
+                                            (catch Throwable t t))))
+                           (reset! started? (u/poll {:thunk running? :done? some? :timeout-ms 10000 :interval-ms 100}))
+                           (.execute stmt sql))
+
+                       :else
+                       (.execute stmt sql))))
+                 (:schema workspace) user))))
+           (is (some? @started?) "the workspace user's query was running before DROP USER")
+           (testing "teardown ended the query that started before DROP USER"
+             (is (not (running?)))
+             (let [result (deref @slow 10000 ::timeout)]
+               (is (instance? Throwable result))
+               (is (re-find #"(?i)cancel" (str (ex-message result) (some-> result ex-cause ex-message))))))
+           (finally
+             (jdbc/execute! admin [(format "KILL QUERY WHERE user = '%s' SYNC" user)])
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
 
 (deftest ^:synchronized init-workspace-isolation-refuses-objects-created-after-the-check-test

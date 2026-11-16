@@ -849,14 +849,17 @@
   already running survives HOST NONE, so KILL QUERY ... SYNC ends those queries and waits for them. HOST NONE needs the
   ALTER USER grant. Without it, the user is not locked out, and new logins work until DROP USER.
   DROP DATABASE then removes the user's tables and views, including a materialized view that ClickHouse runs inside
-  every INSERT into an input table. The user goes last: on 26.10 a view whose definer is the user makes DROP USER fail,
-  and on 24.3 dropping that definer makes every INSERT into the view's source table fail."
+  every INSERT into an input table. The user goes next: on 26.10 a view whose definer is the user makes DROP USER fail,
+  and on 24.3 dropping that definer makes every INSERT into the view's source table fail. A query that started after the
+  first KILL QUERY survives DROP USER, so a second KILL QUERY ... SYNC runs last and ends it."
   [db-name user]
-  [(format "ALTER USER IF EXISTS %s HOST NONE" (quote-field user))
-   (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))
-   ;; DROP DATABASE cascades to all tables within it
-   (format "DROP DATABASE IF EXISTS %s SYNC" (quote-schema db-name))
-   (format "DROP USER IF EXISTS %s" (quote-field user))])
+  (let [kill (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))]
+    [(format "ALTER USER IF EXISTS %s HOST NONE" (quote-field user))
+     kill
+     ;; DROP DATABASE cascades to all tables within it
+     (format "DROP DATABASE IF EXISTS %s SYNC" (quote-schema db-name))
+     (format "DROP USER IF EXISTS %s" (quote-field user))
+     kill]))
 
 (defn- execute-for-error
   "Executes `sql` on `stmt`. Returns the SQLException it throws, or nil."
@@ -869,42 +872,49 @@
 
 (defn- destroy-workspace!
   "Runs [[destroy-workspace-sqls]] one at a time. A failed ALTER USER or KILL QUERY does not stop the statements after
-  it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer.
+  it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer. The second
+  KILL QUERY runs in every case.
 
   When DROP DATABASE or DROP USER fails, a workspace object remains. Then its error is thrown, and the ALTER USER and
   KILL QUERY errors are attached to it as suppressed.
 
   When both drops succeed, an ALTER USER error is logged, not thrown: a dropped user cannot log in. So the admin
   connection's login does not need the ALTER USER grant. Without it, the lock-out step is skipped. A KILL QUERY error
-  is thrown. When it is access denied (the admin may lack the KILL QUERY grant, which ClickHouse checks only when
-  another user's query matches), the thrown error names the missing grant."
+  is thrown, with the other KILL QUERY's error attached as suppressed. When it is access denied (the admin may lack the
+  KILL QUERY grant, which ClickHouse checks only when another user's query matches), the thrown error names the missing
+  grant. When both KILL QUERYs are denied, only the first error is kept."
   [^Statement stmt db-name user]
-  (let [[lock kill drop-db drop-user] (destroy-workspace-sqls db-name user)
-        lock-error                    (execute-for-error stmt lock)
-        kill-error                    (execute-for-error stmt kill)
-        drop-db-error                 (execute-for-error stmt drop-db)
-        drop-user-error               (when-not drop-db-error
-                                        (execute-for-error stmt drop-user))
-        drop-error                    (or drop-db-error drop-user-error)
+  (let [[lock kill drop-db drop-user kill-again] (destroy-workspace-sqls db-name user)
+        lock-error                     (execute-for-error stmt lock)
+        kill-error                     (execute-for-error stmt kill)
+        drop-db-error                  (execute-for-error stmt drop-db)
+        drop-user-error                (when-not drop-db-error
+                                         (execute-for-error stmt drop-user))
+        kill-again-error               (execute-for-error stmt kill-again)
+        drop-error                     (or drop-db-error drop-user-error)
+        ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
+        denied?                        #(= 497 (some-> ^SQLException % .getErrorCode))
+        kill-errors                    (remove nil? (if (and (denied? kill-error) (denied? kill-again-error))
+                                                      [kill-error]
+                                                      [kill-error kill-again-error]))
         ;; a dropped user cannot log in, so the lock-out error matters only when a drop failed
         [^SQLException error & others] (remove nil? (if drop-error
-                                                      [drop-error lock-error kill-error]
-                                                      [kill-error]))]
+                                                      (into [drop-error lock-error] kill-errors)
+                                                      kill-errors))]
     (when (and lock-error (not drop-error))
       (log/warnf lock-error "Could not lock out the workspace user %s before dropping it. Dropped the user and its database %s."
                  (quote-field user) (quote-schema db-name)))
     (when error
       (doseq [^Throwable other others]
         (.addSuppressed error other))
-      ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
-      (throw (if (and (identical? error kill-error) (= 497 (.getErrorCode error)))
+      (throw (if (and (not drop-error) (denied? error))
                (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not end the user's "
                                      "running queries: the admin connection's login lacks the KILL QUERY grant. The "
                                      "queries run until they finish, and teardown fails until then. Grant KILL QUERY "
                                      "to the login, or wait for the queries to finish, and retry.")
                                 (quote-field user) (quote-schema db-name))
                         {:user user, :database db-name}
-                        kill-error)
+                        error)
                error)))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
