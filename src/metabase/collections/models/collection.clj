@@ -2258,6 +2258,18 @@
     (let [{:keys [id location]} (collections.db/collection parent-id)]
       (str location id "/"))))
 
+(def ^:private library-stored-names
+  "The names that the system-created Library collections are stored and serialized with, by entity id."
+  {library-entity-id            "Library"
+   library-data-entity-id       "Data"
+   library-metrics-entity-id    "Metrics"
+   library-dashboards-entity-id "Dashboards"})
+
+(defn- stored-name
+  "The stored name of `collection`, a row or an exported entity, whose `collection-name` a select may have translated."
+  [collection _k collection-name]
+  (get library-stored-names (:entity_id collection) collection-name))
+
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
   {:schema    ::collections.schema/external-collection
    :copy [:archive_operation_id
@@ -2268,12 +2280,13 @@
           :entity_id
           :is_remote_synced
           :is_sample
-          :name
           :namespace
           :slug
           :type]
    :skip []
-   :transform {;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {:name              {:export-with-context stored-name
+                                   :import-with-context stored-name}
+               ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)
