@@ -24,14 +24,13 @@
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -50,6 +49,77 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
+
+;;; ---------- Hooks ---------------------------------------------------------------------------------------------
+
+(defn- check-name
+  "Throws a 400 unless `document-name` is a non-blank string of at most 254 characters."
+  [document-name]
+  (when-not (and (string? document-name)
+                 (not (str/blank? document-name))
+                 (<= (count document-name) 254))
+    (throw (ex-info (tru "Document name must be a non-blank string of at most 254 characters.")
+                    {:status-code 400, :errors {:name (tru "invalid document name")}}))))
+
+(defn- check-content
+  "Throws a 400 when the `document` body of a document with `content-type` is neither empty nor a ProseMirror node, which
+  has a string `:type`, and its content type is ProseMirror."
+  [content-type document]
+  (when (= content-type prose-mirror/prose-mirror-content-type)
+    (let [body (prose-mirror/normalize-document (cond-> document
+                                                  (and (string? document) (not (str/blank? document))) json/decode+kw))]
+      (when-not (or (nil? body)
+                    (= "" body)
+                    (= {} body)
+                    (and (map? body) (string? (:type body))))
+        (throw (ex-info (tru "Document content must be a ProseMirror document.")
+                        {:status-code 400, :errors {:document (tru "invalid document content")}}))))))
+
+(defn- check-collection
+  "Throws unless a Document may go in the Collection with `collection-id`."
+  [collection-id]
+  (collection/check-collection-namespace :model/Document collection-id)
+  (collection/check-allowed-content :model/Document collection-id))
+
+(mi/define-before-insert :model/Document
+  [documents]
+  (run! check-collection (distinct (map :collection_id documents)))
+  (mapv (fn [document]
+          (check-name (:name document))
+          (check-content (:content_type document) (:document document))
+          (public-sharing/add-public-uuid-prefix document))
+        documents))
+
+(mi/define-before-update :model/Document
+  [documents]
+  (let [moved (filter #(contains? (t2/changes %) :collection_id) documents)]
+    (run! check-collection (distinct (map :collection_id moved)))
+    (let [documents (mapv (fn [document]
+                            (let [changes (t2/changes document)]
+                              (when (contains? changes :name)
+                                (check-name (:name document)))
+                              (when (some #(contains? changes %) [:document :content_type])
+                                (check-content (:content_type document) (:document document)))
+                              (when (and (contains? changes :public_uuid_prefix)
+                                         (not (contains? changes :public_uuid)))
+                                (throw (ex-info (tru "The public UUID prefix of a Document is derived from its public UUID.")
+                                                {:status-code 400})))
+                              (public-sharing/add-public-uuid-prefix-if-changed document)))
+                          documents)]
+      (doseq [[collection-id moved] (group-by :collection_id moved)]
+        (documents.db/update-cards-collection! (map :id moved) collection-id))
+      documents)))
+
+(t2/define-after-update :model/Document
+  [{:keys [id archived archived_directly] :as instance}]
+  (documents.db/update-cards-for-document! id {:archived          (boolean archived)
+                                               :archived_directly (boolean archived_directly)})
+  instance)
+(t2/define-after-select :model/Document
+  [document]
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
+
+;;; ---------- Permissions ---------------------------------------------------------------------------------------
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -152,9 +222,59 @@
         (assoc document :can_write (boolean (and (contains? writable (:collection_id document))
                                                  (content-visible? document))))))))
 
+(defn- collection-writable?
+  "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
+  [collection-id]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defn- collection-move?
+  "Whether `changes` move `document` to another Collection."
+  [document changes]
+  (api/column-will-change? (:collection_id document) (get changes :collection_id ::api/not-provided)))
+
 (defmethod mi/can-create? :model/Document
   [_model {collection-id :collection_id}]
-  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+  (collection-writable? collection-id))
+
+(defmethod mi/can-update? :model/Document
+  [document changes]
+  (boolean
+   (and (mi/can-write? document)
+        (or (not (collection-move? document changes))
+            (and (collection-writable? (:collection_id document))
+                 (collection-writable? (:collection_id changes))))
+        (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+            (mi/superuser?)))))
+;;; ---------- Hydration -----------------------------------------------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
+  "Hydrate the creator (user) of a document based on the creator_id."
+  [_model k documents]
+  (mi/instances-with-hydrated-data
+   documents k
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
+   :creator_id {:default {}}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
+  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
+  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
+  [_model k documents]
+  (let [document-ids (keep :id documents)
+        ;; Fetch all cards for all documents in one batched query
+        all-cards (when (seq document-ids)
+                    (documents.db/unarchived-cards-for-documents document-ids))
+        ;; Group cards by document_id, then convert each group to a map keyed by card ID
+        cards-by-doc-id (group-by :document_id all-cards)
+        cards-maps-by-doc-id (update-vals cards-by-doc-id
+                                          (fn [cards]
+                                            (zipmap (map :id cards) cards)))]
+    (for [doc documents]
+      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
+
+;;; ---------- Write orchestration -------------------------------------------------------------------------------
 
 (def DocumentName
   "Validations for the name of a document"
@@ -168,21 +288,11 @@
      (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
-(defn validate-collection-move-permissions
-  "Validates that the current user has write permissions for both old and new collections
-   when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
-   Throws 403 exception if permissions are insufficient."
-  [old-collection-id new-collection-id]
-  (if old-collection-id
-    (api/write-check :model/Collection old-collection-id)
-    (api/write-check collection/root-collection))
-  (if new-collection-id
-    (do
-      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-      (api/write-check :model/Collection new-collection-id))
-    (api/write-check collection/root-collection)))
-
-;;; ------------------------------------------------ Write orchestration -------------------------------------------
+(defn check-new-collection-not-archived
+  "Throws a 400 when `changes` move `document` into an archived or missing Collection."
+  [document changes]
+  (when (and (collection-move? document changes) (:collection_id changes))
+    (api/check-400 (documents.db/unarchived-collection-exists? (:collection_id changes)))))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -458,148 +568,7 @@
                                 :user-id api/*current-user-id*}))
       updated-document)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
-  "Hydrate the creator (user) of a document based on the creator_id."
-  [_model k documents]
-  (mi/instances-with-hydrated-data
-   documents k
-   #(when-let [creator-ids (seq (keep :creator_id documents))]
-      (-> (documents.db/user-columns creator-ids)
-          (map (juxt :id identity))
-          (into {})))
-   :creator_id {:default {}}))
-
-(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
-  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
-  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
-  [_model k documents]
-  (let [document-ids (keep :id documents)
-        ;; Fetch all cards for all documents in one batched query
-        all-cards (when (seq document-ids)
-                    (documents.db/unarchived-cards-for-documents document-ids))
-        ;; Group cards by document_id, then convert each group to a map keyed by card ID
-        cards-by-doc-id (group-by :document_id all-cards)
-        cards-maps-by-doc-id (update-vals cards-by-doc-id
-                                          (fn [cards]
-                                            (zipmap (map :id cards) cards)))]
-    (for [doc documents]
-      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
-
-(defn sync-document-cards-collection!
-  "Updates all cards associated with a document to match the document's collection.
-  If the document is archived, also archives all associated cards. "
-  [document-id collection-id & {:keys [archived archived-directly]}]
-  (let [update-map {:collection_id collection-id
-                    :archived (boolean archived)
-                    :archived_directly (boolean archived-directly)}]
-    (documents.db/update-cards-for-document! document-id update-map)))
-
-(t2/define-after-update :model/Document
-  [{:keys [id collection_id archived archived_directly] :as instance}]
-  (sync-document-cards-collection! id collection_id
-                                   :archived archived
-                                   :archived-directly archived_directly)
-  (when-not mi/*deserializing?*
-    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
-    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
-    ;; rejects non-instances with "object must be a model instance" — caught and
-    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
-    ;; recorded for content updates. Promote it to a real instance here so the
-    ;; revisions push can complete cleanly.
-    (events/publish-event! :event/document-update
-                           {:object (if (t2/instance-of? :model/Document instance)
-                                      instance
-                                      (t2.instance/instance :model/Document instance))}))
-  instance)
-
-(t2/define-after-select :model/Document
-  [document]
-  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
-
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
-
-;;; ----------------------------------------------- Search ----------------------------------------------------------
-
-(defn- document->search-text
-  "Extract the plain searchable text from a document's prose-mirror body for the search index.
-
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string). Blindly
-  keywordizing that JSON would leave every node's `:attrs` keyword-keyed too, so it is normalized --
-  stringifying attrs -- before `ast->text` reads them. Returns nil if it can't be parsed, so a
-  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
-  [document]
-  (when document
-    (try
-      (-> (cond-> document (string? document) json/decode+kw)
-          prose-mirror/normalize-document
-          prose-mirror/ast->text
-          not-empty)
-      (catch Throwable _ nil))))
-
-;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
-;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
-;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
-(defmethod search.config/column->string [:document :document]
-  [value _model _column]
-  (or (document->search-text value) ""))
-
-(search.spec/define-spec "document"
-  {:model :model/Document
-   :attrs {:archived true
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :exploration-id :exploration_id
-           :view-count :view_count
-           :created-at :created_at
-           :updated-at :updated_at
-           :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms {:name true
-                  :document document->search-text}
-   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
-   ;; deliberately excluded from semantic-search embeddings.
-   :embedding-exclude #{:document}
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:document-name :name
-                  :document-id :id
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
-
-;;; ------------------------------------------------- Staleness ---------------------------------------------------
-
-(defmethod staleness/find-stale-query :model/Document
-  [_model args]
-  ^:allow-subquery
-  {:select [:document.id
-            [(h2x/literal "Document") :model]
-            [:document.name :name]
-            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
-            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
-            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
-            :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
-   :where [:and
-           [:= :document.archived false]
-           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
-           [:or
-            [:<= :document.last_viewed_at (-> args :cutoff-date)]
-            [:and
-             [:= :document.view_count 0]
-             [:<= :document.created_at (-> args :cutoff-date)]]]
-           ;; only regular user collections (type nil), not system collections like
-           ;; `instance-analytics`, `trash`, or the `library` collections.
-           [:= :collection.type nil]
-           (when (setting/get :enable-public-sharing)
-             [:= :document.public_uuid nil])
-           (staleness/collection-filter :document.collection_id args)]})
-
-;;; ---------------------------------------------- Serialization --------------------------------------------------
+;;; ---------- Serialization -------------------------------------------------------------------------------------
 
 (def ^:private model->serdes-model
   {"card"      "Card"
@@ -729,16 +698,6 @@
                                        :else
                                        nil))))))
 
-(t2/define-before-insert :model/Document [model]
-  (collection/check-allowed-content :model/Document (:collection_id model))
-  (public-sharing/add-public-uuid-prefix model))
-
-(t2/define-before-update :model/Document [model]
-  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  (public-sharing/add-public-uuid-prefix-if-changed model))
-
-;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
-
 (defn- path-key
   "The `[model ref]` of the entity a document names by `path`."
   [path]
@@ -773,7 +732,90 @@
                          [(keyword "model" model-name) id]))))
         documents))
 
+;;; ---------- Remote sync ---------------------------------------------------------------------------------------
+
 (defmethod remote-sync/spec :model/Document
   [_model]
   {:synced-items         documents.db/synced-document-items
    :synced-filter-clause documents.db/synced-documents-clause})
+
+;;; ---------- Search --------------------------------------------------------------------------------------------
+
+(defn- document->search-text
+  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string). Blindly
+  keywordizing that JSON would leave every node's `:attrs` keyword-keyed too, so it is normalized --
+  stringifying attrs -- before `ast->text` reads them. Returns nil if it can't be parsed, so a
+  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
+  [document]
+  (when document
+    (try
+      (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/normalize-document
+          prose-mirror/ast->text
+          not-empty)
+      (catch Throwable _ nil))))
+
+;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
+;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
+;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
+(defmethod search.config/column->string [:document :document]
+  [value _model _column]
+  (or (document->search-text value) ""))
+
+(search.spec/define-spec "document"
+  {:model :model/Document
+   :attrs {:archived true
+           :collection-id :collection_id
+           :creator-id :creator_id
+           :exploration-id :exploration_id
+           :view-count :view_count
+           :created-at :created_at
+           :updated-at :updated_at
+           :last-viewed-at :last_viewed_at
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+   :search-terms {:name true
+                  :document document->search-text}
+   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
+   ;; deliberately excluded from semantic-search embeddings.
+   :embedding-exclude #{:document}
+   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+   :render-terms {:document-name :name
+                  :document-id :id
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  :collection-name            :collection.name
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                  :collection-position        true
+                  :collection-type            :collection.type
+                  :archived-directly          true}})
+
+;;; ------------------------------------------------- Staleness ---------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Document
+  [_model args]
+  ^:allow-subquery
+  {:select [:document.id
+            [(h2x/literal "Document") :model]
+            [:document.name :name]
+            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
+            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
+            :document.collection_id]
+   :from :document
+   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :where [:and
+           [:= :document.archived false]
+           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
+           [:or
+            [:<= :document.last_viewed_at (-> args :cutoff-date)]
+            [:and
+             [:= :document.view_count 0]
+             [:<= :document.created_at (-> args :cutoff-date)]]]
+           ;; only regular user collections (type nil), not system collections like
+           ;; `instance-analytics`, `trash`, or the `library` collections.
+           [:= :collection.type nil]
+           (when (setting/get :enable-public-sharing)
+             [:= :document.public_uuid nil])
+           (staleness/collection-filter :document.collection_id args)]})

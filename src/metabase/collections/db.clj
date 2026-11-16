@@ -423,6 +423,11 @@
    archived?      :- :boolean]
   (t2/update! :model/Document {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
 
+(mu/defn documents-in-collections-not-archived-directly
+  "The Documents in the Collections with `collection-ids` that were not archived directly."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Document :collection_id [:in collection-ids] :archived_directly false))
+
 (mu/defn set-exploration-archived-in-collections-not-directly!
   "Set `archived?` on the Explorations in the Collections with `collection-ids` that were not archived directly,
   returning the number updated."

@@ -1510,6 +1510,13 @@
   [_seed-table-ids]
   nil)
 
+(defn- publish-document-updates!
+  "Publishes `:event/document-update` for the Documents the archive state of the Collections with `collection-ids`
+  just carried over to."
+  [collection-ids]
+  (doseq [document (collections.db/documents-in-collections-not-archived-directly collection-ids)]
+    (events/publish-event! :event/document-update {:object document})))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1534,6 +1541,7 @@
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
+      (publish-document-updates! affected-collection-ids)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
       (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
         (when (seq library-data-ids)
@@ -1592,6 +1600,7 @@
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
+      (publish-document-updates! affected-collection-ids)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-action-archived-in-collections! affected-collection-ids false))))
 

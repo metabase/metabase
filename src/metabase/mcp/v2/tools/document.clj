@@ -431,12 +431,11 @@
                                                    (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
       (api/check-not-archived existing))
-    (api/write-check existing)
     (let [collection-id (when (contains? args :collection_id)
-                          (v2.resolve/resolve-collection-id (:collection_id args)))]
-      (when (and (contains? args :collection_id)
-                 (not= collection-id (:collection_id existing)))
-        (documents/validate-collection-move-permissions (:collection_id existing) collection-id))
+                          (v2.resolve/resolve-collection-id (:collection_id args)))
+          move          (cond-> {} (contains? args :collection_id) (assoc :collection_id collection-id))]
+      (api/update-check existing move)
+      (documents/check-new-collection-not-archived existing move)
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.

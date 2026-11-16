@@ -61,11 +61,17 @@
   "Name for the auto-created Summary document on each exploration."
   "Summary")
 
+(defn- publish-document-updates!
+  "Publish `:event/document-update` for each of the Summary `documents` just updated."
+  [documents]
+  (doseq [document documents]
+    (events/publish-event! :event/document-update {:object document})))
+
 (defn- cascade-collection-id-to-documents!
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (explorations.db/move-summary-documents! exploration-id new-coll-id))
+  (publish-document-updates! (explorations.db/move-summary-documents! exploration-id new-coll-id)))
 
 (defn- cascade-archived-to-documents!
   "Propagate an Exploration's archive flip to its Summary document.
@@ -74,9 +80,9 @@
   flip every doc that was cascade-archived. Docs with `archived_directly=true`
   (user-archived) are never touched."
   [exploration-id new-archived?]
-  (if new-archived?
-    (explorations.db/archive-summary-documents! exploration-id)
-    (explorations.db/unarchive-summary-documents! exploration-id)))
+  (publish-document-updates! (if new-archived?
+                               (explorations.db/archive-summary-documents! exploration-id)
+                               (explorations.db/unarchive-summary-documents! exploration-id))))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further

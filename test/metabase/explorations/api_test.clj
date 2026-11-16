@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
@@ -1906,6 +1907,42 @@
         (let [d (t2/select-one :model/Document :id (:id user-archived))]
           (is (true? (:archived d)))
           (is (true? (:archived_directly d))))))))
+
+(deftest exploration-summary-updates-record-revision-and-event-test
+  (testing "Archiving and moving an exploration records a revision and an event for the Summary it updates"
+    (mt/with-temp [:model/Collection c {}
+                   :model/Collection dest {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document live {:name "Summary"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_id (:id e)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (let [published (atom [])
+            original  (mt/original-fn #'events/publish-event!)]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! published conj [topic (some-> event :object :id)])
+                                              (original topic event))]
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:collection_id (:id dest)})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (reset! published [])
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:archived true})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (is (not-any? #{[:event/document-update (:id user-archived)]} @published)))
+        (is (pos? (t2/count :model/Revision :model "Document" :model_id (:id live))))))))
 
 (deftest exploration-get-hydrates-summary-when-trashed-test
   (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."

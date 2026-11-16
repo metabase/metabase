@@ -59,13 +59,17 @@
   "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
   transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
   [document-id card-id position extra-attrs]
-  (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
-          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-          updates  (cond-> (select-keys updated [:document])
-                     (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
-      (merge document updates))))
+  (let [updated (t2/with-transaction [_conn]
+                  (let [document (api/check-404 (documents.db/document document-id))
+                        updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+                        updates  (cond-> (select-keys updated [:document])
+                                   (:is_placeholder document) (assoc :is_placeholder false))]
+                    (documents.db/update-document! document-id updates)
+                    (merge document updates)))]
+    (events/publish-event! :event/document-update
+                           {:object  updated
+                            :user-id api/*current-user-id*})
+    updated))
 
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
@@ -134,15 +138,14 @@
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [collection_id] :as body} :- DocumentUpdateOptions]
+   body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
   (let [existing-document (api/check-404 (documents.db/document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
-    (api/write-check existing-document)
-    (when (api/column-will-change? (:collection_id existing-document) (get body :collection_id ::api/not-provided))
-      (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
+    (api/update-check existing-document (select-keys body [:collection_id]))
+    (m.document/check-new-collection-not-archived existing-document body)
     (m.document/update-document! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
@@ -269,6 +272,7 @@
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
+        (events/publish-event! :event/document-update {:object (documents.db/document document-id)})
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
@@ -289,6 +293,7 @@
   (documents.db/update-document! document-id
                                  {:public_uuid       nil
                                   :made_public_by_id nil})
+  (events/publish-event! :event/document-update {:object (documents.db/document document-id)})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map
