@@ -10,6 +10,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -19,7 +20,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -148,6 +150,13 @@
              (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
                                        (:id database))))))))))
 
+(defn- writable-tables
+  "`tables`, or a 403 unless the current user can change the metadata of every one of them."
+  [tables]
+  (let [tables (t2/hydrate tables :can_write)]
+    (api/check-403 (every? mi/can-write? tables))
+    tables))
+
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
   ;; sync any tables that are changed from hidden to something else
@@ -176,7 +185,7 @@
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (data-studio.db/tables-matching-selectors selectors)
+        existing-tables (writable-tables (data-studio.db/tables-matching-selectors selectors))
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
@@ -222,7 +231,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (data-studio.db/databases db-ids)]
       (try
@@ -242,7 +251,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
@@ -255,7 +264,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
     (data-studio.db/delete-field-values-for-tables! (map :id tables))
     nil))
 

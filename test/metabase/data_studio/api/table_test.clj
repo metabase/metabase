@@ -2,6 +2,7 @@
   "Tests for /api/data-studio/table endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.data-studio.api.table :as api.table]
    [metabase.data-studio.db :as data-studio.db]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -84,6 +85,27 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
                                          {:table_ids [table-id]})))))))))
+
+(deftest bulk-endpoints-need-table-write-permission-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table {writable-id :id} {:db_id db-id}
+                 :model/Table {locked-id :id} {:db_id db-id}]
+    (mt/with-dynamic-fn-redefs [collection/remote-sync-writable-table? (fn [table] (not= locked-id (:id table)))]
+      (doseq [[endpoint body] {"edit"           {:data_layer "final"}
+                               "sync-schema"    {}
+                               "rescan-values"  {}
+                               "discard-values" {}}]
+        (testing endpoint
+          (testing "selection holding table without write permission is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :post 403 (str "data-studio/table/" endpoint)
+                                         (assoc body :table_ids [writable-id locked-id])))))))
+      (testing "nothing was written to either table"
+        (is (= #{:internal}
+               (t2/select-fn-set :data_layer :model/Table :id [:in [writable-id locked-id]]))))
+      (testing "selection of writable tables goes through"
+        (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                                        {:table_ids [writable-id] :data_layer "final"})))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"

@@ -363,23 +363,29 @@
         (when table
           (assoc table k (contains? queryable (:id table))))))))
 
-(defenterprise current-user-can-write-table?
-  "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
-  read-only instance syncs it."
+(defenterprise table-ids-with-writable-metadata
+  "OSS implementation: the ids of those of `tables` whose metadata the current user can change, which is all of them
+  for a superuser and none otherwise."
   metabase-enterprise.advanced-permissions.common
-  [instance]
-  (and (collection/remote-sync-writable-table? instance)
-       (mi/superuser?)))
+  [tables]
+  (if (mi/superuser?)
+    (into #{} (map :id) tables)
+    #{}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Whether the current user can change the metadata of each of `tables`."
+  "Whether the current user can change the metadata of each of `tables`, answered together, which nobody can when a
+  read-only instance syncs the Table."
   [_model k tables]
-  (let [publication (when (remote-sync/read-only?)
-                      (warehouse-schema.db/table-publication-columns (into [] (comp (keep :id) (distinct)) tables)))]
+  (let [rows        (into [] (remove nil?) tables)
+        _           (run! check-permission-keys rows)
+        publication (when (remote-sync/read-only?)
+                      (warehouse-schema.db/table-publication-columns (into [] (comp (map :id) (distinct)) rows)))
+        writable    (table-ids-with-writable-metadata rows)]
     (for [table tables]
       (when table
-        (check-permission-keys table)
-        (assoc table k (boolean (current-user-can-write-table? (merge table (get publication (:id table))))))))))
+        (assoc table k (boolean (and (contains? writable (:id table))
+                                     (collection/remote-sync-writable-table?
+                                      (merge table (get publication (:id table)))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.

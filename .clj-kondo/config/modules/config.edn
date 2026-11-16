@@ -913,6 +913,7 @@
            driver
            events
            lib.schema
+           models
            request
            sync
            util
