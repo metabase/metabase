@@ -1554,6 +1554,23 @@
                               (str/join " " (keep public-revoke-sql grants)))
                       {:status-code 412, :workspace/cleanup? false})))))
 
+(defn- account-lock-supported?
+  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version, and MariaDB has it from 10.4."
+  [^DatabaseMetaData metadata]
+  ;; not `db-version`: it parses the version as a double, and the double 10.11 is less than 10.4
+  (or (not= "MariaDB" (.getDatabaseProductName metadata))
+      (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 4]) 0)))
+
+(defn- check-account-lock-supported!
+  "Throws a 412 on MariaDB before 10.4, which has no ACCOUNT LOCK: without it a workspace user can open a session between
+  the kills and the drops of teardown, and that session keeps reading the bound database."
+  [^DatabaseMetaData metadata]
+  (when-not (account-lock-supported? metadata)
+    (throw (ex-info (format (str "The warehouse runs MariaDB %d.%d. Workspaces need MariaDB 10.4 or later, because "
+                                 "earlier versions cannot lock the workspace user's login during teardown.")
+                            (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))
+                    {:status-code 412, :workspace/cleanup? false}))))
+
 (defmethod driver/init-workspace-isolation! :mysql
   [driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
@@ -1568,6 +1585,7 @@
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        ;; refused before any DDL, so the refusal leaves nothing to tear down
+       (check-account-lock-supported! (.getMetaData conn))
        (check-admin-can-end-sessions! conn)
        (check-no-roles-for-every-login! conn)
        (when (mysql-user-exists? {:connection conn} user)
@@ -1596,13 +1614,6 @@
   [user]
   (format "ALTER USER IF EXISTS %s@'%%' ACCOUNT LOCK" (quote-field user)))
 
-(defn- account-lock-supported?
-  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version, and MariaDB has it from 10.4."
-  [^DatabaseMetaData metadata]
-  ;; not `db-version`: it parses the version as a double, and the double 10.11 is less than 10.4
-  (or (not= "MariaDB" (.getDatabaseProductName metadata))
-      (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 4]) 0)))
-
 (defn- drop-workspace-isolation-sqls [db-name user user-exists?]
   (cond-> [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))]
     user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
@@ -1616,8 +1627,8 @@
   "Ends each session of `user` that the admin login can see (it needs PROCESS) and may end (it needs one of
   [[kill-privileges]]). Init refuses an admin login without these privileges. When the login has lost one since init,
   a session it cannot see stays open, and a KILL it may not run is logged and skipped; either session keeps its access
-  until it disconnects. On MariaDB before 10.4, which has no ACCOUNT LOCK, the user can open a new session after the
-  kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them,
+  until it disconnects. Init also refuses MariaDB before 10.4, which has no ACCOUNT LOCK; there, the user can open a new
+  session after the kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them,
   for at most [[workspace-lock-wait-timeout]] seconds; DROP USER leaves its sessions open."
   [conn ^Statement stmt user]
   (doseq [id (map :id (jdbc/query conn ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?" user]))]

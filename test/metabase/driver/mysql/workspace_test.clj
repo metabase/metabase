@@ -59,6 +59,20 @@
            (map #(#'mysql/account-lock-supported? (apply metadata %))
                 [["MySQL" 5 7] ["MariaDB" 10 2] ["MariaDB" 10 3] ["MariaDB" 10 4] ["MariaDB" 10 11] ["MariaDB" 11 4]])))))
 
+(deftest check-account-lock-supported!-test
+  (testing "init refuses MariaDB before 10.4, which has no ACCOUNT LOCK; MySQL and MariaDB 10.4 and later pass"
+    (is (= [nil nil nil nil nil nil]
+           (map #(#'mysql/check-account-lock-supported! (apply metadata %))
+                [["MySQL" 5 7] ["MySQL" 8 0] ["MySQL" 8 4] ["MariaDB" 10 4] ["MariaDB" 10 6] ["MariaDB" 11 8]])))
+    (is (= {:message (str "The warehouse runs MariaDB 10.3. Workspaces need MariaDB 10.4 or later, because earlier "
+                          "versions cannot lock the workspace user's login during teardown.")
+            :data    {:status-code 412, :workspace/cleanup? false}}
+           (try
+             (#'mysql/check-account-lock-supported! (metadata "MariaDB" 10 3))
+             nil
+             (catch clojure.lang.ExceptionInfo e
+               {:message (ex-message e), :data (ex-data e)}))))))
+
 (deftest kill-privileges-test
   (testing "MySQL ends sessions with CONNECTION_ADMIN or SUPER; MariaDB with SUPER before 10.5, either up to 11.0, then CONNECTION ADMIN only"
     (is (= [["CONNECTION_ADMIN" "SUPER"] ["SUPER"] ["CONNECTION ADMIN" "SUPER"] ["CONNECTION ADMIN" "SUPER"]
@@ -386,6 +400,27 @@
    (fn [^java.sql.Connection conn]
      (let [md (.getMetaData conn)]
        [(.getDatabaseProductName md) (.getDatabaseMajorVersion md) (.getDatabaseMinorVersion md)]))))
+
+(deftest ^:synchronized init-refuses-mariadb-before-10-4-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          [product major minor] (server-version database)
+          refused   (refusal #(driver/init-workspace-isolation! :mysql database workspace))
+          created?  (or (user-exists? database (-> workspace :database_details :user))
+                        (database-exists? database (:schema workspace)))]
+      (driver/destroy-workspace-isolation! :mysql database workspace)
+      (if (and (= "MariaDB" product) (neg? (compare [major minor] [10 4])))
+        (testing "MariaDB before 10.4 has no ACCOUNT LOCK, so init refuses it with a 412 and creates nothing"
+          (is (= {:message (format (str "The warehouse runs MariaDB %d.%d. Workspaces need MariaDB 10.4 or later, "
+                                        "because earlier versions cannot lock the workspace user's login during teardown.")
+                                   major minor)
+                  :data    {:status-code 412, :workspace/cleanup? false}}
+                 refused))
+          (is (not created?)))
+        (testing (str product " " major "." minor " has ACCOUNT LOCK, so init does not refuse it")
+          (is (nil? refused))
+          (is created?))))))
 
 (deftest ^:synchronized init-refuses-a-role-every-login-holds-test
   (mt/test-driver :mysql
