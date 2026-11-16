@@ -157,14 +157,21 @@
       (testing "the indexes of a transform sync with it"
         (is (synced? :model/TableIndex (:id index)))))
     (when config/ee-available?
-      (mt/with-temp [:model/PythonLibrary library {:path "synced" :source "def synced(): pass"}
-                     :model/DataApp       app     {}
+      (mt/with-temp [:model/DataApp       app     {}
                      :model/TransformTest test    {:transform_id (:id transform)
                                                    :name         "Test"
                                                    :creator_id   (mt/user->id :crowberto)
                                                    :inputs       []
                                                    :expectations []}]
         (testing "Python libraries and data apps are synced, and the tests of a transform sync with it"
-          (is (synced? :model/PythonLibrary (:id library)))
+          (let [{:keys [id source is_default]} (or (t2/select-one :model/PythonLibrary :path "common.py")
+                                                   (t2/insert-returning-instance! :model/PythonLibrary
+                                                                                  {:path "common" :source ""}))]
+            (try
+              (t2/update! :model/PythonLibrary :id id {:source "def synced(): pass"})
+              (is (synced? :model/PythonLibrary id))
+              (finally
+                (t2/update! :model/PythonLibrary :id id {:source source})
+                (t2/update! :model/PythonLibrary :id id {:is_default is_default}))))
           (is (synced? :model/DataApp (:id app)))
           (is (synced? :model/TransformTest (:id test))))))))

@@ -55,3 +55,18 @@
               :description "Dashboard description"
               :id          "dashboard-853"}
              (#'bookmark/normalize-bookmark-result row))))))
+
+(deftest ordering-type-must-be-bookmarkable-model-test
+  (mt/with-model-cleanup [:model/BookmarkOrdering]
+    (let [user-id (mt/user->id :lucky)]
+      (testing "inserting unknown type is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Bookmark ordering type must be one of"
+                              (t2/insert! :model/BookmarkOrdering {:user_id user-id :type "table" :item_id 1 :ordering 0})))
+        (is (not (t2/exists? :model/BookmarkOrdering :user_id user-id :type "table"))))
+      (let [id (t2/insert-returning-pk! :model/BookmarkOrdering {:user_id user-id :type "card" :item_id 1 :ordering 0})]
+        (testing "changing type to unknown value is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Bookmark ordering type must be one of"
+                                (t2/update! :model/BookmarkOrdering :id id {:type "table"}))))
+        (testing "changing type to bookmarkable model is accepted"
+          (t2/update! :model/BookmarkOrdering :id id {:type "dashboard"})
+          (is (= "dashboard" (t2/select-one-fn :type :model/BookmarkOrdering :id id))))))))

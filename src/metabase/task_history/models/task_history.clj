@@ -14,6 +14,7 @@
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -64,18 +65,22 @@
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
-(defn- assert-task-history-status
+(defn- check-status
+  "Throws a 400 unless `status` is a TaskHistory status."
   [status]
-  (assert (task-history-status (keyword status)) "Invalid task history status"))
+  (when-not (task-history-status (keyword status))
+    (throw (ex-info (tru "Invalid task history status.") {:status-code 400}))))
 
-(t2/define-after-insert :model/TaskHistory
+(t2/define-before-insert :model/TaskHistory
   [task-history]
-  (assert-task-history-status (:status task-history))
+  (when (contains? task-history :status)
+    (check-status (:status task-history)))
   task-history)
 
 (t2/define-before-update :model/TaskHistory
   [task-history]
-  (assert-task-history-status (:status task-history))
+  (when (contains? (t2/changes task-history) :status)
+    (check-status (:status task-history)))
   task-history)
 
 (t2/deftransforms :model/TaskHistory

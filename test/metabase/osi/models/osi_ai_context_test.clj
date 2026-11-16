@@ -98,3 +98,15 @@
         (testing "delete"
           (is (pos? (t2/delete! :model/OsiAiContext :entity_type (k 0) :entity_local_id (k 1))))
           (is (nil? (by-key entity))))))))
+
+(deftest entity-type-must-be-described-type-test
+  (testing "inserting unknown entity_type is refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"entity_type must be one of"
+                          (t2/insert! :model/OsiAiContext {:entity_type "dashboard" :entity_local_id 4242
+                                                           :ai_context {:instructions "x"}})))
+    (is (not (t2/exists? :model/OsiAiContext :entity_type "dashboard" :entity_local_id 4242))))
+  (testing "changing entity_type to unknown value is refused"
+    (mt/with-temp [:model/OsiAiContext _ {:entity_type "table" :entity_local_id 4243 :ai_context {:instructions "x"}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"entity_type must be one of"
+                            (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 4243
+                                        {:entity_type "dashboard"}))))))

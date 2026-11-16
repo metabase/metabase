@@ -174,8 +174,7 @@
   [model-name  :- :string
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
-  ;; updates the table directly: revisions are otherwise immutable
-  (t2/update! (t2/table-name :model/Revision)
+  (t2/update! :model/Revision
               {:model model-name :model_id model-id :most_recent true :id [:not= revision-id]}
               {:most_recent false}))
 

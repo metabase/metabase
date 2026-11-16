@@ -8,6 +8,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -49,23 +50,21 @@
 
 (def ^:private task-run-status #{:started :success :failed :abandoned})
 
-(defn- assert-task-run-status
+(defn- check-status
+  "Throws a 400 unless `status` is a TaskRun status."
   [status]
-  (assert (task-run-status (keyword status)) "Invalid task run status"))
+  (when-not (task-run-status (keyword status))
+    (throw (ex-info (tru "Invalid task run status.") {:status-code 400}))))
 
 (t2/define-before-insert :model/TaskRun
   [task-run]
+  (check-status (:status task-run))
   (merge {:started_at (mi/now), :updated_at (mi/now)} task-run))
-
-(t2/define-after-insert :model/TaskRun
-  [task-run]
-  (assert-task-run-status (:status task-run))
-  task-run)
 
 (t2/define-before-update :model/TaskRun
   [task-run]
-  (when (contains? task-run :status)
-    (assert-task-run-status (:status task-run)))
+  (when (contains? (t2/changes task-run) :status)
+    (check-status (:status task-run)))
   task-run)
 
 (t2/deftransforms :model/TaskRun

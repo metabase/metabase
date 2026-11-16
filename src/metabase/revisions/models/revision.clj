@@ -146,8 +146,10 @@
          :most_recent true))
 
 (t2/define-before-update :model/Revision
-  [_revision]
-  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!")))))
+  [revision]
+  (when (seq (dissoc (t2/changes revision) :most_recent))
+    (throw (ex-info (tru "You cannot update a Revision!") {:status-code 400})))
+  revision)
 
 (t2/define-after-select :model/Revision
   ;; Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.

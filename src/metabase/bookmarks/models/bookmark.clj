@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -24,6 +25,38 @@
 (derive :model/BookmarkOrdering :metabase/model)
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
+  bookmark)
+
+(t2/define-before-update :model/CollectionBookmark [model]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
+  model)
+
+(def bookmark-types
+  "The `type` of each bookmarkable model, as a BookmarkOrdering stores it."
+  ["card" "dashboard" "collection" "document" "exploration"])
+
+(defn- check-ordering-type
+  "Throws a 400 unless `type` is one of [[bookmark-types]]."
+  [type]
+  (when-not (some #{type} bookmark-types)
+    (throw (ex-info (tru "Bookmark ordering type must be one of: {0}" (str/join ", " bookmark-types))
+                    {:status-code 400}))))
+
+(t2/define-before-insert :model/BookmarkOrdering [ordering]
+  (check-ordering-type (:type ordering))
+  ordering)
+
+(t2/define-before-update :model/BookmarkOrdering [ordering]
+  (when (contains? (t2/changes ordering) :type)
+    (check-ordering-type (:type ordering)))
+  ordering)
+
+;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 
 (defn- unqualify-key
   [k]
@@ -90,11 +123,3 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
-
-(t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
-  bookmark)
-
-(t2/define-before-update :model/CollectionBookmark [model]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
-  model)

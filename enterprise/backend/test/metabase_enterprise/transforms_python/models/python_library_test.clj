@@ -94,3 +94,15 @@
         (python-library/update-python-library-source! "common" source)
         (is (=? {:entity_id python-library/builtin-entity-id :is_default default?}
                 (t2/select-one :model/PythonLibrary :path "common.py")))))))
+
+(deftest only-common-path-is-allowed-test
+  (t2/delete! :model/PythonLibrary)
+  (testing "inserting library at other path is refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid library path"
+                          (t2/insert! :model/PythonLibrary {:path "other" :source "" :entity_id (u/generate-nano-id)})))
+    (is (zero? (t2/count :model/PythonLibrary))))
+  (testing "moving library to other path is refused"
+    (let [id (t2/insert-returning-pk! :model/PythonLibrary {:path "common" :source "" :entity_id (u/generate-nano-id)})]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid library path"
+                            (t2/update! :model/PythonLibrary :id id {:path "other"})))
+      (is (= "common.py" (t2/select-one-fn :path :model/PythonLibrary :id id))))))

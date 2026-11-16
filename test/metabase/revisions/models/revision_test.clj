@@ -198,9 +198,23 @@
                                                                            :model_id    card-id
                                                                            :object      {}
                                                                            :most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) :id (:id revision) {:most_recent true})
+      (t2/update! :model/Revision :id (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
              (t2/select-one-fn :timestamp :model/Revision :id (:id revision)))))))
+
+(deftest revision-columns-other-than-most-recent-are-frozen-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (let [revision (first (t2/insert-returning-instances! :model/Revision {:model    "FakedCard"
+                                                                           :user_id  (mt/user->id :crowberto)
+                                                                           :model_id card-id
+                                                                           :object   {:name "Original"}}))]
+      (testing "changing object is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update a Revision"
+                              (t2/update! :model/Revision :id (:id revision) {:object {:name "Changed"}})))
+        (is (= {:name "Original"} (t2/select-one-fn :object :model/Revision :id (:id revision)))))
+      (testing "changing most_recent is accepted"
+        (t2/update! :model/Revision :id (:id revision) {:most_recent false})
+        (is (false? (t2/select-one-fn :most_recent :model/Revision :id (:id revision))))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"

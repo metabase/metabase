@@ -431,3 +431,25 @@
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/testing
                   :payload      {}}))))))
+
+(deftest status-must-be-known-test
+  (mt/with-model-cleanup [:model/TaskRun]
+    (testing "inserting unknown status is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task run status"
+                            (t2/insert! :model/TaskRun {:run_type     :sync
+                                                        :entity_type  :database
+                                                        :entity_id    Integer/MAX_VALUE
+                                                        :process_uuid "status-check"
+                                                        :status       :bogus})))
+      (is (not (t2/exists? :model/TaskRun :process_uuid "status-check"))))
+    (let [id (t2/insert-returning-pk! :model/TaskRun {:run_type     :sync
+                                                      :entity_type  :database
+                                                      :entity_id    Integer/MAX_VALUE
+                                                      :process_uuid "status-check"
+                                                      :status       :started})]
+      (testing "changing status to unknown value is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task run status"
+                              (t2/update! :model/TaskRun :id id {:status :bogus}))))
+      (testing "changing status to known value is accepted"
+        (t2/update! :model/TaskRun :id id {:status :abandoned})
+        (is (= :abandoned (t2/select-one-fn :status :model/TaskRun :id id)))))))

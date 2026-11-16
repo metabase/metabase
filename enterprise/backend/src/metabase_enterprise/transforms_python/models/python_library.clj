@@ -19,6 +19,8 @@
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
 (defn- normalize-path
   "Ensure the path ends with .py extension."
   [path]
@@ -26,35 +28,12 @@
     path
     (str path ".py")))
 
-(t2/define-before-insert :model/PythonLibrary
-  [library]
-  (update library :path normalize-path))
-
-(t2/define-before-update :model/PythonLibrary
-  [library]
-  (cond-> library
-    (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
-    (:path library)                          (update :path normalize-path)))
-
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
-
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
-
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."
   #{"common.py"})
 
-(def builtin-entity-id
-  "The entity_id of the built-in common.py PythonLibrary created by migration.
-   Used to protect it from deletion during remote-sync import."
-  "cWWH9qJPvHNB3rP2vLZrK")
-
-(defn- validate-path!
-  "Validates that the given path is allowed. Throws an exception if not."
+(defn- check-path
+  "Throws a 400 unless `path`, normalized, is one of [[allowed-paths]]."
   [path]
   (let [normalized-path (normalize-path path)]
     (when-not (contains? allowed-paths normalized-path)
@@ -63,35 +42,18 @@
                        :path normalized-path
                        :allowed-paths allowed-paths})))))
 
-(defn get-python-library-by-path
-  "Get the Python library by path."
-  [path]
-  (let [normalized-path (normalize-path path)]
-    (validate-path! normalized-path)
-    (transforms-python.db/python-library-by-path normalized-path)))
+(t2/define-before-insert :model/PythonLibrary
+  [library]
+  (check-path (:path library))
+  (update library :path normalize-path))
 
-(defn update-python-library-source!
-  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
-  [path source]
-  (let [normalized-path (normalize-path path)]
-    (validate-path! normalized-path)
-    (let [id (transforms-python.db/upsert-python-library-source!
-              normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})]
-      (transforms-python.db/python-library id))))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serialization/spec :model/PythonLibrary [_]
-  {:schema ::transforms-python.schema/external-python-library
-   :copy   [:path :source :entity_id]
-   :skip   [:is_default]})
-
-(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
-  (mapv (fn [entity]
-          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
-        entities))
-
-;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
+(t2/define-before-update :model/PythonLibrary
+  [library]
+  (when (contains? (t2/changes library) :path)
+    (check-path (:path library)))
+  (cond-> library
+    (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
+    (:path library)                          (update :path normalize-path)))
 
 ;; Event type hierarchy for remote-sync tracking
 (events/derive! ::event :metabase/event)
@@ -107,6 +69,52 @@
   [library]
   (events/publish-event! :event/python-library-update {:object library})
   library)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+
+;;; ---------------------------------------------------- Library -----------------------------------------------------
+
+(def builtin-entity-id
+  "The entity_id of the built-in common.py PythonLibrary created by migration.
+   Used to protect it from deletion during remote-sync import."
+  "cWWH9qJPvHNB3rP2vLZrK")
+
+(defn get-python-library-by-path
+  "Get the Python library by path."
+  [path]
+  (let [normalized-path (normalize-path path)]
+    (check-path normalized-path)
+    (transforms-python.db/python-library-by-path normalized-path)))
+
+(defn update-python-library-source!
+  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
+  [path source]
+  (let [normalized-path (normalize-path path)
+        id              (transforms-python.db/upsert-python-library-source!
+                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})]
+    (transforms-python.db/python-library id)))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serialization/spec :model/PythonLibrary [_]
+  {:schema ::transforms-python.schema/external-python-library
+   :copy   [:path :source :entity_id]
+   :skip   [:is_default]})
+
+(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
+  (mapv (fn [entity]
+          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+        entities))
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/PythonLibrary
   [_model]

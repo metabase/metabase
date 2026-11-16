@@ -211,8 +211,11 @@
                      :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
                                                             :moderated_item_id   card-id
                                                             :moderator_id        (mt/user->id :crowberto)
-                                                            :status              "verified"
-                                                            :most_recent         false}]
+                                                            :status              "verified"}
+                     :model/ModerationReview _             {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"}]
         (is (= 1 (indexed-count "card" card-id)))
         (t2/delete! :model/ModerationReview :id mr-id)
         (is (= 1 (indexed-count "card" card-id)))))))

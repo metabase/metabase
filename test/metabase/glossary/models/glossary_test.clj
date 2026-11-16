@@ -1,7 +1,9 @@
 (ns metabase.glossary.models.glossary-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -43,3 +45,38 @@
                                                                    {:term       "SQL"
                                                                     :definition "Structured Query Language"})]
             (is (= config/internal-mb-user-id (:creator_id glossary-no-creator)))))))))
+
+(deftest term-and-definition-must-be-non-blank-test
+  (mt/with-model-cleanup [:model/Glossary]
+    (testing "inserting blank term or definition is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-blank term"
+                            (t2/insert! :model/Glossary {:term " " :definition "Blank term"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-blank definition"
+                            (t2/insert! :model/Glossary {:term "Blank definition"})))
+      (is (not (t2/exists? :model/Glossary :definition "Blank term")))
+      (is (not (t2/exists? :model/Glossary :term "Blank definition"))))
+    (mt/with-temp [:model/Glossary {id :id} {:term "Kept" :definition "Kept definition"}]
+      (testing "blanking term or definition is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-blank term"
+                              (t2/update! :model/Glossary :id id {:term ""})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-blank definition"
+                              (t2/update! :model/Glossary :id id {:definition nil})))
+        (is (=? {:term "Kept" :definition "Kept definition"} (t2/select-one :model/Glossary :id id)))))))
+
+(deftest write-permission-test
+  (mt/with-temp [:model/Glossary entry {:term "Checked" :definition "Permission checked"}]
+    (testing "superuser can create and update entries"
+      (mt/with-test-user :crowberto
+        (is (true? (api/create-check :model/Glossary {:term "New" :definition "Entry"})))
+        (is (true? (api/update-check entry {:term "Renamed"})))
+        (is (true? (:can_write (t2/hydrate entry :can_write))))))
+    (testing "regular user cannot create or update entries"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/create-check :model/Glossary {:term "New" :definition "Entry"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/update-check entry {:term "Renamed"})))
+        (is (false? (:can_write (t2/hydrate entry :can_write))))))
+    (testing "every user can read entries"
+      (mt/with-test-user :rasta
+        (is (= [true] (map mi/can-read? (t2/hydrate [entry] :can_read))))))))

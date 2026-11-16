@@ -207,3 +207,19 @@
                    :status        :error
                    :error_message #(str/includes? % "does not match")}
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
+
+(deftest identifier-must-not-contain-colon-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (testing "inserting identifier with colon is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain \":\""
+                            (t2/insert! :model/CustomVizPlugin {:identifier   "colon:insert"
+                                                                :display_name "Colon"
+                                                                :status       :active})))
+      (is (not (t2/exists? :model/CustomVizPlugin :identifier "colon:insert"))))
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "plain-identifier"
+                                                    :display_name "Plain"
+                                                    :status       :active}]
+      (testing "renaming identifier to one with colon is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain \":\""
+                              (t2/update! :model/CustomVizPlugin :id id {:identifier "colon:update"})))
+        (is (= "plain-identifier" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id)))))))
