@@ -103,11 +103,13 @@ const HEADING_CARD = createMockVirtualCard({ display: "heading" });
 type SetupOpts = {
   dashboard: Partial<Dashboard>;
   dashboardFetchDelay?: number;
+  dashboardMetadataFetchDelay?: number;
 };
 
 async function setup({
   dashboard: dashboardOpts,
   dashboardFetchDelay,
+  dashboardMetadataFetchDelay,
 }: SetupOpts) {
   const dashboard = createMockDashboard({ id: DASHBOARD_ID, ...dashboardOpts });
   const database = createSampleDatabase();
@@ -118,6 +120,7 @@ async function setup({
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata({ databases: [database] }),
+    { delay: dashboardMetadataFetchDelay },
   );
   dashboard.dashcards.forEach((dashcard) => {
     if (dashcard.card_id != null) {
@@ -362,6 +365,7 @@ describe("DashboardApp > tabs", () => {
         dashcards: [createHeadingDashcard({ id: 1, text: "Existing heading" })],
       },
       dashboardFetchDelay: 300,
+      dashboardMetadataFetchDelay: 300,
     });
 
     await startEditing();
@@ -400,12 +404,12 @@ describe("DashboardApp > tabs", () => {
         }),
       }),
     ]);
-    await waitFor(() =>
-      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
-    );
-    expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
-    expect(screen.getByText("Existing heading")).toBeInTheDocument();
-    expect(screen.getByText("New heading")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
+      expect(screen.getByText("Existing heading")).toBeInTheDocument();
+      expect(screen.getByText("New heading")).toBeInTheDocument();
+    });
   });
 
   it("should show the cards of a deleted tab again after undoing its deletion from the toast (#45364)", async () => {

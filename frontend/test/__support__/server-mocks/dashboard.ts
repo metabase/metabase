@@ -49,8 +49,15 @@ export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {
 export function setupDashboardQueryMetadataEndpoint(
   dashboard: Dashboard,
   metadata: DashboardQueryMetadata,
+  { delay }: { delay?: number } = {},
 ) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, metadata);
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}/query_metadata`,
+    metadata,
+    {
+      delay,
+    },
+  );
 }
 
 export function setupDashboardsEndpoints(dashboards: Dashboard[]) {
