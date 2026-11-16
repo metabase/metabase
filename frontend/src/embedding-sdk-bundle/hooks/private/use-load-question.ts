@@ -7,7 +7,6 @@ import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
   runQuestionQuerySdk,
-  shouldRunCardQuery,
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
@@ -150,13 +149,6 @@ export function useLoadQuestion({
       mergeQuestionState(questionState);
       componentPerformance?.recordMark("metadata_end");
 
-      // New questions open the editor and run no query.
-      if (
-        shouldRunCardQuery({ question: questionState.question, isGuestEmbed })
-      ) {
-        componentPerformance?.recordMark("query_start");
-      }
-
       const results = await runQuestionQuerySdk({
         question: questionState.question,
         isGuestEmbed,
@@ -166,6 +158,7 @@ export function useLoadQuestion({
         signal: nextSignal(),
         dispatch,
         initialVisualization,
+        onQueryStart: () => componentPerformance?.recordMark("query_start"),
         onQueryEnd: (result) =>
           finishSdkComponentPerformanceAtQueryEnd(componentPerformance, result),
       });
