@@ -103,6 +103,12 @@
          (:h2 :mysql)   " (id BIGINT AUTO_INCREMENT PRIMARY KEY,")
        " name VARCHAR(255) NOT NULL, group_id INT NOT NULL, n INT NOT NULL DEFAULT 0)"))
 
+(defn- mariadb?
+  "Whether the app DB is MariaDB, which `mdb/db-type` reports as `:mysql`."
+  []
+  (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
 (defn- drop-table-sql []
   (str "DROP TABLE IF EXISTS " table-name))
 
@@ -150,12 +156,14 @@
     (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 82))))
-  (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture, and the delete still runs"
-    (reset-capture!)
-    (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
-      (is (= 1 (t2/delete! ::bird {:delete-from [(keyword table-name) :b], :where [:= :b.id id]})))
-      (is (empty? (events)))
-      (is (false? (t2/exists? ::bird :id id))))))
+  ;; MariaDB rejects an alias on a single-table DELETE.
+  (when-not (mariadb?)
+    (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture and still deletes"
+      (reset-capture!)
+      (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
+        (is (= 1 (t2/delete! ::bird {:delete-from [(keyword table-name) :b], :where [:= :b.id id]})))
+        (is (empty? (events)))
+        (is (false? (t2/exists? ::bird :id id)))))))
 
 (deftest delete-statement-counts-test
   (testing "a captured delete runs two statements (narrow select + delete)"
