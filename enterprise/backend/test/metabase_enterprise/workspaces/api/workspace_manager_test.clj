@@ -150,7 +150,8 @@
                     (testing "the config download"
                       (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
                     (testing "a create with the same Idempotency-Key"
-                      (is (=? {:error-code "workspace_busy"}
+                      (is (=? {:error-code "workspace_busy"
+                               :message    "A create or delete of the workspace with this idempotency key is still running. Retry once it finishes."}
                               (create! 409)))
                       (is (= [ws-id] (t2/select-pks-vec :model/Workspace :idempotency_key "slow-delete"))))
                     (is (= during (row)) "the refused requests changed nothing")

@@ -120,8 +120,8 @@
    1 to 255 characters, not blank, with no leading or trailing whitespace; otherwise
    400. Keys are compared exactly, letter case included. When the current user
    already has a workspace with that key, nothing is provisioned. The response is
-   that workspace (200); 409 with error code `workspace_busy` while that workspace's
-   create is still running; or 500 with `workspace_id` and `cleanup_required` when
+   that workspace (200); 409 with error code `workspace_busy` while a create or
+   delete of that workspace is still running; or 500 with `workspace_id` and `cleanup_required` when
    that workspace has no databases or one that is not `provisioned`: its create
    failed or stopped, or a later delete failed. Delete the workspace, then create
    again with a new key. A create that failed and deleted its workspace frees its

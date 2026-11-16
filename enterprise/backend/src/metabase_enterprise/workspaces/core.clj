@@ -427,10 +427,10 @@
       (throw (combined-exception failures {:status-code 500})))))
 
 (defn- create-running-exception
-  "The 409 with error code `workspace_busy` for a same-key retry of a create that is still running. `ws-id` is the
-  create's workspace, or nil when a failed create has already deleted it."
+  "The 409 with error code `workspace_busy` for a same-key retry while a create or a delete of the workspace with that
+  key is still running. `ws-id` is that workspace, or nil when a failed create has already deleted it."
   [ws-id]
-  (ex-info "A create with this idempotency key is still running. Retry once it finishes."
+  (ex-info "A create or delete of the workspace with this idempotency key is still running. Retry once it finishes."
            (cond-> {:status-code 409
                     :error-code  "workspace_busy"}
              ws-id (assoc :workspace_id ws-id))))
@@ -483,8 +483,8 @@
 
 (defn- retried-workspace
   "Returns the hydrated workspace `ws-id`, which an earlier create with the same
-  idempotency key made. Refuses (409, `workspace_busy`) while that create is still
-  running, see [[assert-create-not-running]]. When the workspace has no databases,
+  idempotency key made. Refuses (409, `workspace_busy`) while that create, or a
+  delete of the workspace, is still running, see [[assert-create-not-running]]. When the workspace has no databases,
   or a database that is not `:provisioned`, the retry answers 500 with `workspace_id`
   and `cleanup_required`: the create failed and kept the workspace, the create
   stopped (a crash) more than [[in-flight-stale-after]] ago, or a later delete
@@ -535,7 +535,7 @@
    An optional `idempotency_key` makes the create safe to retry. It is stored on the
    Workspace row, unique per creator. When the creator already has a workspace with
    that key, nothing is provisioned: the call returns that workspace, refuses with
-   409 (`workspace_busy`) while that workspace's create is still running, or
+   409 (`workspace_busy`) while a create or delete of that workspace is still running, or
    answers 500 with `workspace_id` and `cleanup_required` when that workspace has
    no databases or one that is not `:provisioned`. The rest of a retry's params
    are not compared with the original's. A failed create whose cleanup deleted its
