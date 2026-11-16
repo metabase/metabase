@@ -1,9 +1,12 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel] ;; ensure known-labels are loaded
+   [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -137,3 +140,99 @@
           (is (not (some (fn [{:keys [message]}]
                            (re-find #"Secret" message))
                          (messages)))))))))
+
+(def ^:private http-channel
+  {:name    "Webhook"
+   :type    :channel/http
+   :details {:url "https://example.com/hook" :auth-method "none"}})
+
+(deftest channel-type-and-details-are-checked-on-insert-test
+  (mt/with-model-cleanup [:model/Channel]
+    (testing "a registered type with details of its shape is accepted"
+      (is (some? (t2/insert-returning-instance! :model/Channel http-channel))))
+    (testing "an unregistered type is a 400"
+      (is (=? {:status-code 400}
+              (try (t2/insert! :model/Channel (assoc http-channel :name "Other" :type :channel/nonexistent))
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "details of another type's shape are a 400"
+      (is (=? {:status-code 400}
+              (try (t2/insert! :model/Channel (assoc http-channel :name "Bad" :details {:channel "#general"}))
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "an HTTP channel without details is a 400"
+      (is (=? {:status-code 400}
+              (try (t2/insert! :model/Channel (dissoc http-channel :details))
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "an email channel needs no details"
+      (is (some? (t2/insert-returning-instance! :model/Channel {:name "Mail" :type :channel/email :details {}}))))))
+
+(deftest channel-type-and-details-are-checked-on-update-test
+  (mt/with-temp [:model/Channel {id :id} http-channel]
+    (testing "changing details to the wrong shape is a 400"
+      (is (=? {:status-code 400}
+              (try (t2/update! :model/Channel :id id {:details {:channel "#general"}})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "changing the type while keeping details of another shape is a 400"
+      (is (=? {:status-code 400}
+              (try (t2/update! :model/Channel :id id {:type :channel/slack})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "changing the type to an unregistered one is a 400"
+      (is (=? {:status-code 400}
+              (try (t2/update! :model/Channel :id id {:type :channel/nonexistent})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "changing the type together with matching details is accepted"
+      (is (pos? (t2/update! :model/Channel :id id {:type :channel/slack :details {:channel "#general"}}))))
+    (testing "changing only the name does not recheck the details"
+      (is (pos? (t2/update! :model/Channel :id id {:name "Renamed"}))))))
+
+(deftest channel-template-channel-type-is-frozen-test
+  (mt/with-temp [:model/ChannelTemplate {id :id} {:channel_type :channel/email
+                                                  :name         "Template"
+                                                  :details      {:type    :email/handlebars-text
+                                                                 :subject "Hello"
+                                                                 :body    "Body"}}]
+    (is (=? {:status-code 400}
+            (try (t2/update! :model/ChannelTemplate :id id {:channel_type :channel/slack})
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    (is (pos? (t2/update! :model/ChannelTemplate :id id {:name "Renamed"})))))
+
+(deftest channel-permissions-test
+  (mt/with-temp [:model/Channel channel http-channel
+                 :model/ChannelTemplate template {:channel_type :channel/email
+                                                  :name         "Template"
+                                                  :details      {:type    :email/handlebars-text
+                                                                 :subject "Hello"
+                                                                 :body    "Body"}}]
+    (let [allowed? (fn [user-kw]
+                     (mt/with-test-user user-kw
+                       [(mi/can-read? (t2/hydrate channel :can_read))
+                        (mi/can-write? (t2/hydrate channel :can_write))
+                        (mi/can-write? (t2/hydrate template :can_write))
+                        (mi/can-create? :model/Channel {})
+                        (mi/can-create? :model/ChannelTemplate {})
+                        (boolean (seq (mi/readable [channel])))]))]
+      (testing "an admin can do everything"
+        (is (= [true true true true true true] (allowed? :crowberto))))
+      (testing "a plain user can do nothing"
+        (is (= [false false false false false false] (allowed? :rasta))))
+      (mt/when-ee-evailable
+       (testing "a user with the setting application permission can do everything"
+         (mt/with-premium-features #{:advanced-permissions}
+           (mt/with-user-in-groups [group {:name "channel managers"}
+                                    user  [group]]
+             (perms/grant-application-permissions! group :setting)
+             (mt/with-current-user (:id user)
+               (is (= [true true true true true true]
+                      [(mi/can-read? (t2/hydrate channel :can_read))
+                       (mi/can-write? (t2/hydrate channel :can_write))
+                       (mi/can-write? (t2/hydrate template :can_write))
+                       (mi/can-create? :model/Channel {})
+                       (mi/can-create? :model/ChannelTemplate {})
+                       (boolean (seq (mi/readable [channel])))]))))))))
+    (testing "api checks throw 403 for a plain user and pass for an admin"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions" (api/create-check :model/Channel {})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions" (api/write-check channel)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions" (api/read-check channel))))
+      (mt/with-test-user :crowberto
+        (is (true? (api/create-check :model/Channel {})))
+        (is (= (:id channel) (:id (api/write-check channel))))))))
