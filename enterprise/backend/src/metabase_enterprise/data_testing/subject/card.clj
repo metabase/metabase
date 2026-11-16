@@ -39,13 +39,15 @@
   [_subject-type
    {query :dataset_query card-name :name} :- ::data-testing.subject/card]
   (let [database (data-testing.subject/testable-database (lib/database-id query))
-        {sql :query params :params}
+        {sql :query params :params native? :native?}
         (try
           ;; The same preparation a transform's query gets: remaps would add joins to tables the test does
           ;; not declare, and the default row limit would cut the result set. A persisted model in the query
           ;; stays its query: its cache table is not a table the test can declare, and the test is of the query.
           (model-persistence/with-persisted-substituion-disabled
-            (qp.compile/compile (transforms-base.u/massage-sql-query query)))
+            (let [query (transforms-base.u/massage-sql-query query)]
+              (assoc (qp.compile/compile query)
+                     :native? (data-testing.subject/hand-written-sql? query))))
           (catch Exception e
             (throw (data-testing.errors/ex
                     ::data-testing.errors/uncompilable-subject
@@ -58,6 +60,7 @@
                     e))))]
     {:database      database
      :compiled      {:query sql :params params}
+     :native?       native?
      ;; A card has no table of its own, so expectation SQL names its result by the token, which
      ;; [[data-testing.compile/replace-tables]] turns into this reserved name.
      :output-tables [{:schema nil :name data-testing.compile/output-name}]

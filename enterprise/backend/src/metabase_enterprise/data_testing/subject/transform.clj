@@ -25,6 +25,7 @@
         {:keys [query params]} (transforms-base.u/compile-source transform nil)]
     {:database      database
      :compiled      {:query query :params params}
+     :native?       (data-testing.subject/hand-written-sql? (get-in transform [:source :query]))
      :output-tables [target]
      :output-token  nil
      :output-label  (data-testing.validator/table-label target)}))

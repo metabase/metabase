@@ -15,7 +15,7 @@
    ;; ms/InstanceOf validates a Toucan Database instance; lib.schema has no equivalent
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
-   (java.time ZoneId ZonedDateTime)))
+   (java.time Instant ZoneId ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,6 +27,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *pinned-now* nil)
 
 ;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
 (defn- valid-timezone-id [timezone-id]
@@ -131,10 +134,29 @@
         ;;       GH issues: #2282, #2035
         (system-timezone-id)))))
 
+(mu/defn pinned-now :- [:maybe (ms/InstanceOfClass Instant)]
+  "The moment [[with-pinned-now]] fixed as the current one, or nil when the clock is not pinned."
+  []
+  *pinned-now*)
+
+(mu/defn do-with-pinned-now
+  "Call `thunk` with `instant` standing for the current moment: [[now]] returns it, and SQL compilation writes it as a
+  literal where it would write the database's current-time function."
+  [instant :- (ms/InstanceOfClass Instant)
+   thunk   :- fn?]
+  (binding [*pinned-now* instant]
+    (thunk)))
+
+(defmacro with-pinned-now
+  "Run `body` with `instant` standing for the current moment. See [[do-with-pinned-now]]."
+  [instant & body]
+  `(do-with-pinned-now ~instant (fn [] ~@body)))
+
 (def ^ZonedDateTime now
-  "Get the current moment in time adjusted to the results timezone ID, e.g. for relative datetime calculations."
+  "Get the current moment in time adjusted to the results timezone ID, e.g. for relative datetime calculations. The
+  moment is the one [[with-pinned-now]] fixed, if any."
   (comp (fn [timezone-id]
-          (t/with-zone-same-instant (t/zoned-date-time) (t/zone-id timezone-id)))
+          (t/zoned-date-time (or *pinned-now* (t/instant)) (t/zone-id timezone-id)))
         results-timezone-id))
 
 ;; normally I'd do this inline with the `def` form above but it busts Eastwood

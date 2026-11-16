@@ -1,9 +1,11 @@
 (ns metabase-enterprise.data-testing.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -51,6 +53,25 @@
       (mt/with-temp [:model/Transform     {transform-id :id} {}
                      :model/TransformTest {test-id :id}      {:transform_id transform-id}]
         (mt/user-http-request :crowberto :get 404 (str "ee/transform-test/" test-id "/run"))))))
+
+(deftest now-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {mbql-id :id}   (assoc-in (transform) [:source :query]
+                                                              (lib/query (mt/metadata-provider)
+                                                                         (lib.metadata/table (mt/metadata-provider) (mt/id :people))))
+                   :model/Transform {native-id :id} (transform)]
+      (let [body    (fn [transform-id]
+                      {:transform_id transform-id :name "My test" :inputs inputs :expectations expectations
+                       :now          "2026-10-13T09:00:00+09:00"})
+            created (mt/user-http-request :crowberto :post 200 "ee/transform-test" (body mbql-id))]
+        (try
+          (testing "POST saves `now` as the moment it names"
+            (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created)))))
+          (testing "`now` on a test of a native transform is refused"
+            (is (= "transform-test.now-on-native-sql"
+                   (:error-code (mt/user-http-request :crowberto :post 501 "ee/transform-test" (body native-id))))))
+          (finally
+            (t2/delete! :model/TransformTest :id (:id created))))))))
 
 (deftest crud-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features

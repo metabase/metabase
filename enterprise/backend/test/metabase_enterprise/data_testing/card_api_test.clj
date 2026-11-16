@@ -2,8 +2,10 @@
   "`/api/ee/card-test`."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -114,6 +116,38 @@
         (is (= "card-test.missing-inputs"
                (:error-code (mt/user-http-request :crowberto :put 400 (str "ee/card-test/" test-id) {:inputs []}))))
         (is (= 1 (count (:inputs (t2/select-one :model/CardTest :id test-id)))))))))
+
+(deftest now-test
+  (mt/with-premium-features #{:transforms-testing}
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {mbql-id :id}   {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
+                     :model/Card {native-id :id} (card)]
+        (let [created (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                            (assoc (body mbql-id) :now "2026-10-13T09:00:00+09:00"))
+              path    (str "ee/card-test/" (:id created))]
+          (try
+            (testing "POST saves `now` as the moment it names"
+              (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created))))
+              (is (= (t/instant "2026-10-13T00:00:00Z")
+                     (t/instant (:now (mt/user-http-request :crowberto :get 200 path))))))
+            (testing "PUT with a null `now` returns the test to the real clock"
+              (is (=? {:now nil} (mt/user-http-request :crowberto :put 200 path {:now nil}))))
+            (testing "a date-time without an offset is refused, since it names no moment"
+              (is (=? {:errors {:now string?}}
+                      (mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                            (assoc (body mbql-id) :now "2026-10-13T00:00:00")))))
+            (testing "`now` on a test of a native card is refused, as it is saved"
+              (is (= "card-test.now-on-native-sql"
+                     (:error-code (mt/user-http-request :crowberto :post 501 "ee/card-test"
+                                                        (assoc (body native-id) :now "2026-10-13T00:00:00Z")))))
+              (testing "and as it is changed"
+                (mt/with-temp [:model/CardTest {native-test-id :id} {:card_id native-id :inputs inputs :expectations expectations}]
+                  (is (= "card-test.now-on-native-sql"
+                         (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/card-test/" native-test-id)
+                                                            {:now "2026-10-13T00:00:00Z"}))))
+                  (is (nil? (t2/select-one-fn :now :model/CardTest :id native-test-id))))))
+            (finally
+              (t2/delete! :model/CardTest :id (:id created)))))))))
 
 (deftest run-saved-test-test
   (mt/with-premium-features #{:transforms-testing}

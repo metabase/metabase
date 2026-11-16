@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.revision-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
@@ -189,6 +190,23 @@
               (is (=? {:is_reversion false :object {:name "Original"}} reverted-update))
               (is (=? {:object {:name "Renamed"}} update))
               (is (=? {:is_creation true} creation)))))))))
+
+(deftest card-test-revision-revert-restores-now-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card     {card-id :id}      {}
+                     :model/CardTest {card-test-id :id} {:card_id card-id
+                                                         :now     (t/offset-date-time "2026-10-13T00:00:00Z")}]
+        (t2/update! :model/CardTest :id card-test-id {:now nil})
+        (testing "an update of `now` is recorded"
+          (is (=? {:object {:now nil}} (first (revisions/revisions :model/CardTest card-test-id)))))
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity      "card-test"
+                               :id          card-test-id
+                               :revision_id (:id (last (revisions/revisions :model/CardTest card-test-id)))})
+        (testing "a revert restores the moment"
+          (is (= (t/instant "2026-10-13T00:00:00Z")
+                 (t/instant (t2/select-one-fn :now :model/CardTest :id card-test-id)))))))))
 
 (deftest card-test-revert-checks-the-reverted-state-test
   (mt/with-premium-features #{:transforms-testing}

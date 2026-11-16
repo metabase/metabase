@@ -3,10 +3,12 @@
   refusals, so a caller reads what to fix from the explanation rather than from a hand-written check."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -138,11 +140,32 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
+(defn- ->offset-date-time
+  "`x` as an OffsetDateTime when it is an ISO-8601 date-time with an offset or another moment, otherwise `x` unchanged
+  for the schema to refuse."
+  [x]
+  (cond
+    (string? x)                         (try (t/offset-date-time x) (catch Exception _ x))
+    (instance? java.time.Instant x)     (t/offset-date-time x (t/zone-offset 0))
+    (instance? java.time.ZonedDateTime x) (t/offset-date-time x)
+    :else                               x))
+
+(mr/def ::now
+  "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
+  as `2026-10-13T00:00:00Z`. SQL the test's author writes, in inputs and expectations, reads the database's own clock."
+  [:and
+   {:decode/normalize ->offset-date-time
+    :json-schema      {:type "string" :format "date-time"}}
+   (mu/with-api-error-message
+    (ms/InstanceOfClass java.time.OffsetDateTime)
+    (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))])
+
 (mr/def ::test.definition
-  "A test as a client writes it, without the subject it covers."
+  "A test as a client writes it, without the subject it covers. Without `now`, the subject reads the real clock."
   [:map {:closed true}
    [:name         ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
+   [:now          {:optional true} [:maybe ::now]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
 
@@ -164,6 +187,7 @@
    [:entity_id    {:optional true} :string]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
+   [:now          {:optional true} [:maybe ::now]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]
    [subject-key   {:optional true} subject-id-schema]
@@ -180,6 +204,7 @@
    [subject-key   {:optional true} subject-id-schema]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
+   [:now          {:optional true} [:maybe ::now]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
 
@@ -328,12 +353,13 @@
 
 (defn- external-test
   "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
-  under `subject-key`."
+  under `subject-key`, and `now` as an ISO-8601 string."
   [saved-test-schema subject-key]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
     [:map {:closed true}
+     [:now         {:optional true} [:maybe ms/TemporalString]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-transform-test

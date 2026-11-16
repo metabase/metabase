@@ -6,10 +6,12 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -36,11 +38,12 @@
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
-  the tables whose names expectation SQL may use for the output, the token expectation SQL may write for the output
-  instead (nil when there is none), and how a message names the output."
+  whether that SQL holds SQL written by hand, the tables whose names expectation SQL may use for the output, the token
+  expectation SQL may write for the output instead (nil when there is none), and how a message names the output."
   [:map {:closed true}
    [:database      ::lib.schema.metadata/database]
    [:compiled      ::data-testing.compile/compiled-query]
+   [:native?       :boolean]
    [:output-tables [:sequential ::data-testing.compile/output-table]]
    [:output-token  [:maybe ::data-testing.compile/output-token]]
    [:output-label  :string]])
@@ -63,3 +66,8 @@
               (tru "This database ({0}) does not support tests." (name driver))
               {:driver driver})))
     database))
+
+(mu/defn hand-written-sql? :- :boolean
+  "Whether `query` compiles to SQL that holds SQL written by hand: a native stage of its own, or of a card it reads."
+  [query :- ::lib.schema/query]
+  (lib/any-native-stage? (qp.preprocess/preprocess query)))

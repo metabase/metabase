@@ -36,12 +36,19 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
+(def now-column
+  "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and
+  validated on its way in and normalized on its way out."
+  {:in  #(some->> % (lib/normalize ::data-testing.schema/now) (mu/validate-throw ::data-testing.schema/now))
+   :out #(some->> % (lib/normalize ::data-testing.schema/now))})
+
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
 (t2/deftransforms :model/TransformTest
-  {:inputs       (json-column ::data-testing.schema/inputs)
+  {:now          now-column
+   :inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
 (defn with-last-runs
@@ -136,7 +143,7 @@
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:transform_id :name :description :inputs :expectations])
+  [:transform_id :name :description :now :inputs :expectations])
 
 (defmethod revision/serialize-instance :model/TransformTest
   [_model _id transform-test]
@@ -191,7 +198,8 @@
   {:schema    ::data-testing.schema/external-transform-test
    :copy      [:entity_id :name :description :inputs :expectations]
    :transform {:transform_id (serialization/fk-transform :model/Transform)
-               :creator_id   serialization/user-transform}})
+               :creator_id   serialization/user-transform
+               :now          serialization/date-transform}})
 
 (defn subject-storage-paths
   "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of

@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.serialization.cmd :as cmd]
@@ -1509,6 +1510,45 @@
             (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
             (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com")
             (is (= test-eid (t2/select-one-fn :entity_id :model/CardTest :name "Revenue ignores refunds")))))))))
+
+(deftest saved-test-now-round-trip-test
+  (testing "A test's `now` is exported as an ISO-8601 instant and imported as the same moment"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (let [now (t/offset-date-time "2026-10-13T09:00:00+09:00")]
+            (ts/with-db source-db
+              (let [db        (ts/create! :model/Database :name "my-db")
+                    creator   (ts/create! :model/User :email "creator@example.com")
+                    coll      (ts/create! :model/Collection :name "Finance")
+                    card      (create-card-with-test! db creator "Pinned card test" :name "Revenue" :collection_id (:id coll))
+                    etl       (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                    transform (ts/create! :model/Transform
+                                          :name          "Revenue Report"
+                                          :collection_id (:id etl)
+                                          :creator_id    (:id creator)
+                                          :source        {:type  :query
+                                                          :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
+                                          :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
+                (t2/update! :model/CardTest :card_id (:id card) {:now now})
+                (ts/create! :model/TransformTest
+                            :transform_id (:id transform)
+                            :creator_id   (:id creator)
+                            :name         "Pinned transform test"
+                            :now          now
+                            :inputs       []
+                            :expectations card-test-expectations)
+                (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+            (testing "the file holds the moment"
+              (is (= (t/instant now)
+                     (t/instant (:now (yaml/parse-string
+                                       (slurp (io/file dump-dir "collections" "main" "finance" "revenue" "pinned_card_test.yaml"))))))))
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+              (doseq [[model test-name] [[:model/CardTest "Pinned card test"] [:model/TransformTest "Pinned transform test"]]]
+                (testing model
+                  (is (= (t/instant now)
+                         (t/instant (t2/select-one-fn :now model :name test-name)))))))))))))
 
 (deftest card-test-of-a-card-in-a-dashboard-round-trip-test
   (testing "A test of a card saved in a dashboard is exported next to the card, under the dashboard"

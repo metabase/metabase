@@ -31,7 +31,8 @@
   :model/Card)
 
 (t2/deftransforms :model/CardTest
-  {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
+  {:now          data-testing.models/now-column
+   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
@@ -128,7 +129,7 @@
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:card_id :name :description :inputs :expectations])
+  [:card_id :name :description :now :inputs :expectations])
 
 (defmethod revision/serialize-instance :model/CardTest
   [_model _id card-test]
@@ -153,7 +154,8 @@
   {:schema    ::data-testing.schema/external-card-test
    :copy      [:entity_id :name :description :inputs :expectations]
    :transform {:card_id    (serialization/fk-transform :model/Card)
-               :creator_id serialization/user-transform}})
+               :creator_id serialization/user-transform
+               :now        serialization/date-transform}})
 
 (defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
   ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.

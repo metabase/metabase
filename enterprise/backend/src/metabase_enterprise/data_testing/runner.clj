@@ -22,6 +22,7 @@
   temp table exists."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
@@ -38,6 +39,7 @@
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -286,6 +288,31 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
+(mr/def ::definition
+  "What a run reads of a test: its inputs, its expectations, and the moment its subject reads as the current time."
+  [:map {:closed true}
+   [:inputs       ::data-testing.schema/inputs]
+   [:expectations ::data-testing.schema/expectations]
+   [:now          {:optional true} [:maybe ::data-testing.schema/now]]])
+
+(mu/defn- subject-plan :- ::data-testing.subject/subject-plan
+  "The [[data-testing.subject/subject-plan]] of `subject`, compiled with `now` standing for the current time when it is
+  given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the subject's SQL holds SQL written by
+  hand, whose calls of the current time would still read the real clock."
+  [subject-type :- ::data-testing.subject/subject-type
+   subject      :- ::data-testing.subject/subject
+   now          :- [:maybe ::data-testing.schema/now]]
+  (if-not now
+    (data-testing.subject/subject-plan subject-type subject)
+    (let [plan (qp.timezone/with-pinned-now (t/instant now)
+                 (data-testing.subject/subject-plan subject-type subject))]
+      (when (:native? plan)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/now-on-native-sql
+                (tru "A test of a query written in SQL, or built on one, cannot set `now`: the SQL''s own calls of the current time would still read the real clock.")
+                {})))
+      plan)))
+
 (mu/defn- validated-plan :- ::plan
   "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
@@ -294,12 +321,11 @@
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
   rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
   discarding it."
-  [subject-type :- ::data-testing.subject/subject-type
-   subject      :- ::data-testing.subject/subject
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
+  [subject-type                         :- ::data-testing.subject/subject-type
+   subject                              :- ::data-testing.subject/subject
+   {:keys [inputs expectations now]}    :- ::definition]
   (let [{:keys [database compiled output-tables output-token output-label]}
-        (data-testing.subject/subject-plan subject-type subject)
+        (subject-plan subject-type subject now)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
@@ -326,16 +352,15 @@
      :compiled     rewritten}))
 
 (mu/defn validate-test :- :nil
-  "Refuse a test of `subject`, a `subject-type`, with these `inputs` and `expectations` unless it could run: the same
-  checks a run makes, up to but not including the connection.
+  "Refuse a test of `subject`, a `subject-type`, with the inputs, expectations and `now` of `definition` unless it could
+  run: the same checks a run makes, up to but not including the connection.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
-  (validated-plan subject-type subject inputs expectations)
+   definition   :- ::definition]
+  (validated-plan subject-type subject definition)
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
@@ -346,9 +371,9 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test]
+   {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
-        (validated-plan subject-type subject inputs expectations)
+        (validated-plan subject-type subject (select-keys saved-test [:inputs :expectations :now]))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try

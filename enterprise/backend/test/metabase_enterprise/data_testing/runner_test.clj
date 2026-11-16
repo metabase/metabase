@@ -424,8 +424,8 @@
                                               (try (data-testing.runner/validate-test
                                                     :transform
                                                     transform
-                                                    []
-                                                    [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                                                    {:inputs       []
+                                                     :expectations [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}]})
                                                    nil
                                                    (catch ExceptionInfo e
                                                      (select-keys (ex-data e) [:error-type :type])))))]
