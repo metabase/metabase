@@ -607,6 +607,13 @@ function getEntryButton() {
   return screen.getByTestId("graph-entry-button");
 }
 
+// `userEvent.click` does not check visibility, so assert it before the click.
+async function removeEntry(entryButton: HTMLElement) {
+  const removeIcon = within(entryButton).getByLabelText("Remove");
+  expect(removeIcon).toBeVisible();
+  await userEvent.click(removeIcon);
+}
+
 async function findEntryButton(label: string) {
   return waitFor(() => {
     const button = getEntryButton();
@@ -809,7 +816,7 @@ describe("DependencyGraphPage", () => {
           eventDetail,
         });
 
-        await userEvent.click(within(entryButton).getByLabelText("Remove"));
+        await removeEntry(entryButton);
         await userEvent.click(
           await screen.findByPlaceholderText(
             "Pick an item to see its dependencies",
@@ -1201,7 +1208,7 @@ describe("DependencyGraphPage", () => {
         });
       }
 
-      await userEvent.click(within(getEntryButton()).getByLabelText("Remove"));
+      await removeEntry(getEntryButton());
       await userEvent.type(
         await screen.findByPlaceholderText(
           "Pick an item to see its dependencies",
