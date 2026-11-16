@@ -66,7 +66,7 @@ function setup() {
       dashboard={dashboard}
       dashcard={dashcard}
       clickBehavior={clickBehavior}
-      updateSettings={jest.fn()}
+      updateSettings={jest.fn<void, [Partial<ClickBehavior>]>()}
     />,
     {
       storeInitialState: createMockState({

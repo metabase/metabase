@@ -4,6 +4,7 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
+import type { Path } from "metabase/router";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -61,7 +62,7 @@ function createNativeCard(opts: Partial<Card>) {
 }
 
 function setup() {
-  const onSameOriginNavigation = jest.fn();
+  const onSameOriginNavigation = jest.fn<void, [Partial<Path>]>();
   const series = createMockSingleSeries(PROGRESS_CARD, {
     data: createMockDatasetData({
       cols: [COUNT_COLUMN],
