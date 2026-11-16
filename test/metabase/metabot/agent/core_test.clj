@@ -1631,6 +1631,13 @@
                   (is (= 2 (count llms)))
                   (is (every? #(= :llm (:type %)) llms))
                   (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "each llm.call has the usage of its own call, and the turn has the sum"
+                  (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                          {test-provider {:promptTokens 200 :completionTokens 10}}]
+                         (map #(get-in % [:attributes :ai/usage])
+                              (sort-by #(get-in % [:attributes :ai/iteration]) llms))))
+                  (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
+                         (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)

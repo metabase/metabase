@@ -694,16 +694,25 @@
   The `metabase/` routing prefix is stripped so usage keys reflect the actual
   provider/model (e.g. `openrouter/anthropic/claude-haiku-4.5`) regardless of
   whether the request was routed through the AI proxy.
-  Non-usage parts pass through unchanged."
+  Non-usage parts pass through unchanged.
+
+  Make one transducer for each LLM call. It also records the usage of its call only, as `:ai/usage` with the same
+  shape as the turn's, on the eval span of that call. Some models have a rate that changes with the size of one
+  request, so the evals price each call, not the sum of the turn."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
-                  "unknown")]
-    (map (fn [part]
+  (let [model      (or (some-> provider-and-model llm.provider/strip-managed-prefix)
+                       "unknown")
+        add-usage  (partial merge-with +)
+        call-usage (volatile! {})]
+    (map (fn [{:keys [usage] :as part}]
            (if (= (:type part) :usage)
-             (assoc part
-                    :model model
-                    :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
-                               (get model)))
+             (do
+               (when (ait/capture-active?)
+                 (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}}))
+               (assoc part
+                      :model model
+                      :usage (-> (swap! usage-atom update model add-usage usage)
+                                 (get model))))
              part)))))
 
 (defn- step-limit-reply-parts
