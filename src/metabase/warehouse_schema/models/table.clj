@@ -493,8 +493,7 @@
     (fn [table-ids]
       (->> (binding [card-schema/*skip-dimension-backfill?* true]
              (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
-           (#(t2/hydrate % :can_read))
-           (filter mi/can-read?)))
+           mi/readable))
     tables))
 
 (defn with-fields

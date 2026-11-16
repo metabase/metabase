@@ -201,7 +201,7 @@
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
-                      (filter mi/can-read? (t2/hydrate (metabot.db/fields (set field-ids)) :table :can_read)))]
+                      (mi/readable (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 

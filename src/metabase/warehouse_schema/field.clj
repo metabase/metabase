@@ -51,8 +51,8 @@
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table :can_read))
-       (filter mi/can-read?)
+         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table))
+       mi/readable
        (keep :table_id)
        set
        sort

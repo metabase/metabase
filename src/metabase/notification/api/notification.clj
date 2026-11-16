@@ -117,8 +117,7 @@
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
        (into [] (map t2.realize/realize))
-       (#(t2/hydrate % :can_read))
-       (filterv mi/can-read?)
+       mi/readable
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

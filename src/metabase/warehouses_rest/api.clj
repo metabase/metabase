@@ -418,9 +418,7 @@
                             (mi/readable tables)
                             tables)))
         (update :tables (fn [tables]
-                          (let [readable (into #{}
-                                               (comp (filter mi/can-read?) (map :id))
-                                               (t2/hydrate (mapcat :segments tables) :can_read))]
+                          (let [readable (into #{} (map :id) (mi/readable (mapcat :segments tables)))]
                             (for [table tables]
                               (update table :segments (partial filter #(contains? readable (:id %))))))))
         (update :tables (fn [tables]
@@ -569,8 +567,7 @@
   (api/read-check (warehouses/get-database id))
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
-         (#(t2/hydrate % :can_read))
-         (filter mi/can-read?)
+         mi/readable
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
@@ -586,8 +583,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
-  (let [fields (filter mi/can-read? (t2/hydrate (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
-                                                    (t2/hydrate :table)) :can_read))]
+  (let [fields (mi/readable (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
+                                (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
        :name          name

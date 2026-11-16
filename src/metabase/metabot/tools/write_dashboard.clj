@@ -523,9 +523,7 @@
     (when-let [card-ids (seq (placed-card-ids ops))]
       (let [curated   (curation/curated-ids (map #(vector "card" %) card-ids))
             uncurated (into [] (remove #(contains? curated ["card" %])) card-ids)
-            refused   (into []
-                            (comp (filter mi/can-read?) (map :id))
-                            (t2/hydrate (metabot.db/cards-with-ids uncurated) :can_read))]
+            refused   (into [] (map :id) (mi/readable (metabot.db/cards-with-ids uncurated)))]
         (when (seq refused)
           (cards-not-curated! {:card-ids refused}))))))
 
@@ -688,9 +686,7 @@
   Such a card isn't curated: its id and name are shown because this conversation saved them, and a tool that later
   uses the card judges it again."
   [dashcards saved-charts]
-  (let [readable (into #{}
-                       (comp (filter mi/can-read?) (map :id))
-                       (t2/hydrate (into [] (keep :card) dashcards) :can_read))]
+  (let [readable (into #{} (map :id) (mi/readable (into [] (keep :card) dashcards)))]
     (if-not (shared/curated-only?)
       #(contains? readable (:id %))
       (let [card-ids        (into #{} (keep (comp :id :card)) dashcards)

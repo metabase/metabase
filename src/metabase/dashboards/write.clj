@@ -434,9 +434,7 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards) :can_read))
+        readable-ids (into #{} (map :id) (mi/readable (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards)))
         readable? (fn [card] (and (mi/model card) (contains? readable-ids (:id card))))
         card->decision (fn [parent-card card]
                          (cond

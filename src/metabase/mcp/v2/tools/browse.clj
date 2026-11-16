@@ -230,8 +230,7 @@
   [{:keys [database_id] :as args}]
   (check-database! database_id)
   (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
-                    (#(t2/hydrate % :can_read))
-                    (filterv mi/can-read?))]
+                    mi/readable)]
     (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
@@ -301,8 +300,7 @@
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
-                                (#(t2/hydrate % :can_read))
-                                (filter mi/can-read?)
+                                mi/readable
                                 (u/index-by :id)))
         expand-ids       (into #{}
                                (mapcat (fn [[_ target-ids]]

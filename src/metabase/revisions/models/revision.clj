@@ -89,9 +89,7 @@
   [objects :- [:sequential [:fn {:error/message "a revision object"} map?]]]
   (let [ids   (fn [k] (into [] (comp (keep k) (filter pos-int?) (distinct)) objects))
         names (fn [rows]
-                (into {}
-                      (comp (filter mi/can-read?) (map (juxt :id :name)))
-                      (t2/hydrate rows :can_read)))]
+                (into {} (map (juxt :id :name)) (mi/readable rows)))]
     {:collection-names (names (revisions.db/collections-by-ids (ids :collection_id)))
      :dashboard-names  (names (revisions.db/dashboards-by-ids (ids :dashboard_id)))}))
 

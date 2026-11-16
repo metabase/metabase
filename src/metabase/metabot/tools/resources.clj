@@ -571,8 +571,7 @@
 (defn- fetch-databases-list [query-params]
   (let [all (metabot.db/non-audit-databases)
         dbs (->> all
-                 (#(t2/hydrate % :can_read))
-                 (filter mi/can-read?)
+                 mi/readable
                  (mapv present-database))]
     (list-result :databases dbs query-params)))
 
@@ -630,8 +629,7 @@
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
         tables (->> (metabot.db/active-tables-for-database db-id)
-                    (#(t2/hydrate % :can_read))
-                    (filter mi/can-read?)
+                    mi/readable
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
 
@@ -673,8 +671,7 @@
         _      (when-not (seq rows)
                  (missing-schema! {:database-id db-id :schema schema-name}))
         tables (->> rows
-                    (#(t2/hydrate % :can_read))
-                    (filter mi/can-read?)
+                    mi/readable
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
 
@@ -699,11 +696,9 @@
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (-> (mi/readable (metabot.db/documents-in-collection coll-id))
                              (t2/hydrate :can_write))
-          subcollections (-> (if (= id-str "root")
-                               (metabot.db/navigable-collections false)
-                               (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
-                             (t2/hydrate :can_read)
-                             (->> (filterv mi/can-read?))
+          subcollections (-> (mi/readable (if (= id-str "root")
+                                            (metabot.db/navigable-collections false)
+                                            (metabot.db/unarchived-collections-at-location (collection/children-location coll))))
                              (t2/hydrate :can_write))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -713,11 +708,9 @@
 
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (when-not (= id-str "root") (readable-collection id-str))
-        subs    (-> (if (= id-str "root")
-                      (metabot.db/navigable-collections false)
-                      (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
-                    (t2/hydrate :can_read)
-                    (->> (filterv mi/can-read?))
+        subs    (-> (mi/readable (if (= id-str "root")
+                               (metabot.db/navigable-collections false)
+                               (metabot.db/unarchived-collections-at-location (collection/children-location coll))))
                     (t2/hydrate :can_write)
                     (->> (mapv present-collection)))]
     (list-result :collection-subcollections subs query-params)))
@@ -781,9 +774,7 @@
    [[curation/usable-metric-ids]]). Only metrics the current user can read are judged, so the listing reveals nothing
    about the curation of one they cannot."
   [metrics]
-  (let [readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (metabot.db/cards-with-ids (into [] (keep :id) metrics)) :can_read))
+  (let [readable-ids (into #{} (map :id) (mi/readable (metabot.db/cards-with-ids (into [] (keep :id) metrics))))
         readable     (filterv #(contains? readable-ids (:id %)) metrics)
         usable   (curation/usable-metric-ids (map :id readable))]
     (filterv (fn [{:keys [id]}] (contains? usable id)) readable)))
@@ -851,8 +842,7 @@
         transforms (when db-id
                      (->> (metabot.db/transforms-for-source-database db-id)
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
-                          (#(t2/hydrate % :can_read))
-                          (filter mi/can-read?)
+                          mi/readable
                           (mapv present-transform)))]
     (list-result :table-derived (concat cards transforms) query-params)))
 
@@ -878,7 +868,7 @@
   "The `card-sources-items` entries `items` whose table or card the current user can read."
   [items]
   (let [ids-of   (fn [types] (into [] (comp (filter (comp types :type)) (map :id) (distinct)) items))
-        readable (fn [rows] (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate rows :can_read)))
+        readable (fn [rows] (into #{} (map :id) (mi/readable rows)))
         tables   (readable (metabot.db/tables-with-ids (ids-of #{"table"})))
         cards    (readable (metabot.db/cards-with-ids (ids-of #{"model" "metric" "question"})))]
     (filterv (fn [{:keys [type id]}]
@@ -944,8 +934,7 @@
         source-table-ids (transform-source-table-ids transform)
         source-tables    (when (seq source-table-ids)
                            (->> (metabot.db/table-summaries (set source-table-ids))
-                                (#(t2/hydrate % :can_read))
-                                (filter mi/can-read?)
+                                mi/readable
                                 (mapv present-table)))
         db-id            (:source_database_id transform)
         items            (cond-> []

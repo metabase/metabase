@@ -485,8 +485,7 @@
   [ids]
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
-    (for [t (filter mi/can-read?
-                    (t2/hydrate (metabot.db/table-summaries ids) :can_read))]
+    (for [t (mi/readable (metabot.db/table-summaries ids))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)

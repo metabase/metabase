@@ -138,9 +138,8 @@
   [_model objects]
   ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
   (let [readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))
-                                       :can_read))]
+                           (map :id)
+                           (mi/readable (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))))]
     (mapv #(contains? readable-ids (:card_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/CardTest

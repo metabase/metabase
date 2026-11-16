@@ -39,8 +39,8 @@
   (->> (if include_inactive
          (channel.db/channels)
          (channel.db/active-channels))
-       (#(t2/hydrate % :can_read :can_write))
-       (filter mi/can-read?)
+       (#(t2/hydrate % :can_write))
+       mi/readable
        (map remove-details-if-needed)))
 
 (def ^:private ChannelType
