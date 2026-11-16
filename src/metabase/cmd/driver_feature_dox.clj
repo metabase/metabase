@@ -25,7 +25,7 @@
 
 (def ^:private config-resource "metabase/cmd/resources/driver-features.edn")
 
-(defn- config
+(defn- curated-config
   "The curated half of the page: `{:drivers [...] :excluded-drivers #{...} :sections [...] :internal #{...}}`. See the
   resource's header."
   []
@@ -34,13 +34,11 @@
 ;;;; Support
 
 (def ^:private dbms-versions
-  "The `:dbms-version` of the two fake databases each driver is asked about. Most drivers answer the same for both;
-  the ones that check the version, or whether they're talking to a cloud offering, are the reason there are two.
-  Asking a fake database is what lets this run without a connection: the methods that care about the database only
-  read what sync stored on its row. Only the newest one is a cloud offering, so a feature that only new self-hosted
-  versions support would read as unsupported on both."
-  {:newest {:semantic-version [999 0] :cloud true}
-   :oldest {:semantic-version [1 0]   :cloud false}})
+  "The `:dbms-version` of the two fake databases each driver is asked about. A driver that checks the version answers
+  differently for the two. Fake databases let this run without a connection: the methods that care about the database
+  only read what sync stored on its row."
+  {:newest {:semantic-version [999 0]}
+   :oldest {:semantic-version [1 0]}})
 
 (defn- fake-database
   "The `age` (`:newest` or `:oldest`) database that `column` — a `:drivers` entry — is asked about."
@@ -82,13 +80,22 @@
       :else                  :no)))
 
 (defn- note
-  "The footnote for a `:depends` cell: the column's curated note, or a general one when there is none."
+  "The footnote for a `:depends` cell: the column's curated note, or a general one when there is none. A general note
+  shows in the regenerated page's diff, which is the cue to curate one."
   [{:keys [label notes]} feature]
-  (or (get notes feature)
-      (do
-        (log/warnf "No note for %s and %s, whose support depends on the database version. Add one to %s."
-                   label feature config-resource)
-        (str "On " label ", depends on the database version."))))
+  (get notes feature (str "On " label ", depends on the database version.")))
+
+(defn- section-rows
+  "A section's rows as data: each curated row, with a cell per column. This is where the drivers are asked;
+  [[section-markdown]] only renders their answers."
+  [{:keys [features]} columns]
+  (for [{:keys [feature] :as row} features]
+    {:row   row
+     :cells (for [column columns
+                  :let [s (support column feature)]]
+              {:support s
+               :note    (when (= s :depends)
+                          (note column feature))})}))
 
 ;;;; Rendering
 
@@ -100,17 +107,10 @@
     label))
 
 (defn- section-markdown
-  "One section of the page: a heading, a table with a row per feature and a column per database, and the notes that
-  the table's `:depends` cells point to."
-  [{:keys [title features]} columns]
-  (let [rows   (for [{:keys [feature] :as row} features]
-                 {:row   row
-                  :cells (for [column columns
-                               :let [s (support column feature)]]
-                           {:support s
-                            :note    (when (= s :depends)
-                                       (note column feature))})})
-        ;; numbered in the order they first appear, reading the table row by row; a note several cells share is
+  "One section of the page: a heading, a table with a row per feature and a column per database label, and the notes
+  that the table's `:depends` cells point to. `rows` come from [[section-rows]]."
+  [title labels rows]
+  (let [;; numbered in the order they first appear, reading the table row by row; a note several cells share is
         ;; printed once
         notes  (into [] (comp (mapcat :cells) (keep :note) (distinct)) rows)
         number (zipmap notes (iterate inc 1))
@@ -121,7 +121,7 @@
                    :depends (str "✅ (" (number n) ")")))]
     (md/paragraphs
      [(md/heading 2 title)
-      (md/table (cons "Feature" (map :label columns))
+      (md/table (cons "Feature" labels)
                 (for [{:keys [row cells]} rows]
                   (cons (feature-label row) (map cell cells))))
       (when (seq notes)
@@ -130,7 +130,10 @@
 (defn- document-markdown
   "The whole page: the `intro` resource, then a section per curated section."
   [intro {:keys [drivers sections]}]
-  (md/document (cons intro (map #(section-markdown % drivers) sections))))
+  (md/document
+   (cons intro
+         (for [{:keys [title] :as section} sections]
+           (section-markdown title (map :label drivers) (section-rows section drivers))))))
 
 ;;;; Entry point
 
@@ -141,10 +144,10 @@
    (generate-dox! output-path))
   ([path]
    (printf "Generating database feature support documentation in %s\n" path)
-   (when-not config/is-prod?
-     (log/warn "Not running in prod mode, so drivers that turn features off in dev or tests will look unsupported."
+   (when config/is-test?
+     (log/warn "Running in test mode, so drivers that turn features off in tests will look unsupported."
                "Run with the :doc alias to write the page."))
-   (let [{:keys [drivers sections] :as cfg} (config)
+   (let [{:keys [drivers sections] :as cfg} (curated-config)
          n-databases (count drivers)
          n-features  (count (mapcat :features sections))]
      (cmd.common/write-doc-file! path (document-markdown (cmd.common/load-resource! intro-resource) cfg))

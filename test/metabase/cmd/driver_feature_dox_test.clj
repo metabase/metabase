@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- config []
-  (#'driver-feature-dox/config))
+  (#'driver-feature-dox/curated-config))
 
 (defn- row-features
   "Every driver feature the page's rows name, with the vector rows flattened."
@@ -84,26 +84,34 @@
     (is (= :yes (#'driver-feature-dox/support (column "MySQL") :regex/lookaheads-and-lookbehinds)))
     (is (= :no (#'driver-feature-dox/support (column "MariaDB") :regex/lookaheads-and-lookbehinds))))
   (testing "a vector row is supported when any of its features is"
-    (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") [:nested-fields :nested-field-columns])))))
+    (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") [:nested-fields :nested-field-columns]))))
+  (testing "a feature that only newer versions support"
+    ;; MySQL runs stage CTEs from 8.0 on
+    (is (= :depends (#'driver-feature-dox/support (column "MySQL") :stage-ctes)))))
 
-;;; abstract, so other tests' lists of available drivers can't see it; an abstract driver can't have a concrete parent
-(driver/register! ::versioned, :abstract? true)
-
-;;; a driver whose `:percentile-aggregations` depends on the version, as SQL Server's does
-(defmethod driver/database-supports? [::versioned :percentile-aggregations]
-  [_driver _feature db]
-  (>= (get-in db [:dbms-version :semantic-version 0]) 2))
+(deftest ^:parallel section-rows-test
+  (let [cells (fn [columns]
+                (-> (#'driver-feature-dox/section-rows {:features [{:feature :stage-ctes}]} columns)
+                    first
+                    :cells))]
+    (testing "only a `:depends` cell carries a note, the column's own when it has one"
+      (is (= [{:support :depends :note "MySQL 8.0 and later."}
+              {:support :yes :note nil}]
+             (cells [(assoc (column "MySQL") :notes {:stage-ctes "MySQL 8.0 and later."})
+                     (column "MariaDB")]))))
+    (testing "a `:depends` cell without a curated note gets a general one"
+      (is (= [{:support :depends :note "On MySQL, depends on the database version."}]
+             (cells [(dissoc (column "MySQL") :notes)]))))))
 
 (deftest ^:parallel section-markdown-test
-  (let [columns  [(column "PostgreSQL")
-                  (column "MySQL")
-                  {:driver ::versioned
-                   :label  "Versioned"
-                   :notes  {:percentile-aggregations "Versioned 2.0 and later."}}]
-        section  {:title    "Aggregations"
-                  :features [{:feature :full-join :label "Full outer join" :doc "join.md"}
-                             {:feature :percentile-aggregations :label "Percentile"}]}
-        markdown (#'driver-feature-dox/section-markdown section columns)
+  (let [note     "Versioned 2.0 and later."
+        rows     [{:row   {:feature :full-join :label "Full outer join" :doc "join.md"}
+                   :cells [{:support :yes} {:support :no} {:support :no}]}
+                  {:row   {:feature :percentile-aggregations :label "Percentile"}
+                   :cells [{:support :yes} {:support :no} {:support :depends :note note}]}
+                  {:row   {:feature :distinct-where :label "DistinctIf"}
+                   :cells [{:support :no} {:support :no} {:support :depends :note note}]}]
+        markdown (#'driver-feature-dox/section-markdown "Aggregations" ["PostgreSQL" "MySQL" "Versioned"] rows)
         lines    (str/split-lines markdown)]
     (testing "the section opens with its heading"
       (is (= "## Aggregations" (first lines))))
@@ -111,4 +119,7 @@
       (is (some #(re-find #"^\| \[Full outer join\]\(join\.md\) +\| ✅ +\| ❌ +\| ❌ +\|$" %) lines)))
     (testing "a version-dependent cell points to a numbered note below the table"
       (is (some #(re-find #"^\| Percentile +\| ✅ +\| ❌ +\| ✅ \(1\) +\|$" %) lines))
-      (is (= "1. Versioned 2.0 and later." (last lines))))))
+      (is (= "1. Versioned 2.0 and later." (last lines))))
+    (testing "cells that share a note share its number, and the note prints once"
+      (is (some #(re-find #"^\| DistinctIf +\| ❌ +\| ❌ +\| ✅ \(1\) +\|$" %) lines))
+      (is (= 1 (count (filter #(re-find #"^\d+\. " %) lines)))))))

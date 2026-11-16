@@ -1,29 +1,20 @@
-;; The hand-curated half of `docs/databases/feature-support.md`. The other half, which database supports which
-;; feature, comes from each driver's `driver/database-supports?` methods. See [[metabase.cmd.driver-feature-dox]].
-;;
-;; Every keyword in `metabase.driver/features` goes in exactly one place: a section's `:features`, or `:internal`.
-;; `metabase.cmd.driver-feature-dox-test` fails until a new keyword is classified.
+;; The hand-curated half of `docs/databases/feature-support.md`; see [[metabase.cmd.driver-feature-dox]]. Its test fails
+;; until every driver feature and every driver module is classified here.
 ;;
 ;; `:drivers` are the table columns, in page order.
-;;   - `:dbms-version` is merged into both of the fake databases the driver is asked about. It turns a driver into a
-;;     variant, like MariaDB, which is the `:mysql` driver with a different flavor.
-;;   - `:newest` and `:oldest` replace the default `:semantic-version` of the two fake databases, for drivers that
-;;     store their version in another shape.
-;;   - `:notes` explain a cell that is supported on the newest database but not on the oldest one, keyed by feature.
-;;     A note is a sentence that names the database, since the notes print below the table.
+;;   - `:dbms-version` is merged into both fake databases, to make a variant: MariaDB is `:mysql` with another flavor.
+;;   - `:newest` and `:oldest` are merged into one fake database each, for drivers that store their version differently.
+;;   - `:notes` explain a `:depends` cell, keyed by feature. Name the database: notes print below the table.
 ;;
-;; Every module in `modules/drivers/deps.edn` goes in `:drivers` or `:excluded-drivers`, and the same test fails until
-;; a new module is in one of them.
-;;
-;; `:sections` are the tables, in page order. A row's `:feature` is a keyword, or a vector of keywords when the page
-;; treats several driver features as one; a database supports the row when it supports any of them. `:doc` paths are
-;; relative to `docs/databases/`.
+;; `:sections` are the tables, in page order. A row's `:feature` is a keyword, or a vector of keywords that the page
+;; treats as one feature. `:doc` paths are relative to `docs/databases/`.
 {:drivers
  [{:driver :athena             :label "Athena"}
   {:driver :bigquery-cloud-sdk :label "BigQuery"}
   {:driver :clickhouse         :label "ClickHouse"
-   :newest {:semantic-version {:major 999 :minor 0}}
-   :oldest {:semantic-version {:major 1 :minor 0}}
+   ;; only the newest is ClickHouse Cloud, so a feature that only new self-hosted versions support reads as ❌
+   :newest {:semantic-version {:major 999 :minor 0} :cloud true}
+   :oldest {:semantic-version {:major 1 :minor 0}   :cloud false}
    :notes  {:uploads                  "ClickHouse Cloud and self-hosted single-node deployments."
             :connection-impersonation "ClickHouse 24.4 and later."}}
   {:driver :databricks         :label "Databricks"}
