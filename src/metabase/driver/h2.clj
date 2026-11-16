@@ -361,15 +361,13 @@
           (nil? remaining-sql)))))
 
 (mu/defn- check-read-only-statements
-  [{[{sql :native}] :stages} :- ::lib.schema/native-only-query]
-  (when sql
-    (check-no-unsupported-functions sql)
-    (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
-                                               sql)]
-      (when-not (read-only-statements? query-classification)
-        (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:type           driver-api/qp.error-type.invalid-query
-                         :classification query-classification}))))))
+  [{[{sql :native}] :stages, :as query} :- ::lib.schema/native-only-query]
+  (check-no-unsupported-functions sql)
+  (let [query-classification (classify-query (driver-api/database query) sql)]
+    (when-not (read-only-statements? query-classification)
+      (throw (ex-info "Only SELECT statements are allowed in a native query."
+                      {:type           driver-api/qp.error-type.invalid-query
+                       :classification query-classification})))))
 
 (mu/defmethod driver/execute-reducible-query :h2
   [driver  :- :keyword

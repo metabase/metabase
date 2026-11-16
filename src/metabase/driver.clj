@@ -711,11 +711,11 @@
   `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
   `:mbql-5-native-query-execution` (added in 66):
 
-    {:stages           [{:lib/type :mbql.stage/native
-                         :native   \"SELECT * FROM table WHERE id = ?\"
-                         :params   [1]}]
-    :qp/original-stages <original MBQL stages if this was compiled from MBQL>
-     :info              ...}
+    {:stages             [{:lib/type :mbql.stage/native
+                           :native   \"SELECT * FROM table WHERE id = ?\"
+                           :params   [1]}]
+     :qp/original-stages <original MBQL stages if this was compiled from MBQL>
+     :info               ...}
 
   Otherwise `query` is in a Legacy MBQL shape:
 

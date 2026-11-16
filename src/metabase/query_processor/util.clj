@@ -92,10 +92,11 @@
   [_driver query]
   (default-query->remark query))
 
-;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
-  keyword."
+  keyword.
+
+  DEPRECATED: use [[metabase.lib.core/normalize]] to normalize various things to the appropriate Lib schema."
   [token :- [:or :keyword :string]]
   (-> (name token)
       u/lower-case-en

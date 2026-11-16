@@ -41,8 +41,12 @@
 
 (mu/defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
-  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
+
+  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query (for a legacy
+     MBQL query) or [[metabase.lib.core/max-rows-limit]] (for an MBQL 5 query)
+
   2. the value of [[download-row-limit]] if this is for a download
+
   3. the value of [[attachment-row-limit]] if this is for a dashboard subscription
 
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
