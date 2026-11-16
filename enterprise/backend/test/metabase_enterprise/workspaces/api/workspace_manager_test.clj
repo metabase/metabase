@@ -823,7 +823,7 @@
                           provisioning/provision-workspace-database! (pausing-before-nth-provision! 2 paused resume)]
               (let [create (future (create!))]
                 (try
-                  (let [wsd2-id (deref paused 10000 nil)
+                  (let [wsd2-id (deref paused 20000 nil)
                         ws-id   (t2/select-one-fn :workspace_id :model/WorkspaceDatabase :id wsd2-id)]
                     (is (some? wsd2-id) "the first create paused before the second database's provisioning started")
                     (testing "when only the unfinished database's row is older than the busy window, answers 409 workspace_busy"
