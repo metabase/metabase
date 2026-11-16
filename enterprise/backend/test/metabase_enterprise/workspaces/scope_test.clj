@@ -54,7 +54,7 @@
 
 (deftest workspace-manager-api-key-test
   (mt/with-premium-features #{:workspaces}
-    (mt/with-model-cleanup [:model/ApiKey]
+    (mt/with-model-cleanup [:model/ApiKey :model/User]
       (let [{admin-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
                                                             {:group_id (:id (perms-group/admin))
                                                              :name     "CI workspaces"
@@ -110,7 +110,7 @@
   "Call `f` with a map of request options by credential: `:scoped-key` (an API key with scope `workspace-manager`),
   `:oauth-token` (an OAuth token with `mb:workspace-manager`), and `:full-key` (an unscoped admin API key)."
   [f]
-  (mt/with-model-cleanup [:model/ApiKey]
+  (mt/with-model-cleanup [:model/ApiKey :model/User]
     (let [create-key! (fn [body]
                         (:unmasked_key (mt/user-http-request :crowberto :post 200 "api-key"
                                                              (merge {:group_id (:id (perms-group/admin))} body))))

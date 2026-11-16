@@ -209,7 +209,7 @@
         user-id))))
 
 (deftest workspace-manager-api-key-is-refused-by-a-build-without-scopes-test
-  (mt/with-model-cleanup [:model/ApiKey]
+  (mt/with-model-cleanup [:model/ApiKey :model/User]
     (let [create!  (fn [body]
                      (mt/user-http-request :crowberto :post 200 "api-key"
                                            (merge {:group_id (:id (perms-group/admin))} body)))
