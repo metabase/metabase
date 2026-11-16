@@ -15,6 +15,8 @@ import {
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { isEmbedPreview } from "metabase/embedding/config";
+import { isLoopbackHostname } from "metabase/utils/dom";
+import { getCollectorHostUrl } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
 
 // We use the User Timing terminology (`performance.mark()` / `performance.measure()`)
@@ -177,10 +179,9 @@ function sendIfComplete(): void {
   });
 }
 
-// We don't send the event on localhost or a dev server, set this to true to debug it locally
-const SHOULD_SEND_IN_LOCAL_DEV = false;
-
-// For now we measure only the React SDK in production, so the numbers stay comparable
+// This event measures performance in the customers' host apps, so it has its own rules to decide
+// if we send it, different from the other analytics events. We send it only from the React SDK in
+// production: timings from the embed preview, localhost or dev servers would skew the data
 function shouldSendPerformanceEvent(): boolean {
   const isReactSdk =
     isEmbeddingSdk() &&
@@ -188,11 +189,28 @@ function shouldSendPerformanceEvent(): boolean {
     !isEmbeddingMcpApp() &&
     !isDataApp();
 
-  const isProduction =
-    !isEmbedPreview() &&
-    (SHOULD_SEND_IN_LOCAL_DEV || (!getIsLocalhost() && !isHostAppInDevMode()));
+  const isProduction = !getIsLocalhost() && !isHostAppInDevMode();
 
-  return isReactSdk && isProduction;
+  return (
+    isReactSdk &&
+    !isEmbedPreview() &&
+    (isProduction || shouldSendWhenNotInProduction())
+  );
+}
+
+function shouldSendWhenNotInProduction(): boolean {
+  // By default we don't want to send analytics events from non-production environments unless
+  // we're pointing to a local collector. Then it won't send events to production. This also allows
+  // us to test things locally and in e2e tests
+  try {
+    const collectorUrl = getCollectorHostUrl();
+    return (
+      collectorUrl !== null &&
+      isLoopbackHostname(new URL(collectorUrl).hostname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function getRoundedMarks(
