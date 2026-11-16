@@ -573,8 +573,8 @@ describe("CleanupCollectionModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("reports stale items archived in the root collection with a null collection id", async () => {
-    const { trackSchemaEvent, items } = setup({
+  it("reports stale items archived in the root collection with a null collection id and closes", async () => {
+    const { trackSchemaEvent, getPathname, items } = setup({
       collection: ROOT_COLLECTION,
       items: [
         fakeItem({
@@ -615,6 +615,15 @@ describe("CleanupCollectionModal", () => {
     );
     expect(items.find((item) => item.id === 1)?.archived).toBe(true);
     expect(items.find((item) => item.id === 2)?.archived).toBe(false);
+
+    expect(getPathname()).toBe("/collection/root/cleanup");
+    await userEvent.click(
+      screen.getByTestId("cleanup-collection-modal-close-btn"),
+    );
+    await waitFor(() => expect(getPathname()).toBe("/collection/root"));
+    expect(
+      screen.queryByTestId("cleanup-collection-modal"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when the collection has no stale items", async () => {
