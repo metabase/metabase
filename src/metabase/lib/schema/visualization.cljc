@@ -33,7 +33,7 @@
   [props & entries]
   (let [schemas (into {} entries)
         enter   (:decode/normalize props)]
-    (into [:map (-> (merge {:closed false, ::mr/deliberately-open true} props)
+    (into [:map (-> (merge {:closed false} props)
                     (assoc :decode/normalize (cond-> {:leave (partial drop-invalid-settings schemas)}
                                                enter (assoc :enter enter))))]
           (map (fn [[k schema]]
@@ -62,7 +62,7 @@
 (mr/def ::column-name-or-ref
   "How a setting refers to a column: by name, as newer settings do, by legacy MBQL reference, as older ones do, or by
   something else the frontend wrote, which is kept as it is."
-  [:or :string ::legacy-reference :any])
+  [:or :string ::legacy-reference ::lib.schema.common/open-json])
 
 (mr/def ::click-behavior.dimension
   "The `:dimension` a click behavior parameter maps to, with the legacy MBQL reference of its column."
@@ -70,7 +70,7 @@
    [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]]
    [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]
     ::lib.schema.parameter/dimension.options]
-   :any])
+   ::lib.schema.common/open-json])
 
 (mr/def ::click-behavior.parameter-ref
   "The source or target of a click behavior parameter, with the dimension a target of type `dimension` maps to."
@@ -226,7 +226,7 @@
                 [:columns       [:sequential [:maybe ::column-name-or-ref]]]
                 [:type          [:enum "single" "range"]]
                 [:operator      :string]
-                [:value         :any]
+                [:value         ::lib.schema.common/open-json]
                 [:color         :string]
                 [:highlight_row :boolean]
                 [:colors        [:sequential :string]]
@@ -254,7 +254,7 @@
   "The `:pivot_table.collapsed_rows` of a pivot table: the row columns and the values whose rows are collapsed."
   (settings-map {:description "pivot table collapsed rows"}
                 [:rows  ::column-names-or-refs]
-                [:value [:sequential :any]]))
+                [:value [:sequential [:maybe ::lib.schema.common/open-json]]]))
 
 (mr/def ::scalar.segment
   "A segment of a scalar visualization: the color of the values from its minimum to its maximum."

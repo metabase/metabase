@@ -133,7 +133,7 @@
 
   `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
   names are keywords, and the values are `::decoded-json`, with string keys."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+  [:map-of {:description "tool call arguments"}
    :keyword ::decoded-json])
 
 (def ^:private AISDKPart
@@ -225,7 +225,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+  [:map-of {:description "JSON Schema properties"}
    [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode

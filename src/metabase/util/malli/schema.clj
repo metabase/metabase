@@ -211,11 +211,10 @@
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
 (defn- open-map
-  "A map whose keys are deliberately not ours to declare. The marker property is what lets
-  [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
+  "A map whose keys are not ours to declare, which the API passes through as it arrived."
   [description]
   (mu/with-api-error-message
-   [:map {:closed false, ::mr/deliberately-open true, :description description}]
+   [:map {:closed false, :description description}]
    (deferred-tru "Value must be a map.")))
 
 (def DatabaseDetails
@@ -315,12 +314,18 @@
      [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
     (deferred-tru "Value must be a map."))))
 
+(mr/def ::json-value
+  "A JSON value kept as it arrived: a map of any keys, a sequence of JSON values, or anything that is neither."
+  [:multi {:dispatch #(cond (map? %) :object (sequential? %) :array :else :scalar)}
+   [:object [:map {:closed false, :description "a JSON object kept as it arrived"}]]
+   [:array  [:sequential [:ref ::json-value]]]
+   [:scalar [:fn {:error/message "a scalar", :json-schema {}} #(not (or (map? %) (sequential? %)))]]])
+
 (def OpaqueJSONObject
   "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a
-  [[string-keyed-map]] of anything, stringified all the way down. Under no circumstances may its keys be keywords: a
-  map this code builds and reads by keyword is not opaque and gets a schema of its own. The marker property is what
-  lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
-  (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
+  [[string-keyed-map]] of JSON values, stringified all the way down. Under no circumstances may its keys be keywords:
+  a map this code builds and reads by keyword is not opaque and gets a schema of its own."
+  (string-keyed-map [:ref ::json-value] true))
 
 (defn string-keyed-object
   "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an

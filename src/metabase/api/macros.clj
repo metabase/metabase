@@ -28,8 +28,8 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.docs.regenerate :as docs.regenerate]
-   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.defendpoint.request-schemas :as request-schemas]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
@@ -635,7 +635,7 @@
                                            (ex-message e#)
                                            (u/pprint-to-str schema))
                                    {:schema schema}))))]
-    (closed-schemas/check! schema-type schema)
+    (request-schemas/check! schema-type schema)
     schema))
 
 (defmacro endpoint-core-fn-with-optimized-schemas

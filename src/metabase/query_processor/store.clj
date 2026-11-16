@@ -49,7 +49,7 @@
 
 (mr/def ::miscellaneous-value
   "Any value cached for the duration of a QP run via [[store-miscellaneous-value!]] or [[cached]]."
-  [:schema {::mr/deliberately-open true, :description "a per-query-execution cached value of any kind"} :any])
+  [:schema {:description "a per-query-execution cached value of any kind"} :any])
 
 (mr/def ::miscellaneous-value.ks
   "Key sequence for a value in the store's miscellaneous cache; [[cached]] prefixes it with a unique symbol."

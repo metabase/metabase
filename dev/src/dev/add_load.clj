@@ -10,15 +10,15 @@
 
 (def ^:private Attrs
   "The attributes of an entity to insert, as `mt/with-temp` takes them for its model."
-  [:map {:closed false, ::mr/deliberately-open true, :description "model attributes"}])
+  [:map {:closed false, :description "model attributes"}])
 
 (def ^:private Bindings
   "A map of logical keywords to the columns of an inserted entity they bind."
-  [:map {:closed false, ::mr/deliberately-open true, :description "logical keyword bindings"}])
+  [:map {:closed false, :description "logical keyword bindings"}])
 
 (def ^:private Inserted
   "An inserted entity of any model."
-  [:map {:closed false, ::mr/deliberately-open true, :description "inserted entity"}])
+  [:map {:closed false, :description "inserted entity"}])
 
 (mu/defn- extract-bindings
   "Extracts the bindings from the script and inserts the values into the ids map. This is the data oriented equivalent

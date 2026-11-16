@@ -32,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
    [throttle.core :as throttle])
@@ -111,9 +110,9 @@
   carries browser-derived fields the library may add to over time, and `:data` inside it is arbitrary nested JSON."
   ;; `{:closed false}` is what opts a map out of `defendpoint`'s strip-extra-keys decoding — without it the event
   ;; data would be stripped off before we ever forwarded it.
-  [:map {:closed false, ::mr/deliberately-open true, :description "a Metabase Track send envelope"}
+  [:map {:closed false, :description "a Metabase Track send envelope"}
    [:type    [:enum "event"]]
-   [:payload [:map {:closed false, ::mr/deliberately-open true, :description "a Metabase Track event payload"}
+   [:payload [:map {:closed false, :description "a Metabase Track event payload"}
               [:website ms/NonBlankString]]]])
 
 (defn- cache-token

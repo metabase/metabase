@@ -39,7 +39,7 @@
 
 (mr/def ::entity-with-id
   "Any map with an optional `:id`, whatever else it holds."
-  [:map {::mr/deliberately-open true, :description "a Toucan, metadata, or user-supplied entity"}
+  [:map {:description "a Toucan, metadata, or user-supplied entity"}
    [:id {:optional true} [:maybe ::deps.dependency-types/entity-id]]])
 
 (def ^:private EntitiesMap
@@ -54,7 +54,7 @@
 
 (def ^:private UncheckedEntityId
   "A dependency entity ID as a caller gives it, which [[ensure-entity-id]] checks."
-  [:schema {::mr/deliberately-open true, :description "an unchecked dependency entity id"} :any])
+  [:schema {:description "an unchecked dependency entity id"} :any])
 
 (def ^:private DependenciesByType
   "The dependencies of an entity as `{entity-type #{entity-id}}`, with the IDs not yet checked."

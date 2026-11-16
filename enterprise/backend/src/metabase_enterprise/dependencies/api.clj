@@ -56,7 +56,7 @@
    :data-app  [:slug :name :description :created_at]})
 
 (mr/def ::data-value
-  [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
+  [:schema {:description "any column or hydrated value of a dependency-tracked entity"}
    :any])
 
 (mu/defn- format-subentity :- ::data-value

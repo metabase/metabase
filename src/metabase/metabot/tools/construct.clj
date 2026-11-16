@@ -113,7 +113,6 @@
   "An MBQL 5 external query as the LLM wrote it, before [[execute-representations-query]] repairs and validates it: its
   keys are the LLM's until then."
   [:map {:closed                false
-         ::mr/deliberately-open true
          :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
 
 (def LLMQueryArgument

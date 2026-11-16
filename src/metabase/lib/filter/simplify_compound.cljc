@@ -67,7 +67,7 @@
 
 (mr/def ::simplifiable
   "A filter clause, possibly malformed (e.g. with `nil` args), or any form [[simplify-compound-filter]] walks to find them."
-  [:schema {::mr/deliberately-open true, :description "a form containing possibly malformed compound filters"} :any])
+  [:schema {:description "a form containing possibly malformed compound filters"} :any])
 
 (mu/defn simplify-compound-filter :- ::lib.schema.util/unique-uuids
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
