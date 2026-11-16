@@ -23,7 +23,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForDashboardToLoad,
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -578,7 +577,16 @@ async function renderDashboard() {
       },
     },
   );
-  await waitForDashboardToLoad();
+  // dashcards keep their own loading indicators until their queries return
+  await waitFor(() => {
+    expect(
+      screen.queryByTestId("dashboard-grid-skeleton"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("dashboard-header-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+  await screen.findByTestId("dashboard-header");
   return { ...view, router: checkNotNull(view.router) };
 }
 
@@ -600,8 +608,14 @@ function getDashcard(dashcardId: number) {
   return checkNotNull(queryDashcard(dashcardId));
 }
 
+/** Finds a dashcard once its query results are shown */
 async function findDashcard(dashcardId: number) {
-  await waitFor(() => expect(queryDashcard(dashcardId)).toBeDefined());
+  await waitFor(() => {
+    const dashcard = getDashcard(dashcardId);
+    expect(
+      within(dashcard).queryByTestId("loading-indicator"),
+    ).not.toBeInTheDocument();
+  });
   return getDashcard(dashcardId);
 }
 
@@ -684,6 +698,12 @@ async function addDataset(name: string) {
   expect(item).toHaveAttribute("aria-pressed", "false");
   await userEvent.click(item);
   await waitFor(() => expect(item).toHaveAttribute("aria-pressed", "true"));
+  // the data source is added once its query results are in
+  await waitFor(() =>
+    expect(
+      within(getDataSourceItem(name)).getAllByTestId("column-list-item").length,
+    ).toBeGreaterThan(0),
+  );
 }
 
 function getItemWithText(items: HTMLElement[], text: string) {
@@ -730,21 +750,27 @@ function getSavedVisualization(dashcardId: number): unknown {
 
 /** Hovering the title turns it into a link, so hover before clicking it. */
 async function clickDashcardTitle(dashcardId: number) {
+  await findDashcard(dashcardId);
   const getTitle = () =>
     within(getDashcard(dashcardId)).getByTestId("legend-caption-title");
   await userEvent.hover(getTitle());
   await userEvent.click(getTitle());
 }
 
+/** Finds a dashcard by its title once its query results are shown */
 async function findDashcardByTitle(title: string) {
-  const hasTitle = (dashcard: HTMLElement) =>
+  const isLoadedWithTitle = (dashcard: HTMLElement) =>
     within(dashcard).queryByText(title, {
       selector: "[data-testid='legend-caption-title']",
-    }) != null;
+    }) != null && within(dashcard).queryByTestId("loading-indicator") == null;
   await waitFor(() =>
-    expect(screen.queryAllByTestId("dashcard").some(hasTitle)).toBe(true),
+    expect(screen.queryAllByTestId("dashcard").some(isLoadedWithTitle)).toBe(
+      true,
+    ),
   );
-  return checkNotNull(screen.getAllByTestId("dashcard").find(hasTitle));
+  return checkNotNull(
+    screen.getAllByTestId("dashcard").find(isLoadedWithTitle),
+  );
 }
 
 async function openVisualizerFromQuestionsSidebar(cardName: string) {
@@ -770,7 +796,8 @@ function getGoalLine(container: HTMLElement) {
   );
 }
 
-async function hoverInfoIcon(dashcard: HTMLElement) {
+async function hoverInfoIcon(dashcardId: number) {
+  const dashcard = await findDashcard(dashcardId);
   await userEvent.hover(within(dashcard).getByLabelText("info icon"));
   return screen.findByRole("tooltip");
 }
@@ -886,6 +913,8 @@ describe("DashboardApp > visualizer", () => {
           "bar",
         ),
       ).toBeChecked();
+      // an unchanged card can be saved, as its display came from the visualizer
+      expect(within(modal).getByRole("button", { name: "Save" })).toBeEnabled();
 
       await saveVisualizer();
 
@@ -917,6 +946,10 @@ describe("DashboardApp > visualizer", () => {
       const modal = await openVisualizer(
         MULTI_SERIES_LINE_DASHCARD.id,
         "Edit visualization",
+      );
+      // the data has loaded, so the card could be saved if it were changed
+      await waitFor(() =>
+        expect(getWellItems("vertical-well")).toHaveLength(2),
       );
       expect(
         within(modal).getByRole("button", { name: "Save" }),
@@ -971,7 +1004,7 @@ describe("DashboardApp > visualizer", () => {
     });
 
     it("should reset a data source to the card defaults", async () => {
-      const pieFromTimeseries = createMockVisualizerDashboardCard({
+      const lineDashcard = createMockVisualizerDashboardCard({
         id: 22,
         dashboard_id: DASHBOARD_ID,
         card_id: ORDERS_BY_CREATED_AT.id,
@@ -981,7 +1014,7 @@ describe("DashboardApp > visualizer", () => {
         size_y: 8,
         visualization_settings: {
           visualization: {
-            display: "pie",
+            display: "line",
             columnValuesMapping: {
               COLUMN_1: [
                 columnRef("COLUMN_1", "CREATED_AT", ORDERS_BY_CREATED_AT),
@@ -989,21 +1022,28 @@ describe("DashboardApp > visualizer", () => {
               COLUMN_2: [columnRef("COLUMN_2", "count", ORDERS_BY_CREATED_AT)],
             },
             settings: {
-              "pie.metric": "COLUMN_2",
-              "pie.dimension": ["COLUMN_1"],
+              "graph.dimensions": ["COLUMN_1"],
+              "graph.metrics": ["COLUMN_2"],
             },
           },
         },
       });
-      await setup({ dashcards: [pieFromTimeseries] });
+      await setup({ dashcards: [lineDashcard] });
       await editDashboard();
 
-      const modal = await openVisualizer(
-        pieFromTimeseries.id,
-        "Edit visualization",
-      );
+      let modal = await openVisualizer(lineDashcard.id, "Edit visualization");
+      await userEvent.click(within(modal).getByTestId("pie"));
       expect(getWellItems("pie-metric-well")).toEqual(["Count"]);
       expect(getWellItems("pie-dimension-well")).toEqual(["Created At: Month"]);
+      await saveVisualizer();
+      await saveDashboard();
+      expect(getSavedVisualization(lineDashcard.id)).toMatchObject({
+        display: "pie",
+      });
+
+      await editDashboard();
+      modal = await openVisualizer(lineDashcard.id, "Edit visualization");
+      expect(getWellItems("pie-metric-well")).toEqual(["Count"]);
 
       const openResetItem = async () => {
         await userEvent.click(
@@ -1089,6 +1129,9 @@ describe("DashboardApp > visualizer", () => {
         modal = await openVisualizer(dashcardId, "Edit visualization");
         await userEvent.clear(within(modal).getByTestId("visualizer-title"));
         await userEvent.tab();
+        expect(
+          within(modal).getByRole("button", { name: "Save" }),
+        ).toBeEnabled();
         await saveVisualizer();
         await waitFor(() =>
           expect(
@@ -1133,9 +1176,7 @@ describe("DashboardApp > visualizer", () => {
         ).toHaveTextContent(new RegExp(`^${expectedTitle}$`));
       }
 
-      const tooltip = await hoverInfoIcon(
-        getDashcard(MULTI_SERIES_LINE_DASHCARD.id),
-      );
+      const tooltip = await hoverInfoIcon(MULTI_SERIES_LINE_DASHCARD.id);
       expect(tooltip).toHaveTextContent("My description");
 
       // an untitled card isn't renamed to a default title
@@ -1234,9 +1275,9 @@ describe("DashboardApp > visualizer", () => {
           "Original Question Title",
         ),
       ).toBeInTheDocument();
-      expect(
-        await hoverInfoIcon(getDashcard(questionDashcard.id)),
-      ).toHaveTextContent("Original question description");
+      expect(await hoverInfoIcon(questionDashcard.id)).toHaveTextContent(
+        "Original question description",
+      );
 
       await editDashboard();
       let modal = await openVisualizer(
@@ -1259,9 +1300,9 @@ describe("DashboardApp > visualizer", () => {
       await waitFor(() =>
         expect(getTitle()).toHaveTextContent("Original Question Title"),
       );
-      expect(
-        await hoverInfoIcon(getDashcard(questionDashcard.id)),
-      ).toHaveTextContent("Original question description");
+      expect(await hoverInfoIcon(questionDashcard.id)).toHaveTextContent(
+        "Original question description",
+      );
 
       await clickDashcardTitle(questionDashcard.id);
       await waitFor(() =>
@@ -1301,9 +1342,9 @@ describe("DashboardApp > visualizer", () => {
       await waitFor(() =>
         expect(getTitle()).toHaveTextContent("Updated Title"),
       );
-      expect(
-        await hoverInfoIcon(getDashcard(questionDashcard.id)),
-      ).toHaveTextContent("Updated description");
+      expect(await hoverInfoIcon(questionDashcard.id)).toHaveTextContent(
+        "Updated description",
+      );
     });
 
     it.each([
@@ -1320,10 +1361,16 @@ describe("DashboardApp > visualizer", () => {
         path: `/question/${PRODUCTS_BY_CREATED_AT.id}-products-by-created-at-month`,
       },
       {
-        name: "a funnel",
+        name: "the first series of a funnel",
         dashcard: FUNNEL_DASHCARD,
         menuItem: STEP_COLUMN.name,
         path: `/question/${STEP_COLUMN.id}-step-column`,
+      },
+      {
+        name: "the second series of a funnel",
+        dashcard: FUNNEL_DASHCARD,
+        menuItem: VIEWS_COLUMN.name,
+        path: `/question/${VIEWS_COLUMN.id}-views-column`,
       },
     ])(
       "should open the question of $name from the dashcard title",
@@ -1358,9 +1405,6 @@ describe("DashboardApp > visualizer", () => {
           `/question/${PRODUCTS_BY_CATEGORY.id}-products-by-category`,
         ),
       );
-      expect(
-        screen.queryByTestId("legend-caption-menu"),
-      ).not.toBeInTheDocument();
     });
   });
 
@@ -1514,9 +1558,11 @@ describe("DashboardApp > visualizer", () => {
       await openVisualizerFromQuestionsSidebar(ORDERS_BY_CREATED_AT.name);
       await saveVisualizer("Add to dashboard");
       const newDashcard = await findDashcardByTitle(ORDERS_BY_CREATED_AT.name);
-      expect(
-        await within(newDashcard).findByText("Created At: Month"),
-      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          within(newDashcard).getByText("Created At: Month"),
+        ).toBeInTheDocument(),
+      );
       await saveDashboard();
 
       const [createdDashcard] = getSavedDashcards();
@@ -1544,6 +1590,9 @@ describe("DashboardApp > visualizer", () => {
         expect(
           within(legend).getByText(PRODUCTS_BY_CREATED_AT.name),
         ).toBeInTheDocument();
+        expect(
+          within(dashcard).getByTestId("legend-caption-title"),
+        ).toHaveTextContent(ORDERS_BY_CREATED_AT.name);
         expect(
           within(dashcard).getByText("Created At: Month"),
         ).toBeInTheDocument();

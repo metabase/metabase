@@ -119,8 +119,15 @@ describe("scenarios > visualizer > basics", () => {
     cy.reload();
     H.assertDashboardCardTitle(1, "Renamed chart");
     H.getDashboardCard(1).within(() => {
-      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      // Legend item and y-axis name
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
       cy.findByText("Created At: Month").should("exist");
     });
   });
