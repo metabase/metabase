@@ -2,7 +2,7 @@
 import { Global, css } from "@emotion/react";
 import { type JSX, useMemo } from "react";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import "metabase/css/core/base.css";
 import "metabase/css/core/fonts.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
@@ -55,10 +55,7 @@ export const GlobalStyles = (): JSX.Element => {
         ${isStaticEmbedding() || isPublicEmbedding()
           ? ""
           : `color-scheme: ${colorScheme};`}
-        ${rootStyle}
       }
-
-      ${baseStyle}
     `;
   }, [cssVariables, font, fontFiles, colorScheme]);
 

@@ -34,7 +34,6 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
@@ -269,8 +268,7 @@ export function getTestStoreAndWrapper({
 }
 
 /**
- * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains strictly only the base styles to act as CSS resets and css variables, without font files.
+ * A minimal version of the GlobalStyles component that only sets the css variables.
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
@@ -279,7 +277,7 @@ const GlobalStylesForTest = () => {
     return getMetabaseCssVariables({ theme });
   }, [theme]);
 
-  return <Global styles={[baseStyle, cssVariables]} />;
+  return <Global styles={cssVariables} />;
 };
 
 /**
