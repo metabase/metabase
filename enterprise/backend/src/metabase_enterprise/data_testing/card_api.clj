@@ -60,7 +60,7 @@
    _query-params
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
-  (validate-test! card_id (select-keys body [:inputs :expectations :now]))
+  (validate-test! card_id (data-testing.runner/test-definition body))
   (data-testing.db/insert-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
@@ -75,9 +75,9 @@
    body :- ::data-testing.schema/card-test.update]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (when (some #(contains? body %) [:card_id :inputs :expectations :now])
+    (when (some #(contains? body %) (cons :card_id data-testing.runner/definition-keys))
       (let [{:keys [card_id] :as merged} (merge card-test body)]
-        (validate-test! card_id (select-keys merged [:inputs :expectations :now]))))
+        (validate-test! card_id (data-testing.runner/test-definition merged))))
     (when (seq body)
       (data-testing.db/update-card-test! id body)))
   (data-testing.db/card-test id))

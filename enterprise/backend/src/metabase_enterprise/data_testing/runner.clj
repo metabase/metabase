@@ -288,12 +288,19 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
+(def definition-keys
+  "The keys of a test that a run reads: its inputs, its expectations, and the moment its subject reads as the current
+  time."
+  [:inputs :expectations :now])
+
 (mr/def ::definition
-  "What a run reads of a test: its inputs, its expectations, and the moment its subject reads as the current time."
-  [:map {:closed true}
-   [:inputs       ::data-testing.schema/inputs]
-   [:expectations ::data-testing.schema/expectations]
-   [:now          {:optional true} [:maybe ::data-testing.schema/now]]])
+  "What a run reads of a test."
+  [:select-keys ::data-testing.schema/test.definition definition-keys])
+
+(defn test-definition
+  "The [[::definition]] of `test-fields`, a saved test or a request body that may hold other keys."
+  [test-fields]
+  (select-keys test-fields definition-keys))
 
 (mu/defn- subject-plan :- ::data-testing.subject/subject-plan
   "The [[data-testing.subject/subject-plan]] of `subject`, compiled with `now` standing for the current time when it is
@@ -373,7 +380,7 @@
    subject                                                  :- ::data-testing.subject/subject
    {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
-        (validated-plan subject-type subject (select-keys saved-test [:inputs :expectations :now]))
+        (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try
