@@ -139,8 +139,11 @@ paths:
         Read boundary: the input schemas, plus what the engine grants every login (catalogs, objects granted to
         PUBLIC, other databases on a Postgres cluster, ClickHouse `system.*` while
         `select_from_system_db_requires_grant` is off). Tables created in an input schema after the create:
-        - Postgres, Redshift: readable only if the admin login created them (`ALTER DEFAULT PRIVILEGES` without
-          `FOR ROLE`).
+        - Postgres: master: readable only if the admin login created them (`ALTER DEFAULT PRIVILEGES` without
+          `FOR ROLE`). Hardening #87047: also readable if they were created by a role that owned a relation in
+          that input schema when read access was granted. Not readable: tables created by a role that owned
+          nothing there at that time, or by a member of an owner role acting as itself.
+        - Redshift: readable only if the admin login created them.
         - ClickHouse, SQL Server: readable (the grant covers the schema).
 
         ClickHouse limit (decision 0029): the workspace user can create a materialized view in its output
@@ -278,7 +281,11 @@ paths:
             - PUBLIC can create objects in a database, or in a schema of a database, that the workspace user may
               connect to, or the admin login cannot connect to one of those databases to check;
             - PUBLIC can write to a table of an input schema, now or later (a default privilege);
-            - the workspace user cannot get CONNECT (PUBLIC lacks it and the admin login cannot grant it).
+            - the workspace user cannot get CONNECT (PUBLIC lacks it and the admin login cannot grant it);
+            - a role other than the admin login owns a relation in an input schema, and the admin login does not
+              have that role's privileges. master: the admin login is not a member of the role. Hardening #87047:
+              the admin login is neither a superuser nor a member whose membership inherits (from Postgres 16,
+              granted `WITH INHERIT TRUE`).
             Nothing is left behind (`cleanup_required: false`).
 
             Other engines, in held PRs (see "Engines" and "Admin prerequisites per engine" in the description).
@@ -290,7 +297,7 @@ paths:
               users' sessions; `mandatory_roles` is set or PUBLIC holds a grant; or the server is MariaDB below
               10.4.
           x-status: hardening
-          x-pr: [86588, 86601, 86797, 86798, 86799, 87217]
+          x-pr: [86588, 86601, 86797, 86798, 86799, 87047, 87217]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
