@@ -13,7 +13,6 @@ import { PrincipalPicker } from "./PrincipalPicker";
 import {
   type PreviewAttribute,
   type Principal,
-  type StartPreviewRequest,
   useGetPreviewAttributesQuery,
   useStartPreviewMutation,
 } from "./api";
@@ -24,8 +23,6 @@ type ViewAsModalProps = {
   onClose: () => void;
   path: string;
   entityName?: string;
-  /** Hands the pick back instead of switching this tab: "Preview as…" opens it in a frame. */
-  onPick?: (request: StartPreviewRequest) => void;
 };
 
 /**
@@ -38,7 +35,6 @@ export function ViewAsModal({
   onClose,
   path,
   entityName,
-  onPick,
 }: ViewAsModalProps) {
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [pickedValues, setPickedValues] = useState<Record<string, string>>({});
@@ -57,13 +53,6 @@ export function ViewAsModal({
 
   const handleOpen = async () => {
     if (!isReady) {
-      return;
-    }
-    if (onPick) {
-      onPick({
-        ...principal,
-        attributes: getAttributeValues(shownAttributes, pickedValues),
-      });
       return;
     }
     const result = await startPreview({
@@ -91,14 +80,12 @@ export function ViewAsModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={getTitle({ entityName, isPreview: onPick != null })}
+      title={getTitle(entityName)}
       size="lg"
     >
       <Stack gap="lg">
         <Text c="text-secondary">
-          {onPick
-            ? t`Opens the collections, dashboards and questions this user, group or tenant sees, read-only, in a sealed frame.`
-            : t`Switches this tab to the app as this user, group or tenant, read-only, until you exit the preview.`}
+          {t`Switches this tab to the app as this user, group or tenant, read-only, until you exit the preview.`}
         </Text>
         <PrincipalPicker value={principal} onChange={handlePrincipalChange} />
         {shownAttributes.length > 0 && (
@@ -121,7 +108,7 @@ export function ViewAsModal({
             loading={isLoading}
             onClick={handleOpen}
           >
-            {onPick ? t`Preview` : t`View app`}
+            {t`View app`}
           </Button>
         </Group>
       </Stack>
@@ -129,16 +116,7 @@ export function ViewAsModal({
   );
 }
 
-function getTitle({
-  entityName,
-  isPreview,
-}: {
-  entityName?: string;
-  isPreview: boolean;
-}) {
-  if (isPreview) {
-    return t`Preview as…`;
-  }
+function getTitle(entityName?: string) {
   return entityName ? t`View “${entityName}” as…` : t`View app as…`;
 }
 
