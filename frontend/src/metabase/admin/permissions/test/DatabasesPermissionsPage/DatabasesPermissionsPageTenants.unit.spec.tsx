@@ -61,9 +61,15 @@ const TEST_GROUPS = [
   TENANT_GROUP,
 ];
 
-// The All tenant users group holds the wider access here because an admin
-// granted it: since #86277 the backend gives that group least access on a new
-// database, so the e2e test this replaced had to grant it too.
+// The warning under test needs "All tenant users" to hold wider access than the
+// tenant group. A new tenant group starting blocked is the backend default,
+// pinned by metabase-enterprise.tenants.permissions-test/
+// new-tenant-groups-get-no-perms-on-existing-dbs. The unrestricted value for
+// All tenant users is not a default. Since #86277 that group also starts
+// blocked on a new database, pinned by
+// metabase.permissions.models.permissions-group-test/
+// all-tenant-users-get-least-access-to-newly-created-databases-test, so an
+// admin grants it, which is what the e2e test this replaced now does too.
 
 const MANAGE_TABLE_METADATA_INDEX = 3;
 const MANAGE_DATABASE_INDEX = 4;
@@ -125,6 +131,11 @@ const setup = async ({
 const getGroupRow = (groupName: string) =>
   screen.findByRole("row", { name: `${groupName} permissions` });
 
+const getColumnNames = () =>
+  screen
+    .getAllByRole("columnheader")
+    .map((header) => header.textContent?.trim());
+
 describe("DatabasesPermissionsPage with tenants", () => {
   describe("tenant group marker", () => {
     it.each([ALL_TENANT_USERS, TENANT_GROUP])(
@@ -148,6 +159,21 @@ describe("DatabasesPermissionsPage with tenants", () => {
         ).not.toBeInTheDocument();
       },
     );
+  });
+
+  describe("columns", () => {
+    it("keeps every column, unlike the group view, so tenant and internal groups line up", async () => {
+      await setup();
+
+      expect(getColumnNames()).toEqual([
+        "Group name",
+        "View data",
+        "Create queries",
+        "Download results",
+        "Manage table metadata",
+        "Manage database",
+      ]);
+    });
   });
 
   describe("database management permissions", () => {

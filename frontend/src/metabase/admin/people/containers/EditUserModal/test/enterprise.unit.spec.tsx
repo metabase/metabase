@@ -51,6 +51,31 @@ describe("EditUserModal - enterprise", () => {
       expect(groupRequests).toHaveLength(1);
       expect(groupRequests[0].url).toContain("tenancy=external");
     });
+
+    it("keeps the all tenant users membership when another tenant group is added", async () => {
+      setupTenantUser();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: TENANT_GROUP.name }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
+
+      const [update] = (await findRequests("PUT")).filter(({ url }) =>
+        url.includes(`/api/user/${defaultUser.id}`),
+      );
+      expect(update.body).toMatchObject({
+        tenant_id: TENANT.id,
+        user_group_memberships: [
+          { id: ALL_TENANT_USERS.id, is_group_manager: false },
+          { id: TENANT_GROUP.id, is_group_manager: false },
+        ],
+      });
+    });
   });
 
   it("can add a user attribute", async () => {

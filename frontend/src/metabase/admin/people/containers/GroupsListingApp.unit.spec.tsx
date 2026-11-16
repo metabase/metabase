@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupApiKeyEndpoints,
+  setupCreateGroupEndpoint,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -42,9 +42,11 @@ beforeAll(() => {
 });
 
 const setup = ({ external }: { external: boolean }) => {
-  setupGroupsEndpoint([INTERNAL_GROUP, TENANT_GROUP]);
+  const groups = [INTERNAL_GROUP, TENANT_GROUP];
+
+  setupGroupsEndpoint(groups);
+  setupCreateGroupEndpoint(groups);
   setupApiKeyEndpoints([]);
-  fetchMock.post("path:/api/permissions/group", createMockGroup({ id: 9 }));
 
   renderWithProviders(<GroupsListingApp external={external} />, {
     storeInitialState: createMockState({
@@ -86,6 +88,14 @@ describe("GroupsListingApp", () => {
         name: "Marketing Team",
         is_tenant_group: true,
       });
+    });
+
+    it("shows the new group in the list without a reload", async () => {
+      setup({ external: true });
+
+      await createGroup("Marketing Team");
+
+      expect(await screen.findByText("Marketing Team")).toBeInTheDocument();
     });
   });
 
