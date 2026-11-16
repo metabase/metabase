@@ -1014,7 +1014,7 @@ describe("DashCard", () => {
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
     });
 
-    it("should hide the actions panel of a new iframe card until its editing is done", async () => {
+    it("should show the iframe preview and actions panel after clicking Done", async () => {
       const user = userEvent.setup({
         advanceTimers: jest.advanceTimersByTime,
       });
@@ -1032,6 +1032,11 @@ describe("DashCard", () => {
 
       await user.click(screen.getByRole("button", { name: "Done" }));
 
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://example.com",
+      );
+      expect(screen.queryByTestId("iframe-card-input")).not.toBeInTheDocument();
       expect(
         screen.getByTestId("dashboardcard-actions-panel"),
       ).toBeInTheDocument();
