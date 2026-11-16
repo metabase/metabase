@@ -115,9 +115,9 @@
    :official-collection 1
    :verified            1
    ;; Semantic layer content (the Library's Data and Metrics collections and their subcollections) is curated,
-   ;; so it ranks a bit above official content by default. The :data-picker and :metabot contexts boost it
-   ;; further, at a level an exact match can override.
-   :library             1.5
+   ;; so by default it ranks above official and verified content, even combined, yet below a better text match
+   ;; (:text 5). The :data-picker and :metabot contexts boost it further, at a level an exact match can override.
+   :library             3
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
    ;; Maps the backend's cosine distance to a [0, 1] score: 1 = identical vector, 0 = maximally distant or keyword-only hit.
