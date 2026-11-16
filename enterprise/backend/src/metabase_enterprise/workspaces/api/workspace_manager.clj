@@ -21,14 +21,20 @@
   [:enum {:decode/api keyword}
    :unprovisioned :provisioning :provisioned :deprovisioning])
 
+(def ^:private WorkspaceName
+  "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
+  code points and H2 in UTF-16 code units. `:max` counts UTF-16 code units, the larger count, so a name this schema
+  accepts fits on each of them."
+  [:and ms/NonBlankString [:string {:max 254}]])
+
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name         ms/NonBlankString]
+   [:name         WorkspaceName]
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name {:optional true} WorkspaceName]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
@@ -137,8 +143,9 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`; retry later. 422 if a
-  database's connection settings need an admin to fix them, or if any emitted
-  value contains `{{` or `[[`; retrying does not help."
+  database's connection settings need an admin to fix them, if any emitted
+  value contains `{{` or `[[`, or if the workspace has no databases; retrying
+  does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]

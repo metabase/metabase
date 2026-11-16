@@ -427,11 +427,17 @@
   (waiting clears it), and a 422 when only an admin can clear the cause: its
   `:additional-options` set a login (`check-additional-options!`), it uses SSL
   client-certificate auth, an inlined secret in use can't ship
-  (`inlined-secret-entries`), or an emitted string contains a template form
-  (`{{` or `[[`)."
+  (`inlined-secret-entries`), an emitted string contains a template form
+  (`{{` or `[[`), or the workspace has no databases."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
+      (when (empty? wsds)
+        (throw (ex-info (format (str "Workspace %s has no databases, so it has no config to download. Delete the "
+                                     "workspace and create a new one.")
+                                (pr-str (:name ws)))
+                        {:status-code  422
+                         :workspace_id workspace-id})))
       (when (some #(not= :provisioned (:status %)) wsds)
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
