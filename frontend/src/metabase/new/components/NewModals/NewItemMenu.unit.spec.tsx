@@ -137,6 +137,12 @@ describe("NewItemMenu", () => {
     await userEvent.keyboard("{ArrowDown}");
 
     expect(
+      await screen.findByRole("menuitem", { name: /Product analysis/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
       await screen.findByRole("menuitem", { name: /Dashboard/ }),
     ).toHaveFocus();
 

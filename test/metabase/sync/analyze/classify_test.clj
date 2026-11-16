@@ -7,6 +7,7 @@
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel fields-to-classify-test
@@ -291,3 +292,69 @@
       (classify/classify-fields! table)
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
+
+(deftest classify-table-event-schema-test
+  (testing "A table whose columns match a known event schema is an event table, with the roles the schema detects"
+    (mt/with-temp [:model/Table table {:name "tracks" :entity_type :entity/GenericTable}
+                   :model/Field _     {:table_id (u/the-id table) :name "timestamp" :base_type :type/DateTimeWithTZ}
+                   :model/Field _     {:table_id (u/the-id table) :name "user_id" :base_type :type/Text}
+                   :model/Field _     {:table_id (u/the-id table) :name "anonymous_id" :base_type :type/Text}
+                   :model/Field _     {:table_id (u/the-id table) :name "event" :base_type :type/Text}]
+      (let [detected #(t2/select-one-fn :detected_event_settings :model/Table :id (u/the-id table))
+            expected {"schema"   "segment"
+                      "settings" {"columns.timestamp"  "timestamp"
+                                  "columns.person"     "user_id"
+                                  "columns.event_name" "event"}}]
+        (classify/classify-table! table)
+        (is (= :entity/EventTable (t2/select-one-fn :entity_type :model/Table :id (u/the-id table))))
+        (is (= expected (detected)))
+        (testing "a later classification writes the detected settings whole, including the parts that didn't change"
+          (t2/update! :model/Table :id (u/the-id table) {:detected_event_settings {"schema"   "posthog"
+                                                                                   "settings" {"columns.person" "user_id"}}})
+          (classify/classify-table! (t2/select-one :model/Table :id (u/the-id table)))
+          (is (= expected (detected))))))))
+
+(defn- user-visible-fk
+  "The Field's foreign key as users see it."
+  [field-id]
+  (select-keys (t2/select-one [:model/Field :semantic_type :fk_target_field_id] :id field-id)
+               [:semantic_type :fk_target_field_id]))
+
+(deftest classify-table-links-users-table-test
+  (testing "A Metabase Track event table gets a foreign key to the users table beside it"
+    (mt/with-temp [:model/Database db                  {}
+                   :model/Table    events              {:db_id (u/the-id db) :schema "product_analytics"
+                                                        :name  "pa_events_resolved"}
+                   :model/Table    users               {:db_id (u/the-id db) :schema "product_analytics"
+                                                        :name  "pa_identities_resolved"}
+                   :model/Field    _                   {:table_id (u/the-id events) :name "created_at"
+                                                        :base_type :type/DateTime}
+                   :model/Field    {person-id :id}     {:table_id (u/the-id events) :name "person_id"
+                                                        :base_type :type/Text}
+                   :model/Field    _                   {:table_id (u/the-id events) :name "session_id"
+                                                        :base_type :type/Text}
+                   :model/Field    _                   {:table_id (u/the-id events) :name "event_name"
+                                                        :base_type :type/Text}
+                   :model/Field    _                   {:table_id (u/the-id events) :name "url_path"
+                                                        :base_type :type/Text}
+                   :model/Field    {users-key-id :id}  {:table_id (u/the-id users) :name "person_id"
+                                                        :base_type :type/Text}]
+      (classify/classify-table! events)
+      (is (= {:semantic_type :type/FK, :fk_target_field_id users-key-id}
+             (user-visible-fk person-id)))
+      (testing "a foreign key an admin removed stays removed when the table is classified again"
+        (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id person-id)
+                                                         {:semantic_type nil, :fk_target_field_id nil})
+        (classify/classify-table! (t2/select-one :model/Table :id (u/the-id events)))
+        (is (= {:semantic_type nil, :fk_target_field_id nil}
+               (user-visible-fk person-id))))))
+  (testing "Without the users table, the event table is still classified"
+    (mt/with-temp [:model/Table events {:schema "product_analytics" :name "pa_events_resolved"}
+                   :model/Field _      {:table_id (u/the-id events) :name "created_at" :base_type :type/DateTime}
+                   :model/Field person {:table_id (u/the-id events) :name "person_id" :base_type :type/Text}
+                   :model/Field _      {:table_id (u/the-id events) :name "session_id" :base_type :type/Text}
+                   :model/Field _      {:table_id (u/the-id events) :name "event_name" :base_type :type/Text}
+                   :model/Field _      {:table_id (u/the-id events) :name "url_path" :base_type :type/Text}]
+      (classify/classify-table! events)
+      (is (= :entity/EventTable (t2/select-one-fn :entity_type :model/Table :id (u/the-id events))))
+      (is (nil? (:fk_target_field_id (user-visible-fk (u/the-id person))))))))

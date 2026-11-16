@@ -14,6 +14,7 @@ import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { QuestionDetails } from "metabase/questions/components/QuestionDetails";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -22,9 +23,9 @@ import type Question from "metabase-lib/v1/Question";
 import { onCloseQuestionInfo } from "../../../../store/actions";
 import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
-import { QuestionDetails } from "./QuestionDetails";
 import { ModelUsageDetails } from "./components/ModelUsageDetails";
 import { QuestionFieldsSection } from "./components/QuestionFieldsSection";
+import { QuestionSources } from "./components/QuestionSources";
 import { TablesLinkedToQuestion } from "./components/TablesLinkedToQuestion";
 
 interface QuestionInfoSidebarProps {
@@ -105,7 +106,9 @@ export const QuestionInfoSidebar = ({
             />
           </Stack>
         </SidebarSection>
-        <QuestionDetails question={question} />
+        <QuestionDetails question={question}>
+          <QuestionSources />
+        </QuestionDetails>
         <QuestionFieldsSection question={question} />
         {isModel && (
           <SidebarSection title={t`Used by`}>

@@ -21,6 +21,13 @@ export function setupSegmentEndpointError(segmentId: number) {
   });
 }
 
+export function setupSegmentsEndpointError() {
+  fetchMock.get("path:/api/segment", {
+    status: 500,
+    body: "Server error",
+  });
+}
+
 export function setupSegmentsEndpoints(segments: Segment[]) {
   fetchMock.post("path:/api/segment", async (call) => {
     const metric = await fetchMock.callHistory

@@ -39,6 +39,7 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
+import { SmallMultiplesLayout } from "metabase/visualizations/components/SmallMultiplesLayout";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
@@ -480,6 +481,8 @@ class Visualization extends PureComponent<
             {
               ...clicked,
               extraData: {
+                // Charts can mark a click, e.g. funnel steps' drop-off.
+                ...clicked.extraData,
                 ...getExtraDataForClick(clicked),
                 isRawTable,
               },
@@ -934,7 +937,8 @@ class Visualization extends PureComponent<
                   <VisualizationRenderedWrapper
                     onRendered={this.handleVisualizationRendered}
                   >
-                    <CardVisualization
+                    <SmallMultiplesLayout
+                      chart={CardVisualization}
                       actionButtons={actionButtons}
                       // NOTE: CardVisualization class used as a selector for tests
                       className={cx(

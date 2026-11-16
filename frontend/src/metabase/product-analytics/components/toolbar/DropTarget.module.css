@@ -1,0 +1,19 @@
+/* A toolbar button a dragged segment can land on. */
+
+/* While a segment it takes is in the air: outlined, so it can be found. */
+.target[data-drop-active="true"] {
+  border-style: dashed;
+  border-color: var(--mb-color-border-highlight);
+  color: var(--mb-color-text-brand);
+}
+
+/* With the segment over it: filled, to say it lands here. */
+.target[data-drop-over="true"] {
+  border-style: solid;
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+/* The drag enters and leaves the icon and label too; let the button alone see it. */
+.target[data-drop-active="true"] * {
+  pointer-events: none;
+}

@@ -1,0 +1,39 @@
+import type { ColumnRole } from "metabase/event-tables";
+import type { FieldReference } from "metabase-types/api";
+
+/** The names the planners read on `events_base`. */
+export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
+  timestamp: "created_at",
+  person: "person_id",
+  session: "session_id",
+  event_name: "event_name",
+  url_path: "url_path",
+};
+
+/**
+ * The event table column with when each person was first seen, on every
+ * event. Lifecycle uses it to tell who's new without reading their history.
+ */
+export const FIRST_SEEN_COLUMN = "person__first_seen_at";
+
+/** A column an analysis reads on `events_base` beyond the roles. */
+export type ExtraColumn = {
+  /** The name the planners read it under. */
+  as: string;
+} & (
+  | {
+      /** An event table column, by name. */
+      column: string;
+    }
+  | {
+      /** Any column the event table reaches, through a foreign key too. */
+      fieldRef: FieldReference;
+    }
+);
+
+/** An extra column as the compiled base query returns it. */
+export type ProjectedColumn = {
+  as: string;
+  /** The column's alias in the compiled base SQL. */
+  alias: string;
+};

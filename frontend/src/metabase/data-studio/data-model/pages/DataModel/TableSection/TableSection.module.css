@@ -12,3 +12,22 @@
 .EmptyState {
   padding-bottom: 128px;
 }
+
+/* Tabs scroll sideways rather than wrapping onto a second row. */
+.tabsList {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  & > * {
+    flex-shrink: 0;
+  }
+}
+
+/* Groups the event settings so one attribute disables them all. */
+.fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}

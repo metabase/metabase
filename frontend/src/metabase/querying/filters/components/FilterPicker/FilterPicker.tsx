@@ -23,6 +23,7 @@ import {
 import { FilterPickerBody } from "./FilterPickerBody";
 import type {
   ColumnListItem,
+  CustomListItem,
   ExpressionClauseItem,
   SegmentListItem,
 } from "./types";
@@ -40,7 +41,11 @@ export type FilterPickerProps = {
   readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
-  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+  | "withColumnItemIcon"
+  | "withColumnGroupIcon"
+  | "withCustomExpression"
+  | "getGroupItems"
+  | "onCustomItemSelect"
 >;
 
 export function FilterPicker({
@@ -55,6 +60,8 @@ export function FilterPicker({
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
+  getGroupItems,
+  onCustomItemSelect,
   readOnly,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
@@ -114,7 +121,13 @@ export function FilterPicker({
   };
 
   const checkItemIsSelected = useCallback(
-    (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
+    (
+      item:
+        | ColumnListItem
+        | SegmentListItem
+        | ExpressionClauseItem
+        | CustomListItem,
+    ) => {
       return Boolean(
         filterIndex != null &&
         "filterPositions" in item &&
@@ -161,6 +174,8 @@ export function FilterPicker({
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}
+        getGroupItems={getGroupItems}
+        onCustomItemSelect={onCustomItemSelect}
       />
     );
   }

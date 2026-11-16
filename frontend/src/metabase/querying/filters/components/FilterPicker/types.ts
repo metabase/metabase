@@ -1,4 +1,5 @@
 import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 export type FilterPickerWidgetProps = {
   autoFocus: boolean;
@@ -38,4 +39,20 @@ export type ExpressionClauseItem = {
   type: "expression-clause";
   clause: Lib.DefinedClauseName;
   displayName: string;
+};
+
+/** An entry a caller adds to a column group, such as a segment it keeps itself. */
+export type CustomListItem = {
+  type: "custom";
+  key: string;
+  name: string;
+  displayName: string;
+  icon: IconName;
+};
+
+/** A column group, for a caller deciding which entries of its own it gets. */
+export type ColumnGroupItemsContext = {
+  info: Lib.ColumnGroupDisplayInfo;
+  columns: Lib.ColumnMetadata[];
+  stageIndex: number;
 };

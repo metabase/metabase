@@ -1,0 +1,13 @@
+.button {
+  transition: background-color 120ms ease;
+}
+
+/* Outranks the default button's hover and pressed backgrounds. */
+.button[data-static="true"][data-variant="default"]:is(:hover, :active):not(
+    [data-loading]
+  ) {
+  cursor: default;
+  color: var(--button-color);
+  background-color: var(--button-bg);
+  box-shadow: var(--mantine-shadow-xs);
+}

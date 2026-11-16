@@ -44,7 +44,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import { isSavedCard } from "metabase-types/guards";
+import { isProductAnalyticsCard, isSavedCard } from "metabase-types/guards";
 
 import { resetQB } from "../../store/actions";
 import {
@@ -359,6 +359,16 @@ async function handleQBInit(
   });
 
   if (isStale()) {
+    return;
+  }
+
+  // Analyses saved from the event analysis builder reopen there.
+  if (
+    isSavedCard(card) &&
+    deserializedCard === undefined &&
+    isProductAnalyticsCard(card)
+  ) {
+    navigate(Urls.savedEventAnalysis(card.id), { replace: true });
     return;
   }
 

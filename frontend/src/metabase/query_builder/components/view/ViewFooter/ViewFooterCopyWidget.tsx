@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { canDownloadResults } from "metabase/common/utils/dataset";
+import {
+  getCopyIneligibleReason,
+  getCopyMode,
+  useCopyResults,
+} from "metabase/querying/common/hooks/use-copy-results";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
@@ -10,11 +15,6 @@ import type { Dataset } from "metabase-types/api";
 
 import { getFirstQueryResult } from "../../../store/selectors";
 
-import {
-  getCopyIneligibleReason,
-  getCopyMode,
-  useCopyResults,
-} from "./use-copy-results";
 import { useRenderedQuestion } from "./use-rendered-question";
 
 export const ViewFooterCopyWidget = () => {

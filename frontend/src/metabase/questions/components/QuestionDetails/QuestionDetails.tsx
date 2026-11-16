@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
@@ -10,6 +10,7 @@ import {
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
+import { QuestionPublicLinkPopover } from "metabase/embedding/components/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 import {
   ActionIcon,
   Group,
@@ -22,10 +23,20 @@ import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
 
-import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover/QuestionPublicLinkPopover";
-import { QuestionSources } from "./components/QuestionSources";
+type QuestionDetailsProps = {
+  question: Question;
+  /** More rows after these, e.g. the query builder's data sources. */
+  children?: ReactNode;
+};
 
-export const QuestionDetails = ({ question }: { question: Question }) => {
+/**
+ * A saved question's Details section: its creator, last editor, where it's
+ * saved and how it's shared.
+ */
+export const QuestionDetails = ({
+  question,
+  children,
+}: QuestionDetailsProps) => {
   const lastEditInfo = question.lastEditInfo();
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
@@ -68,7 +79,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           value={<SavedInValue question={question} />}
         />
         <VisibilityRow question={question} />
-        <QuestionSources />
+        {children}
       </DetailsTable>
     </SidebarSection>
   );
