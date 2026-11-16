@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupRevertRevisionErrorEndpoint } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -42,7 +42,7 @@ describe("DashboardInfoSidebar", () => {
     setupRevertRevisionErrorEndpoint({
       message: "Cannot revert: missing dashboard",
     });
-    const { store } = await setup({
+    await setup({
       revisions: [
         createMockRevision({
           id: 2,
@@ -59,11 +59,11 @@ describe("DashboardInfoSidebar", () => {
       event: "revert_version_clicked",
       event_detail: "dashboard",
     });
-    await waitFor(() => {
-      expect(store.getState().undo).toMatchObject([
-        { variant: "negative", message: "Cannot revert: missing dashboard" },
-      ]);
-    });
+    expect(
+      within(await screen.findByTestId("toast-undo")).getByText(
+        "Cannot revert: missing dashboard",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should list the dashboard's cards under Contents", async () => {

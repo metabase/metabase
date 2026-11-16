@@ -435,28 +435,37 @@ describe("IFrameViz", () => {
       const dashcard = createMockIFrameDashboardCard({
         visualization_settings: { iframe },
       });
-      renderWithProviders(
+      const dashboard = createMockDashboard();
+      const renderPreview = (iframe: string) => (
         <IFrameViz
           dashcard={dashcard}
-          dashboard={createMockDashboard()}
+          dashboard={dashboard}
           isEditing={true}
           isPreviewing={true}
           onUpdateVisualizationSettings={jest.fn()}
-          settings={dashcard.visualization_settings}
+          settings={{ iframe }}
           width={800}
           height={600}
           gridSize={{ width: 18, height: 6 }}
           onTogglePreviewing={jest.fn()}
-        />,
-        {
-          storeInitialState: {
-            settings: createMockSettingsState({
-              "allowed-iframe-hosts": ALLOWED_HOSTS,
-            }),
-          },
-        },
+        />
       );
+      const { rerender } = renderWithProviders(renderPreview(iframe), {
+        storeInitialState: {
+          settings: createMockSettingsState({
+            "allowed-iframe-hosts": ALLOWED_HOSTS,
+          }),
+        },
+      });
+
+      // Same mounted instance, like editing the snippet of an existing card
+      const changeSnippet = (newIframe: string) =>
+        rerender(renderPreview(newIframe));
+
+      return { changeSnippet };
     };
+
+    const FORBIDDEN_HOST_ERROR = /can not be embedded in iframe cards/;
 
     it.each([
       [
@@ -474,9 +483,7 @@ describe("IFrameViz", () => {
         "src",
         src,
       );
-      expect(
-        screen.queryByText(/can not be embedded in iframe cards/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(FORBIDDEN_HOST_ERROR)).not.toBeInTheDocument();
     });
 
     it.each([
@@ -490,9 +497,36 @@ describe("IFrameViz", () => {
       expect(
         screen.queryByTestId("iframe-visualization"),
       ).not.toBeInTheDocument();
+      expect(screen.getByText(FORBIDDEN_HOST_ERROR)).toBeInTheDocument();
+    });
+
+    it("should update the preview when the snippet changes", () => {
+      const { changeSnippet } = setupPreview(
+        "https://youtube.com/watch?v=dQw4w9WgXcQ",
+      );
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      );
+
+      changeSnippet("player.videos.com/video/123456789");
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://player.videos.com/video/123456789",
+      );
+
+      changeSnippet("https://example.com");
       expect(
-        screen.getByText(/can not be embedded in iframe cards/),
-      ).toBeInTheDocument();
+        screen.queryByTestId("iframe-visualization"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(FORBIDDEN_HOST_ERROR)).toBeInTheDocument();
+
+      changeSnippet("https://youtube.com/watch?v=dQw4w9WgXcQ");
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      );
+      expect(screen.queryByText(FORBIDDEN_HOST_ERROR)).not.toBeInTheDocument();
     });
   });
 });

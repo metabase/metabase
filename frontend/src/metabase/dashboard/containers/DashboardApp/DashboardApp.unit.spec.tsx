@@ -708,7 +708,8 @@ describe("DashboardApp", () => {
       await waitFor(() =>
         expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
       );
-      expect(getTitleInput()).toHaveValue(ORIGINAL_NAME);
+      // Cancel hides the edit bar before the refetch restores the title
+      await waitFor(() => expect(getTitleInput()).toHaveValue(ORIGINAL_NAME));
       expect(getUpdateCalls(dashboardId)).toHaveLength(0);
     });
 

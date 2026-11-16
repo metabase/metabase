@@ -14,6 +14,7 @@ import {
   waitForLoaderToBeRemoved,
   waitForSidesheetToOpen,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
 import type {
@@ -83,6 +84,7 @@ export async function setup({
           closeSidebar={onClose}
         >
           <DashboardInfoSidebar />
+          <UndoListing />
         </MockDashboardContext>
       }
     />,

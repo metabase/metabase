@@ -371,7 +371,8 @@ describe("AddCardSideBar", () => {
         dashboard: dashboardInPersonalSubcollection,
       });
 
-      await userEvent.click(screen.getByText(ROOT_COLLECTION.name));
+      // The collection tree loads after the sidebar renders
+      await userEvent.click(await screen.findByText(ROOT_COLLECTION.name));
 
       expect(
         await screen.findByRole("menuitem", { name: PERSONAL_COLLECTION.name }),
