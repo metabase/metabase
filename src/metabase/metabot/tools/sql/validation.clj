@@ -22,7 +22,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2])
   (:import
    (java.util.regex Pattern)))
 
@@ -200,7 +201,8 @@
 (defn- readable-ids
   "The `:id` of each of `rows` that the current user can read."
   [rows]
-  (into #{} (comp (filter mi/can-read?) (map :id)) rows))
+  ;; `mi/can-read?` reads the `:can_read` hydration, and throws when the row does not have it.
+  (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate rows :can_read)))
 
 (defn- missing-card-ids
   "The ids of the cards that `tags` reference and that are not readable cards of `database-id`, sorted."

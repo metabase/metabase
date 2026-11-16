@@ -1137,14 +1137,14 @@
   (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
 
 (mu/defn database-card-read-rows
-  "The ID, Collection ID, and Document ID of the Cards of `database-id` with `ids`: the columns that `mi/can-read?`
-  reads."
+  "The ID, Collection ID, and Document ID of the Cards of `database-id` with `ids`: the columns that the `:can_read`
+  hydration reads."
   [database-id :- ::lib.schema.id/database
    ids         :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :document_id] :id [:in ids] :database_id [:auto/param database-id]))
 
 (mu/defn snippet-read-rows
-  "The ID and Collection ID of the NativeQuerySnippets with `ids`: the columns that `mi/can-read?` reads."
+  "The ID and Collection ID of the NativeQuerySnippets with `ids`: the columns that the `:can_read` hydration reads."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/NativeQuerySnippet :id :collection_id] :id [:in ids]))
 
