@@ -86,6 +86,36 @@
     (testing "neither terminal matches source: nil, so the caller falls back to graph search"
       (is (nil? (#'chain-filter/orient-via-path 99 [a->b b->c]))))))
 
+(deftest ^:parallel pinned-path-to-unneeded-table-test
+  (testing "A pinned path adds no join when it does not end at a Table the query must reach"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(assoc (shorthand->constraint %people.source "Twitter") :via-path via-path)]
+                        {:via-path via-path})]
+          (is (empty? (lib/joins query 0)))
+          (is (= (chain-filter people.name {people.source "Twitter"})
+                 (chain-filter/chain-filter %people.name
+                                            [(assoc (shorthand->constraint %people.source "Twitter")
+                                                    :via-path via-path)]
+                                            :via-path via-path))))))))
+
+(deftest ^:parallel pinned-path-to-constraint-table-test
+  (testing "A pinned path is kept when it ends at the Table of a constraint"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(shorthand->constraint %orders.total [:> 150])]
+                        {:via-path via-path})]
+          (is (= [$$orders]
+                 (map #(:id (lib/joined-thing query %)) (lib/joins query 0)))))))))
+
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"
     (let [mp (mt/metadata-provider)]
