@@ -72,6 +72,11 @@
   []
   (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
+(mu/defn transform-targets-on-database
+  "The ID, name, and target of the Transforms whose target Database is `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select [:model/Transform :id :name :target] :target_db_id [:auto/param database-id]))
+
 (mu/defn transform-snapshot
   "The name, entity ID, and source type of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]

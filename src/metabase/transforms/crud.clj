@@ -4,6 +4,7 @@
    on the `-rest` module."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -11,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.models.interface :as mi]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -19,7 +21,7 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -57,6 +59,26 @@
     (throw (ex-info (:error error)
                     (assoc error
                            :status-code 400)))))
+
+(defn- target-key
+  "Where `transform` writes: its target database, schema, and table name."
+  [transform]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    ;; no need to resolve a nil schema to the database's default: `validate-target-schema!` rejects a nil schema
+    ;; wherever the database has schemas
+    [db-id (get-in transform [:target :schema]) (get-in transform [:target :name])]))
+
+(defn- check-target-unclaimed!
+  "Refuse a target that another transform already writes to, since one run would silently overwrite the other's table."
+  [transform]
+  (when-let [[db-id schema table-name] (target-key transform)]
+    (when-let [other (m/find-first #(and (not= (:id %) (:id transform))
+                                         (= [schema table-name] [(-> % :target :schema) (-> % :target :name)]))
+                                   (transforms.db/transform-targets-on-database db-id))]
+      (throw (ex-info (if (mi/can-read? :model/Transform (:id other))
+                        (tru "The transform ''{0}'' already writes to that table." (:name other))
+                        (tru "Another transform already writes to that table."))
+                      {:status-code 409})))))
 
 (mu/defn validate-target-schema! :- :nil
   "Require a non-blank `:target.schema` when the target database supports schemas.
@@ -182,6 +204,7 @@
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
                                             (or (:owner_user_id body) creator-id))
+                            _             (check-target-unclaimed! body)
                             transform     (transforms.db/insert-transform!
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
                                                                      :collection_id :owner_email])
@@ -222,6 +245,8 @@
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
+                      (when (not= (target-key old) (target-key new))
+                        (check-target-unclaimed! new))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409

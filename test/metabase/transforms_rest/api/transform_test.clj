@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
@@ -19,7 +20,8 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :refer [get-test-schema
+   [metabase.transforms.test-util :refer [default-schema-or-public
+                                          get-test-schema
                                           parse-instant
                                           seconds-from-now-ns
                                           table-rows
@@ -2238,3 +2240,65 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+(defn- mbql-transform
+  "A transform reading `source-table-id` and writing `target-name` in the default schema."
+  [transform-name source-table-id target-name]
+  {:name   transform-name
+   :source {:type :query :query (table-query source-table-id)}
+   :target {:type "table" :schema (default-schema-or-public) :name target-name}})
+
+(defn- do-with-source-table!
+  "Call `(f table-id)` per transforms driver with the id of a temp Table that has one Field."
+  [f]
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-model-cleanup [:model/Transform]
+        (mt/with-temp [:model/Table {table-id :id} {:schema (default-schema-or-public) :name "save_check_source"}
+                       :model/Field _              {:table_id table-id :name "foo"}]
+          (f table-id))))))
+
+(deftest duplicate-target-test
+  (do-with-source-table!
+   (fn [table-id]
+     (mt/with-temp [:model/Transform {dup-id :id} (mbql-transform "Dup One" table-id "save_check_dup")]
+       (testing "a duplicate target on create is refused, naming the other transform"
+         (is (re-find #"Dup One"
+                      (mt/user-http-request :crowberto :post 409 "transform"
+                                            (mbql-transform "Dup Two" table-id "save_check_dup"))))
+         (is (not (t2/exists? :model/Transform :name "Dup Two"))))
+       (testing "the other transform is not named to a caller who cannot read it"
+         (let [message (with-redefs [mi/can-read? (constantly false)]
+                         (mt/user-http-request :crowberto :post 409 "transform"
+                                               (mbql-transform "Dup Two" table-id "save_check_dup")))]
+           (is (re-find #"Another transform already writes to that table" message))
+           (is (not (re-find #"Dup One" message)))))
+       (testing "moving another transform onto the target is refused"
+         (let [{free-id :id} (mt/user-http-request :crowberto :post 200 "transform"
+                                                   (mbql-transform "Free" table-id "save_check_free"))]
+           (mt/user-http-request :crowberto :put 409 (format "transform/%d" free-id)
+                                 {:target (:target (mbql-transform "" table-id "save_check_dup"))})))
+       (testing "updating a transform without changing its target is allowed"
+         (mt/user-http-request :crowberto :put 200 (format "transform/%d" dup-id)
+                               (mbql-transform "Dup One renamed" table-id "save_check_dup")))
+       (testing "the same schema and name on another database is allowed"
+         (mt/with-temp [:model/Database {db2 :id}       {:engine driver/*driver* :details (:details (mt/db))}
+                        :model/Table    {db2-table :id} {:db_id db2 :schema (default-schema-or-public) :name "save_check_a"}
+                        :model/Field    _               {:table_id db2-table :name "foo"}]
+           (mt/with-model-cleanup [:model/Transform]
+             (mt/user-http-request :crowberto :post 200 "transform"
+                                   (assoc-in (mbql-transform "Other DB" table-id "save_check_dup")
+                                             [:source :query] {:database db2
+                                                               :type     :query
+                                                               :query    {:source-table db2-table}})))))))))
+
+(deftest existing-duplicate-targets-test
+  (do-with-source-table!
+   (fn [table-id]
+     (mt/with-temp [:model/Transform {dup-a :id} (mbql-transform "Dup A" table-id "save_check_dup")
+                    :model/Transform {dup-b :id} (mbql-transform "Dup B" table-id "save_check_dup")]
+       (testing "renaming one is allowed"
+         (mt/user-http-request :crowberto :put 200 (format "transform/%d" dup-a) {:name "Dup A renamed"}))
+       (testing "moving one to a free target is allowed"
+         (mt/user-http-request :crowberto :put 200 (format "transform/%d" dup-b)
+                               {:target (:target (mbql-transform "" table-id "save_check_free"))}))))))
