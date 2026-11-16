@@ -257,12 +257,14 @@ paths:
 
             No `error-code` (#86587, via #86601): the warehouse refused the create. On Postgres the causes are: a
             role with the workspace user's name already exists; another session created that role or the output
-            namespace at the same time; or a warehouse lock timed out. Nothing is left behind
+            namespace at the same time; or a warehouse lock timed out. Hardening #87242 (decision 0041) adds: a
+            schema with the output namespace's name already exists. That schema is left unchanged, and a new
+            create takes another name. Nothing is left behind
             (`cleanup_required: false`). The held engine PRs propose the same refusal of an existing login or
             namespace, before any DDL: #86797 (MySQL/MariaDB), #86798 (Redshift), #86799 (ClickHouse) and #86801
             (SQL Server). On master every engine adopts an existing login of that name (see `output_namespace`).
           x-status: hardening
-          x-pr: [86587, 86601, 86797, 86798, 86799, 86801, 86825]
+          x-pr: [86587, 86601, 86797, 86798, 86799, 86801, 86825, 87242]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
@@ -822,8 +824,8 @@ components:
             Unique per site UUID only: two parents with one site UUID (a staging parent restored from production's
             app DB) make the same names. master adopts an existing login of the workspace user's name on every engine
             and resets its password, and a later DELETE drops the other parent's output namespace and workspace
-            user. hardening refuses an existing login or namespace (409): #86587 on Postgres. The held PRs #86797,
-            #86798, #86799 and #86801 propose the same on the other engines.
+            user. hardening refuses on Postgres (409): #86587 an existing login, #87242 an existing namespace. The
+            held PRs #86797, #86798, #86799 and #86801 propose both refusals on the other engines.
         status: { $ref: "#/components/schemas/WorkspaceStatus" }
         database:
           type: [object, "null"]
