@@ -61,13 +61,15 @@ const TEST_GROUPS = [
   TENANT_GROUP,
 ];
 
-// A freshly created tenant group starts out blocked, which is what makes the
-// "All tenant users" group's wider access worth warning about. Pinned on the
-// backend by metabase-enterprise.tenants.permissions-test/
-// new-tenant-groups-get-no-perms-on-existing-dbs.
-// The All tenant users group holds the wider access here because an admin
-// granted it: since #86277 the backend gives that group least access on a new
-// database, so the e2e test this replaced had to grant it too.
+// The warning under test needs "All tenant users" to hold wider access than the
+// tenant group. A new tenant group starting blocked is the backend default,
+// pinned by metabase-enterprise.tenants.permissions-test/
+// new-tenant-groups-get-no-perms-on-existing-dbs. The unrestricted value for
+// All tenant users is not a default. Since #86277 that group also starts
+// blocked on a new database, pinned by
+// metabase.permissions.models.permissions-group-test/
+// all-tenant-users-get-least-access-to-newly-created-databases-test, so an
+// admin grants it, which is what the e2e test this replaced now does too.
 const BLOCKED_TENANT_GROUP_PERMISSIONS: Partial<
   Record<GroupId, Partial<DatabasePermissions>>
 > = {
