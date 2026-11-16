@@ -151,3 +151,55 @@
              (refused (with-sql card-test "SELECT * FROM {{OUTPUT}} WHERE x = '{{ other }}'")))))
     (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
+
+;;; ------------------------------------------------ Missing input columns ------------------------------------------------
+
+(defn- rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names`."
+  [& column-names]
+  {:table   {:schema "PUBLIC" :name "PEOPLE"}
+   :format  :rows
+   :columns (mapv (fn [n] {:name n :cast_type "VARCHAR"}) column-names)
+   :rows    []})
+
+(def ^:private people-test
+  "A test of a query that reads `ID` and `SOURCE` of `PUBLIC.PEOPLE`, which has the columns `ID`, `NAME` and
+  `SOURCE`, with one expectation."
+  (assoc complete-test
+         :expectations   [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
+         :columns-read   #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
+                           {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
+         :table-columns  {{:schema "PUBLIC" :name "PEOPLE"} #{"ID" "NAME" "SOURCE"}}
+         :ignore-case?   false))
+
+(defn- refused
+  [args]
+  (driver/the-initialized-driver :h2)
+  (try
+    (validator/validate :h2 args)
+    nil
+    (catch ExceptionInfo e
+      (assoc (select-keys (ex-data e) [:error-type :tables :columns]) :message (ex-message e)))))
+
+(deftest missing-input-columns-test
+  (testing "control: a rows input declaring every column the query reads is accepted"
+    (is (nil? (refused (assoc people-test :inputs [(rows-input "ID" "SOURCE")])))))
+  (testing "a rows input lacking a column the query reads is refused, naming the table and the column"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"PUBLIC.PEOPLE" ["SOURCE"]}
+             :message    #"(?s).*PUBLIC\.PEOPLE.*SOURCE.*"}
+            (refused (assoc people-test :inputs [(rows-input "ID" "NAME")])))))
+  (testing "on a database that keeps case, a name that differs only in case is missing, and the message says so"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"PUBLIC.PEOPLE" ["ID (declared as id)"]}}
+            (refused (assoc people-test :inputs [(rows-input "id" "SOURCE")])))))
+  (testing "on a database that ignores case, a name that differs only in case is the column"
+    (is (nil? (refused (assoc people-test :inputs [(rows-input "id" "source")] :ignore-case? true)))))
+  (testing "a column the table does not have in Metabase's metadata is not required"
+    (is (nil? (refused (-> people-test
+                           (assoc :inputs [(rows-input "ID" "SOURCE")])
+                           (update :columns-read conj {:schema "PUBLIC" :name "PEOPLE" :column "T"}))))))
+  (testing "an input given as SQL declares no columns, so nothing is checked"
+    (is (nil? (refused (assoc people-test :inputs [(sql-input "PUBLIC" "PEOPLE")])))))
+  (testing "with no columns read, as when the parser reports an error, nothing is checked"
+    (is (nil? (refused (assoc people-test :inputs [(rows-input "ID")] :columns-read nil))))))

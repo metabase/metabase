@@ -22,7 +22,8 @@
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -192,6 +193,44 @@
               {:placeholders  (vec unknown)
                :response/keys #{:placeholders}})))))
 
+(mr/def ::table-columns
+  "The columns of each input's table, by name, as Metabase's metadata lists them."
+  [:map-of ::data-testing.schema/table [:set :string]])
+
+(mu/defn- missing-input-columns :- [:sequential [:map [:table ::data-testing.schema/table] [:columns [:sequential :string]]]]
+  "For each rows input, the columns of its table that `columns-read` says the query under test reads, that the
+  table has in `table-columns`, and that the input does not declare; inputs with none are left out. Names compare
+  without regard to case when `ignore-case?`. Each missing column is labelled with the input's spelling of it when
+  the two differ only in case."
+  [inputs         :- ::data-testing.schema/inputs
+   columns-read   :- [:set ::data-testing.compile/column-read]
+   table-columns  :- ::table-columns
+   default-schema :- [:maybe :string]
+   ignore-case?   :- :boolean]
+  (let [same-name (if ignore-case? data-testing.u/fold-identifier identity)]
+    (into []
+          (keep (fn [{:keys [table columns format]}]
+                  (when (= :rows format)
+                    (let [declared (into #{} (map (comp same-name :name)) columns)
+                          known    (get table-columns table #{})
+                          missing  (into (sorted-set)
+                                         (comp (filter #(table-match? (select-keys % [:schema :name]) table default-schema))
+                                               (map :column)
+                                               (filter known)
+                                               (remove #(contains? declared (same-name %))))
+                                         columns-read)]
+                      (when (seq missing)
+                        {:table   table
+                         :columns (mapv (fn [column]
+                                          (if-let [spelled (some #(when (= (data-testing.u/fold-identifier %)
+                                                                           (data-testing.u/fold-identifier column))
+                                                                    %)
+                                                                 (map :name columns))]
+                                            (tru "{0} (declared as {1})" column spelled)
+                                            column))
+                                        missing)})))))
+          inputs)))
+
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
   temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
@@ -200,9 +239,14 @@
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
   the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
-  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test."
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test.
+
+  `columns-read`, when given, are the columns of real tables the query under test reads, and `table-columns` the
+  columns each input's table has; a rows input lacking one of those columns is refused. Names compare without regard to
+  case when `ignore-case?`."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema]}
+   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema
+           columns-read table-columns ignore-case?]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
@@ -210,7 +254,10 @@
        [:rewritten-query :string]
        [:replacements        ::data-testing.compile/table-replacements]
        [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
-       [:default-schema      [:maybe :string]]]]
+       [:default-schema      [:maybe :string]]
+       [:columns-read        {:optional true} [:maybe [:set ::data-testing.compile/column-read]]]
+       [:table-columns       {:optional true} ::table-columns]
+       [:ignore-case?        {:optional true} :boolean]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/missing-inputs
@@ -232,6 +279,16 @@
                  (str/join ", " colliding))
             {:tables (vec colliding)
              :response/keys #{:tables}})))
+  (when-let [missing (seq (missing-input-columns inputs (or columns-read #{}) (or table-columns {}) default-schema
+                                                 (boolean ignore-case?)))]
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/missing-input-columns
+            (tru "Test input(s) lack columns that the query under test reads: {0}. Declare them in the input."
+                 (str/join "; " (for [{:keys [table columns]} missing]
+                                  (str (table-label table) ": " (str/join ", " columns)))))
+            {:tables        (mapv (comp table-label :table) missing)
+             :columns       (into {} (map (juxt (comp table-label :table) :columns)) missing)
+             :response/keys #{:tables :columns}})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
     (check-rewrite driver rewritten-query temp-tables nil)
     (doseq [{:keys [name sql]} expectations

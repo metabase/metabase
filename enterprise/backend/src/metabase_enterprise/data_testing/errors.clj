@@ -26,6 +26,7 @@
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
+   ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

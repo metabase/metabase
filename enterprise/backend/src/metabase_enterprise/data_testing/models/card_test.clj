@@ -6,11 +6,9 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
@@ -77,23 +75,12 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- query-database-id
-  "The id of the Database the query of `card` runs on, or nil when `card` has no query."
-  [card]
-  (some-> (not-empty (:dataset_query card)) lib/database-id))
-
 (defn- card-allows?
   "Whether `card-check` holds for the Card `card-id`, and the current user may run the card's query and write the native
   SQL of a test against the Database of that query."
   [card-check card-id]
-  (boolean
-   (when-let [card (data-testing.db/card card-id)]
-     (and (card-check card)
-          ;; A run compiles the query with the cards and snippets it includes, and its errors can quote their SQL, so
-          ;; the user must be allowed to run the query itself, not only to read the card.
-          (query-perms/can-run-query? (:dataset_query card))
-          (or (mi/superuser?)
-              (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
+  (let [card (data-testing.db/card card-id)]
+    (data-testing.models/query-subject-allows? card-check card (:dataset_query card))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card and run its query,

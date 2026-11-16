@@ -55,6 +55,12 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")))
 
+(def ^:private data-test-subject-models
+  "The model of the subject of a data test, by the key that holds the subject's id."
+  {:transform_id :model/Transform
+   :card_id      :model/Card
+   :segment_id   :model/Segment})
+
 (defn- match-2 [k v1 v2 identifier]
   (match/match-one [k v1 v2]
     [:archived _ after]
@@ -129,8 +135,8 @@
     [:expectations _ _]
     (deferred-tru "changed the expectations")
 
-    [#{:transform_id :card_id :segment_id} _ _]
-    (let [model ({:transform_id :model/Transform :card_id :model/Card :segment_id :model/Segment} k)]
+    [(subject-key :guard data-test-subject-models) _ _]
+    (let [model (data-test-subject-models subject-key)]
       (deferred-tru "moved {0} from {1} to {2}"
                     identifier
                     (or (readable-name model v1) (str "#" v1))

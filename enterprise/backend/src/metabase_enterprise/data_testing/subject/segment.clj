@@ -1,8 +1,7 @@
 (ns metabase-enterprise.data-testing.subject.segment
-  "The `:segment` subject: the rows of a segment's table that match its filter, which expectation SQL names as
+  "The `:segment` subject: the rows of a segment's table that match its filter. Expectation SQL names those rows
   `{{output}}`."
   (:require
-   [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.util :as data-testing.u]
@@ -10,14 +9,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn- with-declared-columns :- ::lib.schema/query
   "`definition` selecting only the columns of its table that the `:rows` input for that table declares, by name, case
-  aside. Unchanged, so selecting every column, when no such input declares one of them."
+  aside. Unchanged, so selecting every column, when there is no such input or it declares none of the table's columns."
   [definition     :- ::lib.schema/query
    inputs         :- ::data-testing.schema/inputs
    default-schema :- [:maybe :string]]
@@ -38,12 +36,9 @@
    {:keys [definition] segment-name :name} :- ::data-testing.subject/segment
    inputs                                  :- ::data-testing.schema/inputs]
   (let [database (data-testing.subject/testable-database (lib/database-id definition))]
-    {:database      database
+    (data-testing.subject/query-output-plan
+     database
      ;; A segment names no columns, so its query alone would select every column of its table, and an input would
      ;; have to declare them all.
-     :compiled      (data-testing.subject/compile-query
-                     (with-declared-columns definition inputs (:default-schema database))
-                     #(tru "The query under test could not be compiled to SQL: {0}" (ex-message %)))
-     :output-tables [{:schema nil :name data-testing.compile/output-name}]
-     :output-token  data-testing.subject/output-token
-     :output-label  segment-name}))
+     (data-testing.subject/compile-query (with-declared-columns definition inputs (:default-schema database)))
+     segment-name)))

@@ -2,7 +2,6 @@
   "The `:card` subject: a question, model or metric, whose result set expectation SQL names as `{{output}}`."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.lib.core :as lib]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,17 +31,16 @@
   [_subject-type
    {query :dataset_query card-name :name} :- ::data-testing.subject/card
    _inputs]
-  {:database      (data-testing.subject/testable-database (lib/database-id query))
-   :compiled      (data-testing.subject/compile-query
-                   query
-                   (fn [e]
-                     ;; A test has no way to give a parameter a value.
-                     (if-let [tag-names (seq (parameters-needing-a-value e))]
-                       (tru "This card''s query has a parameter that needs a value and has no default: {0}. Card tests cannot set parameter values."
-                            (str/join ", " tag-names))
-                       (tru "The query under test could not be compiled to SQL: {0}" (ex-message e)))))
-   ;; A card has no table of its own, so expectation SQL names its result by the token, which
-   ;; [[data-testing.compile/replace-tables]] turns into this reserved name.
-   :output-tables [{:schema nil :name data-testing.compile/output-name}]
-   :output-token  data-testing.subject/output-token
-   :output-label  card-name})
+  ;; The database first: a database that cannot run tests is refused before the query compiles.
+  (let [database (data-testing.subject/testable-database (lib/database-id query))]
+    (data-testing.subject/query-output-plan
+     database
+     (data-testing.subject/compile-query
+      query
+      (fn [e]
+        ;; A test has no way to give a parameter a value.
+        (if-let [tag-names (seq (parameters-needing-a-value e))]
+          (tru "This card''s query has a parameter that needs a value and has no default: {0}. Card tests cannot set parameter values."
+               (str/join ", " tag-names))
+          (data-testing.subject/compile-failure-message e))))
+     card-name)))

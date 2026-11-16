@@ -6,11 +6,9 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
@@ -55,8 +53,8 @@
 (t2/define-before-delete :model/SegmentTest [segment-test]
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
   ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Table or Database
-  ;; deleted by database cascade) leaves the runs' test id naming no test; such runs are never listed or shown as
-  ;; `last_run`.
+  ;; whose segments go by database cascade) leaves the runs' test id naming no test; such runs are never listed or
+  ;; shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/segment-test-delete {:object segment-test}))
@@ -81,13 +79,8 @@
   "Whether `segment-check` holds for the Segment `segment-id`, and the current user may run the segment's definition
   and write the native SQL of a test against its Database."
   [segment-check segment-id]
-  (boolean
-   (when-let [{:keys [definition] :as segment} (data-testing.db/segment segment-id)]
-     (and (segment-check segment)
-          ;; A run compiles the definition with the segments it uses, and its errors can quote their SQL.
-          (query-perms/can-run-query? definition)
-          (or (mi/superuser?)
-              (some-> (not-empty definition) lib/database-id data-testing.models/can-run-native-query?))))))
+  (let [segment (data-testing.db/segment segment-id)]
+    (data-testing.models/query-subject-allows? segment-check segment (:definition segment))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Segment `segment-id`: they may edit the segment and run

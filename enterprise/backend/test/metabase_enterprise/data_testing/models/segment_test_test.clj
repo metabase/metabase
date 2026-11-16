@@ -2,10 +2,12 @@
   "SegmentTest model behavior: JSON columns, the newest run, what deleting a test or its segment does, and permissions."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -25,16 +27,8 @@
 (def ^:private expectations
   [{:type "empty" :name "no orphan rows" :sql "SELECT * FROM {{output}} WHERE ID IS NULL"}])
 
-(defn- segment
-  "Segment columns for a segment on the people table, of the people whose source is Google."
-  []
-  (let [mp    (mt/metadata-provider)
-        query (lib/query mp (lib.metadata/table mp (mt/id :people)))]
-    {:table_id   (mt/id :people)
-     :definition (lib/filter query (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
-
 (deftest json-columns-round-trip-test
-  (mt/with-temp [:model/Segment     {segment-id :id} (segment)
+  (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                  :model/SegmentTest {test-id :id}    {:segment_id   segment-id
                                                       :inputs       inputs
                                                       :expectations expectations}]
@@ -51,7 +45,7 @@
         (is (=? {:entity_id string? :created_at some? :updated_at some?} segment-test))))))
 
 (deftest invalid-expectation-is-rejected-on-write-test
-  (mt/with-temp [:model/Segment {segment-id :id} (segment)]
+  (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/from-google-segment)]
     (is (thrown? Exception
                  (t2/insert! :model/SegmentTest {:segment_id   segment-id
                                                  :creator_id   (mt/user->id :rasta)
@@ -61,7 +55,7 @@
     (is (zero? (t2/count :segment_test :segment_id segment-id)))))
 
 (deftest last-run-hydration-finds-only-segment-runs-test
-  (mt/with-temp [:model/Segment     {segment-id :id}                  (segment)
+  (mt/with-temp [:model/Segment     {segment-id :id}                  (data-testing.test-util/from-google-segment)
                  :model/SegmentTest {test-id :id :as segment-test}    {:segment_id segment-id}
                  :model/DataTestRun _                                 {:test_type :segment, :test_id test-id}
                  :model/DataTestRun {segment-run :id}                 {:test_type :segment, :test_id test-id}
@@ -73,7 +67,7 @@
         (is (nil? (:last_run (t2/hydrate other :last_run))))))))
 
 (deftest deleting-a-segment-test-keeps-its-runs-test
-  (mt/with-temp [:model/Segment     {segment-id :id} (segment)
+  (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                  :model/SegmentTest {test-id :id}    {:segment_id segment-id}
                  :model/DataTestRun {other-run :id}  {:test_type :card, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :segment test-id)]
@@ -86,7 +80,7 @@
       (t2/delete! :model/DataTestRun :id run-id))))
 
 (deftest deleting-a-segment-deletes-its-tests-test
-  (mt/with-temp [:model/Segment     {segment-id :id} (segment)
+  (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                  :model/SegmentTest {test-id :id}    {:segment_id segment-id}
                  :model/SegmentTest {other-id :id}   {:segment_id segment-id}]
     (let [run-ids   (mapv #(:id (data-testing.run-tracking/start-run! :segment %)) [test-id other-id])
@@ -101,7 +95,8 @@
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/SegmentTest :segment_id segment-id))))
         (testing "each test was deleted through its own hook, so its runs stay with no test id"
-          (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
+          (is (=? [{:test_id nil :status :passed} {:test_id nil :status :passed}]
+                  (mapv #(t2/select-one :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
           (is (= (sort [test-id other-id]) (sort @published))))
         (finally
@@ -117,7 +112,7 @@
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      view-data
                                                                     :perms/create-queries create-queries}
-        (mt/with-temp [:model/Segment     {segment-id :id :as _segment} (segment)
+        (mt/with-temp [:model/Segment     {segment-id :id :as _segment} (data-testing.test-util/from-google-segment)
                        :model/SegmentTest {test-id :id :as segment-test} {:segment_id segment-id}]
           (letfn [(permissions []
                     (mt/with-current-user (mt/user->id :lucky)
@@ -149,12 +144,12 @@
   (testing "a data analyst who may edit the segment, without native queries: read only"
     (is (= (allowed :read :read-pk) (permissions-of-lucky! :unrestricted :query-builder true)))))
 
-(deftest moving-a-segment-test-needs-write-on-both-segments-test
+(deftest moving-a-segment-test-to-a-missing-segment-is-refused-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
                                                                     :perms/create-queries :query-builder-and-native}
-        (mt/with-temp [:model/Segment     {segment-id :id} (segment)
+        (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                        :model/SegmentTest segment-test      {:segment_id segment-id}]
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-current-user (mt/user->id :lucky)
@@ -162,6 +157,40 @@
                 (is (true? (boolean (mi/can-update? segment-test {:name "renamed"})))))
               (testing "a segment that does not exist cannot be the test's new segment"
                 (is (false? (boolean (mi/can-update? segment-test {:segment_id Integer/MAX_VALUE}))))))))))))
+
+(deftest moving-a-segment-test-needs-the-write-rule-on-the-old-and-the-new-segment-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (perms.tu/with-no-data-perms-for-all-users!
+      (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                    :perms/create-queries :query-builder-and-native}
+        (mt/with-temp [:model/Database {other-db :id}    {:engine :h2 :details {:db "mem:segment-test-other-db"}}
+                       :model/Table    {other-table :id} {:db_id other-db :name "OTHER" :schema "PUBLIC" :active true}
+                       :model/Field    {other-field :id} {:table_id other-table :name "X" :base_type :type/Integer
+                                                          :database_type "INTEGER"}]
+          ;; A new Database gets default permissions for All Users; set them.
+          (mt/with-db-perms-for-group! (perms-group/all-users) other-db {:perms/view-data      :unrestricted
+                                                                         :perms/create-queries :query-builder}
+            (let [mp (lib-be/application-database-metadata-provider other-db)]
+              (mt/with-temp [:model/Segment     {writable-id :id}  (data-testing.test-util/from-google-segment)
+                             :model/Segment     {other-id :id}     {:table_id   other-table
+                                                                    :definition (lib/filter (lib/query mp (lib.metadata/table mp other-table))
+                                                                                            (lib/> (lib.metadata/field mp other-field) 0))}
+                             :model/SegmentTest test-on-writable   {:segment_id writable-id}
+                             :model/SegmentTest test-on-other      {:segment_id other-id}]
+                (mt/with-data-analyst-role! (mt/user->id :lucky)
+                  (mt/with-current-user (mt/user->id :lucky)
+                    (testing "premise: the analyst may save tests of the first segment, and may read and edit the other segment but not save its tests, having no native queries on its database"
+                      (is (true? (boolean (mi/can-create? :model/SegmentTest {:segment_id writable-id}))))
+                      (is (true? (boolean (mi/can-read? :model/Segment other-id))))
+                      (is (true? (boolean (mi/can-write? :model/Segment other-id))))
+                      (is (false? (boolean (data-testing.models/can-run-native-query? other-db))))
+                      (is (false? (boolean (mi/can-create? :model/SegmentTest {:segment_id other-id})))))
+                    (testing "control: the analyst may rename the test of the first segment"
+                      (is (true? (boolean (mi/can-update? test-on-writable {:name "renamed"})))))
+                    (testing "a test cannot move to a segment whose tests the analyst may not save"
+                      (is (false? (boolean (mi/can-update? test-on-writable {:segment_id other-id})))))
+                    (testing "a test cannot move away from a segment whose tests the analyst may not save"
+                      (is (false? (boolean (mi/can-update? test-on-other {:segment_id writable-id})))))))))))))))
 
 (deftest permissions-of-a-test-of-a-segment-with-no-definition-test
   (mt/with-temp [:model/Segment     {segment-id :id} {:table_id (mt/id :people) :definition {}}
@@ -173,8 +202,6 @@
         (is (= {:run true :write true}
                {:run   (boolean (data-testing.models.segment-test/can-run? segment-test))
                 :write (boolean (mi/can-write? segment-test))}))))
-    (testing "another user may not: the segment has no Database to write native SQL against"
+    (testing "another user may not run it: the segment has no Database to write native SQL against"
       (mt/with-current-user (mt/user->id :rasta)
-        (is (= {:run false :write false}
-               {:run   (boolean (data-testing.models.segment-test/can-run? segment-test))
-                :write (boolean (mi/can-write? segment-test))}))))))
+        (is (false? (boolean (data-testing.models.segment-test/can-run? segment-test))))))))

@@ -251,3 +251,14 @@
                   (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
                   (when (seq @created)
                     (t2/delete! :model/CardTest :id [:in @created])))))))))))
+
+(deftest a-test-whose-input-lacks-a-column-the-card-reads-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id} (card)]
+      (testing "create refuses an input lacking a column the card's query reads, naming it"
+        (is (=? {:error-code "card-test.missing-input-columns"
+                 :columns    {:PUBLIC.PEOPLE ["NAME"]}}
+                (mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                      (assoc (body card-id) :inputs [(assoc (first inputs)
+                                                                            :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                            :rows    [{"ID" 1}])]))))))))

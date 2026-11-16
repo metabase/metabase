@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.select :as select]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.events.core :as events]
@@ -1692,7 +1693,7 @@
 
 (defn- create-segment-with-test!
   "Create, in the current app DB, the Database `my-db` with the table `customers`, a segment \"Minors\" on it with
-  `segment-props`, and a test of the segment named `test-name` by the User `creator`. Returns the Segment."
+  `segment-props`, and a test named `test-name` of the segment, created by the User `creator`. Returns the Segment."
   [creator test-name & {:as segment-props}]
   (let [db      (ts/create! :model/Database :name "my-db")
         table   (ts/create! :model/Table :name "customers" :db_id (:id db))
@@ -1752,7 +1753,8 @@
                     (t2/select-one :model/SegmentTest :entity_id test-eid)))))))))
 
 (deftest export-takes-the-tests-of-the-segments-it-takes-test
-  (testing "An export takes the tests of the segments it exports, and no others"
+  (testing "An export takes the tests of the segments it exports: none without the data model, and none of an archived
+            segment it skips"
     (ts/with-dbs [source-db]
       (ts/with-db source-db
         (let [creator (ts/create! :model/User :email "creator@example.com")
@@ -1768,3 +1770,60 @@
             (is (= #{} (tested {:no-data-model true}))))
           (testing "an export that skips archived content takes no test of an archived segment"
             (is (= #{} (tested {:skip-archived true})))))))))
+
+(deftest export-of-a-collection-takes-the-tests-of-the-segments-of-its-published-tables-test
+  (testing "An export of a collection takes the tests of the segments on its published tables, and no others"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [creator  (ts/create! :model/User :email "creator@example.com")
+              library  (ts/create! :model/Collection :name "Library")
+              segment  (create-segment-with-test! creator "Minors are under 18")
+              db-id    (t2/select-one-fn :db_id :model/Table :id (:table_id segment))
+              table    (ts/create! :model/Table :name "accounts" :db_id db-id)
+              field    (ts/create! :model/Field :name "AGE" :table_id (:id table))
+              mp       (lib-be/application-database-metadata-provider db-id)
+              other    (ts/create! :model/Segment
+                                   :table_id   (:id table)
+                                   :name       "Elsewhere"
+                                   :creator_id (:id creator)
+                                   :definition (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                   (lib/filter (lib/< (lib.metadata/field mp (:id field)) 18))))
+              _        (ts/create! :model/SegmentTest
+                                   :segment_id   (:id other)
+                                   :creator_id   (:id creator)
+                                   :name         "Elsewhere is tested"
+                                   :expectations segment-test-expectations)
+              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              exported (fn [opts model k]
+                         (into #{}
+                               (comp (filter #(= model (-> % :serdes/meta last :model)))
+                                     (map k))
+                               (extract/extract (assoc opts :include-h2? true))))
+              targeted {:targets [[:model/Collection (:id library)]] :no-data-model true}]
+          (testing "control: an export of the data model takes the tests of both segments"
+            (is (= #{(:entity_id segment) (:entity_id other)}
+                   (exported {} "SegmentTest" :segment_id))))
+          (testing "premise: the export of the collection takes the segment on its published table, and not the other"
+            (is (= #{(:entity_id segment)}
+                   (exported targeted "Segment" :entity_id))))
+          (testing "the export of the collection takes the test of that segment, and not the other test"
+            (is (= #{(:entity_id segment)}
+                   (exported targeted "SegmentTest" :segment_id)))))))))
+
+(deftest selection-by-ids-takes-the-segment-tests-it-names-test
+  (testing "A selection of segment tests by their ids takes those tests"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (dotimes [_ 2] (ts/create! :model/Segment))
+        (let [creator (ts/create! :model/User :email "creator@example.com")
+              segment (create-segment-with-test! creator "Minors are under 18")
+              test-id (t2/select-one-pk :model/SegmentTest :segment_id (:id segment))
+              row-ids (fn [opts] (into #{} (map :id) (select/select-rows :model/SegmentTest opts)))]
+          (testing "premise: the test's id is not its segment's id"
+            (is (not= (:id segment) test-id)))
+          (testing "control: a selection without ids takes the test"
+            (is (contains? (row-ids {}) test-id)))
+          (testing "select-rows takes the test it names"
+            (is (= #{test-id} (row-ids {:ids [test-id]}))))
+          (testing "select-ids takes the test it names"
+            (is (= #{test-id} (set (select/select-ids :model/SegmentTest {:ids [test-id]}))))))))))

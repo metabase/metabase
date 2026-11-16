@@ -68,20 +68,41 @@
   "The token expectation SQL writes for the output of a subject that has no table of its own."
   "{{output}}")
 
+(defn compile-failure-message
+  "The message of the refusal of a query under test whose compile threw `e`."
+  [e]
+  (tru "The query under test could not be compiled to SQL: {0}" (ex-message e)))
+
 (mu/defn compile-query :- ::data-testing.compile/compiled-query
   "`query` compiled to SQL as a test runs it. Throws `::data-testing.errors/uncompilable-subject` with the message
-  `(failure-message e)` when compiling throws `e`."
-  [query           :- ::lib.schema/query
-   failure-message :- ifn?]
-  (try
-    ;; The same preparation a transform's query gets: remaps would add joins to tables the test does not declare, and
-    ;; the default row limit would cut the result set. A persisted model in the query stays its query: its cache
-    ;; table is not a table the test can declare, and the test is of the query.
-    (let [{sql :query params :params} (model-persistence/with-persisted-substituion-disabled
-                                        (qp.compile/compile (transforms-base.u/massage-sql-query query)))]
-      {:query sql :params params})
-    (catch Exception e
-      (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject (failure-message e) {} e)))))
+  `(failure-message e)`, [[compile-failure-message]] by default, when compiling throws `e`."
+  ([query :- ::lib.schema/query]
+   (compile-query query compile-failure-message))
+  ([query           :- ::lib.schema/query
+    failure-message :- ifn?]
+   (try
+     ;; The same preparation a transform's query gets: remaps would add joins to tables the test does not declare, and
+     ;; the default row limit would cut the result set. A persisted model in the query stays its query: its cache
+     ;; table is not a table the test can declare, and the test is of the query.
+     (let [{sql :query params :params} (model-persistence/with-persisted-substituion-disabled
+                                         (qp.compile/compile (transforms-base.u/massage-sql-query query)))]
+       {:query sql :params params})
+     (catch Exception e
+       (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject (failure-message e) {} e))))))
+
+(mu/defn query-output-plan :- ::subject-plan
+  "The plan of a subject whose output is the result of `compiled`, its query, on `database`, which messages name
+  `label`. Expectation SQL names that result `{{output}}`."
+  [database :- ::lib.schema.metadata/database
+   compiled :- ::data-testing.compile/compiled-query
+   label    :- :string]
+  {:database      database
+   :compiled      compiled
+   ;; The subject has no table of its own, so expectation SQL names its result by the token, which
+   ;; [[data-testing.compile/replace-tables]] turns into this reserved name.
+   :output-tables [{:schema nil :name data-testing.compile/output-name}]
+   :output-token  output-token
+   :output-label  label})
 
 (mu/defn testable-database :- ::lib.schema.metadata/database
   "The Database with `database-id`, if its driver can run a test. 404 when there is no such Database."

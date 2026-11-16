@@ -56,7 +56,10 @@
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
-  On a database that ignores case in column names, two names that differ only in case are one name."
+  On a database that ignores case in column names, two names that differ only in case are one name.
+
+  An input that gives rows must declare every column that the card's query reads from its table; a test whose input
+  lacks one is refused, naming the column."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]

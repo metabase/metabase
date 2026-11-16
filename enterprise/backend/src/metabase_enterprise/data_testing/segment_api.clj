@@ -50,11 +50,18 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/segment-test
-  "Create a segment test. Its expectations read the rows of the segment's table that match the segment's filter.
-  Expectation SQL names those rows `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is refused.
+  "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's
+  filter. Expectation SQL names the output `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is
+  refused. The test needs an input for the segment's table, and one for each table that the filter reads through a
+  foreign key.
 
-  The output has the columns that the test's input for the segment's table declares, when that input gives rows; it
-  has every column of the table when that input is SQL."
+  When the input for the segment's table gives rows, the output has the columns of the table that the input declares.
+  When that input declares none of the table's columns, or is SQL, the output has every column of the table.
+
+  An input that gives rows must declare every column that the query under test reads from its table: for the
+  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A test
+  whose input lacks such a column is refused, naming the column. On a database that keeps the case of column names,
+  a declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]

@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.events]
    [metabase.revisions.models.revision.diff :as revision.diff]
@@ -508,9 +509,39 @@
               (testing "a change of the subject names both subjects"
                 (is (= [(str "moved this " (#'revision.diff/model-str->i18n-str model) " from " from-name " to " to-name)]
                        (strings {subject-key to}))))
-              (testing "control: a rename is described as before"
+              (testing "control: a rename names the old and new names"
                 (is (= [(str "renamed this " (#'revision.diff/model-str->i18n-str model) " from \"t\" to \"u\"")]
                        (strings {:name "u"})))))))))))
+
+(deftest a-moved-test-names-only-the-subjects-the-reader-may-read-test
+  (let [moved (fn [from to]
+                (mapv str (revision.diff/diff-strings* "SegmentTest"
+                                                       {:segment_id from :name "t"}
+                                                       {:segment_id to :name "t"})))]
+    (testing "a reader sees the id of a segment they may not read, and the name of one they may"
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder}
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked
+            (mt/with-temp [:model/Segment {hidden :id}  {:name "Cheap venues" :table_id (mt/id :venues)}
+                           :model/Segment {visible :id} {:name "From Google" :table_id (mt/id :people)}]
+              (mt/with-current-user (mt/user->id :rasta)
+                (testing "premise: rasta may read only the segment on the people table"
+                  (is (false? (boolean (mi/can-read? :model/Segment hidden))))
+                  (is (true? (boolean (mi/can-read? :model/Segment visible)))))
+                (is (= [(str "moved this Segment test from #" hidden " to From Google")]
+                       (moved hidden visible))))
+              (testing "control: an admin sees both names"
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (is (= ["moved this Segment test from Cheap venues to From Google"]
+                         (moved hidden visible))))))))))
+    (testing "a deleted segment is shown by its id, also to an admin"
+      (mt/with-temp [:model/Segment {deleted :id} {:table_id (mt/id :people)}
+                     :model/Segment {visible :id} {:name "From Google" :table_id (mt/id :people)}]
+        (t2/delete! :model/Segment :id deleted)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [(str "moved this Segment test from #" deleted " to From Google")]
+                 (moved deleted visible))))))))
 
 ;;; ------------------------------------------------ Segment tests ------------------------------------------------
 

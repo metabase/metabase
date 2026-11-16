@@ -60,10 +60,16 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
-(def ^:private test-type->table
-  {:transform :transform_test
-   :card      :card_test
-   :segment   :segment_test})
+(def test-type->model
+  "The model of the saved tests of each test type."
+  {:transform :model/TransformTest
+   :card      :model/CardTest
+   :segment   :model/SegmentTest})
+
+(mu/defn saved-tests :- [:sequential ::data-testing.schema/saved-test]
+  "Every saved test of `test-type`."
+  [test-type :- ::data-testing.schema/test-type]
+  (t2/select (test-type->model test-type)))
 
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
@@ -78,7 +84,7 @@
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
      [:exists ^:allow-subquery {:select [1]
-                                :from   [[(test-type->table test-type) :the_test]]
+                                :from   [[(t2/table-name (test-type->model test-type)) :the_test]]
                                 :where  [:and
                                          [:= :the_test.id :data_test_run.test_id]
                                          [:>= :data_test_run.start_time :the_test.created_at]]}]]))
@@ -268,6 +274,16 @@
   (if (seq transform-ids)
     (t2/select :model/Transform :id [:in transform-ids])
     []))
+
+(mu/defn table-column-names :- [:set :string]
+  "The names of the active Fields of the active Table `table-name` in `schema` of the Database with `database-id`, or
+  an empty set when there is no such Table."
+  [database-id :- ::lib.schema.id/database
+   schema      :- [:maybe :string]
+   table-name  :- :string]
+  (if-let [table-id (t2/select-one-pk :model/Table :db_id database-id :schema schema :name table-name :active true)]
+    (t2/select-fn-set :name :model/Field :table_id table-id :active true)
+    #{}))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

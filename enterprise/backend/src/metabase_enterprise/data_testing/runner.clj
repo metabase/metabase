@@ -23,6 +23,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.expectations.empty]
@@ -301,7 +302,14 @@
         output-table   (driver/temp-table-name driver)
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
-        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)]
+        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)
+        table-columns  (into {}
+                             (comp (filter #(= :rows (:format %)))
+                                   (map :table)
+                                   (map (fn [{:keys [schema name] :as table}]
+                                          [table (data-testing.db/table-column-names
+                                                  (:id database) (or schema default-schema) name)])))
+                             inputs)]
     (data-testing.validator/validate
      driver
      {:inputs              inputs
@@ -310,7 +318,10 @@
       :rewritten-query (:query rewritten)
       :replacements        replacements
       :output-token        output-token
-      :default-schema      default-schema})
+      :default-schema      default-schema
+      :columns-read        (data-testing.compile/columns-read driver (:query compiled))
+      :table-columns       table-columns
+      :ignore-case?        (column-names-ignore-case? driver)})
     {:driver       driver
      :database     database
      :input->table input->table

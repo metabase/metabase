@@ -37,7 +37,10 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/transform-test
-  "Create a transform test."
+  "Create a transform test.
+
+  An input that gives rows must declare every column that the transform's query reads from its table; a test whose
+  input lacks one is refused, naming the column."
   [_route-params
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]

@@ -73,6 +73,58 @@
               (map :name))
         (:errors (sql-tools/field-references driver sql))))
 
+(mr/def ::column-read
+  "A column of a table that SQL reads, by the table's schema and name."
+  [:map {:closed true}
+   [:schema [:maybe :string]]
+   [:name   :string]
+   [:column :string]])
+
+(defn- field-columns
+  "The `[table column]` pairs `field`, a field spec of `sql-tools/field-references`, can read, one set per way the parser
+  could resolve it; `::unresolved` in a set stands for a resolution that is not a column of a table."
+  [{:keys [type column source-columns used-fields member-fields]}]
+  (case type
+    :single-column  (into #{}
+                          (mapcat (fn [group]
+                                    (for [source group
+                                          pair   (case (:type source)
+                                                   :all-columns   [{:schema (get-in source [:table :schema])
+                                                                    :name   (get-in source [:table :table])
+                                                                    :column column}]
+                                                   :single-column (field-columns source)
+                                                   [::unresolved])]
+                                      pair)))
+                          source-columns)
+    :custom-field    (into #{} (mapcat field-columns) used-fields)
+    :composite-field (into #{} (mapcat field-columns) member-fields)
+    #{::unresolved}))
+
+(defn- single-columns
+  "`field` and the single-column fields inside it, a custom field's or a composite field's members included."
+  [{:keys [type used-fields member-fields] :as field}]
+  (case type
+    :single-column   [field]
+    :custom-field    (mapcat single-columns used-fields)
+    :composite-field (mapcat single-columns member-fields)
+    []))
+
+(mu/defn columns-read :- [:maybe [:set ::column-read]]
+  "The columns of real tables that `sql` reads, or nil when the parser reports an error in `sql`. A column is included
+  only when the parser resolves it to exactly one column of one table, so a name it cannot place, or that could be a
+  select-list alias of a computed value, is left out; a wildcard names no column."
+  [driver :- :keyword
+   sql    :- :string]
+  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
+    (when (empty? errors)
+      (into #{}
+            (comp (mapcat single-columns)
+                  (map field-columns)
+                  (keep (fn [pairs]
+                          (when (and (= 1 (count pairs)) (not (contains? pairs ::unresolved)))
+                            (first pairs)))))
+            (concat used-fields returned-fields)))))
+
 ;;; ------------------------------------------------- Rewrite -------------------------------------------------
 
 (mu/defn table-keys :- [:sequential ::table-key]

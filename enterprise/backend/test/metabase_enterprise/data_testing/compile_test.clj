@@ -199,3 +199,33 @@
   (testing "the drivers these tests format for load and initialize without a database"
     (is (= :postgres (driver/the-initialized-driver :postgres)))
     (is (= :h2 (driver/the-initialized-driver :h2)))))
+
+;;; --------------------------------------------- columns-read ---------------------------------------------
+
+(deftest columns-read-test
+  (let [read (fn [sql] (data-testing.compile/columns-read :h2 sql))]
+    (testing "every column a one-table query names, in the select list, the filter and the order"
+      (is (= #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
+               {:schema "PUBLIC" :name "PEOPLE" :column "NAME"}
+               {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
+             (read "SELECT ID, NAME FROM PUBLIC.PEOPLE WHERE SOURCE = 'Google' ORDER BY NAME"))))
+    (testing "a select-list alias used in ORDER BY is the column it names, not a column of its own"
+      (is (= #{{:schema nil :name "ORDERS" :column "TOTAL"}}
+             (read "SELECT TOTAL AS T FROM ORDERS ORDER BY T"))))
+    (testing "a column of a joined subquery is a column of the table the subquery reads"
+      (is (= #{{:schema nil :name "ORDERS" :column "ID"}
+               {:schema nil :name "ORDERS" :column "PRODUCT_ID"}
+               {:schema nil :name "PRODUCTS" :column "ID"}
+               {:schema nil :name "PRODUCTS" :column "CATEGORY"}}
+             (read (str "SELECT O.ID FROM ORDERS O LEFT JOIN (SELECT ID, CATEGORY FROM PRODUCTS) P"
+                        " ON O.PRODUCT_ID = P.ID WHERE P.CATEGORY = 'Gizmo'")))))
+    (testing "an unqualified column that two tables could hold is left out"
+      (is (= #{{:schema nil :name "ORDERS" :column "USER_ID"} {:schema nil :name "PEOPLE" :column "ID"}}
+             (read "SELECT NAME FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID"))))
+    (testing "a select-list alias of a computed value is not a column; the column it computes from is"
+      (is (= #{{:schema nil :name "ORDERS" :column "TOTAL"}}
+             (read "SELECT TOTAL * 2 AS DBL FROM ORDERS ORDER BY DBL"))))
+    (testing "a wildcard names no column"
+      (is (= #{} (read "SELECT * FROM ORDERS"))))
+    (testing "SQL whose references the parser cannot resolve gives nil, so nothing is checked"
+      (is (nil? (read "SELECT X.ID FROM ORDERS"))))))

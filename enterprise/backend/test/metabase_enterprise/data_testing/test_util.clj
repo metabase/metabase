@@ -25,6 +25,15 @@
   ;; advanced-permissions: the Data Analyst role only opens Data Studio while the plan includes it
   #{:advanced-permissions :transforms-basic :transforms-testing})
 
+(defn from-google-segment
+  "Segment columns for a segment on the people table: the people whose source is Google."
+  []
+  (let [mp (mt/metadata-provider)]
+    {:name       "From Google"
+     :table_id   (mt/id :people)
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                             (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
+
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
   [features & body]
