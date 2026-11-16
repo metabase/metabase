@@ -709,8 +709,8 @@
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (when-not (= id-str "root") (readable-collection id-str))
         subs    (-> (mi/readable (if (= id-str "root")
-                               (metabot.db/navigable-collections false)
-                               (metabot.db/unarchived-collections-at-location (collection/children-location coll))))
+                                   (metabot.db/navigable-collections false)
+                                   (metabot.db/unarchived-collections-at-location (collection/children-location coll))))
                     (t2/hydrate :can_write)
                     (->> (mapv present-collection)))]
     (list-result :collection-subcollections subs query-params)))
