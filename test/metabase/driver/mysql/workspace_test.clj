@@ -98,7 +98,12 @@
 
 (deftest public-revoke-sql-test
   (is (= "REVOKE INSERT, UPDATE ON `mb_test`.* FROM PUBLIC;"
-         (#'mysql/public-revoke-sql "GRANT INSERT, UPDATE ON `mb_test`.* TO PUBLIC"))))
+         (#'mysql/public-revoke-sql "GRANT INSERT, UPDATE ON `mb_test`.* TO PUBLIC")))
+  (testing "a role granted to PUBLIC: only the line whose grantee is PUBLIC gives a REVOKE (MariaDB 11.8 output)"
+    (is (= ["REVOKE `r` FROM PUBLIC;"]
+           (keep #'mysql/public-revoke-sql ["GRANT `r` TO PUBLIC"
+                                            "GRANT USAGE ON *.* TO `r`"
+                                            "GRANT INSERT ON `mb_test`.* TO `r`"])))))
 
 ;;; ------------------------------------------------ Live tests ------------------------------------------------------
 
@@ -454,6 +459,35 @@
                    (is (re-find #"denied" (str (insert! workspace)))))
                  (finally
                    (driver/destroy-workspace-isolation! :mysql database workspace)))))))))))
+
+(deftest ^:synchronized init-refusal-for-a-role-granted-to-public-names-only-revokes-test
+  (mt/test-driver :mysql
+    (let [database   (mt/db)
+          admin      (admin-spec database)
+          bound-db   (-> database :details :db)
+          [product major minor] (server-version database)
+          role       (str "ws_public_" (rand-int 1000000))]
+      (if-not (and (= "MariaDB" product) (>= (compare [major minor] [10 11]) 0))
+        (testing "only MariaDB from 10.11 has the PUBLIC role"
+          (is (some? product)))
+        (try
+          (doseq [sql [(format "CREATE ROLE `%s`" role)
+                       (format "GRANT INSERT ON `%s`.* TO `%s`" bound-db role)
+                       (format "GRANT `%s` TO PUBLIC" role)]]
+            (jdbc/execute! admin [sql]))
+          (let [workspace (new-workspace database)
+                refused   (refusal #(driver/init-workspace-isolation! :mysql database workspace))]
+            (testing "init refuses with a 412 whose statements revoke only what PUBLIC holds"
+              (is (= {:status-code 412, :workspace/cleanup? false} (:data refused)))
+              (is (str/includes? (str (:message refused)) (format "`REVOKE `%s` FROM PUBLIC;`" role)))
+              (is (not (re-find #"GRANT" (str (:message refused)))))
+              (is (not (user-exists? database (-> workspace :database_details :user))))))
+          (finally
+            (doseq [sql [(format "REVOKE `%s` FROM PUBLIC" role)
+                         (format "DROP ROLE IF EXISTS `%s`" role)]]
+              (try
+                (jdbc/execute! admin [sql])
+                (catch Exception _ nil)))))))))
 
 (defn- init-error
   "Runs `init`; returns the exception it throws, or nil."

@@ -1527,9 +1527,11 @@
        (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 11]) 0)))
 
 (defn- public-revoke-sql
-  "The statement that revokes the grant on the line `grant` of `SHOW GRANTS FOR PUBLIC`."
+  "The statement that revokes the grant on the line `grant` of `SHOW GRANTS FOR PUBLIC`, or nil when the grantee of
+  the line is not PUBLIC, as on the lines that list the grants of a role granted to PUBLIC."
   [grant]
-  (str/replace grant #"^GRANT (.+) TO PUBLIC.*$" "REVOKE $1 FROM PUBLIC;"))
+  (when-let [[_ privileges] (re-matches #"^GRANT (.+) TO PUBLIC.*$" grant)]
+    (str "REVOKE " privileges " FROM PUBLIC;")))
 
 (defn- check-no-roles-for-every-login!
   "Throws a 412 when the server gives every login, the workspace user included, the privileges of some role: a role
@@ -1550,7 +1552,7 @@
       (throw (ex-info (format (str "The warehouse grants privileges to PUBLIC, which every login holds, so a workspace "
                                    "user could use them outside its own database. Have an administrator run `%s` and "
                                    "retry.")
-                              (str/join " " (map public-revoke-sql grants)))
+                              (str/join " " (keep public-revoke-sql grants)))
                       {:status-code 412, :workspace/cleanup? false})))))
 
 (defmethod driver/init-workspace-isolation! :mysql
