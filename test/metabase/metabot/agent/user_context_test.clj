@@ -901,7 +901,8 @@
             (let [checks (atom [])]
               (mt/with-no-data-perms-for-all-users!
                 (mt/with-test-user :rasta
-                  (is (not (mi/can-read? :model/Database (mt/id))) "precondition: the database is not readable")
+                  (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+                      "precondition: the database is not readable")
                   (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database #(swap! checks conj %)]
                     (is (not (str/includes? (out) "metabase://metric/")))
                     (is (= [] @checks) "the database read check does not run")))))))))
@@ -953,7 +954,8 @@
             checks (atom [])]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-test-user :rasta
-            (is (not (mi/can-read? :model/Database (mt/id))) "precondition: the database is not readable")
+            (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+                "precondition: the database is not readable")
             (is (:mp (shared.content-store/query-for-export query true)) "precondition: the card clears the query")
             ;; `api/read-check` logs an error and publishes an audit event for each failed read.
             (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database #(swap! checks conj %)]
