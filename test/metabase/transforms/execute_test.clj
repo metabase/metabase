@@ -408,6 +408,40 @@
           (driver/run-transform! :h2 transform-details nil)
           (is (= [:drop-table! :compile-transform :execute-raw-queries!] @calls)))))))
 
+(deftest python-transform-replace-strategy-test
+  (testing "A driver whose Python transforms can't replace a table atomically acknowledges how they do it instead"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+      (let [supports?    #(driver/database-supports? driver/*driver* % (mt/db))
+            strategy     (cond
+                           (supports? :atomic-renames) :atomic-renames
+                           (supports? :rename)         :rename
+                           :else                       :drop-and-create)
+            expected     (case strategy
+                           :atomic-renames  #{}
+                           :rename          #{:test/python-transforms-without-atomic-renames}
+                           :drop-and-create #{:test/python-transforms-without-renames})
+            acknowledged (into #{}
+                               (filter supports?)
+                               [:test/python-transforms-without-atomic-renames
+                                :test/python-transforms-without-renames])]
+        (is (= expected acknowledged)
+            (case strategy
+              :atomic-renames
+              (str "This driver supports `:atomic-renames`, so Python transforms replace tables atomically. Its test "
+                   "extensions should stop supporting " (pr-str acknowledged) ".")
+
+              :rename
+              (str "Python transforms on this driver drop their target and then rename a new table into place, so "
+                   "readers briefly find no table. Implement `driver/rename-tables!*` and support `:atomic-renames`, "
+                   "or acknowledge the gap by supporting only `:test/python-transforms-without-atomic-renames` in the "
+                   "driver's test extensions.")
+
+              :drop-and-create
+              (str "Python transforms on this driver drop their target and then recreate it, so readers find it "
+                   "missing and then partly filled, and a failed run loses the old data. Implement "
+                   "`driver/rename-tables!*` and support `:atomic-renames`, or acknowledge the gap by supporting only "
+                   "`:test/python-transforms-without-renames` in the driver's test extensions.")))))))
+
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}

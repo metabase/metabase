@@ -189,10 +189,6 @@
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
                  :test/column-impersonation
-                 ;; Transforms replace their target with `CREATE OR REPLACE TABLE`, which is atomic, so the rename
-                 ;; strategies are never needed. Only transforms read these flags.
-                 :atomic-renames
-                 :rename
                  ;; The inherited fetch-table-indexes reads pg_index, which is empty on the endpoint, and calls
                  ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
                  :transforms/index-ddl
@@ -213,6 +209,11 @@
 (defmethod driver/database-supports? [:motherduck :create-or-replace-table]
   [_driver _feature _db]
   true)
+
+;; `:atomic-renames` and `:rename` are inherited from Postgres. SQL transforms don't need them, since they check
+;; `:create-or-replace-table` first, but Python transforms do: they load into a new table and swap it in with
+;; [[driver/rename-tables!*]]. Without renames they drop the target and recreate it, so readers find it missing and
+;; then half-filled, and a failed run loses the old data.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Metadata / sync                                                    |
@@ -269,7 +270,7 @@
                        driver conn
                        "SELECT 1 FROM duckdb_schemas() WHERE database_name = current_database() AND schema_name = ?"
                        [schema])
-                 rs   (.executeQuery stmt)]
+                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (.next rs)))))
 
 ;; Based on the Postgres query, with three changes:
@@ -550,9 +551,10 @@
 ;;; every database in the account, and that function reads them all before filtering on `current_database()`. That
 ;;; error doesn't say whether a rerun will succeed, but rerunning a read is harmless.
 ;;;
-;;; Only the two read-side execute methods retry. Write queries, actions and uploads use `executeUpdate` directly, so
-;;; a retry can never apply a write twice. Sync reads go through `execute-prepared-statement!`, so they retry too,
-;;; except where they read JDBC's `DatabaseMetaData`.
+;;; Only the two read-side execute methods retry, and `rename-tables!*`, which rolls its transaction back and reruns all
+;;; of it. Other writes go through `execute-write-statement!`, which doesn't retry, so a retry can never apply a write
+;;; twice. Sync reads go through `execute-prepared-statement!`, so they retry too, except where they read JDBC's
+;;; `DatabaseMetaData`.
 
 (def ^:private retryable-error-message
   ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
@@ -789,6 +791,41 @@
      (fn [^Connection conn]
        (with-open [stmt (.createStatement conn)]
          (.execute stmt ^String sql))))))
+
+;; The inherited Postgres method runs the renames with `executeBatch`, which rejects the result set the endpoint
+;; answers each ALTER with. Run them one at a time instead, in a transaction: DDL is transactional on the endpoint,
+;; so readers see either all of the old tables or all of the new ones. The endpoint takes one ALTER per statement.
+;; A retryable error aborts the transaction, so the retry rolls it back and reruns every rename, not just the one
+;; that failed.
+(defmethod driver/rename-tables!* :motherduck
+  [driver db-id sorted-rename-map]
+  (let [sqls (perf/mapv (fn [[from-table to-table]]
+                          ;; `dot-qualified`, as in `drop-table!` above: a plain keyword would rewrite `-` to `_` in
+                          ;; the schema.
+                          (first (sql/format {:alter-table  (sql-jdbc.quoting/dot-qualified from-table)
+                                              :rename-table (keyword (name to-table))}
+                                             :quoted  true
+                                             :dialect (sql.qp/quote-style driver))))
+                        sorted-rename-map)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db-id {:write? true}
+     (fn [^Connection conn]
+       (.setAutoCommit conn false)
+       (try
+         (with-open [stmt (.createStatement conn)]
+           (execute-with-retry stmt (fn []
+                                      (doseq [sql sqls]
+                                        (sql-jdbc.execute/execute-write-statement! driver stmt sql))
+                                      (.commit conn))))
+         (catch Throwable e
+           (try
+             (.rollback conn)
+             (catch Throwable rollback-error
+               (.addSuppressed e rollback-error)))
+           (throw e))
+         (finally
+           (.setAutoCommit conn true)))))
+    nil))
 
 ;; The endpoint does not support Postgres COPY FROM STDIN. Use SQL-JDBC's batched INSERTs.
 (defmethod driver/insert-into! :motherduck
