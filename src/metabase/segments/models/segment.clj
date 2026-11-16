@@ -92,59 +92,46 @@
       (when segment
         (vary-meta segment assoc k (get flags (:id segment) false))))))
 
-;; Segments can be written by
-;; a) superusers
-;; b) OR data analysts with unrestricted view-data permissions
-;; but not on a read-only instance that syncs their table
-(defn- segment-writable?
-  "Whether the current user can write `instance`, a Segment with or without its `:table`."
-  [instance]
-  (let [table (or (:table instance)
-                  (segments.db/table (:table_id instance)))]
-    (and (or (mi/superuser?)
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (collection/remote-sync-writable-table? table))))
-
-(defn- definition-table-id
-  "The id of the Table `definition` is built on, or nil when it names none."
-  [definition]
-  (when (seq definition)
-    (case (lib/normalized-mbql-version definition)
-      (:mbql-version/mbql5 :mbql-version/legacy)
-      (lib/primary-source-table-id (lib-be/normalize-query definition))
-      (let [table-id (:source-table (update-keys definition keyword))]
-        (when (pos-int? table-id)
-          table-id)))))
-
-(defmethod mi/can-create? :model/Segment
-  [_model instance]
-  (boolean
-   (when-let [table (segments.db/table (definition-table-id (:definition instance)))]
-     (segment-writable? {:table table}))))
-
-(defenterprise pre-update-check-sandbox-constraints-for-segment
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
-(defmethod mi/can-update? :model/Segment
-  [instance changes]
-  (let [table-id (definition-table-id (:definition changes))]
-    (pre-update-check-sandbox-constraints-for-segment instance changes)
-    (and (mi/can-write? instance)
-         (or (nil? table-id)
-             (= table-id (:table_id instance))
-             (mi/can-create? :model/Segment changes)))))
+(defn- table-writable?
+  "Whether the current user can write Segments of `table`: a superuser, or a data analyst with unrestricted view-data
+  permissions on it, and never on a read-only instance that syncs it."
+  [table]
+  (and (or (mi/superuser?)
+           (and (api/entitled-data-analyst?)
+                (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+       (collection/remote-sync-writable-table? table)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
-  "Batched hydration for :can_write on segments, hydrating their tables first."
+  "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."
   [_model k segments]
   (mi/instances-with-hydrated-data
    segments k
-   #(u/index-by :id (comp boolean segment-writable?) (t2/hydrate (remove nil? segments) :table))
+   #(u/index-by :id (comp boolean table-writable? :table) (t2/hydrate (remove nil? segments) :table))
    :id
    {:default false}))
+
+(defn- definition-writable?
+  "Whether the current user can write Segments of the Table `definition` is built on."
+  [definition]
+  (boolean (some-> definition not-empty lib-be/normalize-query lib/primary-source-table-id segments.db/table
+                   table-writable?)))
+
+(defmethod mi/can-create? :model/Segment
+  [_model {:keys [definition]}]
+  (definition-writable? definition))
+
+(defenterprise sandboxes-allow-segment-update?
+  "Whether sandboxing lets the current user apply `changes` to `segment`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_segment _changes]
+  true)
+
+(defmethod mi/can-update? :model/Segment
+  [segment changes]
+  (and (mi/can-write? segment)
+       (or (not (contains? changes :definition))
+           (definition-writable? (:definition changes)))
+       (sandboxes-allow-segment-update? segment changes)))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
@@ -153,31 +140,39 @@
                         (segments.db/table-database-id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
-(defn- with-checked-definition
-  "`segment` with its `:definition` normalized and checked, and its `:table_id` derived from it."
-  [{:keys [id] :as segment}]
-  (let [definition (migrated-segment-definition segment)]
-    (api/check-400 (seq definition) (tru "Segment definition must specify a source table."))
-    (lib/check-segment-overwrite id definition)
+(defn- check-definition
+  "Throws unless `definition` is a full query that fits a Segment."
+  [definition]
+  (api/check-400 (and (seq definition)
+                      (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
+                 (tru "Segment definition must be a full query with a source table."))
+  (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
+
+(defn- derive-table-id
+  "`segment` with its `:definition` normalized and its `:table_id` taken from it."
+  [segment]
+  (let [definition (lib-be/normalize-query (:definition segment))]
     (assoc segment
            :definition definition
            :table_id   (lib/primary-source-table-id definition))))
 
 (t2/define-before-insert :model/Segment
   [segment]
-  (with-checked-definition segment))
+  (check-definition (:definition segment))
+  (derive-table-id segment))
 
 (t2/define-before-update :model/Segment
-  [segment]
+  [{:keys [id definition] :as segment}]
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-    (if (contains? changes :definition)
-      (with-checked-definition segment)
-      (do
-        (api/check-400 (not (contains? changes :table_id))
-                       (tru "The table of a Segment is derived from its definition."))
-        segment))))
+    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
+      (throw (ex-info (tru "The table of a Segment is derived from its definition.") {:status-code 400})))
+    (when (contains? changes :definition)
+      (check-definition definition)
+      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
+    (cond-> segment
+      (contains? changes :definition) derive-table-id)))
 
 (defn- maybe-migrated-segment-definition
   [segment]

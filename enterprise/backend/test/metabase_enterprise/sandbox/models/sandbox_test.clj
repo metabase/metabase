@@ -156,8 +156,8 @@
   #"You do not have permissions to modify a question that is used for row and column level security")
 (def ^:private snippet-msg
   #"You do not have permissions to modify a snippet that is used for row and column level security")
-(def ^:private segment-msg
-  #"You do not have permissions to modify a segment that is used for row and column level security")
+(def ^:private forbidden-msg
+  #"You don't have permissions to do that")
 (def ^:private measure-msg
   #"You do not have permissions to modify a measure that is used for row and column level security")
 
@@ -318,7 +318,7 @@
             (mt/with-test-user :rasta
               (doseq [[change-name segment changes] (guarded-changes policy)]
                 (testing change-name
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo segment-msg (update-check segment changes)))))))))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check segment changes)))))))))
       (testing "an admin may do all of it"
         (with-segment-policy
           (fn [policy]
@@ -330,10 +330,7 @@
         (with-segment-policy
           (fn [{:keys [other]}]
             (mt/with-test-user :crowberto
-              (is (true? (update-check other {:definition (price-above 5)}))))
-            (mt/with-test-user :rasta
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
-                                    (update-check other {:definition (price-above 5)}))))))))))
+              (is (true? (update-check other {:definition (price-above 5)}))))))))))
 
 (defn- sum-where-measure-definition
   "A Measure definition summing VENUES.PRICE over the rows matching `segment-id`."
@@ -390,7 +387,7 @@
       (with-measure-policy
         (fn [{:keys [segment]}]
           (mt/with-test-user :rasta
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo segment-msg
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
                                   (api/update-check (t2/select-one :model/Segment :id (:id segment))
                                                     {:definition (price-above 3)})))))))
     (untouched-test

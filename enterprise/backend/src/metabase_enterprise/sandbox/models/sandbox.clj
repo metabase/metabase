@@ -173,21 +173,26 @@
     :snippet (ex-info
               (tru "You do not have permissions to modify a snippet that is used for row and column level security.")
               {:status-code 403, :snippet-id id})
-    :segment (ex-info
-              (tru "You do not have permissions to modify a segment that is used for row and column level security.")
-              {:status-code 403, :segment-id id})
     :measure (ex-info
               (tru "You do not have permissions to modify a measure that is used for row and column level security.")
               {:status-code 403, :measure-id id})))
+
+(defn- non-admin-affects-sandboxing?
+  "Whether the current user is a non-admin and the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`)
+  entity with `id` is in the sandbox dependency set."
+  [entity-kind id]
+  (boolean (and id
+                api/*current-user-id*
+                (not api/*is-superuser?*)
+                (contains? (get (sandbox-dependency-set) entity-kind) id))))
 
 (defn- check-non-admin-cannot-affect-sandboxing!
   "Throws a 403 if the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`) entity with `id` is in the sandbox
   dependency set and the current user is not an admin. Server-side writes (sync, serdes and the like) run with no user
   bound, or as a superuser, and are not subject to the check."
   [entity-kind id]
-  (when (and id api/*current-user-id* (not api/*is-superuser?*))
-    (when (contains? (get (sandbox-dependency-set) entity-kind) id)
-      (throw (sandbox-dependency-error entity-kind id)))))
+  (when (non-admin-affects-sandboxing? entity-kind id)
+    (throw (sandbox-dependency-error entity-kind id))))
 
 (defn- check-result-metadata-still-matches-sandboxed-tables!
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
@@ -238,13 +243,13 @@
   [{snippet-id :id}]
   (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id))
 
-(defenterprise pre-update-check-sandbox-constraints-for-segment
-  "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches `:definition` or
-  `:archived`."
+(defenterprise sandboxes-allow-segment-update?
+  "Whether sandboxing lets the current user apply `changes` to a Segment: only an admin may change the `:definition`
+  or `:archived` of one in the sandbox dependency set."
   :feature :sandboxes
   [{segment-id :id} changes]
-  (when (some #(contains? changes %) [:definition :archived])
-    (check-non-admin-cannot-affect-sandboxing! :segment segment-id)))
+  (not (and (some #(contains? changes %) [:definition :archived])
+            (non-admin-affects-sandboxing? :segment segment-id))))
 
 (defenterprise pre-update-check-sandbox-constraints-for-measure
   "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches `:definition` or

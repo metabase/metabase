@@ -511,19 +511,15 @@
   (deps.test/run-with-dependencies-setup!
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
-       (let [products-id (mt/id :products)
-             price-field-id (mt/id :products :price)]
-         (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-           (is (= 1 (t2/update! :model/Segment :id segment-id
-                                {:definition (price-segment-definition lib/<)})))))))))
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
+         (is (= 1 (t2/update! :model/Segment :id segment-id
+                              {:definition (price-segment-definition lib/<)}))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!
    (fn [mp]
      (testing "a segment update has the job re-analyze the segment and the cards using it"
-       (let [products-id    (mt/id :products)
-             price-field-id (mt/id :products :price)
-             products       (lib.metadata/table mp products-id)]
+       (let [products (lib.metadata/table mp (mt/id :products))]
          (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/filter (lib/query mp products)
                                                                                 (lib.metadata/segment (mt/metadata-provider)
