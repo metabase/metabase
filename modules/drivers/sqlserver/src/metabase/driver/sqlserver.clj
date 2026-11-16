@@ -1511,6 +1511,11 @@
         (throw (if @committing? t (init-error t)))))
     nil))
 
+(def ^:private workspace-lock-timeout-ms
+  "The most milliseconds a teardown statement waits for a lock that another session holds, such as a session of a login
+  other than the workspace user's on one of the workspace's tables."
+  30000)
+
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [driver database workspace]
   (let [schema-name      (:schema workspace)
@@ -1523,35 +1528,46 @@
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
-         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
-         ;; variable names must be unique across the batch entries.
-         (doseq [sql [;; Disable the login and kill its sessions before any drop: a session of the workspace
-                      ;; user could hold a lock on one of its tables, and the drops would wait on it.
-                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
-                              escaped-username quoted-user)
-                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                   "EXEC sp_executesql @kill_sessions_sql")
-                              escaped-username)
-                      ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
-                      ;; brackets and escapes any `]` in it.
-                      (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
-                                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                                   "EXEC sp_executesql @drop_tables_sql")
-                              escaped-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
-                              escaped-schema quoted-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
-                              escaped-username quoted-user)
-                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                              escaped-username quoted-user)]]
-           (.addBatch ^Statement stmt ^String sql))
+         ;; Each statement waits for a lock at most [[workspace-lock-timeout-ms]]. SET LOCK_TIMEOUT lasts for the
+         ;; session, and the connection returns to the pool, so it is reset to -1 afterwards: the value every connection
+         ;; starts with, which waits without a bound.
+         (.execute stmt (format "SET LOCK_TIMEOUT %d" workspace-lock-timeout-ms))
          (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
+           ;; One statement at a time, not a batch: a T-SQL batch goes on to the next statement after a lock timeout
+           ;; (error 1222), and the error that ends teardown must be that of the statement that failed.
+           (doseq [sql [;; Disable the login and kill its sessions before any drop: a session of the workspace
+                        ;; user could hold a lock on one of its tables, and the drops would wait on it.
+                        (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
+                                escaped-username quoted-user)
+                        (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                     "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                     "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                     "EXEC sp_executesql @kill_sessions_sql")
+                                escaped-username)
+                        ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                        ;; brackets and escapes any `]` in it.
+                        (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                     "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                                     "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                                     "EXEC sp_executesql @drop_tables_sql")
+                                escaped-schema)
+                        (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                                escaped-schema quoted-schema)
+                        (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                                escaped-username quoted-user)
+                        (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                                escaped-username quoted-user)]]
+             (try
+               (.execute stmt ^String sql)
+               (catch java.sql.SQLException e
+                 ;; 1222: lock request time out period exceeded
+                 (if (= 1222 (.getErrorCode e))
+                   (throw (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
+                                        "session on one of its tables. Retry once that session ends.")
+                                   {:status-code 409} e))
+                   (throw e)))))
+           (finally
+             (.execute stmt "SET LOCK_TIMEOUT -1"))))))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [driver database workspace schemas]
