@@ -222,7 +222,7 @@
     (mt/dataset test-data
       (let [table-id (mt/id :orders)
             published-events (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
+        (with-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
           (testing "returns dataset in same format as POST /api/dataset"
             (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
               (is (contains? response :data))
@@ -1432,7 +1432,7 @@
   heap in #83937, so these tests assert it never runs at all on that path."
   [thunk]
   (let [calls (atom 0)
-        orig  lib-metric.dimension.jvm/compute-dimension-pairs]
+        orig  (mt/original-fn #'lib-metric.dimension.jvm/compute-dimension-pairs)]
     (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/compute-dimension-pairs
                                 (fn [& args]
                                   (clojure.core/swap! calls inc)

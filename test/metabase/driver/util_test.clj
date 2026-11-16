@@ -1,5 +1,6 @@
 (ns metabase.driver.util-test
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1089,42 +1090,79 @@
       {:sub "s"}
       {:exp "nope"})))
 
-(defn- write-temp-token-file!
-  "Write `contents` to a fresh temp file, return the absolute path."
-  ^String [contents]
-  (let [f (doto (java.io.File/createTempFile "wif-ambient-token" ".jwt") .deleteOnExit)]
-    (spit f contents)
-    (.getAbsolutePath f)))
+(deftest ^:parallel wif-ambient-token-http-gcp-happy-path-test
+  (testing "GCP returns the trimmed body of the metadata-server identity endpoint"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "  gcp-jwt-contents\n"})]
+      (is (= "gcp-jwt-contents" (driver.u/wif-ambient-token-http "GCP" "databricks"))))))
 
-(deftest wif-ambient-token-file-aws-test
-  (testing "AWS reads AWS_WEB_IDENTITY_TOKEN_FILE and returns the trimmed contents"
-    (let [path (write-temp-token-file! "  aws-jwt-contents\n")]
-      (mt/with-temp-env-var-value! ["AWS_WEB_IDENTITY_TOKEN_FILE" path]
-        (is (= "aws-jwt-contents" (driver.u/wif-ambient-token-file "AWS")))))))
+(deftest ^:parallel wif-ambient-token-http-gcp-request-shape-test
+  (testing "GCP hits the metadata server with the audience query param and the Metadata-Flavor header"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [url opts]
+                                             (reset! captured {:url url :opts opts})
+                                             {:status 200 :body "jwt"})]
+        (driver.u/wif-ambient-token-http "GCP" "my/audience:x")
+        (let [{:keys [url opts]} @captured]
+          (is (str/starts-with? url (str "http://metadata.google.internal"
+                                         "/computeMetadata/v1/instance/service-accounts/default/identity?")))
+          (is (str/includes? url "audience=my%2Faudience%3Ax"))
+          (is (= "Google" (get-in opts [:headers "Metadata-Flavor"]))))))))
 
-(deftest wif-ambient-token-file-azure-test
-  (testing "AZURE reads AZURE_FEDERATED_TOKEN_FILE and returns the trimmed contents"
-    (let [path (write-temp-token-file! "\nazure-jwt-contents\t")]
-      (mt/with-temp-env-var-value! ["AZURE_FEDERATED_TOKEN_FILE" path]
-        (is (= "azure-jwt-contents" (driver.u/wif-ambient-token-file "AZURE")))))))
+(deftest ^:parallel wif-ambient-token-http-unsupported-provider-test
+  (testing "providers without an HTTP mode in Step 3 throw"
+    (are [provider] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unsupported WIF provider"
+                     (driver.u/wif-ambient-token-http provider "aud"))
+      "AWS"
+      "AZURE"
+      nil
+      ""
+      "gcp"
+      "bogus")))
 
-(deftest ^:parallel wif-ambient-token-file-unknown-provider-test
-  (testing "throws for a provider that has no file-based convention"
-    (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                       #"Unsupported WIF provider"
-                                       (driver.u/wif-ambient-token-file "GCP")))]
-      (is (= {:provider "GCP"} (-> thrown ex-data (select-keys [:provider]))))))
-  (testing "rejects lowercase"
-    (is (thrown? clojure.lang.ExceptionInfo (driver.u/wif-ambient-token-file "aws")))))
+(deftest ^:parallel wif-ambient-token-http-blank-audience-test
+  (testing "GCP requires a non-blank audience"
+    (are [audience] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"requires an audience"
+                     (driver.u/wif-ambient-token-http "GCP" audience))
+      nil
+      "")))
 
-(deftest wif-ambient-token-file-env-var-unset-test
-  (testing "throws when the conventional env var is unset, naming the provider and env var"
-    (mt/with-temp-env-var-value! ["AWS_WEB_IDENTITY_TOKEN_FILE" nil]
-      (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                         #"AWS_WEB_IDENTITY_TOKEN_FILE"
-                                         (driver.u/wif-ambient-token-file "AWS")))]
-        (is (= {:provider "AWS" :env-var "AWS_WEB_IDENTITY_TOKEN_FILE"}
-               (-> thrown ex-data (select-keys [:provider :env-var]))))))))
+(deftest ^:parallel wif-ambient-token-http-non-200-test
+  (testing "a non-200 metadata response surfaces as an informative exception, without retrying"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             {:status 403 :body "forbidden"})]
+        (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                           #"metadata server"
+                                           (driver.u/wif-ambient-token-http "GCP" "aud")))]
+          (is (= {:provider "GCP" :status 403}
+                 (-> thrown ex-data (select-keys [:provider :status]))))
+          (is (= 1 @calls)))))))
+
+(deftest ^:parallel wif-ambient-token-http-empty-body-test
+  (testing "a 200 with an empty body throws a diagnostic error instead of an NPE in str/trim"
+    (are [body] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"200 with no body"
+                 (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body body})]
+                   (driver.u/wif-ambient-token-http "GCP" "aud")))
+      nil
+      "")))
+
+(deftest ^:parallel wif-ambient-token-http-retries-once-on-exception-test
+  (testing "transient exceptions are retried once before giving up"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             (if (= 1 @calls)
+                                               (throw (java.net.SocketTimeoutException. "boom"))
+                                               {:status 200 :body "jwt-after-retry"}))]
+        (is (= "jwt-after-retry" (driver.u/wif-ambient-token-http "GCP" "aud")))
+        (is (= 2 @calls))))))
 
 ;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
 

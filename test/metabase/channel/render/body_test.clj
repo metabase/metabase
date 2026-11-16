@@ -4,7 +4,6 @@
    [clj-http.fake :as fake]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
@@ -20,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -482,15 +482,9 @@
       (testing "the placeholder is styled in the secondary/muted color, not left blank"
         (is (str/includes? html-str style/color-gray-3))))))
 
-(defn- replace-style-maps [hiccup-map]
-  (walk/postwalk (fn [maybe-map]
-                   (if (and (map? maybe-map)
-                            (contains? maybe-map :style))
-                     :style-map
-                     maybe-map)) hiccup-map))
-
-(def ^:private render-truncation-warning'
-  (comp replace-style-maps #'body/render-truncation-warning))
+(defn render-truncation-warning' [row-limit row-count]
+  (match/replace-all (#'body/render-truncation-warning row-limit row-count)
+    {:style _} :style-map))
 
 (deftest no-truncation-warnig-for-style
   (is (nil? (render-truncation-warning' 10 5))))

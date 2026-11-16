@@ -124,7 +124,7 @@ const UserPasswordResetModalInner = ({
       onClose={onClose}
       size="lg"
     >
-      <Text>{t`Are you sure you want to do this?`}</Text>
+      <Text c="text-secondary">{t`Are you sure you want to do this?`}</Text>
       <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button

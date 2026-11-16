@@ -68,7 +68,7 @@
 (projections/register-projection!
  :search-result
  {:concise  (fn [row]
-              (m/remove-vals nil? (select-keys row concise-row-keys)))
+              (u/select-non-nil-keys row concise-row-keys))
   ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
   ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
   ;; A metric's source card is referenced by its numeric `source_card_id` here, so its portable

@@ -106,6 +106,24 @@ const argTypes = {
   },
 };
 
+declare global {
+  interface Window {
+    // Set by Loki before the page's scripts run.
+    loki?: { isRunning?: boolean };
+  }
+}
+
+// Loki widens the window to fit a story, so the page's own scrollbars would
+// only end up in the screenshot. Scrollbars inside the story stay visible.
+const lokiStyles = window.loki?.isRunning
+  ? css`
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none;
+      }
+    `
+  : undefined;
+
 const globalStyles = css`
   body {
     font-size: 0.875em;
@@ -114,6 +132,7 @@ const globalStyles = css`
 
   ${getSaveDomImageStyles(false)}
   ${baseStyle}
+  ${lokiStyles}
 `;
 
 const getResolvedColorScheme = (

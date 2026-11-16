@@ -135,6 +135,7 @@
                                 :select [[:id ::id]
                                          [:creator {:optional true} [:maybe ::users.schema/user]]
                                          [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+                                         [:model {:optional true} [:maybe :metabase.queries.schema/card]]
                                          [:can_write {:optional true} :boolean]]
                                 :update [[:id {:optional true} ::id]]
                                 :insert nil)

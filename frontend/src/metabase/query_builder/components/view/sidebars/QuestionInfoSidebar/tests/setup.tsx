@@ -15,7 +15,11 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
@@ -84,5 +88,6 @@ export const setup = async ({
     },
   );
 
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
 };

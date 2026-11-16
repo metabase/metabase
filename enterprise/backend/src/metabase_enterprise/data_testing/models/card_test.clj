@@ -172,6 +172,5 @@
 
 (defmethod remote-sync/spec :model/CardTest
   [_model]
-  {:parent                  (fn [{:keys [card_id]}] [:model/Card card_id])
-   :collection-from-parent? true
-   :synced-filter-clause    data-testing.db/synced-card-tests-clause})
+  {:synced-items         data-testing.db/synced-card-test-items
+   :synced-filter-clause data-testing.db/synced-card-tests-clause})

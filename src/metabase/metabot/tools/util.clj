@@ -535,7 +535,7 @@
   [card-ids]
   (when (seq card-ids)
     (into {}
-          (comp (filter mi/can-read?) (map (juxt :id identity)))
+          (comp (filter mi/can-read?) (u/index-by :id))
           (metabot.db/card-source-rows card-ids))))
 
 (defn card-source-table-id
@@ -595,9 +595,7 @@
   A breakout matches a column of the table by field `:id` and FK field id, and keeps its temporal bucket. A breakout
   on a column that only the card has, like an expression or a column from an explicit join, is dropped."
   [definition table-query]
-  (let [table-columns (into {}
-                            (map (juxt (juxt :id :fk-field-id) identity))
-                            (lib/breakoutable-columns table-query))
+  (let [table-columns (u/index-by (juxt :id :fk-field-id) (lib/breakoutable-columns table-query))
         ;; A card column from an implicit join keeps its FK as `:lib/original-fk-field-id`.
         column-key    (juxt :id (some-fn :fk-field-id :lib/original-fk-field-id))]
     (keep (fn [[clause column]]

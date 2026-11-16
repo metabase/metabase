@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -10,6 +9,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupSettingEndpoint,
+  setupStatefulBookmarksEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -180,7 +180,7 @@ export async function setup({
     settingValue: {},
   });
 
-  fetchMock.get("path:/api/bookmark", bookmarks);
+  setupStatefulBookmarksEndpoints(bookmarks);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);

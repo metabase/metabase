@@ -273,8 +273,8 @@
                                                       (let [n (count (swap! requests conj request))]
                                                         (mut/mock-llm-response
                                                          (cond
-                                                           (< n 15)  (assoc-in read-call [0 :id] (str "t" n))
-                                                           (= n 15)  (assoc-in last-step-response [0 :id] "t15")
+                                                           (< n 20)  (assoc-in read-call [0 :id] (str "t" n))
+                                                           (= n 20)  (assoc-in last-step-response [0 :id] "t20")
                                                            :else     after-limit-response))))]
                           {:response (mt/user-http-request :crowberto
                                                            :post 200 "metabot/document/generate-content"
@@ -287,7 +287,7 @@
         (let [reply "No table that the orders link to holds a customer segment, so I couldn't chart revenue by it."
               {:keys [response requests]} (generate! read-call [{:type :text :text reply}])]
           (is (= {:draft_card nil :description nil :error reply} response))
-          (is (= [16 "none"] [(count requests) (:tool_choice (last requests))]))))
+          (is (= [21 "none"] [(count requests) (:tool_choice (last requests))]))))
       (testing "a chart made on the last step is the answer, with no call after it"
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                     (fn [_]
@@ -296,7 +296,7 @@
                                     qp/process-query (fn [_] nil)]
           (let [{:keys [response requests]} (generate! chart-call [{:type :text :text "Unexpected"}])]
             (is (=? {:error nil :draft_card {:name "Orders by day"}} response))
-            (is (= 15 (count requests)))))))))
+            (is (= 20 (count requests)))))))))
 
 (deftest generate-content-internal-failure-error-test
   (testing "a failure inside Metabase while the chart query runs ends the turn with the generic error"
