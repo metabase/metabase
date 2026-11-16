@@ -132,14 +132,14 @@
   (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
 
 (mu/defn workspace-databases
-  "The WorkspaceDatabases of the Workspace with `workspace-id`."
+  "The WorkspaceDatabases of the Workspace with `workspace-id`, ordered by id."
   [workspace-id :- ms/PositiveInt]
-  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))
+  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-databases-of-workspaces
-  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`."
+  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids]))
+  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
