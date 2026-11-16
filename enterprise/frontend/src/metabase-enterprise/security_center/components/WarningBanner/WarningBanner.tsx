@@ -6,13 +6,13 @@ import S from "./WarningBanner.module.css";
 type WarningBannerProps = {
   message: React.ReactNode;
   rightContent?: React.ReactNode;
-  "data-test-id"?: string;
+  "data-testid"?: string;
 };
 
 export function WarningBanner({
   message,
   rightContent,
-  "data-test-id": dataTestId,
+  "data-testid": dataTestId,
 }: WarningBannerProps) {
   const isSmallScreen = useIsSmallScreen();
 

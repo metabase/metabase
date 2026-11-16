@@ -80,6 +80,7 @@ describe("SecurityCenterBanner", () => {
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
+    await waitForRequestsToSettle();
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
