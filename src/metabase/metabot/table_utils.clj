@@ -224,5 +224,5 @@
 (defn schema-full
   "Returns the DDL for all tables in a database."
   [database-id]
-  (let [tables (database-tables database-id)]
-    (format-schema-ddl (t2/hydrate tables :fields))))
+  ;; Do not hydrate `:fields`: `database-tables` gives `:columns`, and both make the DDL list each column twice.
+  (format-schema-ddl (database-tables database-id)))
