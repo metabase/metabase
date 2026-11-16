@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -49,7 +50,12 @@
   [database]
   ;; ends a read that the database never answers, so the thread and the connection are free again
   (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
-               (sql-jdbc/current-user-table-privileges-on-new-connection database))]
+               ;; not a pooled connection: the check must also work for a database whose pool refuses connections
+               (sql-jdbc/do-with-new-connection
+                database
+                (fn [conn]
+                  ;; realized here: the rows may be lazy, and the connection closes when this function returns
+                  (vec (sql-jdbc.sync/current-user-table-privileges (:engine database) {:connection conn})))))]
     (cond
       ;; no rows says nothing about the user: the database has no tables, or the driver could not read the
       ;; privileges, as for MariaDB

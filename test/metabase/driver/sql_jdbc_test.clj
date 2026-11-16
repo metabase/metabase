@@ -460,19 +460,16 @@
           (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
           (is (= [1 true 2 false] params)))))))
 
-(deftest current-user-table-privileges-on-new-connection-test
+(deftest do-with-new-connection-test
   ;; the drivers with a method of their own: a driver that only inherits one, as Redshift does, may not support it
   (mt/test-drivers (set (keys (methods sql-jdbc.sync/current-user-table-privileges)))
     (testing "a new connection opened from the details returns the rows that a pooled connection returns"
-      (is (= (set (sql-jdbc.execute/do-with-connection-with-options
-                   driver/*driver*
-                   (mt/id)
-                   nil
-                   (fn [conn]
-                     (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))))
-             (set (driver.sql-jdbc/current-user-table-privileges-on-new-connection (mt/db))))))))
+      (let [privileges (fn [conn]
+                         (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))]
+        (is (= (set (sql-jdbc.execute/do-with-connection-with-options driver/*driver* (mt/id) nil privileges))
+               (set (driver.sql-jdbc/do-with-new-connection (mt/db) privileges))))))))
 
-(deftest current-user-table-privileges-on-new-connection-checks-hosts-first-test
+(deftest do-with-new-connection-checks-hosts-first-test
   (testing "the host check runs on the details before a connection is opened, and its refusal is thrown"
     (let [checked (atom nil)
           opened  (atom 0)
@@ -485,8 +482,7 @@
                                   (fn [& _] (swap! opened inc) [])]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"private or internal network"
-                              (driver.sql-jdbc/current-user-table-privileges-on-new-connection
-                               {:engine :h2, :details details})))
+                              (driver.sql-jdbc/do-with-new-connection {:engine :h2, :details details} identity)))
         (is (= [:h2 details] @checked))
         (is (zero? @opened))))))
 
