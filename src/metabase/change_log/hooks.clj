@@ -97,20 +97,22 @@
               (log! [[(table model) @ids "insert"]]))))))
     (next-method rf query-type model parsed-args resolved-query)))
 
-(def ^:private ignored-columns
-  "The columns the change log leaves out, by table: usage stats, and what sync works out about a field or a table for
-  Metabase's own use. An update that sets only these logs nothing."
-  {"metabase_field"   #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed}
-   "metabase_table"   #{:initial_sync_status :view_count}
-   "report_card"      #{:last_used_at :view_count}
-   "report_dashboard" #{:last_viewed_at :view_count}})
+(methodical/defmulti ignored-columns
+  "The columns of `model` that the change log leaves out. An update that sets only these logs nothing.
+
+    (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
+      #{:last_viewed_at :view_count})"
+  {:arglists '([model])}
+  identity)
+
+(methodical/defmethod ignored-columns :default [_model] #{})
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/change-log :default]
   "Logs the keys of the rows the UPDATE matches, if Toucan sends one. It sends none when no row would change, because
   each logged model has a before-update. An update that sets only [[ignored-columns]] logs nothing."
   [rf query-type model parsed-args resolved-query]
   ;; We log an update that sets a column we do not ignore. With nothing to set, Toucan sends no UPDATE.
-  (if (and (not-every? (ignored-columns (table model) #{}) (keys (:changes parsed-args)))
+  (if (and (not-every? (ignored-columns model) (keys (:changes parsed-args)))
            (not (::logged parsed-args))
            (premium-features/enable-change-log?))
     (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]

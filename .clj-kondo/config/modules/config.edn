@@ -814,6 +814,7 @@
            api
            app-db
            audit-app
+           change-log
            collections
            content-verification
            embedding
@@ -2263,6 +2264,7 @@
            audit-app
            audit-app.view-log
            cache
+           change-log
            channel
            collections
            content-verification
@@ -3557,6 +3559,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            database-routing
            driver

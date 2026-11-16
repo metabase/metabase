@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -139,6 +140,9 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies)
   (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Card [_model]
+  #{:last_used_at :view_count})
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column

@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -52,6 +53,9 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies)
   (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
+  #{:last_viewed_at :view_count})
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]

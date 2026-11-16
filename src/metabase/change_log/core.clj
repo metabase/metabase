@@ -29,8 +29,8 @@
 
   Not logged:
 
-  - the `ignored-columns` in `metabase.change-log.hooks`: usage stats that reads update (view counts, last viewed and
-    last used times), and what sync works out for Metabase's own use, such as a field's fingerprint
+  - an update that sets only a model's [[ignored-columns]]: usage stats that reads update (view counts, last viewed
+    and last used times), and what sync works out for Metabase's own use, such as a field's fingerprint
   - an update that changes no row: the model's before-update makes Toucan send no UPDATE
   - migrations, and SQL run outside Metabase
   - a row that starts to match an update or a delete after the hook read which rows match
@@ -57,4 +57,5 @@
 
 (p/import-vars
  [metabase.change-log.hooks
+  ignored-columns
   log-rows!])

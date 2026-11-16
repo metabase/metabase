@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -129,6 +130,9 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(methodical/defmethod change-log/ignored-columns :model/Field [_model]
+  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
 (t2/define-after-select :model/Field
   [field]

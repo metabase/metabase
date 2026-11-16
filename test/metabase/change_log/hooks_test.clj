@@ -5,7 +5,6 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
-   [metabase.change-log.hooks :as change-log.hooks]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
@@ -462,11 +461,12 @@
       (is (empty? (remove models.resolution/model->namespace (concat logged-models unlogged-models)))))))
 
 (deftest ignored-columns-test
-  (testing "ignored columns are columns of logged tables"
-    (let [logged-tables (into #{} (map name) (vals toucan.db-ns/change-log-tables))]
-      (doseq [[table columns] @#'change-log.hooks/ignored-columns]
-        (is (logged-tables table))
-        (is (some? (t2/query {:select (vec columns), :from [(keyword table)], :limit 1})))))))
+  (testing "ignored columns exist, and only logged models have them"
+    (doseq [model (load-models!)
+            :let  [columns (change-log/ignored-columns model)]
+            :when (seq columns)]
+      (is (isa? model :hook/change-log) (str model " is not logged"))
+      (is (some? (t2/query {:select (vec columns), :from [(t2/table-name model)], :limit 1}))))))
 
 (deftest lint-tables-test
   (testing "the `:metabase/change-log-raw-write` lint knows each logged model and its table"

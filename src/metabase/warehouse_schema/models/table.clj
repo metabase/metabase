@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
@@ -99,6 +100,9 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(methodical/defmethod change-log/ignored-columns :model/Table [_model]
+  #{:initial_sync_status :view_count})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
