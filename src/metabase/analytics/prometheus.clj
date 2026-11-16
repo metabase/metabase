@@ -867,8 +867,9 @@
                           :buckets [10 100 1000 10000 60000]})
    (prometheus/counter :metabase-metabot/sql-reference-checks
                        {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
-                                          "for the dialect, a table tag, or SQL that does not compile), or `failed` "
-                                          "(the check threw).")
+                                          "ran: the caller turned it off, the dialect has none, a table tag, or SQL "
+                                          "that does not compile; the card and snippet check can still have run), "
+                                          "or `failed` (the check threw).")
                         :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
