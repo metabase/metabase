@@ -113,37 +113,33 @@
   (when (str/starts-with? ref definitions-path)
     (str/replace (subs ref (count definitions-path)) "~1" "/")))
 
+(def ^:private subschema-keywords
+  "The JSON Schema keywords that nest subschemas, by the shape of the keyword's value."
+  {:map-of #{:$defs :definitions :dependencies :dependentSchemas :patternProperties :properties}
+   :list   #{:allOf :anyOf :oneOf :prefixItems}
+   ;; `items` is a list of schemas in draft-07, so this shape takes either
+   :schema #{:additionalItems :additionalProperties :contains :contentSchema :else :if :items :not :propertyNames
+             :then :unevaluatedItems :unevaluatedProperties}})
+
 (defn postwalk-schemas
   "Apply `f` to every subschema of the JSON Schema `node`, children first, leaving property names and values alone."
   [f node]
   (if-not (map? node)
     node
-    (let [walk     #(postwalk-schemas f %)
-          walk-all #(mp/mapv walk %)]
-      (f (cond-> node
-           (map? (:properties node))            (update :properties update-vals walk)
-           (map? (:patternProperties node))     (update :patternProperties update-vals walk)
-           (map? (:dependentSchemas node))      (update :dependentSchemas update-vals walk)
-           (map? (:dependencies node))          (update :dependencies update-vals walk)
-           (map? (:definitions node))           (update :definitions update-vals walk)
-           (map? (:$defs node))                 (update :$defs update-vals walk)
-           (map? (:items node))                 (update :items walk)
-           (sequential? (:items node))          (update :items walk-all)
-           (sequential? (:prefixItems node))    (update :prefixItems walk-all)
-           (map? (:additionalItems node))       (update :additionalItems walk)
-           (map? (:unevaluatedItems node))      (update :unevaluatedItems walk)
-           (map? (:contains node))              (update :contains walk)
-           (map? (:additionalProperties node))  (update :additionalProperties walk)
-           (map? (:unevaluatedProperties node)) (update :unevaluatedProperties walk)
-           (map? (:propertyNames node))         (update :propertyNames walk)
-           (sequential? (:anyOf node))          (update :anyOf walk-all)
-           (sequential? (:allOf node))          (update :allOf walk-all)
-           (sequential? (:oneOf node))          (update :oneOf walk-all)
-           (map? (:not node))                   (update :not walk)
-           (map? (:if node))                    (update :if walk)
-           (map? (:then node))                  (update :then walk)
-           (map? (:contentSchema node))         (update :contentSchema walk)
-           (map? (:else node))                  (update :else walk))))))
+    (let [walk      #(postwalk-schemas f %)
+          walk-list #(mp/mapv walk %)
+          ;; a value of the wrong shape, such as `additionalProperties: false` or a `dependencies` list, stays
+          walk-by   {:map-of #(if (map? %) (update-vals % walk) %)
+                     :list   #(if (sequential? %) (walk-list %) %)
+                     :schema #(if (sequential? %) (walk-list %) (walk %))}]
+      (f (reduce-kv (fn [node shape ks]
+                      (reduce (fn [node k]
+                                (cond-> node
+                                  (contains? node k) (update k (walk-by shape))))
+                              node
+                              ks))
+                    node
+                    subschema-keywords)))))
 
 (defn- subschemas
   "The subschemas of the JSON Schema `node`."
