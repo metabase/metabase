@@ -1540,65 +1540,104 @@
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
 
 (defn- run-teardown-statements!
-  "Runs teardown for workspace user `ws_user` and schema `ws_schema` on a stub connection and returns each SQL statement
-  it ran, in order. The stub throws `error` for the statement that contains `fail-on`, when it is non-nil."
-  [fail-on ^Throwable error]
+  "Runs teardown for workspace user `ws_user` and schema `ws_schema` on a stub connection. `failures` maps a substring
+  to an error: the stub throws that error for each statement that contains the substring. Returns each SQL statement
+  teardown ran, in order, the error it threw, and whether it discarded the connection."
+  [failures]
   (let [statements (atom [])
+        discarded? (atom false)
         stmt       (reify java.sql.Statement
                      (^boolean execute [_ ^String sql]
                        (swap! statements conj sql)
-                       (when (and fail-on (str/includes? sql fail-on))
-                         (throw error))
+                       (doseq [[fail-on ^Throwable error] failures]
+                         (when (str/includes? sql fail-on)
+                           (throw error)))
                        false)
                      (close [_]))
         conn       (reify java.sql.Connection
                      (createStatement [_] stmt))]
     (try
       (with-redefs [driver.u/ensure-lib-database                         identity
-                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))]
+                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))
+                    sql-jdbc.conn/discard-pooled-connection!          (fn [c] (when (identical? c conn) (reset! discarded? true)))]
         (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
                                                             :database_details {:user "ws_user"}}))
-      {:statements @statements}
+      {:statements @statements, :discarded? @discarded?}
       (catch Throwable t
-        {:statements @statements, :error t}))))
+        {:statements @statements, :discarded? @discarded?, :error t}))))
+
+(defn- statement-kinds
+  "The kind of each teardown statement in `statements`, such as `DROP SCHEMA` or `SET LOCK_TIMEOUT -1`."
+  [statements]
+  (map #(re-find #"SET LOCK_TIMEOUT -?\d+|ALTER LOGIN|KILL|DROP TABLE|DROP SCHEMA|DROP USER|DROP LOGIN" %) statements))
+
+(def ^:private all-teardown-statement-kinds
+  ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP SCHEMA" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"])
+
+(defn- sql-error [code]
+  (java.sql.SQLException. (str "error " code) "S0001" (int code)))
 
 (deftest destroy-workspace-isolation-quotes-table-names-test
   (testing "Teardown builds each DROP TABLE with QUOTENAME on the schema name and the table name. This checks the SQL text only; it does not run it on SQL Server."
-    (is (= {:statements
-            [;; a bound on how long each statement below waits for a lock
-             "SET LOCK_TIMEOUT 30000"
-             ;; disable the login and end its sessions before any drop, so none of them holds a lock the drops wait on
-             "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') ALTER LOGIN \"ws_user\" DISABLE"
-             (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                  "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                  "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
-                  "EXEC sp_executesql @kill_sessions_sql")
-             (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                  "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
-                  "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
-                  "EXEC sp_executesql @drop_tables_sql")
-             "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
-             "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
-             "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""
-             ;; the connection goes back to the pool with the default, which waits for a lock without a bound
-             "SET LOCK_TIMEOUT -1"]}
-           (run-teardown-statements! nil nil)))))
+    (is (= [;; a bound on how long each statement below waits for a lock
+            "SET LOCK_TIMEOUT 30000"
+            ;; disable the login and end its sessions before any drop, so none of them holds a lock the drops wait on
+            "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') ALTER LOGIN \"ws_user\" DISABLE"
+            (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                 "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                 "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                 "EXEC sp_executesql @kill_sessions_sql")
+            (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                 "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                 "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
+                 "EXEC sp_executesql @drop_tables_sql")
+            "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
+            "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
+            "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""
+            ;; the connection goes back to the pool with the default, which waits for a lock without a bound
+            "SET LOCK_TIMEOUT -1"]
+           (:statements (run-teardown-statements! {}))))))
 
 (deftest destroy-workspace-isolation-lock-timeout-test
-  (testing "a drop that times out waiting for a lock answers a 409 the caller can retry, runs no later statement, and restores the lock timeout"
-    (let [{:keys [statements error]} (run-teardown-statements! "DROP TABLE"
-                                                               (java.sql.SQLException. "Lock request time out period exceeded." "S00051" 1222))]
+  (testing "a DROP TABLE that times out waiting for a lock answers a 409 the caller can retry, skips DROP SCHEMA, still drops the user and the login, and restores the lock timeout"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP TABLE" (java.sql.SQLException. "Lock request time out period exceeded." "S00051" 1222)})]
       (is (=? {:status-code 409} (ex-data error)))
       (is (str/starts-with? (ex-message error) "Another session holds a lock that removing this workspace needs"))
       (is (= 1222 (.getErrorCode ^java.sql.SQLException (ex-cause error))))
-      (is (= ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "SET LOCK_TIMEOUT -1"]
-             (map #(re-find #"SET LOCK_TIMEOUT -?\d+|ALTER LOGIN|KILL|DROP TABLE|DROP SCHEMA|DROP USER|DROP LOGIN" %)
-                  statements)))))
+      (is (= ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"]
+             (statement-kinds statements)))))
+  (testing "a lock timeout at DROP SCHEMA answers a 409, and the user and the login are still dropped"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 1222)})]
+      (is (=? {:status-code 409} (ex-data error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))))
   (testing "another error is thrown as it is, and the lock timeout is restored"
-    (let [{:keys [statements error]} (run-teardown-statements! "DROP LOGIN"
-                                                               (java.sql.SQLException. "Cannot drop the login" "S0001" 15434))]
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP LOGIN" (sql-error 15434)})]
       (is (= 15434 (.getErrorCode ^java.sql.SQLException error)))
       (is (= "SET LOCK_TIMEOUT -1" (last statements))))))
+
+(deftest destroy-workspace-isolation-runs-every-drop-test
+  (testing "a DROP SCHEMA that fails, as it does on a schema that holds a sequence (3729), still drops the user and the login, and throws its error"
+    (let [{:keys [statements error discarded?]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 3729)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))
+      (is (false? discarded?))))
+  (testing "a KILL that fails, as it does when a session ends first (6106), still runs every drop"
+    (let [{:keys [statements error]} (run-teardown-statements! {"KILL" (sql-error 6106)})]
+      (is (= 6106 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))))
+  (testing "a DROP TABLE that fails, as it does on a table another workspace table references (3726), skips DROP SCHEMA, which cannot succeed while a table is left, and still drops the user and the login"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP TABLE" (sql-error 3726)})]
+      (is (= 3726 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"]
+             (statement-kinds statements)))))
+  (testing "the first error is thrown, with each later error attached as suppressed"
+    (let [{:keys [error]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 3729), "DROP LOGIN" (sql-error 15434)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= [15434] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error))))))
+  (testing "a first error of 1222 is the 409, and a later error is attached to it as suppressed"
+    (let [{:keys [error]} (run-teardown-statements! {"DROP TABLE" (sql-error 1222), "DROP LOGIN" (sql-error 15434)})]
+      (is (=? {:status-code 409} (ex-data error)))
+      (is (= [15434] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error)))))))
 
 (deftest workspace-init-sqls-test
   (testing "init creates the login, user and schema outright: it neither adopts an existing one nor resets a login's password"
@@ -1901,10 +1940,32 @@
                   seconds   (/ (- (System/nanoTime) started) 1e9)]
               (is (instance? clojure.lang.ExceptionInfo result))
               (is (=? {:status-code 409} (ex-data result)))
-              (is (< 29 seconds 45))))
+              (is (< 29 seconds 45))
+              (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws))
+                  "the drops of the user and the login do not wait on the table's lock")))
           (driver/destroy-workspace-isolation! :sqlserver database ws)
           (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws)))
           (finally
+            (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-drops-login-when-schema-stays-test
+  (mt/test-driver :sqlserver
+    (testing "teardown drops the user and the login when DROP SCHEMA fails on an object teardown does not drop, such as a sequence"
+      (let [{:keys [database ws admin-spec user-spec]} (workspace-isolation-fixture)
+            sequence (format "[%s].[ws_seq]" (:schema ws))]
+        (try
+          (driver/init-workspace-isolation! :sqlserver database ws)
+          ;; ALTER on the schema lets the workspace user create a sequence in it
+          (jdbc/execute! user-spec [(str "CREATE SEQUENCE " sequence)])
+          (let [e (is (thrown? java.sql.SQLException (driver/destroy-workspace-isolation! :sqlserver database ws)))]
+            ;; 3729: cannot drop schema because it is being referenced by object
+            (is (= 3729 (.getErrorCode ^java.sql.SQLException e))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (is (= [{:sequences 1}]
+                 (jdbc/query admin-spec ["SELECT COUNT(*) AS sequences FROM sys.sequences WHERE schema_id = SCHEMA_ID(?)"
+                                         (:schema ws)])))
+          (finally
+            (jdbc/execute! admin-spec [(str "DROP SEQUENCE IF EXISTS " sequence)])
             (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
 
 (deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test

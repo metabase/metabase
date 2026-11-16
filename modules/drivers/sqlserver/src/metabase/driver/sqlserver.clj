@@ -1516,6 +1516,20 @@
   other than the workspace user's on one of the workspace's tables."
   30000)
 
+(defn- teardown-error
+  "The error that teardown throws for `errors`, the errors of its failed statements in the order they ran: the first
+  one, with each later one attached as suppressed. A first error of 1222, a lock timeout, becomes a 409 the caller can
+  retry."
+  ^Throwable [[^java.sql.SQLException first-error & later-errors]]
+  (let [^Throwable error (if (= 1222 (.getErrorCode first-error))
+                           (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
+                                         "session on one of its tables. Retry once that session ends.")
+                                    {:status-code 409} first-error)
+                           first-error)]
+    (doseq [^Throwable later-error later-errors]
+      (.addSuppressed error later-error))
+    error))
+
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [driver database workspace]
   (let [schema-name      (:schema workspace)
@@ -1523,7 +1537,35 @@
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         quoted-schema    (quote-schema schema-name)
-        quoted-user      (quote-field username)]
+        quoted-user      (quote-field username)
+        steps            [;; Disable the login and kill its sessions before any drop: a session of the workspace user
+                          ;; could hold a lock on one of its tables, and the drops would wait on it.
+                          [:disable-login
+                           (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
+                                   escaped-username quoted-user)]
+                          [:kill-sessions
+                           (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                        "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                        "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                        "EXEC sp_executesql @kill_sessions_sql")
+                                   escaped-username)]
+                          ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                          ;; brackets and escapes any `]` in it.
+                          [:drop-tables
+                           (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                        "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                                        "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                                        "EXEC sp_executesql @drop_tables_sql")
+                                   escaped-schema)]
+                          [:drop-schema
+                           (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                                   escaped-schema quoted-schema)]
+                          [:drop-user
+                           (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                                   escaped-username quoted-user)]
+                          [:drop-login
+                           (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                                   escaped-username quoted-user)]]]
     (sql-jdbc.execute/do-with-connection-with-options
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
@@ -1533,39 +1575,26 @@
          ;; starts with, which waits without a bound.
          (.execute stmt (format "SET LOCK_TIMEOUT %d" workspace-lock-timeout-ms))
          (try
-           ;; One statement at a time, not a batch: a T-SQL batch goes on to the next statement after a lock timeout
-           ;; (error 1222), and the error that ends teardown must be that of the statement that failed.
-           (doseq [sql [;; Disable the login and kill its sessions before any drop: a session of the workspace
-                        ;; user could hold a lock on one of its tables, and the drops would wait on it.
-                        (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
-                                escaped-username quoted-user)
-                        (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                                     "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                                     "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                     "EXEC sp_executesql @kill_sessions_sql")
-                                escaped-username)
-                        ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
-                        ;; brackets and escapes any `]` in it.
-                        (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                                     "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
-                                     "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                                     "EXEC sp_executesql @drop_tables_sql")
-                                escaped-schema)
-                        (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
-                                escaped-schema quoted-schema)
-                        (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
-                                escaped-username quoted-user)
-                        (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                                escaped-username quoted-user)]]
-             (try
-               (.execute stmt ^String sql)
-               (catch java.sql.SQLException e
-                 ;; 1222: lock request time out period exceeded
-                 (if (= 1222 (.getErrorCode e))
-                   (throw (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
-                                        "session on one of its tables. Retry once that session ends.")
-                                   {:status-code 409} e))
-                   (throw e)))))
+           ;; One statement at a time, not a batch, so that each error is that of the statement that failed. A failed
+           ;; statement does not stop the ones after it: the user and the login are dropped whenever SQL Server allows
+           ;; it. A user that owns no securable can be dropped while its schema stays, and a login can be dropped while
+           ;; a user is mapped to it. DROP SCHEMA is skipped after DROP TABLE fails, such as on a lock timeout (1222):
+           ;; a schema that holds a table cannot be dropped. The schema stays when it holds an object that no statement
+           ;; drops, such as a sequence.
+           (let [{:keys [errors]} (reduce (fn [{:keys [failed] :as result} [step ^String sql]]
+                                            (if (and (= :drop-schema step) (contains? failed :drop-tables))
+                                              result
+                                              (try
+                                                (.execute stmt sql)
+                                                result
+                                                (catch java.sql.SQLException e
+                                                  (-> result
+                                                      (update :failed conj step)
+                                                      (update :errors conj e))))))
+                                          {:failed #{}, :errors []}
+                                          steps)]
+             (when (seq errors)
+               (throw (teardown-error errors))))
            (finally
              (.execute stmt "SET LOCK_TIMEOUT -1"))))))))
 
