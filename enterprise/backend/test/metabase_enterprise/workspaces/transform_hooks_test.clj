@@ -283,6 +283,108 @@
               (t2/delete! :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed")
               (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_drop_failed"]))))))))
 
+(defn- record-deletion!
+  "Run [[transforms-base.u/delete-target-table!]] on a transform targeting `target` in the test database, with the
+  warehouse drop and the Table-row deactivation stubbed. Returns `{:dropped <target the driver drop got>
+  :deactivated <targets whose Table row was deactivated>}`."
+  [target]
+  (let [dropped     (atom [])
+        deactivated (atom [])]
+    (with-redefs [driver/drop-transform-target!       (fn [_driver _database t] (swap! dropped conj t))
+                  transforms-base.u/deactivate-table! (fn [_database t] (swap! deactivated conj t) nil)]
+      (transforms-base.u/delete-target-table! {:id     1
+                                               :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
+                                               :target target}))
+    {:dropped @dropped :deactivated @deactivated}))
+
+(deftest delete-off-workspace-follows-a-remap-row-test
+  (testing "off workspace mode, a leftover remap row decides the copy to drop, as it does for reads"
+    (ws/clear-instance-workspace!)
+    (try
+      (ws.table-remapping/clear-mappings-for-db! (mt/id))
+      (ws.table-remapping/add-mapping! (mt/id)
+                                       {:schema "PUBLIC" :table "OFF_WS_DROP"}
+                                       {:schema "LEFTOVER_COPY" :table "OFF_WS_DROP_COPY"})
+      (let [target {:type :table :schema "PUBLIC" :name "OFF_WS_DROP"}]
+        (is (= {:dropped     [{:type :table :schema "LEFTOVER_COPY" :name "OFF_WS_DROP_COPY"}]
+                :deactivated [target]}
+               (record-deletion! target))
+            "the row's copy is dropped, never the canonical table, and the canonical Table row is deactivated"))
+      (finally
+        (ws.table-remapping/clear-mappings-for-db! (mt/id))))))
+
+(deftest delete-off-workspace-without-a-remap-row-drops-the-canonical-table-test
+  (testing "off workspace mode with no remap row, the canonical table is dropped and its Table row deactivated"
+    (ws/clear-instance-workspace!)
+    (ws.table-remapping/clear-mappings-for-db! (mt/id))
+    (let [target {:type :table :schema "PUBLIC" :name "OFF_WS_DROP"}]
+      (is (= {:dropped [target] :deactivated [target]}
+             (record-deletion! target))))))
+
+(deftest delete-in-workspace-follows-a-stale-remap-row-test
+  (testing "in a workspace, a row pointing at another schema than the workspace schema still decides the copy"
+    (with-instance-workspace-for-db! "ws_current_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (ws.table-remapping/add-mapping! (mt/id)
+                                           {:schema "PUBLIC" :table "STALE_ROW"}
+                                           {:schema "ws_old_schema" :table "PUBLIC__STALE_ROW"})
+          (let [target {:type :table :schema "PUBLIC" :name "STALE_ROW"}]
+            (is (= {:dropped     [{:type :table :schema "ws_old_schema" :name "PUBLIC__STALE_ROW"}]
+                    :deactivated [target]}
+                   (record-deletion! target))
+                "the row's copy in the old schema is dropped, not a table in the current workspace schema"))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(deftest delete-in-workspace-without-a-remap-row-drops-the-computed-copy-test
+  (testing "in a workspace with no remap row, the copy the transform would write to is dropped and the canonical Table row stays"
+    (with-instance-workspace-for-db! "ws_current_schema"
+      (fn []
+        (ws.table-remapping/clear-mappings-for-db! (mt/id))
+        (let [target {:type :table :schema "PUBLIC" :name "NO_ROW"}
+              {:keys [dropped deactivated]} (record-deletion! target)]
+          (is (= ["ws_current_schema"] (map :schema dropped)))
+          (is (not= (:name target) (:name (first dropped))))
+          (is (empty? deactivated)))))))
+
+(deftest delete-off-workspace-drops-the-copy-a-remap-row-names-pg-test
+  (testing "Postgres, off workspace mode: with a canonical table, a copy and a remap row, the delete drops the copy and keeps the canonical table"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (ws/clear-instance-workspace!)
+        (let [spec    (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              exists? (fn [schema table-name]
+                        (= 1 (:count (first (jdbc/query spec ["SELECT count(*) AS count FROM information_schema.tables
+                                                               WHERE table_schema = ? AND table_name = ?"
+                                                              schema table-name])))))
+              transform (atom nil)]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (jdbc/execute! spec ["CREATE SCHEMA IF NOT EXISTS ws_leftover_iso"])
+            (jdbc/execute! spec ["CREATE TABLE public.off_ws_drop_pg (id INT)"])
+            (jdbc/execute! spec ["CREATE TABLE ws_leftover_iso.public__off_ws_drop_pg (id INT)"])
+            (ws.table-remapping/add-mapping! (mt/id)
+                                             {:schema "public" :table "off_ws_drop_pg"}
+                                             {:schema "ws_leftover_iso" :table "public__off_ws_drop_pg"})
+            (reset! transform (t2/insert-returning-instance!
+                               :model/Transform
+                               {:name   "off-ws-drop-pg"
+                                :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
+                                :target {:type :table :schema "public" :name "off_ws_drop_pg"}}))
+            (transforms-base.u/delete-target-table! @transform)
+            (is (not (exists? "ws_leftover_iso" "public__off_ws_drop_pg"))
+                "the copy the remap row names is dropped")
+            (is (exists? "public" "off_ws_drop_pg")
+                "the canonical table is untouched")
+            (finally
+              (when-let [{transform-id :id} @transform]
+                (t2/delete! :model/Transform :id transform-id))
+              (ws.table-remapping/clear-mappings-for-db! (mt/id))
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS public.off_ws_drop_pg"])
+              (jdbc/execute! spec ["DROP SCHEMA IF EXISTS ws_leftover_iso CASCADE"]))))))))
+
 (deftest append-retry-after-record-failure-writes-each-row-once-test
   (testing "an incremental append run whose remapping can't be recorded fails, and its retry leaves each source row in the workspace copy once"
     (mt/test-driver :postgres
