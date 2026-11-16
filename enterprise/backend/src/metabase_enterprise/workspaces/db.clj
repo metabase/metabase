@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -19,13 +20,15 @@
    [:input_schemas    [:sequential :string]]
    [:database_details ms/DatabaseDetails]
    [:output_namespace :string]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
    [:database_details {:optional true} ms/DatabaseDetails]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::table-spec
   [:map {:closed true}
@@ -156,12 +159,13 @@
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id} changes))
 
 (mu/defn transition-workspace-database!
-  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`.
-  Returns the number of rows updated."
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
+  `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::status
    to-status             :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn transition-workspace-database-at!
   "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
@@ -177,11 +181,12 @@
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
-  `to-status`. Returns the number of rows updated."
+  `to-status`, and its `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-id :- ms/PositiveInt
    from-status  :- ::status
    to-status    :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn delete-workspace-database!
   "Delete the WorkspaceDatabase with `workspace-database-id`."
