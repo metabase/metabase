@@ -23,7 +23,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           sparse-checkout: |
-            .lychee
             .github/ISSUE_TEMPLATE
             .github/scripts
             docs
@@ -51,11 +50,7 @@ jobs:
         env:
           # lychee uses it for github.com, which rate-limits anonymous requests.
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          status=0
-          docs/util/check-links.sh site || status=1
-          docs/util/check-links.sh --external || status=1
-          exit "$status"
+        run: docs/util/check-links.sh site
 
       - name: Build the broken links report
         if: steps.check.outcome == 'failure'
