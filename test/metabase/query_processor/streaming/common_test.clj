@@ -50,6 +50,18 @@
       (testing "both settings (title and time) should be applied to the same column"
         (is (= ["test 7"] titles))))))
 
+(deftest column-titles-duration-test
+  (let [ordered-cols [{:name "AMOUNT" :id 42 :display_name "Amount" :semantic_type :type/Currency}]
+        titles       (fn [column-settings]
+                       (streaming.common/column-titles
+                        ordered-cols
+                        {::mb.viz/column-settings {{::mb.viz/column-name "AMOUNT"} column-settings}}
+                        true))]
+    (testing "currency unit is in title of currency column"
+      (is (= ["Amount ($)"] (titles {}))))
+    (testing "currency unit is not in title when column is formatted as duration"
+      (is (= ["Amount"] (titles {::mb.viz/number-style "duration"}))))))
+
 (deftest column-titles-test-merge-order
   (testing "column-title setting precedence when the same column has multiple settings"
     (let [ordered-cols [{:name "AMOUNT" :id 42 :display_name "Amount"}]

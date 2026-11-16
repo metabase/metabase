@@ -156,8 +156,10 @@
   [ordered-cols viz-settings format-rows?]
   (for [col ordered-cols]
     (let [merged-settings (viz-settings-for-col col viz-settings)
-          is-currency?    (or (isa? (:semantic_type col) :type/Currency)
-                              (= (::mb.viz/number-style merged-settings) "currency"))
+          number-style    (::mb.viz/number-style merged-settings)
+          is-currency?    (and (not= number-style "duration")
+                               (or (isa? (:semantic_type col) :type/Currency)
+                                   (= number-style "currency")))
           column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
                               (:display_name col)
                               (:name col))]
