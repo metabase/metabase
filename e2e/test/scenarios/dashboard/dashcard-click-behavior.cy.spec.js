@@ -2173,46 +2173,50 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
     const LINK_NAME = "Home";
     const CUSTOM_COLUMN_TITLE = "Custom category";
 
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: "14919",
-        query: { "source-table": SAMPLE_DATABASE.PRODUCTS_ID },
-      },
-      cardDetails: {
-        visualization_settings: {
-          column_settings: {
-            '["name","CATEGORY"]': {
-              column_title: CUSTOM_COLUMN_TITLE,
-              click_behavior: {
-                type: "link",
-                linkType: "url",
-                linkTemplate: "/",
-                linkTextTemplate: LINK_NAME,
+    H.createQuestion({
+      name: "14919",
+      query: { "source-table": SAMPLE_DATABASE.PRODUCTS_ID },
+    }).then(({ body: { id: questionId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
+        H.addOrUpdateDashboardCard({
+          card_id: questionId,
+          dashboard_id: dashboardId,
+          card: {
+            visualization_settings: {
+              column_settings: {
+                '["name","CATEGORY"]': {
+                  column_title: CUSTOM_COLUMN_TITLE,
+                  click_behavior: {
+                    type: "link",
+                    linkType: "url",
+                    linkTemplate: "/",
+                    linkTextTemplate: LINK_NAME,
+                  },
+                },
               },
             },
           },
-        },
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-    });
+        });
+        H.visitDashboard(dashboardId);
 
-    H.getDashboardCard()
-      .findByRole("columnheader", { name: CUSTOM_COLUMN_TITLE })
-      .should("be.visible");
-    H.editDashboard();
-    H.showDashcardVisualizationSettings();
-    H.modal().within(() => {
-      cy.findByRole("button", { name: "Reset to defaults" }).click();
-      cy.findByRole("button", { name: "Done", exact: true }).click();
-    });
-    H.saveDashboard();
-    cy.reload();
+        H.getDashboardCard()
+          .findByRole("columnheader", { name: CUSTOM_COLUMN_TITLE })
+          .should("be.visible");
+        H.editDashboard();
+        H.showDashcardVisualizationSettings();
+        H.modal().within(() => {
+          cy.findByRole("button", { name: "Reset to defaults" }).click();
+          cy.findByRole("button", { name: "Done", exact: true }).click();
+        });
+        H.saveDashboard();
+        cy.reload();
 
-    H.getDashboardCard()
-      .findByRole("columnheader", { name: "Category", exact: true })
-      .should("be.visible");
-    H.getDashboardCard().findAllByText(LINK_NAME).should("be.visible");
+        H.getDashboardCard()
+          .findByRole("columnheader", { name: "Category", exact: true })
+          .should("be.visible");
+        H.getDashboardCard().findAllByText(LINK_NAME).should("be.visible");
+      });
+    });
   });
 });
 
