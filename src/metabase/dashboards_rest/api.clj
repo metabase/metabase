@@ -28,6 +28,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -879,7 +880,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]])
 
@@ -1250,7 +1251,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (def ^:private TransientDashboardCard
   [:map {:closed true}
@@ -1262,7 +1263,7 @@
    [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (def ^:private TransientDashboard
   [:map {:closed true}
@@ -1467,11 +1468,8 @@
                 :card      (api/check-404 (dashboards-rest.db/card card-id))
                 :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
+  :- ::qp.streaming/export-response
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 

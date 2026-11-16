@@ -8,6 +8,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -179,7 +180,7 @@
    [:parameter_mappings {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
-   [:visualization_settings ms/VisualizationSettings]
+   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -758,4 +759,5 @@
 
 (defmethod remote-sync/spec :model/Document
   [_model]
-  {:synced-filter-clause documents.db/synced-documents-clause})
+  {:synced-items         documents.db/synced-document-items
+   :synced-filter-clause documents.db/synced-documents-clause})

@@ -34,9 +34,9 @@ export const getBasename = (): string => {
     return "";
   }
 
-  const [, subpathRoot, prefix, appName] = match;
+  const [, subpathRoot, prefix, appSlug] = match;
 
-  return `${subpathRoot}${prefix}/${appName}`;
+  return `${subpathRoot}${prefix}/${appSlug}`;
 };
 
 /**
@@ -54,9 +54,9 @@ export const getPageBasename = (): string => {
     return "";
   }
 
-  const [, subpathRoot, _prefix, appName] = match;
+  const [, subpathRoot, _prefix, appSlug] = match;
 
-  return `${subpathRoot}${DataAppUrls.DATA_APP_ROOT_URL}/${appName}`;
+  return `${subpathRoot}${DataAppUrls.DATA_APP_ROOT_URL}/${appSlug}`;
 };
 
 const subscribers = new Set<() => void>();

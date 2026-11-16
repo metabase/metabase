@@ -143,8 +143,8 @@
 (deftest other-cards-are-refused-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp {other-collection-id :resource_collection_id} {:name         "bees"
-                                                                                  :display_name "Bees"
+     (mt/with-temp [:model/DataApp {other-collection-id :resource_collection_id} {:slug         "bees"
+                                                                                  :name         "Bees"
                                                                                   :bundle_path  "bees.js"}
                     :model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}
                     :model/Card {other-app-id :id} {:name          "Venues of bees"
@@ -160,7 +160,7 @@
 (deftest app-without-collection-uses-no-card-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp app             {:name "wasps"}
+     (mt/with-temp [:model/DataApp app             {:slug "wasps"}
                     :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
        (t2/delete! :model/Collection :id (:resource_collection_id app))
        (testing "an app without a collection can use no card, not even one in the root collection"
@@ -261,7 +261,7 @@
          (is (= (card-error elsewhere-id)
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
        (testing "an app without a collection runs no card, not even one in the root collection"
-         (mt/with-temp [:model/DataApp app {:name "wasps"}]
+         (mt/with-temp [:model/DataApp app {:slug "wasps"}]
            (t2/delete! :model/Collection :id (:resource_collection_id app))
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
@@ -418,7 +418,7 @@
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [_collection-id]
-       (mt/with-temp [:model/DataApp    app                          {:name "wasps"}
+       (mt/with-temp [:model/DataApp    app                          {:slug "wasps"}
                       :model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
          (do-with-rename-action!
           elsewhere-collection-id

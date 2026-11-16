@@ -665,6 +665,23 @@
                                               {:scope     scope
                                                :action delete-id})))))))))))
 
+(deftest execute-form-fk-field-test
+  (testing "execute-form sends the FK semantic type, so the form does not offer new values for FK fields"
+    (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+      (mt/with-premium-features #{actions-feature-flag}
+        (action-v2.tu/with-temp-test-db!
+          (let [params-by-id (fn [action]
+                               (->> (mt/user-http-request :crowberto :post 200 execute-form-url
+                                                          {:scope  {:table-id (mt/id :orders)}
+                                                           :action action})
+                                    :parameters
+                                    (into {} (map (juxt :id identity)))))]
+            (doseq [action ["data-grid.row/create" "data-grid.row/update"]]
+              (testing action
+                (is (=? {(mt/format-name :user_id)    {:input_type "dropdown" :semantic_type "type/FK"}
+                         (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
+                        (params-by-id action)))))))))))
+
 (deftest validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"
     (mt/with-premium-features #{actions-feature-flag}

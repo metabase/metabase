@@ -1,9 +1,16 @@
 (ns metabase-enterprise.remote-sync.protocol.git-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
-   [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]))
+   [metabase-enterprise.remote-sync.test-util :as remote-sync.tu])
+  (:import
+   (java.io File)
+   (org.eclipse.jgit.api Git)
+   (org.eclipse.jgit.lib StoredConfig)))
+
+(set! *warn-on-reflection* true)
 
 (deftest branches-and-versions-test
   (remote-sync.tu/with-repository [url]
@@ -41,3 +48,22 @@
       (testing "a new branch starts at the version it was created at"
         (is (= ["feature" "main"] (protocol/branches repo)))
         (is (= version (remote-sync.tu/tip! url "feature")))))))
+
+(defn- clone-dir
+  "The directory the clone of the repository at `url` lives in."
+  ^File [url]
+  (.getDirectory (.getRepository ^Git (:git (git/repository url nil)))))
+
+(deftest open-damaged-clone-test
+  (remote-sync.tu/with-repository [url]
+    (testing "a healthy clone reads the branches"
+      (is (= ["main"] (protocol/branches (doto (git/repository url nil) protocol/fetch!)))))
+    (testing "a clone without an origin remote is cloned again"
+      (let [config (.getConfig (.getRepository ^Git (:git (git/repository url nil))))]
+        (.unsetSection config "remote" "origin")
+        (.save ^StoredConfig config))
+      (is (= ["main"] (protocol/branches (doto (git/repository url nil) protocol/fetch!)))))
+    (testing "an empty clone directory is cloned again"
+      (let [dir (clone-dir url)]
+        (run! io/delete-file (reverse (rest (file-seq dir)))))
+      (is (= ["main"] (protocol/branches (doto (git/repository url nil) protocol/fetch!)))))))

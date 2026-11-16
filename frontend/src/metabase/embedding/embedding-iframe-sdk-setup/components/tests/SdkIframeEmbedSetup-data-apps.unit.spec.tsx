@@ -21,8 +21,8 @@ jest.mock("metabase/embedding/embedding-iframe-sdk/analytics", () => ({
 
 const setupDataApps = ({
   apps = [
-    createMockDataApp({ name: "boba-hq", display_name: "Boba HQ" }),
-    createMockDataApp({ name: "sales", display_name: "Sales" }),
+    createMockDataApp({ slug: "boba-hq", name: "Boba HQ" }),
+    createMockDataApp({ slug: "sales", name: "Sales" }),
   ],
   ...options
 }: NonNullable<Parameters<typeof setup>[0]> & {
@@ -43,14 +43,14 @@ describe("data app embedding setup", () => {
   const originalRoot = window.MetabaseRoot;
 
   const draftApp = createMockDataApp({
-    name: "draft",
-    display_name: "Draft app",
+    slug: "draft",
+    name: "Draft app",
     enabled: false,
   });
 
   const outdatedApp = createMockDataApp({
-    name: "outdated",
-    display_name: "Outdated app",
+    slug: "outdated",
+    name: "Outdated app",
     outdated: true,
   });
 
@@ -173,11 +173,11 @@ describe("data app embedding setup", () => {
 
   it("excludes draft and outdated apps and replaces the selection with an available app", async () => {
     setupDataApps({
-      initialState: { resourceType: "data-app", resourceId: draftApp.name },
+      initialState: { resourceType: "data-app", resourceId: draftApp.slug },
       apps: [
         draftApp,
         outdatedApp,
-        createMockDataApp({ name: "sales", display_name: "Sales" }),
+        createMockDataApp({ slug: "sales", name: "Sales" }),
       ],
     });
 
@@ -277,7 +277,7 @@ describe("data app embedding setup", () => {
       expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
     } finally {
       appsListRequest.resolve([
-        createMockDataApp({ name: "sales", display_name: "Sales" }),
+        createMockDataApp({ slug: "sales", name: "Sales" }),
       ]);
     }
 
@@ -314,7 +314,7 @@ describe("data app embedding setup", () => {
   });
 
   it("lets the admin go back to the data app picker after the selected app is removed", async () => {
-    let apps = [createMockDataApp({ name: "sales", display_name: "Sales" })];
+    let apps = [createMockDataApp({ slug: "sales", name: "Sales" })];
 
     const { store } = setupDataApps({
       apps: () => apps,

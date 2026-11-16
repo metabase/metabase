@@ -3,19 +3,23 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn synced-measures-clause :- [:fn vector?]
   "The clause over the Measure table aliased `alias` selecting the measures of the tables remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
 
 (mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."
@@ -66,3 +70,11 @@
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+
+(mu/defn synced-measure-items :- [:sequential ::measures.schema/measure]
+  "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+        (t2/hydrate [:table [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))

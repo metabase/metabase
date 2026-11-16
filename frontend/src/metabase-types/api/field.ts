@@ -60,6 +60,8 @@ export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
   id: number;
+  field_id: FieldId;
+  field?: Field;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
@@ -174,3 +176,10 @@ export interface UpdateFieldValuesRequest {
   id: FieldId;
   values: FieldValue[];
 }
+
+export type FieldUserSettings = {
+  field_id: FieldId;
+  display_name: string | null;
+  description: string | null;
+  field?: Field;
+};

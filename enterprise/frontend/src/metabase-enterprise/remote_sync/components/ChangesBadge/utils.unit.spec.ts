@@ -1,30 +1,31 @@
 import {
-  createMockRemoteSyncEntity,
-  createMockRemoteSyncEntityCollection,
-  createMockRemoteSyncEntityCollectionAncestor,
-  createMockRemoteSyncEntityParent,
+  createMockCollection,
+  createMockRemoteSyncActionData,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncCollectionData,
+  createMockRemoteSyncDirtyItem,
 } from "metabase-types/api/mocks";
 
 import { getRemoteSyncChanges, hasRemoteSyncChanges } from "./utils";
 
-const LIBRARY = createMockRemoteSyncEntityCollectionAncestor({
+const LIBRARY = createMockCollection({
   id: 1,
   name: "Library",
   type: "library",
 });
-const PARENT = createMockRemoteSyncEntityCollectionAncestor({
-  id: 3,
-  name: "Parent",
-});
+const PARENT = createMockCollection({ id: 3, name: "Parent" });
 
 describe("getRemoteSyncChanges", () => {
-  it("marks collection of changed entity and its ancestors", () => {
+  it("marks every collection a changed entity is in", () => {
     const changes = getRemoteSyncChanges([
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         model: "card",
-        collection: createMockRemoteSyncEntityCollection({
-          id: 4,
-          effective_ancestors: [PARENT],
+        data: createMockRemoteSyncCardData({
+          collection_id: 4,
+          collection: createMockCollection({
+            id: 4,
+            effective_ancestors: [PARENT],
+          }),
         }),
       }),
     ]);
@@ -42,10 +43,10 @@ describe("getRemoteSyncChanges", () => {
 
   it("marks changed collection itself", () => {
     const changes = getRemoteSyncChanges([
-      createMockRemoteSyncEntity({
-        model: "collection",
+      createMockRemoteSyncDirtyItem({
         id: 3,
-        collection: createMockRemoteSyncEntityCollection({ id: 3 }),
+        model: "collection",
+        data: createMockRemoteSyncCollectionData({ id: 3 }),
       }),
     ]);
 
@@ -59,37 +60,51 @@ describe("getRemoteSyncChanges", () => {
 
   it.each([
     {
-      entity: createMockRemoteSyncEntity({
+      entity: createMockRemoteSyncDirtyItem({
         model: "card",
-        collection: createMockRemoteSyncEntityCollection({
-          id: 2,
-          effective_ancestors: [LIBRARY],
+        data: createMockRemoteSyncCardData({
+          collection_id: 2,
+          collection: createMockCollection({
+            id: 2,
+            effective_ancestors: [LIBRARY],
+          }),
         }),
       }),
       areas: ["library"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "tableusersettings" }),
+      entity: createMockRemoteSyncDirtyItem({
+        id: 1,
+        model: "collection",
+        data: createMockRemoteSyncCollectionData({
+          id: 1,
+          type: "library",
+        }),
+      }),
       areas: ["library"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "transformtag" }),
+      entity: createMockRemoteSyncDirtyItem({ model: "tableusersettings" }),
+      areas: ["library"],
+    },
+    {
+      entity: createMockRemoteSyncDirtyItem({ model: "transformtag" }),
       areas: ["transforms"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "pythonlibrary" }),
+      entity: createMockRemoteSyncDirtyItem({ model: "pythonlibrary" }),
       areas: ["transforms", "python-library"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+      entity: createMockRemoteSyncDirtyItem({ model: "nativequerysnippet" }),
       areas: ["snippets"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "action" }),
+      entity: createMockRemoteSyncDirtyItem({ model: "action" }),
       areas: ["data-actions"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "glossary" }),
+      entity: createMockRemoteSyncDirtyItem({ model: "glossary" }),
       areas: ["glossary"],
     },
   ])("puts changed $entity.model in $areas areas", ({ entity, areas }) => {
@@ -100,9 +115,9 @@ describe("getRemoteSyncChanges", () => {
 
   it("keeps model actions out of data actions area", () => {
     const changes = getRemoteSyncChanges([
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         model: "action",
-        parent: createMockRemoteSyncEntityParent({ model: "card", id: 10 }),
+        data: createMockRemoteSyncActionData({ model_id: 10 }),
       }),
     ]);
 
@@ -111,7 +126,7 @@ describe("getRemoteSyncChanges", () => {
 
   it("marks changed transforms", () => {
     const changes = getRemoteSyncChanges([
-      createMockRemoteSyncEntity({ model: "transform", id: 7 }),
+      createMockRemoteSyncDirtyItem({ id: 7, model: "transform" }),
     ]);
 
     expect(hasRemoteSyncChanges(changes, { type: "transform", id: 7 })).toBe(

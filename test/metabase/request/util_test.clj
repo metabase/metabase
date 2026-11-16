@@ -246,3 +246,14 @@
   (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/embed/embedded-apps/other" "/embed/embedded-apps-else/sales"]]
     (is (not (req.util/embedded-data-app? {:uri uri :params {:modular "true"}}))))
   (is (false? (req.util/embedded-data-app? {}))))
+
+(deftest ^:parallel cookie-header-entries-test
+  (testing "the entries of the `Cookie` header in order, split on `;` only"
+    (is (= [["a" "1"] ["b" "x,y=2"] ["a" "3"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; b=x,y=2;a=3"}}))))
+  (testing "an entry without `=` is a cookie with no name"
+    (is (= [["a" "1"] ["" "metabase.SESSION"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; metabase.SESSION"}}))))
+  (testing "nil without a header, empty without entries"
+    (is (nil? (req.util/cookie-header-entries {:headers {}})))
+    (is (= [] (req.util/cookie-header-entries {:headers {"cookie" " ; "}})))))

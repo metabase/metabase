@@ -7,7 +7,7 @@ redirect_from:
 
 # Configuration overview
 
-## [Setting up Metabase](./setting-up-metabase.md)
+## [Setting up Metabase](../getting-started/setting-up-metabase.md)
 
 A walkthrough of when you first boot up your Metabase.
 

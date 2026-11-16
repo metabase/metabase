@@ -11,7 +11,6 @@
 ;; ## Dev Environment
 ;;
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
-;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
 ;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
 ;; - If you're on a Mac and need a VM to run Windows or Linux, [check out UTM](https://mac.getutm.app/)
 ;;
@@ -31,8 +30,6 @@
 ;; - [Compojure](https://github.com/weavejester/compojure) on top of [Ring](https://github.com/ring-clojure/ring) for our API
 ;;
 ;; ## Other Helpful Things
-;;
-;; [Tips on our Github wiki](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
 ;;
 ;; ### The Dev Debug Page
 ;; If you want an easy way to GET/POST to an endpoint and display the results in a webpage, check out the [Dev Debug

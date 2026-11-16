@@ -7,10 +7,10 @@ const { H } = cy;
 const APP_FRAME = "iframe[data-metabase-embed]";
 
 const loadDataApp = (path: string) =>
-  cy.get<EmbeddedDataApp>("@app").then(({ name }) =>
+  cy.get<EmbeddedDataApp>("@app").then(({ slug }) =>
     H.loadSdkIframeEmbedTestPage({
       elements: [
-        { component: "metabase-data-app", attributes: { path: name + path } },
+        { component: "metabase-data-app", attributes: { path: slug + path } },
       ],
       selector: APP_FRAME,
     }),
@@ -64,9 +64,9 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
     );
 
     cy.log("host writes the same path again after in-app navigation");
-    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
+    cy.get<EmbeddedDataApp>("@app").then(({ slug }) => {
       cy.get<MetabaseDataAppElement>("metabase-data-app").then(([element]) => {
-        element.path = `${name}/orders?view=recent`;
+        element.path = `${slug}/orders?view=recent`;
       });
     });
 

@@ -21,24 +21,24 @@
 
   TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
   `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-  also [[metabase.models.interface/normalize-visualization-settings]]."
+  also [[metabase.lib.schema.visualization-settings]]."
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
 ;;; -------------------------------------------------- Specs --------------------------------------------------
 
-(def ^:private field-metadata-schema [:maybe ::lib.schema.common/visualization-settings])
+(def ^:private field-metadata-schema [:maybe ::lib.schema.visualization-settings/visualization-settings])
 ;; field-str - a field reference that is a string, which could be a reference to some named field (ex: output of an
 ;; aggregation) or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it
 ;; here, only report that it's a string and set it in the ref map appropriately
@@ -56,12 +56,12 @@
             [:tuple
              [:= "field"]
              [:orn [:field-id ::lib.schema.id/field] [:field-str string?]]
-             [:orn [:field-metadata ::lib.schema.common/visualization-settings] [:nil nil?]]]]]
+             [:orn [:field-metadata ::lib.schema.visualization-settings/visualization-settings] [:nil nil?]]]]]
    [:expression [:tuple [:= "ref"] [:tuple [:= "expression"] string?]]]
    [:column-name [:tuple [:= "name"] string?]]])
 
 ;; TODO: add more specific shape for this one
-(def ^:private parameter-mapping-schema [:maybe ::lib.schema.common/visualization-settings])
+(def ^:private parameter-mapping-schema [:maybe ::lib.schema.visualization-settings/visualization-settings])
 
 (def ^:private click-behavior-schema
   [:map {:closed true}
@@ -237,7 +237,7 @@
   passed the output of another fn (including, currently, `visualization-settings`). If the given `from-field-id`
   already has a click action, it will be replaced."
   {:added "0.40.0"}
-  [settings :- ::lib.schema.common/visualization-settings, col-key :- column-ref-schema, action :- click-behavior-schema]
+  [settings :- ::lib.schema.visualization-settings/visualization-settings, col-key :- column-ref-schema, action :- click-behavior-schema]
   (-> settings
       with-col-settings
       (update ::column-settings assoc col-key {::click-behavior action})))
@@ -248,7 +248,7 @@
   (including, currently, `visualization-settings`). If the given `from-field-id` already has a click action, it will
   be replaced."
   {:added "0.40.0"}
-  [settings :- ::lib.schema.common/visualization-settings
+  [settings :- ::lib.schema.visualization-settings/visualization-settings
    from-field-id :- ::lib.schema.id/field
    to-entity-type :- entity-type-schema
    to-entity-id :- pos-int?
@@ -373,13 +373,9 @@
   (= "dimension" (get-in mapping [:target :type])))
 
 (defn- normalize [form]
-  (walk/postwalk
-   (fn [form]
-     (if (and (sequential? form)
-              (string? (first form)))
-       (into [(keyword (first form))] (map normalize) (rest form))
-       form))
-   form))
+  (match/replace-all form
+    [#'string? & _] (update &match 0 keyword)
+    #'map? (update-keys &match #(cond-> % (string? %) keyword))))
 
 (defn db->norm-param-mapping
   "Converts a `parameter-mapping` (i.e. value of `:parameterMapping`) from DB to normalized form"

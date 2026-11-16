@@ -418,10 +418,11 @@
    :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
-               :description :display_name :effective_type :has_field_values :is_defective_duplicate
+               :description :display_name :effective_type :has_field_values
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-               :unique_field_helper :visibility_type]
-   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+               :visibility_type]
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+               :is_defective_duplicate :unique_field_helper]
    :children  {:dimensions :model/Dimension}
    :transform {:table_id           table-transform
                :fk_target_field_id field-transform
@@ -429,7 +430,6 @@
    :defaults  {:active                     true
                :database_is_auto_increment false
                :database_required          false
-               :is_defective_duplicate     false
                :json_unfolding             false
                :preview_display            true}})
 

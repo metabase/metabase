@@ -51,6 +51,7 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -244,6 +245,89 @@
           (let [d (ex-data e)]
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
+
+(deftest null-schema-resolves-to-a-queryable-table-test
+  (testing "a null schema is filled in from the tables by that name the user can query, or left alone"
+    (mt/with-temp [:model/Database db         {:name           (str "Analytics " (random-uuid))
+                                               :engine         :h2
+                                               :default_schema "clean"}
+                   :model/Table    user-table {:name "user" :schema "lever_data" :db_id (:id db)}
+                   :model/Field    _          {:name "email" :table_id (:id user-table) :base_type :type/Text}
+                   :model/Table    raw-orders {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Field    _          {:name "status" :table_id (:id raw-orders) :base_type :type/Text}
+                   :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}
+                   :model/Table    _          {:name "events" :schema "raw" :db_id (:id db)}
+                   :model/Table    events     {:name "events" :schema "staging" :db_id (:id db)}
+                   :model/Field    _          {:name "kind" :table_id (:id events) :base_type :type/Text}
+                   :model/Table    _          {:name "items" :schema nil :db_id (:id db)}
+                   :model/Table    _          {:name "items" :schema "clean" :db_id (:id db)}
+                   :model/Table    _          {:name "secrets" :schema "raw" :db_id (:id db) :visibility_type :hidden}]
+      (let [db-name   (:name db)
+            construct (fn [source-table & [breakout-field]]
+                        (try
+                          (-> (construct/execute-representations-query
+                               (query-data
+                                {"lib/type" "mbql/query"
+                                 "stages"   [(cond-> {"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" (into [db-name] source-table)
+                                                      "aggregation"  [["count" {}]]}
+                                               breakout-field
+                                               (assoc "breakout" [["field" {} (into [db-name] breakout-field)]]))]}))
+                              (get-in [:structured-output :query-json "stages" 0])
+                              (select-keys ["source-table" "breakout"]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))]
+        (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :quoted-tbl {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :quoted-sch {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :default    {"source-table" [db-name "clean" "orders"]}
+                 :named-only :unknown-table
+                 :conflict   :unknown-table
+                 :ambiguous  :unknown-table
+                 :schemaless {"source-table" [db-name nil "items"]}
+                 :hidden     :unknown-table
+                 :no-perms   :unknown-table}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  {:lone       (construct [nil "user"] [nil "user" "email"])
+                   :quoted-tbl (construct [nil "user"] [nil "\"user\"" "email"])
+                   :quoted-sch (construct [nil "user"] ["\"lever_data\"" "\"user\"" "email"])
+                   :default    (construct [nil "orders"])
+                   :named-only (construct ["staging" "events"] [nil "events" "kind"])
+                   :conflict   (construct ["raw" "orders"] [nil "orders" "status"])
+                   :ambiguous  (construct [nil "events"])
+                   :schemaless (construct [nil "items"])
+                   :hidden     (construct [nil "secrets"])
+                   :no-perms   (mt/with-no-data-perms-for-all-users!
+                                 (mt/with-current-user (mt/user->id :rasta)
+                                   (construct [nil "user"])))})))))))
+
+(deftest null-schema-fill-in-covers-every-fk-slot-test
+  (testing "every FK slot is filled in, quoted segments included, and other vectors are left alone"
+    (mt/with-temp [:model/Database db {:name (str "Analytics " (random-uuid)) :engine :h2}
+                   :model/Table    _  {:name "user" :schema "lever_data" :db_id (:id db)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (:name db)
+              null-fk [db-name nil "user"]
+              filled  [db-name "lever_data" "user"]
+              quoted  (str "\"" db-name "\"")]
+          (is (= {"stages" [{"source-table" filled
+                             "breakout"     [["field" {"source-field" (conj filled "id")} (conj filled "email")]
+                                             ["field" (conj filled "email")]
+                                             ["field" {} [quoted "lever_data" "user" "email"]]]
+                             "filters"      [["=" {} ["field" {} "email"] null-fk]]}
+                            ;; The schema is filled in but the quotes stay: only the schema slot is rewritten.
+                            {"source-table" [db-name "lever_data" "\"user\""]}]}
+                 (#'construct/fill-in-null-schemas
+                  (lib-be/application-database-metadata-provider (:id db))
+                  {"stages" [{"source-table" null-fk
+                              "breakout"     [["field" {"source-field" (conj null-fk "id")} (conj null-fk "email")]
+                                              ["field" (conj null-fk "email")]
+                                              ["field" {} [quoted nil "user" "email"]]]
+                              "filters"      [["=" {} ["field" {} "email"] null-fk]]}
+                             {"source-table" [db-name nil "\"user\""]}]}))))))))
 
 (defn- metadata-lookup-failures []
   (let [message    "SELECT private_metadata failed: connection unavailable"
@@ -1660,11 +1744,8 @@
                    "stages"   [{"lib/type"     "mbql.stage/mbql"
                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
                                 "aggregation"  [["count" {}]]}]})
-              strip-run-specific
-              (fn [query]
-                (walk/postwalk (fn [node]
-                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
-                               query))
+              strip-run-specific #(match/replace-all %
+                                    #'map? (dissoc &match :lib/uuid :lib/metadata))
               v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
               v2 (with-v2-surface
                    (get-in (construct/execute-representations-query q) [:structured-output :query]))]
@@ -1781,14 +1862,8 @@
                                                   -12 "month"]]}]}))
               structured (:structured-output result)
               q          (:query structured)
-              metric-refs (let [acc (volatile! [])]
-                            (walk/postwalk (fn [x]
-                                             (when (and (vector? x)
-                                                        (= :metric (first x)))
-                                               (vswap! acc conj x))
-                                             x)
-                                           (:stages q))
-                            @acc)]
+              metric-refs (match/match-all (:stages q)
+                            [:metric & _] &match)]
           (testing "the tool returns structured output rather than an expression-editor rejection"
             (is (string? (:query-id structured)))
             (is (vector? (:result-columns structured))))

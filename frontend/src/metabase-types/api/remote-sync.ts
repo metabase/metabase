@@ -1,88 +1,171 @@
-import type {
-  CollectionId,
-  CollectionType,
-  RegularCollectionId,
-} from "./collection";
+import type { WritebackAction } from "./actions";
+import type { Card } from "./card";
+import type { Collection, RegularCollectionId } from "./collection";
+import type { Dashboard } from "./dashboard";
+import type { DataApp } from "./data-app";
+import type { CardTest, TransformTest } from "./data-test";
+import type { Document } from "./document";
+import type { FieldDimension, FieldUserSettings } from "./field";
+import type { GlossaryItem } from "./glossary";
+import type { Measure } from "./measure";
+import type { Segment } from "./segment";
 import type { RemoteSyncType } from "./settings";
+import type { NativeQuerySnippet } from "./snippets";
+import type { TableUserSettings } from "./table";
+import type { Timeline } from "./timeline";
+import type { PythonLibrary, Transform, TransformTag } from "./transform";
 import type { UserId } from "./user";
 
 export type RemoteSyncTaskId = number;
 
-export type RemoteSyncEntityId = number;
+export type RemoteSyncItemId = number;
 
-export type RemoteSyncEntityModel =
-  | "action"
-  | "card"
-  | "collection"
-  | "dashboard"
-  | "dataapp"
-  | "document"
-  | "fieldusersettings"
-  | "glossary"
-  | "measure"
-  | "nativequerysnippet"
-  | "pythonlibrary"
-  | "segment"
-  | "tableusersettings"
-  | "timeline"
-  | "transform"
-  | "transformtag"
-  | "transformtest";
-
-export type RemoteSyncEntityStatus = "create" | "update" | "delete" | "removed";
-
-export type RemoteSyncEntityCollectionAncestor = {
-  id: CollectionId;
-  name: string;
-  type: CollectionType | null;
-  personal_owner_id: UserId | null;
-};
-
-export type RemoteSyncEntityCollection = {
-  id: CollectionId;
-  name: string;
-  type: CollectionType | null;
-  effective_ancestors: RemoteSyncEntityCollectionAncestor[];
-};
-
-export type RemoteSyncEntityParentModel = Extract<
-  RemoteSyncEntityModel,
-  "card" | "tableusersettings" | "transform"
+export type RemoteSyncActionData = Pick<
+  WritebackAction,
+  "id" | "name" | "type" | "model_id" | "collection_id" | "model" | "collection"
 >;
 
-export type RemoteSyncEntityParent = {
-  model: RemoteSyncEntityParentModel;
-  id: number;
-  name: string | null;
+export type RemoteSyncCardData = Pick<
+  Card,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncCardTestData = Pick<
+  CardTest,
+  "id" | "name" | "card_id" | "card"
+>;
+
+export type RemoteSyncCollectionData = Pick<
+  Collection,
+  "id" | "name" | "type" | "location" | "effective_ancestors"
+>;
+
+export type RemoteSyncDashboardData = Pick<
+  Dashboard,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncDataAppData = Pick<DataApp, "id" | "slug" | "name">;
+
+export type RemoteSyncDimensionData = Pick<
+  FieldDimension,
+  "id" | "field_id" | "name" | "field"
+>;
+
+export type RemoteSyncDocumentData = Pick<
+  Document,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncFieldUserSettingsData = Pick<
+  FieldUserSettings,
+  "field_id" | "display_name" | "field"
+>;
+
+export type RemoteSyncGlossaryData = Pick<GlossaryItem, "id" | "term">;
+
+export type RemoteSyncMeasureData = Pick<
+  Measure,
+  "id" | "name" | "table_id" | "table"
+>;
+
+export type RemoteSyncNativeQuerySnippetData = Pick<
+  NativeQuerySnippet,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncPythonLibraryData = Pick<PythonLibrary, "path"> & {
+  id: RemoteSyncItemId;
 };
 
-export type RemoteSyncEntity = {
-  id: RemoteSyncEntityId;
-  name: string;
-  model: RemoteSyncEntityModel;
-  sync_status: RemoteSyncEntityStatus;
-  collection?: RemoteSyncEntityCollection;
-  parent?: RemoteSyncEntityParent;
+export type RemoteSyncSegmentData = Pick<
+  Segment,
+  "id" | "name" | "table_id" | "table"
+>;
+
+export type RemoteSyncTableUserSettingsData = Pick<
+  TableUserSettings,
+  "table_id" | "display_name" | "collection_id" | "table" | "collection"
+>;
+
+export type RemoteSyncTimelineData = Pick<
+  Timeline,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncTransformData = Pick<
+  Transform,
+  "id" | "name" | "collection_id" | "collection"
+>;
+
+export type RemoteSyncTransformTagData = Pick<TransformTag, "id" | "name">;
+
+export type RemoteSyncTransformTestData = Pick<
+  TransformTest,
+  "id" | "name" | "transform_id" | "transform"
+>;
+
+type RemoteSyncItemDataByModel = {
+  action: RemoteSyncActionData;
+  card: RemoteSyncCardData;
+  cardtest: RemoteSyncCardTestData;
+  collection: RemoteSyncCollectionData;
+  dashboard: RemoteSyncDashboardData;
+  dataapp: RemoteSyncDataAppData;
+  dimension: RemoteSyncDimensionData;
+  document: RemoteSyncDocumentData;
+  fieldusersettings: RemoteSyncFieldUserSettingsData;
+  glossary: RemoteSyncGlossaryData;
+  measure: RemoteSyncMeasureData;
+  nativequerysnippet: RemoteSyncNativeQuerySnippetData;
+  pythonlibrary: RemoteSyncPythonLibraryData;
+  segment: RemoteSyncSegmentData;
+  tableusersettings: RemoteSyncTableUserSettingsData;
+  timeline: RemoteSyncTimelineData;
+  transform: RemoteSyncTransformData;
+  transformtag: RemoteSyncTransformTagData;
+  transformtest: RemoteSyncTransformTestData;
 };
 
-export type RemoteSyncEntityRef = {
-  id: RemoteSyncEntityId;
-  name: string;
-  model: RemoteSyncEntityModel;
-};
+export type RemoteSyncItemModel = keyof RemoteSyncItemDataByModel;
 
-export type RemoteSyncUnsyncedDependency = {
-  id: RemoteSyncEntityId;
-  name: string;
-  model: RemoteSyncEntityModel;
-  collection?: RemoteSyncEntityCollection;
-  used_by: RemoteSyncEntityRef[];
-};
+export type RemoteSyncItemData<
+  TModel extends RemoteSyncItemModel = RemoteSyncItemModel,
+> = RemoteSyncItemDataByModel[TModel];
+
+export type RemoteSyncDirtyItemStatus =
+  | "create"
+  | "update"
+  | "delete"
+  | "removed";
+
+export type RemoteSyncItem<
+  TModel extends RemoteSyncItemModel = RemoteSyncItemModel,
+> = {
+  [M in TModel]: {
+    id: RemoteSyncItemId;
+    model: M;
+    data: RemoteSyncItemData<M>;
+    used_by?: RemoteSyncItem[];
+  };
+}[TModel];
+
+export type RemoteSyncDirtyItem<
+  TModel extends RemoteSyncItemModel = RemoteSyncItemModel,
+> = {
+  [M in TModel]: {
+    id: RemoteSyncItemId;
+    model: M;
+    name: string;
+    sync_status: RemoteSyncDirtyItemStatus;
+    data: RemoteSyncItemData<M> | null;
+  };
+}[TModel];
 
 export type RemoteSyncUnsyncedDependenciesErrorData = {
   message: string;
   "error-code": "unsynced-dependencies";
-  unsynced_dependencies: RemoteSyncUnsyncedDependency[];
+  unsynced_dependencies: RemoteSyncItem[];
 };
 
 export type RemoteSyncUnsyncedDependenciesError = {
@@ -90,7 +173,7 @@ export type RemoteSyncUnsyncedDependenciesError = {
 };
 
 export type RemoteSyncChangesResponse = {
-  dirty: RemoteSyncEntity[];
+  dirty: RemoteSyncDirtyItem[];
 };
 
 export type RemoteSyncIsDirtyResponse = {

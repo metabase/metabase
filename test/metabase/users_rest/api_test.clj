@@ -24,7 +24,6 @@
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as string]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -1943,7 +1942,7 @@
       (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
-          (is (=? {:session_id string/valid-uuid?
+          (is (=? {:session_id u/uuid-string?
                    :success true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
@@ -1986,7 +1985,7 @@
                                                   :put 200 (format "user/%d/password" user-id)
                                                   {:password "abc123!!DEF"
                                                    :old_password "def"})]
-             (is (=? {:session_id string/valid-uuid?
+             (is (=? {:session_id u/uuid-string?
                       :success true}
                      resp))
              ;; Original session should be ended: its key destroyed, the change attributed to the user

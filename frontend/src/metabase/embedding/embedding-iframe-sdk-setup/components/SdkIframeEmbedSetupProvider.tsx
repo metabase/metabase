@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 

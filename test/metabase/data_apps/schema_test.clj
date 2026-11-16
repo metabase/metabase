@@ -14,18 +14,18 @@
   (mr/validate schema (normalize schema x)))
 
 (deftest data-app-update-normalizes-each-column-it-is-given-test
-  (is (= {:name "sales" :display_name "Sales dashboard" :description nil :version 1
+  (is (= {:slug "sales" :name "Sales dashboard" :description nil :version 1
           :bundle_path "dist/index.js" :allowed_hosts []}
          (normalize ::data-apps.schema/data-app.update
-                    {:name "sales" :display_name " Sales dashboard " :description "  " :version nil
+                    {:slug "sales" :name " Sales dashboard " :description "  " :version nil
                      :bundle_path "./dist/index.js" :allowed_hosts nil})))
   (is (= {:enabled false} (normalize ::data-apps.schema/data-app.update {:enabled false}))))
 
-(deftest data-app-insert-requires-the-manifest-columns-test
-  (is (valid? ::data-apps.schema/data-app.insert {:name "a" :display_name "A" :bundle_path "i.js"}))
-  (doseq [k [:name :display_name :bundle_path]]
-    (is (not (valid? ::data-apps.schema/data-app.insert
-                     (dissoc {:name "a" :display_name "A" :bundle_path "i.js"} k)))
+(deftest data-app-create-requires-manifest-columns-test
+  (is (valid? ::data-apps.schema/data-app.create {:slug "a" :name "A" :bundle_path "i.js"}))
+  (doseq [k [:slug :name :bundle_path]]
+    (is (not (valid? ::data-apps.schema/data-app.create
+                     (dissoc {:slug "a" :name "A" :bundle_path "i.js"} k)))
         (str "should require " k))))
 
 (deftest version-test
@@ -57,10 +57,10 @@
                  (apply str (repeat 101 "a"))]]
       (is (not (valid? ::data-apps.schema/slug bad)) (str "should reject: " (pr-str bad))))))
 
-(deftest display-name-test
-  (is (= "X" (normalize ::data-apps.schema/display-name "  X ")))
+(deftest name-test
+  (is (= "X" (normalize ::data-apps.schema/name "  X ")))
   (doseq [bad [nil "" "   "]]
-    (is (not (valid? ::data-apps.schema/display-name bad)) (str "should reject: " (pr-str bad)))))
+    (is (not (valid? ::data-apps.schema/name bad)) (str "should reject: " (pr-str bad)))))
 
 (deftest allowed-hosts-test
   (testing "valid entries are lowercased, trailing-slash-stripped, and de-duplicated"

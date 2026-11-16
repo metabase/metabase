@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { P, match } from "ts-pattern";
 
 import type { EngineKey } from "metabase-types/api/settings";
@@ -30,6 +31,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params, ["UID", "PWD"]),
     ],
   ]);
+
+  if (parsedValues.protocol === "redshift:iam") {
+    fieldsMap.set("details.auth-mode", "iam-instance-profile");
+  }
 
   if (fieldsMap.get("details.additional-options")) {
     fieldsMap.set("details.advanced-options", true);
@@ -354,6 +359,7 @@ export function mapDatabaseValues(
       mapAthenaValues(parsedValues),
     )
     .with(["redshift", "redshift"], () => mapRedshiftValues(parsedValues))
+    .with(["redshift:iam", "redshift"], () => mapRedshiftValues(parsedValues))
     .with(["bigquery", "bigquery-cloud-sdk"], () =>
       mapBigQueryValues(parsedValues),
     )

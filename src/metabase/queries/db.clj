@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,6 +12,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -21,10 +23,12 @@
 
 (mu/defn synced-cards-clause :- [:fn vector?]
   "The clause over the Card table aliased `alias` selecting the Cards remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -360,14 +364,18 @@
   (t2/delete! :model/Action :id [:in action-ids]))
 
 (mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
+  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id))
+  ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
 
 (mu/defn delete-card-revisions!
-  "Delete the Revisions of the Card with `card-id`, returning the number deleted."
+  "Delete the Revisions of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Revision :model "Card" :model_id card-id))
+  ;; By table name, so search's delete capture skips it: these revisions only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
@@ -549,3 +557,11 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn synced-card-items :- [:sequential ::queries.schema/card]
+  "The Cards with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Card :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

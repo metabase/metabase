@@ -11,6 +11,7 @@ import {
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -37,7 +38,7 @@ export function EmbeddingDataPicker({
 }: EmbeddingDataPickerProps) {
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({
-      models: ["dataset", "table"],
+      models: ["dataset", "table", "metric"],
       limit: 0,
       context: "data-picker",
     });
@@ -57,6 +58,7 @@ export function EmbeddingDataPicker({
   const normalizedCard = selectedCardId != null ? card : undefined;
   const entityTypesFromRedux = useSelector(getEntityTypes);
   const dataPickerFromRedux = useSelector(getDataPicker);
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const queryingContext = useContext(EmbeddingDataPickerContext);
 
   /**
@@ -85,20 +87,25 @@ export function EmbeddingDataPicker({
     dataSourceCountData != null &&
     dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
+    const isJoinStep = !canChangeDatabase;
+    const canSelectMetric = !isJoinStep && hasNestedQueriesEnabled;
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
-      "model",
+      ...(hasNestedQueriesEnabled ? (["model"] as const) : []),
       "table",
+      "semantic-layer",
+      ...(canSelectMetric ? (["metric"] as const) : []),
     ];
-    const filteredEntityTypes = entityTypes.filter((entityType) =>
-      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
-    );
+    const isAllowedEntityType = (entityType: EmbeddingEntityType) =>
+      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType);
+    const filteredEntityTypes = entityTypes.filter(isAllowedEntityType);
     const simpleDataPickerEntityTypes =
       filteredEntityTypes.length > 0
         ? filteredEntityTypes
-        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+        : DEFAULT_EMBEDDING_ENTITY_TYPES.filter(isAllowedEntityType);
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
+        isJoinStep={isJoinStep}
         selectedSource={selectedSource}
         isInitiallyOpen={!table}
         triggerElement={
@@ -146,6 +153,8 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      canSelectMetric={entityTypes.includes("metric")}
+      canSelectSemanticLayer={entityTypes.includes("semantic-layer")}
       popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget

@@ -6,18 +6,18 @@ export const isEmbeddedDataAppPath = (pathname: string): boolean =>
   pathname.startsWith(`${getMetabaseRootPath()}${EMBEDDED_DATA_APP_PREFIX}/`);
 
 /**
- * Reads the app name from the `path` prop.
+ * Reads the app slug from the `path` prop.
  *
  * The path is provided from `<metabase-data-app>` web component
  * and `DataApp` SDK component, not the browser's real url.
  */
-export function getEmbeddedAppNameFromPath(path: string): string | undefined {
+export function getEmbeddedAppSlugFromPath(path: string): string | undefined {
   const [pathname = ""] = path.replace(/^\/+/, "").split(/[?#]/, 1);
 
   const segments = pathname.split("/");
-  const [name] = segments;
+  const [slug] = segments;
 
-  if (!name || !/^[a-zA-Z0-9_-]+$/.test(name) || hasUnsafeCharacters(path)) {
+  if (!slug || !/^[a-zA-Z0-9_-]+$/.test(slug) || hasUnsafeCharacters(path)) {
     return undefined;
   }
 
@@ -38,7 +38,7 @@ export function getEmbeddedAppNameFromPath(path: string): string | undefined {
     return undefined;
   }
 
-  return name;
+  return slug;
 }
 
 const hasUnsafeCharacters = (value: string): boolean =>
@@ -51,7 +51,7 @@ export const normalizeDataAppPath = (path: string): string =>
 
 /** Reject invalid app names and unsafe routes. */
 export function validateDataAppPath(path: string): void {
-  if (!getEmbeddedAppNameFromPath(path)) {
+  if (!getEmbeddedAppSlugFromPath(path)) {
     throw new Error("A valid data app path must be provided.");
   }
 }

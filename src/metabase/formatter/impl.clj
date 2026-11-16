@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types.core :as types]
@@ -230,7 +231,7 @@
 
   ([value        :- number?
     column       :- [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]
-    viz-settings :- [:maybe ms/VisualizationSettings]]
+    viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
@@ -299,11 +300,11 @@
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- [:maybe ms/VisualizationSettings]]
+    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    (create-formatter timezone-id col visualization-settings true))
   ([timezone-id            :- [:maybe :string]
     col                    :- [:maybe [:or :metabase.legacy-mbql.schema/legacy-column-metadata :metabase.lib.schema.metadata/lib-or-legacy-column]]
-    visualization-settings :- [:maybe ms/VisualizationSettings]
+    visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
     apply-formatting?      :- :boolean]
    (cond
      ;; for numbers, return a format function that has already computed the differences.
@@ -370,7 +371,7 @@
    row-indexes  :- [:maybe [:sequential :int]]
    col-indexes  :- [:maybe [:sequential :int]]
    val-indexes  :- [:maybe [:sequential :int]]
-   settings     :- [:maybe ms/VisualizationSettings]
+   settings     :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
    timezone     :- [:maybe :string]
    format-rows? :- :boolean]
   {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)

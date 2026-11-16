@@ -34,7 +34,7 @@ const setup = ({
 
   if (hasLibrary) {
     setupEnterpriseOnlyPlugin("library");
-    setupLibraryEndpoints(hasLibraryCollection);
+    setupLibraryEndpoints({ hasLibrary: hasLibraryCollection });
   }
 
   renderWithProviders(

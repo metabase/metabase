@@ -966,6 +966,21 @@
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
+(deftest ^:parallel native-model-load-keeps-exported-metadata-test
+  (testing "a native model whose metadata can't be inferred keeps the exported columns with the changed overrides"
+    (let [query    (lib/native-query (mt/metadata-provider) "SELECT 1 AS ONE")
+          exported [{:name         "ONE"
+                     :display_name "New name"
+                     :base_type    :type/Integer
+                     :field_ref    [:field "ONE" {:base-type :type/Integer}]}]
+          [item]   (serialization/before-load :model/Card
+                                              [{:row   {:type            :model
+                                                        :dataset_query   query
+                                                        :result_metadata exported}
+                                                :local {:result_metadata [(assoc (first exported)
+                                                                                 :display_name "Old name")]}}])]
+      (is (= exported (get-in item [:row :result_metadata]))))))
+
 (deftest serdes-load-legacy-query-integer-literals-test
   (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
     (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))

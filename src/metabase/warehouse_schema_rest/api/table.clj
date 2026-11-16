@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -45,17 +46,18 @@
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (into [:enum] (map name table/visibility-types)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/visibility-types))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (into [:enum] (map name table/field-orderings)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/field-orderings))
 
 (def ^:private EntityType
-  "Schema for a valid table entity type, as either a keyword or a string."
+  "Schema for a valid table entity type, normalized from its name."
   (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
+   [:fn {:json-schema {:type "string"} :decode/normalize lib.schema.common/normalize-keyword}
+    #(and (keyword? %) (isa? types/entity-hierarchy % :entity/*))]
+   (deferred-tru "value must be a valid entity type.")))
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
@@ -188,8 +190,8 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
    [:data_authority          {:optional true} ::data-authority-write]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])

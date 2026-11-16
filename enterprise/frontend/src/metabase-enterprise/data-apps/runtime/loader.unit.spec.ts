@@ -104,7 +104,7 @@ describe("fetchDataAppBundleCode", () => {
     [403, "You don't have access to this data app."],
     [
       404,
-      'Data app "demo" was not found or is disabled. Check the app name in path.',
+      'Data app "demo" was not found or is disabled. Check the app slug in the path.',
     ],
     [409, "Failed to fetch data app bundle: HTTP 409"],
   ])(

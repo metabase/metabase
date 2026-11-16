@@ -80,7 +80,7 @@ describe("DataAppEmbed - router navigation", () => {
 
     renderHook(() =>
       useDataAppPathNavigation({
-        name: "sales",
+        slug: "sales",
         path: "sales/orders?active=true",
       }),
     );
@@ -96,7 +96,7 @@ describe("DataAppEmbed - router navigation", () => {
     const { rerender } = renderHook(
       ({ navigationRequest }) =>
         useDataAppPathNavigation({
-          name: "sales",
+          slug: "sales",
           path: "sales/orders/details?tab=summary",
           navigationRequest,
         }),

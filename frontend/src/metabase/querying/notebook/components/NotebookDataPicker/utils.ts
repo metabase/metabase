@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import * as Urls from "metabase/urls";

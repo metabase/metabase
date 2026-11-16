@@ -183,12 +183,12 @@ describe("SessionsPage", () => {
       await screen.findByTestId("session-row-ann-session");
 
       expect(
-        await within(screen.getByRole("button", { name: "Active" })).findByText(
+        await within(screen.getByRole("tab", { name: "Active" })).findByText(
           "137",
         ),
       ).toBeInTheDocument();
       expect(
-        within(screen.getByRole("button", { name: "Ended" })).getByText("241"),
+        within(screen.getByRole("tab", { name: "Ended" })).getByText("241"),
       ).toBeInTheDocument();
       const calls = fetchMock.callHistory.calls(
         "path:/api/ee/session-management/counts",
@@ -205,18 +205,18 @@ describe("SessionsPage", () => {
       setup();
       await screen.findByTestId("session-row-ann-session");
       expect(
-        await within(screen.getByRole("button", { name: "Active" })).findByText(
+        await within(screen.getByRole("tab", { name: "Active" })).findByText(
           "137",
         ),
       ).toBeVisible();
 
       for (let visit = 0; visit < 2; visit++) {
         for (const label of ["Ended", "Active"]) {
-          await userEvent.click(screen.getByRole("button", { name: label }));
+          await userEvent.click(screen.getByRole("tab", { name: label }));
           await waitFor(() =>
-            expect(screen.getByRole("button", { name: label })).toHaveAttribute(
-              "aria-current",
-              "page",
+            expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+              "aria-selected",
+              "true",
             ),
           );
           expect(
@@ -231,8 +231,8 @@ describe("SessionsPage", () => {
 
     it("refreshes counters after revocation while retaining known counts during the refresh", async () => {
       setup();
-      const activeTab = screen.getByRole("button", { name: "Active" });
-      const endedTab = screen.getByRole("button", { name: "Ended" });
+      const activeTab = screen.getByRole("tab", { name: "Active" });
+      const endedTab = screen.getByRole("tab", { name: "Ended" });
       expect(await within(activeTab).findByText("137")).toBeInTheDocument();
       const refreshedCounts = defer<SessionCountsResponse>();
       fetchMock.modifyRoute("session-counts", {
@@ -261,7 +261,7 @@ describe("SessionsPage", () => {
       if (!router) {
         throw new Error("Expected test router");
       }
-      const getActive = () => screen.getByRole("button", { name: "Active" });
+      const getActive = () => screen.getByRole("tab", { name: "Active" });
       expect(await within(getActive()).findByText("137")).toBeVisible();
       await act(async () => router.navigate("/outside"));
       expect(await screen.findByText("Outside the section")).toBeVisible();
@@ -283,7 +283,7 @@ describe("SessionsPage", () => {
           fetchMock.callHistory.done("path:/api/ee/session-management/counts"),
         ).toBe(true),
       );
-      await userEvent.click(screen.getByRole("button", { name: "Ended" }));
+      await userEvent.click(screen.getByRole("tab", { name: "Ended" }));
       await waitFor(() =>
         expect(getLastListParams().get("status")).toBe("ended"),
       );

@@ -6,8 +6,13 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
+   [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.string :as u.str]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
@@ -40,6 +45,118 @@ x.com")
   :audit      :getter
   :visibility :public
   :export?    true)
+
+(defn- ->uri
+  "`s` as a URI. A value without a scheme takes the site URL's scheme (https without a site URL). Nil when `s` isn't
+  a URI."
+  ^java.net.URI [^String s]
+  (try
+    (java.net.URI. (if (re-find #"^[A-Za-z][A-Za-z0-9+.-]*://" s)
+                     s
+                     (str (or (some-> (system/site-url) (str/split #":" 2) first) "https") "://" s)))
+    (catch java.net.URISyntaxException _
+      nil)))
+
+(defn- uri-origin
+  "The `scheme://host[:port]` origin of `uri`, in the form browsers report in `Origin` and `MessageEvent.origin`: the
+  default port is dropped. Nil when `uri` has no http(s) origin."
+  [^java.net.URI uri]
+  (let [scheme (some-> (.getScheme uri) u/lower-case-en)
+        host   (some-> (.getHost uri) u/lower-case-en)
+        port   (.getPort uri)]
+    (when (and (#{"http" "https"} scheme)
+               (not (str/blank? host)))
+      (str scheme "://" host
+           (when-not (contains? #{-1 ({"http" 80, "https" 443} scheme)} port)
+             (str ":" port))))))
+
+(defn- origin-only?
+  "True when `uri` has no path but `/`, no query and no fragment."
+  [^java.net.URI uri]
+  (and (contains? #{"" "/"} (str (.getRawPath uri)))
+       (nil? (.getRawQuery uri))
+       (nil? (.getRawFragment uri))))
+
+(defn- configured-isolated-origin
+  "The trimmed `MB_ISOLATED_ORIGIN` value, or nil when it is unset or blank."
+  []
+  (some-> (setting/get-value-of-type :string :isolated-origin) str/trim not-empty))
+
+(defn- isolated-origin-problem
+  "Why `uri` (the parsed setting value), whose origin is `origin` (nil when it has none), can't be the isolated
+  origin, or nil."
+  [uri origin]
+  (let [site-url (system/site-url)]
+    (cond
+      (nil? origin)
+      "it is not an http(s) URL like https://example-isolated.com"
+
+      ;; Silently dropping the rest would hide a mistake, such as expecting only that path to be isolated.
+      (not (origin-only? uri))
+      "it has a path, query or fragment, but the isolated origin is a whole host: give only the scheme, host and port"
+
+      ;; Without it, a value on the main host's name and another port would put the whole instance under the isolated
+      ;; origin's rules.
+      (str/blank? site-url)
+      "no site URL is set, and only the site URL may show a data app"
+
+      ;; The session cookie is host-only, so it reaches every port of the main host.
+      (= (u.http/host-name origin) (u.http/host-name site-url))
+      "it has the site URL's host name, and a different port isn't enough"
+
+      ;; An https page can't frame an http one.
+      (and (str/starts-with? site-url "https:") (str/starts-with? origin "http:"))
+      "it uses http while the site URL uses https")))
+
+(defonce ^:private last-invalid-isolated-origin (atom nil))
+
+(defn- log-invalid-isolated-origin!
+  "Logs once per bad value and problem, since [[isolated-origin]] is read several times per request."
+  [value problem]
+  (when-not (= [value problem] (first (reset-vals! last-invalid-isolated-origin [value problem])))
+    (log/errorf "MB_ISOLATED_ORIGIN %s can't be used: %s. Data apps are off until it is fixed."
+                (pr-str value) problem))
+  nil)
+
+(defsetting isolated-origin
+  (deferred-tru "A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.")
+  :type       :string
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :getter     (fn []
+                (when-let [value (configured-isolated-origin)]
+                  (let [uri    (->uri value)
+                        origin (some-> uri uri-origin)]
+                    (if-let [problem (isolated-origin-problem uri origin)]
+                      (log-invalid-isolated-origin! value problem)
+                      origin))))
+  :export?    false
+  :doc        "Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
+
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.")
+
+(defsetting isolated-origin-misconfigured?
+  "True when `MB_ISOLATED_ORIGIN` is set but [[isolated-origin]] can't use it. Data apps are then refused, not served
+  without the isolated origin, and the frontend says why."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     #(and (some? (configured-isolated-origin))
+                    (nil? (isolated-origin)))
+  :export?    false
+  :doc        false)
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")

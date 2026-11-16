@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { EChartsType } from "echarts/core";
 import React, {
   type MouseEvent,

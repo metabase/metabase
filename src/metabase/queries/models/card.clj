@@ -191,6 +191,11 @@
           :write (and (nil? (:exploration_id document))
                       (mi/can-write? document)))))))
 
+(def card-read-check-columns
+  "The columns `mi/can-read?` reads from a Card.
+  A Card selected with only these gets the same verdict as a full row, without the cost of its after-select."
+  [:id :collection_id :document_id])
+
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
 ;; being true for Cards once a Card could be scoped to a Document (see [[parent-document-permits?]]).
@@ -198,9 +203,9 @@
 ;; The collection half still delegates to the same helper the macro installed, so the audit-collection
 ;; rule it carries is preserved verbatim.
 ;;
-;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
-;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
-;; so the document check below adds no further queries.
+;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead,
+;; which loads every candidate before pagination with only [[card-read-check-columns]]. Add a column there if
+;; this method starts reading another one.
 (defmethod mi/can-read? :model/Card
   ([instance]
    (and (perms/can-read-via-parent-collection? (:collection_id instance))
@@ -1302,9 +1307,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (queries.db/insert-card! (cond-> card-data
-                                                                         metadata
-                                                                         (assoc :result_metadata metadata))))]
+                                              (queries.db/insert-card!
+                                               (lib/normalize ::queries.schema/card.update
+                                                              (cond-> card-data
+                                                                metadata
+                                                                (assoc :result_metadata metadata)))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1651,6 +1658,11 @@
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
+(defn- model-override-keys
+  "The keys of a model's result metadata columns that a user can override, which export keeps for models."
+  []
+  (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+
 (defn- walk-export-result-metadata
   "The exported `result_metadata` of `card`, its ids replaced by what `visit` resolves them to. Native cards, models
   included, keep the keys of their columns, which can't be derived from the query without running it; other models
@@ -1674,7 +1686,7 @@
 
       (model? card)
       (mapv (fn [column]
-              (-> (select-keys column (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+              (-> (select-keys column (model-override-keys))
                   (m/update-existing :fk_target_field_id field)
                   (m/update-existing :id field)))
             result_metadata)
@@ -1683,16 +1695,19 @@
       nil)))
 
 (defn- walk-import-result-metadata
-  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to."
+  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to, normalized
+  like the stored column."
   [visit result-metadata]
-  (some->> result-metadata
-           (mapv (fn [column]
-                   (-> column
-                       (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
-                       (m/update-existing :id #(serialization/visit-some :model/Field % visit))
-                       (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
-                       (m/update-existing :fk_target_field_id
-                                          #(if (number? %) % (serialization/visit-some :model/Field % visit))))))))
+  (cond->> (some->> result-metadata
+                    (mapv (fn [column]
+                            (-> column
+                                (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
+                                (m/update-existing :id #(serialization/visit-some :model/Field % visit))
+                                (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
+                                (m/update-existing :fk_target_field_id
+                                                   #(if (number? %) % (serialization/visit-some :model/Field % visit)))))))
+    (and (some? result-metadata) (not (serialization/collecting? visit)))
+    (lib/normalize ::queries.schema/card.result-metadata)))
 
 (defn- export-database-ids
   "A transform fn exporting the Database of each card whose query doesn't name it, the only reference of an empty
@@ -1903,15 +1918,19 @@
 
 (defn- overrides-stored?
   "Whether each column of `metadata`, the exported overrides of a model, matches the column of `stored` metadata at
-  its position."
+  its position in the keys a user can override."
   [metadata stored]
-  (and (= (count metadata) (count stored))
-       (every? true? (map (fn [column stored-column] (= column (select-keys stored-column (keys column))))
-                          metadata stored))))
+  (let [ks (model-override-keys)]
+    (and (= (count metadata) (count stored))
+         (every? true? (map (fn [column stored-column]
+                              (let [column (select-keys column ks)]
+                                (= column (select-keys stored-column (keys column)))))
+                            metadata stored)))))
 
 (defn- with-model-metadata
   "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
-  stores them, or with them applied to freshly inferred metadata, as an update of its query would store them."
+  stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
+  with the overrides applied to freshly inferred metadata, as an update of its query would store them."
   [{:keys [row local] :as item}]
   (let [{query :dataset_query metadata :result_metadata card-type :type} row]
     (cond
@@ -1921,20 +1940,27 @@
       (overrides-stored? metadata (:result_metadata local))
       (update item :row dissoc :result_metadata)
 
+      (lib/native-only-query? query)
+      item
+
       :else
-      (assoc-in item [:row :result_metadata]
-                (or (card.metadata/infer-metadata-with-model-overrides query row) metadata)))))
+      (let [overrides (mapv #(select-keys % (model-override-keys)) metadata)]
+        (assoc-in item [:row :result_metadata]
+                  (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
+                      metadata))))))
 
 (defn- keep-local-metadata
-  "The load `item` of a Card without a `:result_metadata` to import keeping the local one, which export leaves out of
-  the cards whose metadata the query derives."
+  "The load `item` of a Card without a `:result_metadata` or `:database_id` to import keeping the local ones, which
+  export leaves out of the cards whose query derives them."
   [item]
   (cond-> item
-    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)))
+    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)
+    (nil? (get-in item [:row :database_id]))     (update :row dissoc :database_id)))
 
 (defmethod serialization/before-load :model/Card [_ items]
   (mapv (comp with-model-metadata keep-local-metadata) items))
 
 (defmethod remote-sync/spec :model/Card
   [_model]
-  {:synced-filter-clause queries.db/synced-cards-clause})
+  {:synced-items         queries.db/synced-card-items
+   :synced-filter-clause queries.db/synced-cards-clause})

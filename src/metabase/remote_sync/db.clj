@@ -13,10 +13,10 @@
 
 (defn- synced-filter-clause
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows remote sync syncs,
-  all of them unless its spec says otherwise."
-  [model alias]
+  all of them unless its spec says otherwise, with `opts` (see `::remote-sync.schema/synced-filter-opts`)."
+  [model alias opts]
   (if-let [clause (:synced-filter-clause (remote-sync.spec/spec model))]
-    (clause alias)
+    (clause alias opts)
     all-rows-filter-clause))
 
 (mu/defn built-in-filter-clause :- [:fn vector?]
@@ -29,27 +29,30 @@
     [:= 1 0]))
 
 (mu/defn synced-ids-clause :- [:fn map?]
-  "The HoneySQL query selecting the primary keys of the rows of `model` remote sync syncs."
-  [model :- :keyword]
+  "The HoneySQL query selecting the primary keys of the rows of `model` remote sync syncs, with `opts`."
+  [model :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   (let [table (t2/table-name model)
         alias (keyword (str "synced_" (name table)))]
     ^:allow-subquery {:select [(u/qualified-key alias (first (t2/primary-keys model)))]
                       :from   [[table alias]]
-                      :where  (synced-filter-clause model alias)}))
+                      :where  (synced-filter-clause model alias opts)}))
 
 (mu/defn synced-fk-clause :- [:fn vector?]
   "The HoneySQL where-clause holding when `column` of the table aliased `alias` references a row of `model` remote sync
-  syncs."
+  syncs, with `opts`."
   [alias  :- :keyword
    column :- :keyword
-   model  :- :keyword]
-  [:in (u/qualified-key alias column) (synced-ids-clause model)])
+   model  :- :keyword
+   opts   :- ::remote-sync.schema/synced-filter-opts]
+  [:in (u/qualified-key alias column) (synced-ids-clause model opts)])
 
 (defn- read-only-filter-clause
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting its read-only rows: those
-  synced, or on every instance, which a read-only instance can't write."
+  synced, archived or not, since unarchiving one makes it synced again, or on every instance, which a read-only
+  instance can't write."
   [model alias]
-  [:or (synced-filter-clause model alias) (built-in-filter-clause model alias)])
+  [:or (synced-filter-clause model alias {:include-archived? true}) (built-in-filter-clause model alias)])
 
 (mu/defn read-only-pks :- [:set ::remote-sync.schema/pk]
   "The primary keys of the read-only rows of `model` (see [[read-only-filter-clause]])."

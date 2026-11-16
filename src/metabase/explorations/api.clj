@@ -20,6 +20,7 @@
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -1024,7 +1025,7 @@
    :- [:map {:closed true}
        [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
        [:display                :string]
-       [:visualization_settings ms/VisualizationSettings]]]
+       [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]]]
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))

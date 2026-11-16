@@ -1421,15 +1421,4 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
-table below:
-
-| Version | Wiki page                                                                                             |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| 0.41.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.41.0-for-Metabase-driver-authors) |
-| 0.40.0  | No changes.                                                                                           |
-| 0.39.0  | No changes.                                                                                           |
-| 0.38.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.38.0-for-Metabase-driver-authors) |
-| 0.37.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.37.0-for-Metabase-driver-authors) |
-| 0.36.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.36.0-for-Metabase-driver-authors) |
-| 0.35.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) |
+Changes before 0.42.0 were tracked in the GitHub wiki, which is no longer available.

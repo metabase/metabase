@@ -4,6 +4,8 @@
   tables, timelines, and visualizer column mappings."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.serialization.mbql :as mbql]
    [metabase.serialization.resolve :as resolve]
    [metabase.util :as u]
@@ -100,7 +102,7 @@
   (-> mapping
       (m/update-existing    :id                  #(json-import-mbql visit %))
       (m/update-existing-in [:target :id]        #(json-import-mbql visit %))
-      (m/update-existing-in [:target :dimension] #(mbql/walk-import visit %))))
+      (m/update-existing-in [:target :dimension] #(mbql/walk-import-refs visit %))))
 
 (defn- walk-export-viz-click-behavior-mappings
   "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
@@ -305,7 +307,8 @@
     (dissoc settings :column_settings)))
 
 (defn walk-import-visualization-settings
-  "The exported `:visualization_settings` map with its references replaced by what `visit` returns for them."
+  "The exported `:visualization_settings` map with its references replaced by what `visit` returns for them,
+  normalized as their column stores them."
   [visit settings]
   (when settings
     (as-> settings $
@@ -315,7 +318,10 @@
       (walk-import-visualizer-settings visit $)
       (walk-import-pivot-table visit $)
       (walk-import-timeline-events visit $)
-      (walk-import-viz-column-settings visit $))))
+      (walk-import-viz-column-settings visit $)
+      (cond->> $
+        (not (resolve/collecting? visit))
+        (lib/normalize ::lib.schema.visualization-settings/visualization-settings)))))
 
 (defn export-visualization-settings
   "Each of the `:visualization_settings` of `xs` exported by [[walk-export-visualization-settings]], with the database

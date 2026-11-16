@@ -359,6 +359,9 @@
   (audit-log/record-event! topic event))
 
 (events/derive! ::card-test-event ::event)
+(events/derive! :event/card-test-create ::card-test-event)
+(events/derive! :event/card-test-update ::card-test-event)
+(events/derive! :event/card-test-delete ::card-test-event)
 (events/derive! :event/card-test-run-start ::card-test-event)
 (events/derive! :event/card-test-run-timeout ::card-test-event)
 
