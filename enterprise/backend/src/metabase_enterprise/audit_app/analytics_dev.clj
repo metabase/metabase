@@ -169,7 +169,7 @@
         temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [report (ee.serialization/load-metabase! (ee.serialization/ingest-yaml temp-dir) :allow-system? true)]
+      (let [report (ee.serialization/load-metabase! (ee.serialization/ingest-yaml temp-dir))]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
           (log/warn "Import had errors:" (mapv ex-message (:errors report))))

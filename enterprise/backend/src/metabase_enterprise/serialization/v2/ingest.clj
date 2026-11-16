@@ -74,17 +74,25 @@
           :model/TransformTag       #{"transforms"}
           :model/TransformTest      #{"transforms" "collections"}}))
 
+(defn- string-or-nil? [value]
+  (or (nil? value) (string? value)))
+
+(defn- valid-metadata-entry? [entry]
+  (and (map? entry)
+       (string? (:model entry))
+       (string-or-nil? (:id entry))))
+
+(defn- metadata-matches-model? [metadata model]
+  (and (sequential? metadata)
+       (every? valid-metadata-entry? metadata)
+       (= (name model) (:model (last metadata)))))
+
 (defn- check-entity! [path model entity]
   (let [metadata (:serdes/meta entity)]
     (when-not (and (map? entity)
                    (not (contains? entity :serdes/stripped))
-                   (or (nil? metadata)
-                       (and (sequential? metadata)
-                            (= (name model) (:model (last metadata)))
-                            (every? #(and (map? %) (string? (:model %))
-                                          (or (nil? (:id %)) (string? (:id %))))
-                                    metadata)))
-                   (or (nil? (:entity_id entity)) (string? (:entity_id entity))))
+                   (string-or-nil? (:entity_id entity))
+                   (or (nil? metadata) (metadata-matches-model? metadata model)))
       (serialization/refuse-import! "Invalid serialized entity." {:file path :model model})))
   (doseq [[field child-model] (:children (serialization/spec-of model))
           :let [children (get entity field)]
@@ -97,11 +105,15 @@
 (defn validate-file!
   "Checks the model and structure of a parsed entity file before resolving its identity."
   [allowed-models path entity]
-  (let [metadata (:serdes/meta entity)
-        model    (when (and (sequential? metadata) (string? (:model (last metadata))))
-                   (serialization/model-of entity))]
-    (when-not (and (contains? allowed-models model)
-                   (contains? (get model-directories model) (first (str/split path #"/" 2))))
+  (let [metadata           (:serdes/meta entity)
+        declared-name      (when (sequential? metadata)
+                             (:model (last metadata)))
+        model              (when (string? declared-name)
+                             (serialization/model-of entity))
+        directory          (first (str/split path #"/" 2))
+        allowed-model?     (contains? allowed-models model)
+        allowed-directory? (contains? (get model-directories model) directory)]
+    (when-not (and allowed-model? allowed-directory?)
       (serialization/refuse-import! "Unsupported import file." {:file path :model model}))
     (check-entity! path model entity)
     entity))
