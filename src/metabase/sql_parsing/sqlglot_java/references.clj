@@ -58,20 +58,15 @@
   [sql dialect]
   (remove nil? (ast/parse sql dialect)))
 
-(defn cte-reference?
-  "Whether the Table node `table` names a CTE: it has no schema or catalog, and a CTE of its name shadows it."
-  [table]
-  (and (empty? (ast/text table "db"))
-       (empty? (ast/text table "catalog"))
-       (contains? (shadowing-cte-names table) (ast/lower (ast/node-name table)))))
-
 (defn table-references
   "Every Table node in the statement `stmt` that names a table: CTE references, derived tables and table functions
   are left out, and the table a statement writes is kept. This is the walk the rewrites replace by."
   [stmt]
   (for [table (ast/find-all stmt Expressions$Table)
         :when (table-parts table)
-        :when (not (cte-reference? table))]
+        :when (not (and (empty? (ast/text table "db"))
+                        (empty? (ast/text table "catalog"))
+                        (contains? (shadowing-cte-names table) (ast/lower (ast/node-name table)))))]
     table))
 
 (defn- sort-key [parts]

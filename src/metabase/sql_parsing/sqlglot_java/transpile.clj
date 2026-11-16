@@ -56,20 +56,15 @@
   [dialect]
   (ast/lower (str/trim (first (str/split dialect #",")))))
 
-(def ^:private reserved-words
-  "The reserved words of the dialect named `dialect-name`."
-  (memoize
-   (fn [dialect-name]
-     (into (set (.RESERVED_KEYWORDS (SourceSettings/generator dialect-name)))
-           (get dialect-reserved dialect-name)))))
-
 (defn- quote-reserved-identifiers!
   "Quote the identifiers in `expr` that collide with `dialect`'s reserved words. Each is folded first, the way the
   server would have folded the bare name, so quoting never changes what it resolves to. Only words reserved in that
   dialect are touched: a generic list would misfire, e.g. quoting `user` on SQLite, where a quoted nonexistent column
   silently becomes a string literal."
   [expr dialect]
-  (let [reserved (reserved-words (dialect-name dialect))]
+  (let [dialect-name (dialect-name dialect)
+        reserved     (into (set (.RESERVED_KEYWORDS (SourceSettings/generator dialect-name)))
+                           (get dialect-reserved dialect-name))]
     (when (seq reserved)
       (doseq [ident (ast/find-all expr Expressions$Identifier)
               :when (and (not (ast/quoted? ident))
