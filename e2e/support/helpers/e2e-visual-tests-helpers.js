@@ -257,6 +257,9 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
   });
 }
 
+/**
+ * @param {{ header?: string, rows?: any[], footer?: { name: string, value: string, secondaryValue?: string } | null, blurAfter?: boolean }} options
+ */
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
   echartsTooltip().within(() => {
     if (header != null) {

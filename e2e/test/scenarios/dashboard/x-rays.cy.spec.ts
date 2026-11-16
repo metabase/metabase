@@ -254,7 +254,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.intercept("GET", "/app/assets/geojson/**").as("geojson");
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-    cy.wait("@geojson", { timeout });
+    cy.wait("@geojson", timeout);
 
     // confirm results of "Total transactions" card are present
     getDashcardByTitle("Total transactions").findByText("18,760", timeout);
@@ -459,7 +459,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   });
 });
 
-function getDashcardByTitle(title) {
+function getDashcardByTitle(title: string) {
   return H.dashboardGrid()
     .findByText(title)
     .closest("[data-testid='dashcard']");

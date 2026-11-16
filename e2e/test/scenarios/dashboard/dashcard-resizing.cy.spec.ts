@@ -1,11 +1,13 @@
-import _ from "underscore";
-
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
+import type { DashboardCard, VisualizationDisplay } from "metabase-types/api";
 
-const VISUALIZATION_SIZES = {
+type Size = { width: number; height: number };
+
+const VISUALIZATION_SIZES: Record<string, { min: Size; default: Size }> = {
   line: {
     min: { width: 4, height: 3 },
     default: { width: 12, height: 6 },
@@ -96,16 +98,17 @@ const VISUALIZATION_SIZES = {
   },
 };
 
-const getMinSize = (visualizationType) =>
-  _.get(VISUALIZATION_SIZES, [visualizationType, "min"], undefined);
-const getDefaultSize = (visualizationType) =>
-  _.get(VISUALIZATION_SIZES, [visualizationType, "default"], undefined);
+const getMinSize = (visualizationType: string) =>
+  VISUALIZATION_SIZES[visualizationType].min;
+const getDefaultSize = (visualizationType: string) =>
+  VISUALIZATION_SIZES[visualizationType].default;
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const getMockQuestionName = (vizType) => `MOCK_${vizType}_QUESTION`;
+const getMockQuestionName = (vizType: VisualizationDisplay) =>
+  `MOCK_${vizType}_QUESTION`;
 
-const getCommonQuestionFields = (vizType) => ({
+const getCommonQuestionFields = (vizType: VisualizationDisplay) => ({
   name: getMockQuestionName(vizType),
   query: {
     "source-table": ORDERS_ID,
@@ -116,7 +119,9 @@ const getCommonQuestionFields = (vizType) => ({
 });
 
 // covers table, bar, line, pie, row, area, combo, pivot, funnel, detail, and waterfall questions
-const createMockChartQuestion = (vizType) => {
+const createMockChartQuestion = (
+  vizType: VisualizationDisplay,
+): StructuredQuestionDetails => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -126,18 +131,17 @@ const createMockChartQuestion = (vizType) => {
     },
     display: vizType,
     visualization_settings: {
-      "graph.dimensions": [
-        Object.keys(ORDERS).find((key) => ORDERS[key] === ORDERS.CREATED_AT),
-      ],
+      "graph.dimensions": ["CREATED_AT"],
       "graph.series_order_dimension": null,
-      "graph.series_order": null,
       "graph.metrics": ["count"],
     },
   };
 };
 
 // covers scalar, gauge, and progress questions
-const createMockScalarQuestion = (vizType) => {
+const createMockScalarQuestion = (
+  vizType: VisualizationDisplay,
+): StructuredQuestionDetails => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -146,7 +150,7 @@ const createMockScalarQuestion = (vizType) => {
 };
 
 // covers map questions
-const createMockMapQuestion = () => {
+const createMockMapQuestion = (): StructuredQuestionDetails => {
   const question = getCommonQuestionFields("map");
   return {
     ...question,
@@ -158,22 +162,24 @@ const createMockMapQuestion = () => {
   };
 };
 const TEST_QUESTIONS = [
-  ...[
-    "table",
-    "bar",
-    "line",
-    "pie",
-    "row",
-    "area",
-    "combo",
-    "pivot",
-    "scatter",
-    "funnel",
-    "object",
-    "smartscalar",
-    "waterfall",
-  ].map((vizType) => createMockChartQuestion(vizType)),
-  ...["scalar", "gauge", "progress"].map((vizType) =>
+  ...(
+    [
+      "table",
+      "bar",
+      "line",
+      "pie",
+      "row",
+      "area",
+      "combo",
+      "pivot",
+      "scatter",
+      "funnel",
+      "object",
+      "smartscalar",
+      "waterfall",
+    ] as const
+  ).map((vizType) => createMockChartQuestion(vizType)),
+  ...(["scalar", "gauge", "progress"] as const).map((vizType) =>
     createMockScalarQuestion(vizType),
   ),
   createMockMapQuestion(),
@@ -215,7 +221,8 @@ describe(
 
       H.editDashboard();
 
-      let targetX, targetY;
+      let targetX = 0;
+      let targetY = 0;
 
       H.getDashboardCard(0)
         .find(".react-resizable-handle")
@@ -262,7 +269,7 @@ describe(
     });
 
     it("should not allow cards to be resized smaller than min height", () => {
-      const cardIds = [];
+      const cardIds: number[] = [];
       TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
@@ -283,7 +290,7 @@ describe(
         H.editDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          body.dashcards.forEach(({ card }, index) => {
+          body.dashcards.forEach(({ card }: DashboardCard, index: number) => {
             H.resizeDashboardCard({
               card: H.getDashboardCard(index),
               x: -getDefaultSize(card.display).width * 200,
@@ -295,11 +302,13 @@ describe(
 
           cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
             expect(body.dashcards).to.have.length(TEST_QUESTIONS.length);
-            body.dashcards.forEach(({ card, size_x, size_y }) => {
-              const { height, width } = getMinSize(card.display);
-              expect(size_x).to.equal(width);
-              expect(size_y).to.equal(height);
-            });
+            body.dashcards.forEach(
+              ({ card, size_x, size_y }: DashboardCard) => {
+                const { height, width } = getMinSize(card.display);
+                expect(size_x).to.equal(width);
+                expect(size_y).to.equal(height);
+              },
+            );
           });
         });
       });
@@ -378,12 +387,15 @@ describe("issue 31701", () => {
   });
 });
 
-const assertLinkCardOverflow = (link, card) => {
+const assertLinkCardOverflow = (
+  link: string,
+  card: Cypress.Chainable<JQuery<HTMLElement>>,
+) => {
   card.should((dashCardElem) => {
     const linkElem = dashCardElem.find(link);
     expect(linkElem).to.have.length(1);
     expect(linkElem[0].scrollHeight).to.eq(
-      dashCardElem[0].firstChild.scrollHeight,
+      dashCardElem[0].firstElementChild?.scrollHeight,
     );
   });
 };
@@ -393,7 +405,7 @@ describe("issue 29304", () => {
   // It will fail Cypress tests.
   const WAIT_TIME = 300;
 
-  const SCALAR_QUESTION = {
+  const SCALAR_QUESTION: StructuredQuestionDetails = {
     name: "Scalar question",
     query: {
       "source-table": ORDERS_ID,
@@ -404,7 +416,7 @@ describe("issue 29304", () => {
 
   const SCALAR_QUESTION_CARD = { size_x: 4, size_y: 3, row: 0, col: 0 };
 
-  const SMART_SCALAR_QUESTION = {
+  const SMART_SCALAR_QUESTION: StructuredQuestionDetails = {
     name: "Smart scalar question",
     query: {
       "source-table": ORDERS_ID,
@@ -429,13 +441,13 @@ describe("issue 29304", () => {
   // which checks `window.Cypress`, and will disable the refresh mode on Cypress test.
   // If we test by simply visiting the dashboard, the refresh mode will be disabled,
   // and we won't be able to reproduce the problem.
-  const visitFullAppEmbeddingUrl = ({ url }) => {
+  const visitFullAppEmbeddingUrl = ({ url }: { url: string }) => {
     cy.visit({
       url,
       onBeforeLoad(window) {
         // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
         // by removing the property the app would work in embedding mode
-        window.Cypress = undefined;
+        (window as { Cypress?: unknown }).Cypress = undefined;
         // Load charts up front so the lazy Suspense boundary never suspends.
         // Nulling Cypress above also nulls isCypressActive, which keeps the
         // frozen clock from advancing React 19's lazy retry (metabase#29304).
@@ -500,7 +512,7 @@ describe("issue 31628", () => {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
     },
-    display: "scalar",
+    display: "scalar" as const,
   };
 
   const SMART_SCALAR_QUESTION = {
@@ -518,10 +530,10 @@ describe("issue 31628", () => {
         ],
       ],
     },
-    display: "smartscalar",
+    display: "smartscalar" as const,
   };
 
-  const TREND_QUESTION = {
+  const TREND_QUESTION: StructuredQuestionDetails = {
     display: "smartscalar",
     query: {
       "source-table": ORDERS_ID,
@@ -557,31 +569,45 @@ describe("issue 31628", () => {
     },
   };
 
-  const OVERFLOW_CHECKED_TEST_IDS = {
+  type ScalarCardDisplay = "scalar" | "smartscalar" | "trend";
+  type CardLayout = {
+    display: ScalarCardDisplay;
+    size_x: number;
+    size_y: number;
+    row: number;
+    col: number;
+  };
+
+  const OVERFLOW_CHECKED_TEST_IDS: Record<string, string[]> = {
     scalar: ["scalar-container", "scalar-title"],
     smartscalar: ["scalar-container", "scalar-title", "scalar-previous-value"],
   };
 
   const ROW_WIDTHS = [6, 5, 4, 3, 2];
 
-  const OVERFLOW_ROWS = [
+  const OVERFLOW_ROWS: Array<{
+    display: ScalarCardDisplay;
+    size_y: number;
+    row: number;
+  }> = [
     { display: "scalar", size_y: 2, row: 0 },
     { display: "scalar", size_y: 3, row: 2 },
     { display: "scalar", size_y: 4, row: 5 },
     { display: "smartscalar", size_y: 2, row: 9 },
   ];
 
-  const OVERFLOW_CARDS = OVERFLOW_ROWS.flatMap(({ display, size_y, row }) =>
-    ROW_WIDTHS.map((size_x, index) => ({
-      display,
-      size_x,
-      size_y,
-      row,
-      col: ROW_WIDTHS.slice(0, index).reduce((sum, width) => sum + width, 0),
-    })),
+  const OVERFLOW_CARDS: CardLayout[] = OVERFLOW_ROWS.flatMap(
+    ({ display, size_y, row }) =>
+      ROW_WIDTHS.map((size_x, index) => ({
+        display,
+        size_x,
+        size_y,
+        row,
+        col: ROW_WIDTHS.slice(0, index).reduce((sum, width) => sum + width, 0),
+      })),
   );
 
-  const TRUNCATION_CARDS = {
+  const TRUNCATION_CARDS: Record<string, CardLayout> = {
     scalar1x2: { display: "scalar", size_x: 1, size_y: 2, row: 0, col: 0 },
     scalar2x2: { display: "scalar", size_x: 2, size_y: 2, row: 0, col: 1 },
     scalar6x3: { display: "scalar", size_x: 6, size_y: 3, row: 0, col: 3 },
@@ -591,11 +617,11 @@ describe("issue 31628", () => {
     trend4x3: { display: "trend", size_x: 4, size_y: 3, row: 4, col: 7 },
   };
 
-  const setupDashboard = (cards) => {
+  const setupDashboard = (cards: CardLayout[]) => {
     H.createDashboardWithQuestions({
       questions: [SCALAR_QUESTION, SMART_SCALAR_QUESTION, TREND_QUESTION],
     }).then(({ dashboard, questions: [scalar, smartScalar, trend] }) => {
-      const cardIds = {
+      const cardIds: Record<ScalarCardDisplay, number> = {
         scalar: scalar.id,
         smartscalar: smartScalar.id,
         trend: trend.id,
@@ -612,7 +638,7 @@ describe("issue 31628", () => {
             ({ row, col }) =>
               dashcards.find(
                 (dashcard) => dashcard.row === row && dashcard.col === col,
-              ).id,
+              )?.id,
           ),
         ).as("dashcardIds");
       });
@@ -620,14 +646,19 @@ describe("issue 31628", () => {
     });
   };
 
-  const getCard = (index) =>
+  type CardChainable = Cypress.Chainable<JQuery<HTMLElement>>;
+
+  const getCard = (index: number): CardChainable =>
     cy
-      .get("@dashcardIds")
+      .get<number[]>("@dashcardIds")
       .then((ids) => cy.get(`[data-dashcard-key="${ids[index]}"]`));
 
-  const scalarContainer = (card) => card.findByTestId("scalar-container");
-  const scalarValue = (card) => card.findByTestId("scalar-value");
-  const previousValue = (card) => card.findByTestId("scalar-previous-value");
+  const scalarContainer = (card: CardChainable) =>
+    card.findByTestId("scalar-container");
+  const scalarValue = (card: CardChainable) =>
+    card.findByTestId("scalar-value");
+  const previousValue = (card: CardChainable) =>
+    card.findByTestId("scalar-previous-value");
 
   const moveMouseAway = () => {
     H.dashboardHeader().realHover({ position: "left" });
@@ -652,7 +683,7 @@ describe("issue 31628", () => {
       expect(main.scrollHeight).to.be.at.most(main.clientHeight);
     });
 
-    cy.get("@dashcardIds").then((ids) => {
+    cy.get<number[]>("@dashcardIds").then((ids) => {
       cy.findAllByTestId("dashcard").should((dashcards) => {
         OVERFLOW_CARDS.forEach(({ display, size_x, size_y }, index) => {
           const dashcard = dashcards.filter(
@@ -691,7 +722,7 @@ describe("issue 31628", () => {
 
   it("should follow truncation rules for scalar, smart scalar and trend cards (metabase#31628)", () => {
     const cards = Object.values(TRUNCATION_CARDS);
-    const card = (key) => getCard(cards.indexOf(TRUNCATION_CARDS[key]));
+    const card = (key: string) => getCard(cards.indexOf(TRUNCATION_CARDS[key]));
 
     setupDashboard(cards);
     H.getDashboardCards().should("have.length", cards.length);
@@ -895,7 +926,7 @@ describe("dashcard actions panel", () => {
       .realHover({ scrollBehavior: false })
       .findByTestId("dashboardcard-actions-panel")
       .icon("close")
-      .click({ position: "top", scrollBehavior: false });
+      .click({ scrollBehavior: false });
 
     H.getDashboardCards().should("have.length", 1);
     H.removeDashboardCard(0);
@@ -935,7 +966,7 @@ describe("dashcard actions panel", () => {
       "Make sure cypress can click the element, which means it is not covered by another",
     );
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").closest("a").click({ position: "bottom" });
+      cy.icon("close").closest("a").click();
     });
     cy.findByTestId("dashcard").should("not.exist");
   });
