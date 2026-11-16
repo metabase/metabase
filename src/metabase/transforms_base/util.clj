@@ -550,8 +550,8 @@
         (qp.catch-exceptions/exception-response e)))))
 
 (mu/defn preprocess-source :- :metabase.lib.schema/query
-  "The source query of a transform, preprocessed as [[compile-source]] compiles it, applying incremental filtering if
-  required."
+  "The source query of `transform`, filtered to `source-range-params` when they are given, with remaps and the
+  default row limit turned off, preprocessed."
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
    source-range-params            :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [{:keys [query]} source]

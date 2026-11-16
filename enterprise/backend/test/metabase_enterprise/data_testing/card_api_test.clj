@@ -132,10 +132,18 @@
                      (t/instant (:now (mt/user-http-request :crowberto :get 200 path))))))
             (testing "PUT with a null `now` returns the test to the real clock"
               (is (=? {:now nil} (mt/user-http-request :crowberto :put 200 path {:now nil}))))
-            (testing "a date-time without an offset is refused, since it names no moment"
-              (is (=? {:errors {:now string?}}
-                      (mt/user-http-request :crowberto :post 400 "ee/card-test"
-                                            (assoc (body mbql-id) :now "2026-10-13T00:00:00")))))
+            (let [refusals (fn [now]
+                             (-> (mt/user-http-request :crowberto :post 400 "ee/card-test" (assoc (body mbql-id) :now now))
+                                 (get-in [:specific-errors :now])
+                                 vec))]
+              (testing "a date-time without an offset is refused, since it names no moment, and only for that"
+                (let [[refusal & more] (refusals "2026-10-13T00:00:00")]
+                  (is (empty? more))
+                  (is (re-find #"with an offset" refusal))))
+              (testing "a moment an app DB cannot store is refused, and only for that"
+                (let [[refusal & more] (refusals "2040-01-01T00:00:00Z")]
+                  (is (empty? more))
+                  (is (re-find #"inclusive" refusal)))))
             (testing "`now` on a test of a native card is refused, as it is saved"
               (is (= "card-test.now-on-native-sql"
                      (:error-code (mt/user-http-request :crowberto :post 501 "ee/card-test"

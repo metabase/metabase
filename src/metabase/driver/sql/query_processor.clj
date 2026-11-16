@@ -350,8 +350,8 @@
   include the database type info on the form (ex: via [[h2x/with-type-info]]).
 
   While [[qp.timezone/with-pinned-now]] pins the clock, returns instead a literal of the pinned moment, typed like the
-  driver's own form: an instant when that type has a zone or offset, and otherwise (untyped, `timestamp` or `datetime`)
-  the wall-clock time in the results timezone."
+  driver's own form: the wall-clock time in the results timezone when that form is untyped or typed `timestamp` or
+  `datetime`, and otherwise an instant."
   {:added "0.34.2" :arglists '([driver])}
   (fn [driver]
     (if (qp.timezone/pinned-now)

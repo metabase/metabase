@@ -163,17 +163,19 @@
 
 (mr/def ::now
   "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
-  as `2026-10-13T00:00:00Z`, from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z. SQL the test's author writes, in inputs
-  and expectations, reads the database's own clock."
+  as `2026-10-13T00:00:00Z`, that every app DB can store. SQL the test's author writes, in inputs and expectations,
+  reads the database's own clock."
   [:and
    {:decode/normalize ->offset-date-time
     :json-schema      {:type "string" :format "date-time"}}
    (mu/with-api-error-message
     (ms/InstanceOfClass java.time.OffsetDateTime)
     (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))
+   ;; Anything not yet a moment is the check above's to refuse, so that it gets one message.
    (mu/with-api-error-message
-    [:fn in-now-range?]
-    (deferred-tru "must be from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z"))])
+    [:fn #(or (not (instance? java.time.OffsetDateTime %)) (in-now-range? %))]
+    (let [[first-moment last-moment] now-range]
+      (deferred-tru "must be from {0} to {1}, inclusive" (str first-moment) (str last-moment))))])
 
 (mr/def ::now-string
   "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset."

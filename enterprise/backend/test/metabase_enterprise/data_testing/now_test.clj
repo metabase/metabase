@@ -74,7 +74,7 @@
 
 (defn- outcome!
   "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
-  its one expectation, which is `:error` when that expectation could not run, or the error type of the run's refusal."
+  its one expectation (`:error` when that expectation could not run), or the error type of the run's refusal."
   [subject-type subject test-model test-id]
   (binding [api/*current-user-id* (mt/user->id :crowberto)]
     (try

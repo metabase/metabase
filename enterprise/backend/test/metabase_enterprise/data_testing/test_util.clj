@@ -45,10 +45,11 @@
               :database (mt/id)}}))
 
 (defn refusal-type
-  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw."
+  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."
   [thunk]
   (try
     (thunk)
     nil
     (catch clojure.lang.ExceptionInfo e
-      (:error-type (ex-data e)))))
+      (or (:error-type (ex-data e))
+          (throw e)))))
