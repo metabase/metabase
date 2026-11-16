@@ -189,6 +189,7 @@
         [;; number formatting
          :number_style :currency :currency_style :currency_in_header
          :number_separators :decimals :scale :prefix :suffix
+         :duration_unit :duration_style :duration_precision
          ;; date/time formatting (only meaningful when the aggregation preserves datetime: min/max/median)
          :date_style :date_separator :date_abbreviate :time_enabled :time_style]))
 
@@ -282,6 +283,19 @@
 (defmethod lib.metadata.calculation/column-name-method :percentile
   [_query _stage-number _clause]
   "percentile")
+
+(defn- without-duration-style
+  "Removes the duration number style from settings, for an aggregation whose result is not a duration."
+  [settings]
+  (cond-> settings
+    (= (:number_style settings) "duration")
+    (dissoc :number_style :duration_unit :duration_style :duration_precision)))
+
+(defmethod lib.metadata.calculation/metadata-method :var
+  [query stage-number clause]
+  (let [base ((get-method lib.metadata.calculation/metadata-method ::no-semantic-type) query stage-number clause)]
+    (-> (dissoc base :settings)
+        (m/assoc-some :settings (not-empty (without-duration-style (:settings base)))))))
 
 (lib.hierarchy/derive ::no-semantic-type ::aggregation)
 (doseq [tag [:percentile :var]]

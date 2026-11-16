@@ -16,7 +16,12 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -277,6 +282,9 @@ export type ColumnSettings = TimeOnlyOptions & {
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;
