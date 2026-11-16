@@ -13,6 +13,7 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -574,3 +575,120 @@
               (doseq [coll (vals colls)]
                 (testing (:name coll)
                   (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))))
+
+(defn- with-container-policy
+  "A policy whose Card is saved in a Dashboard, and one whose Card is saved in an archived Document."
+  [f]
+  (mt/with-temp [:model/PermissionsGroup group-a   {}
+                 :model/PermissionsGroup group-b   {}
+                 :model/Dashboard        dashboard {}
+                 :model/Document         document  {:archived true}
+                 :model/Card             in-dash   {:dataset_query (mt/mbql-query venues)
+                                                    :dashboard_id  (:id dashboard)}
+                 :model/Card             in-doc    {:dataset_query (mt/mbql-query venues)
+                                                    :document_id   (:id document)}
+                 :model/Sandbox          _         {:table_id (mt/id :venues), :group_id (:id group-a), :card_id (:id in-dash)}
+                 :model/Sandbox          _         {:table_id (mt/id :venues), :group_id (:id group-b), :card_id (:id in-doc)}]
+    (f {:dashboard dashboard, :document document})))
+
+(deftest only-admins-can-delete-a-policy-card-through-its-container-test
+  (testing "deleting the Dashboard or Document a policy Card is saved in deletes the Card, and the guard fires for it"
+    (mt/with-premium-features #{:sandboxes}
+      (guarded-writes-test
+       with-container-policy
+       (fn [{:keys [dashboard document]}]
+         [["delete the Dashboard" card-msg #(t2/delete! :model/Dashboard :id (:id dashboard))]
+          ["delete the Document"  card-msg #(t2/delete! :model/Document :id (:id document))]]))
+      (testing "the policy Card is still there after a refused delete"
+        (with-container-policy
+          (fn [{:keys [dashboard]}]
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg (t2/delete! :model/Dashboard :id (:id dashboard)))))
+            (is (t2/exists? :model/Card :dashboard_id (:id dashboard)))
+            (is (t2/exists? :model/Dashboard :id (:id dashboard)))))))))
+
+(deftest refused-dashboard-delete-keeps-its-subscription-test
+  (testing "a refused Dashboard delete leaves the subscription and its SendPulse trigger alone"
+    (mt/with-premium-features #{:sandboxes}
+      (pulse-channel-test/with-send-pulse-setup!
+        (with-container-policy
+          (fn [{:keys [dashboard]}]
+            (mt/with-temp [:model/Pulse        {pulse-id :id} {:dashboard_id (:id dashboard)}
+                           :model/PulseChannel {pc-id :id}    {:pulse_id pulse-id}]
+              (let [triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
+                (is (= 1 (count triggers)))
+                (mt/with-test-user :rasta
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg
+                                        (t2/delete! :model/Dashboard :id (:id dashboard)))))
+                (is (t2/exists? :model/Pulse :id pulse-id))
+                (is (t2/exists? :model/PulseChannel :id pc-id))
+                (is (= triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))))
+
+(deftest refused-container-delete-rolls-back-the-whole-delete-test
+  (testing "a refused delete leaves an ordinary Card deleted before the policy Card, and the container, intact"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/PermissionsGroup group-a   {}
+                     :model/PermissionsGroup group-b   {}
+                     :model/Dashboard        dashboard {}
+                     :model/Document         document  {:archived true}
+                     ;; created first, so it has the lower id and is deleted first
+                     :model/Card             plain-dash {:dataset_query (mt/mbql-query venues), :dashboard_id (:id dashboard)}
+                     :model/Card             plain-doc  {:dataset_query (mt/mbql-query venues), :document_id (:id document)}
+                     :model/Card             policy-dash {:dataset_query (mt/mbql-query venues), :dashboard_id (:id dashboard)}
+                     :model/Card             policy-doc  {:dataset_query (mt/mbql-query venues), :document_id (:id document)}
+                     :model/Revision         _ {:model "Dashboard", :model_id (:id dashboard)
+                                                :user_id (mt/user->id :crowberto), :object {}}
+                     :model/Sandbox          _ {:table_id (mt/id :venues), :group_id (:id group-a), :card_id (:id policy-dash)}
+                     :model/Sandbox          _ {:table_id (mt/id :venues), :group_id (:id group-b), :card_id (:id policy-doc)}]
+        (is (< (:id plain-dash) (:id policy-dash)))
+        (is (< (:id plain-doc) (:id policy-doc)))
+        (doseq [[model container plain policy] [[:model/Dashboard dashboard plain-dash policy-dash]
+                                                [:model/Document  document  plain-doc  policy-doc]]]
+          (testing (name model)
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg
+                                    (t2/delete! model :id (:id container)))))
+            (is (t2/exists? model :id (:id container)))
+            (is (t2/exists? :model/Card :id (:id plain)))
+            (is (t2/exists? :model/Card :id (:id policy)))))
+        (is (t2/exists? :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))
+
+(deftest non-admin-cannot-delete-a-dashboard-holding-a-policy-card-through-the-api-test
+  (testing "a non-admin who curates a Dashboard cannot hard-delete it while it holds a policy Card"
+    (mt/with-premium-features #{:sandboxes}
+      ;; outside `with-gtaps!`, so the policy Card is gone before the Dashboard is cleaned up
+      (mt/with-temp [:model/Dashboard dashboard {}
+                     :model/Dashboard other     {}
+                     ;; lower id than the policy Card, so it is deleted first
+                     :model/Card      plain     {:dataset_query (mt/mbql-query venues), :dashboard_id (:id dashboard)}]
+        (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+          (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+          (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))]
+            (mt/with-test-user :crowberto
+              (t2/update! :model/Card :id card-id {:dashboard_id (:id dashboard)}))
+            (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                   (mt/user-http-request :rasta :delete 403 (str "dashboard/" (:id dashboard)))))
+            (is (t2/exists? :model/Card :id card-id))
+            (is (t2/exists? :model/Card :id (:id plain)))
+            (is (t2/exists? :model/Dashboard :id (:id dashboard)))
+            (is (t2/exists? :model/Sandbox :card_id card-id))
+            (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+            (testing "an unrelated Dashboard may still be deleted"
+              (mt/user-http-request :rasta :delete 204 (str "dashboard/" (:id other))))))))))
+
+(deftest non-admin-cannot-delete-a-document-holding-a-policy-card-through-the-api-test
+  (testing "a non-admin who curates an archived Document cannot hard-delete it while it holds a policy Card"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/Document document {:archived true}
+                     ;; lower id than the policy Card, so it is deleted first
+                     :model/Card     plain    {:dataset_query (mt/mbql-query venues), :document_id (:id document)}]
+        (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+          (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+          (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))]
+            (mt/with-test-user :crowberto
+              (t2/update! :model/Card :id card-id {:document_id (:id document)}))
+            (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                   (mt/user-http-request :rasta :delete 403 (str "document/" (:id document)))))
+            (is (t2/exists? :model/Card :id card-id))
+            (is (t2/exists? :model/Card :id (:id plain)))
+            (is (t2/exists? :model/Document :id (:id document)))))))))
