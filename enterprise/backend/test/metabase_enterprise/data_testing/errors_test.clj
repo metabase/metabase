@@ -40,6 +40,7 @@
    ::errors/unremapped-reference       400
    ::errors/no-expectations            400
    ::errors/unknown-placeholder        400
+   ::errors/colliding-columns          400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -71,7 +72,8 @@
              ::errors/unparseable-source
              ::errors/unremapped-reference
              ::errors/no-expectations
-             ::errors/unknown-placeholder}
+             ::errors/unknown-placeholder
+             ::errors/colliding-columns}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -111,6 +113,7 @@
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
+   ::errors/colliding-columns          "transform-test.colliding-columns"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"

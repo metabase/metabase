@@ -138,6 +138,27 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards-by-ids
+  "The Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids])
+    []))
+
+(mu/defn actions-by-ids
+  "The Actions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Action :id [:in ids])
+    []))
+
+(mu/defn fields-by-ids
+  "The Fields with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Field :id [:in ids])
+    []))
+
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil (also nil for virtual dashcards, which have no Card id)."
   [card-id :- [:maybe ::lib.schema.id/card]]

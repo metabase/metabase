@@ -449,10 +449,10 @@
    :parameterMapping
    {(json/encode target)
     {:id     (json/encode target)
-     :source {:type :column
+     :source {:type "column"
               :id   "ID"
               :name "ID"}
-     :target {:type      :dimension
+     :target {:type      "dimension"
               :id        (json/encode target)
               :dimension target}}}})
 
@@ -477,7 +477,7 @@
                         {:click_behavior (make-click-behavior target-card-id target)}}}}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard :id dashcard-id))
-              viz-key (keyword (json/encode target))]
+              viz-key (json/encode target)]
           (testing "global click behavior dimension should be upgraded"
             (is (=? {:click_behavior
                      {:targetId target-card-id

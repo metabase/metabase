@@ -689,6 +689,29 @@
               (is (= 204 (:status (delete (:id transform)))))
               (is (= [{:schema "PUBLIC" :name "t3a_off_workspace"}] @drops)))))))))
 
+(deftest delete-transform-table-drops-the-copy-of-a-leftover-remap-row-outside-workspace-mode-test
+  (testing "outside workspace mode, DELETE /api/transform/:id/table with a remap row for the target drops the row's copy, not the canonical table"
+    ;; :hosting with :transforms-basic turns transforms on without a write to `transforms-enabled`.
+    (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+      (let [mp     (mt/metadata-provider)
+            query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            target {:type "table" :schema "PUBLIC" :name "t3a_leftover_row"}
+            drops  (atom [])]
+        (mt/with-temp [:model/Transform transform {:name "t3a leftover row" :source {:type :query :query query} :target target}]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (t2/insert! :model/TableRemapping {:database_id (mt/id) :from_db "" :from_schema "PUBLIC"
+                                               :from_table_name "t3a_leftover_row"
+                                               :to_db "" :to_schema "ws_old" :to_table_name "PUBLIC__t3a_leftover_row"})
+            (is (false? (ws/workspace-mode?)))
+            (with-redefs [driver/drop-transform-target! (fn [_driver _database target]
+                                                          (swap! drops conj (select-keys target [:schema :name])))]
+              (is (= 204 (:status (mt/user-http-request-full-response
+                                   :crowberto :delete (str "transform/" (:id transform) "/table"))))))
+            (is (= [{:schema "ws_old" :name "PUBLIC__t3a_leftover_row"}] @drops))
+            (finally
+              (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
+
 (deftest workspace-transform-target-with-the-schema-cleared-mid-call-is-not-the-canonical-target-test
   (testing "a database-workspace-schema cleared while workspace-transform-target runs gives a refusal or the workspace
             copy, never the canonical target"

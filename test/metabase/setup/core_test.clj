@@ -102,25 +102,25 @@
           card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
       (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-write? dashboard)))
-          (is (true? (mi/can-write? card)))
-          (is (true? (mi/can-write? collection))))))
+          (is (true? (mi/can-write? (t2/hydrate dashboard :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate card :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate collection :can_write)))))))
     (let [sample-db       (t2/select-one :model/Database :is_sample true)
           sample-db-table (t2/select-one :model/Table :db_id (:id sample-db))
           sample-db-field (t2/select-one :model/Field :table_id (:id sample-db-table))]
       (testing "Rasta (as a member of 'All Users') should have read but not write privileges to the sample database"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-read? sample-db)))
-          (is (true? (mi/can-read? sample-db-table)))
-          (is (true? (mi/can-read? sample-db-field)))
-          (is (false? (mi/can-write? sample-db)))
-          (is (false? (mi/can-write? sample-db-table)))
-          (is (false? (mi/can-write? sample-db-field)))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db :can_read))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db-table :can_read))))
+          (is (true? (mi/can-read? (t2/hydrate sample-db-field :can_read))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db :can_write))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db-table :can_write))))
+          (is (false? (mi/can-write? (t2/hydrate sample-db-field :can_write))))))
       (testing "Crowberto (as an admin member of 'All Users') should have write privileges to the sample database"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (true? (mi/can-write? sample-db)))
-          (is (true? (mi/can-write? sample-db-table)))
-          (is (true? (mi/can-write? sample-db-field))))))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db-table :can_write))))
+          (is (true? (mi/can-write? (t2/hydrate sample-db-field :can_write)))))))))
 
 (deftest encryption-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -135,7 +135,7 @@
             (is (= 1 (t2/count :model/QueryCache)))
             (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
               (encryption-test/with-secret-key "key1"
-                (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+                (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
                 (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
                 (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
@@ -147,7 +147,7 @@
                   (is (encryption/decryptable-string? (:details (t2/select-one "metabase_database"))))
                   (testing "Cache is cleared on encryption"
                     (is (= 0 (t2/count :model/QueryCache))))
-                  (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+                  (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
                   (is (= :done (mdb/setup-db! :create-sample-content? false))))))))))
     (testing "Database created with encryption configured is encrypted"
       (mt/with-temp-empty-app-db [_conn driver/*driver*]
@@ -157,28 +157,28 @@
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
-            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
             (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check")))))
           (testing "A missing sentinel on a database whose content decrypts with the key is written back on startup"
             (t2/delete! :setting :key "encryption-check")
-            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
             (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
             (t2/delete! :setting :key "encryption-check")
             (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
-            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
             (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
-              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+              (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
               (is (thrown-with-msg? Exception #"MB_ENCRYPTION_SECRET_KEY environment variable was NOT set"
                                     (mdb/setup-db! :create-sample-content? false)))))
           (testing "Different encryption key throws an error"
             (encryption-test/with-secret-key "different-key"
-              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+              (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
               (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
                 (is (not (u/uuid-string? setting-value)))))))))))
@@ -197,7 +197,7 @@
               plaintext  "{\"host\":\"example.com\"}"
               raw-detail #(t2/select-one-fn :details :metabase_database :id db-id)
               restart!   (fn []
-                           (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+                           (reset! (:status (mdb.connection/current-application-db)) ::setup-finished)
                            (mdb/setup-db! :create-sample-content? false))]
           (is (encryption/decryptable-string? (raw-detail)))
           (t2/update! :metabase_database {:id db-id} {:details plaintext})

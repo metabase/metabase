@@ -9,7 +9,8 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -66,6 +67,7 @@
   [card-ids]
   (when (seq card-ids)
     (->> (llm.db/unarchived-cards card-ids)
+         (#(t2/hydrate % :can_read))
          (filter mi/can-read?)
          (map :id)
          set)))

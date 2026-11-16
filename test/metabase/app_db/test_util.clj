@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
@@ -15,6 +16,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn do-with-application-db-as-root
+  "Install `app-db` as the root application DB for the extent of `thunk`. See [[global-system.tu/do-with-root]]."
+  [app-db thunk]
+  (global-system.tu/do-with-root (mdb/application-db-handle) app-db thunk))
+
+(defmacro with-application-db-as-root
+  "Run `body` with `app-db` installed as the root application DB. See [[do-with-application-db-as-root]]."
+  {:style/indent [:defn]}
+  [app-db & body]
+  `(do-with-application-db-as-root ~app-db (^:once fn* [] ~@body)))
 
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
