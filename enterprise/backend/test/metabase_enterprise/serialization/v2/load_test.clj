@@ -3352,3 +3352,21 @@
             (is (=? {:active true}
                     (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
             (t2/delete! :model/TransformJob :entity_id (:entity_id extracted))))))))
+
+(deftest reject-reserved-database-import-test
+  (let [db {:serdes/meta [{:model "Database"}]
+            :name        "Imported warehouse"
+            :engine      "postgres"}]
+    (doseq [flag [:is_audit :is_attached_dwh]]
+      (is (thrown-with-msg? Exception #"Cannot import a system database"
+                            (serdes.load/load-metabase! (ts/ingestion-in-memory [(assoc db flag true)])
+                                                        :continue-on-error true))))
+    (is (not (t2/exists? :model/Database :name (:name db))))))
+
+(deftest refuse-invalid-settings-before-content-test
+  (mt/with-temp [:model/Collection collection {:name "Before import"}]
+    (let [data [(assoc (ts/extract-one "Collection" (:id collection)) :name "After import")
+                {:serdes/meta [{:model "Setting"}] :key "analytics-dev-mode" :value "true"}]]
+      (is (thrown-with-msg? Exception #"Setting cannot be restored"
+                            (serdes.load/load-metabase! (ts/ingestion-in-memory data) :continue-on-error true)))
+      (is (= "Before import" (t2/select-one-fn :name :model/Collection :id (:id collection)))))))

@@ -4538,12 +4538,15 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
+                    :model/Dimension
                     :model/Document
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/QueryAction
                     :model/Segment
+                    :model/TableIndex
                     :model/TableUserSettings
                     :model/Timeline
                     :model/Transform

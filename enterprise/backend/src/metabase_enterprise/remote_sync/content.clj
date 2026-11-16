@@ -93,28 +93,33 @@
 (defn- tree-document
   "The document of the entity YAML file at `path` of the tree of `version` of `repo`, with the content as the tree
   holds it."
-  [repo version path]
+  [repo version allowed-models historical? path]
   (let [read-file    #(protocol/read-file repo version %)
         yaml-content (read-file path)
-        entity       (-> yaml-content
-                         (yaml/parse-string {:key-fn ee.serialization/parse-key})
-                         ee.serialization/read-timestamps
-                         serialization/restore-identity
-                         (ee.serialization/read-resources #(read-file (str (directory path) %))))]
-    {:path      path
-     :entity    entity
-     :yaml      yaml-content
-     :resources (or (:serdes/resources entity) {})}))
+        parsed       (yaml/parse-string yaml-content {:key-fn ee.serialization/parse-key})]
+    (when (or (not historical?) (contains? allowed-models (serialization/model-of parsed)))
+      (when-not historical?
+        (ee.serialization/validate-file! allowed-models path parsed))
+      (let [entity (-> parsed
+                       ee.serialization/read-timestamps
+                       serialization/restore-identity
+                       (ee.serialization/read-resources #(read-file (str (directory path) %))))]
+        {:path      path
+         :entity    entity
+         :yaml      yaml-content
+         :resources (or (:serdes/resources entity) {})}))))
 
 (defn tree-documents
-  "The documents of the entity YAML files of the tree of `version` of `repo`; none for a nil `version`."
-  [repo version]
-  (let [exported? (set (exported-models))]
-    (if version
-      (into {}
-            (comp (filter ee.serialization/entity-file-path?)
-                  (map #(tree-document repo version %))
-                  (map (juxt (comp serialization/key-of :entity) identity))
-                  (filter (comp exported? ffirst)))
-            (protocol/list-files repo version))
-      {})))
+  "The documents at `version`, rejecting unsupported input unless reading the previous sync base."
+  ([repo version] (tree-documents repo version false))
+  ([repo version historical?]
+   (if version
+     (let [allowed-models (set (exported-models))
+           documents      (comp (filter ee.serialization/entity-file-path?)
+                                (keep #(tree-document repo version allowed-models historical? %))
+                                (map (juxt (comp serialization/key-of :entity) identity)))
+           paths          (protocol/list-files repo version)]
+       (if historical?
+         (into {} documents paths)
+         (transduce documents (completing ee.serialization/index-file) {} paths)))
+     {})))

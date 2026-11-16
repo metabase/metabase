@@ -33,6 +33,8 @@
   extract]
  [metabase-enterprise.serialization.v2.ingest
   entity-file-path?
+  index-file
+  validate-file!
   legal-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths

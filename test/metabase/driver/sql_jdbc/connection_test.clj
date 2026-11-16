@@ -1439,3 +1439,8 @@
                   (#'sql-jdbc.conn/pools-state)))
           (finally
             (sql-jdbc.conn/invalidate-pool-for-db! Integer/MAX_VALUE)))))))
+
+(deftest pooled-connection-requires-audit-database-identity-test
+  (mt/with-temp [:model/Database db {:engine :h2 :is_audit true}]
+    (is (thrown-with-msg? Exception #"Invalid audit database identity"
+                          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id db)))))))

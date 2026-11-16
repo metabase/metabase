@@ -13,14 +13,20 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- load-settings!
-  "Sets the exported `settings`, returning with `continue-on-error` the errors of those it could not set, which it
-  skips."
-  [settings continue-on-error]
+(defn- prepare-settings [settings continue-on-error]
+  (reduce (fn [acc {:keys [key value]}]
+            (let [key (keyword key)]
+              (if (and continue-on-error (not (setting/registered? key)))
+                (update acc :errors conj (ex-info "Unknown setting." {:key key}))
+                (update acc :values conj [key (setting/import-setting-value key value)]))))
+          {:errors [] :values []}
+          settings))
+
+(defn- load-settings! [settings continue-on-error]
   (into []
-        (keep (fn [{:keys [key value]}]
+        (keep (fn [[key value]]
                 (try
-                  (setting/set-value-of-type! :string (keyword key) (some-> value str))
+                  (setting/set! key value)
                   nil
                   (catch Exception e
                     (if continue-on-error
@@ -44,7 +50,7 @@
   "Loads the entities of `ingestion`, any Ingestable, into the app DB, returning `{:seen keys :errors errors}`: the
   `[model ref]` keys it read, and with `continue-on-error` the errors of the files it could not read and the
   entities it could not load, which it leaves out."
-  [ingestion & {:keys [continue-on-error reindex?]
+  [ingestion & {:keys [continue-on-error reindex? allow-system?]
                 :or   {continue-on-error false
                        reindex?          true}}]
   (let [ks                     (vec (serdes.ingest/ingest-list ingestion))
@@ -52,16 +58,18 @@
         _                      (when-not continue-on-error (check-ingest-errors! ingest-errors))
         {settings true
          entities false}       (group-by #(= :model/Setting (first %)) ks)
+        prepared-settings      (prepare-settings (into [] (keep second) (serdes.ingest/ingested ingestion settings))
+                                                 continue-on-error)
         _                      (log/infof "Starting deserialization, total %s documents" (count ks))
         errors                 (into (serialization/load-all entities
                                                              #(serdes.ingest/ingest-many ingestion %)
                                                              :continue-on-error      continue-on-error
+                                                             :allow-system?          allow-system?
                                                              :skip-schema-validation (serialization.settings/serialization-skip-schema-validation))
-                                     (load-settings! (into [] (keep second) (serdes.ingest/ingested ingestion settings))
-                                                     continue-on-error))]
+                                     (load-settings! (:values prepared-settings) continue-on-error))]
     (doseq [e errors]
       (log/warn (u/strip-error e "Skipping deserialization error")))
     (when reindex?
       (search/reindex!))
     {:seen   ks
-     :errors (into (vec ingest-errors) errors)}))
+     :errors (into (into (vec ingest-errors) (:errors prepared-settings)) errors)}))

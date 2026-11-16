@@ -804,9 +804,14 @@
     item))
 
 (defmethod serialization/before-load :model/Database [_ items]
-  (doseq [{:keys [row]} items]
+  (doseq [{:keys [row local allow-system?]} items]
     (assert-not-h2! row)
-    (assert-sqlite-not-hosted! row))
+    (assert-sqlite-not-hosted! row)
+    (when (and (not allow-system?)
+               (or (:is_audit row) (:is_attached_dwh row)
+                   (:is_audit local) (:is_attached_dwh local) (:is_sample local)
+                   (= (:id local) audit/audit-db-id)))
+      (serialization/refuse-import! "Cannot import a system database." {:model :model/Database})))
   (mapv (fn [item]
           (-> item
               keep-local-audit-columns

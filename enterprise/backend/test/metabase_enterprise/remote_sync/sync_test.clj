@@ -153,3 +153,27 @@
             (t2/update! :model/Card :id (:id card) {:name "Renamed card"})
             (testing "a new entity is created and a changed one updated"
               (is (= #{["create" "New card"] ["update" "Renamed card"]} (changes))))))))))
+
+(deftest pull-refuses-unsupported-content-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (remote-sync.tu/commit! url "main" {"collections/unexpected.yaml" "serdes/meta: [{model: Setting}]\nkey: site-name"})
+      (is (thrown-with-msg? Exception #"Unsupported import file"
+                            (remote-sync.tu/pull! url nil {:force? true}))))))
+
+(deftest pull-refuses-an-existing-unsynced-target-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced   {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection unsynced {:name "Unsynced" :location "/"}
+                     :model/Card       card     {:name "Synced card" :collection_id (:id synced)}
+                     :model/Card       other    {:name "Unsynced card" :collection_id (:id unsynced)}]
+        (let [{version :version} (remote-sync.tu/push! url nil)
+              path              (remote-sync.tu/entity-path! url "main" card)
+              content           (remote-sync.tu/read-file! url "main" path)]
+          (remote-sync.tu/commit! url "main"
+                                  {path (str/replace content (:entity_id card) (:entity_id other))})
+          (is (thrown-with-msg? Exception #"outside sync scope"
+                                (remote-sync.tu/pull! url version {:force? true})))
+          (is (= "Unsynced card" (t2/select-one-fn :name :model/Card :id (:id other))))
+          (is (t2/exists? :model/Card :id (:id card))))))))

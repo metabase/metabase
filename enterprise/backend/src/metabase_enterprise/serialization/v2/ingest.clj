@@ -4,6 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.serialization.v2.models :as models]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -53,14 +54,77 @@
     (keyword k)
     k))
 
-(defn- ingest-file
-  "Reads an entity YAML file and clean it up (eg. parsing timestamps)
-  The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
-  [file]
-  (-> file
-      (yaml/from-file {:key-fn parse-key})
-      read-timestamps
-      serialization/restore-identity))
+(def ^:private model-directories
+  (merge (zipmap (remove #{:model/Channel} models/data-model) (repeat #{"databases"}))
+         (zipmap [:model/Card :model/CardTest :model/Collection :model/Dashboard :model/Document :model/Timeline]
+                 (repeat #{"collections"}))
+         {:model/Action             #{"actions" "collections"}
+          :model/Channel            #{"channels"}
+          :model/CustomVizPlugin    #{"custom_viz_plugins"}
+          :model/DataApp            #{"data_apps"}
+          :model/EmbeddingTheme     #{"embedding_themes"}
+          :model/FieldValues        #{"databases"}
+          :model/Glossary           #{"glossary"}
+          :model/Metabot            #{"metabots"}
+          :model/NativeQuerySnippet #{"snippets" "collections"}
+          :model/OsiAiContext       #{"osi_ai_context"}
+          :model/PythonLibrary      #{"python_libraries" "python-libraries"}
+          :model/Transform          #{"transforms" "collections"}
+          :model/TransformJob       #{"transforms"}
+          :model/TransformTag       #{"transforms"}
+          :model/TransformTest      #{"transforms" "collections"}}))
+
+(defn- check-entity! [path model entity]
+  (let [metadata (:serdes/meta entity)]
+    (when-not (and (map? entity)
+                   (not (contains? entity :serdes/stripped))
+                   (or (nil? metadata)
+                       (and (sequential? metadata)
+                            (= (name model) (:model (last metadata)))
+                            (every? #(and (map? %) (string? (:model %))
+                                          (or (nil? (:id %)) (string? (:id %))))
+                                    metadata)))
+                   (or (nil? (:entity_id entity)) (string? (:entity_id entity))))
+      (serialization/refuse-import! "Invalid serialized entity." {:file path :model model})))
+  (doseq [[field child-model] (:children (serialization/spec-of model))
+          :let [children (get entity field)]
+          :when (some? children)]
+    (when-not (sequential? children)
+      (serialization/refuse-import! "Invalid nested entities." {:file path :model model :field field}))
+    (doseq [child children]
+      (check-entity! path child-model child))))
+
+(defn validate-file!
+  "Checks the model and structure of a parsed entity file before resolving its identity."
+  [allowed-models path entity]
+  (let [metadata (:serdes/meta entity)
+        model    (when (and (sequential? metadata) (string? (:model (last metadata))))
+                   (serialization/model-of entity))]
+    (when-not (and (contains? allowed-models model)
+                   (contains? (get model-directories model) (first (str/split path #"/" 2))))
+      (serialization/refuse-import! "Unsupported import file." {:file path :model model}))
+    (check-entity! path model entity)
+    entity))
+
+(defn index-file
+  "Adds an entity file to the import index, requiring unique identities."
+  [index [k file]]
+  (when (contains? index k)
+    (serialization/refuse-import! "Duplicate import identity." {:key k :file (if (map? file) (:path file) (str file))}))
+  (assoc index k file))
+
+(def ^:private archive-models
+  (disj (set models/exported-models) :model/Setting))
+
+(defn- ingest-file [file]
+  (yaml/from-file file {:key-fn parse-key}))
+
+(defn- read-entity [root-dir file]
+  (let [path (str/replace (str (.relativize (.toPath ^File root-dir) (.toPath ^File file))) "\\" "/")]
+    (->> (ingest-file file)
+         (validate-file! archive-models path)
+         read-timestamps
+         serialization/restore-identity)))
 
 (defn- check-resource-path!
   "Throws unless `path` is a relative path that stays inside its entity's directory."
@@ -121,10 +185,12 @@
 (defn- file-key!
   "Parses `file` and returns the `[model ref]` key of its entity, or nil on parse failure, recording the exception in
   the `errors` atom."
-  [^File file errors]
+  [root-dir ^File file errors]
   (try
-    (serialization/key-of (ingest-file file))
+    (serialization/key-of (read-entity root-dir file))
     (catch Exception e
+      (when (:status-code (ex-data e))
+        (throw e))
       (log/warn (u/strip-error e "Error reading file during ingestion"))
       (let [file-name (.getName file)]
         (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name)
@@ -137,11 +203,12 @@
   Non-dotfile YAML parse failures are collected in :errors."
   [^File root-dir]
   (let [errors (atom [])]
-    {:entities (into {} (for [^File file (file-seq root-dir)
-                              :when (ingestible-file? root-dir file)
-                              :let  [k (file-key! file errors)]
-                              :when k]
-                          [k file]))
+    {:entities (reduce index-file {}
+                       (for [^File file (file-seq root-dir)
+                             :when (ingestible-file? root-dir file)
+                             :let [k (file-key! root-dir file errors)]
+                             :when k]
+                         [k file]))
      :errors   @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
@@ -167,7 +234,7 @@
                   {:serdes/meta [{:model "Setting"}] :key id :value (get settings kw-id)}))
               (when-let [file (get @cache k)]
                 (try
-                  (read-resources (ingest-file file)
+                  (read-resources (read-entity root-dir file)
                                   (fn [path]
                                     (let [resource (io/file (.getParentFile ^File file) ^String path)]
                                       (when (.isFile resource)

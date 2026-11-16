@@ -210,9 +210,13 @@
   "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
   FieldUserSettings of their Tables."
   [items]
-  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
-    (let [kept (into #{} (map :field_id)
-                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
+  (doseq [{{:keys [table_id]} :instance {:keys [fields] table-ref :table_id :as entity} :entity} items
+          :when (contains? entity :fields)]
+    (let [fields (mapv serialization/restore-identity fields)
+          _      (doseq [{field-ref :field_id} fields]
+                   (when-not (and (sequential? field-ref) (= table-ref (vec (take 3 field-ref))))
+                     (serialization/refuse-import! "Invalid nested field." {:model :model/TableUserSettings})))
+          kept   (into #{} (map :field_id) (serialization/load :model/FieldUserSettings fields))]
       (warehouse-schema.db/delete-field-user-settings!
        (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
 

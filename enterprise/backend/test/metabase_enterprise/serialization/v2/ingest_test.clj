@@ -93,3 +93,26 @@
                  :entity_id              "1234567890abcdefABCDE"
                  :serdes/meta            [{:model "Card"}]}]
                (ingest/ingest-many ingestable [[:model/Card "1234567890abcdefABCDE"]])))))))
+
+(deftest refuses-misplaced-and-nested-models-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (let [file (io/file dump-dir "collections" "entity.yaml")]
+      (io/make-parents file)
+      (spit file (yaml/generate-string {:serdes/meta [{:model "Database"}] :name "Example"}))
+      (is (thrown-with-msg? Exception #"Unsupported import file"
+                            (ingest/ingest-list (ingest/ingest-yaml dump-dir))))
+      (spit file (yaml/generate-string {:serdes/meta [{:model "Dashboard"}]
+                                        :dashcards [{:serdes/meta [{:model "Card"}]}]}))
+      (is (thrown-with-msg? Exception #"Invalid serialized entity"
+                            (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
+
+(deftest refuses-duplicate-entity-identity-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (let [entity (yaml/generate-string {:entity_id "1234567890abcdefABCDE"
+                                        :serdes/meta [{:model "Collection"}]})]
+      (doseq [filename ["one.yaml" "two.yaml"]
+              :let [file (io/file dump-dir "collections" filename)]]
+        (io/make-parents file)
+        (spit file entity))
+      (is (thrown-with-msg? Exception #"Duplicate import identity"
+                            (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))

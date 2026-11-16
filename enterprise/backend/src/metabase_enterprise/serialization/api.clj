@@ -172,7 +172,7 @@
                          (log/error e "Error during serialization import")
                          (log/error (u/strip-error e "Error during serialization import"))))))]
     {:log-file      log-file
-     :status        (:status (ex-data @err))
+     :status        (or (:status-code (ex-data @err)) (:status (ex-data @err)))
      :error-message (when @err
                       (u/strip-error @err nil))
      :report        report

@@ -50,9 +50,9 @@
 (defn- rows-by-identity
   "The row among `rows`, the rows of the store a child entity can update, each of `deserialized` matches on the
   identity columns of `model`, or nil; of several matches the oldest wins."
-  [model rows deserialized]
+  [model parent-key rows deserialized]
   (let [[k :as ks] (serialization.spec/identity-columns model)
-        tuple      (apply juxt ks)
+        tuple      (apply juxt (conj (vec ks) parent-key))
         pk         (serialization.spec/primary-key model)
         by-tuple   (serialization.util/index-first (sort-by #(get % pk) rows) tuple identity)]
     (mapv #(when (some? (get % k)) (get by-tuple (tuple %))) deserialized)))
@@ -103,13 +103,23 @@
                           (assoc item :instance (get inserted i))))
                       items))))
 
+(defn refuse-import!
+  "Rejects an import even when the caller allows recoverable errors."
+  [message data]
+  (throw (ex-info message (assoc data ::refused true :status-code 400))))
+
 (defn- prepare-items
   "The load items of `entities` of `model` (see [[before-load]]): deserialized in `store` with `opts`, each with the
   row `locals` holds for it, and passed through [[before-load]]."
   [model store entities opts locals]
-  (let [rows (serialization.entity/deserialize-entities model store entities opts)]
-    (vec (before-load model (mapv (fn [entity row local] {:entity entity :row row :local local})
-                                  entities rows (locals rows))))))
+  (let [rows  (serialization.entity/deserialize-entities model store entities opts)
+        items (mapv (fn [entity row local]
+                      {:entity entity :row row :local local
+                       :allow-system? (:allow-system? opts) :nested? (:nested? opts)})
+                    entities rows (locals rows))]
+    (when-let [validate! (:validate-items! opts)]
+      (validate! model items))
+    (vec (before-load model items))))
 
 (declare ^:private load-children!)
 
@@ -137,7 +147,8 @@
     (when (seq parent-pks)
       (let [pk       (serialization.spec/primary-key model)
             existing (protocol/select-by-parent-pks store model parent-pks nil)
-            prepared (prepare-items model store entities opts #(rows-by-identity model existing %))
+            prepared (prepare-items model store entities (assoc opts :nested? true)
+                                    #(rows-by-identity model parent-key existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
             stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
         (when (seq stale)
@@ -266,12 +277,16 @@
       (load entities)
       []
       (catch Exception e
+        (when (::refused (ex-data e))
+          (throw e))
         (let [errors (into []
                            (keep (fn [entity]
                                    (try
                                      (load [entity])
                                      nil
                                      (catch Exception e
+                                       (when (::refused (ex-data e))
+                                         (throw e))
                                        (load-error model entity e)))))
                            entities)]
           (when-not continue-on-error
@@ -298,10 +313,13 @@
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
   rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
   rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
-  [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
+  [ks read-batch & {:keys [continue-on-error skip-schema-validation store allow-system? validate-items!]
+                    :or   {store protocol.app-db/store}}]
   (let [order (load-order ks read-batch)
         opts  {:create-missing?         true
-               :skip-schema-validation? (boolean skip-schema-validation)}]
+               :skip-schema-validation? (boolean skip-schema-validation)
+               :allow-system?           allow-system?
+               :validate-items!         validate-items!}]
     (protocol/transact
      store
      {:retries 3}

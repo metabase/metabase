@@ -68,6 +68,7 @@
   load-all
   load-error
   load-error?
+  refuse-import!
   load-order
   local-rows
   with-import-transaction]

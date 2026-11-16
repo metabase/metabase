@@ -36,11 +36,13 @@
             [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
+             allow-system?
              require-initialized-db?]
       :or   {token-check? true
              require-initialized-db? true}}
    :- [:maybe [:map {:closed true}
                [:token-check?            {:optional true} [:maybe :boolean]]
+               [:allow-system?           {:optional true} [:maybe :boolean]]
                [:require-initialized-db? {:optional true} [:maybe :boolean]]]]]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
@@ -52,7 +54,7 @@
   ;;(when-not (load/compatible? path)
   ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
+  (v2.load/load-metabase! (v2.ingest/ingest-yaml path) (assoc opts :allow-system? allow-system?)))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.

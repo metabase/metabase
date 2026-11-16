@@ -106,6 +106,7 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
+  import-setting-value
   obfuscate-value
   obfuscated-value?
   read-setting

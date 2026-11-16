@@ -24,8 +24,8 @@
                    (throw (ex-info (tru "The branch {0} doesn''t exist in the repository any more. Switch to another branch." branch)
                                    {:branch branch})))
         known? (and base-version (protocol/has-version? repo base-version))
-        base   (content/tree-documents repo (when known? base-version))
-        theirs (if (= tip base-version) base (content/tree-documents repo tip))
+        theirs (content/tree-documents repo tip)
+        base   (if (= tip base-version) theirs (content/tree-documents repo (when known? base-version) true))
         ours   (content/local-documents)]
     {:tip                tip
      :base               base
@@ -63,15 +63,52 @@
     (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))]
       (remote-sync.db/delete-rows! model (mapv (comp second :row ours) keys)))))
 
+(defn- validate-items! [ours table-refs model items]
+  (doseq [{:keys [entity row local nested?]} items
+          :let [k (serialization/key-of entity)
+                fields [:public_uuid :enable_embedding :authority_level]]]
+    (when (and local (not nested?)
+               (not= [model (get local (:primary-key (serialization/spec-of model) :id))] (get-in ours [k :row])))
+      (serialization/refuse-import! "Import target is outside sync scope." {:key k}))
+    (doseq [field fields
+            :let [value (get row field)]
+            :when (and value (not= value (get local field)))]
+      (serialization/refuse-import! "Import cannot grant access." {:key k :field field}))
+    (when (and (:enable_embedding local) (:enable_embedding row))
+      (doseq [field [:embedding_params :embedding_type]
+              :when (and (contains? row field) (not= (get row field) (get local field)))]
+        (serialization/refuse-import! "Import cannot change embedding access." {:key k :field field})))
+    (when (or (and (= :model/Collection model) (:personal_owner_id row))
+              (and (#{:model/Card :model/Dashboard :model/Document :model/Timeline} model)
+                   (not (or (:collection_id row) (:dashboard_id row) (:document_id row)))
+                   (not-any? (set (:serdes/stripped entity)) [:collection_id :dashboard_id :document_id]))
+              (and (= model :model/TableUserSettings)
+                   (not (and (:is_published row) (:collection_id row)))
+                   (not (contains? (:serdes/stripped entity) :collection_id))))
+      (serialization/refuse-import! "Import target is outside sync scope." {:key k}))
+    (when (and (not nested?)
+               (#{:model/Dimension :model/FieldUserSettings :model/TableIndex :model/Measure :model/Segment} model))
+      (let [table-ref (or (:table_id entity) (some->> (:field_id entity) (take 3) vec))]
+        (when-not (contains? table-refs table-ref)
+          (serialization/refuse-import! "Import target is outside sync scope." {:key k}))))
+    (when (and (#{:model/Card :model/QueryAction} model) (:database_id local))
+      (when-let [database-id (or (get-in row [:dataset_query :database]) (:database_id row))]
+        (when (not= database-id (:database_id local))
+          (serialization/refuse-import! "Import cannot change the query database." {:key k}))))))
+
 (defn- apply!
   "Makes the app DB, whose documents are `ours`, hold the `merged` documents, returning how many entities changed."
   [ours merged]
   (let [ks      (changed-keys ours merged)
         loaded  (filterv #(contains? merged %) ks)
-        removed (filterv #(not (contains? merged %)) ks)]
+        removed (filterv #(not (contains? merged %)) ks)
+        tables  (into #{} (comp (filter #(= :model/TableUserSettings (ffirst %))) (map (comp second key))) merged)]
     (serialization/with-import-transaction
       (when (seq loaded)
-        (serialization/load-all loaded #(mapv (comp :entity merged) %)))
+        (when-let [missing (seq (remote-sync.dependencies/missing-dependencies merged (set loaded) (constantly true)))]
+          (serialization/refuse-import! (str/join " " missing) {}))
+        (serialization/load-all loaded #(mapv (comp :entity merged) %)
+                                :validate-items! (partial validate-items! ours tables)))
       (when (seq removed)
         (delete-rows! ours removed)))
     (count ks)))

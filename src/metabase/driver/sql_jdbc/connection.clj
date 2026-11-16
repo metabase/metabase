@@ -771,6 +771,8 @@
   [db :- ::lib.schema.metadata/database]
   (driver-api/check-allowed-access! db)
   (let [db           (driver.conn/connection-database db)
+        _            (when (and (:is-audit db) (not= (:id db) audit-app/audit-db-id))
+                       (throw (ex-info (tru "Invalid audit database identity.") {:database-id (:id db)})))
         cache-key    (pool-cache-key db)
         ;; Check for workspace detail swaps (for pool routing: canonical pools state vs Guava TTL cache).
         ;; The actual swap is applied inside effective-details, not here.

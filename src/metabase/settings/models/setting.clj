@@ -96,7 +96,7 @@
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
-(declare export?)
+(declare importable-setting? resolve-setting validate-settable!)
 
 (defn exportable-settings
   "The site-wide settings an admin can write, that serialization exports, as `{:key :value}` maps with string values:
@@ -104,8 +104,12 @@
   []
   (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
                                             :getter (partial get-value-of-type :string))
-        :when (and (export? key) (not is_env_setting))]
-    {:key key :value value}))
+        :let [definition (resolve-setting key)]
+        :when (and (not is_env_setting) (importable-setting? definition)
+                   (try (validate-settable! definition) true (catch Exception _ false)))]
+    {:key key
+     :value (when-not (= (:default definition) (get-value-of-type (:type definition) key))
+              value)}))
 
 (defmethod serialization/spec :model/Setting [_]
   {:schema    ::settings.schema/external-setting
@@ -1580,6 +1584,43 @@
   "Whether the Setting with `setting-name` should be exported."
   [setting-name]
   (:export? (core/get @registered-settings (keyword setting-name))))
+
+(defn- importable-setting? [{:keys [export? sensitive? visibility database-local user-local]}]
+  (and export? (not sensitive?) (not= :internal visibility)
+       (not= :only database-local) (not= :only user-local)))
+
+(defn- imported-value [{setting-type :type} value]
+  (when (some? value)
+    (case setting-type
+      :string (if (string? value) value (throw (IllegalArgumentException. "Expected a string")))
+      :boolean (if (string? value) (string->boolean value)
+                   (if (boolean? value) value (throw (IllegalArgumentException. "Expected a boolean"))))
+      (:integer :positive-integer)
+      (let [parsed (if (string? value) (Long/parseLong value) value)]
+        (if (and (integer? parsed) (or (= setting-type :integer) (pos? parsed)))
+          parsed
+          (throw (IllegalArgumentException. "Expected an integer"))))
+      :double (if (string? value) (Double/parseDouble value)
+                  (if (number? value) value (throw (IllegalArgumentException. "Expected a number"))))
+      :keyword (if (or (keyword? value) (string? value)) (keyword value)
+                   (throw (IllegalArgumentException. "Expected a keyword")))
+      :timestamp (u.date/parse value)
+      :json (let [parsed (if (string? value) (json/decode+kw value) value)]
+              (if (coll? parsed) parsed (throw (IllegalArgumentException. "Expected JSON data"))))
+      :csv (if (string? value) (first (csv/read-csv value))
+               (if (sequential? value) value (throw (IllegalArgumentException. "Expected CSV data")))))))
+
+(defn import-setting-value
+  "Checks that a serialized Setting may be restored and returns its decoded value for [[set!]]."
+  [setting-key value]
+  (let [definition (resolve-setting setting-key)]
+    (when-not (importable-setting? definition)
+      (serialization/refuse-import! "Setting cannot be restored." {:key setting-key}))
+    (validate-settable! definition)
+    (try
+      (imported-value definition (if (nil? value) (:default definition) value))
+      (catch Exception _
+        (serialization/refuse-import! "Invalid setting value." {:key setting-key})))))
 
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]

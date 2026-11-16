@@ -248,6 +248,7 @@
                          (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
                                                               {}
                                                               :token-check? false
+                                                              :allow-system? true
                                                               :require-initialized-db? false))
                loaded? (empty? (:errors report))]
            (if loaded?
