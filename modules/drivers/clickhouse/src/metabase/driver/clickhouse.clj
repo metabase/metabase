@@ -848,10 +848,20 @@
   DROP USER and DROP DATABASE, so KILL QUERY ... SYNC ends those, and waits for them, before the database goes.
   [[destroy-workspace!]] drops the database even when KILL QUERY fails."
   [db-name user]
-  [(format "DROP USER IF EXISTS %s" (quote-field user))
+  [(format "ALTER USER IF EXISTS %s HOST NONE" (quote-field user))
    (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))
    ;; DROP DATABASE cascades to all tables within it
-   (format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
+   (format "DROP DATABASE IF EXISTS %s SYNC" (quote-schema db-name))
+   (format "DROP USER IF EXISTS %s" (quote-field user))])
+
+(defn- execute-for-error
+  "Executes `sql` on `stmt`. Returns the SQLException it throws, or nil."
+  [^Statement stmt ^String sql]
+  (try
+    (.execute stmt sql)
+    nil
+    (catch SQLException e
+      e)))
 
 (defn- destroy-workspace!
   "Runs [[destroy-workspace-sqls]] one at a time. A failed KILL QUERY (the admin may lack the KILL QUERY grant, which
@@ -859,30 +869,26 @@
   the KILL QUERY error is thrown after it; an access denied error becomes one that names the missing grant. When DROP
   DATABASE fails too, its error is thrown, with the KILL QUERY error attached as suppressed."
   [^Statement stmt db-name user]
-  (let [[^String drop-user ^String kill ^String drop-db] (destroy-workspace-sqls db-name user)]
-    (.execute stmt drop-user)
-    (let [kill-error (try
-                       (.execute stmt kill)
-                       nil
-                       (catch SQLException e
-                         e))]
-      (try
-        (.execute stmt drop-db)
-        (catch SQLException drop-db-error
-          (when kill-error
-            (.addSuppressed drop-db-error kill-error))
-          (throw drop-db-error)))
-      (when kill-error
-        ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
-        (throw (if (= 497 (.getErrorCode ^SQLException kill-error))
-                 (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not end the user's "
-                                       "running queries: the admin connection's login lacks the KILL QUERY grant. The "
-                                       "queries run until they finish, and teardown fails until then. Grant KILL QUERY "
-                                       "to the login, or wait for the queries to finish, and retry.")
-                                  (quote-field user) (quote-schema db-name))
-                          {:user user, :database db-name}
-                          kill-error)
-                 kill-error))))))
+  (let [[lock kill drop-db drop-user] (destroy-workspace-sqls db-name user)
+        lock-error                    (execute-for-error stmt lock)
+        kill-error                    (execute-for-error stmt kill)
+        drop-db-error                 (execute-for-error stmt drop-db)
+        drop-user-error               (when-not drop-db-error
+                                        (execute-for-error stmt drop-user))
+        [^SQLException error & others] (remove nil? [drop-db-error drop-user-error lock-error kill-error])]
+    (when error
+      (doseq [^Throwable other others]
+        (.addSuppressed error other))
+      ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
+      (throw (if (and (identical? error kill-error) (= 497 (.getErrorCode error)))
+               (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not end the user's "
+                                     "running queries: the admin connection's login lacks the KILL QUERY grant. The "
+                                     "queries run until they finish, and teardown fails until then. Grant KILL QUERY "
+                                     "to the login, or wait for the queries to finish, and retry.")
+                                (quote-field user) (quote-schema db-name))
+                        {:user user, :database db-name}
+                        kill-error)
+               error)))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [driver database workspace]
