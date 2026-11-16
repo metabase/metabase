@@ -3,6 +3,7 @@ import {
   createMockCard,
   createMockCollection,
   createMockRemoteSyncActionData,
+  createMockRemoteSyncActionTestData,
   createMockRemoteSyncCardData,
   createMockRemoteSyncCardTestData,
   createMockRemoteSyncDataAppData,
@@ -23,12 +24,22 @@ describe("getModelIcon", () => {
   it("shows a card test with the list icon", () => {
     expect(getModelIcon("cardtest")).toBe("list");
   });
+
+  it("shows an action test with the list icon", () => {
+    expect(getModelIcon("actiontest")).toBe("list");
+  });
 });
 
 describe("getItemUrl", () => {
   it("does not link a card test, since card tests have no page", () => {
     expect(
       getItemUrl(createMockRemoteSyncDirtyItem({ model: "cardtest" })),
+    ).toBeNull();
+  });
+
+  it("does not link an action test, since action tests have no page", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ model: "actiontest" })),
     ).toBeNull();
   });
 
@@ -103,6 +114,22 @@ describe("getItemCollections and getItemTable", () => {
 
     expect(getItemCollections(cardTest)).toEqual([sales]);
     expect(getItemTable(cardTest)).toBeNull();
+  });
+
+  it("puts an action test in the collection of its action's model", () => {
+    const sales = createMockCollection({ id: 1, name: "Sales" });
+    const actionTest = createMockRemoteSyncDirtyItem({
+      model: "actiontest",
+      data: createMockRemoteSyncActionTestData({
+        action: createMockRemoteSyncActionData({
+          model_id: 3,
+          model: createMockCard({ id: 3, collection: sales }),
+        }),
+      }),
+    });
+
+    expect(getItemCollections(actionTest)).toEqual([sales]);
+    expect(getItemTable(actionTest)).toBeNull();
   });
 
   it("puts a segment in its table, in the collection the table is published in", () => {

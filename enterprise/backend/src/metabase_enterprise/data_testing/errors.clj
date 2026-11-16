@@ -29,6 +29,7 @@
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
+   ::invalid-parameters         400  ; The test's parameter values do not fit the action: a hidden or unknown parameter.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
@@ -39,6 +40,8 @@
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
    ::uncheckable-write          422  ; The write of a subject cannot be checked in its database's SQL dialect.
+   ::unsupported-action         422  ; Not a query action (an implicit action, say).
+   ::actions-disabled           422  ; The action's database does not support actions, or has them turned off.
 
    ;; 501 — not built yet
    ::unsupported-format         501}); The expectation is of a type the schema knows and no `build` method handles.

@@ -369,6 +369,17 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(events/derive! ::action-test-event ::event)
+(events/derive! :event/action-test-create ::action-test-event)
+(events/derive! :event/action-test-update ::action-test-event)
+(events/derive! :event/action-test-delete ::action-test-event)
+(events/derive! :event/action-test-run-start ::action-test-event)
+(events/derive! :event/action-test-run-timeout ::action-test-event)
+
+(methodical/defmethod events/publish-event! ::action-test-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::glossary-event ::event)
 (events/derive! :event/glossary-create ::glossary-event)
 (events/derive! :event/glossary-update ::glossary-event)

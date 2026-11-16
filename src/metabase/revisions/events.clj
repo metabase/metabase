@@ -69,6 +69,14 @@
   [topic event]
   (push-revision! :model/CardTest event {:is-creation? (= topic :event/card-test-create)}))
 
+(events/derive! ::action-test-event ::event)
+(events/derive! :event/action-test-create ::action-test-event)
+(events/derive! :event/action-test-update ::action-test-event)
+
+(methodical/defmethod events/publish-event! ::action-test-event
+  [topic event]
+  (push-revision! :model/ActionTest event {:is-creation? (= topic :event/action-test-create)}))
+
 (events/derive! ::segment-event ::event)
 (events/derive! :event/segment-create ::segment-event)
 (events/derive! :event/segment-update ::segment-event)

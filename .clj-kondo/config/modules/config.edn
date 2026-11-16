@@ -127,6 +127,7 @@
            parameters
            parameters.schema
            permissions
+           premium-features
            public-sharing
            queries
            query-processor
@@ -2550,7 +2551,8 @@
            util
            util.config}
    :model-exports #{:model/Revision}
-   :model-imports #{:model/Card
+   :model-imports #{:model/ActionTest
+                    :model/Card
                     :model/CardTest
                     :model/Collection
                     :model/Dashboard
@@ -4057,12 +4059,14 @@
 
   enterprise/data-testing
   {:team "Graphy"
-   :api #{metabase-enterprise.data-testing.api
+   :api #{metabase-enterprise.data-testing.action-api
+          metabase-enterprise.data-testing.api
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
           metabase-enterprise.data-testing.run-api
           metabase-enterprise.data-testing.schema}
-   :uses #{api
+   :uses #{actions
+           api
            audit-app
            collections
            driver
@@ -4087,8 +4091,9 @@
            transforms.base
            transforms.schema
            util}
-   :model-exports #{:model/CardTest :model/TransformTest}
-   :model-imports #{:model/Card
+   :model-exports #{:model/ActionTest :model/CardTest :model/TransformTest}
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database

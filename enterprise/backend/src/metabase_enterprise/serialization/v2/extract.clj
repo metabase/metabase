@@ -174,20 +174,21 @@
   [model ids opts]
   (eduction (mapcat #(export-rows model (assoc opts :ids (vec %)))) (partition-all serialization/batch-size ids)))
 
-(defn- export-card-tests
-  "The CardTests of the Cards with `card-ids` that `opts` select, exported a batch of Cards at a time."
-  [card-ids opts]
-  ;; `card-ids` holds targeted Cards before the export's filters, which can leave a Card out; its tests stay out too.
-  (eduction (comp (map #(select/select-ids :model/Card (assoc opts :ids (vec %))))
+(defn- export-subject-tests
+  "The rows of `test-model` that test the rows of `subject-model` with `subject-ids` that `opts` select, exported a batch
+  of subjects at a time. `ids-key` is the option under which [[select/select-rows]] of `test-model` takes subject ids."
+  [test-model subject-model ids-key subject-ids opts]
+  ;; `subject-ids` holds targeted subjects before the export's filters, which can leave one out; its tests stay out too.
+  (eduction (comp (map #(select/select-ids subject-model (assoc opts :ids (vec %))))
                   (filter seq)
-                  (mapcat #(export-rows :model/CardTest (assoc opts :card-ids (vec %)))))
-            (partition-all serialization/batch-size card-ids)))
+                  (mapcat #(export-rows test-model (assoc opts ids-key (vec %)))))
+            (partition-all serialization/batch-size subject-ids)))
 
 (defn extract
   "A reducible of the exported entities an export of `opts` takes: the content of the Collections it selects (see
   [[selection]]) with the content it depends on, the published Tables of those Collections with their data model
-  when it has `:targets`, the CardTests of its Cards, and every row of the other models it takes. Reduce it within
-  [[metabase.serialization.core/with-export-transaction]] for a consistent snapshot."
+  when it has `:targets`, the CardTests of its Cards and the ActionTests of its Actions, and every row of the other
+  models it takes. Reduce it within [[metabase.serialization.core/with-export-transaction]] for a consistent snapshot."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting with options: %s" (pr-str opts))
   (let [models     (model-set opts)
@@ -205,5 +206,6 @@
     (eduction cat
               [(eduction (mapcat (fn [[model ids]] (export-ids model ids opts))) by-model)
                (eduction (mapcat #(export-rows % (assoc opts :table-ids table-ids))) table-dm)
-               (export-card-tests (get by-model :model/Card) opts)
+               (export-subject-tests :model/CardTest :model/Card :card-ids (get by-model :model/Card) opts)
+               (export-subject-tests :model/ActionTest :model/Action :action-ids (get by-model :model/Action) opts)
                (eduction (mapcat #(export-rows % opts)) (set/difference models (set serdes.models/content)))])))

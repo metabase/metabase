@@ -21,6 +21,7 @@
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
+   [metabase-enterprise.data-testing.action-api]
    [metabase-enterprise.data-testing.api]
    [metabase-enterprise.data-testing.card-api]
    [metabase-enterprise.data-testing.run-api]
@@ -119,6 +120,7 @@
                                     (handlers/route-map-handler
                                      {"/mcp-permissions" metabase-enterprise.mcp.api.permissions/routes})
                                     (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls))
+   "/action-test"                  (premium-handler metabase-enterprise.data-testing.action-api/routes :transforms-testing)
    "/apps"                         (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes

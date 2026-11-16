@@ -43,6 +43,7 @@
    ::errors/colliding-columns          400
    ::errors/not-a-single-write         400
    ::errors/no-output                  400
+   ::errors/invalid-parameters         400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -51,6 +52,8 @@
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
    ::errors/uncheckable-write          422
+   ::errors/unsupported-action         422
+   ::errors/actions-disabled           422
    ::errors/unsupported-format         501})
 
 (defn- types-with-status
@@ -78,7 +81,8 @@
              ::errors/unknown-placeholder
              ::errors/colliding-columns
              ::errors/not-a-single-write
-             ::errors/no-output}
+             ::errors/no-output
+             ::errors/invalid-parameters}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -88,7 +92,9 @@
              ::errors/duplicate-output-columns
              ::errors/setup-failed
              ::errors/expectation-failed
-             ::errors/uncheckable-write}
+             ::errors/uncheckable-write
+             ::errors/unsupported-action
+             ::errors/actions-disabled}
            (types-with-status 422))))
   (testing "a form that is not built yet is 501"
     (is (= #{::errors/unsupported-format}
@@ -123,6 +129,9 @@
    ::errors/not-a-single-write         "transform-test.not-a-single-write"
    ::errors/no-output                  "transform-test.no-output"
    ::errors/uncheckable-write          "transform-test.uncheckable-write"
+   ::errors/invalid-parameters         "transform-test.invalid-parameters"
+   ::errors/unsupported-action         "transform-test.unsupported-action"
+   ::errors/actions-disabled           "transform-test.actions-disabled"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"

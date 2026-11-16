@@ -53,6 +53,9 @@
 (defmethod where :model/CardTest [_ {:keys [card-ids]}]
   (when card-ids (in-ids :card_id card-ids)))
 
+(defmethod where :model/ActionTest [_ {:keys [action-ids]}]
+  (when action-ids (in-ids :action_id action-ids)))
+
 (defmethod where :model/Document [_ {:keys [collection-set]}]
   [:and (when (seq collection-set) (in-collections collection-set)) [:= :exploration_id nil]])
 

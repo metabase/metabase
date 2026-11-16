@@ -121,8 +121,14 @@
     ;; Don't recurse, bail on fallthrough.
     _ nil))
 
-(defn- diff-string [k v1 v2 identifier names]
-  (or (match-1 k v1 v2 identifier)
+(def ^:private model-diff-strings
+  "The description of a change of a key, by model and key, for a key whose meaning in that model differs from its
+  meaning in the others."
+  {["ActionTest" :parameters] (deferred-tru "changed the parameter values")})
+
+(defn- diff-string [model k v1 v2 identifier names]
+  (or (get model-diff-strings [model k])
+      (match-1 k v1 v2 identifier)
       (match-2 k v1 v2 identifier names)))
 
 (defn build-sentence
@@ -145,7 +151,8 @@
     "Exploration"   (deferred-tru "Exploration")
     "Transform"     (deferred-tru "Transform")
     "TransformTest" (deferred-tru "Transform test")
-    "CardTest"      (deferred-tru "Card test")))
+    "CardTest"      (deferred-tru "Card test")
+    "ActionTest"    (deferred-tru "Action test")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`, naming Collections and Dashboards from `names`.
@@ -171,6 +178,6 @@
           strings
           (let [k          (first ks)
                 identifier (if (zero? identifier-count) (deferred-tru "this {0}" model-name) (deferred-tru "it"))]
-            (if-let [diff-str (diff-string k (k before) (k after) identifier names)]
+            (if-let [diff-str (diff-string model k (k before) (k after) identifier names)]
               (recur (rest ks) (inc identifier-count) (conj strings diff-str))
               (recur (rest ks) identifier-count strings))))))))

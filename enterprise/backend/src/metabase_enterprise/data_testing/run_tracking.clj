@@ -24,7 +24,9 @@
   {:transform {:start   :event/transform-test-run-start
                :timeout :event/transform-test-run-timeout}
    :card      {:start   :event/card-test-run-start
-               :timeout :event/card-test-run-timeout}})
+               :timeout :event/card-test-run-timeout}
+   :action    {:start   :event/action-test-run-start
+               :timeout :event/action-test-run-timeout}})
 
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
   "Create a started run of the `test-type` test `test-id`, publish the start event of `test-type`, and register the run

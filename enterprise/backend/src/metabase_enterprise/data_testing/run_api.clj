@@ -18,7 +18,8 @@
 
 (def ^:private test-type->model
   {:transform :model/TransformTest
-   :card      :model/CardTest})
+   :card      :model/CardTest
+   :action    :model/ActionTest})
 
 (mu/defn- readable-test-ids :- [:set ms/PositiveInt]
   "The ids of the `test-type` tests the current user can read."
@@ -28,7 +29,8 @@
               (map :id))
         (t2/hydrate (case test-type
                       :transform (data-testing.db/transform-tests {})
-                      :card      (data-testing.db/card-tests {}))
+                      :card      (data-testing.db/card-tests {})
+                      :action    (data-testing.db/action-tests {}))
                     :can_read)))
 
 (mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]

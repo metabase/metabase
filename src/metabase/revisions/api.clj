@@ -26,7 +26,8 @@
            "segment"   :model/Segment
            "transform" :model/Transform}
     config/ee-available? (assoc "transform-test" :model/TransformTest
-                                "card-test"      :model/CardTest)))
+                                "card-test"      :model/CardTest
+                                "action-test"    :model/ActionTest)))
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -141,7 +142,7 @@
       ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
-    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
+    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest :model/ActionTest} model)
       (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
     ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`

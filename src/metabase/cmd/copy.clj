@@ -174,6 +174,7 @@
       :model/ContentDiagnosticsFinding
       :model/TransformTest
       :model/CardTest
+      :model/ActionTest
       :model/DataTestRun
       :model/Workspace
       :model/WorkspaceDatabase

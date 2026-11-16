@@ -211,9 +211,29 @@
   "What a client sends to update a card test. Omitted fields are left unchanged."
   (test-update :card_id ::lib.schema.id/card))
 
+(def ^:private action-test-parameters
+  "The parameter values an action test gives its action."
+  [:map {:closed true}
+   [:parameters {:optional true} [:maybe ::parameters]]])
+
+(mr/def ::action-test.create
+  "What a client sends to create an action test: a test definition, and the value of each of the action's parameters,
+  by the parameter's id or slug."
+  [:merge (test-create :action_id ::lib.schema.id/action) action-test-parameters])
+
+(mr/def ::action-test
+  "A saved action test."
+  [:merge
+   (saved-test :action_id ::lib.schema.id/action :action :metabase.actions.schema/action)
+   action-test-parameters])
+
+(mr/def ::action-test.update
+  "What a client sends to update an action test. Omitted fields are left unchanged."
+  [:merge (test-update :action_id ::lib.schema.id/action) action-test-parameters])
+
 (mr/def ::saved-test
   "A saved test of any subject type."
-  [:or ::transform-test ::card-test])
+  [:or ::transform-test ::card-test ::action-test])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
@@ -223,7 +243,7 @@
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform :card])
+   :transform :card :action])
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
@@ -284,6 +304,13 @@
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
+(mr/def ::action-test.response
+  "An action test as the read endpoints return it, with its newest run."
+  [:merge
+   ::action-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
 (mr/def ::status
   "The outcome of a test run, or of one of its expectations.
 
@@ -332,11 +359,12 @@
 
 (defn- external-test
   "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
-  under `subject-key`."
-  [saved-test-schema subject-key]
+  under `subject-key`, and the `extra-keys` of `saved-test-schema` its subject type adds."
+  [saved-test-schema subject-key & extra-keys]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
+    [:select-keys saved-test-schema (into [:entity_id :name :description :inputs :expectations subject-key :creator_id]
+                                          extra-keys)]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -347,3 +375,7 @@
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
   (external-test ::card-test :card_id))
+
+(mr/def ::external-action-test
+  "An ActionTest as serialization writes it, with references in place of ids."
+  (external-test ::action-test :action_id :parameters))

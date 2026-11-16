@@ -1,3 +1,4 @@
+import type { WritebackAction, WritebackActionId } from "./actions";
 import type { Card, CardId } from "./card";
 import type { DataTestRun } from "./data-test-run";
 import type { Transform, TransformId } from "./transform";
@@ -98,4 +99,21 @@ export type CardTest = {
   created_at: string;
   updated_at: string;
   card?: Card;
+};
+
+export type ActionTestId = number;
+
+export type ActionTest = {
+  id: ActionTestId;
+  entity_id: string;
+  action_id: WritebackActionId;
+  creator_id: UserId;
+  name: string;
+  description: string | null;
+  parameters: Record<string, string | number | boolean | null> | null;
+  inputs: DataTestInput[];
+  expectations: DataTestExpectation[];
+  created_at: string;
+  updated_at: string;
+  action?: WritebackAction;
 };

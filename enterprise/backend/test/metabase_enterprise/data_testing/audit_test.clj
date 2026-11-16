@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.audit-app.events.audit-log]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -173,3 +174,55 @@
           (t2/delete! :model/CardTest :id card-test-id)
           (is (=? {:user_id (mt/user->id :rasta)}
                   (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
+
+(deftest action-test-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+                      {:keys [action-id]} {}]
+      (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id   action-id
+                                                             :creator_id  (mt/user->id :crowberto)
+                                                             :name        "Original"
+                                                             :description "Checks the table"}]
+        (testing "create"
+          (is (= {:model_id action-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:action_id   action-id
+                             :name        "Original"
+                             :description "Checks the table"}
+                  :topic    :action-test-create
+                  :model    "ActionTest"}
+                 (mt/latest-audit-log-entry :action-test-create action-test-id))))
+        (testing "update"
+          (t2/update! :model/ActionTest :id action-test-id {:name "Renamed"})
+          (is (=? {:details {:name "Renamed"} :topic :action-test-update :model "ActionTest"}
+                  (mt/latest-audit-log-entry :action-test-update action-test-id))))
+        (testing "delete"
+          (t2/delete! :model/ActionTest :id action-test-id)
+          (is (=? {:details {:name "Renamed"} :topic :action-test-delete :model "ActionTest"}
+                  (mt/latest-audit-log-entry :action-test-delete action-test-id))))))))
+
+(deftest action-test-run-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+                      {:keys [action-id]} {}]
+      (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id action-id}]
+        (let [initiated-by (mt/user->id :rasta)
+              {run-id :id} (data-testing.run-tracking/start-run! :action action-test-id initiated-by)]
+          (try
+            (testing "start, under the action-test topic"
+              (is (= {:model_id run-id
+                      :user_id  initiated-by
+                      :details  {:test_type "action"
+                                 :test_id   action-test-id
+                                 :status    "started"}
+                      :topic    :action-test-run-start
+                      :model    "DataTestRun"}
+                     (mt/latest-audit-log-entry :action-test-run-start run-id))))
+            (testing "cluster reaping records the timeout under the action-test topic"
+              (t2/update! :model/DataTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
+              (is (= [run-id] (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))
+              (is (=? {:details {:test_type "action" :status "timeout"} :topic :action-test-run-timeout}
+                      (mt/latest-audit-log-entry :action-test-run-timeout run-id))))
+            (finally
+              (data-testing.run-tracking/finish-run! run-id :timeout)
+              (t2/delete! :model/DataTestRun :id run-id))))))))

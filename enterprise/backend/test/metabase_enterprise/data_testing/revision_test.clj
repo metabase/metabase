@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models]
+   [metabase-enterprise.data-testing.models.action-test]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -473,3 +475,60 @@
         (is (=? [{:is_creation false :user_id (mt/user->id :crowberto) :object {:name "Renamed"}}
                  {:is_creation true}]
                 (revisions/revisions :model/CardTest card-test-id)))))))
+
+;;; ------------------------------------------------ Action tests ------------------------------------------------
+
+(deftest action-test-revision-serialization-test
+  (let [action-test (t2/instance :model/ActionTest
+                                 {:id           1
+                                  :entity_id    "test-entity-id"
+                                  :action_id    2
+                                  :creator_id   3
+                                  :name         "Refunds one order"
+                                  :description  "Checks the table"
+                                  :parameters   {"id" 1}
+                                  :inputs       []
+                                  :expectations []
+                                  :created_at   :not-revisioned
+                                  :updated_at   :not-revisioned})]
+    (is (= {:action_id    2
+            :name         "Refunds one order"
+            :description  "Checks the table"
+            :parameters   {"id" 1}
+            :inputs       []
+            :expectations []}
+           (revisions/serialize-instance :model/ActionTest 1 action-test)))))
+
+(deftest action-test-revisions-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+                        {:keys [action-id]} {}]
+        (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id  action-id
+                                                               :creator_id (mt/user->id :crowberto)
+                                                               :name       "Original"
+                                                               :parameters {"id" 1}}]
+          (testing "creation records the initial revision"
+            (is (=? [{:is_creation true :object {:action_id action-id :name "Original" :parameters {"id" 1}}}]
+                    (revisions/revisions :model/ActionTest action-test-id))))
+          (t2/update! :model/ActionTest :id action-test-id {:name "Renamed" :parameters {"id" 2}})
+          (testing "an update records the changed fields, and the history API describes it"
+            (is (=? [{:is_creation false
+                      :description "changed the parameter values and renamed it from \"Original\" to \"Renamed\"."}
+                     {:is_creation true :description "created this."}]
+                    (mt/user-http-request :crowberto :get 200 (str "revision/action-test/" action-test-id)))))
+          (testing "reverting restores the name and the parameter values"
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity      "action-test"
+                                   :id          action-test-id
+                                   :revision_id (:id (last (revisions/revisions :model/ActionTest action-test-id)))})
+            (is (=? {:name "Original" :parameters {"id" 1}}
+                    (t2/select-one :model/ActionTest :id action-test-id)))))))))
+
+(deftest action-test-revert-requires-feature-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+                      {:keys [action-id]} {}]
+      (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id action-id :name "Original"}]
+        (t2/update! :model/ActionTest :id action-test-id {:name "Renamed"})
+        (check-revert-requires-the-feature :model/ActionTest "action-test" action-test-id #{} #{:transforms-testing})))))

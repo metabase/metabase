@@ -3,10 +3,13 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -56,7 +59,8 @@
 
 (def ^:private test-type->table
   {:transform :transform_test
-   :card      :card_test})
+   :card      :card_test
+   :action    :action_test})
 
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
@@ -215,6 +219,70 @@
   "Delete the CardTests of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/delete! :model/CardTest :card_id card-id))
+
+(mu/defn synced-action-tests-clause :- [:fn vector?]
+  "The clause over the ActionTest table aliased `alias` selecting the tests of the actions remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
+
+(mu/defn action :- [:maybe ::actions.schema/action]
+  "The Action with `action-id`, with the columns of its type, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (actions/select-action :id action-id))
+
+(mu/defn actions-by-ids :- [:sequential ::actions.schema/action]
+  "The Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (if (seq action-ids)
+    (t2/select :model/Action :id [:in action-ids])
+    []))
+
+(mu/defn action-test :- [:maybe ::data-testing.schema/action-test]
+  "The ActionTest with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/ActionTest :id id))
+
+(mu/defn action-tests :- [:sequential ::data-testing.schema/action-test]
+  "The ActionTests in name order, only those of the Action with `:action-id` when it is given."
+  [{:keys [action-id]} :- [:map {:closed true}
+                           [:action-id {:optional true} [:maybe ::lib.schema.id/action]]]]
+  (t2/select :model/ActionTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
+                                 action-id (assoc :where [:= :action_id action-id]))))
+
+(mu/defn insert-action-test! :- ::data-testing.schema/action-test
+  "Insert the ActionTest `action-test` and return the inserted instance."
+  [action-test :- [:merge
+                   ::data-testing.schema/action-test.create
+                   [:map {:closed true}
+                    [:creator_id ::lib.schema.id/user]]]]
+  (t2/insert-returning-instance! :model/ActionTest action-test))
+
+(mu/defn update-action-test!
+  "Apply `updates` to the ActionTest with `id`."
+  [id      :- ms/PositiveInt
+   updates :- ::data-testing.schema/action-test.update]
+  (t2/update! :model/ActionTest :id id updates))
+
+(mu/defn delete-action-test!
+  "Delete the ActionTest with `id`."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/ActionTest :id id))
+
+(mu/defn delete-action-tests!
+  "Delete the ActionTests of the Action with `action-id`."
+  [action-id :- ::lib.schema.id/action]
+  (t2/delete! :model/ActionTest :action_id action-id))
+
+(mu/defn synced-action-test-items :- [:sequential ::data-testing.schema/action-test]
+  "The ActionTests with `ids`, as remote sync lists them: each with its Action, in the shape remote sync lists Actions
+  in."
+  [ids :- [:sequential pos-int?]]
+  (let [rows    (t2/select [:model/ActionTest :id :name :action_id] :id [:in ids])
+        actions (when (seq rows)
+                  (u/index-by :id ((:synced-items (remote-sync/spec :model/Action))
+                                   (into [] (comp (map :action_id) (distinct)) rows))))]
+    (mapv (fn [row] (assoc row :action (get actions (:action_id row)))) rows)))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

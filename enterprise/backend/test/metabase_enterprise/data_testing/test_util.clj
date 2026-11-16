@@ -43,3 +43,15 @@
               :schema   "PUBLIC"
               :name     (str (u/upper-case-en (name table)) "_SUMMARY")
               :database (mt/id)}}))
+
+(defn categories-query
+  "An MBQL query of the test-data `categories` table, for a model to hold actions on it."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :categories)))))
+
+(defn renamed-categories
+  "The rows of the real `categories` table named `category-name`. An action test that wrote the real table leaves one."
+  [category-name]
+  (mt/rows (mt/process-query (mt/native-query {:query  "SELECT id FROM categories WHERE name = ?"
+                                               :params [category-name]}))))

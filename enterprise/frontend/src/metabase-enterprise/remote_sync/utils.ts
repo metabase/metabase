@@ -32,6 +32,7 @@ export type RemoteSyncItemSection = {
 
 const MODEL_ICONS: Record<RemoteSyncItemModel, IconName> = {
   action: "bolt",
+  actiontest: "list",
   card: "table2",
   cardtest: "list",
   collection: "folder",
@@ -93,6 +94,10 @@ export function getItemCollections(
     case "action":
       return getCollectionPath(
         item.data?.model?.collection ?? item.data?.collection,
+      );
+    case "actiontest":
+      return getCollectionPath(
+        item.data?.action?.model?.collection ?? item.data?.action?.collection,
       );
     case "dataapp":
     case "glossary":
@@ -162,6 +167,7 @@ export function getItemSection(
     case "glossary":
       return { key: "glossary", icon: "glossary", name: t`Glossary` };
     case "action":
+    case "actiontest":
       return { key: "actions", icon: "bolt", name: t`Actions` };
     case "dataapp":
       return { key: "data-apps", icon: "app", name: t`Data apps` };
@@ -197,6 +203,8 @@ function getItemModelAreas(
       return ["glossary"];
     case "action":
       return item.data?.model_id == null ? ["data-actions"] : [];
+    case "actiontest":
+      return item.data?.action?.model_id == null ? ["data-actions"] : [];
     case "card":
     case "cardtest":
     case "collection":
@@ -286,6 +294,7 @@ export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
         ? Urls.transformTest(item.data.transform_id, item.id)
         : null;
     case "cardtest":
+    case "actiontest":
       return null;
     case "action":
       return item.data?.model_id != null
