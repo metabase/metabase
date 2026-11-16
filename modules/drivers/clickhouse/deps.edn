@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
  :deps
- {com.clickhouse/clickhouse-jdbc {:mvn/version "0.11.0"
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.11.2"
                                   :exclusions [org.apache.commons/commons-lang3
                                                org.lz4/lz4-java
                                                ;; pulls the `cloud` classifier, which holds the same classes as
