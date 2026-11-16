@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
+   (java.io Writer)
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
@@ -21,17 +22,44 @@
 (def ^:private max-json-length
   16384)
 
+(defn- bounded-writer
+  "A Writer into `sb` that throws when `sb` holds more than `limit` characters, so the writer of a large value stops
+  early."
+  ^Writer [^StringBuilder sb ^long limit]
+  (let [check! #(when (< limit (.length sb))
+                  (throw (ex-info "JSON limit reached" {::limit true})))]
+    (proxy [Writer] []
+      (write
+        ([x]
+         (cond
+           (string? x)  (.append sb ^String x)
+           (integer? x) (.append sb (char x))
+           :else        (.append sb ^chars x))
+         (check!))
+        ([x off len]
+         (if (string? x)
+           (.append sb ^String x (int off) (int (+ off len)))
+           (.append sb ^chars x (int off) (int len)))
+         (check!)))
+      (flush [])
+      (close []))))
+
 (defn- ->json
   "`x` as JSON of at most about `max-json-length` characters. JSON that is too long becomes a JSON object whose
-  `truncated` key holds the start of it, so the column always holds valid JSON."
+  `truncated` key holds the start of it, so the column always holds valid JSON. The encoding stops at the limit, so a
+  large value costs no more than a small one."
   [x]
-  (let [s (try
-            (json/encode x)
-            (catch Exception _
-              (json/encode (pr-str x))))]
-    (if (< max-json-length (count s))
-      (json/encode {:truncated (u/truncate s max-json-length)})
-      s)))
+  (let [sb (StringBuilder.)]
+    (try
+      (json/encode-to x (bounded-writer sb max-json-length) {})
+      (str sb)
+      (catch Exception e
+        (if (some #(::limit (ex-data %)) (take-while some? (iterate ex-cause e)))
+          (json/encode {:truncated (u/truncate (str sb) max-json-length)})
+          (json/encode (u/truncate (binding [*print-length* 100
+                                             *print-level*  10]
+                                     (pr-str x))
+                                   max-json-length)))))))
 
 (defn- canonical
   "`x` with every map and set in a fixed order, so that equal values print the same."
