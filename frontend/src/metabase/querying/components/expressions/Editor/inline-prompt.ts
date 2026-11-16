@@ -64,6 +64,12 @@ class PromptWidget extends WidgetType {
   }
 }
 
+/** Opens the prompt at the end of the code, the same as typing "?" there. */
+export function openInlinePromptAtEnd(view: EditorView) {
+  const pos = view.state.doc.length;
+  view.dispatch({ selection: { anchor: pos }, effects: openPrompt.of(pos) });
+}
+
 export function closeInlinePrompt(view: EditorView) {
   const pos = view.state.field(promptField, false);
   if (pos == null) {

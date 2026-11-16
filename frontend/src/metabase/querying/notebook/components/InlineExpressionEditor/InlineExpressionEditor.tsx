@@ -7,7 +7,7 @@ import {
   type ExpressionError,
   isRequestText,
 } from "metabase/querying/expressions";
-import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
@@ -18,6 +18,7 @@ import type {
   ValidateNow,
 } from "../../../components/expressions/Editor/Editor";
 import { ToolbarSegment } from "../../../components/expressions/Editor/InlineToolbar";
+import AiIcon from "../../../components/expressions/Editor/ai.svg?component";
 import CloseIcon from "../../../components/expressions/Editor/close.svg?component";
 import PlayIcon from "../../../components/expressions/Editor/play.svg?component";
 import { Layout } from "../../../components/expressions/Layout";
@@ -116,6 +117,7 @@ export function InlineExpressionEditor({
   const [isErrorShown, setIsErrorShown] = useState(false);
   const validateRef = useRef<ValidateNow | null>(null);
   const generateRef = useRef<GenerateNow | null>(null);
+  const askAiRef = useRef<(() => void) | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   /** Checks the text now. Returns it when it is valid, or shows its errors. */
@@ -312,21 +314,31 @@ export function InlineExpressionEditor({
         generateRef={generateRef}
         canGenerateFromText={isNewExpression && !readOnly}
         readOnly={readOnly}
+        askAiRef={askAiRef}
         toolbarStart={
-          readOnly ? undefined : canGenerate ? (
-            <ToolbarSegment
-              icon={<Icon name="ai" size={16} />}
-              label={t`Generate with AI (${PREVIEW_SHORTCUT})`}
-              disabled={isGenerating}
-              onClick={runGenerate}
-            />
-          ) : (
-            <ToolbarSegment
-              icon={<PlayIcon />}
-              label={t`Preview (${PREVIEW_SHORTCUT})`}
-              disabled={isEmpty}
-              onClick={runPreview}
-            />
+          readOnly ? undefined : (
+            <>
+              {canGenerate ? (
+                <ToolbarSegment
+                  icon={<AiIcon />}
+                  label={t`Generate with AI (${PREVIEW_SHORTCUT})`}
+                  disabled={isGenerating}
+                  onClick={runGenerate}
+                />
+              ) : (
+                <ToolbarSegment
+                  icon={<AiIcon />}
+                  label={t`Edit with AI`}
+                  onClick={() => askAiRef.current?.()}
+                />
+              )}
+              <ToolbarSegment
+                icon={<PlayIcon />}
+                label={t`Preview (${PREVIEW_SHORTCUT})`}
+                disabled={isEmpty}
+                onClick={runPreview}
+              />
+            </>
           )
         }
         toolbarEnd={

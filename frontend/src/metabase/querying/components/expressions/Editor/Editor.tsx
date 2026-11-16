@@ -61,7 +61,11 @@ import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
+import {
+  closeInlinePrompt,
+  inlinePrompt,
+  openInlinePromptAtEnd,
+} from "./inline-prompt";
 import { showErrors as showErrorMarks } from "./language";
 import { useParameterHints } from "./parameter-hints";
 import { useEditorSidebar } from "./use-editor-sidebar";
@@ -140,6 +144,8 @@ export type EditorProps = {
   validateRef?: MutableRefObject<ValidateNow | null>;
   /** Set to a function that sends the whole text to the AI as a request. */
   generateRef?: MutableRefObject<GenerateNow | null>;
+  /** Set to a function that opens the prompt to the AI at the end of the code. */
+  askAiRef?: MutableRefObject<(() => void) | null>;
   /**
    * True for a new column: text that reads like a request offers to
    * generate the expression with AI in autocomplete.
@@ -202,6 +208,7 @@ export function Editor(props: EditorProps) {
     showErrors = true,
     validateRef,
     generateRef,
+    askAiRef,
     canGenerateFromText,
   } = props;
 
@@ -507,6 +514,16 @@ export function Editor(props: EditorProps) {
         : [],
     [inline, readOnly, isProposing, promptContainer, handlePromptChange],
   );
+
+  if (askAiRef) {
+    askAiRef.current = () => {
+      const view = ref.current?.view;
+      if (view) {
+        closeCompletion(view);
+        openInlinePromptAtEnd(view);
+      }
+    };
+  }
 
   const handleClosePrompt = useCallback(() => {
     const view = ref.current?.view;
