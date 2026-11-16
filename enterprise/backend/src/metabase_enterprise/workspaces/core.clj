@@ -192,7 +192,9 @@
   `:provisioning` or `:deprovisioning` row of that workspace still counts as in
   flight. After that, such a row is treated as left behind by a crashed instance,
   so a delete tears it down instead of refusing. A create or deprovision that
-  spends longer than this on one database also looks crashed."
+  spends longer than this on one database also looks crashed. Each status write
+  sets the row's `updated_at` from this instance's clock when the write runs, and
+  the cutoff uses the same clock."
   (t/minutes 15))
 
 (defn- assert-workspace-not-busy

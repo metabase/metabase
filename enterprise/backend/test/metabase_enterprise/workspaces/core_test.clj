@@ -7,8 +7,10 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2])
   (:import
@@ -690,3 +692,56 @@
                      (is (not (t2/exists? :model/Workspace :id ws-id)))))))
              (finally
                (deliver release true)))))))))
+
+(deftest delete-soon-after-a-slow-database-finishes-answers-busy-test
+  (testing (str "app DB " (mdb/db-type) ": a DELETE 1.5 s after a 4 s first init finishes, with a 5 s busy window, "
+                "answers 409 workspace_busy, because the finished row's updated_at is when its :provisioned write ran")
+    (do-with-committed-databases!
+     (fn [db1-id db2-id]
+       (let [ws-name   "Slow first init"
+             inited    (atom #{})
+             destroyed (atom #{})
+             init-done (atom nil)
+             at-gate   (promise)
+             release   (promise)
+             slow      (recording-provisioner inited destroyed
+                                              :init! (fn [db]
+                                                       (when (= db1-id (:id db))
+                                                         (Thread/sleep 4000)
+                                                         (reset! init-done (t/offset-date-time)))))]
+         (try
+           (is (nil? t2.connection/*current-connectable*)
+               "premise: no app-DB connection is bound, so each thread uses its own")
+           (with-redefs [ws/in-flight-stale-after                   (t/seconds 5)
+                         provisioning/dispatching-provisioner       slow
+                         provisioning/provision-workspace-database! (gated-provision-workspace-database! :after at-gate release)]
+             (let [create     (future (try
+                                        (ws/create-workspace! {:name         ws-name
+                                                               :creator_id   (mt/user->id :crowberto)
+                                                               :database_ids [db1-id db2-id]})
+                                        (catch Throwable e e)))
+                   _          (is (not= ::timeout (deref at-gate 20000 ::timeout))
+                                  "premise: the create provisioned the first database and holds before the second")
+                   _          (Thread/sleep 1500)
+                   ws-id      (t2/select-one-pk :model/Workspace :name ws-name)
+                   updated-at (t2/select-one-fn :updated_at :model/WorkspaceDatabase
+                                                :workspace_id ws-id :database_id db1-id)
+                   delete     (try
+                                (ws/delete-workspace! ws-id)
+                                :deleted
+                                (catch ExceptionInfo e (ex-data e)))
+                   _          (deliver release true)
+                   created    (deref create 30000 ::timeout)]
+               (log/infof "app DB %s: first row's updated_at minus the end of its init: %d ms"
+                          (mdb/db-type)
+                          (t/as (t/duration @init-done updated-at) :millis))
+               (is (not (t/before? updated-at (t/minus @init-done (t/millis 250))))
+                   "the :provisioned write stamps the moment it runs, not the start of the lock's transaction")
+               (is (=? {:status-code 409 :error-code "workspace_busy"} delete))
+               (is (= #{} @destroyed)
+                   "the refused DELETE destroyed nothing")
+               (is (=? {:databases [{:status :provisioned} {:status :provisioned}]}
+                       created)
+                   "the refused DELETE left the create alone")))
+           (finally
+             (deliver release true))))))))
