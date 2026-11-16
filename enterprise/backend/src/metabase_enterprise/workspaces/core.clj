@@ -12,7 +12,9 @@
      setting is on. Each database's database-local `database-workspace-schema` setting
      names the schema its transforms write to. `workspaces-enabled` is set through the
      settings API, `MB_WORKSPACES_ENABLED` or `config.yml`; `database-workspace-schema`
-     through `PUT /api/database/:id` or `config.yml`. `POST /current` sets both. The
+     through `PUT /api/database/:id` or `config.yml`. `POST /current` sets both. While
+     `MB_WORKSPACES_ENABLED` is set, `PUT /api/database/:id` and `POST /current` refuse to
+     change `database-workspace-schema`. The
      `config.yml` `:workspace` section (`metabase-enterprise.advanced-config.file.workspace`)
      sets both from the format that came before these settings.
      Workspace-aware code (transform target rewriting, table-remapping QP middleware)
@@ -43,6 +45,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -123,6 +126,29 @@
                               (when-let [schema (database-workspace-schema database)]
                                 [(:id database) schema])))
                       (ws.db/all-databases))}))
+
+(defenterprise check-database-workspace-schema-write!
+  "EE impl: throw a 400 when a write would change a database's `database-workspace-schema` from `stored-schema` to
+   `new-schema` while the `MB_WORKSPACES_ENABLED` env var is set, to either value. Does nothing when the two are
+   equal, so a write of the stored value passes. Under the env var the schema changes only through `config.yml` or
+   a restart with new configuration, which do not call this.
+
+   Ungated like [[workspace-mode?]]: the lock holds whatever the token state."
+  :feature :none
+  [stored-schema new-schema]
+  (when (and (not= stored-schema new-schema)
+             (some? (some-> (setting/env-var-value :workspaces-enabled) setting/string->boolean)))
+    (throw (ex-info (tru "database-workspace-schema can''t be changed at runtime while the MB_WORKSPACES_ENABLED env var is set. Change it in config.yml, or restart with new configuration.")
+                    {:status-code 400}))))
+
+(defn check-instance-workspace-schemas-unlocked!
+  "Throw the 400 of [[check-database-workspace-schema-write!]] when [[set-instance-workspace!]] with `schemas`
+   would change or clear any database's `database-workspace-schema`."
+  [schemas]
+  (doseq [database (ws.db/all-databases)]
+    (check-database-workspace-schema-write! (database-workspace-schema database)
+                                            (some-> (get schemas (:id database)) str/trim)))
+  nil)
 
 (mu/defn set-instance-workspace! :- :nil
   "Make this instance a workspace: set each database's `database-workspace-schema` from

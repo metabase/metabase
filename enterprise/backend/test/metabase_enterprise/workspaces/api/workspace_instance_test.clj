@@ -95,6 +95,47 @@
       (is (re-find #"MB_WORKSPACES_ENABLED"
                    (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current"))))))
 
+(deftest post-current-refuses-schema-change-under-env-var-test
+  (testing "while MB_WORKSPACES_ENABLED is set, POST /ee/workspace-instance/current refuses to change a schema"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings {:database-workspace-schema "ws"}}]
+      (mt/with-model-cleanup [:model/TableRemapping]
+        (t2/insert! :model/TableRemapping {:database_id db-id :from_schema "public" :from_table_name "orders"
+                                           :to_schema "ws" :to_table_name "orders"})
+        (let [post!  (fn [status databases]
+                       (mt/user-http-request :crowberto :post status "ee/workspace-instance/current"
+                                             {:databases databases}))
+              ;; every database that has a schema now, so that a POST of `others` plus an entry changes one database
+              others (vec (for [database (t2/select :model/Database :id [:not= db-id])
+                                :let     [schema (get-in database [:settings :database-workspace-schema])]
+                                :when    schema]
+                            {:database_id (:id database) :schema schema}))
+              stored #(t2/select-one-fn :settings :model/Database :id db-id)
+              rows   #(t2/count :model/TableRemapping :database_id db-id)]
+          (mt/with-temp-env-var-value! [:mb-workspaces-enabled "true"]
+            (doseq [[what databases] {"a different schema"            (conj others {:database_id db-id :schema "prod"})
+                                      "a database left out (cleared)" others}]
+              (testing what
+                (is (= (str "database-workspace-schema can't be changed at runtime while the MB_WORKSPACES_ENABLED"
+                            " env var is set. Change it in config.yml, or restart with new configuration.")
+                       (post! 400 databases)))
+                (is (= {:database-workspace-schema "ws"} (stored)))
+                (is (= 1 (rows)))))
+            (testing "a POST of the schemas the databases already have changes nothing, so it is not refused"
+              (is (= {:databases (vec (sort-by :database_id (conj others {:database_id db-id :schema "ws"})))}
+                     (post! 200 (conj others {:database_id db-id :schema " ws "}))))
+              (is (= {:database-workspace-schema "ws"} (stored)))
+              (is (= 1 (rows)))))
+          (testing "MB_WORKSPACES_ENABLED=false: a schema change gets the same 400"
+            (mt/with-temp-env-var-value! [:mb-workspaces-enabled "false"]
+              (is (re-find #"database-workspace-schema can't be changed at runtime while the MB_WORKSPACES_ENABLED"
+                           (post! 400 (conj others {:database_id db-id :schema "prod"}))))
+              (is (= {:database-workspace-schema "ws"} (stored)))
+              (is (= 1 (rows)))))
+          (testing "without the env var, the same call changes the schema and deletes the remap rows"
+            (post! 200 (conj others {:database_id db-id :schema "prod"}))
+            (is (= {:database-workspace-schema "prod"} (stored)))
+            (is (zero? (rows)))))))))
+
 (deftest delete-current-superuser-only-test
   (testing "DELETE /ee/workspace-instance/current requires data analyst or superuser"
     (is (= "You don't have permissions to do that."

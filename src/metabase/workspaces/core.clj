@@ -60,6 +60,14 @@
   [_database-id]
   false)
 
+(defenterprise check-database-workspace-schema-write!
+  "Throws an HTTP 400 `ex-info` when a write would change a database's `database-workspace-schema` from
+   `stored-schema` to `new-schema` while the `MB_WORKSPACES_ENABLED` env var is set. Does nothing when the two are
+   equal. The OSS fallback does nothing."
+  metabase-enterprise.workspaces.core
+  [_stored-schema _new-schema]
+  nil)
+
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.
 

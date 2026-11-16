@@ -3516,7 +3516,8 @@
            util.config
            warehouses
            warehouses.schema
-           warehouses.secrets}
+           warehouses.secrets
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
