@@ -8,11 +8,12 @@
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)))
 
+(set! *warn-on-reflection* true)
+
 (deftest most-recent-tag-test
   (let [repo (str (Files/createTempDirectory "metabase-version-properties-test-" (make-array FileAttribute 0)))
         git! (fn [& args]
-               (apply u/sh {:dir repo, :quiet? true} "git" args))
-        sh*  u/sh*]
+               (apply u/sh {:dir repo, :quiet? true} "git" args))]
     (try
       (git! "init" "--quiet")
       (git! "config" "user.email" "test@metabase.com")
@@ -21,11 +22,9 @@
       (git! "tag" "v0.60.0-beta")
       (git! "commit" "--quiet" "--allow-empty" "--message" "Custom viz release")
       (git! "tag" "custom-viz-v2.0.0-canary.0")
-      (with-redefs [u/sh* (fn [& args]
-                            (apply sh* {:dir repo, :quiet? true} args))]
-        (is (= "v0.60.0-beta"
-               (#'version-properties/most-recent-tag))
-            "Metabase version detection should ignore component release tags"))
+      (is (= "v0.60.0-beta"
+             (#'version-properties/most-recent-tag repo))
+          "Metabase version detection should ignore component release tags")
       (finally
         (b/delete {:path repo})))))
 

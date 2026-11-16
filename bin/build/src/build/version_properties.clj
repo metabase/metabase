@@ -37,8 +37,11 @@
                               :date   (git-last-commit-date)}]
                    (str (name k) \= v))))
 
-(defn- most-recent-tag []
-  (shell-output-when-nonzero "git" "describe" "--abbrev=0" "--tags" "--match" "v[01].[0-9]*.[0-9]*"))
+(defn- most-recent-tag
+  ([]
+   (most-recent-tag nil))
+  ([dir]
+   (shell-output-when-nonzero {:dir dir} "git" "describe" "--abbrev=0" "--tags" "--match" "v[01].[0-9]*.[0-9]*")))
 
 (defn- tag-parts [tag]
   (when tag
