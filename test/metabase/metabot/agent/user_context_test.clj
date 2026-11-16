@@ -589,8 +589,9 @@
       (testing "and not exportable when the user has no view-data access to the card's table"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-test-user :rasta
-            (is (not (perms/user-has-permission-for-table? (mt/user->id :rasta) :perms/view-data :unrestricted
-                                                           (mt/id) (mt/id :venues)))
+            (is (not (perms/user-has-permission-for-tables? (perms/user-info (mt/user->id :rasta))
+                                                            :perms/view-data :unrestricted
+                                                            {(mt/id :venues) (mt/id)}))
                 "precondition")
             (is (nil? (shared.content-store/query-for-export query false))))))
       (testing "and not exportable when the card is not readable"
@@ -631,8 +632,13 @@
 
 (defn- rasta-has-view-data?
   [table-key]
-  (perms/user-has-permission-for-table? (mt/user->id :rasta) :perms/view-data :unrestricted
-                                        (mt/id) (mt/id table-key)))
+  (perms/user-has-permission-for-tables? (perms/user-info (mt/user->id :rasta)) :perms/view-data :unrestricted
+                                         {(mt/id table-key) (mt/id)}))
+
+(defn- can-query-table?
+  "Whether the current user can build queries on the table `table-key`."
+  [table-key]
+  (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id (mt/id table-key)) :can_query)))
 
 (defn- check-refused
   "Assert that Metabot gets neither `query` nor its columns, and that the query processor refuses `query`
@@ -694,7 +700,7 @@
           (testing "a user with view-data but no create-queries access gets a bare model query, since the card read
                    authorizes the run"
             (is (rasta-has-view-data? :venues) "precondition")
-            (is (not (mi/can-query? :model/Table (mt/id :venues))) "precondition")
+            (is (not (can-query-table? :venues)) "precondition")
             (check-cleared query ["NAME" "Double"])
             (is (seq (mt/rows (qp/process-query query)))))
           (testing "the same user does not get a query that refers to a field of the model's table by id"
@@ -784,7 +790,7 @@
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
         (mt/with-test-user :rasta
-          (is (mi/can-query? :model/Table (mt/id :venues)) "precondition: the outer table is queryable")
+          (is (can-query-table? :venues) "precondition: the outer table is queryable")
           (is (not (rasta-has-view-data? :categories)) "precondition")
           (check-refused {:database (mt/id)
                           :type     :query
@@ -1160,6 +1166,8 @@
                        (lib/query mp (lib.metadata/card mp card-id))))
             checks (atom [])]
         (mt/with-no-data-perms-for-all-users!
+          ;; the query processor needs view-data on the card's table, so the card can clear the query
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
                 "precondition: the database is not readable")

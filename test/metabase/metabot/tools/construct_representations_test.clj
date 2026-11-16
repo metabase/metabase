@@ -4521,8 +4521,13 @@
 
 (defn- rasta-has-view-data?
   [table-key]
-  (perms/user-has-permission-for-table? (mt/user->id :rasta) :perms/view-data :unrestricted
-                                        (mt/id) (mt/id table-key)))
+  (perms/user-has-permission-for-tables? (perms/user-info (mt/user->id :rasta)) :perms/view-data :unrestricted
+                                         {(mt/id table-key) (mt/id)}))
+
+(defn- can-query-table?
+  "Whether the current user can build queries on the table `table-key`."
+  [table-key]
+  (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id (mt/id table-key)) :can_query)))
 
 (defn- result-column-names
   [query]
@@ -4556,7 +4561,8 @@
               (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data view-data)
               (mt/with-test-user :rasta
                 (is (not (rasta-has-view-data? :venues)) "precondition")
-                (is (mi/can-read? :model/Card model-id) "precondition: the model is readable")
+                (is (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id model-id) :can_read))
+                    "precondition: the model is readable")
                 (check-not-runnable (card-source-data model-eid {"aggregation" [["max" {} ["field" {} "Double"]]]})
                                     "Venues model"
                                     ["Double" "PRICE"])
@@ -4578,7 +4584,7 @@
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
         (mt/with-test-user :rasta
-          (is (mi/can-query? :model/Table (mt/id :venues)) "precondition: the outer table is queryable")
+          (is (can-query-table? :venues) "precondition: the outer table is queryable")
           (is (not (rasta-has-view-data? :categories)) "precondition")
           (let [venues (table-source-table-fk (mt/id :venues))]
             (check-not-runnable (query-data
@@ -4629,7 +4635,7 @@
           (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (is (rasta-has-view-data? :venues) "precondition")
-            (is (not (mi/can-query? :model/Table (mt/id :venues))) "precondition")
+            (is (not (can-query-table? :venues)) "precondition")
             (is (= #{} (set/difference #{"Double" "NAME"} (result-column-names query))))))))))
 
 (defn- no-fields-model-card
@@ -4740,7 +4746,7 @@
         (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
         (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
         (mt/with-test-user :rasta
-          (is (mi/can-query? :model/Table (mt/id :orders)) "precondition: the source table is queryable")
+          (is (can-query-table? :orders) "precondition: the source table is queryable")
           (is (not (rasta-has-view-data? :products)) "precondition")
           (check-not-runnable (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid)
                               "Products count"

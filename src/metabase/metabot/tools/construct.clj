@@ -1047,12 +1047,13 @@
   The query processor refuses such a query, and repair's errors would name the Card's columns. A Card that is missing
   or that the user cannot read is left to resolve's own answer."
   [parsed-query]
-  (when-let [card (->> (concat (source-card-refs parsed-query) (portable-metric-refs parsed-query))
-                       distinct
-                       (keep readable-card-by-ref)
-                       (remove card-runnable?)
-                       first)]
-    (card-source-not-runnable! card)))
+  (let [refs        (distinct (concat (source-card-refs parsed-query) (portable-metric-refs parsed-query)))
+        card-by-ref (readable-cards-by-ref refs)]
+    (when-let [card (->> refs
+                         (keep card-by-ref)
+                         (remove card-runnable?)
+                         first)]
+      (card-source-not-runnable! card))))
 
 (defn- has-valid-trailing-clause?
   "Return whether a stage has a nonempty trailing clause with a valid portable structure."
