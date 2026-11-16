@@ -17,8 +17,8 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { mockGetBoundingClientRect, screen, waitFor } from "__support__/ui";
-import type * as SdkSnowplow from "embedding-sdk-bundle/analytics/snowplow";
-import { trackSdkMetaplowEvent } from "embedding-sdk-bundle/analytics/snowplow";
+import type * as SdkSnowplow from "embedding-sdk-bundle/analytics/event";
+import { trackSdkMetaplowEvent } from "embedding-sdk-bundle/analytics/event";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard/InteractiveDashboard";
@@ -90,9 +90,9 @@ jest.mock("metabase/embedding-sdk/config", () => ({
   isEmbeddingMcpApp: () => mockPage.isEmbeddingMcpApp,
 }));
 
-jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
+jest.mock("embedding-sdk-bundle/analytics/event", () => ({
   ...jest.requireActual<typeof SdkSnowplow>(
-    "embedding-sdk-bundle/analytics/snowplow",
+    "embedding-sdk-bundle/analytics/event",
   ),
   trackSdkMetaplowEvent: jest.fn(),
 }));
