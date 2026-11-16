@@ -1049,15 +1049,6 @@
                                                 "d" "u")))]
       (is (= "drop database failed" (ex-message e)))
       (is (empty? (.getSuppressed ^Throwable e)))))
-  (testing "when ALTER USER fails, the other statements still run, and its error is thrown with theirs suppressed"
-    (let [[lock kill] (#'clickhouse/destroy-workspace-sqls "d" "u")
-          lock-error  (SQLException. "lock failed")
-          kill-error  (SQLException. "kill failed")
-          e           (is (thrown? SQLException
-                                   (#'clickhouse/destroy-workspace! (failing-statement {lock lock-error kill kill-error})
-                                                                    "d" "u")))]
-      (is (identical? lock-error e))
-      (is (= [kill-error] (vec (.getSuppressed ^Throwable e))))))
   (testing "when DROP USER fails, its error is thrown"
     (let [[_ _ _ drop-user] (#'clickhouse/destroy-workspace-sqls "d" "u")
           drop-user-error   (SQLException. "drop user failed")]
@@ -1079,6 +1070,43 @@
                       (try (#'clickhouse/destroy-workspace! (failing-statement {kill kill-error}) "d" "u")
                            nil
                            (catch Throwable t t)))))))
+
+(deftest destroy-workspace-alter-user-error-test
+  (testing "when only ALTER USER fails, the other statements still run, and its error is logged, not thrown"
+    (let [sqls       (#'clickhouse/destroy-workspace-sqls "d" "u")
+          lock-error (SQLException. "Code: 497. DB::Exception: Not enough privileges" "" 497)
+          ran        (atom [])
+          stmt       (failing-statement {(first sqls) lock-error})
+          recording  (reify Statement
+                       (^boolean execute [_ ^String sql]
+                         (swap! ran conj sql)
+                         (.execute stmt sql)))]
+      (mt/with-log-messages-for-level [messages [metabase.driver.clickhouse :warn]]
+        (is (nil? (#'clickhouse/destroy-workspace! recording "d" "u")))
+        (is (= sqls @ran))
+        (is (=? [{:level :warn :message "Could not lock out the workspace user `u` before dropping it. Dropped the user and its database `d`."}]
+                (messages)))
+        (is (identical? lock-error (some-> (messages) first :e))))))
+  (testing "when ALTER USER and KILL QUERY both fail for lack of grants, the error names the KILL QUERY grant"
+    (let [[lock kill] (#'clickhouse/destroy-workspace-sqls "d" "u")
+          kill-error  (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
+          e           (is (thrown? clojure.lang.ExceptionInfo
+                                   (#'clickhouse/destroy-workspace!
+                                    (failing-statement {lock (SQLException. "lock failed" "" 497) kill kill-error})
+                                    "d" "u")))]
+      (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
+      (is (identical? kill-error (ex-cause e)))))
+  (testing "when ALTER USER and DROP DATABASE fail, the DROP DATABASE error is thrown with the ALTER USER error suppressed"
+    (let [[lock _ drop-db drop-user] (#'clickhouse/destroy-workspace-sqls "d" "u")
+          lock-error                 (SQLException. "lock failed")
+          e                          (is (thrown? SQLException
+                                                  (#'clickhouse/destroy-workspace!
+                                                   (failing-statement {lock      lock-error
+                                                                       drop-db   (SQLException. "drop database failed")
+                                                                       drop-user (SQLException. "drop user ran")})
+                                                   "d" "u")))]
+      (is (= "drop database failed" (ex-message e)))
+      (is (= [lock-error] (vec (.getSuppressed ^Throwable e)))))))
 
 (defn- workspace-for-test [label]
   (let [workspace {:id (rand-int 100000000) :name label}]
@@ -1237,14 +1265,14 @@
      (mt/with-premium-features #{:workspaces}
        (let [workspace  (workspace-for-test "ws-no-kill")
              user       (-> workspace :database_details :user)
-             ;; an admin login that can lock out and drop users and drop databases, but lacks KILL QUERY
+             ;; an admin login that can drop users and databases, but lacks KILL QUERY
              no-kill    {:user (str "mb_test_no_kill_" (rand-int 100000000)) :password "no-kill-pw"}
              admin      (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
              running?   #(seq (jdbc/query admin ["SELECT 1 FROM system.processes WHERE user = ?" user]))
              db-exists? #(seq (jdbc/query admin ["SELECT 1 FROM system.databases WHERE name = ?" (:schema workspace)]))]
          (try
            (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-kill) (:password no-kill))])
-           (jdbc/execute! admin [(format "GRANT SHOW, DROP DATABASE, ALTER USER, DROP USER ON *.* TO `%s`" (:user no-kill))])
+           (jdbc/execute! admin [(format "GRANT SHOW, DROP DATABASE, DROP USER ON *.* TO `%s`" (:user no-kill))])
            (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)
            (future
              (try
@@ -1270,6 +1298,44 @@
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
              (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-kill))]))))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-without-alter-user-grant-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace    (workspace-for-test "ws-no-alter")
+             user         (-> workspace :database_details :user)
+             ws-db        (:schema workspace)
+             canonical-db (:db (:details (mt/db)))
+             ;; an admin login with what init and teardown use, but no ALTER USER
+             no-alter     {:user (str "mb_test_no_alter_" (rand-int 100000000)) :password "no-alter-pw"}
+             admin        (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             user-exists? #(seq (jdbc/query admin ["SELECT 1 FROM system.users WHERE name = ?" user]))
+             db-exists?   #(seq (jdbc/query admin ["SELECT 1 FROM system.databases WHERE name = ?" ws-db]))]
+         (try
+           (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-alter) (:password no-alter))])
+           (doseq [sql [(format "GRANT SHOW, SHOW USERS, CREATE DATABASE, DROP DATABASE, CREATE USER, DROP USER, KILL QUERY ON *.* TO `%s`"
+                                (:user no-alter))
+                        (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON `%s`.* TO `%s` WITH GRANT OPTION"
+                                ws-db (:user no-alter))
+                        (format "GRANT SHOW DATABASES ON `%s`.* TO `%s` WITH GRANT OPTION" canonical-db (:user no-alter))
+                        ;; KILL QUERY reads system.processes, which needs a grant when the system database requires one
+                        (format "GRANT SELECT ON system.processes TO `%s`" (:user no-alter))]]
+             (jdbc/execute! admin [sql]))
+           (driver.conn/with-swapped-connection-details (mt/id) no-alter
+             (testing "init succeeds without ALTER USER"
+               (is (nil? (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)))
+               (is (user-exists?))
+               (is (db-exists?)))
+             (testing "teardown drops the database and the user without ALTER USER"
+               (is (nil? (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)))
+               (is (not (db-exists?)))
+               (is (not (user-exists?))))
+             (testing "a second teardown also succeeds"
+               (is (nil? (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)))))
+           (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
+             (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-alter))]))))))))
 
 (defn- workspace-view-sqls
   "The SQL, run as the workspace user, that creates a materialized view of `kind` in database `ws-db` that reads
