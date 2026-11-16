@@ -2,6 +2,7 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
@@ -15,7 +16,6 @@
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -83,28 +83,39 @@
       (when segment
         (vary-meta segment assoc k (get flags (:id segment) false))))))
 
-(defn- table-writable?
-  "Whether the current user can write Segments of `table`: a superuser, or a data analyst with unrestricted view-data
-  permissions on it, and never on a read-only instance that syncs it."
-  [table]
-  (and (or (mi/superuser?)
-           (and (api/entitled-data-analyst?)
-                (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-       (collection/remote-sync-writable-table? table)))
+(defn- writable-table-ids
+  "The ids of those of `tables` whose Segments the current user can write: every Table for a superuser, those a data
+  analyst has unrestricted view-data permissions on, answered together, and never one a read-only instance syncs."
+  [tables]
+  (let [permitted (cond
+                    (mi/superuser?)
+                    tables
+
+                    (api/entitled-data-analyst?)
+                    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                   :perms/view-data
+                                                                   (into {} (map (juxt :id :db_id)) tables))]
+                      (filter #(perms/at-least-as-permissive? :perms/view-data (get values (:id %)) :unrestricted)
+                              tables))
+
+                    :else
+                    [])]
+    (into #{} (comp (filter collection/remote-sync-writable-table?) (map :id)) permitted)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."
   [_model k segments]
-  (mi/instances-with-hydrated-data
-   segments k
-   #(u/index-by :id (comp boolean table-writable? :table) (t2/hydrate (remove nil? segments) :table))
-   :id
-   {:default false}))
+  (let [rows     (t2/hydrate (into [] (remove nil?) segments) :table)
+        writable (writable-table-ids (into [] (comp (keep :table) (m/distinct-by :id)) rows))]
+    (for [segment segments]
+      (when segment
+        (assoc segment k (contains? writable (:table_id segment)))))))
 
 (defn- definition-writable?
   "Whether the current user can write Segments of the Table `definition` is built on."
   [definition]
-  (boolean (some-> definition not-empty definition-table-id segments.db/table table-writable?)))
+  (let [table (some-> definition not-empty definition-table-id segments.db/table)]
+    (boolean (and table (seq (writable-table-ids [table]))))))
 
 (defmethod mi/can-create? :model/Segment
   [_model {:keys [definition]}]
@@ -142,13 +153,6 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
-  (mapv (fn [segment]
-          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-        entities))
-
 (defmethod serialization/spec :model/Segment [_]
   {:schema    ::segments.schema/external-segment
    :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
@@ -160,6 +164,13 @@
 (defmethod serialization/import-dependencies :model/Segment [_ entities]
   (mapv (fn [{:keys [definition]}]
           (serialization/import-mbql-dependencies definition))
+        entities))
+
+(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
+  (mapv (fn [segment]
+          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
         entities))
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------

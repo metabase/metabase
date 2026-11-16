@@ -5126,6 +5126,7 @@
     (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
                                                            :last_name   "User"
                                                            :email       "user@example.com"
+                                                           :entity_id   (u/generate-nano-id)
                                                            :password    "superstrong"
                                                            :date_joined :%now})
           db-id       (t2/insert-returning-pk! :metabase_database {:name       "Segment Definitions DB"
@@ -5143,6 +5144,7 @@
                         (t2/insert-returning-pk! :segment {:name       "Segment"
                                                            :table_id   table-id
                                                            :creator_id user-id
+                                                           :entity_id  (u/generate-nano-id)
                                                            :definition (json/encode definition)
                                                            :created_at :%now
                                                            :updated_at :%now}))
