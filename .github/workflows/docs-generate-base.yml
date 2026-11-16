@@ -84,14 +84,64 @@ jobs:
           fi
 
           git commit -m "Update generated docs (${{ inputs.target_branch }})" --no-verify
+
+          # The target branch may have moved on while the docs were generating. Rebase onto its latest
+          # commit: a clean rebase means the PR can't conflict, a failed one means it will.
+          git fetch origin "${{ inputs.target_branch }}"
+          if git rebase --autostash "origin/${{ inputs.target_branch }}"; then
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs conflict with the latest ${{ inputs.target_branch }}"
+            git rebase --abort
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # The rebase drops the commit if the same docs already landed on the target branch.
+          if git diff --quiet "origin/${{ inputs.target_branch }}" HEAD -- docs/; then
+            echo "Docs are already up to date on ${{ inputs.target_branch }}, nothing to push"
+            exit 0
+          fi
+
           git push -u origin "$BRANCH_NAME"
 
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
           echo "Successfully created and pushed branch"
 
+      # A broken generator tends to empty a file rather than tweak it, and nobody reviews an auto-merged
+      # PR. Flag any file of at least MIN_LINES lines that is deleted or loses more than half its lines.
+      # Small files are left out: SDK API pages shrink or disappear whenever an SDK type changes.
+      - name: Check for large removals
+        id: removals
+        if: steps.commit_and_push.outputs.branch_name != ''
+        env:
+          MIN_LINES: 200
+        run: |
+          FLAGGED=""
+          while read -r file; do
+            old=$(git show "HEAD~1:$file" 2>/dev/null | wc -l)
+            [ "$old" -ge "$MIN_LINES" ] || continue
+            new=$(git show "HEAD:$file" 2>/dev/null | wc -l) # 0 when the file was deleted
+            if [ $((new * 2)) -lt "$old" ]; then
+              FLAGGED+="- \`$file\`: $((old)) → $((new)) lines"$'\n'
+            fi
+          done < <(git diff --name-only --no-renames HEAD~1 HEAD -- docs/)
+
+          if [ -n "$FLAGGED" ]; then
+            echo "Large removals found:"
+            echo "$FLAGGED"
+            echo "large_removals=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "large_removals=false" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "files<<EOF"
+            echo "$FLAGGED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create pull request
         id: create_pr
-        if: steps.check_changes.outputs.changes == 'true'
+        if: steps.commit_and_push.outputs.branch_name != ''
         env:
           GITHUB_TOKEN: ${{ secrets.automation_token }}
           GH_REPO: ${{ github.repository }}
@@ -105,7 +155,7 @@ jobs:
 
           for i in {1..3}; do
             echo "Attempt $i of 3..."
-            if gh pr create \
+            if PR_URL=$(gh pr create \
               --base "${{ inputs.target_branch }}" \
               --head "$BRANCH_NAME" \
               --title "Auto-update documentation for ${{ inputs.target_branch }}" \
@@ -119,11 +169,11 @@ jobs:
           ## Generation command
           Documentation was generated using \`./bin/mage docs-generate\`.
 
-          Please review the changes and merge if they look correct." \
+          This PR merges automatically once checks pass. If it conflicts with \`${{ inputs.target_branch }}\` or removes most of a large file, the tech writers are asked to review it instead." \
               --label "Type:Documentation" \
-              --label "no-backport" \
-              --reviewer "metabase/tech-writers"; then
-              echo "PR created successfully on attempt $i"
+              --label "no-backport"); then
+              echo "PR created successfully on attempt $i: $PR_URL"
+              echo "pr_number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
               break
             else
               echo "PR creation failed on attempt $i"
@@ -136,6 +186,75 @@ jobs:
             fi
           done
 
+      # Approving takes a different token than the one that opened the PR: GitHub won't let a token
+      # approve its own pull request.
+      - name: Approve the docs PR
+        id: approve
+        if: |
+          steps.create_pr.outcome == 'success' &&
+          steps.commit_and_push.outputs.has_conflicts == 'false' &&
+          steps.removals.outputs.large_removals == 'false'
+        continue-on-error: true
+        run: gh pr review --approve "$PR_NUMBER"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+
+      # Merging, though, has to use the automation token: GitHub starts no workflow run for a push made
+      # with `GITHUB_TOKEN`, so an auto-merge enabled with it would land the docs with no CI at all.
+      - name: Enable auto-merge
+        id: automerge
+        if: steps.approve.outcome == 'success'
+        continue-on-error: true
+        run: gh pr merge --squash --auto "$PR_NUMBER"
+        env:
+          GH_TOKEN: ${{ secrets.automation_token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+
+      # Conflicts, large removals, or a failed approve/merge: hand the PR to the tech writers.
+      - name: Request review from tech writers
+        id: request_review
+        if: steps.create_pr.outcome == 'success' && steps.automerge.outcome != 'success'
+        run: |
+          if [ "$HAS_CONFLICTS" == "true" ]; then
+            REASON="it conflicts with \`$TARGET_BRANCH\`. Please resolve the conflicts and merge it."
+          elif [ "$LARGE_REMOVALS" == "true" ]; then
+            REASON="it deletes or removes more than half of these files, which may mean the docs generator broke:"$'\n\n'"$REMOVED_FILES"$'\n'"Please check them before merging."
+          else
+            REASON="enabling auto-merge failed (see the workflow logs). Please review and merge it manually."
+          fi
+          gh pr edit "$PR_NUMBER" --add-reviewer "metabase/tech-writers"
+          gh pr comment "$PR_NUMBER" --body "This PR wasn't merged automatically because $REASON"
+        env:
+          GH_TOKEN: ${{ secrets.automation_token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+          HAS_CONFLICTS: ${{ steps.commit_and_push.outputs.has_conflicts }}
+          LARGE_REMOVALS: ${{ steps.removals.outputs.large_removals }}
+          REMOVED_FILES: ${{ steps.removals.outputs.files }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+
+      # Each run opens a new PR, and the newest one supersedes any still open from earlier runs. Leaving
+      # those open would make them conflict with whichever merges first. Branches are kept in case
+      # someone was working on one.
+      - name: Close superseded docs PRs
+        if: steps.create_pr.outcome == 'success'
+        run: |
+          gh pr list --base "$TARGET_BRANCH" --state open --limit 100 --json number,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"docs/auto-update-$TARGET_BRANCH-\")) | .number" |
+            while read -r OLD_PR; do
+              [ "$OLD_PR" = "$PR_NUMBER" ] && continue
+              echo "Closing #$OLD_PR, superseded by #$PR_NUMBER"
+              gh pr close "$OLD_PR" --comment "Superseded by #$PR_NUMBER."
+            done
+        env:
+          GH_TOKEN: ${{ secrets.automation_token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+
       - name: Skip PR creation
         if: steps.check_changes.outputs.changes == 'false'
         run: |
@@ -147,10 +266,18 @@ jobs:
           {
             if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
               if [ "${{ steps.commit_and_push.outcome }}" == "success" ]; then
-                if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
+                if [ -z "${{ steps.commit_and_push.outputs.branch_name }}" ]; then
+                  echo "## ℹ️ No Changes After Rebase"
+                  echo "- The same docs already landed on **${{ inputs.target_branch }}**"
+                elif [ "${{ steps.create_pr.outcome }}" == "success" ]; then
                   echo "## ✅ Documentation Updated Successfully"
                   echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`"
-                  echo "- PR created targeting **${{ inputs.target_branch }}**"
+                  echo "- PR #${{ steps.create_pr.outputs.pr_number }} created targeting **${{ inputs.target_branch }}**"
+                  if [ "${{ steps.automerge.outcome }}" == "success" ]; then
+                    echo "- Auto-merge enabled"
+                  else
+                    echo "- Not auto-merged (conflicts: \`${{ steps.commit_and_push.outputs.has_conflicts }}\`, large removals: \`${{ steps.removals.outputs.large_removals }}\`); review requested from tech writers"
+                  fi
                 else
                   echo "## ⚠️ Branch Created but PR Failed"
                   echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`"
