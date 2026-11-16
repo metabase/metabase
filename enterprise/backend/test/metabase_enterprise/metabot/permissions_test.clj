@@ -97,8 +97,9 @@
              data-analyst-id (u/the-id (perms/data-analyst-group))]
          (mt/with-temp [:model/User {user-id :id} {}
                         :model/PermissionsGroup {group-id :id} {:name "Custom Group"}
-                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id data-analyst-id}]
+                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+           (mt/with-premium-features #{:advanced-permissions}
+             (perms/add-user-to-group! user-id data-analyst-id))
            (insert-in-mode-showing-them! [{:group_id all-users-id :perm_type :permission/metabot :perm_value :yes}
                                           {:group_id data-analyst-id :perm_type :permission/metabot-nlq :perm_value :yes}
                                           {:group_id group-id :perm_type :permission/metabot-sql-generation :perm_value :yes}])

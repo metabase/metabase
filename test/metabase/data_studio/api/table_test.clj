@@ -77,11 +77,11 @@
                                                    :last_name "Analyst"
                                                    :email "data-analyst@metabase.com"
                                                    :is_data_analyst true}
-                     :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}]
         (mt/when-ee-evailable
          (mt/with-premium-features #{:advanced-permissions}
+           (t2/insert! :model/PermissionsGroupMembership {:user_id analyst-id :group_id data-analyst-group-id})
            (testing "data analyst can edit tables"
              (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
                                              {:table_ids [table-id]

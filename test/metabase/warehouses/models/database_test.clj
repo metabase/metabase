@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -1142,10 +1141,9 @@
         (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         ;; Remove user from groups we added (avoid touching All Users group)
-        (perms-group-membership/with-allow-direct-deletion
-          (t2/delete! :model/PermissionsGroupMembership
-                      :user_id (mt/user->id :rasta)
-                      :group_id [:in [(:id pg1) (:id pg2)]]))
+        (t2/delete! :model/PermissionsGroupMembership
+                    :user_id (mt/user->id :rasta)
+                    :group_id [:in [(:id pg1) (:id pg2)]])
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
                                           {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                           default-permission-mapping

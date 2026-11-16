@@ -90,17 +90,85 @@
           (is (= (+ 2 before-count)
                  (t2/count :model/AuditLog :topic "group-membership-delete"))))))))
 
-(deftest direct-delete-guard-test
-  (testing "Direct t2/delete! on :model/PermissionsGroupMembership throws"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
-      (perms/add-user-to-group! user-id group-id)
-      (is (thrown-with-msg? Exception #"Do not use `t2/delete!`"
-                            (t2/delete! :model/PermissionsGroupMembership
-                                        :user_id user-id :group_id group-id))))))
+(defn- all-users-group-id []
+  (u/the-id (perms-group/all-users)))
+
+(defn- admin-group-id []
+  (u/the-id (perms-group/admin)))
+
+(deftest all-users-group-membership-is-locked-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (testing "deleting a membership of All Users is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
+                            (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
+      (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
+    (testing "inserting a membership of All Users is refused"
+      (perms/allow-changing-all-users-group-members
+        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
+                            (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id (all-users-group-id)})))
+      (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id)))))))
+
+(deftest insert-into-admin-group-sets-is-superuser-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id (admin-group-id)})
+    (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))
+    (testing "and deleting it unsets the flag"
+      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id))
+      (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
+
+(deftest deleting-every-admin-membership-at-once-is-refused-test
+  (mt/with-temp [:model/User _ {:is_superuser true}]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"last member of the 'Admin' group"
+                          (t2/delete! :model/PermissionsGroupMembership :group_id (admin-group-id))))
+    (is (t2/exists? :model/PermissionsGroupMembership :group_id (admin-group-id) :user_id (mt/user->id :crowberto)))))
+
+(deftest admin-cannot-be-group-manager-test
+  (mt/with-temp [:model/User             {admin-id :id} {:is_superuser true}
+                 :model/User             {user-id :id}  {}
+                 :model/PermissionsGroup {group-id :id} {}]
+    (testing "inserting an admin as group manager is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                            (t2/insert! :model/PermissionsGroupMembership
+                                        {:user_id admin-id :group_id group-id :is_group_manager true})))
+      (is (not (t2/exists? :model/PermissionsGroupMembership :user_id admin-id :group_id group-id))))
+    (testing "making an admin's membership a group manager is refused"
+      (t2/insert! :model/PermissionsGroupMembership {:user_id admin-id :group_id group-id})
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                            (t2/update! :model/PermissionsGroupMembership {:user_id admin-id :group_id group-id}
+                                        {:is_group_manager true})))
+      (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
+                                    :user_id admin-id :group_id group-id))))
+    (testing "a user who is not an admin can be made group manager"
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (t2/update! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id} {:is_group_manager true})
+      (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
+                                   :user_id user-id :group_id group-id))))))
+
+(deftest membership-cannot-move-to-another-user-or-group-test
+  (mt/with-temp [:model/User             {user-id :id}        {}
+                 :model/User             {other-user-id :id}  {}
+                 :model/PermissionsGroup {group-id :id}       {}
+                 :model/PermissionsGroup {other-group-id :id} {}]
+    (perms/add-user-to-group! user-id group-id)
+    (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another user"
+                            (t2/update! :model/PermissionsGroupMembership membership-id {:user_id other-user-id})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another group"
+                            (t2/update! :model/PermissionsGroupMembership membership-id {:group_id other-group-id})))
+      (is (=? {:user_id user-id :group_id group-id}
+              (t2/select-one :model/PermissionsGroupMembership membership-id))))))
 
 (defn- data-analyst-group-id []
   (u/the-id (perms-group/data-analyst)))
+
+(deftest insert-into-data-analyst-group-without-advanced-permissions-test
+  (testing "inserting a membership of the Data Analysts group is refused without the :advanced-permissions feature"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Advanced Permissions"
+                              (t2/insert! :model/PermissionsGroupMembership
+                                          {:user_id user-id :group_id (data-analyst-group-id)})))))))
 
 (defn- in-data-analyst-group? [user-id]
   (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (data-analyst-group-id)))

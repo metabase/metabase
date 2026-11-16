@@ -6,7 +6,6 @@
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -187,10 +186,7 @@
             (testing "non-admin user can only view groups that are manager of"
               (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
           (testing "admin cannot be group manager"
-            (mt/with-temp [:model/User                       new-user {:is_superuser true}
-                           :model/PermissionsGroupMembership _        {:user_id          (:id new-user)
-                                                                       :group_id         (:id group)
-                                                                       :is_group_manager false}]
+            (mt/with-temp [:model/User new-user {:is_superuser true}]
               (is (= "Admin cannot be a group manager."
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
@@ -291,10 +287,9 @@
                                             {:first_name (mt/random-name)})))
                   (add-user-to-group! [req-user status group-to-add]
                     ;; ensure `user-to-update` is not in `group-to-add`
-                    (perms-group-membership/with-allow-direct-deletion
-                      (t2/delete! :model/PermissionsGroupMembership
-                                  :user_id (:id user-to-update)
-                                  :group_id (:id group-to-add)))
+                    (t2/delete! :model/PermissionsGroupMembership
+                                :user_id (:id user-to-update)
+                                :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership (conj current-user-group-membership
                                                           {:id               (:id group-to-add)
@@ -302,10 +297,9 @@
                       (testing (format "- add user to group with %s user without group_manager set" (mt/user-descriptor user))
                         (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                               {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
-                    (binding [perms-group-membership/*allow-direct-deletion* true]
-                      (t2/delete! :model/PermissionsGroupMembership
-                                  :user_id (:id user-to-update)
-                                  :group_id (:id group-to-add)))
+                    (t2/delete! :model/PermissionsGroupMembership
+                                :user_id (:id user-to-update)
+                                :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (conj current-user-group-membership
                                                               {:id               (:id group-to-add)
@@ -376,3 +370,99 @@
             (is (contains? response :structured_attributes))
             (is (= {:dept {:source "user" :frozen false :value "sales"}}
                    (:structured_attributes response)))))))))
+
+(deftest admin-cannot-become-group-manager-through-user-update-test
+  (testing "PUT /api/user/:id refuses to make an admin a group manager"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/User             admin {:is_superuser true}
+                     :model/PermissionsGroup group {}]
+        (is (= "Admin cannot be a group manager."
+               (mt/user-http-request :crowberto :put 400 (format "user/%d" (:id admin))
+                                     {:user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                               {:id (:id (perms-group/admin))}
+                                                               {:id (:id group) :is_group_manager true}]})))
+        (is (not (t2/exists? :model/PermissionsGroupMembership :user_id (:id admin) :group_id (:id group))))))))
+
+(defn- do-with-access-fixtures!
+  "Calls `f` with a group, another group, a manager of each, a plain user, a member of the group and a user in no group
+  but All Users."
+  [f]
+  (mt/with-temp [:model/PermissionsGroup group         {}
+                 :model/PermissionsGroup other-group   {}
+                 :model/User             manager       {}
+                 :model/User             other-manager {}
+                 :model/User             plain         {}
+                 :model/User             member        {}
+                 :model/User             newcomer      {}]
+    (perms/add-user-to-group! manager group true)
+    (perms/add-user-to-group! other-manager other-group true)
+    (perms/add-user-to-group! member group)
+    (f {:group         group
+        :manager       manager
+        :other-manager other-manager
+        :plain         plain
+        :member        member
+        :newcomer      newcomer
+        :membership-id (t2/select-one-pk :model/PermissionsGroupMembership
+                                         :user_id (:id member) :group_id (:id group))})))
+
+(def ^:private access-cases
+  "Each group and membership endpoint, the request it makes, and the status each kind of user gets with and without the
+  advanced-permissions feature."
+  [{:endpoint "GET /group"
+    :request  (fn [_] [:get "permissions/group"])
+    :on       {:admin 200 :manager 200 :other-manager 200 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "GET /group/:id"
+    :request  (fn [{:keys [group]}] [:get (format "permissions/group/%d" (:id group))])
+    :on       {:admin 200 :manager 200 :other-manager 403 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "POST /group"
+    :request  (fn [_] [:post "permissions/group" {:name (mt/random-name)}])
+    :on       {:admin 200 :manager 403 :other-manager 403 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "PUT /group/:id"
+    :request  (fn [{:keys [group]}] [:put (format "permissions/group/%d" (:id group)) {:name (mt/random-name)}])
+    :on       {:admin 200 :manager 200 :other-manager 403 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "DELETE /group/:id"
+    :request  (fn [{:keys [group]}] [:delete (format "permissions/group/%d" (:id group))])
+    :on       {:admin 204 :manager 204 :other-manager 403 :plain 403}
+    :off      {:admin 204 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "GET /membership"
+    :request  (fn [_] [:get "permissions/membership"])
+    :on       {:admin 200 :manager 200 :other-manager 200 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "POST /membership"
+    :request  (fn [{:keys [group newcomer]}]
+                [:post "permissions/membership" {:group_id (:id group) :user_id (:id newcomer) :is_group_manager false}])
+    :on       {:admin 200 :manager 200 :other-manager 403 :plain 403}
+    :off      {:admin 200 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "PUT /membership/:id"
+    :request  (fn [{:keys [membership-id]}]
+                [:put (format "permissions/membership/%d" membership-id) {:is_group_manager false}])
+    :on       {:admin 200 :manager 200 :other-manager 403 :plain 403}
+    :off      {:admin 402 :manager 402 :other-manager 402 :plain 402}}
+   {:endpoint "DELETE /membership/:id"
+    :request  (fn [{:keys [membership-id]}] [:delete (format "permissions/membership/%d" membership-id)])
+    :on       {:admin 204 :manager 204 :other-manager 403 :plain 403}
+    :off      {:admin 204 :manager 403 :other-manager 403 :plain 403}}
+   {:endpoint "PUT /membership/:group-id/clear"
+    :request  (fn [{:keys [group]}] [:put (format "permissions/membership/%d/clear" (:id group))])
+    :on       {:admin 204 :manager 204 :other-manager 403 :plain 403}
+    :off      {:admin 204 :manager 403 :other-manager 403 :plain 403}}])
+
+(deftest group-and-membership-endpoint-access-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (doseq [{:keys [endpoint request] :as access-case} access-cases
+            [feature-state features]                  [[:on #{:advanced-permissions}] [:off #{}]]
+            [actor status]                            (get access-case feature-state)]
+      (testing (format "%s with advanced-permissions %s as %s" endpoint (name feature-state) (name actor))
+        (mt/with-premium-features features
+          (do-with-access-fixtures!
+           (fn [fixtures]
+             (let [[method url body] (request fixtures)
+                   user              (if (= actor :admin) :crowberto (get fixtures actor))]
+               (if body
+                 (mt/user-http-request user method status url body)
+                 (mt/user-http-request user method status url))))))))))

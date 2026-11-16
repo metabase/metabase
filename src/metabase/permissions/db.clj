@@ -603,44 +603,29 @@
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
-(defn- insert-group-memberships-from-mapping-query
-  [user-id-group-id->is-group-manager?]
-  {:insert-into [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
-                 ^:allow-subquery
-                 {:select [:g.id :u.id [(into [:case]
-                                              (mapcat (fn [[[user-id group-id] is-group-manager?]]
-                                                        [[[:and
-                                                           [:= :u.id user-id]
-                                                           [:= :g.id group-id]]]
-                                                         is-group-manager?])
-                                                      user-id-group-id->is-group-manager?))]]
-                  :from [[:permissions_group :g]]
-                  :join [[:core_user :u] (into [:or]
-                                               (for [[[user-id group-id] _] user-id-group-id->is-group-manager?]
-                                                 [:and
-                                                  [:= :u.id user-id]
-                                                  [:= :g.id group-id]
-                                                  [:=
-                                                   :g.is_tenant_group
-                                                   [:not= :u.tenant_id nil]]]))]}]})
-
-(mu/defn insert-group-memberships-from-mapping!
-  "Insert a PermissionsGroupMembership (with `is_group_manager`) for each `[user-id group-id]` pair in
-  `user-id-group-id->is-group-manager?`, matching Users to Groups on tenant status; returns the number of rows
-  inserted."
-  [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
-  (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
+(mu/defn insert-group-memberships!
+  "Insert the PermissionsGroupMemberships `memberships` through the model, returning the number of rows inserted."
+  [memberships :- [:sequential [:map {:closed true}
+                                [:user_id          ::lib.schema.id/user]
+                                [:group_id         ms/PositiveInt]
+                                [:is_group_manager :boolean]]]]
+  (t2/insert! :model/PermissionsGroupMembership memberships))
 
 (mu/defn other-active-member-count
-  "The number of active Users other than `user-id` in the PermissionsGroup with `group-id`."
+  "The number of active Users other than those with `user-ids` in the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
-   user-id  :- ::lib.schema.id/user]
+   user-ids :- [:set {:min 1} ::lib.schema.id/user]]
   (t2/count :model/PermissionsGroupMembership
             {:join  [[:core_user :user] [:= :user.id :user_id]]
              :where [:and
                      [:= :group_id group-id]
                      [:= :user.is_active true]
-                     [:not= :user.id user-id]]}))
+                     [:not-in :user.id user-ids]]}))
+
+(mu/defn managed-group-ids :- [:maybe [:set ms/PositiveInt]]
+  "The IDs of the PermissionsGroups the User with `user-id` manages, or nil when they manage none."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
 
 (mu/defn memberships-for-user
   "The PermissionsGroupMemberships of the User with `user-id`."
@@ -1136,10 +1121,13 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_data_analyst :model/User :id user-id))
 
-(mu/defn user-tenant-ids
-  "A map of User ID to `:tenant_id` for `user-ids`."
+(mu/defn member-flags :- [:sequential [:map {:closed true}
+                                          [:id           ::lib.schema.id/user]
+                                          [:tenant_id    [:maybe ms/PositiveInt]]
+                                          [:is_superuser :boolean]]]
+  "The id, tenant id and superuser flag of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in user-ids]))
+  (t2/select [:model/User :id :tenant_id :is_superuser] :id [:in user-ids]))
 
 (mu/defn earliest-user-join-date
   "The earliest `date_joined` of any User, or nil."

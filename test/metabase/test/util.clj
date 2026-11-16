@@ -30,7 +30,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -333,9 +332,6 @@
    (fn [_] {:entity_id (u/generate-nano-id)
             :name (u.random/random-name)})
 
-   :model/PermissionsGroupMembership
-   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
-
    :model/Pulse
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -490,13 +486,6 @@
              :input_schemas    []
              :output_namespace ""
              :status           :unprovisioned}))})
-
-;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
-;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
-  [model explicit-attributes f]
-  (binding [pgm/*allow-direct-deletion* true]
-    (next-method model explicit-attributes f)))
 
 ;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
 ;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
