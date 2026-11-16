@@ -197,11 +197,13 @@
 (def ^:private doc-generators
   "The commands that `all-documentation` runs, in order.
   Commands that load only their own namespaces run first. The two settings generators load every Metabase namespace,
-  so they run last and cannot change the output of the others."
+  so they run last and cannot change the output of the others. `driver-features-documentation` needs the driver
+  modules on the classpath, so run `all-documentation` with the `:drivers` alias."
   [#'mcp-tools-documentation
    #'ai-providers-documentation
    #'api-documentation
    #'command-documentation
+   #'driver-features-documentation
    #'config-template
    #'environment-variables-documentation])
 
