@@ -1,4 +1,4 @@
-import { getMetabaseRootPath } from "./get-current-metabase-instance-url";
+import { getMetabaseRootPath } from "../lib/get-current-metabase-instance-url";
 
 export const EMBEDDED_DATA_APP_PREFIX = "/embed/embedded-apps";
 

@@ -1,9 +1,6 @@
 import { defineAction } from "embedding-sdk-package/hooks/public/use-action/define-action";
 
-import {
-  mockDataAppAction,
-  mockDataAppActionError,
-} from "../lib/public/data-app-actions";
+import { mockDataAppAction, mockDataAppActionError } from "../data-app-actions";
 
 const ORDERS_TABLE = {
   type: "table",

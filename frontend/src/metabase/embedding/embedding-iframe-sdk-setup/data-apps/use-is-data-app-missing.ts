@@ -1,4 +1,4 @@
-import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";

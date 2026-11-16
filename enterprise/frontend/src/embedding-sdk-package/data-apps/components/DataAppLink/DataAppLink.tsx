@@ -5,7 +5,7 @@ import {
   getPageBasename,
   isEmbeddedDataApp,
   navigate,
-} from "embedding-sdk-package/lib/private/data-app-routing";
+} from "embedding-sdk-package/data-apps/lib/data-app-routing";
 
 import S from "./DataAppLink.module.css";
 

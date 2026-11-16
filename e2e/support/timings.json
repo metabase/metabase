@@ -649,7 +649,7 @@
       "duration": 28017
     },
     {
-      "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/data-app.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/embed-js-setup-data-app.cy.spec.ts",
       "duration": 18934
     },
     {
@@ -705,7 +705,7 @@
       "duration": 3874
     },
     {
-      "spec": "../test/scenarios/embedding/sdk-iframe-embedding/data-app.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/embed-js-data-app.cy.spec.ts",
       "duration": 5392
     },
     {

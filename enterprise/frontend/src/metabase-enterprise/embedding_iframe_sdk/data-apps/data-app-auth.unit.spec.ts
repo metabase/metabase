@@ -5,9 +5,8 @@ import { MetabaseDataAppElement } from "metabase/embedding/embedding-iframe-sdk/
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import { defer } from "metabase/utils/promise";
 
+import { EmbedAuthManager } from "../auth-manager/AuthManager";
 import { initializePlugins } from "../sdk-iframe-embedding-script-ee-plugins";
-
-import { EmbedAuthManager } from "./AuthManager";
 
 const INSTANCE_URL = "https://metabase.example.com/reports";
 

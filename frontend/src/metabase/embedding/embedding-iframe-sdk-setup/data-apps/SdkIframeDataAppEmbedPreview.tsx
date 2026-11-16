@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
