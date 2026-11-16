@@ -817,6 +817,28 @@
             (is (str/includes? out (str "Source metric \"Venues count\": metabase://metric/" metric-id)))
             (is (str/includes? out (str "metabase://metric/" metric-id "/dimensions")))))))))
 
+(deftest adhoc-viewing-context-builds-each-lib-query-once-test
+  (testing "the source-card line and the column list share one lib query of the cleared query"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Venues source"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+      (mt/with-test-user :crowberto
+        (let [query     (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))
+              cleared   (-> (shared.content-store/query-for-export query true) :query (dissoc :lib/metadata))
+              built     (atom 0)
+              lib-query lib/query
+              out       (mt/with-dynamic-fn-redefs [lib/query (fn [& args]
+                                                                (when (= cleared (dissoc (last args) :lib/metadata))
+                                                                  (swap! built inc))
+                                                                (apply lib-query args))]
+                          (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))]
+          (is (str/includes? out (str "metabase://model/" card-id)) "precondition: the source-card line renders")
+          (is (str/includes? out "Columns the query can use") "precondition: the column list renders")
+          (is (= 1 @built) "the cleared query is built once"))))))
+
 (deftest adhoc-viewing-context-source-card-destination-database-test
   (testing "a source card whose database is not addressable as a resource gives no URI, and the query still renders"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Routed model"

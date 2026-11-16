@@ -396,30 +396,29 @@
                      groups shares)))))
 
 (defn- permitted-column-list
-  "The column list of the last stage of a cleared `query`, without the columns that the current user cannot see.
+  "The column list of the last stage of a cleared lib `query`, without the columns that the current user cannot see.
 
   Nil when the columns cannot be calculated."
-  [query mp]
+  [query]
   (try
-    (let [query (lib/query mp query)]
-      (column-list query
-                   ;; Implicitly joinable columns are not included, so that foreign-key targets do not
-                   ;; multiply the list.
-                   (->> (lib/visible-columns query -1 {:include-implicitly-joinable?                 false
-                                                       :include-implicitly-joinable-for-source-card? false})
-                        ;; Remove the columns that table permissions or a sandbox hide.
-                        entity-details/permission-filter-columns)))
+    (column-list query
+                 ;; Implicitly joinable columns are not included, so that foreign-key targets do not
+                 ;; multiply the list.
+                 (->> (lib/visible-columns query -1 {:include-implicitly-joinable?                 false
+                                                     :include-implicitly-joinable-for-source-card? false})
+                      ;; Remove the columns that table permissions or a sandbox hide.
+                      entity-details/permission-filter-columns))
     (catch Exception e
       (log/warn e "Omitting the column list of an ad-hoc query")
       nil)))
 
 (defn- readable-source-card
-  "The stage-0 source card of a cleared `query`, or nil when it has none or Metabot may not read it as a resource.
+  "The stage-0 source card of a cleared lib `query`, or nil when it has none or Metabot may not read it as a resource.
 
   Throws a 404 when the card's database is not addressable as a resource."
-  [query mp]
+  [query]
   (when-let [{card-id :id card-type :type :as card}
-             (some->> (lib/primary-source-card-id (lib/query mp query)) (lib.metadata/card mp))]
+             (some->> (lib/primary-source-card-id query) (lib.metadata/card query))]
     ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
     ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
     (when (mi/can-read? :model/Database (:database-id card))
@@ -430,12 +429,12 @@
         card))))
 
 (defn- source-card-line
-  "The line that names the stage-0 source card of a cleared `query` by its numeric-id URI, or nil.
+  "The line that names the stage-0 source card of a cleared lib `query` by its numeric-id URI, or nil.
 
     Source model \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
-  [query mp]
+  [query]
   (try
-    (when-let [{card-id :id card-type :type card-name :name} (readable-source-card query mp)]
+    (when-let [{card-id :id card-type :type card-name :name} (readable-source-card query)]
       ;; `read_resource` lists the columns of a metric at `dimensions`, and of any other card at `fields`.
       (str "Source " (name card-type) " " (quoting/quoted card-name) ": " (llm-shape/metabase-uri card-type card-id)
            " (read its columns at "
@@ -444,6 +443,15 @@
       (if (= 404 (:status-code (ex-data e)))
         (log/debug "Omitting the source card of an ad-hoc query: its database is not addressable as a resource")
         (log/warn e "Omitting the source card of an ad-hoc query"))
+      nil)))
+
+(defn- cleared-lib-query
+  "The lib query of a cleared `query` with its metadata provider `mp`, or nil when it cannot be built."
+  [query mp]
+  (try
+    (lib/query mp query)
+    (catch Exception e
+      (log/warn e "Omitting the source card and the column list of an ad-hoc query")
       nil)))
 
 (defn- exported-query
@@ -457,11 +465,13 @@
   ;; One check per item: a refusal is not cached, and each check writes an audit entry.
   (when-let [{:keys [mp] :as export} (shared.content-store/query-for-export query true)]
     (when-let [text (query-export/export->text export shared.content-store/audited-store)]
-      {:text        text
-       :source-card (when mp
-                      (source-card-line (:query export) mp))
-       :columns     (when mp
-                      (permitted-column-list (:query export) mp))})))
+      (let [lib-query (when mp
+                        (cleared-lib-query (:query export) mp))]
+        {:text        text
+         :source-card (when lib-query
+                        (source-card-line lib-query))
+         :columns     (when lib-query
+                        (permitted-column-list lib-query))}))))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
