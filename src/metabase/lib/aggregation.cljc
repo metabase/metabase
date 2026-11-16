@@ -590,3 +590,9 @@
       (lib.remove-replace/remove-clause query stage-number ag))
     query
     (aggregations query stage-number))))
+
+(mu/defn percentile-type :- ::lib.schema.aggregation/percentile-options.percentile-type
+  "Whether this `:percentile` or `:median` `clause` should use `:continuous` or `:discrete` percentiles (if the driver
+  supports `:percentile-aggregations/discrete`)."
+  [clause :- [:or :mbql.clause/percentile :mbql.clause/median]]
+  (get (lib.options/options clause) :percentile-type :continuous))

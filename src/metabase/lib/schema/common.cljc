@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some every?])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -382,11 +382,7 @@
     :metabase.query-processor.util.add-alias-info/source
     :metabase.query-processor.util.add-alias-info/none]])
 
-(mr/def ::percentile-type
-  "How a `:percentile` or `:median` clause picks its result. `:continuous`, the default when the option is absent,
-  interpolates between the two nearest values. `:discrete` returns an actual value from the column: the first one
-  whose cumulative distribution reaches the percentile."
-  [:enum {:decode/normalize normalize-keyword} :continuous :discrete])
+
 
 (mr/def ::options
   [:and
@@ -415,8 +411,6 @@
     [:case-sensitive      {:optional true} :boolean]
     ;; `:time-interval`
     [:include-current     {:optional true} :boolean]
-    ;; `:percentile` and `:median`
-    [:percentile-type     {:optional true} [:ref ::percentile-type]]
     ;; the name an aggregation is referenced by
     [:lib/source-name     {:optional true} ::non-blank-string]
     [:default             {:optional true} [:ref :metabase.lib.schema.expression/expression]]

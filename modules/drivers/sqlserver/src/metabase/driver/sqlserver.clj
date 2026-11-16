@@ -27,6 +27,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -959,9 +960,9 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
   [driver [_ _opts arg p :as clause]]
-  [(if (sql.qp/discrete-percentile? clause)
-     ::approx-percentile-disc
-     ::approx-percentile-cont)
+  [(case (lib/percentile-type clause)
+     :discrete   ::approx-percentile-disc
+     :continuous ::approx-percentile-cont)
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver p)])
 

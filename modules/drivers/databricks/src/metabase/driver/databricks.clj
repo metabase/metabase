@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -564,15 +565,15 @@
 ;; SQL-standard `percentile_disc`, which returns an actual value from the column.
 (defmethod sql.qp/->honeysql [:databricks :percentile]
   [driver [_ _opts field p :as clause]]
-  (if (sql.qp/discrete-percentile? clause)
-    [::h2x/percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
-    ((get-method sql.qp/->honeysql [:hive-like :percentile]) driver clause)))
+  (case (lib/percentile-type clause)
+    :discrete   [::h2x/percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
+    :continuous ((get-method sql.qp/->honeysql [:hive-like :percentile]) driver clause)))
 
 (defmethod sql.qp/->honeysql [:databricks :median]
   [driver [_ opts field :as clause]]
-  (if (sql.qp/discrete-percentile? clause)
-    (sql.qp/->honeysql driver [:percentile opts field 0.5])
-    ((get-method sql.qp/->honeysql [:hive-like :median]) driver clause)))
+  (case (lib/percentile-type clause)
+    :discrete   (sql.qp/->honeysql driver [:percentile opts field 0.5])
+    :continuous ((get-method sql.qp/->honeysql [:hive-like :median]) driver clause)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

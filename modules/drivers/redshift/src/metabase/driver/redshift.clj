@@ -21,6 +21,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -651,9 +652,9 @@
 ;; percentiles use the inherited `PERCENTILE_CONT`, and the inherited `:median` passes its options through to this.
 (defmethod sql.qp/->honeysql [:redshift :percentile]
   [driver [_ _opts field p :as clause]]
-  (if (sql.qp/discrete-percentile? clause)
-    [::approximate-percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
-    ((get-method sql.qp/->honeysql [:postgres :percentile]) driver clause)))
+  (case (lib/percentile-type clause)
+    :discrete   [::approximate-percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
+    :continuous ((get-method sql.qp/->honeysql [:postgres :percentile]) driver clause)))
 
 (defmethod sql.qp/->integer :redshift
   [driver value]

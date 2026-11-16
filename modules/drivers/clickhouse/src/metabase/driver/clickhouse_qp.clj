@@ -13,6 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -31,6 +32,8 @@
     ZonedDateTime]
    [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
+
+(comment metabase.driver.clickhouse-nippy/keep-me)
 
 (sql/register-dialect!
  ::clickhouse
@@ -340,9 +343,9 @@
 ;; values for an even-sized median, like `PERCENTILE_DISC`).
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
   [driver [_ _opts field p :as clause]]
-  [(if (sql.qp/discrete-percentile? clause)
-     ::quantile-exact-low
-     ::quantile)
+  [(case (lib/percentile-type clause)
+     :discrete   ::quantile-exact-low
+     :continuous ::quantile)
    (sql.qp/->honeysql driver p)
    (sql.qp/->honeysql driver field)])
 
@@ -375,9 +378,9 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :median]
   [driver [_ opts field :as clause]]
-  (if (sql.qp/discrete-percentile? clause)
-    (sql.qp/->honeysql driver [:percentile opts field 0.5])
-    [:'median (sql.qp/->honeysql driver field)]))
+  (case (lib/percentile-type clause)
+    :discrete   (sql.qp/->honeysql driver [:percentile opts field 0.5])
+    :continuous [:'median (sql.qp/->honeysql driver field)]))
 
 ;; Substring does not work for Enums, so we need to cast to String
 (defmethod sql.qp/->honeysql [:clickhouse :substring]
