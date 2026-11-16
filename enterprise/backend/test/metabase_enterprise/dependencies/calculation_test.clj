@@ -565,13 +565,13 @@
            venue-fk-field-id (mt/id :checkins :venue_id)
            venue-name-field-id (mt/id :venues :name)]
       (mt/with-temp [:model/Segment segment {:definition (segment-definition
-                                                       checkins-id
-                                                       (fn [_mp query]
-                                                         (lib/= (some #(when (and (= (:id %) venue-name-field-id)
-                                                                                  (= (:fk-field-id %) venue-fk-field-id))
-                                                                         %)
-                                                                      (lib/filterable-columns query))
-                                                                "Bird's Nest")))}]
+                                                          checkins-id
+                                                          (fn [_mp query]
+                                                            (lib/= (some #(when (and (= (:id %) venue-name-field-id)
+                                                                                     (= (:fk-field-id %) venue-fk-field-id))
+                                                                            %)
+                                                                         (lib/filterable-columns query))
+                                                                   "Bird's Nest")))}]
         (is (= {:segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/calculate-deps :segment segment)))))))

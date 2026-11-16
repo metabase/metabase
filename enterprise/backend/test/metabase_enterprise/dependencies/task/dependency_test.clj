@@ -957,8 +957,8 @@
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
            (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
-                                                                           (-> (lib/query mp (lib.metadata/table mp products-id))
-                                                                               (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
+                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
