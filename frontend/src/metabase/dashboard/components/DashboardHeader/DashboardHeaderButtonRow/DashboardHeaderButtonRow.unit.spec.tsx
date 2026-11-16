@@ -124,6 +124,7 @@ const setup = ({
   hasSlackSetup = true,
   refreshPeriod = null,
   canWrite = true,
+  isArchived = false,
 }: Partial<{
   isEditing: boolean;
   hasModelActionsEnabled: boolean;
@@ -135,6 +136,7 @@ const setup = ({
   hasSlackSetup: boolean;
   refreshPeriod: number | null;
   canWrite: boolean;
+  isArchived: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
   setupNotificationChannelsEndpoints({
@@ -152,6 +154,7 @@ const setup = ({
   const MOCK_DASHBOARD = createMockDashboard({
     dashcards: [MOCK_DASHCARD],
     can_write: canWrite,
+    archived: isArchived,
   });
   const MOCK_STORE_DASHBOARD = createMockStoreDashboard({
     ...MOCK_DASHBOARD,
@@ -408,6 +411,32 @@ describe("DashboardHeaderButtonRow", () => {
       expect(screen.queryByText("Edit settings")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the dashboard is archived", () => {
+    it("should hide the edit, sharing, auto-refresh, bookmark and overflow buttons", () => {
+      setup({
+        isEditing: false,
+        isAdmin: true,
+        refreshPeriod: 60,
+        isArchived: true,
+      });
+
+      expect(screen.getByLabelText("info icon")).toBeInTheDocument();
+      [
+        "pencil icon",
+        "share icon",
+        "subscription icon",
+        "clock icon",
+        "bookmark icon",
+        "ellipsis icon",
+      ].forEach((iconLabel) => {
+        expect(screen.queryByLabelText(iconLabel)).not.toBeInTheDocument();
+      });
+      expect(
+        screen.queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
     });
   });
 
