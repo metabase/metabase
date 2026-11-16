@@ -91,6 +91,16 @@ liability it usually is.
 - [ ] Public API in `<module>.core` with Potemkin
 - [ ] No cheating module linters with `:clj-kondo/ignore [:metabase/modules]`
 
+### Models
+
+See the `model-rules` skill.
+
+- [ ] No rule about a row lives only in an endpoint; a writer that calls no endpoint cannot break it
+- [ ] Hooks read no current user and no `mi/*deserializing?*`
+- [ ] Derived columns are computed in hooks and absent from request schemas
+- [ ] Per-user rules are in `:can_read` / `:can_write` hydrations, `mi/can-create?` or `mi/can-update?`
+- [ ] Uniqueness rules have a unique index
+
 ### REST API
 
 - [ ] Response schemas present (`:- <schema>`)
