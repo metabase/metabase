@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -26,10 +26,8 @@ import {
   type StartPreviewResponse,
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
-  useStartPreviewMutation,
   useStartPreviewSessionMutation,
 } from "../api";
-import { getFramePath, getFramePreviewUrl } from "../preview-state";
 import { PreviewSidebar } from "../preview/PreviewSidebar";
 import { WhySidesheet } from "../preview/WhySidesheet";
 import {
@@ -48,7 +46,6 @@ import { parseOpenedItem } from "./item-path";
 import { useWhyTarget } from "./use-why-target";
 
 const START_PATH = "/collection/root";
-const FRAME_POLL_INTERVAL_MS = 500;
 
 /** How the frame loads the app as the previewed person: its address, and the key that remounts it. */
 export type GetFrameSource = (options: {
@@ -57,8 +54,11 @@ export type GetFrameSource = (options: {
   principal: Principal;
 }) => { src: string; key: string };
 
-/** The full app previewing through the request header, or only the item with the SDK and a preview session. */
-type FrameMode = "app" | "content";
+/**
+ * How the SDK frame signs in as the person: on this origin with a session token in its memory, or on the preview host
+ * with the person's own cookie.
+ */
+type FrameMode = "same-origin" | "subdomain";
 
 /**
  * Admin › Permissions › Troubleshoot: pick a user, group or tenant, and the app runs as them,
@@ -74,7 +74,7 @@ export function TroubleshootPage() {
   const [openCount, setOpenCount] = useState(0);
   const [framePath, setFramePath] = useState(START_PATH);
   const [isWhyOpen, setIsWhyOpen] = useState(false);
-  const [frameMode, setFrameMode] = useState<FrameMode>("app");
+  const [frameMode, setFrameMode] = useState<FrameMode>("same-origin");
   const [restartCount, setRestartCount] = useState(0);
 
   const request = usePreviewRequest(principal, pickedValues);
@@ -124,14 +124,9 @@ export function TroubleshootPage() {
   };
 
   const whoName = getWhoName(principalType, preview);
-  // by the session the frame got, not the switch: the switch changes first, the session follows
-  const getFrameSource =
-    preview != null && "session_token" in preview
-      ? getContentFrameSource
-      : getSameOriginFrameSource;
   const frameSource =
     preview != null && principal != null
-      ? getFrameSource({ path: openedPath, preview, principal })
+      ? getContentFrameSource({ path: openedPath, preview, principal })
       : null;
   const frameTitle = t`What ${whoName} sees`;
 
@@ -226,8 +221,8 @@ export function TroubleshootPage() {
               aria-label={t`Frame mode`}
               value={frameMode}
               data={[
-                { value: "app", label: t`Full app (header)` },
-                { value: "content", label: t`Content only (SDK)` },
+                { value: "same-origin", label: t`Same origin` },
+                { value: "subdomain", label: t`Subdomain` },
               ]}
               onChange={handleFrameModeChange}
             />
@@ -249,7 +244,7 @@ export function TroubleshootPage() {
               <Flex h="100%" align="center" justify="center">
                 <Loader />
               </Flex>
-            ) : "session_token" in preview ? (
+            ) : (
               <ContentPreviewFrame
                 key={`${frameSource?.key}-${openCount}`}
                 title={frameTitle}
@@ -257,13 +252,6 @@ export function TroubleshootPage() {
                 sessionToken={preview.session_token}
                 onPathChange={setFramePath}
                 onRestart={handleContentFrameRestart}
-              />
-            ) : (
-              <PreviewFrame
-                key={`${frameSource?.key}-${openCount}`}
-                title={frameTitle}
-                src={frameSource?.src ?? "about:blank"}
-                onPathChange={setFramePath}
               />
             )}
           </Box>
@@ -275,26 +263,6 @@ export function TroubleshootPage() {
       />
     </PermissionsPageLayout>
   );
-}
-
-/** The app on this origin, previewing through the request header (frame mode in `preview-state.ts`). */
-function getSameOriginFrameSource({
-  path,
-  preview,
-  principal,
-}: Parameters<GetFrameSource>[0]): ReturnType<GetFrameSource> {
-  return {
-    key: `${preview.user_id}-${JSON.stringify(preview.attributes)}`,
-    src: getFramePreviewUrl(path, {
-      userId: preview.user_id,
-      userName: preview.user_name,
-      principalType: principal.type,
-      principalId: principal.id,
-      principalName: preview.principal_name,
-      attributes: preview.attributes,
-      returnPath: "/",
-    }),
-  };
 }
 
 function getTroubleshootUrl(principal: Principal | { type: PrincipalType }) {
@@ -342,20 +310,17 @@ function usePreviewRequest(
 }
 
 /**
- * Starts the preview through the admin's own session (in content mode, with a session of the person's own), and ends
- * it when the person, values or mode change, the content frame restarts, or the page closes.
+ * Starts the preview with a session of the person's own, and ends it when the person, values or mode change, the
+ * frame restarts, or the page closes.
  */
 function usePreviewSession(
   request: StartPreviewRequest | null,
   frameMode: FrameMode,
   restartCount: number,
 ) {
-  const [startPreview] = useStartPreviewMutation();
   const [startPreviewSession] = useStartPreviewSessionMutation();
   const [endPreview] = useEndPreviewMutation();
-  const [preview, setPreview] = useState<
-    StartPreviewResponse | PreviewSessionResponse | null
-  >(null);
+  const [preview, setPreview] = useState<PreviewSessionResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
@@ -365,9 +330,8 @@ function usePreviewSession(
       return;
     }
     let isCurrent = true;
-    let started: StartPreviewResponse | PreviewSessionResponse | null = null;
-    const start = frameMode === "content" ? startPreviewSession : startPreview;
-    start(request)
+    let started: PreviewSessionResponse | null = null;
+    startPreviewSession(request)
       .unwrap()
       .then((response) => {
         started = response;
@@ -384,52 +348,7 @@ function usePreviewSession(
         endPreview({ request, preview: started });
       }
     };
-  }, [
-    request,
-    frameMode,
-    restartCount,
-    startPreview,
-    startPreviewSession,
-    endPreview,
-  ]);
+  }, [request, frameMode, restartCount, startPreviewSession, endPreview]);
 
   return { preview, error };
-}
-
-type PreviewFrameProps = {
-  title: string;
-  src: string;
-  onPathChange: (path: string) => void;
-};
-
-/** The app as the previewed person; reports where it navigates, read through the same origin. */
-function PreviewFrame({ title, src, onPathChange }: PreviewFrameProps) {
-  const ref = useRef<HTMLIFrameElement>(null);
-  const reportPath = useCallback(() => {
-    const location = ref.current?.contentWindow?.location;
-    const path = location != null ? getFramePath(location) : null;
-    if (path != null && location?.href !== "about:blank") {
-      onPathChange(path);
-    }
-  }, [onPathChange]);
-
-  useEffect(() => {
-    // in-app navigation fires no event the host can hear
-    const interval = window.setInterval(reportPath, FRAME_POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [reportPath]);
-
-  return (
-    <Box
-      component="iframe"
-      ref={ref}
-      title={title}
-      src={src}
-      onLoad={reportPath}
-      w="100%"
-      h="100%"
-      display="block"
-      style={{ border: 0 }}
-    />
-  );
 }
