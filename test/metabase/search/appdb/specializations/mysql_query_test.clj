@@ -20,7 +20,8 @@
                                   [3 false false]
                                   [8 false false]
                                   [9 false true]
-                                  [2 true true]
+                                  [1 true true]
+                                  [2 true false]
                                   [3 true false]
                                   [7 true false]
                                   [8 true true]]]
@@ -60,3 +61,10 @@
          (#'mysql/term-match :search_index.search_terms
                              (assoc (term "identifier" true) :tokens ["user" "identifier"])
                              (assoc options :max_size 84)))))
+
+(deftest ^:parallel mixed-token-size-boundaries-test
+  (doseq [[tokens scan?] [[["id" "rev"] true]
+                          [["abcdefgh" "rev"] false]
+                          [["abc" "id"] false]
+                          [["abc" "a"] true]]]
+    (is (= scan? (boolean (#'mysql/scan-required? (assoc (term "" true) :tokens tokens) options))))))

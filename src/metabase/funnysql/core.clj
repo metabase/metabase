@@ -213,6 +213,18 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (compile! identifier context)))
 
+(defn- table-engine! [storage-engine context]
+  (when-not (and (= (engine context) :mysql) (= storage-engine :innodb))
+    (throw (ex-info "Table engine must be :innodb on MySQL" {:storage-engine storage-engine})))
+  (append-sql! context "ENGINE InnoDB"))
+
+(defn- analyze-table! [table context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "ANALYZE TABLE requires MySQL" {})))
+  (check-identifier-form table)
+  (append-sql! context "ANALYZE TABLE ")
+  (compile! table context))
+
 (declare simple-fn!)
 
 (defn- raw-type-name! [type-name context]
@@ -566,6 +578,8 @@
    :with-recursive  (partial with! "WITH RECURSIVE ")
    :create-table    create-table!
    :with-columns    with-columns!
+   :engine          table-engine!
+   :analyze-table   analyze-table!
    :insert-into     insert-into!
    :columns         identifier-list!
    :values          values!

@@ -119,6 +119,11 @@
 (defn- quote* [s]
   (str "'" (str/replace s "'" "''") "'"))
 
+(defn negated-term?
+  "Whether a search term starts with a hyphen followed by a word character, including Unicode letters and numbers."
+  [term]
+  (boolean (re-find #"^-[\p{L}\p{N}_]" term)))
+
 (defn- process-phrase [word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
   (cond
@@ -133,7 +138,7 @@
       (str/join " <-> " <>))
 
     ;; negation
-    (re-find #"^-\w" word-or-phrase)
+    (negated-term? word-or-phrase)
     (str "!" (quote* (subs word-or-phrase 1)))
 
     ;; just a regular word

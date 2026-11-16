@@ -40,8 +40,9 @@
   db-type)
 
 (defmulti analyze-table!
-  "Refresh the database's statistics for the given table, so that [[index-size-estimate]] is accurate immediately,
-  rather than waiting for the database to re-sample it in the background. No-op for databases whose estimate is exact."
+  "Refresh statistics for the given table so [[index-size-estimate]] reflects a newly populated index.
+  MySQL skips this inside transactions to avoid committing caller writes.
+  Databases with exact estimates need no refresh."
   {:arglists '([table-name])}
   db-type)
 

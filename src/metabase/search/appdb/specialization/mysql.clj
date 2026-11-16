@@ -90,7 +90,7 @@
         prefix? (not (str/ends-with? (str/trim (or search-string "")) "\""))]
     (mapv (fn [clause-index clause]
             (mapv (fn [term-index term]
-                    (let [negated? (boolean (re-find #"^-\w" term))]
+                    (let [negated? (search.util/negated-term? term)]
                       {:tokens   (vec (words (if negated? (subs term 1) term)))
                        :phrase?  (str/starts-with? term "\"")
                        :negated? negated?
@@ -113,11 +113,14 @@
 
 (defn- scan-required? [{:keys [tokens phrase? prefix?]} {:keys [min_size max_size in-transaction?]}]
   ;; Full-text indexes hide uncommitted writes and cannot represent partial phrases or hyphenated words.
-  ;; The prefix index reserves one character for its field marker.
+  ;; Only the final prefix token uses the extra field marker; exact tokens use the original full-text column.
   (or in-transaction?
       (some #(str/includes? % "-") tokens)
-      (some #(< (character-count %) min_size) tokens)
-      (some #(> (character-count %) (if (and prefix? (not phrase?)) (dec max_size) max_size)) tokens)
+      (some (fn [[i token]]
+              (let [marked? (and prefix? (not phrase?) (= i (dec (count tokens))))
+                    size    (+ (character-count token) (if marked? 1 0))]
+                (not (<= min_size size max_size))))
+            (map-indexed vector tokens))
       (and phrase? prefix?)))
 
 (defn- term-query [{:keys [tokens phrase?]}]
@@ -186,5 +189,10 @@
                  :ranked]]
      :group-by [:model]}))
 
+(defmethod specialization/analyze-table! :mysql [table-name]
+  ;; ANALYZE TABLE commits implicitly on MySQL; never commit the caller's transaction to refresh a metric.
+  (when-not (mdb/in-transaction?)
+    (search.db/analyze-mysql-search-index-table! table-name)))
+
 (defmethod specialization/index-size-estimate :mysql [table-name]
-  (search.db/index-entry-count table-name))
+  (some-> (search.db/mysql-table-statistics (name table-name)) :table_rows long))

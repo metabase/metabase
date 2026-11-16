@@ -1738,3 +1738,20 @@
                   [:character-set (keyword "utf8mb4; DROP TABLE card")]]]
     (is (thrown? clojure.lang.ExceptionInfo
                  (funnysql/format {:create-table [:idx], :with-columns [[:txt :longtext option]]} :mysql)))))
+
+(deftest ^:parallel mysql-table-engine-test
+  (is (= ["CREATE TABLE `idx` (`id` integer) ENGINE InnoDB"]
+         (funnysql/format {:create-table [:idx], :with-columns [[:id :integer]], :engine :innodb} :mysql)))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {:create-table [:idx], :engine :innodb} engine))))
+  (doseq [storage-engine [:myisam "InnoDB; DROP TABLE card"]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {:create-table [:idx], :engine storage-engine} :mysql)))))
+
+(deftest ^:parallel mysql-analyze-table-test
+  (is (= ["ANALYZE TABLE `idx`"] (funnysql/format {:analyze-table :idx} :mysql)))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql/format {:analyze-table :idx} engine))))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (funnysql/format {:analyze-table (keyword "idx; DROP TABLE card")} :mysql))))
