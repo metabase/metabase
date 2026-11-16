@@ -8,13 +8,14 @@ info:
 
     Terms. Each has one meaning in `parent.openapi.yaml`, `sidecar.openapi.yaml` and `config.schema.json`:
     - Parent: the Metabase that holds the production database connections and serves this API.
-    - Workspace: a row in the parent's app DB, with one or more workspace databases.
+    - Workspace: a row in the parent's app DB, with its workspace databases.
     - Workspace database: one of the parent's Databases, attached to a workspace. For each one the parent creates
       one output namespace and one workspace user in the warehouse.
     - Output namespace: the schema (on MySQL, a database) that the workspace user writes to. It is
       `output_namespace` in this API and `output` in `config.yml`.
     - Workspace user: the warehouse login that the parent creates for one workspace database. It reads the input
-      schemas and writes only to the output namespace.
+      schemas. Metabase grants it write privileges only on the output namespace; privileges the warehouse grants
+      to PUBLIC still apply (see createWorkspace).
     - Admin login: the parent's warehouse login that runs the provisioning statements.
     - Sidecar: a second Metabase that connects to the warehouse as the workspace user and runs in workspace mode
       (see `sidecar.openapi.yaml`). A sidecar is one node on one build with its own app DB. It is started new, put
@@ -27,9 +28,8 @@ info:
     - Every operation carries `x-status`: `master`, `hardening` or `proposed`.
     - `master`: present at commit 061dee78c2d of metabase/metabase, the commit the hardening PRs started from. In
       these files "master" always means that commit, not the current master branch.
-    - `hardening`: added by a hardening PR, named in `x-pr`. Some hardening PRs have merged since 061dee78c2d: on
-      2026-11-16 these were #86584 (with #86585), #86587, #86588, #86603, #86604, #86610, #86612, #86786, #86787
-      and #86800. The others are in review.
+    - `hardening`: added by a hardening PR, named in `x-pr`. Some have merged since 061dee78c2d; each PR's page
+      says whether.
     - `proposed`: needed by MB Code, not built; a sketch, not a commitment.
     - A response or field that a hardening PR adds carries `x-status: hardening` and `x-pr`.
     - A response or field that exists at 061dee78c2d but that a hardening PR changes carries `x-pr`; its
@@ -142,6 +142,11 @@ paths:
         - Postgres, Redshift: readable only if the admin login created them (`ALTER DEFAULT PRIVILEGES` without
           `FOR ROLE`).
         - ClickHouse, SQL Server: readable (the grant covers the schema).
+
+        ClickHouse limit (decision 0029): the workspace user can create a materialized view in its output
+        namespace on an input table. ClickHouse runs that view on every INSERT into the input table, so a view
+        that fails makes production INSERTs into that table fail until the view is dropped. No grant was found
+        that blocks it. ClickHouse is held under decision 0036.
 
         The workspace and its database rows are committed before provisioning, so a crash leaves a record. The
         parent provisions the databases one at a time and stops at the first failure. A 400, 403 or 404 leaves
