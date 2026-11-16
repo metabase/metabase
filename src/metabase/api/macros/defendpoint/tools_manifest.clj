@@ -147,7 +147,8 @@
 
 (def ^:private annotation-keys
   "JSON Schema keywords that describe a value without constraining it."
-  #{:$comment :default :deprecated :description :examples :readOnly :title :writeOnly})
+  ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
+  #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
 
 (def ^:private null-neutral-keys
   "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
@@ -195,7 +196,8 @@
   ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
   (mu.json-schema/postwalk-schemas
    (fn [{branches :oneOf :as node}]
-     (if-not branches
+     ;; an empty `oneOf` accepts nothing, and an empty `anyOf` is invalid, so it stays
+     (if (empty? branches)
        node
        (let [siblings    (dissoc node :oneOf)
              replacement (one-of-replacement branches)]

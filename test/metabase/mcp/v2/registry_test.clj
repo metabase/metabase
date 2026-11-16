@@ -513,14 +513,15 @@
             (is (= scope (or labelled-scope bare-scope)))
             (is (= (registry/english-scope-label scope) label))))))))
 
-(deftest ^:parallel published-schemas-have-no-one-of-test
-  (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` anywhere"
-    (is (= []
-           ;; a schema is free of `oneOf` when dropping it from every subschema changes nothing
-           (for [{tool-name :name :as tool} (@#'registry/manifest)
-                 schema                     ((juxt :inputSchema :outputSchema) tool)
-                 :when                      (not= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf) schema))]
-             tool-name)))))
+(deftest ^:parallel published-schemas-have-no-one-of-or-all-of-test
+  (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` or `allOf` anywhere"
+    ;; a schema is free of both when dropping them from every subschema changes nothing
+    (let [free? (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
+      (is (= []
+             (for [{tool-name :name :as tool} (@#'registry/manifest)
+                   schema                     ((juxt :inputSchema :outputSchema) tool)
+                   :when                      (not (free? schema))]
+               tool-name))))))
 
 ;; not ^:parallel: flushes the shared manifest cache
 (deftest description-permission-text-ignores-caller-locale-test
