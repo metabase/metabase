@@ -185,7 +185,8 @@
 (defn- without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
   Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win.
-  Where any other keyword does, the replacement joins those keywords under `allOf`."
+  Where any other keyword does, the replacement joins those keywords under `allOf`, and its description, if the
+  siblings have none, stays on the property."
   [json-schema]
   ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
   ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
@@ -201,8 +202,17 @@
          ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
          ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
          ;; A sibling annotation, such as the `[:maybe]`'s own description, wins over the replacement's.
-         (if (every? annotation-keys (keys siblings))
+         (cond
+           (every? annotation-keys (keys siblings))
            (merge replacement siblings)
+
+           ;; clients and the docs generator read a property's description at its top level, not inside `allOf`
+           (and (:description replacement) (not (contains? siblings :description)))
+           (-> siblings
+               (assoc :description (:description replacement))
+               (update :allOf (fnil conj []) (dissoc replacement :description)))
+
+           :else
            (update siblings :allOf (fnil conj []) replacement)))))
    json-schema))
 

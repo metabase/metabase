@@ -174,7 +174,18 @@
               :allOf      [{:type                 ["object" "null"]
                             :additionalProperties false}]}
              (published {:properties {:a {}}
-                         :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]}))))))
+                         :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]})))
+      ;; under `allOf`, the replacement's description stays on the property, unless the property has its own
+      (is (= {:type        "string"
+              :description "An id."
+              :allOf       [{:type ["integer" "null"]}]}
+             (published {:type "string", :oneOf [{:type "integer", :description "An id."} {:type "null"}]})))
+      (is (= {:type        "string"
+              :description "Outer."
+              :allOf       [{:type ["integer" "null"], :description "An id."}]}
+             (published {:type        "string"
+                         :description "Outer."
+                         :oneOf       [{:type "integer", :description "An id."} {:type "null"}]}))))))
 
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"

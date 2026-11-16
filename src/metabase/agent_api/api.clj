@@ -121,7 +121,7 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   ;; TemporalInstant publishes as a `date-time` string, so clients see `{type: [string, null], format: date-time}`
+   ;; TemporalInstant publishes as a `date-time` string, so MCP clients see `{type: [string, null], format: date-time}`
    ;; where `[:maybe :any]` would tell them nothing. Collections can omit `updated_at` in search results.
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
