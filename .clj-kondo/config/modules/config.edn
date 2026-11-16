@@ -4231,7 +4231,6 @@
            collections
            lib.schema
            permissions
-           premium-features
            util}
    :model-imports #{:model/Card
                     :model/Collection

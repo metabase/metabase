@@ -3473,6 +3473,29 @@
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
 
+(deftest move-collection-permission-matrix-test
+  (testing "PUT /api/collection/:id moves a collection only for who writes it, its descendants and the new parent"
+    (letfn [(move-as [user status granted]
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/with-temp [:model/Collection source     {}
+                               :model/Collection descendant {:location (collection/children-location source)}
+                               :model/Collection target     {}]
+                  (doseq [coll (map {:source source :descendant descendant :target target} granted)]
+                    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll))
+                  (mt/user-http-request user :put status (str "collection/" (u/the-id source))
+                                        {:parent_id (u/the-id target)})
+                  (t2/select-one-fn :location :model/Collection :id (u/the-id source)))))]
+      (testing "an admin moves it"
+        (is (not= "/" (move-as :crowberto 200 []))))
+      (testing "write access to the collection and its descendants only is refused"
+        (is (= "/" (move-as :rasta 403 [:source :descendant]))))
+      (testing "write access to the new parent only is refused"
+        (is (= "/" (move-as :rasta 403 [:target]))))
+      (testing "write access to the collection and the new parent but not to a descendant is refused"
+        (is (= "/" (move-as :rasta 403 [:source :target]))))
+      (testing "write access to the collection, its descendants and the new parent moves it"
+        (is (not= "/" (move-as :rasta 200 [:source :descendant :target])))))))
+
 (deftest move-collection-with-archived-descendants-test
   (testing "PUT /api/collection/:id"
     (testing "I should be allowed to move a collection if I have perms on it and all non-archived descendants"
@@ -4047,16 +4070,20 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
-                     :model/Table {table-id :id} {:collection_id coll-id
+                     :model/Collection {data-coll-id :id} {:name "Data Collection"
+                                                           :type collection/library-data-collection-type}
+                     :model/Table {table-id :id} {:collection_id data-coll-id
                                                   :is_published  true
                                                   :name          "Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200
-                                                 (str "collection/" coll-id "/items")))]
+                                                 (str "collection/" coll-id "/items")))
+              data-items (:data (mt/user-http-request :crowberto :get 200
+                                                      (str "collection/" data-coll-id "/items")))]
           (testing "Card should appear"
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) data-items))
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}

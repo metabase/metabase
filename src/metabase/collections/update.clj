@@ -47,25 +47,15 @@
       (notification.card/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
-  "If `collection-updates` specifies that we should *move* a Collection, do appropriate permissions checks and move it
+  "If `collection-updates` specifies that we should *move* a Collection, check that the user can move it and move it
   (and its descendants)."
   [collection-before-update collection-updates]
-  ;; sanity check: a [new] parent_id update specified in the request?
   (when (contains? collection-updates :parent_id)
-    (let [orig-location (:location collection-before-update)
-          new-parent-id (:parent_id collection-updates)
-          new-parent    (if new-parent-id
-                          (collections.db/collection-location-columns new-parent-id)
-                          (assoc collection/root-collection :namespace (:namespace collection-before-update)))
-          new-location  (collection/children-location new-parent)]
-      ;; check and make sure we're actually supposed to be moving something
-      (when (not= orig-location new-location)
-        ;; Check that we have write perms on the new parent collection
-        (api/write-check new-parent)
-        ;; ok, make sure we have perms to do this operation
-        (api/check-403 (collection/can-write-collection-ids?
-                        (vec (collection/collection-ids-for-moving collection-before-update new-parent))))
-        ;; ok, we're good to move!
+    (let [new-parent-id (:parent_id collection-updates)
+          new-location  (collection/children-location
+                         (collection/parent-or-root (:namespace collection-before-update) new-parent-id))]
+      (when (not= (:location collection-before-update) new-location)
+        (api/update-check collection-before-update {:parent_id new-parent-id})
         (collection/move-collection! collection-before-update new-location)))))
 
 (defn- archive-collection!
@@ -95,14 +85,15 @@
     :else :no-op))
 
 (mu/defn update-collection!
-  "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,
+  "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Checks that the user can update the collection,
   gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
   then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
   collection. The single source of truth for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
-  ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+  (let [collection-before-update (t2/hydrate (api/check-404 (collections.db/collection id)) :parent_id)
+        updates                  (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+    (api/update-check collection-before-update updates)
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
@@ -114,9 +105,8 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
-      (when (seq updates)
-        (collections.db/update-collection! id updates)))
+    (when (seq updates)
+      (collections.db/update-collection! id updates))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (u/prog1 (collections.db/collection id)

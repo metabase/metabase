@@ -356,8 +356,6 @@
                                                       :authority_level "official"
                                                       ;; :archived = true
                                                       :archived true
-                                                      ;; :type = "collection"
-                                                      :type "collection"
                                                       ;; :model_created_at = yesterday
                                                       :created_at yesterday}]
         (is (=? (index-entity

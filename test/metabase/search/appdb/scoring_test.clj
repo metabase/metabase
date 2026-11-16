@@ -366,7 +366,7 @@
       (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                      :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                      :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
-                     :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                     :model/Collection sub       {:name "sub of lib"     :type "library-data" :location (format "/%d/" (:id lib))}
                      :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                      :model/Collection other     {:name "non-library"    :location "/"}]
         (with-index-contents

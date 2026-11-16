@@ -71,7 +71,7 @@
     (collections.tu/with-library-synced
       (let [library (t2/select-one :model/Collection :type "library")]
         (mt/with-temp [:model/Collection child {:name "Library child" :location (format "/%d/" (:id library))
-                                                :is_remote_synced true}
+                                                :type "library-metrics" :is_remote_synced true}
                        :model/Card       card  {:name "Library metric" :collection_id (:id child) :type :metric}
                        :model/CardTest   t     {:card_id (:id card)}]
           (testing "a test of a card in the Library is synced while the Library syncs"

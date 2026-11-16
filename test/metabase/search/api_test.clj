@@ -1900,7 +1900,7 @@
       (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                      :model/Collection _ {:location (collection/children-location parent)
                                           :name (named "collection")
-                                          :type "meow mix"}
+                                          :type "library-data"}
                      :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}
                      :model/Card _ {:collection_id parent-id :name (named "card")}
                      :model/Card _ {:collection_id parent-id :type :model :name (named "model")}]
@@ -1914,13 +1914,13 @@
                              :data
                              (remove #(= (:model %) "collection"))))))
         (testing "`item.type` is correct for collections"
-          (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                                    :data
-                                    (keep :type)
-                                    set)))))
+          (is (= #{"library-data"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                                        :data
+                                        (keep :type)
+                                        set)))))
       (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
-        (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/" :type "foo"}
-                       :model/Collection {mid-col-id :id} {:name "middle level col" :type "bar" :location (str "/" top-col-id "/")}
+        (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/" :type "library-dashboards"}
+                       :model/Collection {mid-col-id :id} {:name "middle level col" :type "library-dashboards" :location (str "/" top-col-id "/")}
                        :model/Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}]
           (let [leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
                                         :data
@@ -1928,11 +1928,11 @@
                                         first)]
             (is (= {:id mid-col-id
                     :name "middle level col"
-                    :type "bar"
+                    :type "library-dashboards"
                     :authority_level nil
                     :effective_ancestors [{:id top-col-id
                                            :name "top level col"
-                                           :type "foo"}]}
+                                           :type "library-dashboards"}]}
                    (:collection leaf-card-response)))))))))
 
 (deftest ^:synchronized force-reindex-test

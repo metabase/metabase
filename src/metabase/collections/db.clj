@@ -62,6 +62,16 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
+(mu/defn collection-type
+  "The type of the ::collections.schema/collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
+
+(mu/defn collection-ids-with-type
+  "The IDs of the Collections of `type`."
+  [type :- :string]
+  (t2/select-pks-set :model/Collection :type type))
+
 (mu/defn personal-collection-of-user
   "The personal ::collections.schema/collection of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -94,11 +104,6 @@
   ::collections.schema/collection) or the ::collections.schema/collection does not exist."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id))
-
-(mu/defn collection-namespace
-  "The namespace of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
 
 (mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
   "The map from id to location of the Collections with `collection-ids`."
@@ -188,11 +193,6 @@
   from here."
   [effective-children-clause :- [:maybe vector?]]
   (t2/select [:model/Collection :id :name :description :type] {:where effective-children-clause}))
-
-(mu/defn collection-count-by-ids
-  "The number of Collections among `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/count :model/Collection :id [:in collection-ids]))
 
 (mu/defn collection-count-of-types
   "The number of Collections with `collection-id` whose type is one of `types`."
