@@ -20,7 +20,6 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
-import { Box, Divider } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab, getPythonLibraryUrl } from "./utils";
@@ -74,48 +73,26 @@ export function DataStudioLayout() {
         showLabel={isNavbarOpened}
       />
 
-      <Divider />
-      <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
-        {isAdmin && (
-          <Box mt={isNavbarOpened ? "md" : 0}>
-            <AreaTab
-              label={t`Data apps`}
-              icon="app"
-              to={Urls.dataStudioDataApps()}
-              isSelected={currentTab === "data-apps"}
-              showLabel={isNavbarOpened}
-              isGated={!PLUGIN_DATA_APPS.isEnabled}
-            />
-          </Box>
-        )}
-        <Box mt="lg">
-          <AreaTabGroup
-            label={t`Semantic layer`}
-            showLabel={isNavbarOpened}
-            isSubgroup
-          >
-            <AreaTab
-              label={t`Data`}
-              icon="table"
-              to={Urls.dataStudioPublishedData()}
-              isSelected={currentTab === "published-data"}
-              showLabel={isNavbarOpened}
-              isGated={!hasLibraryFeature}
-              rightSection={libraryDirtyBadge}
-            />
-            <AreaTab
-              label={t`Metrics`}
-              icon="metric"
-              to={Urls.dataStudioMetrics()}
-              isSelected={currentTab === "metrics"}
-              showLabel={isNavbarOpened}
-              isGated={!hasLibraryFeature}
-              rightSection={libraryDirtyBadge}
-            />
-          </AreaTabGroup>
-        </Box>
+      <AreaTabGroup label={t`Semantic layer`} showLabel={isNavbarOpened}>
+        <AreaTab
+          label={t`Data`}
+          icon="table"
+          to={Urls.dataStudioPublishedData()}
+          isSelected={currentTab === "published-data"}
+          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
+          rightSection={libraryDirtyBadge}
+        />
+        <AreaTab
+          label={t`Metrics`}
+          icon="metric"
+          to={Urls.dataStudioMetrics()}
+          isSelected={currentTab === "metrics"}
+          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
+          rightSection={libraryDirtyBadge}
+        />
       </AreaTabGroup>
-      <Divider />
 
       <AreaTabGroup label={t`Data`} showLabel={isNavbarOpened}>
         {canAccessDataModel && (
@@ -143,7 +120,17 @@ export function DataStudioLayout() {
         )}
       </AreaTabGroup>
 
-      <AreaTabGroup label={t`Utilities`} showLabel={isNavbarOpened}>
+      <AreaTabGroup label={t`Content`} showLabel={isNavbarOpened}>
+        {isAdmin && (
+          <AreaTab
+            label={t`Data apps`}
+            icon="app"
+            to={Urls.dataStudioDataApps()}
+            isSelected={currentTab === "data-apps"}
+            showLabel={isNavbarOpened}
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
+          />
+        )}
         <AreaTab
           label={t`SQL snippets`}
           icon="snippet"
