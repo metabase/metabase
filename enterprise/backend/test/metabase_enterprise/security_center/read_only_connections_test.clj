@@ -164,13 +164,29 @@
                   (messages))))
         (finally
           (deliver stuck "read-only")))))
+  (testing "a database that lists no table privileges gets a line with its id and engine"
+    (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :warn]]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f] [])]
+        (is (= "no-privileges" (#'read-only-connections/check-database {:id 7, :engine :postgres})))
+        (is (=? [{:level :warn, :message #".*could not read the table privileges of database 7 \(postgres\)"}]
+                (messages))))))
+  (testing "a database with an engine outside the supported set gets a line with its id and engine"
+    (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
+      (#'read-only-connections/check-databases [{:id 8, :engine :h2}
+                                                {:id 9, :engine :mysql, :dbms_version {:flavor "MariaDB"}}]
+                                               (fn [_] "read-only")
+                                               1
+                                               100)
+      (is (=? [{:level :info, :message #".*does not support database 8 \(h2\)"}
+               {:level :info, :message #".*does not support database 9 \(mariadb\)"}]
+              (messages)))))
   (testing "a refresh writes one line with the number of databases, the duration and the results"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
       (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f]
                                                                     (privileges))]
         (let [database-count (count (:databases (read-only-connections/refresh)))]
           (is (=? [{:message (re-pattern (str ".*checked " database-count " databases in \\d+ ms: \\{.+\\}"))}]
-                  (filter #(= :info (:level %)) (messages)))))))))
+                  (filter #(re-find #"checked \d+ databases" (:message %)) (messages)))))))))
 
 (deftest ^:parallel items-test
   (testing "before the first refresh"

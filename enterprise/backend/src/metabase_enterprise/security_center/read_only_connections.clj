@@ -68,7 +68,11 @@
   privileges, or `\"error\"` when the database could not be asked."
   [{:keys [id engine] :as database}]
   (try
-    (privileges-result database)
+    (let [result (privileges-result database)]
+      (when (= result "no-privileges")
+        (log/warnf "Health check read-only-connections could not read the table privileges of database %d (%s)"
+                   id (name engine)))
+      result)
     (catch Throwable e
       ;; the message of a connection error can hold the host or the user, so it stays in the log
       (log/warnf e "Health check read-only-connections could not check database %d (%s)" id (name engine))
@@ -79,6 +83,11 @@
   [{:keys [engine dbms_version]}]
   (and (= engine :mysql)
        (= (:flavor dbms_version) "MariaDB")))
+
+(defn- stored-engine
+  ;; the engine of a stored result and of a log line, with MariaDB told apart from MySQL
+  [database]
+  (if (mariadb? database) "mariadb" (name (:engine database))))
 
 (defn- supported?
   [{:keys [engine] :as database}]
@@ -97,14 +106,18 @@
                            (when (supported? database)
                              (cp/future pool (check-fn database))))
                          databases)]
-      (mapv (fn [{:keys [id engine]} fut]
+      (mapv (fn [{:keys [id] :as database} fut]
               (if fut
                 (let [result (deref fut (max 0 (quot (- deadline (System/nanoTime)) 1000000)) "timed-out")]
                   (when (= result "timed-out")
                     (log/warnf "Health check read-only-connections got no answer from database %d (%s) in %d ms"
-                               id (name engine) limit-ms))
+                               id (stored-engine database) limit-ms))
                   result)
-                "not-supported"))
+                (do
+                  ;; info, not warn: the engine of a database does not change, so the line repeats on every refresh
+                  (log/infof "Health check read-only-connections does not support database %d (%s)"
+                             id (stored-engine database))
+                  "not-supported")))
             databases
             futures))))
 
@@ -125,7 +138,7 @@
                (count databases) (u/since-ms timer) (frequencies results))
     {:databases (mapv (fn [database result]
                         (-> (select-keys database [:id :name])
-                            (assoc :engine (if (mariadb? database) "mariadb" (name (:engine database)))
+                            (assoc :engine (stored-engine database)
                                    :result result)))
                       databases
                       results)}))
