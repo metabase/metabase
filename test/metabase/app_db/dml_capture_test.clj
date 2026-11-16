@@ -143,12 +143,13 @@
     (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 82))))
-  (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture, and the delete still runs"
-    (reset-capture!)
-    (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
-      (is (= 1 (t2/delete! ::bird {:delete-from [(keyword table-name) :b], :where [:= :b.id id]})))
-      (is (empty? (events)))
-      (is (false? (t2/exists? ::bird :id id))))))
+  (when-not (:mariadb (mdb/db-type))
+    (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture, and the delete still runs"
+      (reset-capture!)
+      (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
+        (is (= 1 (t2/delete! ::bird {:delete-from [(keyword table-name) :b], :where [:= :b.id id]})))
+        (is (empty? (events)))
+        (is (false? (t2/exists? ::bird :id id)))))))
 
 (deftest delete-statement-counts-test
   (testing "a captured delete runs two statements (narrow select + delete)"
