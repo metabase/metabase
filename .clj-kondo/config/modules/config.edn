@@ -2693,7 +2693,6 @@
    :api  #{metabase.segments.rest.api}
    :uses #{api
            events
-           lib
            lib.be
            models
            segments
