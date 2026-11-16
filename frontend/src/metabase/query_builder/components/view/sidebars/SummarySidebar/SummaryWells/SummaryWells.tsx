@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Box } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
@@ -29,6 +30,7 @@ import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
 } from "./DraftFormulaChip";
+import { PivotToggle } from "./PivotToggle";
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
@@ -58,6 +60,7 @@ export function SummaryWells({
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const [isPivotMode, setIsPivotMode] = useState(false);
   const isEditing = (clause?: SummaryFormulaClause) =>
     !isEmpty(clause) && Lib.clauseUuid(clause) === editingFormulaUuid;
   const valueItems = useMemo(
@@ -95,7 +98,7 @@ export function SummaryWells({
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
-        title={t`Summarize by`}
+        title={isPivotMode ? t`Values` : t`Summarize by`}
         dropState={dropStates?.values ?? null}
       >
         <SummaryWellInput
@@ -131,8 +134,14 @@ export function SummaryWells({
       </SummaryWell>
       <SummaryWell
         wellId="columns"
-        title={t`Group by`}
+        title={isPivotMode ? t`Columns` : t`Group by`}
         dropState={dropStates?.columns ?? null}
+        action={
+          <PivotToggle
+            isPivotMode={isPivotMode}
+            onToggle={() => setIsPivotMode(!isPivotMode)}
+          />
+        }
       >
         <SummaryWellInput
           wellId="columns"
@@ -164,6 +173,17 @@ export function SummaryWells({
           )}
         </SummaryWellInput>
       </SummaryWell>
+      {isPivotMode && (
+        <SummaryWell wellId="rows" title={t`Rows`} dropState={null}>
+          <SummaryWellInput
+            wellId="rows"
+            sections={columnSections}
+            hasItems={false}
+            onPick={_.noop}
+            onRemoveLast={_.noop}
+          />
+        </SummaryWell>
+      )}
     </Box>
   );
 }
