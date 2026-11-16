@@ -12,6 +12,8 @@ type AttributeValueSelectProps = {
   value: string;
   onChange: (value: string) => void;
   size?: "xs" | "sm";
+  /** Off inside a popover, so picking an option doesn't count as a click outside it. */
+  withinPortal?: boolean;
 };
 
 /**
@@ -23,6 +25,7 @@ export function AttributeValueSelect({
   value,
   onChange,
   size = "sm",
+  withinPortal = true,
 }: AttributeValueSelectProps) {
   const data = [
     {
@@ -50,6 +53,7 @@ export function AttributeValueSelect({
       aria-label={attribute.attribute}
       size={size}
       searchable
+      comboboxProps={{ withinPortal }}
       data={data}
       value={value === "" ? NO_VALUE : value}
       onChange={(newValue) =>

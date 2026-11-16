@@ -81,6 +81,7 @@ export function ViewAsModal({
           principalName: result.data.principal_name,
           attributes: result.data.attributes,
           returnPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+          previewId: result.data.preview_id,
         }),
       );
     }

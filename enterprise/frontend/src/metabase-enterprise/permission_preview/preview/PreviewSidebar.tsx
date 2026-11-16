@@ -6,7 +6,11 @@ import { Box, SegmentedControl, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import type { Principal, PrincipalType } from "../api";
-import { type PrincipalRow, usePrincipalSections } from "../principal-sections";
+import {
+  type PrincipalRow,
+  type PrincipalSection,
+  usePrincipalSections,
+} from "../principal-sections";
 
 import { isPrincipalType } from "./urls";
 
@@ -20,6 +24,12 @@ type PreviewSidebarProps = {
   onEntityChange?: (view: EntityView) => void;
   onPrincipalTypeChange: (type: PrincipalType) => void;
   onPrincipalChange: (principal: Principal) => void;
+  /** Where the people come from; the "View app as…" tab lists them through the admin's own endpoint. */
+  useSections?: (type: PrincipalType) => {
+    sections: PrincipalSection[];
+    isLoading: boolean;
+    error: unknown;
+  };
 };
 
 /** The Preview sidebar: User | Group | Tenant, then a searchable list of them. */
@@ -31,8 +41,9 @@ export function PreviewSidebar({
   onEntityChange,
   onPrincipalTypeChange,
   onPrincipalChange,
+  useSections = usePrincipalSections,
 }: PreviewSidebarProps) {
-  const { sections, isLoading, error } = usePrincipalSections(principalType);
+  const { sections, isLoading, error } = useSections(principalType);
 
   const typeOptions = [
     { value: "user", label: t`User` },

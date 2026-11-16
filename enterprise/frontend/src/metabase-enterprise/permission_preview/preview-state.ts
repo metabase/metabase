@@ -13,6 +13,7 @@ const URL_PARAMS = {
   principalName: "preview_as_principal",
   attributes: "preview_as_attributes",
   returnPath: "preview_return",
+  previewId: "preview_as_id",
 };
 
 export type PreviewState = {
@@ -25,6 +26,8 @@ export type PreviewState = {
   attributes: Record<string, string>;
   /** Where "Exit preview" goes back to: the page the admin started the preview from. */
   returnPath: string;
+  /** Names the preview for `POST /preview/end`. */
+  previewId?: string;
 };
 
 /** Marks the app loaded in the troubleshooting page's frame. */
@@ -118,6 +121,7 @@ function parseUrlState(params: URLSearchParams): PreviewState | null {
     principalName: params.get(URL_PARAMS.principalName) ?? "",
     attributes: parseAttributes(params.get(URL_PARAMS.attributes)),
     returnPath: getSafeReturnPath(params.get(URL_PARAMS.returnPath)),
+    previewId: params.get(URL_PARAMS.previewId) ?? undefined,
   };
 }
 
@@ -185,6 +189,10 @@ function parseStoredState(stored: string | null): PreviewState | null {
           "attributes" in parsed ? parsed.attributes : null,
         ),
         returnPath: getSafeReturnPath(parsed.returnPath),
+        previewId:
+          "previewId" in parsed && typeof parsed.previewId === "string"
+            ? parsed.previewId
+            : undefined,
       };
     }
   } catch {
@@ -213,13 +221,20 @@ export function getPreviewUrl(path: string, state: PreviewState) {
   url.searchParams.set(URL_PARAMS.principalName, state.principalName);
   url.searchParams.set(URL_PARAMS.attributes, JSON.stringify(state.attributes));
   url.searchParams.set(URL_PARAMS.returnPath, state.returnPath);
+  if (state.previewId != null) {
+    url.searchParams.set(URL_PARAMS.previewId, state.previewId);
+  }
   return url.toString();
 }
+
+/** The admin's own debugging calls (the people list, attributes, "Why?") run as the admin, not the person. */
+const ADMIN_URL_PREFIX = "/api/ee/permission_debug/";
 
 export function getPreviewAsHeaderHandler(
   state: PreviewState,
 ): OnBeforeRequestHandler {
-  return async () => ({
-    headers: { "X-Metabase-Preview-As": String(state.userId) },
-  });
+  return async ({ url }) =>
+    url.startsWith(ADMIN_URL_PREFIX)
+      ? undefined
+      : { headers: { "X-Metabase-Preview-As": String(state.userId) } };
 }

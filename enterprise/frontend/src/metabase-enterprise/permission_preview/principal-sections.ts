@@ -11,7 +11,11 @@ import type {
   User,
 } from "metabase-types/api";
 
-import type { PrincipalType } from "./api";
+import {
+  type PrincipalListItem,
+  type PrincipalType,
+  useListPreviewPrincipalsQuery,
+} from "./api";
 
 /** One row of a who-picker: icon, name, email under it, and a dimmed detail on the right. */
 export type PrincipalRow = {
@@ -55,6 +59,43 @@ export function usePrincipalSections(type: PrincipalType) {
 
   return { sections, isLoading, error };
 }
+
+/**
+ * The same sections from `GET /preview/principals`, for the "View app as…" tab: its other calls run as the previewed
+ * person, who may not list users or groups, and this one runs as the admin.
+ */
+export function usePreviewPrincipalSections(type: PrincipalType) {
+  const hasTenants = Boolean(hasPremiumFeature("tenants"));
+  const { data, isLoading, error } = useListPreviewPrincipalsQuery();
+  const items = data?.[`${type}s`] ?? [];
+  const toRow = (item: PrincipalListItem): PrincipalRow => ({
+    id: item.id,
+    name: item.name,
+    detail: item.detail || undefined,
+    icon: PRINCIPAL_ICONS[type],
+  });
+  const [tenantSide, internal] = _.partition(items, (item) => item.tenant_side);
+  const sections =
+    type === "tenant"
+      ? [{ rows: items.map(toRow) }]
+      : toSections(hasTenants, [
+          {
+            title: type === "user" ? t`Internal users` : t`Internal groups`,
+            rows: internal.map(toRow),
+          },
+          {
+            title: type === "user" ? t`Tenant users` : t`Tenant groups`,
+            rows: tenantSide.map(toRow),
+          },
+        ]);
+  return { sections, isLoading, error };
+}
+
+const PRINCIPAL_ICONS: Record<PrincipalType, IconName> = {
+  user: "person",
+  group: "group",
+  tenant: "globe",
+};
 
 /** Matches the name, the email and the detail, so a tenant's name finds its users. */
 export function matchesPrincipalSearch(row: PrincipalRow, query: string) {

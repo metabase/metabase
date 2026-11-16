@@ -20,6 +20,11 @@ type AttributeBarProps = {
   pickedValues: Record<string, string>;
   /** `null` resets the attribute to the person's own value. */
   onPick: (attribute: string, value: string | null) => void;
+  /**
+   * Whether the picker may load the filtered column's values itself. Off in the "View app as…" tab, where that call
+   * would run as the previewed person: it offers the values the backend listed as the admin instead.
+   */
+  canQueryFields?: boolean;
 };
 
 /** The attributes a security rule reads for the previewed person, as chips under the band; each opens its picker. */
@@ -30,6 +35,7 @@ export function AttributeBar({
   isLoading,
   pickedValues,
   onPick,
+  canQueryFields = true,
 }: AttributeBarProps) {
   return (
     <Group
@@ -52,6 +58,7 @@ export function AttributeBar({
           whoName={whoName}
           attribute={attribute}
           pickedValue={pickedValues[attribute.attribute]}
+          canQueryFields={canQueryFields}
           onPick={(value) => onPick(attribute.attribute, value)}
         />
       ))}
@@ -64,6 +71,7 @@ type AttributeChipProps = {
   whoName: string;
   attribute: AffectingAttribute;
   pickedValue: string | undefined;
+  canQueryFields: boolean;
   onPick: (value: string | null) => void;
 };
 
@@ -72,6 +80,7 @@ function AttributeChip({
   whoName,
   attribute,
   pickedValue,
+  canQueryFields,
   onPick,
 }: AttributeChipProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -121,6 +130,7 @@ function AttributeChip({
           <AttributePicker
             attribute={attribute}
             value={value}
+            canQueryFields={canQueryFields}
             onPick={handlePick}
           />
           {attribute.uses.map((use, index) => (
@@ -184,12 +194,20 @@ type AttributePickerProps = {
 };
 
 /** The picker the attribute's rule calls for: the filtered column's values, the router's databases, or free text. */
-function AttributePicker({ attribute, value, onPick }: AttributePickerProps) {
+function AttributePicker({
+  attribute,
+  value,
+  canQueryFields,
+  onPick,
+}: AttributePickerProps & { canQueryFields: boolean }) {
   const sandboxFieldId = attribute.uses.find(
     (use) => use.kind === "sandbox" && use.field_id != null,
   )?.field_id;
+  const hasListedValues =
+    (attribute.member_values?.length ?? 0) > 0 ||
+    (attribute.other_values?.length ?? 0) > 0;
 
-  if (sandboxFieldId != null) {
+  if (sandboxFieldId != null && canQueryFields) {
     return (
       <FieldValuePicker
         fieldId={sandboxFieldId}
@@ -199,7 +217,10 @@ function AttributePicker({ attribute, value, onPick }: AttributePickerProps) {
       />
     );
   }
-  if (attribute.uses.some((use) => use.kind === "routing")) {
+  if (
+    attribute.uses.some((use) => use.kind === "routing") ||
+    (sandboxFieldId != null && hasListedValues)
+  ) {
     return (
       <AttributeValueSelect
         size="xs"
@@ -211,6 +232,7 @@ function AttributePicker({ attribute, value, onPick }: AttributePickerProps) {
           default: attribute.value,
         }}
         value={value}
+        withinPortal={false}
         onChange={onPick}
       />
     );
