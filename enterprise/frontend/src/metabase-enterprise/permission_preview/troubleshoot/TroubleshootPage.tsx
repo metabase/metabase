@@ -36,18 +36,19 @@ import {
   getPreviewHostSignInUrl,
 } from "../content-preview";
 import { PreviewSidebar } from "../preview/PreviewSidebar";
-import { WhySidesheet } from "../preview/WhySidesheet";
+import { WhySidesheet, type WhyTarget } from "../preview/WhySidesheet";
 import {
   type PreviewRouteParams,
   parsePrincipal,
   parsePrincipalType,
 } from "../preview/urls";
 
+import { AccessSummarySidesheet } from "./AccessSummarySidesheet";
 import { AttributeBar } from "./AttributeBar";
 import { ContentPreviewFrame } from "./ContentPreviewFrame";
 import { LinkBar } from "./LinkBar";
 import { parseOpenedItem } from "./item-path";
-import { useWhyTarget } from "./use-why-target";
+import { useAccessSummary, useWhyTarget } from "./use-why-target";
 
 const START_PATH = "/collection/root";
 
@@ -72,7 +73,10 @@ export function TroubleshootPage() {
   const [openedPath, setOpenedPath] = useState(START_PATH);
   const [openCount, setOpenCount] = useState(0);
   const [framePath, setFramePath] = useState(START_PATH);
-  const [isWhyOpen, setIsWhyOpen] = useState(false);
+  const [whyOpen, setWhyOpen] = useState<"item" | "summary" | null>(null);
+  const [summaryWhyTarget, setSummaryWhyTarget] = useState<WhyTarget | null>(
+    null,
+  );
   const [frameMode, setFrameMode] = useState<FrameMode>("same-origin");
   const [restartCount, setRestartCount] = useState(0);
 
@@ -96,6 +100,16 @@ export function TroubleshootPage() {
         : skipToken,
     );
   const whyTarget = useWhyTarget(principal, openedItem, attributes);
+  const accessSummary = useAccessSummary(
+    whyOpen === "summary" ? principal : null,
+  );
+
+  // a collection, dashboard or question explains itself; anything else gets a summary of the person's access
+  const handleWhy = () => setWhyOpen(openedItem != null ? "item" : "summary");
+  const handleWhyClose = () => {
+    setWhyOpen(null);
+    setSummaryWhyTarget(null);
+  };
 
   // The person changes, the open item stays.
   const keepFramePath = () => setOpenedPath(framePath);
@@ -184,16 +198,16 @@ export function TroubleshootPage() {
               </Text>
             </Group>
             <LinkBar framePath={framePath} onOpen={handleOpen} />
-            {openedItem != null && (
-              <Button
-                size="compact-sm"
-                variant="subtle"
-                disabled={whyTarget == null}
-                onClick={() => setIsWhyOpen(true)}
-              >
-                {t`Why?`}
-              </Button>
-            )}
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              disabled={
+                preview == null || (openedItem != null && whyTarget == null)
+              }
+              onClick={handleWhy}
+            >
+              {t`Why?`}
+            </Button>
             <SegmentedControl
               ml="auto"
               style={{ flexShrink: 0 }}
@@ -263,9 +277,16 @@ export function TroubleshootPage() {
           </Box>
         </Flex>
       )}
+      <AccessSummarySidesheet
+        isOpen={whyOpen === "summary" && summaryWhyTarget == null}
+        whoName={whoName}
+        summary={accessSummary}
+        onWhy={setSummaryWhyTarget}
+        onClose={handleWhyClose}
+      />
       <WhySidesheet
-        target={isWhyOpen ? whyTarget : null}
-        onClose={() => setIsWhyOpen(false)}
+        target={summaryWhyTarget ?? (whyOpen === "item" ? whyTarget : null)}
+        onClose={handleWhyClose}
       />
     </PermissionsPageLayout>
   );

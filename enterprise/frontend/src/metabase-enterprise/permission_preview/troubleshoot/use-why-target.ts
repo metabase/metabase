@@ -5,8 +5,11 @@ import type { CollectionId } from "metabase-types/api";
 
 import {
   type AffectingAttribute,
+  type PreviewCollection,
   type PreviewCollectionsResponse,
   type PreviewDataResponse,
+  type PreviewDatabase,
+  type PreviewTableAccess,
   type Principal,
   useGetCollectionsPreviewQuery,
   useGetDataPreviewQuery,
@@ -17,8 +20,8 @@ import type { WhyTarget } from "../preview/WhySidesheet";
 import type { OpenedItem } from "./item-path";
 
 /**
- * What "Why?" explains for the item open in the frame: the access to its collection when that
- * denies it, else the row security on the first table a rule reads an attribute for.
+ * What "Why?" explains for the item open in the frame: a collection's own access; for a dashboard or question, the
+ * access to its collection when that denies it, else the row security on the first table a rule reads an attribute for.
  */
 export function useWhyTarget(
   principal: Principal | null,
@@ -53,7 +56,12 @@ export function useWhyTarget(
   }
   const collectionTarget = getCollectionTarget(collections, collectionId);
   const isDenied = collectionTarget?.cell.value === "none";
-  if (!isDenied && dataPreview != null && securedTableId != null) {
+  if (
+    item.type !== "collection" &&
+    !isDenied &&
+    dataPreview != null &&
+    securedTableId != null
+  ) {
     return getTableTarget(dataPreview, securedTableId) ?? collectionTarget;
   }
   return collectionTarget;
@@ -92,9 +100,13 @@ function getCollectionTarget(
   const collection = data.collections.find(
     ({ id }) => id === (collectionId ?? "root"),
   );
-  if (collection == null) {
-    return null;
-  }
+  return collection != null ? getCollectionWhyTarget(data, collection) : null;
+}
+
+function getCollectionWhyTarget(
+  data: PreviewCollectionsResponse,
+  collection: PreviewCollection,
+): WhyTarget {
   return {
     title: collection.name,
     who: getWhoName(data.principal),
@@ -112,16 +124,47 @@ function getTableTarget(
   for (const database of data.databases) {
     const table = database.tables.find(({ id }) => id === tableId);
     if (table != null) {
-      const tableName = table.display_name ?? table.name;
-      return {
-        title: tableName,
-        who: getWhoName(data.principal),
-        subject: { label: t`Table`, value: `${database.name} / ${tableName}` },
-        column: "view_data",
-        cell: table.view_data,
-        security: table.security,
-      };
+      return getTableWhyTarget(data, database, table);
     }
   }
   return null;
+}
+
+function getTableWhyTarget(
+  data: PreviewDataResponse,
+  database: PreviewDatabase,
+  table: PreviewTableAccess,
+): WhyTarget {
+  const tableName = table.display_name ?? table.name;
+  return {
+    title: tableName,
+    who: getWhoName(data.principal),
+    subject: { label: t`Table`, value: `${database.name} / ${tableName}` },
+    column: "view_data",
+    cell: table.view_data,
+    security: table.security,
+  };
+}
+
+/** The person's access, as the Preview grids show it: every collection, then every table, each with its "why". */
+export function useAccessSummary(principal: Principal | null) {
+  const { data: collections } = useGetCollectionsPreviewQuery(
+    principal != null ? { principal, namespace: "default" } : skipToken,
+  );
+  const { data: dataPreview } = useGetDataPreviewQuery(principal ?? skipToken);
+  if (collections == null || dataPreview == null) {
+    return null;
+  }
+  return {
+    collections: collections.applies
+      ? collections.collections.map((collection) =>
+          getCollectionWhyTarget(collections, collection),
+        )
+      : [],
+    tables: dataPreview.databases.flatMap((database) =>
+      database.tables.map((table) =>
+        getTableWhyTarget(dataPreview, database, table),
+      ),
+    ),
+  };
 }

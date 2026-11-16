@@ -3,11 +3,10 @@ import {
   isBaseEntityID,
 } from "metabase-types/api/entity-id";
 
-/** An item opened in the frame, read from its path. */
-export type OpenedItem = {
-  type: "card" | "dashboard" | "collection";
-  id: number;
-};
+/** An item opened in the frame, read from its path; the root collection has a `null` ID. */
+export type OpenedItem =
+  | { type: "card" | "dashboard"; id: number }
+  | { type: "collection"; id: number | null };
 
 /** What the link bar was given: a path, an entity id, or a bare numeric ID whose type it has to ask. */
 export type LinkInput =
@@ -26,6 +25,9 @@ export type NumericIdType = (typeof NUMERIC_ID_TYPES)[number];
 const ITEM_PATH = /^\/(question|model|metric|dashboard|collection)\/(\d+)/;
 
 export function parseOpenedItem(path: string): OpenedItem | null {
+  if (/^\/collection\/root(?:[/?#]|$)/.test(path)) {
+    return { type: "collection", id: null };
+  }
   const match = ITEM_PATH.exec(path);
   if (match == null) {
     return null;
