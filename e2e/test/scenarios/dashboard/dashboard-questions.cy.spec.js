@@ -527,8 +527,6 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("should be able to save or copy a question to a specific tab", () => {
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-
       const NO_TABS_DASH_NAME = "Orders in a dashboard";
       const TABS_DASH_NAME = "Dashboard with tabs";
       const TAB_ONE_NAME = "First tab";

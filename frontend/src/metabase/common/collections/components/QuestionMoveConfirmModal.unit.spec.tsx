@@ -32,7 +32,9 @@ const setup = ({
   destination = { id: ORANGE_DASHBOARD.id, model: "dashboard" },
   errorMessage,
 }: SetupOpts) => {
-  fetchMock.post("path:/api/cards/dashboards", cardDashboards);
+  fetchMock.post("path:/api/cards/dashboards", cardDashboards, {
+    body: { card_ids: [CARD_ID] },
+  });
 
   const onConfirm = jest.fn<void, []>();
   const onClose = jest.fn<void, []>();
@@ -59,6 +61,11 @@ describe("QuestionMoveConfirmModal", () => {
     });
 
     expect(await screen.findByText("Move this question?")).toBeInTheDocument();
+    const [preflight] = fetchMock.callHistory.calls(
+      "path:/api/cards/dashboards",
+    );
+    const body: unknown = JSON.parse(String(preflight.options.body));
+    expect(body).toEqual({ card_ids: [CARD_ID] });
     expect(screen.getByRole("listitem")).toHaveTextContent(
       "Blue Question will be removed from Blue Dashboard and Purple Dashboard",
     );

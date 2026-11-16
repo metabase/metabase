@@ -64,10 +64,15 @@ const CARD_ID = 42;
 
 type CardDashboardsResponse = {
   card_id: CardId;
-  dashboards: { id: DashboardId; name: string; error?: string }[];
+  dashboards: (
+    | { id: DashboardId; name: string; error?: string }
+    | { error: "unreadable-dashboard" }
+  )[];
 }[];
 
-function setupPickerEndpoints() {
+function setupPickerEndpoints({
+  dashboardResponseDelay = 0,
+}: Pick<SetupOpts, "dashboardResponseDelay">) {
   process.env.OVERSCAN = "20";
   mockGetBoundingClientRect();
 
@@ -96,7 +101,7 @@ function setupPickerEndpoints() {
     collectionItems: [],
   });
   ROOT_DASHBOARDS.forEach(({ dashboard }) => {
-    setupDashboardEndpoints(dashboard);
+    setupDashboardEndpoints(dashboard, { delay: dashboardResponseDelay });
     setupDashboardItemsEndpoint({ dashboard, dashboardItems: [] });
   });
   fetchMock.get("path:/api/search", { data: [] });
@@ -105,12 +110,18 @@ function setupPickerEndpoints() {
 
 type SetupOpts = {
   card: Card;
+  dashboardResponseDelay?: number;
   cardDashboards?: CardDashboardsResponse;
   updateCardError?: { status: number; body: { message: string } };
 };
 
-const setup = ({ card, cardDashboards = [], updateCardError }: SetupOpts) => {
-  setupPickerEndpoints();
+const setup = ({
+  card,
+  cardDashboards = [],
+  updateCardError,
+  dashboardResponseDelay,
+}: SetupOpts) => {
+  setupPickerEndpoints({ dashboardResponseDelay });
   if (updateCardError) {
     // registered first, so it answers the first PUT only and later PUTs fall
     // through to the regular card endpoint
@@ -120,7 +131,9 @@ const setup = ({ card, cardDashboards = [], updateCardError }: SetupOpts) => {
     });
   }
   setupCardEndpoints(card);
-  fetchMock.post("path:/api/cards/dashboards", cardDashboards);
+  fetchMock.post("path:/api/cards/dashboards", cardDashboards, {
+    body: { card_ids: [card.id] },
+  });
 
   const onClose = jest.fn<void, []>();
 
@@ -284,6 +297,49 @@ describe("MoveCardModal", () => {
   });
 
   describe("moving a collection question that appears in dashboards into a dashboard", () => {
+    it("blocks moving a question from one inaccessible dashboard", async () => {
+      const { onClose } = setup({
+        card: createMockCard({
+          id: CARD_ID,
+          name: "Blue Question",
+          dashboard_id: null,
+          dashboard_count: 1,
+        }),
+        cardDashboards: [
+          {
+            card_id: CARD_ID,
+            // The backend omits identity fields for unreadable dashboards.
+            dashboards: [{ error: "unreadable-dashboard" }],
+          },
+        ],
+      });
+
+      await chooseDestination(ORANGE_DASHBOARD.name);
+
+      expect(
+        await screen.findByText("Can't move this question into a dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "This question currently appears in a dashboard that you don't have permission to edit.",
+        ),
+      ).toBeInTheDocument();
+      const [preflight] = fetchMock.callHistory.calls(
+        "path:/api/cards/dashboards",
+      );
+      const body: unknown = JSON.parse(String(preflight.options.body));
+      expect(body).toEqual({ card_ids: [CARD_ID] });
+      expect(getCardPutCalls()).toHaveLength(0);
+      expect(
+        screen.queryByRole("button", { name: "Move it" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Okay" }));
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(getCardPutCalls()).toHaveLength(0);
+    });
+
     it("lists the affected dashboards, shows a failed move's error, and lets the user retry", async () => {
       const card = createMockCard({
         id: CARD_ID,
@@ -305,6 +361,7 @@ describe("MoveCardModal", () => {
           },
         ],
         updateCardError: { status: 400, body: { message: "Ryan said no" } },
+        dashboardResponseDelay: 250,
       });
 
       await chooseDestination(ORANGE_DASHBOARD.name);
@@ -334,8 +391,10 @@ describe("MoveCardModal", () => {
         deleteOldDashcards: "true",
       };
       expect(getCardPutRequests()).toEqual([expectedRequest, expectedRequest]);
-      expect(await screen.findByTestId("move-card-toast")).toHaveTextContent(
-        "Question moved to Orange Dashboard",
+      await waitFor(() =>
+        expect(screen.getByTestId("move-card-toast")).toHaveTextContent(
+          "Question moved to Orange Dashboard",
+        ),
       );
     });
   });

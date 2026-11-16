@@ -108,6 +108,11 @@ describe("DashboardCopyModal", () => {
   it("offers a shallow copy when the dashboard only uses collection questions", async () => {
     setup({ dashcards: [COLLECTION_QUESTION_DASHCARD, HEADING_DASHCARD] });
 
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls(DASHBOARD_URL)).toHaveLength(1),
+    );
+    await act(() => fetchMock.callHistory.flush(true));
+
     expect(
       await screen.findByRole("checkbox", {
         name: /Only duplicate the dashboard/,
