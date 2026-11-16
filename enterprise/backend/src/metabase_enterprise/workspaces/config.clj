@@ -376,9 +376,9 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`.
-  Retry while a database is `:provisioning`. In any other status, waiting does not
-  clear the 409; delete the workspace. Throws a 422 when only an admin can clear
-  the cause: its `:additional-options` set a login (`check-additional-options!`),
+  Retry while a database is `:provisioning` or `:deprovisioning`. In any other
+  status, waiting does not clear the 409; delete the workspace. Throws a 422 when
+  only an admin can clear the cause: its `:additional-options` set a login (`check-additional-options!`),
   it uses SSL client-certificate auth, or an inlined secret in use can't ship
   (`inlined-secret-entries`)."
   [workspace-id]

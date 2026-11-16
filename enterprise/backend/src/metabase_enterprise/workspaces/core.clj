@@ -18,18 +18,37 @@
      so storing it there persists the workspace across restarts without leaking
      between parent and child.
 
-   Per-database lifecycle for the manager-side rows:
+   Per-database lifecycle for the manager-side rows. A create inserts every row
+   `provisioning`. Each status, what it means, and what leaves it:
 
-                    provision
-    unprovisioned ────────────► provisioning ──────► provisioned
-         ▲                           │                    │
-         │                  failure  │                    │ deprovision
-         │                           ▼                    ▼
-         │                     unprovisioned ◄──── deprovisioning
-         │                                                │
-         │                                       failure  │
-         │                                                ▼
-         └──────────────────────────────────────── provisioned
+   - `provisioning`: a create has not finished the row. A successful provisioning
+     sets it `provisioned`. A failed provisioning sets it `unprovisioned`, or
+     deletes the row when the driver reports that it left nothing in the
+     warehouse to tear down. A failed create's cleanup deletes a row whose
+     provisioning never started, or sets it `never_started` when that delete
+     fails.
+   - `provisioned`: the warehouse isolation exists. A delete sets the row
+     `deprovisioning`. A failed create's cleanup tears the row down: the row is
+     deleted, or set `teardown_failed` when the cleanup fails.
+   - `unprovisioned`: provisioning failed, and warehouse objects may remain. A
+     delete and a failed create's cleanup treat the row as they treat a
+     `provisioned` row.
+   - `deprovisioning`: a delete is tearing the row down. The row is deleted when
+     the teardown succeeds. It is set `teardown_failed` when the warehouse
+     teardown fails. It is set back to its previous status when the failure
+     comes before the warehouse call, or after a warehouse teardown that
+     succeeded.
+   - `teardown_failed`: a teardown failed, and warehouse objects may remain. A
+     delete sets the row `deprovisioning` and tears it down again.
+     [[abandon-teardown-failed-databases!]] deletes the row with no warehouse
+     teardown.
+   - `never_started`: a failed create could not delete the row, and its
+     provisioning never started. A delete removes the row with no warehouse
+     teardown, and does not set it `deprovisioning`.
+
+   A delete also takes over a `provisioning` or `deprovisioning` row that is
+   older than [[in-flight-stale-after]]: it sets the row `deprovisioning` and
+   tears it down.
 
    Deleting a workspace tears down each of its databases, except while a create
    or deprovision is running (409). Only a failure of the warehouse teardown itself
