@@ -449,7 +449,7 @@ paths:
             minutes count per workspace: each database that finishes starts them again for the whole workspace. No
             response shows a database's update time. After 15 minutes without an update, the parent treats the
             create or delete as crashed, and a DELETE tears the databases down. A create that spends more than 15
-            minutes on one database looks crashed in the same way, and a DELETE then takes that database over.
+            minutes on one database looks crashed in the same way, and a DELETE then tears that database down.
 
             No `error-code` (#86587), Postgres, when one database's teardown is the only failure:
             - a session of the workspace user is still open after the lock-out. `message` gives the

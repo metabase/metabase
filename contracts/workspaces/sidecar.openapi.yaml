@@ -243,8 +243,8 @@ paths:
         locked the workspace.
 
         #86735: turns `workspaces-enabled` off and deletes every remap row. It keeps each database's
-        `database-workspace-schema`. 400 only while `MB_WORKSPACES_ENABLED=true`: the env var wins over the stored
-        value.
+        `database-workspace-schema`. 400 only while `MB_WORKSPACES_ENABLED=true`: the env var's value overrides the
+        stored value.
 
         Entering workspace mode again after this call is not supported (decision 0035). The kept schema settings
         take effect again when `workspaces-enabled` is turned on through the settings route, also on databases
