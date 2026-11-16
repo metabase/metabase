@@ -178,6 +178,12 @@
   (when-not (str/blank? (:additional-options details))
     (log/warn "Ignoring additional-options on an Oracle database: this driver does not support extra JDBC options.")))
 
+(defmethod driver/allowed-connection-parameters :oracle
+  [_driver]
+  ;; `nil` turns off reporting: the driver never hands `:additional-options` to the client (see its
+  ;; `validate-db-details!` method above), and only [[connection-property-keys]] become connection properties
+  nil)
+
 (def ^:private connection-property-keys
   "The only detail keys that become JDBC connection properties. Everything else a details map carries -- the SSH tunnel
   keys, the secret bookkeeping, the scheduling options, and anything an API caller invented -- belongs to Metabase, not

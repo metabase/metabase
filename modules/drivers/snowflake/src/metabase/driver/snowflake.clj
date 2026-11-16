@@ -61,7 +61,58 @@
 (defmethod driver/non-host-parameters :snowflake
   [_driver]
   ["oauthRedirectUri" "nonProxyHosts" "proxyPort" "proxyUser" "proxyPassword" "proxyProtocol" "useProxy"
-   "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck"])
+   "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck" "ALLOW_CERTIFICATES_WITHOUT_CRL_URL"])
+
+(defmethod driver/disallowed-connection-parameters :snowflake
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Reads a local config file that sets where the client writes its logs
+         "client_config_file"
+         ;; Picks a local directory to write the CRL cache to (the client reads it as a system property)
+         "CRL_RESPONSE_CACHE_DIR"
+         ;; Makes the client connect to every host in the diagnostics allowlist
+         "ENABLE_DIAGNOSTICS"
+         ;; Reads a local file
+         "DIAGNOSTICS_ALLOWLIST_FILE"
+         ;; Reads a private key from a local file
+         "private_key_file"]))
+
+(defmethod driver/allowed-connection-parameters :snowflake
+  [_driver]
+  ["ABORT_DETACHED_QUERY" "account" "ALLOW_CERTIFICATES_WITHOUT_CRL_URL" "allowUnderscoresInHost" "appId"
+   "application" "appVersion" "authenticator" "AUTOCOMMIT" "BINARY_INPUT_FORMAT" "BINARY_OUTPUT_FORMAT"
+   "BROWSER_RESPONSE_TIMEOUT" "CERT_REVOCATION_CHECK_MODE" "CLEAR_BATCH_ONLY_AFTER_SUCCESSFUL_EXECUTION"
+   "CLIENT_MEMORY_LIMIT" "CLIENT_METADATA_REQUEST_USE_CONNECTION_CTX" "CLIENT_OUT_OF_BAND_TELEMETRY_ENABLED"
+   "CLIENT_PREFETCH_THREADS" "CLIENT_RESULT_CHUNK_SIZE" "CLIENT_RESULT_COLUMN_CASE_INSENSITIVE"
+   "CLIENT_SESSION_KEEP_ALIVE" "CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY" "CLIENT_TELEMETRY_ENABLED"
+   "CLIENT_TIMESTAMP_TYPE_MAPPING" "CLIENT_TREAT_TIME_AS_WALL_CLOCK_TIME" "CRL_CACHE_VALIDITY_TIME"
+   "CRL_ON_DISK_CACHE_REMOVAL_DELAY" "database" "DATE_INPUT_FORMAT" "DATE_OUTPUT_FORMAT" "db" "disableConsoleLogin"
+   "disableGcsDefaultCredentials" "disableOCSPChecks" "disablePlatformDetection" "disableQueryContextCache"
+   "disableSamlURLCheck" "ENABLE_CRL_DISK_CACHING" "ENABLE_CRL_IN_MEMORY_CACHING"
+   "ENABLE_EXACT_SCHEMA_SEARCH_ENABLED" "ENABLE_WILDCARDS_IN_SHOW_METADATA_COMMANDS" "enablePatternSearch"
+   "ERROR_ON_NONDETERMINISTIC_MERGE" "ERROR_ON_NONDETERMINISTIC_UPDATE" "GEOGRAPHY_OUTPUT_FORMAT"
+   "GEOMETRY_OUTPUT_FORMAT" "gzipDisabled" "htapOOBTelemetryEnabled" "HTTP_CLIENT_CONNECTION_TIMEOUT"
+   "HTTP_CLIENT_SOCKET_TIMEOUT" "id_token_password" "IMPLICIT_SERVER_SIDE_QUERY_TIMEOUT" "insecureMode"
+   "JDBC_ARROW_TREAT_DECIMAL_AS_INT" "JDBC_DEFAULT_FORMAT_DATE_WITH_TIMEZONE" "JDBC_GET_DATE_USE_NULL_TIMEZONE"
+   "JDBC_QUERY_RESULT_FORMAT" "JDBC_TREAT_DECIMAL_AS_INT" "JDBC_TREAT_TIMESTAMP_NTZ_AS_UTC"
+   "JDBC_USE_SESSION_TIMEZONE" "JSON_INDENT" "LOCK_TIMEOUT" "loginTimeout" "MAX_TLS_VERSION" "maxHttpRetries"
+   "MIN_TLS_VERSION" "MULTI_STATEMENT_COUNT" "net.snowflake.jdbc.http_client_connection_timeout_in_ms"
+   "net.snowflake.jdbc.http_client_socket_timeout_in_ms" "net.snowflake.jdbc.max_connections"
+   "net.snowflake.jdbc.max_connections_per_route" "net.snowflake.jdbc.objectMapper.maxJsonStringLength"
+   "networkTimeout" "nonProxyHosts" "oauthAuthorizationUrl" "oauthClientId" "oauthClientSecret"
+   "oauthEnableSingleUseRefreshTokens" "oauthScope" "oauthTokenRequestUrl" "ocspFailOpen" "oktausername"
+   "OWNER_ONLY_STAGE_FILE_PERMISSIONS_ENABLED" "ownerOnlyStageFilePermissionsEnabled" "passcode" "passcodeInPassword"
+   "password" "platformDetectionTimeoutMs" "private_key_base64" "private_key_pwd" "proxyHost"
+   "proxyPassword" "proxyPort" "proxyProtocol" "proxyUser" "putGetMaxRetries" "QUERY_TAG" "queryTimeout"
+   "QUOTED_IDENTIFIERS_IGNORE_CASE" "retryTimeout" "role" "ROWS_PER_RESULTSET" "schema" "serverURL"
+   "snowflakeClientInfo" "STATEMENT_QUEUED_TIMEOUT_IN_SECONDS" "STATEMENT_TIMEOUT_IN_SECONDS" "STRICT_JSON_OUTPUT"
+   "stringsQuotedForColumnDef" "TIME_INPUT_FORMAT" "TIME_OUTPUT_FORMAT" "TIMESTAMP_DAY_IS_ALWAYS_24H"
+   "TIMESTAMP_INPUT_FORMAT" "TIMESTAMP_LTZ_OUTPUT_FORMAT" "TIMESTAMP_NTZ_OUTPUT_FORMAT" "TIMESTAMP_OUTPUT_FORMAT"
+   "TIMESTAMP_TYPE_MAPPING" "TIMESTAMP_TZ_OUTPUT_FORMAT" "TIMEZONE" "token" "TRANSACTION_DEFAULT_ISOLATION_LEVEL"
+   "TWO_DIGIT_CENTURY_START" "USE_CACHED_RESULT" "useProxy" "user" "user_agent_suffix"
+   "validateDefaultParameters" "warehouse" "WEEK_OF_YEAR_POLICY" "WEEK_START" "workloadIdentityAwsExternalId"
+   "workloadIdentityAwsUseOutboundToken" "workloadIdentityEntraResource" "workloadIdentityImpersonationPath"
+   "workloadIdentityProvider" "workloadImpersonationPath"])
 
 (defn- authenticator-values
   "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the

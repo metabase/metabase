@@ -120,6 +120,16 @@
   [_driver details]
   (sql-jdbc.common/connection-string-hosts (connection-url details)))
 
+;; with `ssl=true` and no store password, the client looks the password up in a Hadoop credential provider, and a
+;; `jceks://https@host/path` value makes it fetch that URL
+(defmethod driver/host-carrying-parameters :sparksql
+  [_driver]
+  ["storePasswordPath"])
+
+(defmethod driver/non-host-parameters :sparksql
+  [_driver]
+  ["HOST" "httpPath" "hive.server2.thrift.http.path"])
+
 (defmethod driver/connection-parameter-hosts :sparksql
   [driver details]
   (sql-jdbc.common/connection-parameter-hosts (connection-url details)

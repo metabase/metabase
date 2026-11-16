@@ -235,6 +235,18 @@
   [s n]
   (subs s 0 (min (count s) n)))
 
+(defn drop-last-char
+  "`s` without its last character, or `\"\"` when `s` is empty."
+  [s]
+  (truncate s (max 0 (dec (count s)))))
+
+(defn ensure-prefix
+  "Ensures `s` starts with the given prefix, adding it if not."
+  [s prefix]
+  (if (str/starts-with? s prefix)
+    s
+    (str prefix s)))
+
 #?(:clj
    (defn https-state
      "Whether the request the frontend client (i.e., browser) made reached us over HTTPS:

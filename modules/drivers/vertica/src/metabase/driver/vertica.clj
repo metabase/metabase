@@ -34,12 +34,38 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(defmethod driver/host-carrying-parameters :vertica [_driver] ["backupservernode" "oauthdiscoveryurl"])
+;; `host`, and its aliases `server` and `hostname`, replace the host in the URL
+(defmethod driver/host-carrying-parameters :vertica
+  [_driver]
+  ["backupservernode" "oauthdiscoveryurl" "oauthtokenurl" "host" "server" "hostname"])
 
 (defmethod driver/non-host-parameters :vertica
   [_driver]
   ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
-   "preferredaddressfamily"])
+   "preferredaddressfamily" "client_os_hostname"])
+
+(defmethod driver/disallowed-connection-parameters :vertica
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Names OAuth token and discovery URLs inside a JSON value, where they cannot be checked as hosts
+         "OAuthJsonConfig"]))
+
+(defmethod driver/allowed-connection-parameters :vertica
+  [_driver]
+  ["AddTZToTimestampParameters" "AutoCommit" "BatchInsertDirect" "BatchInsertString" "BinaryTransfer" "conn_settings"
+   "ConnectionLoadBalance" "ConnectSQL" "ConnSettings" "DefaultAutoCommit" "DirectBatchInsert"
+   ;; `DisableCopyLocal` is listed so that setting it is not reported, but the
+   ;; value never reaches the client: the spec drops it and always sets it to `true`.
+   "DisableCopyLocal"
+   "EnableRoutableQueries" "FailOnMultiNodePlans" "IsolationLevel" "KerberosHostname" "KerberosServiceName"
+   "KeyStorePassword" "Label" "Locale" "LoginNetworkTimeout" "LoginNodeTimeout" "LoginTimeout" "MARS" "MaxLRSMemory"
+   "MaxMemoryCache" "MaxPooledConnections" "MaxPooledConnectionsPerNode" "MaxPooledConnectionUses"
+   "MetadataCacheLifetime" "MultipleActiveResultSets" "NetworkBufferSize" "NetworkTimeout" "NodeDownWaitTime"
+   "OAuthAccessToken" "OAuthClientId" "OAuthClientSecret" "OAuthRefreshToken" "OAuthScope" "OAuthTrustStorePassword"
+   "PreferredAddressFamily" "Protocol" "ReadOnly" "RequestComplexTypes" "ResultBufferSize" "search_path" "SearchPath"
+   "SessionLabel" "SessionTimeZone" "SimpleQueriesOnly" "SSL" "SSLMode" "StreamingBatchInsert"
+   "StrictCatalogFiltering" "StringBatchInsert" "ThreePartNaming" "TLSmode" "TransactionIsolation"
+   "TrustStorePassword" "Workload"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false

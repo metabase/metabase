@@ -38,12 +38,52 @@
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
 ;; the connection is made through the proxy when one is set, so it is the host actually contacted.
-(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host"])
+;; `connection_url` is where the client sends requests, and a URL parameter of that name replaces the one built from the
+;; host
+(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host" "connection_url"])
 
 (defmethod driver/non-host-parameters :clickhouse
   [_driver]
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
-   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
+   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates" "proxy_username"])
+
+(defmethod driver/disallowed-connection-parameters :clickhouse
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Loads arbitrary classes
+         "typeMappings"
+         ;; Loads arbitrary classes
+         "type_hint_mapping"
+         ;; Instantiates an arbitrary class
+         "jdbc_json_parser_factory"
+         ;; Instantiates an arbitrary class
+         "jdbc_metrics_recorder"
+         ;; Instantiates an arbitrary class (legacy v1 driver)
+         "dialect"
+         ;; Loads arbitrary classes (legacy v1 driver)
+         "load_balancing_policy"]))
+
+(defmethod driver/allowed-connection-parameters :clickhouse
+  [_driver]
+  ;; The client's documented properties, minus the class-loading ones above. `clickhouse_setting_*` is the client's
+  ;; prefix for passing a setting through to the server, which applies it to the session.
+  ["access_token" "app_compressed_data" "async" "bearer_token" "beta.row_binary_for_simple_insert"
+   "binary_string_support" "clickhouse_setting_*" "clickhouse_setting_log_comment" "client.http.cookies_enabled"
+   "client.http.use_form_request_for_query" "client.use_http_compression"
+   "client_allow_binary_reader_to_reuse_buffers" "client_id_metadata" "client_name" "client_network_buffer_size"
+   "client_retry_on_failures" "compress" "compression.lz4.uncompressed_buffer_size" "compression.method"
+   "connection_pool_enabled" "connection_request_timeout" "connection_reuse_strategy" "connection_timeout"
+   "connection_ttl" "custom_http_params" "custom_settings" "custom_settings_prefix" "database" "decompress"
+   "default_query_settings" "disable_native_compression" "format" "http_connection_provider"
+   "http_keep_alive_timeout" "http_use_basic_auth" "ignore_unknown_config_key" "jdbc_cluster_name"
+   "jdbc_ignore_unsupported_values" "jdbc_metadata_use_show_statements" "jdbc_resultset_auto_close"
+   "jdbc_schema_term" "jdbc_sql_parser" "jdbc_use_max_result_rows" "json_disable_number_quoting" "key_store_password"
+   "key_store_type" "max_execution_time" "max_open_connections" "max_threads_per_client" "metrics_name" "password"
+   "product_name" "proxy_host" "proxy_password" "proxy_port" "proxy_type" "proxy_user" "query_id"
+   "remember_last_set_roles" "retry" "server_time_zone" "server_version" "session_db_roles" "socket_keepalive"
+   "socket_linger" "socket_rcvbuf" "socket_reuseaddr" "socket_sndbuf" "socket_tcp_nodelay" "socket_timeout" "ssl"
+   "ssl_authentication" "ssl_cipher_suites" "ssl_mode" "ssl_socket_sni" "sslrootcert" "use_server_time_zone"
+   "use_server_time_zone_for_dates" "use_time_zone" "user"])
 
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 

@@ -303,6 +303,20 @@
   [_driver]
   [])
 
+(defmulti allowed-connection-parameters
+  "The names of client connection parameters a user is allowed to set for this driver.
+
+  This should be the inverse of `disallowed-connection-parameters`. It is our intention to eventually
+  move to explicit allowlisting of parameters as opposed to disallowing known bad parameters. Before that
+  switch, this is merely advisory."
+  {:added "0.66.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod allowed-connection-parameters :default
+  [_driver]
+  [])
+
 (defmulti url-building-detail-keys
   "The connection-detail keys whose values this driver splices into its connection URL.
   [[metabase.driver.util/validate-connection-parameters!]] refuses a value of one of these that contains a URL

@@ -46,12 +46,50 @@
 
 (defmethod driver/host-carrying-parameters :redshift
   [_driver]
-  ["host" "PGHOST" "endpointurl" "stsendpointurl"])
+  ;; `idp_host` is the identity provider the SAML plugins sign in to; `login_url` is where the browser plugins send
+  ;; the host's browser
+  ["host" "PGHOST" "endpointurl" "stsendpointurl" "idp_host" "login_url"])
 
 (defmethod driver/non-host-parameters :redshift
   [_driver]
   ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
-   "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
+   "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"
+   "issuer_url"])
+
+(defmethod driver/disallowed-connection-parameters :redshift
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :postgres) driver)
+        [;; Loads connection properties from a server-side profile, which can set any of these
+         "AuthProfile"
+         ;; Loads connection properties from a local file
+         "IniFile"
+         ;; Can pick a profile from the host's AWS config files
+         "Profile"
+         ;; Instantiates an arbitrary class (an IAM credentials provider)
+         "plugin_name"]))
+
+(defmethod driver/allowed-connection-parameters :redshift
+  [_driver]
+  ["AccessKeyID" "AllowDBUserOverride" "allowencodingchanges" "App_ID" "App_Name" "ApplicationName"
+   "assumeminserverversion" "authmech" "AutoCreate" "autosave" "binarytransfer" "binarytransferdisable"
+   "binarytransferenable" "blockingrowsmode" "cancelsignaltimeout" "cleanupsavepoints" "Client_ID"
+   "client_protocol_version" "Client_Secret" "ClusterID" "Compression" "connectionTimezone" "connectTimeout"
+   "currentschema" "databasemetadatacachefields" "databasemetadatacachefieldsmib" "databaseMetadataCurrentDbOnly"
+   "DbGroups" "dbgroupsfilter" "DBNAME" "DbUser" "defaultRowFetchSize" "disablecolumnsanitiser" "DisableIsValidQuery"
+   "duration" "enableFetchReadAndProcessBuffers" "enableFetchRingBuffer" "enablegeneratedname"
+   "enableMultiSqlSupport" "enablestatementcache" "EnableTableTypes" "endpointUrl" "escapesyntaxcallmode"
+   "fetchRingBufferSize" "ForceLowercase" "groupFederation" "gsslib" "hideunprivilegedobjects" "HOST"
+   "hostrecheckseconds" "iamauth" "IAMDisableCache" "IAMDuration" "Idc_Client_Display_Name" "Idc_Region"
+   "identity_namespace" "IdP_Host" "IdP_Partition" "IdP_Port" "IdP_Response_Timeout" "IdP_Tenant" "isServerless"
+   "Issuer_Url" "jaaslogin" "kerberosservername" "loadbalancehosts" "loginTimeout" "loginToRp" "logservererrordetail"
+   "logunclosedconnections" "maxresultbuffer" "maxwarningcount" "options" "OverrideSchemaPatternType" "Partner_SPID"
+   "Password" "PORT" "preferPQ" "preferquerymode" "Preferred_Role" "preparedstatementcachequeries"
+   "preparedstatementcachesizemib" "preparethreshold" "protocolversion" "providerName" "PWD" "queryGroup"
+   "raiseexceptiononsilentrollback" "readOnly" "readonlymode" "receivebuffersize" "Region" "reWriteBatchedInserts"
+   "reWriteBatchedInsertsSize" "roleArn" "roleSessionName" "scope" "SecretAccessKey" "sendbuffersize"
+   "serverlessAcctId" "serverlessWorkGroup" "SessionToken" "socketTimeout" "SSL" "SSL_Insecure" "SSLMode"
+   "SSLPassword" "sspiserviceclass" "stringtype" "StsEndpointUrl" "targetservertype" "tcpKeepAlive" "token"
+   "token_type" "UID" "unknownlength" "User" "Username" "usespnego" "webIdentityToken"])
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true

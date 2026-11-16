@@ -52,6 +52,20 @@
 
 (driver/register! :mongo)
 
+(defmethod driver/disallowed-connection-parameters :mongo
+  [_driver]
+  [;; Sends every connection through a chosen SOCKS5 proxy, which skips the checks on the addresses connected to
+   "proxyHost"])
+
+(defmethod driver/allowed-connection-parameters :mongo
+  [_driver]
+  ["appName" "authMechanism" "authSource" "compressors" "connectTimeoutMS" "directConnection" "heartbeatFrequencyMS"
+   "journal" "loadBalanced" "localThresholdMS" "maxConnecting" "maxIdleTimeMS" "maxLifeTimeMS" "maxPoolSize"
+   "maxStalenessSeconds" "minPoolSize" "readConcernLevel" "readPreference" "readPreferenceTags" "replicaSet"
+   "retryReads" "retryWrites" "safe" "serverMonitoringMode" "serverSelectionTimeoutMS" "socketTimeoutMS"
+   "srvMaxHosts" "srvServiceName" "ssl" "sslInvalidHostNameAllowed" "timeoutMS" "tls" "tlsAllowInvalidHostnames"
+   "tlsInsecure" "uuidRepresentation" "w" "waitQueueTimeoutMS" "wtimeoutMS" "zlibCompressionLevel"])
+
 (def ^DnsClient ^:private no-op-dns-client
   ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
   ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address

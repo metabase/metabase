@@ -36,12 +36,52 @@
    "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
    "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"
    ;; added by the 3.8.2 client
-   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"])
+   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"
+   "Endpoint" "EndpointOverride" "StreamingEndpoint" "StreamingEndpointOverride" "StsEndpointOverride"
+   "LfEndpointOverride" "IdP_Host" "OktaHostName" "PingHostName" "AdfsHostName"
+   ;; `Host` written into the options replaces the one in the URL; the others are aliases of `SsoLoginUrl` and
+   ;; `SsoStartUrl`
+   "Host" "login_url" "sso_oidc_start_url"])
 
 (defmethod driver/non-host-parameters :athena
   [_driver]
   ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
-   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername" "NonProxyHosts" "UseProxyForIdP"
+   "S3OutputLocation" "Partner_SPID" "ProxyUID" "ProxyPWD"])
+
+(defmethod driver/disallowed-connection-parameters :athena
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Can escalate privileges on Windows servers
+         "AdfsWiaEnabled"
+         ;; Instantiates an Arbitrary Class
+         "CredentialsProvider"
+         ;; Can pick a profile from the host's AWS config files
+         "ProfileName"]))
+
+(defmethod driver/allowed-connection-parameters :athena
+  [_driver]
+  ["AccessKeyId" "AccessRoleArn" "AclOption" "AdfsHostName" "AdfsPortNumber" "AdfsRelyingParty" "App_ID" "App_Name"
+   "ApplicationName" "ApplicationRoleArn" "AthenaEndpoint" "AthenaStreamingEndpoint" "AwsRegion" "AzureAdClientId"
+   "AzureAdClientSecret" "AzureAdTenantId" "Catalog" "client_id" "client_secret" "ConnectionTest"
+   "CustomerIdcApplicationArn" "Database" "DataZoneDomainId" "DataZoneDomainRegion" "DataZoneEndpointOverride"
+   "DataZoneEnvironmentId" "DataZoneProjectId" "Duration" "EnableResultReuseByAge" "EncryptionOption" "Endpoint"
+   "EndpointOverride" "ExpectedBucketOwner" "FetchSize" "GlueEndpoint" "IdP_Host" "IdP_Port" "idp_response_timeout"
+   "IdpHostName" "IdpPortNumber" "IdpResponseTimeout" "JwtRoleArn" "JwtRoleSessionName" "JwtWebIdentityToken"
+   "KmsKey" "LakeFormationEnabled" "LakeFormationEndpoint" "LfEndpointOverride" "LoginToRP" "max_error_retries"
+   "MaxErrorRetry" "MaxQueryExecutionPollingInterval" "MaxQueryExecutionPollingIntervalMillis"
+   "MaxResultReuseAgeInMinutes" "MinQueryExecutionPollingInterval" "MinQueryExecutionPollingIntervalMillis"
+   "NetworkTimeoutMillis" "NonProxyHosts" "NumRetries" "OidcClientId" "OidcClientSecret" "okta_mfa_type"
+   "okta_mfa_wait_time" "okta_phone_number" "OktaAppId" "OktaAppName" "OktaHostName" "OktaMfaType" "OktaMfaWaitTime"
+   "OktaPhoneNumber" "OutputLocation" "Partner_SPID" "Password" "PingHostName" "PingPartnerSpId" "PingPortNumber"
+   "preferred_role" "PreferredRole" "ProxyEnabledForIdP" "ProxyExemptHosts" "ProxyHost" "ProxyPassword" "ProxyPort"
+   "ProxyPWD" "ProxyUID" "ProxyUsername" "PWD" "query_results_aws_kms_key" "query_results_encryption_option"
+   "QueryExecutionPollingIntervalMultiplier" "Region" "ResultFetcher" "role_arn" "role_session_name"
+   "RoleSessionDuration" "RoleSessionName" "RowsToFetchPerBlock" "s3_staging_dir" "S3Endpoint" "S3OutputEncKMSKey"
+   "S3OutputEncOption" "S3OutputLocation" "Schema" "Scope" "SecretAccessKey" "SessionToken" "sso_oidc_account_id"
+   "sso_oidc_region" "sso_oidc_role_name" "SsoAdminEndpoint" "SsoEndpoint" "SsoOidcAccountId" "SsoOidcEndpoint"
+   "SsoOidcRegion" "SsoOidcRoleName" "StreamingEndpoint" "StreamingEndpointOverride" "StsEndpoint"
+   "StsEndpointOverride" "tenant_id" "UID" "UseProxyForIdP" "User" "web_identity_token" "WorkGroup" "WorkGroupArn"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |

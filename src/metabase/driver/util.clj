@@ -11,6 +11,8 @@
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -25,6 +27,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv empty? some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [ring.util.codec :as codec])
@@ -263,6 +266,47 @@
     (some #(when (str/includes? s (normalize-connection-parameter %)) %)
           (driver/disallowed-connection-parameters driver))))
 
+(defn- allowed-connection-parameter?
+  "Check if a connection parameter is explicitly allowlisted as-per the given allowlist"
+  [allowed parameter-name]
+  (let [parameter-name (fold-case parameter-name)]
+    (some (fn [allowed-parameter-name]
+            (let [allowed-parameter-name (fold-case allowed-parameter-name)]
+              ;; * at the end of an allowlist entry works as a wildcard, but only for suffixes
+              ;; so
+              ;;  abc=123, *   -> match
+              ;;  abc=123, ab* -> match
+              ;;  abc=123, abc -> match
+              ;;  abc=123, a*c -> no match
+              ;;  abc=123, def -> no match
+              (if (str/ends-with? allowed-parameter-name "*")
+                (str/starts-with? parameter-name (u/drop-last-char allowed-parameter-name))
+                (= parameter-name allowed-parameter-name))))
+          allowed)))
+
+(defn unlisted-connection-parameters
+  "Reports any connection parameters that are not explicitly allowlisted or denylisted."
+  [driver s]
+  ;; If a driver reports `nil` for allowed parameters, it means it hasn't specified any allowlist.
+  ;; This is different from an empty allowlist, which would imply "nothing is allowlisted."
+  (if-some [allowed (driver/allowed-connection-parameters driver)]
+    (let [parameters (sql-jdbc.common/connection-string-parameters
+                      (u/ensure-prefix (str/triml (str s)) "?"))]
+      (into []
+            (comp
+             (map first)
+             (remove #(allowed-connection-parameter? allowed %))
+             (distinct))
+            parameters))
+    []))
+
+(events/derive! :event/unlisted-connection-parameter :metabase/event)
+
+(mr/def :event/unlisted-connection-parameter
+  [:map {:closed true}
+   [:driver    :keyword]
+   [:parameter :string]])
+
 (def ^:private url-separators
   "Characters that end a URL-building detail's part of a connection URL and start a client parameter."
   [\? \& \; \#])
@@ -292,7 +336,9 @@
       (refuse! "additional options" match))
     (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
       (refuse! "connection details" match)))
-  (validate-url-building-details! driver details))
+  (validate-url-building-details! driver details)
+  (doseq [parameter (some->> (:additional-options details) (unlisted-connection-parameters driver))]
+    (events/publish-event! :event/unlisted-connection-parameter {:driver (keyword driver), :parameter parameter})))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT

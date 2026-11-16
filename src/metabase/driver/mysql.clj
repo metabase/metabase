@@ -57,14 +57,35 @@
 
 (defmethod driver/host-carrying-parameters :mysql
   [_driver]
-  ;; the client fetches `serverSslCert` when it is a URL, and a `file:` URL naming a host other than localhost is
-  ;; fetched over FTP
-  ["serverSslCert"])
+  ;; the client fetches these when they are URLs, and a `file:` URL naming a host other than localhost is fetched over
+  ;; FTP
+  ["serverSslCert" "trustStore" "keyStore"])
 
 (defmethod driver/non-host-parameters :mysql
   [_driver]
   ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverTimezone"
    "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
+
+(defmethod driver/allowed-connection-parameters :mysql
+  [_driver]
+  ["allowMasterDownConnection" "allowMultiQueries" "allowPublicKeyRetrieval" "assureReadOnly" "autocommit"
+   "autoReconnect" "blankTableNameMeta" "cacheCallableStmts" "cachePrepStmts" "callableStmtCacheSize"
+   "clientCertificateKeyStorePassword" "clientCertificateKeyStoreType" "connectionAttributes" "connectTimeout"
+   "continueBatchOnError" "createDatabaseIfNotExist" "createDB" "defaultFetchSize" "disableSslHostnameVerification"
+   "dumpQueriesOnException" "enabledSSLCipherSuites" "enabledSslCipherSuites" "enabledSslProtocolSuites"
+   "enablePacketDebug" "ensureSocketState" "failOnReadOnly" "failoverLoopRetries" "galeraAllowedState"
+   "includeInnodbStatusInDeadlockExceptions" "interactiveClient" "jdbcCompliantTruncation" "keyPassword"
+   "keyStorePassword" "keyStoreType" "loadBalanceBlacklistTimeout" "localSocketAddress" "maxAllowedColumns"
+   "maxIdleTime" "maximizeMysqlCompatibility" "maxPoolSize" "maxQuerySizeToLog" "minPoolSize"
+   "nullCatalogMeansCurrent" "passwordCharacterEncoding" "pinGlobalTxToPhysicalConnection" "pool" "poolName"
+   "poolValidMinDelay" "prepStmtCacheSize" "prepStmtCacheSqlLimit" "registerJmxPool" "retriesAllDown"
+   "rewriteBatchedStatements" "serverTimezone" "servicePrincipalName" "sessionVariables" "slowQueryThresholdNanos"
+   "socketTimeout" "staticGlobal" "tcpAbortiveClose" "tcpKeepAlive" "tcpNoDelay" "tcpRcvBuf" "tcpSndBuf"
+   "tinyInt1isBit" "trackSchema" "trustCertificateKeyStorePassword" "trustCertificateKeyStoreType"
+   "trustServerCertificate" "trustStorePassword" "trustStoreType" "useAffectedRows" "useBatchMultiSend"
+   "useBatchMultiSendNumber" "useBulkStmts" "useCompression" "useFractionalSeconds" "useLegacyDatetimeCode"
+   "useMysqlMetadata" "useOldAliasMetadataBehavior" "usePipelineAuth" "useReadAheadInput" "useResetConnection"
+   "useServerPrepStmts" "useSSL" "useSsl" "validConnectionTimeout" "yearIsDateType"])
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
@@ -232,7 +253,20 @@
 (defmethod driver/disallowed-connection-parameters :mysql
   [driver]
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
-        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
+        [;; Lets the server read local files with `LOAD DATA LOCAL INFILE`
+         "allowLocalInfile"
+         ;; Lets the server read local files with `LOAD DATA LOCAL INFILE`
+         "allowLoadLocalInfile"
+         ;; Lets `LOAD DATA LOCAL INFILE` fetch URLs
+         "allowUrlInLocalInfile"
+         ;; Deserializes Java objects sent by the server
+         "autoDeserialize"
+         ;; Reads a local file
+         "serverRSAPublicKeyFile"
+         ;; Lets the server read local files under a chosen path with `LOAD DATA LOCAL INFILE`
+         "allowLoadLocalInfileInPath"
+         ;; Sends environment variables
+         "credentialType"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]

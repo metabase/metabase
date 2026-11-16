@@ -14,6 +14,23 @@ title: Driver interface changelog
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends, adding
+  parameters that name a class to instantiate. If your driver derives from `:postgres` and overrides the method,
+  extend `:postgres`'s list rather than `:sql-jdbc`'s.
+
+- `metabase.driver/allowed-connection-parameters` `[driver]` -- new multimethod returning the names of the client
+  connection parameters a user may write into `:additional-options`. It is not enforced yet: when
+  `:additional-options` names a parameter on neither this list nor `disallowed-connection-parameters`, Metabase
+  allows it but publishes an `:event/unlisted-connection-parameter` event with the `:driver` and `:parameter`, and logs
+  a warning. The default lists none, so a driver whose connection form offers `:additional-options` should list what its
+  client documents. Return `nil` if the driver never hands `:additional-options` to its client.
+
+  ```clj
+  (defmethod driver/allowed-connection-parameters :my-driver
+    [_driver]
+    ["applicationName" "connectTimeout" "socketTimeout" "ssl" "sslmode"])
+  ```
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while

@@ -69,6 +69,32 @@
   ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
    "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
 
+(defmethod driver/disallowed-connection-parameters :postgres
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Instantiates an arbitrary class
+         "authenticationPluginClassName"
+         ;; Instantiates an arbitrary class
+         "connectExecutor"
+         ;; `datatype.<type>` loads the class it names, and instantiates it when a column of that type is read
+         "datatype"]))
+
+(defmethod driver/allowed-connection-parameters :postgres
+  [_driver]
+  ["adaptiveFetch" "adaptiveFetchMaximum" "adaptiveFetchMinimum" "allowEncodingChanges" "ApplicationName"
+   "assumeMinServerVersion" "autosave" "binaryTransfer" "binaryTransferDisable" "binaryTransferEnable"
+   "cancelSignalTimeout" "channelBinding" "cleanupSavepoints" "connectTimeout" "convertBooleanToNumeric"
+   "currentSchema" "databaseMetadataCacheFields" "databaseMetadataCacheFieldsMiB" "defaultRowFetchSize"
+   "disableColumnSanitiser" "escapeSyntaxCallMode" "flushCacheOnDdl" "groupStartupParameters" "gssEncMode" "gsslib"
+   "gssResponseTimeout" "hideUnprivilegedObjects" "hostRecheckSeconds" "jaasLogin" "kerberosServerName"
+   "loadBalanceHosts" "localSocketAddress" "loginTimeout" "logServerErrorDetail" "logUnclosedConnections"
+   "maxResultBuffer" "maxSendBufferSize" "options" "password" "pemKeyAlgorithm" "PGDBNAME" "PGHOST" "PGPORT"
+   "preferQueryMode" "preparedStatementCacheQueries" "preparedStatementCacheSizeMiB" "prepareThreshold"
+   "protocolVersion" "queryTimeout" "quoteReturningIdentifiers" "readOnly" "readOnlyMode" "receiveBufferSize"
+   "requireAuth" "reWriteBatchedInserts" "reWriteBatchedInsertsSize" "scramMaxIterations" "sendBufferSize"
+   "socketTimeout" "ssl" "sslmode" "sslNegotiation" "sslpassword" "sslResponseTimeout" "sspiServiceClass"
+   "stringtype" "targetServerType" "tcpKeepAlive" "tcpNoDelay" "unknownLength" "user" "useSpnego"])
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift

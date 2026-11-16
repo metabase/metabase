@@ -345,6 +345,21 @@
     "string" 3  "str"
     "string" 0  ""))
 
+(deftest ^:parallel drop-last-char-test
+  (are [s expected] (= expected
+                       (u/drop-last-char s))
+    "family_*" "family_"
+    "*"        ""
+    ""         ""))
+
+(deftest ^:parallel ensure-prefix-test
+  (are [s expected] (= expected
+                       (u/ensure-prefix s "?"))
+    "a=1"   "?a=1"
+    "?a=1"  "?a=1"
+    "??a=1" "??a=1"
+    ""      "?"))
+
 (deftest ^:parallel strip-bom-test
   (are [s expected] (= expected
                        (u/strip-bom s))

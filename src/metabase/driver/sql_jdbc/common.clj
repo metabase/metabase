@@ -141,7 +141,7 @@
     (URLDecoder/decode s StandardCharsets/UTF_8)
     (catch IllegalArgumentException _ nil)))
 
-(defn- connection-string-parameters
+(defn connection-string-parameters
   "The `name=value` pairs in a JDBC `connection-string`, whichever separator style the driver that built it uses. Only
   what follows the first separator is read: the authority (`//host:port/db`) is [[connection-string-hosts]]' business,
   not ours.

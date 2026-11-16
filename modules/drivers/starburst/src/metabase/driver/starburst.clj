@@ -60,6 +60,16 @@
   ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
    "disallowLocalRedirect"])
 
+(defmethod driver/allowed-connection-parameters :starburst
+  [_driver]
+  ["accessToken" "applicationNamePrefix" "assumeLiteralNamesInMetadataCallsForNonConformingClients"
+   "assumeLiteralUnderscoreInMetadataCallsForNonConformingClients" "assumeNullCatalogMeansCurrentCatalog" "catalog"
+   "clientInfo" "clientTags" "disableCompression" "disallowLocalRedirect" "encoding" "explicitPrepare"
+   "extraCredentials" "extraHeaders" "hostnameInCertificate" "locale" "oauth2ClientId" "oauth2ClientSecret"
+   "oauth2Scope" "password" "path" "resourceEstimates" "roles" "schema" "sessionProperties" "sessionUser" "source"
+   "SSL" "SSLKeyStorePassword" "SSLKeyStoreType" "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemTrustStore"
+   "SSLVerification" "timeout" "timezone" "traceToken" "user" "validateConnection"])
+
 (set! *warn-on-reflection* true)
 
 (prefer-method driver/database-supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])

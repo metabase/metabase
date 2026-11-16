@@ -52,12 +52,35 @@
 
 (defmethod driver/host-carrying-parameters :sqlserver
   [_driver]
-  ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+  ;; `server` is the client's synonym for `serverName`
+  ["serverName" "server" "failoverPartner" "enclaveAttestationUrl"])
 
 (defmethod driver/non-host-parameters :sqlserver
   [_driver]
   ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
-   "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
+   "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"
+   "domain" "domainName" "keyStoreLocation"])
+
+(defmethod driver/allowed-connection-parameters :sqlserver
+  [_driver]
+  ["AADSecurePrincipalId" "AADSecurePrincipalSecret" "accessToken" "applicationIntent" "applicationName"
+   "authentication" "authenticationScheme" "bulkCopyForBatchInsertAllowEncryptedValueModifications"
+   "bulkCopyForBatchInsertBatchSize" "bulkCopyForBatchInsertCheckConstraints" "bulkCopyForBatchInsertFireTriggers"
+   "bulkCopyForBatchInsertKeepIdentity" "bulkCopyForBatchInsertKeepNulls" "bulkCopyForBatchInsertTableLock"
+   "cacheBulkCopyMetadata" "calcBigDecimalPrecision" "cancelQueryTimeout" "clientKeyPassword"
+   "columnEncryptionSetting" "concatNullYieldsNull" "connectRetryCount" "connectRetryInterval" "database"
+   "databaseName" "datetimeParameterType" "defaultTransactionIsolation" "delayLoadingLobs" "disableStatementPooling"
+   "domain" "domainName" "enablePrepareOnFirstPreparedStatementCall" "encrypt" "failoverPartner" "fips"
+   "hostNameInCertificate" "ignoreOffsetOnDateTimeOffsetConversion" "instanceName" "integratedSecurity"
+   "iPAddressPreference" "keyStoreAuthentication" "keyStorePrincipalId" "keyStoreSecret"
+   "keyVaultProviderClientId" "keyVaultProviderClientKey" "lastUpdateCount" "lockTimeout" "loginTimeout"
+   "maxResultBuffer" "msiClientId" "multiSubnetFailover" "packetSize" "password" "port" "portNumber" "prepareMethod"
+   "queryTimeout" "quotedIdentifier" "realm" "replication" "responseBuffering" "retryConn" "retryExec" "selectMethod"
+   "sendStringParametersAsUnicode" "sendTemporalDataTypesAsStringForBulkCopy" "sendTimeAsDatetime" "server"
+   "serverName" "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "socketTimeout" "sslProtocol"
+   "statementPoolingCacheSize" "transparentNetworkIPResolution"
+   "trustServerCertificate" "trustStorePassword" "useBulkCopyForBatchInsert" "useDefaultGSSCredential"
+   "useDefaultJaasConfig" "useFmtOnly" "user" "userName" "vectorTypeSupport" "workstationID" "xopenStates"])
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -300,7 +323,15 @@
         (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
 (def ^:private sqlserver-disallowed-parameters
-  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+  [;; Instantiates an arbitrary class
+   "socketFactoryClass"
+   ;; The constructor argument for `socketFactoryClass`
+   "socketFactoryConstructorArg"
+   ;; Instantiates an arbitrary class
+   "trustManagerClass"
+   ;; The constructor argument for `trustManagerClass`
+   "trustManagerConstructorArg"
+   ;; Instantiates an arbitrary class
    "accessTokenCallbackClass"])
 
 (defmethod driver/disallowed-connection-parameters :sqlserver

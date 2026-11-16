@@ -50,7 +50,39 @@
 (defmethod driver/non-host-parameters :databricks
   [_driver]
   ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
-   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode" "ProxyUID" "ProxyPWD" "ProxyAuth" "CFProxyUID" "CFProxyPWD"
+   "CFProxyAuth"])
+
+(defmethod driver/allowed-connection-parameters :databricks
+  [_driver]
+  ["AcceptUndeterminedRevocation" "AllowSelfSignedCerts" "ansi_mode" "ApiRetriableHttpCodes" "ApiRetryTimeout"
+   "ApplicationName" "asyncexecpollinterval" "Auth_AccessToken" "Auth_JWT_Alg" "Auth_JWT_Key_Passphrase" "Auth_KID"
+   "Auth_RefreshToken" "Auth_Scope" "authmech" "azure_workspace_resource_id" "AzureTenantId" "BatchInsertSize"
+   "catalog" "cfproxyauth" "cfproxyhost" "cfproxyport" "cfproxypwd" "cfproxyuid" "CheckCertRevocation"
+   "ChunkReadyTimeoutSeconds" "CloudFetchSpeedThreshold" "cloudFetchThreadPoolSize" "conncatalog" "connschema"
+   "DefaultStringColumnLength" "DisableOauthRefreshToken" "enable_photon" "EnableArrow" "EnableBatchedInserts"
+   "EnableComplexDatatypeSupport" "EnableDirectResults" "EnableGeoSpatialSupport" "EnableHeartbeat"
+   "EnableInlineStreaming" "EnableMetricViewMetadata" "enableMultipleCatalogSupport" "EnableOIDCDiscovery"
+   "EnableQueryResultDownload" "EnableQueryResultLZ4Compression" "EnableSeaSyncMetadata"
+   "EnableShowCommandForGetFunctions" "EnableSQLExecDirectResults" "EnableSQLExecHybridResults" "EnableSqlScripting"
+   "EnableSQLValidationForIsValid" "EnableStreamingChunkProvider" "EnableTelemetry" "EnableTokenFederation"
+   "FetchAutoCommitFromServer" "ForceEnableTelemetry" "GoogleServiceAccount" "HeartbeatIntervalSeconds"
+   "HttpConnectionPoolSize" "HttpConnectionRequestTimeout" "HttpMaxConnectionsPerRoute" "httppath"
+   "Identity_Federation_Client_Id" "IdleHttpConnectionExpiry" "IgnoreTransactions" "legacy_time_parser_policy"
+   "LinkPrefetchWindow" "max_file_partition_bytes" "MaxBatchSize" "MaxVolumeOperationConcurrentPresignedRequests"
+   "MetadataOperationTimeout" "NonRowcountQueryPrefixes" "OAuth2AuthorizationEndPoint" "OAuth2ClientId"
+   "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint" "OAuth2Secret" "OAuth2TokenEndpoint"
+   "OAuthDiscoveryMode" "OAuthDiscoveryURL" "OAuthRefreshToken" "OAuthWebServerTimeout" "OIDCDiscoveryEndpoint"
+   "password" "proxyauth" "proxyhost" "proxyignorelist" "proxyport" "proxypwd" "proxyuid" "pwd" "query_tags"
+   "QueryResultCompressionType" "RateLimitRetry" "RateLimitRetryTimeout" "read_only_external_metastore"
+   "RowsFetchedPerBlock" "schema" "socketTimeout" "ssl" "SSLKeyStorePwd" "SSLKeyStoreType" "SSLTrustStorePassword"
+   "SSLTrustStorePwd" "SSLTrustStoreType" "statement_timeout" "supportManyParameters" "TelemetryBatchSize"
+   "TelemetryCircuitBreakerEnabled" "TelemetryFlushInterval" "TelemetrySocketTimeout" "TemporarilyUnavailableRetry"
+   "TemporarilyUnavailableRetryTimeout" "ThriftMaxBatchesInMemory" "timezone" "TokenCachePassPhrase"
+   "TreatMetadataCatalogNameAsPattern" "UCIngestionRetriableHttpCode" "UCIngestionRetryTimeout" "uid"
+   "use_cached_result" "usecfproxy" "useemptymetadata" "UseJWTAssertion" "useproxy" "UseQueryForMetadata"
+   "useragententry" "usesystemproxy" "UseSystemTrustStore" "usethriftclient" "VolumeOperationRetryableHttpCode"
+   "VolumeOperationRetryTimeout"])
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -77,10 +109,15 @@
 
 (defmethod driver/disallowed-connection-parameters :databricks
   [driver]
-  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
-  ;; the older spelling of the same setting, and the client still honors it
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
-        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
+        [;; Lets volume `PUT` and `GET` read and write local files
+         "VolumeOperationAllowedLocalPaths"
+         ;; Older spelling of `VolumeOperationAllowedLocalPaths`, which the client still honors
+         "StagingAllowedLocalPaths"
+         ;; Reads Google credentials from a local file
+         "GoogleCredentialsFile"
+         ;; Reads a private key from a local file
+         "Auth_JWT_Key_File"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]

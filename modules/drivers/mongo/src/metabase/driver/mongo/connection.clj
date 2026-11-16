@@ -89,6 +89,11 @@
                               db-details->connection-string
                               ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
+    ;; a SOCKS proxy connects to the servers for us, so [[warehouse-inet-address-resolver]] never sees their addresses.
+    ;; Checked here as well as against `:additional-options`, since a `:conn-uri` can set one too.
+    (when (.getProxyHost connection-string)
+      (throw (ex-info "Potentially dangerous keys in connection details"
+                      {:status-code 400, :disallowed-key "proxyHost"})))
     (.applicationName builder driver-api/mb-app-id-string)
     (.applyConnectionString builder connection-string)
     (.inetAddressResolver builder (warehouse-inet-address-resolver tunnel-enabled))

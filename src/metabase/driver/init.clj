@@ -7,6 +7,7 @@
    [metabase.driver.common.table-rows-sample]
    [metabase.driver.events.driver-notifications]
    [metabase.driver.events.report-timezone-updated]
+   [metabase.driver.events.unlisted-connection-parameter]
    ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types.
    ;; H2 is intentionally not loaded here: it is lazy-loaded on demand so the H2 library can be absent from the
    ;; classpath.

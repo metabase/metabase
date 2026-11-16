@@ -47,6 +47,17 @@
       (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
         (is (seq (.lookupByName ^InetAddressResolver resolver "localhost")))))))
 
+(deftest ^:parallel socks-proxy-is-refused-test
+  (testing "a SOCKS proxy would connect to the servers for us, out of the resolver's sight, so none is allowed"
+    (doseq [details [{:host "db.example.com" :additional-options "proxyHost=10.0.0.5&proxyPort=1080"}
+                     {:use-conn-uri true :conn-uri "mongodb://db.example.com/db?proxyHost=10.0.0.5"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Potentially dangerous keys"
+                              (mongo.connection/db-details->mongo-client-settings details))))))
+  (testing "other options are fine"
+    (is (some? (mongo.connection/db-details->mongo-client-settings
+                {:host "db.example.com" :additional-options "retryWrites=true"})))))
+
 (deftest ^:parallel fqdn?-test
   (testing "test hostname is fqdn"
     (is (true? (#'mongo.db/fqdn? "db.mongo.com")))

@@ -56,7 +56,14 @@
 
 (defmethod driver/non-host-parameters :presto-jdbc
   [_driver]
-  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "followRedirects" "validateNextUriSource"])
+
+(defmethod driver/allowed-connection-parameters :presto-jdbc
+  [_driver]
+  ["accessToken" "applicationNamePrefix" "clientTags" "customHeaders" "disableCompression" "extraCredentials"
+   "followRedirects" "password" "protocols" "sessionProperties" "SSL" "SSLKeyStorePassword" "SSLKeyStoreType"
+   "SSLTrustStorePassword" "SSLTrustStoreType" "timeZoneId" "user" "validateNextUriSource"])
 
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
