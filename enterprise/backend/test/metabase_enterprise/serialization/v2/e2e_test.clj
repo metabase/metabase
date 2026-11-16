@@ -14,6 +14,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1356,6 +1357,40 @@
    {:type :empty
     :name "no nulls"
     :sql  "SELECT * FROM PUBLIC.revenue WHERE \"order-id\" IS NULL"}])
+
+(deftest library-collection-name-round-trip-test
+  (testing "Library collections export and load with their stored names, not their translated ones"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (collections/create-library-collection!)
+          (mt/with-mock-i18n-bundles! {"zz" {:messages {"Library" "LIBRARY" "Data" "DATA" "Metrics" "METRICS"}}}
+            (mt/with-user-locale "zz"
+              (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                              (storage.files/file-writer dump-dir)))))
+        (let [^File file (m/find-first #(= "library.yaml" (.getName ^File %)) (file-seq (io/file dump-dir)))]
+          (is (=? {:name "Library"} (yaml/from-file file))))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (= #{"Library" "Data" "Metrics"}
+                 (t2/select-fn-set :name :collection :entity_id [:in ["librarylibrarylibrary"
+                                                                      "librarylibrarydatadat"
+                                                                      "librarylibrarymetrics"]]))))))))
+
+(deftest translated-library-collection-name-import-test
+  (testing "Library collection exported with its translated name loads with its stored name"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (collections/create-library-collection!)
+          (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                          (storage.files/file-writer dump-dir)))
+        (let [^File file (m/find-first #(= "library.yaml" (.getName ^File %)) (file-seq (io/file dump-dir)))]
+          (spit file (yaml/generate-string (assoc (yaml/from-file file) :name "LIBRARY"))))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (= "Library"
+                 (t2/select-one-fn :name :collection :entity_id "librarylibrarylibrary"))))))))
 
 (deftest transform-test-expectations-round-trip-test
   (testing "A transform test's expectations come back from an import as validated records, payload intact"

@@ -1,0 +1,85 @@
+## Permission rows of a Collection are looked up by collection_id, perm_type and perm_value. Rows that a migration
+## inserted with only an object path, such as the ones of the Trash, lack these columns.
+
+databaseChangeLog:
+  - changeSet:
+      id: fonded
+      author: ranquild
+      comment: Fill collection_id, perm_type and perm_value on Collection write permission rows that lack them
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE permissions p
+              SET collection_id = c.id,
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read-and-write'
+              FROM collection c
+              WHERE p.collection_id IS NULL
+                AND p.object = '/collection/' || c.id || '/'
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE permissions p
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
+              SET p.collection_id = c.id,
+                  p.perm_type = 'perms/collection-access',
+                  p.perm_value = 'read-and-write'
+              WHERE p.collection_id IS NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE permissions p
+              SET (collection_id, perm_type, perm_value) = (
+                SELECT c.id, 'perms/collection-access', 'read-and-write'
+                FROM collection c
+                WHERE p.object = '/collection/' || c.id || '/'
+              )
+              WHERE p.collection_id IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM collection c
+                  WHERE p.object = '/collection/' || c.id || '/'
+                )
+      rollback:
+
+  - changeSet:
+      id: fonder
+      author: ranquild
+      comment: Fill collection_id, perm_type and perm_value on Collection read permission rows that lack them
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE permissions p
+              SET collection_id = c.id,
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read'
+              FROM collection c
+              WHERE p.collection_id IS NULL
+                AND p.object = '/collection/' || c.id || '/read/'
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE permissions p
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/read/')
+              SET p.collection_id = c.id,
+                  p.perm_type = 'perms/collection-access',
+                  p.perm_value = 'read'
+              WHERE p.collection_id IS NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE permissions p
+              SET (collection_id, perm_type, perm_value) = (
+                SELECT c.id, 'perms/collection-access', 'read'
+                FROM collection c
+                WHERE p.object = '/collection/' || c.id || '/read/'
+              )
+              WHERE p.collection_id IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM collection c
+                  WHERE p.object = '/collection/' || c.id || '/read/'
+                )
+      rollback:

@@ -12,7 +12,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -89,7 +90,7 @@
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
-        (ws/list-workspaces)))
+        (t2/hydrate (ws/list-workspaces) :can_read)))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."

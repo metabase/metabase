@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting-test :as setting-test]
@@ -21,18 +20,16 @@
       (is (false? api/*is-superuser?*))
       (is (= nil i18n/*user-locale*))
       (is (false? api/*is-group-manager?*))
-      (is (= (perms/user-permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
       (is (=? {:test-user-local-only-setting "XYZ"} (setting/user-local-values))))))
 
 (deftest ^:parallel as-admin-test
-  (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
+  (testing "as-admin overrides *is-superuser?*"
     (request/with-current-user (mt/user->id :rasta)
       (request/as-admin
         ;; Current user ID remains the same
         (is (= (mt/user->id :rasta) *current-user-id*))
-        ;; *is-superuser?* and permissions set are overrided
-        (is (true? api/*is-superuser?*))
-        (is (= #{"/"} @api/*current-user-permissions-set*)))))
+        ;; *is-superuser?* is overrided
+        (is (true? api/*is-superuser?*)))))
   (testing "as-admin preserves any locale settings"
     (let [original "fr"]
       (binding [i18n/*user-locale* original]
