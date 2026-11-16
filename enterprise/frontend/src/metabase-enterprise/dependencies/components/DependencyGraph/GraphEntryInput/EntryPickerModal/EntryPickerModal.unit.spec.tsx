@@ -357,40 +357,52 @@ function getCollectionItemsResponse(items: CollectionItem[]) {
   };
 }
 
-function setupEntityTypes() {
+type SetupEntityTypesOpts = {
+  delay?: number;
+};
+
+function setupEntityTypes({ delay = 0 }: SetupEntityTypesOpts = {}) {
   mockGetBoundingClientRect();
   setupListDataAppsEndpoint([]);
   setupDatabasesEndpoints([SAMPLE_DATABASE]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
-  fetchMock.get("path:/api/collection/root", (call) => {
-    const namespace = new URL(call.url).searchParams.get("namespace");
-    return { ...ROOT_COLLECTION, namespace };
-  });
-  fetchMock.get("path:/api/collection/root/items", (call) => {
-    const namespace = new URL(call.url).searchParams.get("namespace");
-    switch (namespace) {
-      case "transforms":
-        return getCollectionItemsResponse([TABLE_BASED_TRANSFORM.item]);
-      case "snippets":
-        return getCollectionItemsResponse([EMPTY_SNIPPET.item]);
-      case "data-actions":
-        return getCollectionItemsResponse([
-          createMockCollectionItem({
-            id: DATA_ACTIONS_FOLDER_ID,
-            model: "collection",
-            name: DATA_ACTIONS_FOLDER.name,
-            namespace: "data-actions",
-            here: ["action"],
-            below: [],
-            location: "/",
-          }),
-        ]);
-      case null:
-        return getCollectionItemsResponse(ROOT_ITEMS.map(({ item }) => item));
-      default:
-        return getCollectionItemsResponse([]);
-    }
-  });
+  fetchMock.get(
+    "path:/api/collection/root",
+    (call) => {
+      const namespace = new URL(call.url).searchParams.get("namespace");
+      return { ...ROOT_COLLECTION, namespace };
+    },
+    { delay },
+  );
+  fetchMock.get(
+    "path:/api/collection/root/items",
+    (call) => {
+      const namespace = new URL(call.url).searchParams.get("namespace");
+      switch (namespace) {
+        case "transforms":
+          return getCollectionItemsResponse([TABLE_BASED_TRANSFORM.item]);
+        case "snippets":
+          return getCollectionItemsResponse([EMPTY_SNIPPET.item]);
+        case "data-actions":
+          return getCollectionItemsResponse([
+            createMockCollectionItem({
+              id: DATA_ACTIONS_FOLDER_ID,
+              model: "collection",
+              name: DATA_ACTIONS_FOLDER.name,
+              namespace: "data-actions",
+              here: ["action"],
+              below: [],
+              location: "/",
+            }),
+          ]);
+        case null:
+          return getCollectionItemsResponse(ROOT_ITEMS.map(({ item }) => item));
+        default:
+          return getCollectionItemsResponse([]);
+      }
+    },
+    { delay },
+  );
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION, DATA_ACTIONS_FOLDER],
   });
@@ -565,19 +577,27 @@ describe("EntryPickerModal entity search", () => {
     }),
   ];
 
-  it.each<{ target: PickerItem; model: string }>([
-    { target: PRODUCTS_TABLE, model: "table" },
-    { target: ORDERS_COUNT_QUESTION, model: "card" },
-    { target: ORDERS_MODEL, model: "dataset" },
-    { target: TABLE_BASED_METRIC, model: "metric" },
-    { target: TABLE_BASED_TRANSFORM, model: "transform" },
+  it.each<{ target: PickerItem; model: string; delay: number }>([
+    { target: PRODUCTS_TABLE, model: "table", delay: 0 },
+    { target: ORDERS_COUNT_QUESTION, model: "card", delay: 0 },
+    { target: ORDERS_MODEL, model: "dataset", delay: 0 },
+    { target: TABLE_BASED_METRIC, model: "metric", delay: 0 },
+    { target: TABLE_BASED_TRANSFORM, model: "transform", delay: 0 },
+    { target: ORDERS_MODEL, model: "dataset", delay: 600 },
   ])(
-    "finds $target.name in the picker search everywhere and picks it as the entry",
-    async ({ target, model }) => {
-      setupEntityTypes();
-      setupSearchEndpoints(SEARCH_RESULTS);
+    "finds $target.name in the picker search everywhere and picks it as the entry (responses delayed $delay ms)",
+    async ({ target, model, delay }) => {
+      setupEntityTypes({ delay });
+      setupSearchEndpoints(SEARCH_RESULTS, delay);
       const { onChange } = renderEntityTypePicker();
 
+      expect(
+        await screen.findByRole(
+          "link",
+          { name: /Our analytics/ },
+          { timeout: 5000 },
+        ),
+      ).toBeInTheDocument();
       await userEvent.type(
         await screen.findByPlaceholderText(/Search/),
         target.name,
