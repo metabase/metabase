@@ -144,6 +144,21 @@
         (mt/user-http-request tenant-user-id :get 403 "ee/tenant/")
         (mt/user-http-request tenant-user-id :get 403 (str "ee/tenant/" id))))))
 
+(deftest tenant-permission-checked-before-existence-test
+  (mt/with-temporary-setting-values [use-tenants true]
+    (mt/with-temp [:model/Tenant {id :id} {}
+                   :model/User {tenant-user-id :id} {:tenant_id id}]
+      (testing "refused callers get 403 for missing tenants too"
+        (mt/user-http-request tenant-user-id :get 403 (str "ee/tenant/" Integer/MAX_VALUE))
+        (mt/user-http-request :rasta :put 403 (str "ee/tenant/" Integer/MAX_VALUE) {:name "Missing Tenant"})
+        (mt/user-http-request :rasta :put 403 (str "ee/tenant/" id) {:name "Renamed Tenant"}))
+      (testing "superusers get 404 for missing tenants"
+        (mt/user-http-request :crowberto :get 404 (str "ee/tenant/" Integer/MAX_VALUE))
+        (mt/user-http-request :crowberto :put 404 (str "ee/tenant/" Integer/MAX_VALUE) {:name "Missing Tenant"}))
+      (testing "non-superusers cannot create tenants"
+        (mt/user-http-request :rasta :post 403 "ee/tenant/" {:name "Refused Tenant" :slug "refused-tenant"})
+        (is (not (t2/exists? :model/Tenant :slug "refused-tenant")))))))
+
 (deftest tenant-users-can-only-list-tenant-recipients-visibility-all-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}

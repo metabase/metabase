@@ -1169,10 +1169,9 @@
   (t2/update! :model/User :tenant_id [:not= nil] :is_active true {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn deactivate-all-tenants!
-  "Mark every tenant row inactive."
+  "Deactivate every active Tenant, returning the number updated."
   []
-  (t2/query {:update :tenant
-             :set    {:is_active false}}))
+  (t2/update! :model/Tenant :is_active true {:is_active false}))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

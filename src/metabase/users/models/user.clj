@@ -133,10 +133,17 @@
   (when (and sso-source (not (setup/has-user-setup)))
     (throw (Exception. (trs "Metabase instance has not been initialized")))))
 
+(defn- check-superuser-has-no-tenant
+  "Throws a 400 when `user` is both a superuser and a tenant user."
+  [{superuser? :is_superuser tenant-id :tenant_id}]
+  (when (and superuser? tenant-id)
+    (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
+
 (defn- validate-user-insert!
   "Validate all constraints for user insertion."
-  [{:keys [email locale sso_source] user-type :type}]
+  [{:keys [email locale sso_source] user-type :type :as user}]
   (validate-user-email! email)
+  (check-superuser-has-no-tenant user)
   (check-user-type user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
@@ -233,6 +240,8 @@
     (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
   (when (contains? (t2/changes user) :type)
     (check-user-type (:type (t2/changes user))))
+  (when (:is_superuser (t2/changes user))
+    (check-superuser-has-no-tenant user))
   (let [changes (t2/changes user)
         {:keys [email locale]
          superuser? :is_superuser
