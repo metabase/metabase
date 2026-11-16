@@ -226,7 +226,9 @@
   it down instead of refusing. A create or deprovision that spends longer than
   this on one database also looks crashed. The two busy checks share this
   window and count different statuses: see [[assert-workspace-not-busy]] and
-  [[assert-create-not-running]]."
+  [[assert-create-not-running]]. Each status write sets the row's `updated_at`
+  from this instance's clock when the write runs, and the cutoff uses the same
+  clock."
   (t/minutes 15))
 
 (defn- workspace-busy-exception

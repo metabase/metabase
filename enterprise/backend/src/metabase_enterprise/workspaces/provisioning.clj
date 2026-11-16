@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan2.connection :as t2.connection]))
@@ -141,10 +142,13 @@
               (catch Throwable t
                 (cleanup!)
                 (throw t)))
+            ;; this instance's clock, not SQL `now()`: on Postgres `now()` is the start of the lock's
+            ;; transaction, before init ran
             (ws.db/update-workspace-database! workspace-database-id
                                               {:output_namespace (:schema ws-details)
                                                :database_details (:database_details ws-details)
-                                               :status           :provisioned})
+                                               :status           :provisioned
+                                               :updated_at       (mi/current-timestamp)})
             nil)))))
 
 (defn provision-workspace-database!
@@ -159,7 +163,8 @@
                        (with-workspace-database-lock workspace-database-id
                          (provision-locked! workspace-database-id provisioner))
                        (catch Throwable t
-                         (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned})
+                         (ws.db/update-workspace-database! workspace-database-id {:status     :unprovisioned
+                                                                                  :updated_at (mi/current-timestamp)})
                          (throw t)))]
     (throw refusal))
   (ws.db/workspace-database workspace-database-id))
@@ -206,9 +211,11 @@
           (ws.db/update-workspace-database! workspace-database-id
                                             {:output_namespace ""
                                              :database_details {}
-                                             :status           :unprovisioned}))))
+                                             :status           :unprovisioned
+                                             :updated_at       (mi/current-timestamp)}))))
     (catch Throwable t
-      (ws.db/update-workspace-database! workspace-database-id {:status :provisioned})
+      (ws.db/update-workspace-database! workspace-database-id {:status     :provisioned
+                                                               :updated_at (mi/current-timestamp)})
       (throw t)))
   (ws.db/workspace-database workspace-database-id))
 
@@ -305,7 +312,8 @@
               (binding [t2.connection/*current-connectable* nil]
                 (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
                                                              :output_namespace schema
-                                                             :database_details db-details}))
+                                                             :database_details db-details
+                                                             :updated_at       (mi/current-timestamp)}))
               (throw t))
             (finally
               ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -322,7 +330,8 @@
   fresh autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status :teardown_failed})))
+    (ws.db/update-workspace-database! workspace-database-id {:status     :teardown_failed
+                                                             :updated_at (mi/current-timestamp)})))
 
 (defn mark-workspace-database-never-started!
   "Set the WorkspaceDatabase with `workspace-database-id` to `:never_started`, which makes its teardown skip the
@@ -331,7 +340,8 @@
   autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status :never_started})))
+    (ws.db/update-workspace-database! workspace-database-id {:status     :never_started
+                                                             :updated_at (mi/current-timestamp)})))
 
 (defn abandon-teardown-failed-workspace-database!
   "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
