@@ -120,6 +120,13 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
+(mu/defn tag-ids-by-name :- [:map-of :string ms/PositiveInt]
+  "The id of the TransformTag named each of `tag-names` that has one, by name."
+  [tag-names :- [:set :string]]
+  (if (seq tag-names)
+    (t2/select-fn->pk :name :model/TransformTag :name [:in tag-names])
+    {}))
+
 (mu/defn tag-name-exists?
   "Whether a TransformTag named `tag-name` exists."
   [tag-name :- :string]

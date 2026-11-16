@@ -135,7 +135,7 @@
 (deftest job-tags-ordering-test
   (testing "Job tags maintain specified order through updates"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * *"}
+      (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * * ?"}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
                      :model/TransformTag tag3 {:name "tag3"}]

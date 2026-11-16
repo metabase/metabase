@@ -2373,3 +2373,24 @@
         (t2/reducible-query {:select [:segment.id :segment.definition :segment.table_id :metabase_table.db_id]
                              :from   [:segment]
                              :join   [:metabase_table [:= :metabase_table.id :segment.table_id]]})))
+
+(defn- unused-tag-name
+  "The first of `name` followed by \" (2)\", \" (3)\", ... that no transform tag has, cut to fit the column."
+  [name]
+  (let [max-length 254]
+    (->> (iterate inc 2)
+         (map (fn [n]
+                (let [suffix (str " (" n ")")]
+                  (str (subs name 0 (min (count name) (- max-length (count suffix)))) suffix))))
+         (remove #(t2/exists? :transform_tag :name %))
+         first)))
+
+(define-migration RenameDuplicateTransformTags
+  (doseq [{tag-name :name} (t2/query {:select   [:name]
+                                      :from     [:transform_tag]
+                                      :group-by [:name]
+                                      :having   [:> :%count.* 1]})
+          id               (rest (t2/select-pks-vec :transform_tag :name tag-name {:order-by [[:id :asc]]}))]
+    (t2/query {:update :transform_tag
+               :set    {:name (unused-tag-name tag-name)}
+               :where  [:= :id id]})))

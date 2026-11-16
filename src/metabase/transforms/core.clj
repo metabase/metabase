@@ -67,10 +67,6 @@
   cancel-dag-run!
   dag-run-transforms]
  [metabase.transforms.schedule
-  validate-cron-expression
-  initialize-job!
-  update-job!
-  delete-job!
   delete-trigger!
   existing-trigger]
  [metabase.transforms.models.transform

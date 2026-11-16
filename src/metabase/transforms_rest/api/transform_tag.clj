@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.interface :as mi]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -30,7 +29,7 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
-  (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
+  (api/create-check :model/TransformTag {:name name})
   (api/check-400 (not (transforms.core/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (transforms-rest.db/insert-tag! name))
@@ -43,7 +42,7 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
-  (api/write-check (transforms-rest.db/tag tag-id))
+  (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
   (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (transforms-rest.db/update-tag! tag-id name)

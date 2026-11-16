@@ -5170,3 +5170,23 @@
         (is (= full-query (definition full)))
         (is (= mbql5-query (definition mbql5)))
         (is (= {} (definition empty-one)))))))
+
+(deftest transform-tag-name-unique-test
+  (testing "tgn4u7 renames duplicate transform tag names and tgx7k2 makes the names unique"
+    (impl/test-migrations ["tgn4u7" "tgx7k2"] [migrate!]
+      (let [counter (atom 0)
+            insert! (fn [tag-name]
+                      (t2/insert-returning-pk! :transform_tag {:name      tag-name
+                                                               :entity_id (format "transformtagentity%03d" (swap! counter inc))}))
+            first-id  (insert! "etl")
+            second-id (insert! "etl")
+            third-id  (insert! "etl")
+            taken-id  (insert! "etl (2)")
+            other-id  (insert! "other")]
+        (migrate!)
+        (is (= "etl" (t2/select-one-fn :name :transform_tag :id first-id)))
+        (is (= "etl (3)" (t2/select-one-fn :name :transform_tag :id second-id)))
+        (is (= "etl (4)" (t2/select-one-fn :name :transform_tag :id third-id)))
+        (is (= "etl (2)" (t2/select-one-fn :name :transform_tag :id taken-id)))
+        (is (= "other" (t2/select-one-fn :name :transform_tag :id other-id)))
+        (is (thrown? Exception (insert! "other")))))))
