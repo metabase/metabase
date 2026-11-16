@@ -829,7 +829,7 @@
                           (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))
               cleared   (-> (shared.content-store/query-for-export query true) :query (dissoc :lib/metadata))
               built     (atom 0)
-              lib-query lib/query
+              lib-query (mt/original-fn #'lib/query)
               out       (mt/with-dynamic-fn-redefs [lib/query (fn [& args]
                                                                 (when (= cleared (dissoc (last args) :lib/metadata))
                                                                   (swap! built inc))
