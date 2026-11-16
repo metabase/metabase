@@ -237,5 +237,6 @@
                 (renew-if-due! row)
                 (when (= :post request-method)
                   (preview-grant/record-query! admin-id (:user_id row) request))
-                {:request  (preview-grant/as-target request target)
-                 :admin-id admin-id})))))))
+                {:request    (preview-grant/as-target request target)
+                 :admin-id   admin-id
+                 :attributes (preview/attribute-overrides-of admin-id (:user_id row))})))))))

@@ -143,7 +143,9 @@
                ;; who was previewed (a group or tenant through its hidden preview user), and the attribute values the rules read
                [:principal-type {:optional true} [:enum "user" "group" "tenant"]]
                [:principal-id   {:optional true} pos-int?]
-               [:attributes     {:optional true} [:map-of :string :string]]]]])
+               [:attributes     {:optional true} [:map-of :string :string]]
+               ;; a user preview's values in place of their own ("" for no value)
+               [:overrides      {:optional true} [:map-of :string :string]]]]])
 
 ;; action events
 

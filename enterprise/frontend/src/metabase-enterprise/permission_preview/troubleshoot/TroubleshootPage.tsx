@@ -43,7 +43,7 @@ import {
   parsePrincipalType,
 } from "../preview/urls";
 
-import { AttributesPanel } from "./AttributesPanel";
+import { AttributeBar } from "./AttributeBar";
 import { ContentPreviewFrame } from "./ContentPreviewFrame";
 import { LinkBar } from "./LinkBar";
 import { parseOpenedItem } from "./item-path";
@@ -157,34 +157,6 @@ export function TroubleshootPage() {
             onPrincipalChange={handlePrincipalChange}
           />
         </Flex>
-        {principal != null && (
-          <Box
-            mah="50%"
-            style={{
-              overflowY: "auto",
-              borderTop: "1px solid var(--mb-color-border-neutral)",
-            }}
-          >
-            <AttributesPanel
-              key={`${principal.type}-${principal.id}`}
-              principalType={principalType}
-              whoName={whoName}
-              attributes={attributes}
-              isNarrowed={
-                openedItem?.type === "card" || openedItem?.type === "dashboard"
-              }
-              isLoading={isLoadingAttributes}
-              pickedValues={pickedValues}
-              onPick={(attribute, value) => {
-                keepFramePath();
-                setPickedValues((values) => ({
-                  ...values,
-                  [attribute]: value,
-                }));
-              }}
-            />
-          </Box>
-        )}
       </Flex>
       {principal == null ? (
         <PermissionsEditorEmptyState
@@ -234,6 +206,23 @@ export function TroubleshootPage() {
               onChange={handleFrameModeChange}
             />
           </Group>
+          <AttributeBar
+            key={`${principal.type}-${principal.id}`}
+            principalType={principalType}
+            whoName={whoName}
+            attributes={attributes}
+            isLoading={isLoadingAttributes}
+            pickedValues={pickedValues}
+            onPick={(attribute, value) => {
+              keepFramePath();
+              setPickedValues((values) => {
+                const { [attribute]: _previous, ...others } = values;
+                return value == null
+                  ? others
+                  : { ...others, [attribute]: value };
+              });
+            }}
+          />
           {error != null && (
             <Text c="feedback-negative">{getErrorMessage(error)}</Text>
           )}
@@ -332,7 +321,7 @@ function usePreviewRequest(
         ? {
             type,
             id,
-            attributes: type === "user" ? undefined : pickedValues,
+            attributes: pickedValues,
           }
         : null,
     [type, id, pickedValues],

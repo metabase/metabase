@@ -361,6 +361,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :display_name :model/Table :id table-id))
 
+(mu/defn field-display-name
+  "The display name of the Field with `field-id`, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :display_name :model/Field :id field-id))
+
 (mu/defn field-column-values
   "The listed values of the Field with `field-id` (the ones filter widgets offer), or nil."
   [field-id :- ::lib.schema.id/field]

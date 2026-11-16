@@ -47,6 +47,32 @@
    #"^/api/dashboard/\d+/dashcard/\d+/card/\d+/query/(csv|json|xlsx)$"
    #"^/api/document/\d+/card/\d+/query/(csv|json|xlsx)$"])
 
+;; TODO (proof of concept): a user's preview values live in this JVM only, keyed by admin and user, so two tabs in
+;; which one admin previews the same user share them. Assumes one preview of a person per admin at a time.
+(defonce ^:private attribute-overrides (atom {}))
+
+(defn set-attribute-overrides!
+  "Run every preview `admin-id` makes as `user-id` with `overrides` (attribute to value, an empty string for no value)
+  in place of the user's own values, until the preview `preview-id` ends or a new start replaces them. Never written
+  to the user's row."
+  [admin-id user-id preview-id overrides]
+  (if (seq overrides)
+    (swap! attribute-overrides assoc [admin-id user-id] {:preview-id preview-id :overrides overrides})
+    (swap! attribute-overrides dissoc [admin-id user-id])))
+
+(defn clear-attribute-overrides!
+  "Drop the overrides of the preview `preview-id`, unless a newer start of the same person replaced them."
+  [admin-id user-id preview-id]
+  (swap! attribute-overrides (fn [entries]
+                               (cond-> entries
+                                 (= preview-id (get-in entries [[admin-id user-id] :preview-id]))
+                                 (dissoc [admin-id user-id])))))
+
+(defn attribute-overrides-of
+  "The attribute values that replace `user-id`'s own in `admin-id`'s preview, or nil."
+  [admin-id user-id]
+  (get-in @attribute-overrides [[admin-id user-id] :overrides]))
+
 (def ^:private user-info-keys
   "The keys of a request's current-user info, all replaced by the previewed user's own."
   [:metabase-user-id :is-superuser? :is-data-analyst? :is-group-manager? :permissions-set :user-locale :settings])
@@ -104,7 +130,8 @@
   "EE implementation: when a superuser's browser session sends `X-Metabase-Preview-As: <user-id>` (or, for a map tile,
   `?preview_as=<user-id>`), rebind the request to that user, refuse writes, and record each query run in the audit log
   under the admin. Returns `:admin-id` too, so the request runs with
-  [[metabase.api.common/*previewing-admin-id*]] bound and every audit row names the admin."
+  [[metabase.api.common/*previewing-admin-id*]] bound and every audit row names the admin, and `:attributes`, the
+  admin's overrides of the user's values."
   :feature :advanced-permissions
   [request]
   (let [param-value  (preview-param-value request)
@@ -136,5 +163,6 @@
                                       :model-id target-id
                                       :details  {:action "query"
                                                  :uri    (:uri request)}}))
-            {:request  (merge (apply dissoc request user-info-keys) target-info)
-             :admin-id admin-id}))))))
+            {:request    (merge (apply dissoc request user-info-keys) target-info)
+             :admin-id   admin-id
+             :attributes (attribute-overrides-of admin-id target-id)}))))))

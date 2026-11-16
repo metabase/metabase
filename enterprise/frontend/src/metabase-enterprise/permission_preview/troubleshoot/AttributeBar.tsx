@@ -3,17 +3,7 @@ import { t } from "ttag";
 
 import { useGetFieldQuery } from "metabase/api";
 import { FieldValuesWidget } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Popover,
-  Stack,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Button, Group, Popover, Stack, Text, TextInput } from "metabase/ui";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { FieldId } from "metabase-types/api";
@@ -21,117 +11,159 @@ import type { FieldId } from "metabase-types/api";
 import { AttributeValueSelect } from "../AttributeValueSelect";
 import type { AffectingAttribute, AttributeUse, PrincipalType } from "../api";
 
-type AttributesPanelProps = {
+type AttributeBarProps = {
   principalType: PrincipalType;
   whoName: string;
   attributes: AffectingAttribute[];
-  /** Whether an item is open, so the attributes are narrowed to it. */
-  isNarrowed: boolean;
   isLoading: boolean;
-  /** A group's or tenant's picked values; a user's are their own and can't be changed. */
+  /** The values picked for the preview; a user's replace their own in the preview only. */
   pickedValues: Record<string, string>;
-  onPick: (attribute: string, value: string) => void;
+  /** `null` resets the attribute to the person's own value. */
+  onPick: (attribute: string, value: string | null) => void;
 };
 
-/** The attributes a security rule reads for the previewed person, each with its rule; values to try for a group or tenant. */
-export function AttributesPanel({
+/** The attributes a security rule reads for the previewed person, as chips under the band; each opens its picker. */
+export function AttributeBar({
   principalType,
   whoName,
   attributes,
-  isNarrowed,
   isLoading,
   pickedValues,
   onPick,
-}: AttributesPanelProps) {
-  const canPick = principalType !== "user";
-
+}: AttributeBarProps) {
   return (
-    <Stack gap="sm" p="md" bg="background_page-secondary">
-      <Text fw="bold" fz="sm">
-        {getTitle({ principalType, whoName, isNarrowed })}
-      </Text>
+    <Group
+      gap="xs"
+      aria-label={t`Attributes`}
+      role="toolbar"
+      wrap="wrap"
+      mih="1.75rem"
+    >
+      <Text fz="sm" c="text-secondary">{t`Attributes:`}</Text>
       {!isLoading && attributes.length === 0 && (
         <Text c="text-secondary" fz="sm">
           {t`No security rule reads an attribute here.`}
         </Text>
       )}
       {attributes.map((attribute) => (
-        <AttributeRow
+        <AttributeChip
           key={attribute.attribute}
+          principalType={principalType}
+          whoName={whoName}
           attribute={attribute}
-          canPick={canPick}
-          value={pickedValues[attribute.attribute] ?? attribute.value ?? ""}
+          pickedValue={pickedValues[attribute.attribute]}
           onPick={(value) => onPick(attribute.attribute, value)}
         />
       ))}
-    </Stack>
+    </Group>
   );
 }
 
-function getTitle({
-  principalType,
-  whoName,
-  isNarrowed,
-}: {
+type AttributeChipProps = {
   principalType: PrincipalType;
   whoName: string;
-  isNarrowed: boolean;
-}) {
-  if (principalType !== "user") {
-    return isNarrowed
-      ? t`Values to try behind this item`
-      : t`Values to try for ${whoName}`;
-  }
-  return isNarrowed
-    ? t`Attributes behind this item`
-    : t`Attributes that affect ${whoName}`;
-}
-
-type AttributeRowProps = {
   attribute: AffectingAttribute;
-  canPick: boolean;
-  value: string;
-  onPick: (value: string) => void;
+  pickedValue: string | undefined;
+  onPick: (value: string | null) => void;
 };
 
-function AttributeRow({
+function AttributeChip({
+  principalType,
+  whoName,
   attribute,
-  canPick,
-  value,
+  pickedValue,
   onPick,
-}: AttributeRowProps) {
-  const textDecoration = attribute.applies ? undefined : "line-through";
+}: AttributeChipProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const value = pickedValue ?? attribute.value ?? "";
+  const column = attribute.uses.find((use) => use.column != null)?.column;
+  const isOverridden =
+    principalType === "user" &&
+    pickedValue != null &&
+    pickedValue !== (attribute.value ?? "");
+
+  const handlePick = (newValue: string | null) => {
+    setIsOpened(false);
+    onPick(newValue);
+  };
 
   return (
-    <Box c={attribute.applies ? undefined : "text-secondary"}>
-      <Group gap="xs" wrap="nowrap" align="baseline" td={textDecoration}>
-        <Text fw="bold" fz="sm" c="inherit" style={{ flexShrink: 0 }}>
-          {attribute.attribute}
-        </Text>
-        {!canPick && (
-          <Tooltip label={value} disabled={value === ""}>
-            <Text fz="sm" c="inherit" truncate="end" miw={0}>
+    <Popover opened={isOpened} onChange={setIsOpened} position="bottom-start">
+      <Popover.Target>
+        <Button
+          size="compact-sm"
+          radius="xl"
+          variant={isOverridden ? "light" : "default"}
+          td={attribute.applies ? undefined : "line-through"}
+          c={attribute.applies ? undefined : "text-secondary"}
+          onClick={() => setIsOpened((opened) => !opened)}
+        >
+          <Group gap="xs" wrap="nowrap">
+            <Text fw="bold" fz="sm" c="inherit">
+              {`${attribute.attribute}:`}
+            </Text>
+            <Text fz="sm" c="inherit">
               {value === "" ? t`No value` : value}
             </Text>
-          </Tooltip>
-        )}
-      </Group>
-      {canPick && (
-        <Box my="xs">
+            {column != null && (
+              <Text fz="xs" c="text-secondary">
+                {`→ ${column}`}
+              </Text>
+            )}
+          </Group>
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown p="md" maw="22rem">
+        <Stack gap="sm">
+          <Text fw="bold" fz="sm">
+            {attribute.attribute}
+          </Text>
           <AttributePicker
             attribute={attribute}
             value={value}
-            onPick={onPick}
+            onPick={handlePick}
           />
-        </Box>
-      )}
-      {attribute.uses.map((use, index) => (
-        <Text key={index} fz="xs" c="text-secondary" td={textDecoration}>
-          {getUseLabel(use)}
-        </Text>
-      ))}
-    </Box>
+          {attribute.uses.map((use, index) => (
+            <Text key={index} fz="xs" c="text-secondary">
+              {getUseLabel(use)}
+            </Text>
+          ))}
+          {!attribute.applies && (
+            <Text fz="xs" c="text-secondary">
+              {t`The open item doesn't use this rule.`}
+            </Text>
+          )}
+          {principalType === "user" && (
+            <Group gap="xs" justify="space-between" wrap="nowrap">
+              <Text fz="xs" c="text-secondary">
+                {getOwnValueLabel(whoName, attribute)}
+              </Text>
+              {isOverridden && (
+                <Button size="compact-sm" onClick={() => handlePick(null)}>
+                  {t`Reset`}
+                </Button>
+              )}
+            </Group>
+          )}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
+}
+
+/** "Sandy Sales's value: Gizmo, from JWT": a user's own value and where it comes from. */
+function getOwnValueLabel(whoName: string, attribute: AffectingAttribute) {
+  const value = attribute.value ?? t`No value`;
+  switch (attribute.source) {
+    case "jwt":
+      return t`${whoName}'s value: ${value}, from JWT`;
+    case "tenant":
+      return t`${whoName}'s value: ${value}, from tenant ${attribute.tenant_name ?? ""}`;
+    case "admin":
+      return t`${whoName}'s value: ${value}, set by an admin`;
+    default:
+      return t`${whoName}'s value: ${value}`;
+  }
 }
 
 function getUseLabel(use: AttributeUse) {
@@ -197,7 +229,6 @@ function FieldValuePicker({
   onPick,
 }: FieldValuePickerProps) {
   const { data: field } = useGetFieldQuery({ id: fieldId });
-  const [isOpened, setIsOpened] = useState(false);
   const [draft, setDraft] = useState(value);
   if (field == null) {
     return null;
@@ -212,51 +243,29 @@ function FieldValuePicker({
   };
   const memberValues = attribute.member_values ?? [];
 
-  const handleApply = () => {
-    setIsOpened(false);
-    if (draft !== value) {
-      onPick(draft);
-    }
-  };
-
   return (
     <Stack gap="xs">
-      <Popover opened={isOpened} onChange={setIsOpened} position="right-start">
-        <Popover.Target>
-          <Button
-            size="compact-sm"
-            justify="space-between"
-            rightSection={<Icon name="chevrondown" size={12} />}
-            maw="100%"
-            onClick={() => {
-              setDraft(value);
-              setIsOpened((opened) => !opened);
-            }}
-          >
-            <Text fz="sm" truncate="end" c="inherit">
-              {value === "" ? t`No value` : value}
-            </Text>
-          </Button>
-        </Popover.Target>
-        <Popover.Dropdown p="sm">
-          <FieldValuesWidget
-            parameter={parameter}
-            fields={[fieldInfo]}
-            value={draft === "" ? [] : [draft]}
-            onChange={(values) => {
-              const last = values[values.length - 1];
-              setDraft(last == null ? "" : String(last));
-            }}
-            minWidth={280}
-            maxWidth={280}
-          />
-          <Group justify="flex-end" mt="sm">
-            <Button size="compact-sm" variant="filled" onClick={handleApply}>
-              {t`Apply`}
-            </Button>
-          </Group>
-        </Popover.Dropdown>
-      </Popover>
+      <FieldValuesWidget
+        parameter={parameter}
+        fields={[fieldInfo]}
+        value={draft === "" ? [] : [draft]}
+        onChange={(values) => {
+          const last = values[values.length - 1];
+          setDraft(last == null ? "" : String(last));
+        }}
+        minWidth={280}
+        maxWidth={280}
+      />
+      <Group justify="flex-end">
+        <Button
+          size="compact-sm"
+          variant="filled"
+          disabled={draft === value}
+          onClick={() => onPick(draft)}
+        >
+          {t`Apply`}
+        </Button>
+      </Group>
       {memberValues.length > 0 && (
         <Group gap={4}>
           <Text fz="xs" c="text-secondary">{t`Members:`}</Text>
@@ -286,8 +295,8 @@ function TextValuePicker({ attribute, value, onPick }: AttributePickerProps) {
       aria-label={attribute.attribute}
       value={text}
       onChange={(event) => setText(event.target.value)}
-      onBlur={commit}
       onKeyDown={(event) => event.key === "Enter" && commit()}
+      onBlur={commit}
     />
   );
 }

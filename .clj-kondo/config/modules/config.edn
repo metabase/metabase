@@ -4373,6 +4373,7 @@
                     :model/DataPermissions
                     :model/Database
                     :model/DatabaseRouter
+                    :model/Field
                     :model/FieldValues
                     :model/Permissions
                     :model/PermissionsGroup

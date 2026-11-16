@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
+   [metabase-enterprise.permission-debug.preview :as preview]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -336,7 +337,12 @@
                                      [:label :string]
                                      [:table_id {:optional true} ::lib.schema.id/table]
                                      [:field_id {:optional true} ::lib.schema.id/field]
+                                     ;; the filtered column, as `Table.Column` display names
+                                     [:column {:optional true} :string]
                                      [:database_id {:optional true} ::lib.schema.id/database]]]]
+                ;; a user's value: where it comes from, as `metabase.users.models.user/add-attributes` merges them
+                [:source {:optional true} [:enum "tenant" "jwt" "admin"]]
+                [:tenant_name {:optional true} :string]
                 [:applies :boolean]
                 [:member_values {:optional true} [:sequential [:map [:value :string] [:count pos-int?]]]]
                 [:other_values {:optional true} [:sequential :string]]]])
@@ -361,12 +367,14 @@
    (for [{:keys [table_id db_id attribute_remappings]} (permission-debug.db/sandboxes-of-groups group-ids)
          [attribute target]                             attribute_remappings
          :let [field-id (field-id-in-target target)]]
-     (cond-> {:attribute   attribute
-              :kind        "sandbox"
-              :label       (tru "Filters {0}" (or (permission-debug.db/table-display-name table_id) table_id))
-              :table_id    table_id
-              :database_id db_id}
-       field-id (assoc :field_id field-id)))
+     (let [table-name (or (permission-debug.db/table-display-name table_id) (str table_id))]
+       (cond-> {:attribute   attribute
+                :kind        "sandbox"
+                :label       (tru "Filters {0}" table-name)
+                :table_id    table_id
+                :database_id db_id}
+         field-id (assoc :field_id field-id
+                         :column   (str table-name "." (permission-debug.db/field-display-name field-id))))))
    (for [{:keys [db_id attribute]} (permission-debug.db/impersonations-of-groups group-ids)]
      {:attribute   attribute
       :kind        "impersonation"
@@ -420,6 +428,16 @@
                    (keep (fn [{:keys [attribute default]}] (when default [attribute default])))
                    (preview-attributes principal-id))))
 
+(defn- user-value-sources
+  "Where each of a user's attribute values comes from: the tenant, then JSON Web Token, then the admin-set login
+  attributes, each later one winning, as [[metabase.users.models.user/add-attributes]] merges them."
+  [user-id]
+  (let [{:keys [tenant_id jwt_attributes login_attributes]} (permission-debug.db/user-attribute-sources user-id)
+        tenant                                              (some-> tenant_id permission-debug.db/tenant)]
+    (merge (update-vals (or (:attributes tenant) {}) (constantly {:source "tenant" :tenant_name (:name tenant)}))
+           (update-vals (or jwt_attributes {}) (constantly {:source "jwt"}))
+           (update-vals (or login_attributes {}) (constantly {:source "admin"})))))
+
 (mu/defn affecting-attributes :- AffectingAttributesResponse
   "The attributes a security rule on the principal's groups reads (sandbox remappings, connection impersonation, database
   routing), each with its rules and the principal's value. With `card-id` or `dashboard-id`, `:applies` says whether any
@@ -434,7 +452,9 @@
         scope      (item-scope card-id dashboard-id)
         values     (principal-values principal-type principal-id)
         group-pick (when (= "group" principal-type)
-                     (m/index-by :attribute (preview-attributes principal-id)))]
+                     (m/index-by :attribute (preview-attributes principal-id)))
+        sources    (when (= "user" principal-type)
+                     (user-value-sources principal-id))]
     (for [[attribute uses] (group-by :attribute (rule-uses group-ids))
           :let [other-values (->> uses
                                   (keep (fn [{:keys [kind field_id database_id]}]
@@ -449,8 +469,9 @@
                :uses         (mapv #(dissoc % :attribute) (distinct uses))
                :applies      (or (nil? scope) (boolean (some #(use-touches-scope? scope %) uses)))
                :other_values other-values}
-        group-pick (assoc :member_values (get-in group-pick [attribute :member_values] [])
-                          :other_values  (get-in group-pick [attribute :other_values] other-values))))))
+        group-pick                   (assoc :member_values (get-in group-pick [attribute :member_values] [])
+                                            :other_values  (get-in group-pick [attribute :other_values] other-values))
+        (get sources attribute)      (merge (m/remove-vals nil? (get sources attribute)))))))
 
 (defn- preview-user-email
   [principal-type principal-id]
@@ -496,7 +517,7 @@
   because permission checks look the user's groups up again by id, so the binding needs a user row; a real member
   would bring their other groups and their own attributes. A group's preview user carries `attributes`, defaulting to
   the most common value among members for each attribute the group's access depends on; a tenant's carries the
-  tenant's own."
+  tenant's own. A user's `attributes` override their own values in this admin's previews of them only."
   [{:keys [principal-type principal-id attributes]} :- [:map {:closed true}
                                                         [:principal-type PrincipalType]
                                                         [:principal-id pos-int?]
@@ -511,6 +532,8 @@
         user-id        (if (= "user" principal-type)
                          principal-id
                          (ensure-preview-user! principal-type principal-id principal-name))
+        ;; a user's own values stay on their row; these replace them in this admin's preview only
+        overrides      (when (= "user" principal-type) (or attributes {}))
         attributes     (if (= "group" principal-type)
                          (into {}
                                (keep (fn [{:keys [attribute default]}]
@@ -530,20 +553,26 @@
     ;; previewing the same group with different values overwrite each other. Assumes one admin at a time.
     (when (= "group" principal-type)
       (permission-debug.db/set-user-login-attributes! user-id attributes))
+    (when (= "user" principal-type)
+      (preview/set-attribute-overrides! api/*current-user-id* user-id preview-id overrides))
     (events/publish-event! :event/permissions-preview
                            {:user-id  api/*current-user-id*
                             :model    :model/User
                             :model-id user-id
-                            :details  {:action         "start"
-                                       :preview-id     preview-id
-                                       :principal-type principal-type
-                                       :principal-id   principal-id
-                                       :attributes     attributes}})
+                            :details  (cond-> {:action         "start"
+                                               :preview-id     preview-id
+                                               :principal-type principal-type
+                                               :principal-id   principal-id
+                                               :attributes     attributes}
+                                        (seq overrides) (assoc :overrides overrides))})
     {:user_id        user-id
      :user_name      principal-name
      :principal_name principal-name
-     ;; a user's or tenant's own values are on their row; the preview binds only a group's
-     :attributes     (if (= "group" principal-type) attributes {})
+     ;; a tenant's own values are on its row; the preview binds a group's, and a user's overrides
+     :attributes     (case principal-type
+                       "group"  attributes
+                       "user"   overrides
+                       "tenant" {})
      :preview_id     preview-id}))
 
 (mu/defn end-preview! :- :nil
@@ -565,6 +594,7 @@
                                              :principal-type principal-type
                                              :principal-id   principal-id}
                                       (seq attributes) (assoc :attributes attributes))})
+  (preview/clear-attribute-overrides! api/*current-user-id* user-id preview-id)
   nil)
 
 (mu/defn preview-card-query :- :map

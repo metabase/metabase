@@ -176,6 +176,8 @@ export type AttributeUse = {
   label: string;
   table_id?: TableId;
   field_id?: FieldId;
+  /** The filtered column, as `Table.Column`. */
+  column?: string;
   database_id?: DatabaseId;
 };
 
@@ -188,6 +190,9 @@ export type AffectingAttribute = {
   applies: boolean;
   member_values?: { value: string; count: number }[];
   other_values?: string[];
+  /** Where a user's value comes from; tenant < JWT < admin-set when more than one sets it. */
+  source?: "tenant" | "jwt" | "admin";
+  tenant_name?: string;
 };
 
 export type AffectingAttributesRequest = {
