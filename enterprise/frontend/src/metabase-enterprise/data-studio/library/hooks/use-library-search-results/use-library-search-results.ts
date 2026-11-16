@@ -4,7 +4,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import type { CollectionId, SearchResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const NO_ITEMS: TreeItem[] = [];
@@ -19,12 +19,11 @@ type LibrarySearchResults = {
 };
 
 /**
- * Debounced server-side search for `models` inside a Library collection.
- * `items` is empty until the query has text and the collection is known.
+ * Debounced server-side search for `models` in every collection, leaving out
+ * the tables that are not published. `items` is empty until the query has text.
  */
 export function useLibrarySearchResults(
   searchQuery: string,
-  collectionId: CollectionId | undefined,
   models: LibrarySearchModel[],
 ): LibrarySearchResults {
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -37,10 +36,9 @@ export function useLibrarySearchResults(
     isFetching,
     error,
   } = useSearchQuery(
-    isActive && collectionId != null
+    isActive
       ? {
           q: debouncedQuery,
-          collection: collectionId,
           models,
           context: "library",
         }
@@ -53,7 +51,9 @@ export function useLibrarySearchResults(
     }
     return searchResponse.data.flatMap((result) => {
       const model = models.find((searchModel) => searchModel === result.model);
-      return model ? [createSearchResultItem(result, model, getIcon)] : [];
+      return model && isInCollection(result)
+        ? [createSearchResultItem(result, model, getIcon)]
+        : [];
     });
   }, [isActive, searchResponse, models, getIcon]);
 
@@ -63,6 +63,10 @@ export function useLibrarySearchResults(
     isLoading: isLoading || isFetching,
     error,
   };
+}
+
+function isInCollection(result: SearchResult): boolean {
+  return result.model !== "table" || result.collection?.id != null;
 }
 
 function createSearchResultItem(

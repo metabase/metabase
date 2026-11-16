@@ -1,60 +1,83 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type {
-  LibrarySectionType,
-  TreeItem,
-} from "metabase/data-studio/common/types";
+import type { TreeItem } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
-import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItemModel,
-  IconName,
-} from "metabase-types/api";
+import type { CollectionId, IconName } from "metabase-types/api";
 
-import { useCollectionItemsTree } from "../../hooks/use-collection-items-tree";
+import {
+  type SemanticLayerItemModel,
+  useCollectionItemsTree,
+} from "../../hooks/use-collection-items-tree";
 import {
   type LibrarySearchModel,
   useLibrarySearchResults,
 } from "../../hooks/use-library-search-results";
 
-const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
-  data: ["table", "collection"],
-  metrics: ["metric", "collection"],
-  snippets: ["snippet", "collection"],
-  actions: ["action", "collection"],
+type SemanticLayerSection = {
+  id: string;
+  name: string;
+  icon: IconName;
+  itemModel: SemanticLayerItemModel;
 };
 
+export type SemanticLayerSectionType = "data" | "metrics";
+
+const getSemanticLayerSections = (): Record<
+  SemanticLayerSectionType,
+  SemanticLayerSection
+> => ({
+  data: {
+    id: "section:data",
+    name: t`Data`,
+    icon: "table",
+    itemModel: "table",
+  },
+  metrics: {
+    id: "section:metrics",
+    name: t`Metrics`,
+    icon: "metric",
+    itemModel: "metric",
+  },
+});
+
+export const getSemanticLayerSectionId = (
+  sectionType: SemanticLayerSectionType,
+) => getSemanticLayerSections()[sectionType].id;
+
+export const getSemanticLayerCollectionRowId = (
+  sectionType: SemanticLayerSectionType,
+  collectionId: CollectionId | string,
+) => `${sectionType}:collection:${collectionId}`;
+
 /**
- * A Semantic layer section: the section's collection as a root row holding its
- * folders and items, or the section's empty-state row when it has none.
+ * A Semantic layer section: a root row holding every collection of the main and
+ * shared tenant namespaces with the section's items in it, or the section's
+ * empty-state row when there are none.
  */
-export function useLibraryCollectionTree(
-  collection: Collection | undefined,
-  sectionType: LibrarySectionType,
+export function useSemanticLayerSectionTree(
+  sectionType: SemanticLayerSectionType,
   metricCollectionId?: CollectionId,
 ) {
-  const getIcon = useGetIcon();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { id, name, icon, itemModel } = getSemanticLayerSections()[sectionType];
   const { items, isLoading, error, watchRows, isChildrenLoading } =
-    useCollectionItemsTree(collection, SECTION_ITEM_MODELS[sectionType]);
+    useCollectionItemsTree(itemModel, `${sectionType}:`);
 
   const tree = useMemo((): TreeItem[] => {
-    if (!collection || !items) {
+    if (!items) {
       return [];
     }
 
     return [
       {
-        name: collection.name,
-        id: `collection:${collection.id}`,
-        icon: getIcon({ ...collection, model: "collection" }).name,
-        data: { ...collection, model: "collection" as const },
+        id,
+        name,
+        icon,
         model: "collection",
+        data: { model: "collection", name },
         children:
           items.length > 0
             ? items
@@ -68,9 +91,10 @@ export function useLibraryCollectionTree(
       },
     ];
   }, [
-    collection,
     items,
-    getIcon,
+    id,
+    name,
+    icon,
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
@@ -96,15 +120,13 @@ const getSearchSections = (): Record<LibrarySearchModel, SearchSection> => ({
   metric: { id: "search-section:metrics", name: t`Metrics`, icon: "metric" },
 });
 
-/** Search results across the Library, grouped under a row per section */
+/** Search results across every collection, grouped under a row per section */
 export function useLibrarySearch(
   searchQuery: string,
-  libraryCollectionId: CollectionId | undefined,
   models: LibrarySearchModel[],
 ) {
   const { items, isActive, isLoading, error } = useLibrarySearchResults(
     searchQuery,
-    libraryCollectionId,
     models,
   );
 

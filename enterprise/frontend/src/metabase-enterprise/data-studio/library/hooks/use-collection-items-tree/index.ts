@@ -1,1 +1,4 @@
-export { useCollectionItemsTree } from "./use-collection-items-tree";
+export {
+  type SemanticLayerItemModel,
+  useCollectionItemsTree,
+} from "./use-collection-items-tree";

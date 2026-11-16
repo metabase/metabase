@@ -13,6 +13,7 @@ import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-ha
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
+import { useSearchParams } from "metabase/router";
 import {
   TableModal,
   type TableModalState,
@@ -25,13 +26,20 @@ import type { LibrarySearchModel } from "../../hooks/use-library-search-results"
 import { ActionCell } from "./ActionCell";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
-import { useLibraryCollectionTree, useLibrarySearch } from "./hooks";
+import {
+  type SemanticLayerSectionType,
+  getSemanticLayerCollectionRowId,
+  getSemanticLayerSectionId,
+  useLibrarySearch,
+  useSemanticLayerSectionTree,
+} from "./hooks";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,
 } from "./utils";
 
 const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric"];
+const SECTION_TYPES: SemanticLayerSectionType[] = ["data", "metrics"];
 
 function getTrashMessage(section: LibrarySection, count: number) {
   return section === "data"
@@ -50,6 +58,7 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [collectionModal, setCollectionModal] =
     useState<CollectionRowModalState>();
@@ -77,23 +86,19 @@ function LibraryPageContent() {
     error: tablesError,
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
-  } = useLibraryCollectionTree(tableCollection, "data");
+  } = useSemanticLayerSectionTree("data");
   const {
     tree: metricsTree,
     isLoading: isLoadingMetrics,
     error: metricsError,
     watchRows: watchMetricRows,
     isChildrenLoading: isMetricChildrenLoading,
-  } = useLibraryCollectionTree(
-    metricCollection,
-    "metrics",
-    metricCollection?.id,
-  );
+  } = useSemanticLayerSectionTree("metrics", metricCollection?.id);
   const {
     tree: searchTree,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
-  } = useLibrarySearch(searchQuery, libraryCollection?.id, SEARCH_MODELS);
+  } = useLibrarySearch(searchQuery, SEARCH_MODELS);
   useErrorHandling(tablesError || metricsError);
 
   const tree = useMemo(
@@ -102,10 +107,15 @@ function LibraryPageContent() {
   );
   const defaultExpandedIds = useMemo(
     () =>
-      [tableCollection, metricCollection].flatMap((collection) =>
-        collection ? [`collection:${collection.id}`] : [],
-      ),
-    [tableCollection, metricCollection],
+      SECTION_TYPES.flatMap((sectionType) => [
+        getSemanticLayerSectionId(sectionType),
+        ...searchParams
+          .getAll("expandedId")
+          .map((collectionId) =>
+            getSemanticLayerCollectionRowId(sectionType, collectionId),
+          ),
+      ]),
+    [searchParams],
   );
   const defaultMoveCollectionIds = useMemo(
     () => ({

@@ -69,6 +69,8 @@ const LIBRARY_COLLECTION = createMockCollection({
   children: [DATA_COLLECTION],
 });
 
+const ROOT_COLLECTION = createMockCollection({ id: "root" });
+
 const FOLDER = createMockCollectionItem({
   id: 5,
   name: "Sales folder",
@@ -124,7 +126,7 @@ function setup({
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 1000 });
   setupCollectionsEndpoints({ collections: [LIBRARY_COLLECTION] });
-  setupItems(DATA_COLLECTION, [
+  setupItems(ROOT_COLLECTION, [
     FOLDER,
     {
       ...DESTINATION_FOLDER,
@@ -155,7 +157,7 @@ function setup({
 }
 
 function setupMovedOrders(destinationItems: CollectionItem[]) {
-  setupItems(DATA_COLLECTION, [
+  setupItems(ROOT_COLLECTION, [
     { ...FOLDER, here: [] },
     { ...DESTINATION_FOLDER, here: ["table"] },
   ]);

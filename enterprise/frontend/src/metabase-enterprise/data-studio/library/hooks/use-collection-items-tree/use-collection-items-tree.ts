@@ -11,26 +11,42 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import type {
-  Collection,
   CollectionId,
   CollectionItem,
-  CollectionItemModel,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 const NO_ITEMS: CollectionItem[] = [];
 
+export type SemanticLayerItemModel = "table" | "metric";
+
 const getCollectionItemsRequest = (
   collectionId: CollectionId,
-  models: CollectionItemModel[],
-) => ({
+  itemModel: SemanticLayerItemModel,
+): ListCollectionItemsRequest => ({
   id: collectionId,
-  models,
+  models: ["collection", itemModel],
   archived: false,
 });
 
+const getRootItemsRequest = (
+  itemModel: SemanticLayerItemModel,
+): ListCollectionItemsRequest => ({
+  ...getCollectionItemsRequest("root", itemModel),
+  "include-library": true,
+});
+
+const getSharedTenantRootItemsRequest = (
+  itemModel: SemanticLayerItemModel,
+): ListCollectionItemsRequest => ({
+  ...getCollectionItemsRequest("root", itemModel),
+  namespace: "shared-tenant-collection",
+});
+
 type CollectionItemsTree = {
-  /** The collection's folders and items, or nothing until they have loaded */
+  /** The top-level folders and items, or nothing until they have loaded */
   items: TreeItem[] | undefined;
   isLoading: boolean;
   error: unknown;
@@ -39,24 +55,35 @@ type CollectionItemsTree = {
 };
 
 /**
- * The folders and `models` items of a collection, with folders loading their
- * own items once their rows expand. `watchRows` subscribes the expanded folders
- * of this tree to the API cache, so a later invalidation refreshes them.
+ * The `itemModel` items of the main and shared tenant collection namespaces as
+ * one tree, keeping only the folders that hold such items at any depth. Folders
+ * load their own items once their rows expand. `watchRows` subscribes the
+ * expanded folders of this tree to the API cache, so a later invalidation
+ * refreshes them. Row ids start with `idPrefix`, so two trees can show the same
+ * folder.
  */
 export function useCollectionItemsTree(
-  collection: Collection | undefined,
-  models: CollectionItemModel[],
+  itemModel: SemanticLayerItemModel,
+  idPrefix: string,
 ): CollectionItemsTree {
   const dispatch = useDispatch();
   const getIcon = useGetIcon();
+  const hasTenants = useSetting("use-tenants");
 
   const {
-    data: topLevelItems,
-    isLoading,
-    error,
+    data: rootItems,
+    isLoading: isLoadingRootItems,
+    error: rootItemsError,
+  } = useListCollectionItemsQuery(getRootItemsRequest(itemModel));
+  const {
+    data: sharedTenantRootItems,
+    isLoading: isLoadingSharedTenantRootItems,
+    error: sharedTenantRootItemsError,
   } = useListCollectionItemsQuery(
-    collection ? getCollectionItemsRequest(collection.id, models) : skipToken,
+    hasTenants ? getSharedTenantRootItemsRequest(itemModel) : skipToken,
   );
+  const isLoading = isLoadingRootItems || isLoadingSharedTenantRootItems;
+  const error = rootItemsError ?? sharedTenantRootItemsError;
 
   const [expandedCollectionIds, setExpandedCollectionIds] = useState<
     CollectionId[]
@@ -64,11 +91,6 @@ export function useCollectionItemsTree(
   const subscriptionsRef = useRef(
     new Map<CollectionId, { unsubscribe: () => void }>(),
   );
-
-  const collectionId = collection?.id;
-  useEffect(() => {
-    setExpandedCollectionIds((ids) => (ids.length > 0 ? [] : ids));
-  }, [collectionId, models]);
 
   useEffect(() => {
     const subscriptions = subscriptionsRef.current;
@@ -78,7 +100,7 @@ export function useCollectionItemsTree(
           expandedId,
           dispatch(
             collectionApi.endpoints.listCollectionItems.initiate(
-              getCollectionItemsRequest(expandedId, models),
+              getCollectionItemsRequest(expandedId, itemModel),
             ),
           ),
         );
@@ -90,7 +112,7 @@ export function useCollectionItemsTree(
         subscriptions.delete(expandedId);
       }
     });
-  }, [dispatch, expandedCollectionIds, models]);
+  }, [dispatch, expandedCollectionIds, itemModel]);
 
   useEffect(() => {
     const subscriptions = subscriptionsRef.current;
@@ -104,10 +126,10 @@ export function useCollectionItemsTree(
     () =>
       expandedCollectionIds.map((expandedId) =>
         collectionApi.endpoints.listCollectionItems.select(
-          getCollectionItemsRequest(expandedId, models),
+          getCollectionItemsRequest(expandedId, itemModel),
         ),
       ),
-    [expandedCollectionIds, models],
+    [expandedCollectionIds, itemModel],
   );
 
   const expandedCollectionItems = useSelector(
@@ -130,15 +152,25 @@ export function useCollectionItemsTree(
     [expandedCollectionIds, expandedCollectionItems],
   );
 
-  const items = useMemo(
-    (): TreeItem[] | undefined =>
-      isLoading || !topLevelItems || !collection
-        ? undefined
-        : buildChildren(topLevelItems.data, loadedCollections, getIcon),
-    [isLoading, topLevelItems, collection, loadedCollections, getIcon],
-  );
+  const items = useMemo((): TreeItem[] | undefined => {
+    if (isLoading || !rootItems) {
+      return undefined;
+    }
+    const context = { itemModel, idPrefix, loadedCollections, getIcon };
+    return [
+      ...buildChildren(rootItems.data, context),
+      ...buildChildren(sharedTenantRootItems?.data ?? NO_ITEMS, context),
+    ];
+  }, [
+    isLoading,
+    rootItems,
+    sharedTenantRootItems,
+    itemModel,
+    idPrefix,
+    loadedCollections,
+    getIcon,
+  ]);
 
-  const folderIds = useMemo(() => getFolderIds(items ?? []), [items]);
   const watchRows = useCallback(
     (rows: Row<TreeItem>[]) => {
       const collectionIdsToLoad = rows.flatMap((row) => {
@@ -151,7 +183,7 @@ export function useCollectionItemsTree(
         return isExpandedWithoutChildren &&
           original.data.model === "collection" &&
           original.data.id !== undefined &&
-          folderIds.has(original.data.id)
+          original.id.startsWith(idPrefix)
           ? [original.data.id]
           : [];
       });
@@ -165,15 +197,16 @@ export function useCollectionItemsTree(
         return newIds.length > 0 ? [...previousIds, ...newIds] : previousIds;
       });
     },
-    [folderIds],
+    [idPrefix],
   );
 
   const isChildrenLoading = useCallback(
     (row: Row<TreeItem>): boolean =>
+      row.original.id.startsWith(idPrefix) &&
       row.getIsExpanded() &&
       row.getCanExpand() &&
       row.original.children?.length === 0,
-    [],
+    [idPrefix],
   );
 
   return {
@@ -185,80 +218,63 @@ export function useCollectionItemsTree(
   };
 }
 
+type BuildContext = {
+  itemModel: SemanticLayerItemModel;
+  idPrefix: string;
+  loadedCollections: Map<CollectionId, CollectionItem[]>;
+  getIcon: ReturnType<typeof useGetIcon>;
+};
+
 /** Build children for a collection from its fetched items. Subcollections
- *  that haven't been loaded yet get `children: []` (if they have content
- *  according to `here`/`below`) so they render as expandable rows that
- *  trigger a lazy load, or `undefined` if they're empty. */
+ *  that haven't been loaded yet get `children: []` so they render as
+ *  expandable rows that trigger a lazy load. */
 function buildChildren(
   items: CollectionItem[],
-  loadedCollections: Map<CollectionId, CollectionItem[]>,
-  getIcon: ReturnType<typeof useGetIcon>,
+  context: BuildContext,
 ): TreeItem[] {
+  const { itemModel, idPrefix, loadedCollections, getIcon } = context;
   const visibleItems = items.filter((item) => !item.archived);
   const collections = visibleItems.filter(
-    (item) => item.model === "collection",
+    (item) => item.model === "collection" && hasItems(item, itemModel),
   );
-  const leafItems = visibleItems.filter((item) => item.model !== "collection");
+  const leafItems = visibleItems.filter((item) => item.model === itemModel);
 
   return [
-    ...collections.map((col): TreeItem => {
-      const childItems = loadedCollections.get(col.id);
-      let children: TreeItem[] | undefined;
-
-      if (childItems !== undefined) {
-        const built = buildChildren(childItems, loadedCollections, getIcon);
-        children = built.length > 0 ? built : undefined;
-      } else if (hasContent(col)) {
-        children = [];
-      }
+    ...collections.map((collection): TreeItem => {
+      const childItems = loadedCollections.get(collection.id);
+      const children =
+        childItems !== undefined ? buildChildren(childItems, context) : [];
 
       return {
-        name: col.name,
-        id: `collection:${col.id}`,
-        icon: "folder",
-        data: col,
+        name: collection.name,
+        id: `${idPrefix}collection:${collection.id}`,
+        icon: getIcon(collection).name,
+        data: collection,
         model: "collection",
-        children,
+        children: children.length > 0 || !childItems ? children : undefined,
         childrenLoaded: childItems !== undefined,
       };
     }),
-    ...leafItems.map((leafItem) => buildItemNode(leafItem, getIcon)),
+    ...leafItems.map(
+      (leafItem): TreeItem => ({
+        name: leafItem.name,
+        updatedAt: leafItem["last-edit-info"]?.timestamp,
+        icon: getIcon({ model: leafItem.model }).name,
+        data: leafItem,
+        id: `${leafItem.model}:${leafItem.id}`,
+        model: leafItem.model,
+      }),
+    ),
   ];
 }
 
-function buildItemNode(
-  item: CollectionItem,
-  getIcon: ReturnType<typeof useGetIcon>,
-): TreeItem {
-  return {
-    name: item.name,
-    updatedAt: item["last-edit-info"]?.timestamp,
-    icon: getIcon({ model: item.model }).name,
-    data: item,
-    id: `${item.model}:${item.id}`,
-    model: item.model,
-  };
-}
-
-function hasContent(item: CollectionItem): boolean {
+function hasItems(
+  collection: CollectionItem,
+  itemModel: SemanticLayerItemModel,
+): boolean {
   return (
-    (item.here != null && item.here.length > 0) ||
-    (item.below != null && item.below.length > 0)
-  );
-}
-
-function getFolderIds(items: TreeItem[]): Set<CollectionId> {
-  return new Set(
-    items.flatMap((item): CollectionId[] => {
-      const { data } = item;
-      if (
-        item.model !== "collection" ||
-        data.model !== "collection" ||
-        data.id === undefined
-      ) {
-        return [];
-      }
-      return [data.id, ...getFolderIds(item.children ?? [])];
-    }),
+    collection.here?.includes(itemModel) ||
+    collection.below?.includes(itemModel) ||
+    false
   );
 }
