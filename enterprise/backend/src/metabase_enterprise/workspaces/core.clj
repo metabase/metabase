@@ -242,7 +242,8 @@
   running on any of the workspace's databases. Without this, a delete waits on
   the row lock that the running provisioning holds, then fails, or wins the lock
   and makes the create fail. It counts a `:provisioning` or `:deprovisioning` row
-  last updated within [[in-flight-stale-after]]. It does not count an
+  while any row of the workspace was last updated within
+  [[in-flight-stale-after]]. It does not count an
   `:unprovisioned` row: a failed create can leave one, and its 500 asks for a
   delete."
   [workspace-id]
@@ -470,11 +471,11 @@
 
 (defn- assert-create-not-running
   "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
-  `:unprovisioned`, `:provisioning` or `:deprovisioning` and was last updated within
-  [[in-flight-stale-after]]. A create inserts all its rows `:provisioning`, then
-  provisions them one at a time. A row whose provisioning fails turns
-  `:unprovisioned` before the create's cleanup tears it down, so a recent
-  `:unprovisioned` row counts too. One query checks all three statuses: with one
+  `:unprovisioned`, `:provisioning` or `:deprovisioning` and any database of the
+  workspace was last updated within [[in-flight-stale-after]]. A create inserts
+  all its rows `:provisioning`, then provisions them one at a time. A row whose
+  provisioning fails turns `:unprovisioned` before the create's cleanup tears it
+  down, so a recent `:unprovisioned` row counts too. One query checks all three statuses: with one
   query per status, a row that changes status between the queries could be seen by
   neither. A running delete sets its rows `:deprovisioning`, so a retry during a
   delete is refused too."

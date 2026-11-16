@@ -806,6 +806,44 @@
                         (deliver resume true)
                         (deref create 10000 nil))))))))))))))
 
+(deftest create-idempotency-retry-during-a-create-longer-than-the-busy-window-test
+  (testing "a same-key retry after the first database is provisioned, before the second's starts"
+    (do-with-eligible-database!
+     (fn [db1-id]
+       (do-with-eligible-database!
+        (fn [db2-id]
+          (let [paused  (promise)
+                resume  (promise)
+                create! #(mt/user-http-request-full-response
+                          :crowberto :post "ee/workspace-manager/"
+                          {:request-options {:headers {"idempotency-key" "retry-long-create"}}}
+                          {:name "Long create" :database_ids [db1-id db2-id]})
+                old     (t/minus (t/offset-date-time) (t/minutes 16))]
+            (with-redefs [provisioning/dispatching-provisioner       (stub-provisioner)
+                          provisioning/provision-workspace-database! (pausing-before-nth-provision! 2 paused resume)]
+              (let [create (future (create!))]
+                (try
+                  (let [wsd2-id (deref paused 10000 nil)
+                        ws-id   (t2/select-one-fn :workspace_id :model/WorkspaceDatabase :id wsd2-id)]
+                    (is (some? wsd2-id) "the first create paused before the second database's provisioning started")
+                    (testing "when only the unfinished database's row is older than the busy window, answers 409 workspace_busy"
+                      ;; the create wrote the second database's row only at the insert
+                      (t2/update! :model/WorkspaceDatabase {:id wsd2-id} {:updated_at old})
+                      (let [{:keys [status body]} (create!)]
+                        (is (= 409 status) (str "body " (pr-str body)))
+                        (is (=? {:error-code "workspace_busy"} body))))
+                    (testing "when every row of the workspace is older than the busy window, the create counts as crashed"
+                      (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id} {:updated_at old})
+                      (is (=? {:status 500 :body {:workspace_id ws-id :cleanup_required true}}
+                              (create!)))))
+                  (deliver resume true)
+                  (is (=? {:status 200 :body {:databases [{:status "provisioned"} {:status "provisioned"}]}}
+                          (deref create 10000 ::timed-out))
+                      "the first create still finishes")
+                  (finally
+                    (deliver resume true)
+                    (deref create 10000 nil))))))))))))
+
 (deftest create-idempotency-retry-while-database-turns-unprovisioned-test
   (testing "a same-key retry whose database turns unprovisioned right after the retry's first status query still gets 409, never the 500 that says to delete the workspace"
     (do-with-eligible-database!
