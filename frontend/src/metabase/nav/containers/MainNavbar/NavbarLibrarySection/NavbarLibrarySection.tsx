@@ -17,7 +17,11 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
-import type { Collection, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  CollectionType,
+} from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
   collections: Collection[];
@@ -25,14 +29,25 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
 };
 
+function hasModel(
+  collection: Collection,
+  model: CollectionContentModel,
+): boolean {
+  return Boolean(
+    collection.here?.includes(model) || collection.below?.includes(model),
+  );
+}
+
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
- *  If not, create a synthetic container for any promoted children. */
+ *  If not, create a synthetic container for any promoted children.
+ *  A section with a `contentModel` is left out when it holds no item of that model. */
 function buildSectionTree(
   libraryCollection: Collection,
   allCollections: Collection[],
   sectionType: CollectionType,
   sectionName: string,
+  contentModel?: CollectionContentModel,
 ): CollectionTreeItem | null {
   // Look for the real root collection (has is_library_root)
   const rootCollection = libraryCollection.children?.find(
@@ -40,6 +55,9 @@ function buildSectionTree(
   );
 
   if (rootCollection) {
+    if (contentModel && !hasModel(rootCollection, contentModel)) {
+      return null;
+    }
     // User has access to the root — build its subtree normally
     const [tree] = buildCollectionTree([rootCollection]);
     return tree ?? null;
@@ -57,7 +75,11 @@ function buildSectionTree(
   );
 
   const allOrphans = [...libraryChildren, ...promotedChildren];
-  if (allOrphans.length === 0) {
+  if (
+    allOrphans.length === 0 ||
+    (contentModel &&
+      !allOrphans.some((orphan) => hasModel(orphan, contentModel)))
+  ) {
     return null;
   }
 
@@ -100,7 +122,13 @@ export function NavbarLibrarySection({
   );
 
   const libraryTree = useMemo(() => {
-    if (!libraryCollection) {
+    if (
+      !libraryCollection ||
+      !(
+        libraryCollection.below?.includes("table") ||
+        libraryCollection.below?.includes("metric")
+      )
+    ) {
       return [];
     }
 
@@ -109,12 +137,14 @@ export function NavbarLibrarySection({
       collections,
       "library-data",
       t`Data`,
+      "table",
     );
     const metricsTree = buildSectionTree(
       libraryCollection,
       collections,
       "library-metrics",
       t`Metrics`,
+      "metric",
     );
     const dashboardsTree = buildSectionTree(
       libraryCollection,

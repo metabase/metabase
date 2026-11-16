@@ -36,6 +36,7 @@ describe("NavbarLibrarySection", () => {
         name: "Data Child",
         type: "library-data",
         is_library_root: false,
+        here: ["table"],
       });
       const metricsCollection = createChildCollection({
         id: 11,
@@ -67,6 +68,56 @@ describe("NavbarLibrarySection", () => {
 
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
     });
+
+    it("should not render when library holds no table and no metric", () => {
+      const libraryCollection = createLibraryCollection({
+        below: ["dashboard"],
+        children: [createChildCollection({ name: "Metrics", here: [] })],
+      });
+      setup({ collections: [libraryCollection] });
+
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should hide Data without tables and Metrics without metrics", async () => {
+      const withMetrics = createLibraryCollection({
+        below: ["metric"],
+        children: [
+          createChildCollection({
+            id: 10,
+            name: "Data",
+            type: "library-data",
+            here: [],
+          }),
+          createChildCollection({ id: 11, name: "Metrics" }),
+        ],
+      });
+      setup({ collections: [withMetrics] });
+
+      expect(await screen.findByText("Metrics")).toBeInTheDocument();
+      expect(screen.queryByText("Data")).not.toBeInTheDocument();
+    });
+
+    it("should show Data whose tables are in subcollections", async () => {
+      const libraryCollection = createLibraryCollection({
+        below: ["table"],
+        children: [
+          createChildCollection({
+            id: 10,
+            name: "Data",
+            type: "library-data",
+            here: [],
+            below: ["table"],
+          }),
+          createChildCollection({ id: 11, name: "Metrics", here: [] }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      expect(await screen.findByText("Data")).toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
   });
 
   describe("unpushed changes", () => {
@@ -86,6 +137,7 @@ describe("NavbarLibrarySection", () => {
             id: 11,
             name: "Clean Collection",
             type: "library-data",
+            here: ["table"],
           }),
         ],
       });
