@@ -30,6 +30,8 @@ summary: Changes to the Metabase driver interface, listed by release.
 
   See notes in `metabase.driver/execute-reducible-query`'s docstring on the differences between the two shapes.
 
+- Various legacy MBQL utility functions that were deprecated in 57 have been removed entirely.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
