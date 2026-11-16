@@ -347,6 +347,31 @@
                     (initialize! "ws_new")
                     (is (zero? (t2/count :model/TableRemapping :database_id db-id)))))))))))))
 
+(deftest config-file-sets-workspace-schema-under-env-var-test
+  (testing "while MB_WORKSPACES_ENABLED is set, config.yml still sets database-workspace-schema"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_old"}}]
+            (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
+              (let [stored #(get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])]
+                (testing "through databases[].settings"
+                  (is (= :ok (advanced-config.file/initialize!
+                              {:version 1
+                               :config  {:databases [{:name     db-name
+                                                      :engine   "h2"
+                                                      :details  (:details (mt/db))
+                                                      :settings {:database-workspace-schema "ws_settings"}}]}})))
+                  (is (= "ws_settings" (stored))))
+                (testing "through the workspace section"
+                  (advanced-config.file.workspace/apply-workspace-section!
+                   {:name      "W"
+                    :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                   :output        {:schema "ws_section"}}}})
+                  (is (= "ws_section" (stored))))))))))))
+
 (deftest databases-section-refuses-non-string-workspace-schema-test
   (testing "databases[].settings.database-workspace-schema must be a string, which every read relies on"
     (binding [driver.settings/*allow-testing-h2-connections* true]

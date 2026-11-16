@@ -34,7 +34,9 @@ summary: Breaking changes to the Metabase API, listed by release.
   `input_schemas` and `output`. `POST /api/ee/workspace-instance/current` takes and returns the same
   `{"databases": [{"database_id", "schema"}]}` shape, and refuses the old body with `400`. `POST` and
   `DELETE /current` no longer return `400` on an instance that `config.yml` set up; `DELETE /current` returns `400`
-  while `MB_WORKSPACES_ENABLED=true`, and `POST /current` while `MB_WORKSPACES_ENABLED=false`. The
+  while `MB_WORKSPACES_ENABLED=true`, and `POST /current` while `MB_WORKSPACES_ENABLED=false`. While
+  `MB_WORKSPACES_ENABLED` is set, `POST /current` and `PUT /api/database/:id` return `400` for a request that would
+  change a database's `database-workspace-schema`. The
   `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` are replaced by the `workspaces-enabled` setting and each
   database's `database-workspace-schema`; Metabase translates an old value into them at startup.
 

@@ -58,13 +58,17 @@
   "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
   database's `database-workspace-schema`, clearing it on every other database. A database
   whose schema changes or is cleared loses its `TableRemapping` rows. Returns 400 for an
-  unknown database id, when this instance manages workspaces, or while
-  `MB_WORKSPACES_ENABLED=false`."
+  unknown database id, when this instance manages workspaces, while
+  `MB_WORKSPACES_ENABLED=false`, or when the request would change or clear a database's
+  schema while `MB_WORKSPACES_ENABLED` is set. A request that names the schema each
+  database already has is not a change."
   [_route-params
    _query-params
    body :- WorkspaceInstance]
   (api/check-superuser)
-  (ws/set-instance-workspace! (into {} (map (juxt :database_id :schema)) (:databases body)))
+  (let [schemas (into {} (map (juxt :database_id :schema)) (:databases body))]
+    (ws/check-instance-workspace-schemas-unlocked! schemas)
+    (ws/set-instance-workspace! schemas))
   (present-workspace-instance (ws/instance-workspace)))
 
 (api.macros/defendpoint :delete "/current" :- :nil

@@ -227,6 +227,47 @@
               (is (not (contains? (t2/select-one-fn :settings :model/Database :id db-id)
                                   :database_workspace_schema))))))))))
 
+(deftest put-database-workspace-schema-refused-under-env-var-test
+  (testing "while MB_WORKSPACES_ENABLED is set, PUT /api/database/:id refuses to change database-workspace-schema"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :details  (:details (mt/db))
+                                                  :settings {:database-workspace-schema "ws"}}]
+        (mt/with-model-cleanup [:model/TableRemapping]
+          (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
+                                             :to_db "" :to_schema "ws" :to_table_name "PUBLIC__VENUES"})
+          (let [put!   (fn [status body] (mt/user-http-request :crowberto :put status (str "database/" db-id) body))
+                stored #(t2/select-one-fn :settings :model/Database :id db-id)
+                rows   #(t2/count :model/TableRemapping :database_id db-id)]
+            (doseq [env-value ["true" "false"]]
+              (testing (str "MB_WORKSPACES_ENABLED=" env-value)
+                (mt/with-temp-env-var-value! [mb-workspaces-enabled env-value]
+                  (doseq [settings [{:database-workspace-schema "prod"}
+                                    {:database_workspace_schema "prod"}
+                                    {:database-workspace-schema nil}
+                                    {:database_workspace_schema nil}
+                                    {:database-workspace-schema " ws "}]]
+                    (testing (pr-str settings)
+                      (is (= (str "database-workspace-schema can't be changed at runtime while the MB_WORKSPACES_ENABLED"
+                                  " env var is set. Change it in config.yml, or restart with new configuration.")
+                             (put! 400 {:settings settings})))
+                      (is (= {:database-workspace-schema "ws"} (stored)))
+                      (is (= 1 (rows)))))
+                  (testing "a PUT of the stored value changes nothing, so it is not refused"
+                    (put! 200 {:settings {:database-workspace-schema "ws"}})
+                    (put! 200 {:settings {:database_workspace_schema "ws"}})
+                    (is (= {:database-workspace-schema "ws"} (stored)))
+                    (is (= 1 (rows))))
+                  (testing "a PUT that does not name the setting is not refused"
+                    (put! 200 {:description "edited"})
+                    (is (= {:database-workspace-schema "ws"} (stored)))))))
+            (testing "without the env var, the same calls change the schema and delete the remap rows"
+              (put! 200 {:settings {:database_workspace_schema "prod"}})
+              (is (= {:database-workspace-schema "prod"} (stored)))
+              (is (zero? (rows)))
+              (put! 200 {:settings {:database-workspace-schema nil}})
+              (is (not (contains? (stored) :database-workspace-schema))))))))))
+
 (defn- transform-write-target!
   "Run a Python transform on `PUBLIC.MODE_EXIT_T` of the test database through `transforms.execute/execute!`, with
   the executor stubbed. Returns the `[schema name]` the executor would write, or `:refused`."

@@ -41,6 +41,7 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -970,6 +971,10 @@
                              (= :admin (:visibility (setting/resolve-setting setting-kw)))))
                       (keys settings))
             (api/check-superuser))
+          ;; After the superuser check, so that the answer can't tell a non-superuser whether a guess matches the
+          ;; stored value.
+          (workspaces/check-database-workspace-schema-write! (:database-workspace-schema existing-settings)
+                                                             (:database-workspace-schema pending-settings))
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
