@@ -114,6 +114,7 @@
   resolve-setting
   set!
   set-many!
+  set-string!
   set-value-of-type!
   setting-env-map-name
   string->boolean

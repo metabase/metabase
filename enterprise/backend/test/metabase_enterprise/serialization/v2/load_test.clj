@@ -10,6 +10,8 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
@@ -434,6 +436,64 @@
         (let [{:keys [errors]} (serdes.load/load-metabase! (ts/ingestion-in-memory settings) :continue-on-error true)]
           (is (= 1 (count errors)))
           (is (= "After" (setting/get :site-name))))))))
+
+(defn- exported-setting
+  "The exported Setting entity of `setting-key`."
+  [setting-key]
+  (some #(when (= (name setting-key) (:key %)) %)
+        (into [] (serialization/export :model/Setting (setting/exportable-settings)))))
+
+(defn- setting-entity
+  "A Setting entity that sets `setting-key` to `value`."
+  [setting-key value]
+  {:serdes/meta [{:model "Setting"}] :key (name setting-key) :value value})
+
+(deftest typed-setting-round-trip-test
+  (testing "typed setting exported to YAML is imported as its typed value through its setter"
+    (let [formatting {:type/Number {:number_separators ".,"}}]
+      (mt/with-temporary-raw-setting-values [custom-formatting nil]
+        (setting/set! :custom-formatting formatting)
+        (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+          (storage/store! [(exported-setting :custom-formatting)] (storage.files/file-writer dump-dir))
+          (setting/set! :custom-formatting {})
+          (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))
+          (is (= formatting (setting/get :custom-formatting))))
+        (testing "value its setter refuses is not set"
+          (let [{:keys [errors]} (serdes.load/load-metabase!
+                                  (ts/ingestion-in-memory
+                                   [(setting-entity :custom-formatting
+                                                    (json/encode {:type/Number {:number_separators "x"}}))])
+                                  :continue-on-error true)]
+            (is (= 1 (count errors)))
+            (is (= formatting (setting/get :custom-formatting)))))))))
+
+(deftest feature-gated-setting-import-test
+  (testing "setting whose premium feature is missing is not set"
+    (mt/with-temporary-raw-setting-values [application-name nil]
+      (mt/with-premium-features #{}
+        (let [ingestion (ts/ingestion-in-memory [(setting-entity :application-name "Acme")])]
+          (is (thrown-with-msg? Exception #"feature :whitelabel is not available"
+                                (serdes.load/load-metabase! ingestion)))
+          (is (= 1 (count (:errors (serdes.load/load-metabase! ingestion :continue-on-error true)))))
+          (is (nil? (setting/db-stored-value :application-name)))))
+      (testing "unless it would leave the stored value as it is"
+        (mt/with-premium-features #{}
+          (is (empty? (:errors (serdes.load/load-metabase!
+                                (ts/ingestion-in-memory [(setting-entity :application-name nil)])))))))
+      (testing "with the feature it is set"
+        (mt/with-premium-features #{:whitelabel}
+          (serdes.load/load-metabase! (ts/ingestion-in-memory [(setting-entity :application-name "Acme")]))
+          (is (= "Acme" (setting/db-stored-value :application-name))))))))
+
+(deftest env-var-setting-import-test
+  (testing "setting an environment variable sets is not overwritten"
+    (mt/with-temporary-raw-setting-values [site-name "Stored"]
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (let [ingestion (ts/ingestion-in-memory [(setting-entity :site-name "Imported")])]
+          (is (thrown-with-msg? Exception #"set by the environment variable MB_SITE_NAME"
+                                (serdes.load/load-metabase! ingestion)))
+          (is (= 1 (count (:errors (serdes.load/load-metabase! ingestion :continue-on-error true)))))
+          (is (= "Stored" (setting/db-stored-value :site-name))))))))
 
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
