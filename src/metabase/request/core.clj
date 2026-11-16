@@ -71,6 +71,7 @@
   internal-data-app?
   permission-preview?
   permission-preview-content?
+  permission-preview-host-request?
   public?
   referer])
 

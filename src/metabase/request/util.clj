@@ -134,6 +134,15 @@
   (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
                           (get headers "host")]))
 
+(defn permission-preview-host-request?
+  "Whether `request` came in through the permission preview host named by `MB_PERMISSION_PREVIEW_HOST` (EE
+  `permission-debug`), where an admin's preview runs signed in as the previewed person only. Either host name counts:
+  a forged `X-Forwarded-Host` only puts a request under that host's stricter rules."
+  [request]
+  (boolean
+   (when-let [preview-host (some-> (config/config-str :mb-permission-preview-host) u.http/host-name)]
+     (some #{preview-host} (host-names request)))))
+
 (defn cookie-header-entries
   "The `[name value]` pairs of `request`'s `Cookie` header in order, or nil when it has none. Ring's `:cookies` keeps
   only the last value of a name, and also splits on `,`, which a value may contain; a browser separates cookies with

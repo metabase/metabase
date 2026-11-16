@@ -1,7 +1,11 @@
 (ns metabase-enterprise.permission-debug.preview-session
-  "Preview sessions: a `core_session` row for the previewed person, whose token the troubleshooting page hands to the
-  frame that renders the item with the SDK. The frame sends it as `X-Metabase-Session: mb_preview_<key>`, which wins
-  over the admin's own cookie on the same origin.
+  "Preview sessions: a `core_session` row for the previewed person, for the frame that renders the item with the SDK.
+  Two modes, never interchangeable:
+
+  - `:header`: the troubleshooting page hands the frame the token, which it sends as
+    `X-Metabase-Session: mb_preview_<key>`, winning over the admin's own cookie on the same origin;
+  - `:host`: on the preview host (`MB_PERMISSION_PREVIEW_HOST`) the frame carries the key in the host-only cookie
+    `metabase.PREVIEW_SESSION`, the only credential that host reads.
 
   `POST /preview/session` starts one for the admin's browser session. It is read-only like the header preview, its
   audit rows name the admin, it expires 30 minutes after it was last renewed (each request renews it once it has less
@@ -38,37 +42,61 @@
 (defonce ^:private session-admins (atom {}))
 
 (defn- key-hash
-  [session-key]
-  (session/hash-session-key (str "permission-preview." session-key)))
+  "The `key_hashed` of a preview session's key, derived per mode, so a cookie's key replayed as a header token (or the
+  other way round) matches no row."
+  [mode session-key]
+  (session/hash-session-key (str (case mode
+                                   :header "permission-preview."
+                                   :host   "permission-preview-host.")
+                                 session-key)))
 
 (defn- expires-at
   []
   (t/plus (t/offset-date-time) (t/minutes lifetime-minutes)))
 
-(defn start-session!
-  "Start a preview session as `user-id` for `admin-id`, bound to the admin session whose `key_hashed` is
-  `admin-key-hash`. Returns `{:session-id :session-token :expires-at}`, the expiry in epoch seconds."
-  [admin-id admin-key-hash user-id]
+(defn- create-session!
+  [mode admin-id admin-key-hash user-id]
   (let [session-id  (session/generate-session-id)
         session-key (session/generate-session-key)
         expiry      (expires-at)]
-    (permission-debug.db/insert-preview-session! session-id user-id (key-hash session-key) expiry)
-    (swap! session-admins assoc session-id {:admin-id admin-id :admin-key-hash admin-key-hash})
-    (log/infof "Admin %d started preview session %s as user %d" admin-id session-id user-id)
-    {:session-id    session-id
-     :session-token (str token-prefix session-key)
-     :expires-at    (.toEpochSecond ^java.time.OffsetDateTime expiry)}))
+    (permission-debug.db/insert-preview-session! session-id user-id (key-hash mode session-key) expiry)
+    (swap! session-admins assoc session-id {:admin-id admin-id :admin-key-hash admin-key-hash :mode mode})
+    (log/infof "Admin %d started %s preview session %s as user %d" admin-id (name mode) session-id user-id)
+    {:session-id  session-id
+     :session-key session-key
+     :expires-at  (.toEpochSecond ^java.time.OffsetDateTime expiry)}))
+
+(defn start-session!
+  "Start a header preview session as `user-id` for `admin-id`, bound to the admin session whose `key_hashed` is
+  `admin-key-hash`. Returns `{:session-id :session-token :expires-at}`, the expiry in epoch seconds."
+  [admin-id admin-key-hash user-id]
+  (let [{:keys [session-key] :as started} (create-session! :header admin-id admin-key-hash user-id)]
+    (-> started
+        (dissoc :session-key)
+        (assoc :session-token (str token-prefix session-key)))))
+
+(defn- end-sessions!
+  [admin-id session-ids]
+  (let [owned (filter #(= admin-id (:admin-id (get @session-admins %))) session-ids)]
+    (when (seq owned)
+      (permission-debug.db/delete-preview-sessions! (vec owned))
+      (apply swap! session-admins dissoc owned)
+      (log/infof "Admin %d ended preview sessions %s" admin-id (str/join ", " owned)))))
 
 (defn end-session!
-  "Delete the preview session of `session-token` if `admin-id` started it."
+  "Delete the header preview session of `session-token` if `admin-id` started it."
   [admin-id session-token]
   (when-let [session-id (when (str/starts-with? session-token token-prefix)
-                          (some-> (subs session-token (count token-prefix)) key-hash
-                                  permission-debug.db/preview-session :id))]
-    (when (= admin-id (:admin-id (get @session-admins session-id)))
-      (permission-debug.db/delete-preview-sessions! [session-id])
-      (swap! session-admins dissoc session-id)
-      (log/infof "Admin %d ended preview session %s" admin-id session-id)))
+                          (some->> (subs session-token (count token-prefix)) (key-hash :header)
+                                   permission-debug.db/preview-session :id))]
+    (end-sessions! admin-id [session-id]))
+  nil)
+
+(defn end-session-by-id!
+  "Delete the preview session with `session-id` (a preview host's, whose key the admin's page never sees) if `admin-id`
+  started it."
+  [admin-id session-id]
+  (end-sessions! admin-id [session-id])
   nil)
 
 ;;; ------------------------------------------------ Requests ------------------------------------------------
@@ -89,15 +117,22 @@
     (permission-debug.db/renew-preview-session! id (expires-at))))
 
 (defenterprise preview-session-request
-  "EE implementation: run a request that carries a preview session token as its user, read-only, with the admin who
-  started it bound for the audit log, or refuse it (403, with an `error_code`). Never falls back to the admin."
+  "EE implementation: run a request that carries a preview session (a header token, or on the preview host its
+  cookie) as its user, read-only, with the admin who started it bound for the audit log, or refuse it (403, with an
+  `error_code`). Never falls back to the admin."
   :feature :advanced-permissions
   [{:keys [uri request-method] :as request}]
-  (let [row                                        (some-> request :metabase/preview-session :session-key key-hash
-                                                           permission-debug.db/preview-session)
+  (let [{:keys [session-key host?]}                 (:metabase/preview-session request)
+        mode                                        (if host? :host :header)
+        row                                         (some->> session-key (key-hash mode)
+                                                             permission-debug.db/preview-session)
         {:keys [admin-id admin-key-hash] :as owner} (some->> row :id (get @session-admins))]
     (cond
-      (or (nil? row) (nil? owner))
+      ;; the preview host's document and assets load signed out until the cookie is set; its API never does
+      (and host? (nil? session-key) (not (str/starts-with? uri "/api/")))
+      {:request request}
+
+      (or (nil? row) (nil? owner) (not= mode (:mode owner)))
       (refusal "preview-session-invalid" "This preview session doesn't exist.")
 
       (:ended_at row)

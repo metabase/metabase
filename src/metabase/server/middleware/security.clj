@@ -671,6 +671,10 @@
   data-app iframe: `'self'` when same-origin, the site URL when served from the isolated origin."
   [request]
   (cond
+    ;; the troubleshooting page (EE) on the site URL frames the preview host, and nothing else may
+    (request/permission-preview-host-request? request)
+    :main-app
+
     ;; Both before the broader `embed?`, which `/embed/...` also matches.
     (request/embedded-data-app? request)
     :any

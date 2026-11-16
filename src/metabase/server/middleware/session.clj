@@ -84,17 +84,31 @@
       (seq session)
       (assoc request :metabase-session-key session))))
 
+(def ^:private preview-host-session-cookie
+  "The preview host's own session cookie (EE `permission-debug.preview-session`), host-only, so the main host never
+  receives it."
+  "metabase.PREVIEW_SESSION")
+
+(defmethod wrap-session-key-with-strategy :preview-host
+  [_ {:keys [cookies], :as request}]
+  ;; on the preview host the preview cookie is the only credential, even when there is none
+  (when (request/permission-preview-host-request? request)
+    (assoc request :metabase/preview-session {:session-key (not-empty (get-in cookies [preview-host-session-cookie :value]))
+                                              :host?       true})))
+
 (defmethod wrap-session-key-with-strategy :best
   [_ request]
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:header :embedded-cookie :normal-cookie]))
+   [:preview-host :header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
-  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
+
+  On the permission preview host (EE) only the preview cookie counts, under `:metabase/preview-session`."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-key-with-strategy :best request)
