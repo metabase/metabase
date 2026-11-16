@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -134,3 +135,11 @@
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
+  "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

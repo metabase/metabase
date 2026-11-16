@@ -136,7 +136,8 @@
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
-  {:scope :unchecked}
+  {:deprecated true
+   :scope :unchecked}
   []
   {:message "pong"})
 
@@ -164,7 +165,8 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:scope metabot/agent-search
+  {:deprecated true
+   :scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"
            :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
@@ -266,7 +268,8 @@
   matching `::lib.schema/external-query` \u2014 see the `construct_notebook_query` tool
   documentation for the format reference. Returns a base64-encoded MBQL query that can be
   executed via /v1/execute or paginated via /v2/query."
-  {:scope metabot/agent-query-construct
+  {:deprecated true
+   :scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            ;; Condensed inline summary so LLMs see the shape directly in `tools/list`. Full
            ;; grammar lives in the `construct_notebook_query` tool prompt.
@@ -341,7 +344,8 @@
   This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
   MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
   handle produced here is for saving, not for /v2/query execution."
-  {:scope metabot/agent-sql-construct
+  {:deprecated true
+   :scope metabot/agent-sql-construct
    :tool  {:name "construct_native_query"
            :description (str "Construct a native (raw SQL) query for the given database. Returns "
                              "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
@@ -545,7 +549,8 @@
   Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
-  {:scope metabot/agent-query
+  {:deprecated true
+   :scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
@@ -625,7 +630,8 @@
   - On failure: {:status :failed :error \"message\" ...}
 
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
-  {:scope metabot/agent-query-execute
+  {:deprecated true
+   :scope metabot/agent-query-execute
    :tool  {:name "execute_query"
            :description (str "Execute a previously constructed query and return raw results with column metadata, "
                              "row count, and execution time. Use this when the user explicitly asks for raw data, "
@@ -657,7 +663,8 @@
   Requires the user to have native-query permission on the target database; the QP
   middleware enforces this. The instance-level `mcp-execute-sql-enabled` setting
   must also be on (it is by default)."
-  {:scope metabot/agent-sql-execute
+  {:deprecated true
+   :scope metabot/agent-sql-execute
    :tool  {:name "execute_sql"
            :description (str "Execute a raw SQL query against a Metabase-connected database. "
                              "Use this ONLY when MBQL via construct_query cannot express the question. "
@@ -731,7 +738,8 @@
   loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
   A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
   that did read. Each request accepts up to five URIs; oversized batches return 400 before any reads."
-  {:scope metabot/agent-resource-read
+  {:deprecated true
+   :scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description metabot-resources/agent-api-description}}
   [_route-params
@@ -950,7 +958,8 @@
   The response `collection_path` is the saved location.
 
   Saving a native (raw SQL) query requires native-query permission on the target database."
-  {:scope metabot/agent-question-create
+  {:deprecated true
+   :scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the `query_handle` returned by `construct_query` (MBQL) or "
@@ -1014,7 +1023,8 @@
   If `collection_id` is omitted the metric is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-metric-create
+  {:deprecated true
+   :scope metabot/agent-metric-create
    :tool  {:name "create_metric"
            :description (str "Save a query as a reusable metric in Metabase. "
                              "Pass the `query_handle` returned by `construct_query`. "
@@ -1068,7 +1078,8 @@
   Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying
   query; the replacement must still be a valid metric (exactly one aggregation, at most one
   date/datetime grouping). The target card must be a metric — use `update_question` for questions."
-  {:scope metabot/agent-metric-update
+  {:deprecated true
+   :scope metabot/agent-metric-update
    :tool  {:name "update_metric"
            :description (str "Update a saved metric. Patch semantics - only fields you pass are changed. "
                              "To move a metric to a different collection, set collection_id. "
@@ -1126,7 +1137,8 @@
   Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
   string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
   native-query permission on the target database."
-  {:scope metabot/agent-question-update
+  {:deprecated true
+   :scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
@@ -1162,7 +1174,8 @@
   Parameterized questions are NOT supported: if the card declares parameters or input
   template tags (field filters / variables), this returns a 400. Run it in Metabase, or
   save a parameterless version."
-  {:scope metabot/agent-question-execute
+  {:deprecated true
+   :scope metabot/agent-question-execute
    :tool  {:name "execute_question"
            :description (str "Run a saved question by id and return its rows with column metadata, "
                              "row count, and execution time. Use this to get the current results of "
@@ -1236,7 +1249,8 @@
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-dashboard-create
+  {:deprecated true
+   :scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
@@ -1533,7 +1547,8 @@
   `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
   order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
   for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
-  {:scope metabot/agent-dashboard-update
+  {:deprecated true
+   :scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
                              "Set collection_id to move it. "
@@ -1653,7 +1668,8 @@
 
   Pass `parent_collection_id` to nest under another collection; omit for a root-level collection.
   The caller must have write access to the parent (or root, if no parent given)."
-  {:scope metabot/agent-collection-create
+  {:deprecated true
+   :scope metabot/agent-collection-create
    :tool  {:name "create_collection"
            :description (str "Create a new collection in Metabase. "
                              "Set parent_collection_id to nest under another collection; "

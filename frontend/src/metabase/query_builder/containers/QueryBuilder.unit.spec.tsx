@@ -21,6 +21,7 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_NATIVE_CARD_DATASET,
+  TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   setup,
@@ -167,6 +168,64 @@ describe("QueryBuilder", () => {
         ),
       ).toBeInTheDocument();
       expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
+  });
+
+  describe("archived question", () => {
+    const getHeaderActionPanel = () =>
+      screen.getByTestId("qb-header-action-panel");
+
+    it("shows the editing actions of a question that is not archived", async () => {
+      await setup({ card: { ...TEST_STRUCTURED_CARD, archived: false } });
+
+      expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
+      const actionPanel = getHeaderActionPanel();
+      expect(within(actionPanel).getByText("Filter")).toBeInTheDocument();
+      expect(within(actionPanel).getByText("Summarize")).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByTestId("notebook-button"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByLabelText("bookmark icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByLabelText("ellipsis icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByTestId("sharing-menu-button"),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("view-footer")).getByText("Visualization"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the archive banner and hides the editing actions of an archived question", async () => {
+      await setup({ card: { ...TEST_STRUCTURED_CARD, archived: true } });
+
+      expect(screen.getByTestId("archive-banner")).toBeInTheDocument();
+      expect(
+        screen.getByText("This question is in the trash."),
+      ).toBeInTheDocument();
+      const actionPanel = getHeaderActionPanel();
+      expect(within(actionPanel).queryByText("Filter")).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByText("Summarize"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByTestId("notebook-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByLabelText("bookmark icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByLabelText("ellipsis icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("view-footer")).queryByText("Visualization"),
+      ).not.toBeInTheDocument();
     });
   });
 

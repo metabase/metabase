@@ -84,7 +84,7 @@
              module->uses))
 
 (defn- module-node
-  "One module's config as the plain data the page consumes."
+  "One module's config as the plain data the page consumes. Its fields are part of what [[explorer-data]] publishes."
   [modules-config module->uses used-by module]
   (let [{:keys [api uses friends] :as entry} (get modules-config module)
         source-dir (modules/module-dir modules-config module "src")]
@@ -276,7 +276,11 @@
       (update :strong-bridges #(mapv (partial mapv str) %))))
 
 (defn explorer-data
-  "The data embedded in the page.
+  "The data embedded in the page, which `./bin/mage modules-tree --json` also writes for the module-explorer site.
+
+  The site refuses data with a field it reads missing or of the wrong type, so renaming or removing a field here
+  needs the same change in `apps/module-explorer/worker/data.ts` of metabase/micro-sites.
+  `mage.modules-test/modules-tree-writes-json-test` holds a copy of the site's checks.
 
   `:stats?` adds per-module source metrics, which take a few seconds.
   `:ns-edges` is a seq of `[consumer producer namespace]` string triples.

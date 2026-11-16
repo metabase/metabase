@@ -775,7 +775,7 @@
 
 (defmethod remote-sync/spec :model/Action
   [_model]
-  {:parent               (fn [{:keys [model_id]}] (some->> model_id (vector :model/Card)))
+  {:synced-items         actions.db/synced-action-items
    :synced-filter-clause actions.db/synced-actions-clause})
 
 (defmethod remote-sync/spec :model/QueryAction

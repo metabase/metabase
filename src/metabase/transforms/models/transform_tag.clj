@@ -132,5 +132,6 @@
 
 (defmethod remote-sync/spec :model/TransformTag
   [_model]
-  {:synced-filter-clause   transforms.db/synced-transform-tags-clause
+  {:synced-items           transforms.db/synced-transform-tag-items
+   :synced-filter-clause   transforms.db/synced-transform-tags-clause
    :built-in-filter-clause transforms.db/built-in-transform-tags-clause})

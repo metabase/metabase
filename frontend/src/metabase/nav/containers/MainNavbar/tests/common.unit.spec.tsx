@@ -4,9 +4,11 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockBookmark,
   createMockCard,
+  createMockCollection,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
@@ -521,6 +523,114 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Nested collection/i }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("trash", () => {
+    const TRASH_COLLECTION = createMockCollection({
+      id: 20000000,
+      name: "Trash",
+      type: "trash",
+      // The trash link must not become expandable, even if the API returns
+      // children for it.
+      children: [
+        createMockCollection({ id: 30, name: "Trashed child", archived: true }),
+      ],
+    });
+
+    const TRASHED_COLLECTION = createMockCollection({
+      id: 5,
+      name: "Trashed collection",
+      archived: true,
+    });
+
+    const getTrashItem = () => screen.getByRole("treeitem", { name: /Trash/i });
+    const getRegularCollectionItem = () =>
+      screen.getByRole("treeitem", { name: /Test collection/i });
+
+    it("should show the trash as the last collection link, without an expand toggle", async () => {
+      await setup({ trashCollection: TRASH_COLLECTION });
+
+      const collectionLinks = screen.getAllByTestId(
+        "sidebar-collection-link-root",
+      );
+      const trashLink = collectionLinks.at(-1);
+      expect(trashLink).toHaveTextContent("Trash");
+      expect(collectionLinks.at(0)).not.toHaveTextContent("Trash");
+      expect(
+        within(checkNotNull(trashLink)).getByLabelText("chevronright icon"),
+      ).not.toBeVisible();
+      expect(screen.queryByText("Trashed child")).not.toBeInTheDocument();
+    });
+
+    it("should highlight the trash when viewing the trash", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        route: "/trash",
+        pathname: "/trash",
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(
+        screen.getByRole("treeitem", { name: /Our analytics/i }),
+      ).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("should highlight the trash when viewing a trashed collection", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        extraCollections: [TRASHED_COLLECTION],
+        route: "/collection/:slug",
+        pathname: Urls.collection(TRASHED_COLLECTION),
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed dashboard", async () => {
+      const dashboard = createMockDashboard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openDashboard: dashboard,
+        route: "/dashboard/:slug",
+        pathname: `/dashboard/${dashboard.id}`,
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed question", async () => {
+      const card = createMockCard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: `/question/${card.id}`,
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
     });
   });
 

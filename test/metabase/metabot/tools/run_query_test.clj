@@ -972,7 +972,7 @@
                                                                         :type         :snippet
                                                                         :snippet-name "body"
                                                                         :snippet-id   snippet-id}}}}
-            read-only?     sql-tools/read-only-select?
+            read-only?     (mt/original-fn #'sql-tools/read-only-select?)
             driver-ran-sql (atom [])]
         (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
                                     (fn [driver sql]

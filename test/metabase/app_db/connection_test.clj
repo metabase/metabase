@@ -136,7 +136,7 @@
 
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
-    (with-open [conn (.getConnection mdb.connection/*application-db*)]
+    (with-open [conn (.getConnection ^javax.sql.DataSource (mdb.connection/current-application-db))]
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
@@ -920,7 +920,7 @@
     (let [data-source (mdb.data-source/raw-connection-string->DataSource
                        "jdbc:h2:mem:quartz-lock-test;DB_CLOSE_DELAY=-1")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (binding [mdb.connection/*application-db* app-db]
+      (mdb.connection/with-application-db app-db
         (let [quartz-ds                    (mdb.connection/quartz-data-source)
               ^ReentrantReadWriteLock lock (:lock app-db)]
           (.. lock writeLock lock)

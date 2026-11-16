@@ -109,7 +109,8 @@
     [:id                   ::lib.schema.id/collection]
     [:can_write            {:optional true} :boolean]
     [:is_personal          {:optional true} [:maybe :boolean]]
-    [:effective_location   {:optional true} [:maybe :string]]]])
+    [:effective_location   {:optional true} [:maybe :string]]
+    [:effective_ancestors  {:optional true} [:sequential [:ref ::collection-or-root]]]]])
 
 (mr/def ::root-collection
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."

@@ -605,3 +605,9 @@
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
+
+(mu/defn synced-collection-items :- [:sequential ::collections.schema/collection]
+  "The Collections with `ids`, with their ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (-> (t2/select [:model/Collection :id :name :type :location] :id [:in ids])
+      (t2/hydrate :effective_ancestors)))

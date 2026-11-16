@@ -152,7 +152,7 @@ describe("CollectionMenu", () => {
 
       expect(
         fetchMock.callHistory.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(0);

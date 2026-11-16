@@ -21,6 +21,7 @@ import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
 import type { StoreDashboard } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  ClickBehavior,
   CollectionItem,
   Dashboard,
   DashboardCustomDestinationClickBehavior,
@@ -82,19 +83,19 @@ const COLLECTIONS = [ROOT_COLLECTION, PUBLIC_COLLECTION, PERSONAL_COLLECTION];
 interface SetupOpts {
   clickBehavior: EntityCustomDestinationClickBehavior;
   dashboard: Dashboard;
+  targetDashboard?: Dashboard;
   searchResults?: SearchResult[];
   collectionItems?: CollectionItem[];
-  targetDashboard?: Dashboard;
 }
 
 function setup({
   clickBehavior,
   dashboard,
+  targetDashboard,
   searchResults = [],
   collectionItems = [],
-  targetDashboard,
 }: SetupOpts) {
-  const updateSettings = jest.fn();
+  const updateSettings = jest.fn<void, [Partial<ClickBehavior>]>();
   mockGetBoundingClientRect();
   if (targetDashboard) {
     setupDashboardEndpoints(targetDashboard);
@@ -300,47 +301,6 @@ describe("LinkedEntityPicker", () => {
     });
   });
 
-  describe("link to a dashboard with tabs", () => {
-    const FIRST_TAB = createMockDashboardTab({ id: 1, name: "first-tab" });
-    const SECOND_TAB = createMockDashboardTab({ id: 2, name: "second-tab" });
-    const targetDashboard = createMockDashboard({
-      id: getNextId(),
-      name: "Target dashboard",
-      tabs: [FIRST_TAB, SECOND_TAB],
-    });
-
-    it("defaults to the first tab and lets the user pick another tab (metabase#39319)", async () => {
-      const clickBehavior: DashboardCustomDestinationClickBehavior = {
-        type: "link",
-        linkType: "dashboard",
-        targetId: targetDashboard.id,
-        parameterMapping: {},
-      };
-      const { updateSettings } = setup({
-        clickBehavior,
-        dashboard: createMockDashboard(),
-        targetDashboard,
-      });
-
-      const tabSelect = await screen.findByLabelText("Select a dashboard tab");
-      expect(tabSelect).toHaveValue(FIRST_TAB.name);
-      expect(updateSettings).toHaveBeenLastCalledWith({
-        ...clickBehavior,
-        tabId: FIRST_TAB.id,
-      });
-
-      await userEvent.click(tabSelect);
-      await userEvent.click(
-        await screen.findByRole("option", { name: SECOND_TAB.name }),
-      );
-
-      expect(updateSettings).toHaveBeenLastCalledWith({
-        ...clickBehavior,
-        tabId: SECOND_TAB.id,
-      });
-    });
-  });
-
   describe("link to a saved question", () => {
     const clickBehavior: QuestionCustomDestinationClickBehavior = {
       type: "link",
@@ -483,6 +443,161 @@ describe("LinkedEntityPicker", () => {
           expect(params).toContain("q");
           expect(params).not.toContain("filter_items_in_personal_collection");
         });
+      });
+    });
+  });
+
+  describe("link to a dashboard tab", () => {
+    const FIRST_TAB = createMockDashboardTab({ id: 900, name: "first" });
+    const SECOND_TAB = createMockDashboardTab({ id: 901, name: "second" });
+    const THIRD_TAB = createMockDashboardTab({ id: 902, name: "third" });
+    const REMOVED_TAB_ID = 999;
+
+    const sourceDashboard = createMockDashboard({
+      id: getNextId(),
+      collection: PUBLIC_COLLECTION,
+    });
+
+    const getClickBehavior = (
+      targetDashboard: Dashboard,
+      tabId: number | undefined,
+    ): DashboardCustomDestinationClickBehavior => ({
+      type: "link",
+      linkType: "dashboard",
+      targetId: targetDashboard.id,
+      tabId,
+      parameterMapping: {},
+    });
+
+    it("should select the first tab when no tab has been saved", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, undefined);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      expect(
+        await screen.findByLabelText("Select a dashboard tab"),
+      ).toHaveValue(FIRST_TAB.name);
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: FIRST_TAB.id,
+      });
+      expect(
+        screen.queryByText("The selected tab is no longer available"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should let the user pick another tab", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, FIRST_TAB.id);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      await userEvent.click(
+        await screen.findByLabelText("Select a dashboard tab"),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: SECOND_TAB.name }),
+      );
+
+      expect(updateSettings).toHaveBeenCalledTimes(1);
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: SECOND_TAB.id,
+      });
+    });
+
+    it("should show an error and let the user pick a new tab when the saved tab has been removed and several tabs are left", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, REMOVED_TAB_ID);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      expect(
+        await screen.findByText("The selected tab is no longer available"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Select a dashboard tab")).toHaveValue("");
+      expect(updateSettings).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByLabelText("Select a dashboard tab"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: SECOND_TAB.name }),
+      );
+
+      expect(updateSettings).toHaveBeenCalledTimes(1);
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: SECOND_TAB.id,
+      });
+    });
+
+    it("should clear the tab when the saved tab has been removed and the target dashboard has no tabs", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, REMOVED_TAB_ID);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      expect(
+        await screen.findByText(
+          "Pass values to this dashboard's filters (optional)",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Select a dashboard tab"),
+      ).not.toBeInTheDocument();
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: undefined,
+      });
+    });
+
+    it("should fall back to the only tab when the saved tab has been removed and one tab is left", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [FIRST_TAB],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, REMOVED_TAB_ID);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      expect(
+        await screen.findByText(
+          "Pass values to this dashboard's filters (optional)",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Select a dashboard tab"),
+      ).not.toBeInTheDocument();
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: FIRST_TAB.id,
       });
     });
   });
