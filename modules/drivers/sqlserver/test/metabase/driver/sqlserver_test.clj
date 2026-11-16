@@ -9,6 +9,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -1629,12 +1630,21 @@
               (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))))
           (is (= {:logins 1, :users 0, :schemas 0} (principal-counts admin-spec ws)))
           (finally
-            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)])))))))
+            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)]))))
+      (testing "a schema made after the existence check fails the init after CREATE LOGIN and CREATE USER ran, and the rollback removes both"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" (:schema ws))])
+          (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals (constantly [])]
+            (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+              (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP SCHEMA [%s]" (:schema ws))])))))))
 
 (defn- recording-connection
-  "A Connection whose batch fails with `batch-error` and whose rollback throws `rollback-error` when it is non-nil.
-  Each JDBC call it gets is appended to `calls` as `[method-name & args]`."
-  ^java.sql.Connection [calls ^Throwable batch-error ^Throwable rollback-error]
+  "A Connection whose batch, rollback and commit throw `batch-error`, `rollback-error` and `commit-error` when each is
+  non-nil. Each JDBC call it gets is appended to `calls` as `[method-name & args]`."
+  ^java.sql.Connection [calls {:keys [^Throwable batch-error ^Throwable rollback-error ^Throwable commit-error]}]
   (letfn [(proxy-of [^Class iface handle]
             (java.lang.reflect.Proxy/newProxyInstance
              (.getClassLoader iface)
@@ -1648,9 +1658,10 @@
                 (case method
                   "createStatement" (proxy-of java.sql.Statement
                                               (fn [method]
-                                                (when (= "executeBatch" method)
+                                                (when (and (= "executeBatch" method) batch-error)
                                                   (throw batch-error))))
                   "rollback"        (when rollback-error (throw rollback-error))
+                  "commit"          (when commit-error (throw commit-error))
                   nil)))))
 
 (deftest ^:synchronized init-workspace-isolation-rollback-failure-test
@@ -1663,8 +1674,8 @@
                                  sql-jdbc.execute/do-with-connection-with-options
                                  (fn [_driver _db _options f]
                                    (f (recording-connection calls
-                                                            (java.sql.SQLException. "batch failed" "S0001" 15025)
-                                                            rollback-error)))]
+                                                            {:batch-error    (java.sql.SQLException. "batch failed" "S0001" 15025)
+                                                             :rollback-error rollback-error})))]
                      (driver/init-workspace-isolation! :sqlserver database ws)))]
     (testing "after a successful rollback, autocommit is restored"
       (let [calls (atom [])]
@@ -1681,6 +1692,78 @@
                     (mapcat #(.getSuppressed ^Throwable %) (take-while some? (iterate ex-cause e))))))
         (is (= [["rollback"] ["discard"]]
                (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))))
+
+(deftest ^:synchronized init-workspace-isolation-marks-errors-before-commit-test
+  (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
+        database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+        init!    (fn [existing-principals errors]
+                   (with-redefs [sqlserver/existing-workspace-principals existing-principals
+                                 sql-jdbc.execute/do-with-connection-with-options
+                                 (fn [_driver _db _options f]
+                                   (f (recording-connection (atom []) errors)))]
+                     (driver/init-workspace-isolation! :sqlserver database ws)))]
+    (testing "an error from the existence check, before any DDL, says that there is nothing to tear down"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (init! (fn [& _] (throw (java.sql.SQLException. "Connection reset" "08S01" 0))) {})))]
+        (is (=? {:workspace/cleanup? false} (ex-data e)))
+        (is (= "Connection reset" (ex-message e)))))
+    (testing "an init DDL statement that fails rolls the transaction back, so there is nothing to tear down"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (init! (constantly [])
+                                  {:batch-error (java.sql.SQLException. "permission denied" "S0001" 15247)})))]
+        (is (=? {:workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "permission denied"))))
+    (testing "a failed COMMIT may have committed, so the error does not say there is nothing to tear down"
+      (let [e (is (thrown? Exception
+                           (init! (constantly [])
+                                  {:commit-error (java.sql.SQLException. "Connection reset" "08S01" 0)})))]
+        (is (not (contains? (ex-data e) :workspace/cleanup?)))
+        (is (= "Connection reset" (ex-message e)))))))
+
+(deftest ^:synchronized provision-after-a-failed-existence-check-keeps-same-named-objects-test
+  (mt/test-driver :sqlserver
+    (testing "when init's existence check fails, provisioning does not tear down, so another workspace's login, schema and table survive"
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "sqlserver-existence-check" :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
+                                                            :database_id      (mt/id)
+                                                            :input_schemas    ["dbo"]
+                                                            :database_details {}
+                                                            :status           :provisioning}]
+        (let [database    (mt/db)
+              admin-spec  (sql-jdbc.conn/connection-details->spec :sqlserver (:details database))
+              ws          (ws.provisioning/details ws.provisioning/dispatching-provisioner :sqlserver database
+                                                   {:id wsd-id :name (str "wsd-" wsd-id)})
+              user        (-> ws :database_details :user)
+              schema      (:schema ws)
+              destroyed   (atom 0)
+              provisioner (reify ws.provisioning/Provisioner
+                            (details [_ driver db workspace]
+                              (ws.provisioning/details ws.provisioning/dispatching-provisioner driver db workspace))
+                            (init! [_ driver db workspace]
+                              (ws.provisioning/init! ws.provisioning/dispatching-provisioner driver db workspace))
+                            (grant! [_ driver db workspace schemas]
+                              (ws.provisioning/grant! ws.provisioning/dispatching-provisioner driver db workspace schemas))
+                            (destroy! [_ driver db workspace]
+                              (swap! destroyed inc)
+                              (ws.provisioning/destroy! ws.provisioning/dispatching-provisioner driver db workspace)))]
+          (try
+            (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+            (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" schema)])
+            (jdbc/execute! admin-spec [(format "CREATE TABLE [%s].[kept] (id INT)" schema)])
+            (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals
+                                        (fn [& _] (throw (java.sql.SQLException. "Connection reset" "08S01" 0)))]
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (ws.provisioning/provision-workspace-database! wsd-id provisioner)))]
+                (is (=? {:workspace/cleanup? false} (ex-data e)))))
+            (is (zero? @destroyed))
+            (is (= {:logins 1, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+            (is (= [{:n 1}]
+                   (jdbc/query admin-spec ["SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID(?) AND name = 'kept'"
+                                           schema])))
+            (finally
+              (jdbc/execute! admin-spec [(format "IF OBJECT_ID(N'[%s].[kept]') IS NOT NULL DROP TABLE [%s].[kept]" schema schema)])
+              (jdbc/execute! admin-spec [(format "IF SCHEMA_ID(N'%s') IS NOT NULL DROP SCHEMA [%s]" schema schema)])
+              (jdbc/execute! admin-spec [(format "IF SUSER_ID(N'%s') IS NOT NULL DROP LOGIN [%s]" user user)]))))))))
 
 (deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
   (mt/test-driver :sqlserver

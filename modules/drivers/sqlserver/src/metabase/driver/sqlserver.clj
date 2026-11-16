@@ -1412,51 +1412,67 @@
      ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
      (format "GRANT CREATE TABLE TO %s" quoted-user)]))
 
+(defn- init-error
+  "`t`, from init before its transaction began to commit, marked so the caller does not tear the workspace down. Init
+  creates nothing before its transaction, and the transaction rolls back in full: CREATE LOGIN takes part in the
+  transaction like the database-level statements. A teardown could drop a login, user or schema of the same name that
+  another workspace owns."
+  [t]
+  (if (contains? (ex-data t) :workspace/cleanup?)
+    t
+    (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
+
 (defmethod driver/init-workspace-isolation! :sqlserver
   [driver database workspace]
   (let [schema-name      (:schema workspace)
         {:keys [user password]} (:database_details workspace)
-        escaped-password (sql.u/escape-sql password :ansi)]
-    ;; SQL Server: create login (server level), then user (database level), then schema
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver (driver.u/ensure-lib-database database) {:write? true}
-     (fn [^Connection conn]
-       ;; The names are deterministic from the workspace id, so a login, user or schema of the same name may belong
-       ;; to another workspace, such as one restored from the same backup. Adopting it would hand that workspace's
-       ;; objects and grants to this one, and tearing this one down would drop them.
-       (let [existing (existing-workspace-principals conn user schema-name)]
-         (when (seq existing)
-           (throw (workspace-exists-error (str "SQL Server already has a " (str/join ", " existing) ".") nil))))
-       ;; one transaction, so a failed init leaves nothing behind
-       (.setAutoCommit conn false)
-       (try
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql (workspace-init-sqls user password schema-name)]
-             (.addBatch stmt ^String sql))
-           (.executeBatch stmt))
-         (.commit conn)
-         (catch Throwable t
-           ;; Restore autocommit only after a rollback that succeeded: JDBC commits an open transaction when autocommit
-           ;; is turned back on, which would keep whatever part of the batch succeeded. A failed rollback or reset
-           ;; must not replace the error that caused it, and leaves the connection in a state the pool cannot be
-           ;; trusted to reset, so it is discarded. The reset error is attached to the scrubbed error as suppressed:
-           ;; scrubbing builds new exceptions and copies no suppressed ones.
-           (let [reset-error (try
-                               (.rollback conn)
-                               (.setAutoCommit conn true)
-                               nil
-                               (catch Throwable reset-error
-                                 (sql-jdbc.conn/discard-pooled-connection! conn)
-                                 reset-error))
-                 t           (driver.u/batch-exception t)
-                 scrubbed    (driver.u/scrub-exceptions t [password escaped-password])]
-             (when reset-error
-               (.addSuppressed ^Throwable scrubbed (driver.u/scrub-exceptions reset-error [password escaped-password])))
-             (if (and (instance? java.sql.SQLException t)
-                      (duplicate-object-error-codes (.getErrorCode ^java.sql.SQLException t)))
-               (throw (workspace-exists-error (ex-message scrubbed) scrubbed))
-               (throw scrubbed)))))
-       (.setAutoCommit conn true)))
+        escaped-password (sql.u/escape-sql password :ansi)
+        ;; set just before COMMIT: from then on the transaction may have committed, and its objects need the teardown
+        committing?      (volatile! false)]
+    (try
+      ;; SQL Server: create login (server level), then user (database level), then schema
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         ;; The names are deterministic from the workspace id, so a login, user or schema of the same name may belong
+         ;; to another workspace, such as one restored from the same backup. Adopting it would hand that workspace's
+         ;; objects and grants to this one, and tearing this one down would drop them.
+         (let [existing (existing-workspace-principals conn user schema-name)]
+           (when (seq existing)
+             (throw (workspace-exists-error (str "SQL Server already has a " (str/join ", " existing) ".") nil))))
+         ;; one transaction, so a failed init leaves nothing behind
+         (.setAutoCommit conn false)
+         (try
+           (with-open [^Statement stmt (.createStatement conn)]
+             (doseq [sql (workspace-init-sqls user password schema-name)]
+               (.addBatch stmt ^String sql))
+             (.executeBatch stmt))
+           (vreset! committing? true)
+           (.commit conn)
+           (catch Throwable t
+             ;; Restore autocommit only after a rollback that succeeded: JDBC commits an open transaction when autocommit
+             ;; is turned back on, which would keep whatever part of the batch succeeded. A failed rollback or reset
+             ;; must not replace the error that caused it, and leaves the connection in a state the pool cannot be
+             ;; trusted to reset, so it is discarded. The reset error is attached to the scrubbed error as suppressed:
+             ;; scrubbing builds new exceptions and copies no suppressed ones.
+             (let [reset-error (try
+                                 (.rollback conn)
+                                 (.setAutoCommit conn true)
+                                 nil
+                                 (catch Throwable reset-error
+                                   (sql-jdbc.conn/discard-pooled-connection! conn)
+                                   reset-error))
+                   t           (driver.u/batch-exception t)
+                   scrubbed    (driver.u/scrub-exceptions t [password escaped-password])]
+               (when reset-error
+                 (.addSuppressed ^Throwable scrubbed (driver.u/scrub-exceptions reset-error [password escaped-password])))
+               (if (and (instance? java.sql.SQLException t)
+                        (duplicate-object-error-codes (.getErrorCode ^java.sql.SQLException t)))
+                 (throw (workspace-exists-error (ex-message scrubbed) scrubbed))
+                 (throw scrubbed)))))
+         (.setAutoCommit conn true)))
+      (catch Throwable t
+        (throw (if @committing? t (init-error t)))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
