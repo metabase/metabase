@@ -127,7 +127,7 @@
                                                        :collection_id (:id synced)}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
-                     :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
+                     :model/FieldUserSettings fs      {:field_id (:id field) :description "Synced"}
                      :model/Segment           segment {:table_id   (:id table)
                                                        :name       "Synced segment"
                                                        :definition (let [mp (mt/metadata-provider)]
@@ -135,13 +135,13 @@
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
         (testing "the changes of a table's segments and fields carry their table and its collection in their data"
           (is (=? [{:model "fieldusersettings"
-                    :id    (:id field)
+                    :id    (:id fs)
                     :data  {:field {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}}
                    {:model "segment"
                     :id    (:id segment)
                     :data  {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}]
                   (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
-                       (filter (comp #{(:id field) (:id segment)} :id))
+                       (filter (comp #{["fieldusersettings" (:id fs)] ["segment" (:id segment)]} (juxt :model :id)))
                        (filter (comp #{"fieldusersettings" "segment"} :model))
                        (sort-by :model)))))))))
 

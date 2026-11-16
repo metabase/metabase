@@ -28,7 +28,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -67,7 +67,7 @@
                                        (when (= (keyword filter-option) :mine)
                                          api/*current-user-id*)) <>
     (t2/hydrate <> :creator)
-    (filter mi/can-read? <>)))
+    (filterv mi/can-read? (t2/hydrate <> :can_read))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -98,11 +98,14 @@
   [dashboard]
   (m/update-existing dashboard :dashcards
                      (fn [dashcards]
-                       (mapv (fn [dashcard]
-                               (cond-> dashcard
-                                 (and (:action dashcard) (not (mi/can-read? (:action dashcard))))
-                                 (dissoc :action)))
-                             dashcards))))
+                       (let [readable (into #{}
+                                            (comp (filter mi/can-read?) (map :id))
+                                            (t2/hydrate (keep :action dashcards) :can_read))]
+                         (mapv (fn [dashcard]
+                                 (cond-> dashcard
+                                   (and (:action dashcard) (not (contains? readable (:id (:action dashcard)))))
+                                   (dissoc :action)))
+                               dashcards)))))
 
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
@@ -115,8 +118,8 @@
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (cond->>  [[:dashcards
-                  [:card :can_write [:moderation_reviews :moderator_details]]
-                  [:series :can_write]
+                  [:card :can_read :can_write [:moderation_reviews :moderator_details]]
+                  [:series :can_read :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
                  :creator
@@ -155,13 +158,20 @@
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
+(defn- read-check-all
+  "Throws unless the current user can read every row of `rows`, in the order of `ids`, with a 404 for an id without a row."
+  [rows ids]
+  (let [id->row (into {} (map (juxt :id identity)) (t2/hydrate rows :can_read))]
+    (doseq [id ids]
+      (api/read-check (get id->row id)))))
+
 (defn- check-new-references
   [stored dashboard]
-  (let [new-references (references dashboard)]
-    (doseq [card-id (set/difference (:cards new-references) (:cards stored))]
-      (api/read-check :model/Card card-id))
-    (doseq [action-id (set/difference (:actions new-references) (:actions stored))]
-      (api/read-check :model/Action action-id))))
+  (let [new-references (references dashboard)
+        card-ids       (vec (set/difference (:cards new-references) (:cards stored)))
+        action-ids     (vec (set/difference (:actions new-references) (:actions stored)))]
+    (read-check-all (dashboards-rest.db/cards-by-ids card-ids) card-ids)
+    (read-check-all (dashboards-rest.db/actions-by-ids action-ids) action-ids)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -441,7 +451,10 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards) :can_read))
+        readable? (fn [card] (and (mi/model card) (contains? readable-ids (:id card))))
         card->decision (fn [parent-card card]
                          (cond
                            (or
@@ -880,7 +893,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]])
 
@@ -1175,10 +1188,9 @@
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
    _body]
   (with-dashboard-load-id dashboard-load-id
-    (perms/with-relevant-permissions-for-user api/*current-user-id*
-      (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
-            dashboard (get-dashboard resolved-id)]
-        (queries/batch-fetch-dashboard-metadata [dashboard])))))
+    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+          dashboard (get-dashboard resolved-id)]
+      (queries/batch-fetch-dashboard-metadata [dashboard]))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -1251,7 +1263,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (def ^:private TransientDashboardCard
   [:map {:closed true}
@@ -1263,7 +1275,7 @@
    [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (def ^:private TransientDashboard
   [:map {:closed true}
@@ -1405,8 +1417,8 @@
    _body]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
-    (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
-      (api/read-check :model/Field field-id))
+    (read-check-all (dashboards-rest.db/fields-by-ids (into [] (remove nil?) (set/union filtered-field-ids filtering-field-ids)))
+                    (set/union filtered-field-ids filtering-field-ids))
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
@@ -1468,11 +1480,8 @@
                 :card      (api/check-404 (dashboards-rest.db/card card-id))
                 :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
+  :- ::qp.streaming/export-response
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 

@@ -1119,7 +1119,7 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                   (mdb/with-application-db (mdb.connection/application-db original-app-db-type data-source)
                      (load-from-h2/load-from-h2! h2-filename)
                      (testing "The defective field should still exist after loading from H2"
                        (is (= #{defective-field-id}
@@ -3066,7 +3066,9 @@
                   "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
-                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+                 (:exectype (liquibase/changelog-by-id
+                             (mdb.connection/current-application-db)
+                             id)))))))))
 
 ;;;
 ;;; 62 tests
@@ -4751,7 +4753,7 @@
         (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
             "065 dropped the column")
         (migrate!)
-        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4"))))
         (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
             "existing rows get a null admin_details")
         (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
@@ -4760,7 +4762,7 @@
     (impl/test-migrations ["h8xlm4"] [migrate!]
       (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
       (migrate!)
-      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4")))))))
 
 (deftest drop-report-card-collection-preview-test
   (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"
@@ -4999,3 +5001,122 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
+
+(deftest backfill-collection-permission-columns-test
+  (impl/test-migrations ["fonded" "fonder"] [migrate!]
+    (let [group-id      (t2/select-one-fn :id :permissions_group {:order-by [[:id :asc]]})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Backfill collection"
+                                                              :slug      "backfill_collection"
+                                                              :entity_id "backfillcollectionxxx"})
+          write-id      (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/" collection-id)})
+          read-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/read/" collection-id)})
+          root-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   "/collection/namespace/backfill/root/"})
+          row           #(t2/select-one [:permissions :collection_id :perm_type :perm_value] :id %)]
+      (migrate!)
+      (testing "write row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read-and-write"}
+               (row write-id))))
+      (testing "read row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read"}
+               (row read-id))))
+      (testing "row of no Collection"
+        (is (= {:collection_id nil :perm_type nil :perm_value nil}
+               (row root-id))))
+      (testing "Trash rows"
+        (let [trash-id (t2/select-one-fn :id :collection :type "trash")]
+          (is (pos? (t2/count :permissions :collection_id trash-id :perm_value "read-and-write")))
+          (is (zero? (t2/count :permissions :collection_id nil :object (format "/collection/%d/" trash-id)))))))))
+
+(deftest user-settings-id-primary-key-test
+  (impl/test-migrations ["zr3x3c" "mjumxg"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "User Settings Id Test DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          insert-table! (fn [table-name]
+                          (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                    :db_id        db-id
+                                                                    :name         table-name
+                                                                    :display_name table-name
+                                                                    :created_at   :%now
+                                                                    :updated_at   :%now}))
+          insert-field! (fn [table-id field-name]
+                          (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                    :name          field-name
+                                                                    :display_name  field-name
+                                                                    :active        true
+                                                                    :base_type     "type/Text"
+                                                                    :database_type "TEXT"
+                                                                    :created_at    :%now
+                                                                    :updated_at    :%now}))
+          table-1       (insert-table! "one")
+          table-2       (insert-table! "two")
+          field-1       (insert-field! table-1 "one")
+          field-2       (insert-field! table-2 "two")]
+      (t2/insert! :metabase_table_user_settings [{:table_id table-1 :display_name "Table One"}
+                                                 {:table_id table-2 :display_name "Table Two"}])
+      (t2/insert! :metabase_field_user_settings [{:field_id field-1 :display_name "Field One"}
+                                                 {:field_id field-2 :display_name "Field Two"}])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their values"
+        (let [table-rows (t2/select :metabase_table_user_settings :table_id [:in [table-1 table-2]])
+              field-rows (t2/select :metabase_field_user_settings :field_id [:in [field-1 field-2]])]
+          (is (= {table-1 "Table One" table-2 "Table Two"}
+                 (into {} (map (juxt :table_id :display_name)) table-rows)))
+          (is (= {field-1 "Field One" field-2 "Field Two"}
+                 (into {} (map (juxt :field_id :display_name)) field-rows)))
+          (is (= 2 (count (into #{} (map :id) table-rows))))
+          (is (= 2 (count (into #{} (map :id) field-rows))))
+          (is (every? pos-int? (map :id (concat table-rows field-rows))))))
+      (testing "new rows get generated ids"
+        (let [table-3 (insert-table! "three")
+              field-3 (insert-field! table-3 "three")]
+          (is (pos-int? (t2/insert-returning-pk! :metabase_table_user_settings {:table_id table-3})))
+          (is (pos-int? (t2/insert-returning-pk! :metabase_field_user_settings {:field_id field-3})))))
+      (testing "one settings row per Table and per Field"
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (is (thrown? Exception (t2/insert! :metabase_field_user_settings {:field_id field-1}))))
+      (testing "settings are deleted with their Table and Field"
+        (t2/delete! :metabase_field :id field-2)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-2)))
+        (t2/delete! :metabase_table :id table-2)
+        (is (not (t2/exists? :metabase_table_user_settings :table_id table-2))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (= {:table_id table-1 :display_name "Table One"}
+               (t2/select-one [:metabase_table_user_settings :table_id :display_name] :table_id table-1)))
+        (is (not (contains? (t2/select-one :metabase_table_user_settings :table_id table-1) :id)))
+        (is (not (contains? (t2/select-one :metabase_field_user_settings :field_id field-1) :id)))
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (t2/delete! :metabase_field :id field-1)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-1)))))))
+
+(deftest osi-ai-context-id-primary-key-test
+  (impl/test-migrations ["xdt6kw" "rcp0pz"] [migrate!]
+    (let [row (fn [entity-type local-id]
+                {:entity_type     entity-type
+                 :entity_local_id local-id
+                 :entity_id       (format "osiaicontext%s%07d" (first entity-type) local-id)
+                 :ai_context      "{}"
+                 :created_at      :%now
+                 :updated_at      :%now})]
+      (t2/insert! :osi_ai_context [(row "table" 1) (row "table" 2) (row "card" 1)])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their keys"
+        (let [rows (t2/select :osi_ai_context)]
+          (is (= #{["table" 1] ["table" 2] ["card" 1]}
+                 (into #{} (map (juxt :entity_type :entity_local_id)) rows)))
+          (is (= 3 (count (into #{} (map :id) rows))))
+          (is (every? pos-int? (map :id rows)))))
+      (testing "new rows get generated ids"
+        (is (pos-int? (t2/insert-returning-pk! :osi_ai_context (row "card" 2)))))
+      (testing "one row per entity"
+        (is (thrown? Exception (t2/insert! :osi_ai_context (row "table" 1)))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (not (contains? (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 1) :id)))
+        (is (thrown? Exception (t2/insert! :osi_ai_context (dissoc (row "table" 1) :entity_id))))))))

@@ -331,7 +331,7 @@
       (t2/update! :model/Card :id card-id
                   {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))})
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? :model/Card card-id))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_read)))))
       (let [parts   (agent-loop-parts! :internal
                                        {:type          "question"
                                         :id            card-id

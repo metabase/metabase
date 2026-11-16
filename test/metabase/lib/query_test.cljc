@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,7 +16,8 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -84,12 +84,8 @@
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
           converted-query (lib.convert/->mbql5
-                           (walk/postwalk
-                            (fn [node]
-                              (if (map? node)
-                                (dissoc node :base-type :effective-type)
-                                node))
-                            (lib.convert/->legacy-MBQL query)))]
+                           (match/replace-all (lib.convert/->legacy-MBQL query)
+                             #'map? (dissoc &match :base-type :effective-type)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
                                                 [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
                                                 [:expression
