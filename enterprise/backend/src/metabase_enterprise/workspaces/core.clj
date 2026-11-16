@@ -477,10 +477,11 @@
   workspace was last updated within [[in-flight-stale-after]]. A create inserts
   all its rows `:provisioning`, then provisions them one at a time. A row whose
   provisioning fails turns `:unprovisioned` before the create's cleanup tears it
-  down, so a recent `:unprovisioned` row counts too. One query checks all three statuses: with one
-  query per status, a row that changes status between the queries could be seen by
-  neither. A running delete sets its rows `:deprovisioning`, so a retry during a
-  delete is refused too."
+  down, so an `:unprovisioned` row counts too while any database of the workspace
+  was last updated within the window. One query checks all three statuses: with
+  one query per status, a row that changes status between the queries could be
+  seen by neither. A running delete sets its rows `:deprovisioning`, so a retry
+  during a delete is refused too."
   [ws-id]
   (when (ws.db/workspace-has-unfinished-databases-since? ws-id
                                                          (t/minus (t/offset-date-time) in-flight-stale-after))
@@ -492,8 +493,9 @@
   delete of the workspace, is still running, see [[assert-create-not-running]]. When the workspace has no databases,
   or a database that is not `:provisioned`, the retry answers 500 with `workspace_id`
   and `cleanup_required`: the create failed and kept the workspace, the create
-  stopped (a crash) more than [[in-flight-stale-after]] ago, or a later delete
-  failed. The key stays taken until the workspace is deleted."
+  stopped (a crash) and no database of the workspace was updated within
+  [[in-flight-stale-after]], or a later delete failed. The key stays taken until
+  the workspace is deleted."
   [ws-id]
   (assert-create-not-running ws-id)
   (let [ws (workspace/get-workspace ws-id)]
