@@ -1039,9 +1039,10 @@
           ;; guarded EXEC); ClickHouse checks privileges regardless, so there
           ;; the batch dies on the namespace statement and never reaches
           ;; CREATE USER. MySQL runs no `IF NOT EXISTS`, so the pre-created
-          ;; namespace does not matter there: its init first reads `mysql.user`
-          ;; to refuse an existing user, and the low-privilege login cannot
-          ;; read it, so init fails before any DDL. On both, the
+          ;; namespace does not matter there: its init first checks that the
+          ;; login can see and end other users' sessions, which the
+          ;; low-privilege login cannot, so init fails with a 412 before any
+          ;; DDL. On both, the
           ;; leak assertion still covers whatever exception surfaces, it just
           ;; can't prove the echo path there.
           (when (#{:postgres :redshift} driver)

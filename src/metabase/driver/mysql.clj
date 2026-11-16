@@ -1573,8 +1573,12 @@
     user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
 
 (defn- kill-user-sessions!
-  "Ends every session of `user`. A session open in a transaction holds metadata locks on the tables it used, and DROP
-  DATABASE waits for them; DROP USER leaves its sessions open."
+  "Ends each session of `user` that the admin login can see (it needs PROCESS) and may end (it needs one of
+  [[kill-privileges]]). Init refuses an admin login without these privileges. When the login has lost one since init,
+  a session it cannot see stays open, and a KILL it may not run is logged and skipped; either session keeps its access
+  until it disconnects. On MariaDB before 10.4, which has no ACCOUNT LOCK, the user can open a new session after the
+  kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them;
+  DROP USER leaves its sessions open."
   [conn ^Statement stmt user]
   (doseq [id (map :id (jdbc/query conn ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?" user]))]
     (try
@@ -1583,10 +1587,13 @@
         (case (.getErrorCode e)
           ;; ER_NO_SUCH_THREAD: the session ended on its own
           1094 nil
-          ;; ER_KILL_DENIED_ERROR: the admin lacks CONNECTION_ADMIN or SUPER. The drops still succeed while the
-          ;; session is idle; DROP DATABASE waits only if it holds a metadata lock.
-          1095 (log/warnf "Cannot end session %d of workspace user %s, so teardown may wait for it: %s"
-                          (long id) user (ex-message e))
+          ;; ER_KILL_DENIED_ERROR: the admin lacks the kill privilege. The drops still succeed while the session is
+          ;; idle; DROP DATABASE waits only if it holds a metadata lock.
+          1095 (log/warnf (str "Cannot end session %d of workspace user %s: the admin connection's login lacks %s. The "
+                               "session keeps its access until it disconnects, and teardown may wait for its locks: %s")
+                          (long id) user
+                          (str/join " or " (kill-privileges (.getMetaData ^Connection (jdbc/db-connection conn))))
+                          (ex-message e))
           (throw e))))))
 
 (defmethod driver/destroy-workspace-isolation! :mysql

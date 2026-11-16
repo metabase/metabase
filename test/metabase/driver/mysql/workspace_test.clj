@@ -233,7 +233,7 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace))))))
 
-(deftest ^:synchronized kill-denied-is-not-thrown-test
+(deftest ^:synchronized kill-denied-is-skipped-and-logged-with-the-missing-privilege-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -249,8 +249,17 @@
         (with-open [_idle (open-session database workspace)
                     conn  (open-session database {:database_details {:user admin :password password}})
                     stmt  (.createStatement conn)]
-          (testing "an idle session the admin may not KILL is skipped instead of thrown"
-            (is (nil? (#'mysql/kill-user-sessions! {:connection conn} stmt (-> workspace :database_details :user))))))
+          (mt/with-log-messages-for-level [messages [metabase.driver.mysql :warn]]
+            (testing "an idle session the admin may not KILL is skipped instead of thrown"
+              (is (nil? (#'mysql/kill-user-sessions! {:connection conn} stmt (-> workspace :database_details :user)))))
+            (testing "the warning names the session, the user, and the privilege the admin login lacks"
+              (is (=? [{:level   :warn
+                        :message (re-pattern (str "^Cannot end session \\d+ of workspace user "
+                                                  (-> workspace :database_details :user)
+                                                  ": the admin connection's login lacks "
+                                                  "(CONNECTION_ADMIN or SUPER|CONNECTION ADMIN or SUPER|CONNECTION ADMIN|SUPER)\\. "
+                                                  "The session keeps its access until it disconnects, .*"))}]
+                      (messages))))))
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace)
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" admin)]))))))
