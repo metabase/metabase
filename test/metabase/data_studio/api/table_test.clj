@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.data-studio.api.table :as api.table]
    [metabase.data-studio.db :as data-studio.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -60,6 +59,15 @@
                             {:table_ids   [table-id]
                              :data_source "ingested"})
       (is (= :metabase-transform (user-table-fn :data_source table-id))))))
+
+(deftest bulk-edit-does-not-accept-metabase-transform-data-source-test
+  (testing "POST /api/data-studio/table/edit does not accept metabase-transform as data_source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id :data_source :ingested}]
+      (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
+                            {:table_ids   [table-id]
+                             :data_source "metabase-transform"})
+      (is (= :ingested (user-table-fn :data_source table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints with advanced-permissions"
@@ -291,7 +299,7 @@
                    :model/Table    {internal-1 :id} {:db_id db-id, :data_layer :internal}
                    :model/Table    {final-1 :id}    {:db_id db-id, :data_layer :final}]
       (let [synced-ids (atom #{})]
-        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
+        (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background! (fn [tables] (reset! synced-ids (set (map :id tables))))]
           (testing "Changing from hidden to final triggers sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"

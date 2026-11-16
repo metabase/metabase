@@ -14,7 +14,6 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -106,7 +105,7 @@
       (traverse-graph downstream-table-ids initial-ids))))
 
 (mr/def ::data-sources
-  (into [:enum {:decode/string keyword}] table/data-sources))
+  (into [:enum {:decode/string keyword}] table/writable-data-sources))
 
 (mr/def ::data-authorities
   (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
@@ -130,26 +129,6 @@
    [:published_downstream_tables [:sequential ::bulk-table-info]]
    [:unpublished_upstream_tables [:sequential ::bulk-table-info]]])
 
-(defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
-  efficiently sync tables from different databases."
-  [newly-unhidden]
-  (when (seq newly-unhidden)
-    (u.jvm/in-virtual-thread*
-     (fn []
-       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (data-studio.db/database db-id)]
-           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-           ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true
-                         driver.settings/*allow-testing-sqlite-connections* true]
-                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
-             (doseq [table tables]
-               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-               (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
-                                       (:id database))))))))))
-
 (defn- writable-tables
   "`tables`, or a 403 unless the current user can change the metadata of every one of them."
   [tables]
@@ -160,8 +139,8 @@
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
   ;; sync any tables that are changed from hidden to something else
-  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :hidden data_layer))
-                          (filter #(= :hidden (:data_layer %)) existing-tables))))
+  (sync/sync-tables-in-background! (when (and (contains? body :data_layer) (not= :hidden data_layer))
+                                     (filter #(= :hidden (:data_layer %)) existing-tables))))
 
 (api.macros/defendpoint :post "/edit" :- [:map {:closed true}]
   "Bulk updating tables."

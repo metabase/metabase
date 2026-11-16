@@ -21,8 +21,11 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :as field])
   (:import
    (java.time.temporal Temporal)))
@@ -99,6 +102,23 @@
       (sync.field-values/update-field-values-for-table! database table)
       (sync-util/set-initial-table-sync-complete! table)
       table)))
+
+(defn sync-tables-in-background!
+  "Syncs `tables` on a background thread, Database by Database, skipping the Databases it cannot connect to."
+  [tables]
+  (when (seq tables)
+    (quick-task/submit-task!
+     (fn []
+       (doseq [[db-id tables] (group-by :db_id tables)]
+         (let [database (sync.db/database db-id)]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning

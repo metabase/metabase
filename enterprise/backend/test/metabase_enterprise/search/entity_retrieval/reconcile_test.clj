@@ -189,7 +189,7 @@
                 (is (= "Sales Orders" (:doc_text (first names))))
                 (is (not= old-name-id (:doc_id (first names)))))))
           (testing "unpublishing the table removes it from the library, GCing all its docs"
-            (t2/update! :model/Table :id table-id {:is_published false})
+            (t2/update! :model/Table :id table-id {:is_published false :collection_id nil})
             (reconcile/reconcile! ds (constantly model))
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
@@ -363,7 +363,7 @@
             ;; `edited` is renamed (old name doc -> orphan, new name doc -> to-insert);
             ;; `leaving` is unpublished (its docs -> orphans, with nothing in to-insert).
             (t2/update! :model/Table :id edited {:display_name "Edited New"})
-            (t2/update! :model/Table :id leaving {:is_published false})
+            (t2/update! :model/Table :id leaving {:is_published false :collection_id nil})
             ;; force the insert of the only to-insert batch (edited's new name doc) to fail.
             (mt/with-dynamic-fn-redefs [reconcile/insert-batch! (fn [& _] (throw (ex-info "boom" {})))]
               (reconcile/reconcile! ds (constantly model)))
@@ -409,7 +409,7 @@
               (reconcile/reconcile! ds (constantly model))
               (is (seq (docs-for ds "table" a-id)))
               (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
-                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false}
+                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false :collection_id nil}
                   (is (=? {:inserted 0} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
                   (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
                   (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
@@ -465,7 +465,7 @@
                                                     :active true :name "t" :display_name "T"}
                        :model/Card  {metric :id}   {:type "metric" :collection_id (:id metrics)
                                                     :name "M" :database_id db-id}
-                       :model/Table {unpub :id}    {:db_id db-id :collection_id (:id data) :is_published false
+                       :model/Table {unpub :id}    {:db_id db-id :is_published false
                                                     :active true :name "u"}
                        :model/Card  {archived :id} {:type "metric" :collection_id (:id metrics) :archived true
                                                     :name "A" :database_id db-id}]

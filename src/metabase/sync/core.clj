@@ -33,7 +33,8 @@
  [metabase.sync.sync
   refingerprint-field!
   sync-database!
-  sync-table!]
+  sync-table!
+  sync-tables-in-background!]
  [metabase.sync.sync-metadata
   sync-db-metadata!
   sync-db-metadata-explicit!]

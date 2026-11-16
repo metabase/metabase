@@ -69,11 +69,6 @@
                                           :from   [(t2/table-name :model/Table)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
-
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]

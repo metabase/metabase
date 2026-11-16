@@ -1092,9 +1092,9 @@
        ;; Non-library tables: active (→ in universe) but not published into the library tree.
        ;; audit_events + audit_log are another synonym pair via the mock embedder.
        :model/Table    {t-audit :id}      {:db_id db-id :name "audit_events"
-                                           :active true :is_published false :collection_id other-id}
+                                           :active true :is_published false}
        :model/Table    _                  {:db_id db-id :name "audit_log"
-                                           :active true :is_published false :collection_id other-id}
+                                           :active true :is_published false}
        ;; Library fields: 2 on orders, 1 on subscriptions.
        :model/Field _                     {:table_id t1 :name "id"    :active true :base_type :type/Integer}
        :model/Field _                     {:table_id t1 :name "total" :active true :base_type :type/Float}

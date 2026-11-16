@@ -73,6 +73,9 @@
 (mr/def ::data-sources
   (into [:enum {:decode/string keyword}] table/data-sources))
 
+(mr/def ::data-source-write
+  (into [:enum {:decode/string keyword}] table/writable-data-sources))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -187,7 +190,7 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
    [:data_authority          {:optional true} ::data-authority-write]
-   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_source             {:optional true} [:maybe ::data-source-write]]
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
@@ -204,8 +207,8 @@
         table-update-entries))
 
 (mu/defn ^:private update-table!*
-  "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
-  if field positions have changed."
+  "Takes an existing table and the changes, updates in the database, and hydrates the Fields of the result when its
+  field order changed."
   [{:keys [id] :as existing-table} :- :metabase.warehouse-schema.schema/table
    body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
@@ -217,34 +220,10 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
-  (let [updated-table        (warehouse-schema-rest.db/table id)
-        changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
-    (if changed-field-order?
-      (do
-        (table/update-field-positions! updated-table)
-        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+  (let [updated-table (warehouse-schema-rest.db/table id)]
+    (if (not= (:field_order updated-table) (:field_order existing-table))
+      (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values])
       updated-table)))
-
-;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
-(defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
-  efficiently sync tables from different databases."
-  [newly-unhidden]
-  (when (seq newly-unhidden)
-    (quick-task/submit-task!
-     (fn []
-       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouse-schema-rest.db/database db-id)]
-           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-           ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true
-                         driver.settings/*allow-testing-sqlite-connections* true]
-                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
-             (doseq [table tables]
-               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-               (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
-                                       (:id database))))))))))
 
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
@@ -264,7 +243,7 @@
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
-      (sync-unhidden-tables newly-unhidden)
+      (sync/sync-tables-in-background! newly-unhidden)
       (doseq [table updated-tables]
         (events/publish-event! :event/table-update {:object  table
                                                     :user-id api/*current-user-id*}))

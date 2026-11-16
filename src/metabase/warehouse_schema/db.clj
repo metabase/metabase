@@ -604,10 +604,12 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn database-engine
-  "The engine of the ::warehouses.schema/database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
+(mu/defn database-engines :- [:map-of ::lib.schema.id/database :keyword]
+  "The engine of each ::warehouses.schema/database in `database-ids`, by Database id."
+  [database-ids :- [:set ::lib.schema.id/database]]
+  (if (seq database-ids)
+    (t2/select-pk->fn :engine :model/Database :id [:in database-ids])
+    {}))
 
 (mu/defn database-name
   "The name of the ::warehouses.schema/database with `database-id`."
