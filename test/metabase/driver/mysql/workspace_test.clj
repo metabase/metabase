@@ -8,6 +8,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -375,9 +376,11 @@
         (is (= #{true false} (set results)))))))
 
 (defn- server-version [database]
-  (with-open [conn (jdbc/get-connection (admin-spec database))]
-    (let [md (.getMetaData conn)]
-      [(.getDatabaseProductName md) (.getDatabaseMajorVersion md) (.getDatabaseMinorVersion md)])))
+  (sql-jdbc.execute/do-with-connection-with-options
+   :mysql (:id database) nil
+   (fn [^java.sql.Connection conn]
+     (let [md (.getMetaData conn)]
+       [(.getDatabaseProductName md) (.getDatabaseMajorVersion md) (.getDatabaseMinorVersion md)]))))
 
 (deftest ^:synchronized init-refuses-a-role-every-login-holds-test
   (mt/test-driver :mysql
@@ -401,8 +404,10 @@
                            [(format "REVOKE INSERT ON `%s`.* FROM PUBLIC" bound-db)]])]
       (if-not set-up
         (testing "MariaDB before 10.11 has no PUBLIC role: the check reads nothing and passes"
-          (with-open [conn (jdbc/get-connection admin)]
-            (is (nil? (#'mysql/check-no-roles-for-every-login! conn)))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           :mysql (:id database) nil
+           (fn [conn]
+             (is (nil? (#'mysql/check-no-roles-for-every-login! conn))))))
         (do-with-source-table
          database
          (fn [table]
@@ -566,7 +571,7 @@
                            :database? (boolean (database-exists? database db-name))
                            :session-open? (.isValid session 2)}]
             (testing "precondition: teardown cannot end the session, so DROP DATABASE times out on its lock"
-              (is (re-find #"Lock wait timeout" (str first-try))))
+              (is (re-find #"Another session holds a lock" (str first-try))))
             (testing "a failed teardown ends the session or keeps the user, so a retry can find its sessions"
               (is (or (not (:session-open? after-1)) (:user? after-1))
                   (pr-str after-1)))
@@ -578,3 +583,47 @@
           (jdbc/execute! (admin-spec database) [(format "SET GLOBAL lock_wait_timeout = %d" (long timeout))])
           (driver/destroy-workspace-isolation! :mysql database workspace)
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user no-kill))]))))))
+
+(deftest ^:synchronized destroy-waits-for-another-users-lock-at-most-the-bound-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          db-name   (:schema workspace)
+          ;; a user other than the workspace user, whose session teardown does not end
+          other     {:user (str "ws_other_" (rand-int 1000000)) :password "OtherUs3r!"}]
+      (try
+        (driver/init-workspace-isolation! :mysql database workspace)
+        (driver/grant-workspace-read-access! :mysql database workspace [])
+        (jdbc/execute! (user-spec database workspace) [(format "CREATE TABLE `%s`.t (id INT)" db-name)])
+        (jdbc/execute! (admin-spec database) [(format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" (:user other) (:password other))])
+        (jdbc/execute! (admin-spec database) [(format "GRANT SELECT ON `%s`.* TO `%s`@'%%'" (-> database :details :db) (:user other))])
+        (jdbc/execute! (admin-spec database) [(format "GRANT SELECT ON `%s`.* TO `%s`@'%%'" db-name (:user other))])
+        (with-open [session (open-session database {:database_details other})]
+          (.setAutoCommit session false)
+          (with-open [stmt (.createStatement session)]
+            ;; the open transaction holds a metadata lock on `t`, which DROP DATABASE waits for
+            (.execute stmt (format "SELECT * FROM `%s`.t" db-name)))
+          (let [teardown (future
+                           (try
+                             (driver/destroy-workspace-isolation! :mysql database workspace)
+                             :returned
+                             (catch Exception e
+                               e)))
+                result   (deref teardown 60000 ::still-waiting)]
+            (when (= ::still-waiting result)
+              (.rollback session)
+              (deref teardown 30000 nil))
+            (testing "teardown stops waiting for the other user's lock, and answers 409"
+              (is (not= ::still-waiting result))
+              (is (=? {:status-code 409} (ex-data result))
+                  (pr-str result)))
+            (testing "the database stays, with its user, so a retry can finish"
+              (is (database-exists? database db-name))
+              (is (user-exists? database (-> workspace :database_details :user))))
+            (.rollback session)))
+        (testing "once the other session releases its lock, a retried teardown finishes"
+          (driver/destroy-workspace-isolation! :mysql database workspace)
+          (is (not (database-exists? database db-name))))
+        (finally
+          (driver/destroy-workspace-isolation! :mysql database workspace)
+          (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user other))]))))))

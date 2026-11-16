@@ -1606,13 +1606,18 @@
   (cond-> [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))]
     user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
 
+(def ^:private workspace-lock-wait-timeout
+  "The most seconds a teardown statement waits for a lock that another session holds, such as a session of a user other
+  than the workspace user on one of the workspace's tables. A lower `lock_wait_timeout` of the connection stays."
+  30)
+
 (defn- kill-user-sessions!
   "Ends each session of `user` that the admin login can see (it needs PROCESS) and may end (it needs one of
   [[kill-privileges]]). Init refuses an admin login without these privileges. When the login has lost one since init,
   a session it cannot see stays open, and a KILL it may not run is logged and skipped; either session keeps its access
   until it disconnects. On MariaDB before 10.4, which has no ACCOUNT LOCK, the user can open a new session after the
-  kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them;
-  DROP USER leaves its sessions open."
+  kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them,
+  for at most [[workspace-lock-wait-timeout]] seconds; DROP USER leaves its sessions open."
   [conn ^Statement stmt user]
   (doseq [id (map :id (jdbc/query conn ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?" user]))]
     (try
@@ -1643,10 +1648,26 @@
              (.execute stmt (lock-workspace-user-sql username)))
            ;; also when the user is gone: its sessions outlive DROP USER, and hold the locks DROP DATABASE waits for
            (kill-user-sessions! {:connection conn} stmt username)
-           ;; One statement at a time, not a batch: the connector runs DROP USER after a failed DROP DATABASE, and a
-           ;; retry would then find no user while the database stays.
-           (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
-             (.execute stmt ^String sql))))))))
+           ;; The drops wait for a lock at most [[workspace-lock-wait-timeout]] seconds. The connection returns to the
+           ;; pool, so its own timeout is restored afterwards.
+           (let [previous (:t (first (jdbc/query {:connection conn} ["SELECT @@SESSION.lock_wait_timeout AS t"])))]
+             (.execute stmt (format "SET SESSION lock_wait_timeout = %d"
+                                    (min (long previous) workspace-lock-wait-timeout)))
+             (try
+               ;; One statement at a time, not a batch: the connector runs DROP USER after a failed DROP DATABASE, and a
+               ;; retry would then find no user while the database stays.
+               (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
+                 (try
+                   (.execute stmt ^String sql)
+                   (catch java.sql.SQLException e
+                     ;; ER_LOCK_WAIT_TIMEOUT
+                     (if (= 1205 (.getErrorCode e))
+                       (throw (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
+                                            "session on one of its tables. Retry once that session ends.")
+                                       {:status-code 409} e))
+                       (throw e)))))
+               (finally
+                 (.execute stmt (format "SET SESSION lock_wait_timeout = %d" (long previous))))))))))))
 
 (defn- grant-workspace-read-access-sqls
   "The statements that grant `username` SELECT on all tables in `bound-db`, the database that the Metabase `Database`
