@@ -9,6 +9,7 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
@@ -271,6 +272,7 @@ describe("DashboardApp > tabs", () => {
         parameters: [DATE_FILTER, NUMBER_FILTER, TEXT_FILTER, LOCATION_FILTER],
         dashcards,
       },
+      dashboardFetchDelay: 300,
     });
     const allFilters = [
       DATE_FILTER,
@@ -303,6 +305,11 @@ describe("DashboardApp > tabs", () => {
     await startEditing();
     expect(getFilterNames({ isEditing: true })).toEqual(allFilters);
     await cancelEditing();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(
+      screen.queryByText(ORDERS_BY_YEAR_CARD.name),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("tab", { name: TAB_2.name }));
 
@@ -314,6 +321,39 @@ describe("DashboardApp > tabs", () => {
 
     await startEditing();
     expect(getFilterNames({ isEditing: true })).toEqual(allFilters);
+  });
+
+  it("should add a link from the header to the selected tab", async () => {
+    setupRecentViewsAndSelectionsEndpoints([]);
+    await setup({ dashboard: { tabs: [TAB_1, TAB_2] } });
+
+    await startEditing();
+    await userEvent.click(screen.getByRole("tab", { name: TAB_2.name }));
+    await userEvent.click(screen.getByLabelText("Add a link or iframe"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Link" }),
+    );
+    await userEvent.type(
+      await screen.findByPlaceholderText("https://example.com"),
+      "https://metabase.com",
+    );
+    expect(screen.getByRole("tab", { name: TAB_2.name })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("tab", { name: TAB_1.name }));
+    expect(
+      screen.queryByDisplayValue("https://metabase.com"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("dashcard")).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("tab", { name: TAB_2.name }));
+    expect(
+      await screen.findByDisplayValue("https://metabase.com"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
   });
 
   it("should keep showing the dashcards after canceling the creation of a new tab (#38055, #38278)", async () => {

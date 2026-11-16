@@ -20,7 +20,7 @@ import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, NormalizedQueryParameter } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -634,7 +634,7 @@ describe("fetchDashboardCardData", () => {
 });
 
 describe("fetchCardDataAction", () => {
-  it("should not rerun a query when the last result lists the same parameters in another order (metabase#39863)", async () => {
+  it("should not rerun a query with unset values when the last result lists the same parameters in another order (metabase#39863)", async () => {
     const dashboardId = 400;
     // Clojure maps stop preserving insertion order at nine entries.
     const parameters = _.range(1, 10).map((index) =>
@@ -669,31 +669,34 @@ describe("fetchCardDataAction", () => {
           }),
         },
         dashcards: { [dashcard.id]: dashcard },
-        parameterValues: Object.fromEntries(
-          parameters.map((parameter) => [parameter.id, [10]]),
-        ),
+        parameterValues: { [parameters[0].id]: [10] },
       }),
     });
 
     const queryUrl = `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${card.id}/query`;
+    const expectedParameters = parameters.map(
+      (parameter, index): NormalizedQueryParameter => ({
+        id: parameter.id,
+        type: "number/<=",
+        target: ["dimension", ["field", index + 1, null]],
+        ...(index === 0 ? { value: [10] } : {}),
+      }),
+    );
+    let responseParameters = expectedParameters;
     fetchMock.post(
       queryUrl,
-      ({ options }) => {
-        const body: unknown = JSON.parse(String(options.body));
-        const requestParameters =
-          body != null &&
-          typeof body === "object" &&
-          "parameters" in body &&
-          Array.isArray(body.parameters)
-            ? body.parameters
-            : [];
-        return createMockDataset({
+      () =>
+        createMockDataset({
           json_query: {
             ...card.dataset_query,
-            parameters: [...requestParameters].reverse(),
+            parameters: responseParameters
+              .map((parameter) => ({
+                ...parameter,
+                value: parameter.value ?? null,
+              }))
+              .reverse(),
           },
-        });
-      },
+        }),
       { delay: 100 },
     );
     const getLastQueryBody = () => {
@@ -701,12 +704,6 @@ describe("fetchCardDataAction", () => {
       const body: unknown = JSON.parse(String(call.options.body));
       return body;
     };
-    const expectedParameters = parameters.map((parameter, index) => ({
-      id: parameter.id,
-      type: "number/<=",
-      target: ["dimension", ["field", index + 1, null]],
-      value: [10],
-    }));
 
     await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
@@ -718,14 +715,14 @@ describe("fetchCardDataAction", () => {
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
 
     await store.dispatch(setParameterValue(parameters[0].id, [20]));
+    responseParameters = expectedParameters.map((parameter, index) =>
+      index === 0 ? { ...parameter, value: [20] } : parameter,
+    );
     await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
     expect(getLastQueryBody()).toEqual(
       expect.objectContaining({
-        parameters: expectedParameters.map((parameter, index) => ({
-          ...parameter,
-          value: index === 0 ? [20] : [10],
-        })),
+        parameters: responseParameters,
       }),
     );
 
