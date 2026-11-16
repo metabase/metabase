@@ -643,3 +643,13 @@
          (with-redefs [lib.convert/->mbql5 (fn [& _] (throw (Error. "boom")))]
            (is (thrown? Error
                         (lib/query meta/metadata-provider legacy))))))))
+
+(deftest ^:parallel with-parameters-test
+  (let [query      (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE id = {{id}}")
+        parameters [{:id "id" :type :number :target [:variable [:template-tag "id"]] :value 1}]]
+    (testing "the query carries the given parameters"
+      (is (= parameters (:parameters (lib/with-parameters query parameters)))))
+    (testing "new parameters replace the old ones"
+      (is (= [] (:parameters (lib/with-parameters (lib/with-parameters query parameters) [])))))
+    (testing "nil removes them"
+      (is (not (contains? (lib/with-parameters (lib/with-parameters query parameters) nil) :parameters))))))
