@@ -127,8 +127,7 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
   (mt/with-additional-premium-features #{:workspaces}
-    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
-                                                :settings {:database-enable-workspaces true}}]
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces true}}]
       (is (= "Cannot enable database routing for a database with workspaces enabled"
              (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                    {:user_attribute "db_name"})))))

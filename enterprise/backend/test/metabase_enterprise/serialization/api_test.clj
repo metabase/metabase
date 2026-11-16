@@ -613,14 +613,6 @@
         (is (re-find #"h2 is not supported for serialization import" log))
         (is (nil? (t2/select-one :model/Database :name db-name)))))))
 
-(deftest import-refuses-database-settings-driver-cannot-enable-test
-  (testing "an archive naming a database with a setting its driver cannot enable is refused and no database is created"
-    (mt/with-premium-features #{:serialization}
-      (let [db-name (str "sqlite-" (u.random/random-name))
-            log     (import-archive! (database-archive! db-name :sqlite {"settings" {"database-enable-actions" true}}))]
-        (is (re-find #"Setting database-enable-actions requires driver feature :actions" log))
-        (is (nil? (t2/select-one :model/Database :name db-name)))))))
-
 (deftest import-drops-low-level-connection-keys-test
   (testing "imported connection details keep the driver's own keys and drop the low-level JDBC ones"
     (mt/with-premium-features #{:serialization}

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.database-routing.models
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.driver.util :as driver.u]
@@ -8,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,37 +15,6 @@
 
 (doto :model/DatabaseRouter
   (derive :metabase/model))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(defn- check-user-attribute
-  "Throws a 400 unless `user-attribute`, the user attribute a router routes on, is a non-blank string."
-  [user-attribute]
-  (when-not (and (string? user-attribute) (not (str/blank? user-attribute)))
-    (throw (ex-info (tru "A router needs a user attribute to route on.") {:status-code 400}))))
-
-(defn- check-not-destination
-  "Throws a 400 when the Database with `database-id` is among `destination-ids`, since a destination cannot be a router."
-  [destination-ids database-id]
-  (when (contains? destination-ids database-id)
-    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
-
-(mi/define-before-insert :model/DatabaseRouter
-  [routers]
-  (let [destination-ids (database-routing.db/destination-database-ids (into [] (keep :database_id) routers))]
-    (doseq [{:keys [database_id user_attribute]} routers]
-      (check-user-attribute user_attribute)
-      (check-not-destination destination-ids database_id))
-    routers))
-
-(t2/define-before-update :model/DatabaseRouter
-  [router]
-  (let [changes (t2/changes router)]
-    (when (contains? changes :database_id)
-      (throw (ex-info (tru "Cannot change the database of a router.") {:status-code 400})))
-    (when (contains? changes :user_attribute)
-      (check-user-attribute (:user_attribute changes)))
-    router))
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
