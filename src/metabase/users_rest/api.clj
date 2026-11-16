@@ -436,10 +436,7 @@
   Only personal users can be fetched this way; API-key users and the internal user 404."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (try
-    (users/check-self-or-superuser id)
-    (catch clojure.lang.ExceptionInfo _e
-      (perms/check-group-manager)))
+  (api/read-check (users/fetch-user :id id))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
       (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_used_password))
@@ -470,6 +467,7 @@
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
             [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
             [:invite_target          {:optional true} [:maybe users.schema/InviteTarget]]]]
+  (api/create-check :model/User body)
   (users/invite-user! (set/rename-keys body {:first_name             :first-name
                                              :last_name              :last-name
                                              :user_group_memberships :user-group-memberships
@@ -480,19 +478,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- valid-email-update?
-  "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [sso_source email]} maybe-new-email]
-  (or
-   ;; Admin users can update
-   api/*is-superuser?*
-   ;; If the email address didn't change, let it through
-   (= email maybe-new-email)
-   ;; We should not allow a regular user to change their email address if they are a google/ldap user
-   (and
-    (not (= :google sso_source))
-    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
@@ -536,38 +521,30 @@
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
        [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
-  (try
-    (users/check-self-or-superuser id)
-    (catch clojure.lang.ExceptionInfo _e
-      (perms/check-group-manager)))
+  (api/read-check (users/fetch-user :id id))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
-    ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (when (contains? body :email)
-      (api/check-403 (valid-email-update? user-before-update email)))
-    ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
-    (when (contains? body :first_name)
-      (api/checkp (valid-name-update? user-before-update :first_name first_name)
-                  "first_name" (tru "Editing first name is not allowed for SSO users.")))
-    (when (contains? body :last_name)
-      (api/checkp (valid-name-update? user-before-update :last_name last_name)
-                  "last_name" (tru "Editing last name is not allowed for SSO users.")))
-    ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (when email
-      (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
-                  "email" (tru "Email address already associated to another user.")))
-    (t2/with-transaction [_conn]
-      ;; only superuser or self can update user info
-      ;; implicitly prevent group manager from updating users' info
-      (when (or (= id api/*current-user-id*)
-                api/*is-superuser?*)
-        (when-let [changes (not-empty
-                            (u/select-keys-when body
-                                                :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
-                                                :non-nil (cond-> #{:email}
-                                                           api/*is-superuser?* (conj :is_superuser))))]
+    (let [updatable (user/updatable-columns user-before-update)
+          changes   (u/select-keys-when body
+                                        :present (set/intersection #{:first_name :last_name :locale :login_attributes :tenant_id}
+                                                                   updatable)
+                                        :non-nil (set/intersection #{:email :is_superuser} updatable))]
+      (when (seq changes)
+        (api/update-check user-before-update changes))
+      ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
+      (when (contains? body :first_name)
+        (api/checkp (valid-name-update? user-before-update :first_name first_name)
+                    "first_name" (tru "Editing first name is not allowed for SSO users.")))
+      (when (contains? body :last_name)
+        (api/checkp (valid-name-update? user-before-update :last_name last_name)
+                    "last_name" (tru "Editing last name is not allowed for SSO users.")))
+      ;; can't change email if it's already taken BY ANOTHER ACCOUNT
+      (when email
+        (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
+                    "email" (tru "Email address already associated to another user.")))
+      (t2/with-transaction [_conn]
+        (when (seq changes)
           (users-rest.db/update-user! id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
@@ -575,15 +552,15 @@
             (reset-magic-group-membership! id (:tenant_id changes)))
           (events/publish-event! :event/user-update {:object (users-rest.db/user id)
                                                      :previous-object user-before-update
-                                                     :user-id api/*current-user-id*}))
-        (maybe-update-user-personal-collection-name! user-before-update body)
+                                                     :user-id api/*current-user-id*})
+          (maybe-update-user-personal-collection-name! user-before-update changes))
         ;; Handle is_data_analyst by updating Data Analysts group membership
-        (when (and api/*is-superuser?* (contains? body :is_data_analyst))
+        (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
           (let [data-analyst-group-id (:id (perms/data-analyst-group))]
             (if is_data_analyst
               (perms/add-user-to-group! id data-analyst-group-id)
-              (perms/remove-user-from-group! id data-analyst-group-id)))))
-      (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+              (perms/remove-user-from-group! id data-analyst-group-id))))
+        (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
@@ -644,7 +621,7 @@
                                        [:password     ms/ValidPassword]
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
-  (users/check-self-or-superuser id)
+  (api/write-check (users/fetch-user :id id))
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
     ;; admins can't give a password to an SSO-only user (see `sso/sso-only-user?`); that would let them log in as that
     ;; user while bypassing SSO. A user who already logs in with a password gains no new way in.
@@ -727,13 +704,13 @@
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]]
-  (users/check-self-or-superuser id)
-  (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
                    modal)
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
+    (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
+    (check-not-internal-user id)
     (api/check-500 (pos? (users-rest.db/update-personal-user! id {k false}))))
   {:success true})

@@ -352,6 +352,52 @@
                       (add-user-to-group! user 403 random-group)
                       (remove-user-from-group! user 403 random-group))))))))))))
 
+(deftest update-user-columns-by-requester-test
+  (testing "PUT /api/user/:id changes only the columns each requester may change"
+    (mt/with-premium-features #{:advanced-permissions :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant                     {tenant-id :id} {}
+                       :model/PermissionsGroup           {group-id :id}  {}
+                       :model/User                       manager         {}
+                       :model/PermissionsGroupMembership _               {:user_id          (:id manager)
+                                                                          :group_id         group-id
+                                                                          :is_group_manager true}]
+          (let [values {:first_name       "Changed"
+                        :last_name        "Changed"
+                        :locale           "fr"
+                        :email            "changed@example.com"
+                        :login_attributes {"key" "value"}
+                        :tenant_id        tenant-id
+                        :is_superuser     true
+                        :is_data_analyst  true}]
+            (doseq [[requester status changed] [[:admin         200 (set (keys values))]
+                                                [:self          200 #{:first_name :last_name :locale :email}]
+                                                [:group-manager 200 #{}]
+                                                [:other         403 #{}]]
+                    [column value]             values]
+              (testing (format "%s sets %s" requester column)
+                (mt/with-temp [:model/User                       target {}
+                               :model/PermissionsGroupMembership _      {:user_id (:id target) :group_id group-id}]
+                  (mt/user-http-request (case requester
+                                          :admin         :crowberto
+                                          :self          target
+                                          :group-manager manager
+                                          :other         :rasta)
+                                        :put status (str "user/" (:id target)) {column value})
+                  (is (= (contains? changed column)
+                         (= value (t2/select-one-fn column :model/User :id (:id target))))))))))))))
+
+(deftest update-sso-user-email-by-requester-test
+  (testing "PUT /api/user/:id changes the email of a Google or LDAP user only for an admin"
+    (doseq [sso-source [:google :ldap]]
+      (testing sso-source
+        (mt/with-temp [:model/User user {:sso_source sso-source}]
+          (mt/user-http-request user :put 403 (str "user/" (:id user)) {:email "changed@example.com"})
+          (is (not= "changed@example.com" (t2/select-one-fn :email :model/User :id (:id user))))
+          (mt/user-http-request user :put 200 (str "user/" (:id user)) {:email (:email user)})
+          (mt/user-http-request :crowberto :put 200 (str "user/" (:id user)) {:email "changed@example.com"})
+          (is (= "changed@example.com" (t2/select-one-fn :email :model/User :id (:id user)))))))))
+
 (deftest get-user-structured-attributes-permissions-test
   (testing "GET /api/user/:id structured_attributes permissions"
     (testing "group managers can see structured_attributes"
