@@ -6,7 +6,8 @@
    [metabase.sql-parsing.sqlglot-java.references :as references])
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Identifier
-                             Expressions$Query Expressions$Select Expressions$Subquery Expressions$Table)
+                             Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
+                             Expressions$Table)
    (com.metabase.sqlglot.reference Scope)
    (java.util Collections IdentityHashMap Set)))
 
@@ -35,7 +36,8 @@
 
 (defn add-into-clause
   "`sql`, a SELECT, as a SQL Server `SELECT ... INTO table-name`, with every base table read through a self-UNION
-  subquery so the new table does not inherit a source column's IDENTITY property.
+  subquery so the new table does not inherit a source column's IDENTITY property. A set operation (UNION, INTERSECT,
+  EXCEPT) takes the INTO in its first SELECT.
 
   A plain `SELECT ... INTO` copies a directly-projected IDENTITY column onto the new table, which later breaks an
   incremental append with SQL Server error 8101. The UNION's second branch is always empty and SQL Server elides it,
@@ -43,11 +45,17 @@
   alone. A column that reached a wrapped table by a schema-qualified name loses the qualifier, since a derived table
   is only reachable by its alias."
   [dialect sql table-name]
-  (let [stmt      (ast/parse-one sql dialect)
-        _         (when-not (instance? Expressions$Select stmt)
-                    (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
-        cte-names (references/cte-names stmt)
-        ^Set seen (Collections/newSetFromMap (IdentityHashMap.))]
+  (let [stmt        (ast/parse-one sql dialect)
+        ;; T-SQL takes the INTO of a set operation (UNION, INTERSECT, EXCEPT) in its first SELECT.
+        into-select (loop [node stmt]
+                      (if (instance? Expressions$SetOperation node)
+                        (recur (ast/arg node "this"))
+                        node))
+        _           (when-not (instance? Expressions$Select into-select)
+                      (throw (ast/python-error "ValueError"
+                                               "SQL must be a SELECT statement, or a set operation whose first query is one")))
+        cte-names   (references/cte-names stmt)
+        ^Set seen   (Collections/newSetFromMap (IdentityHashMap.))]
     (doseq [^Scope scope (.traverse (Scope/build stmt))
             :let  [replacements (vec (for [[source-alias source] (references/real-table-sources scope cte-names)
                                            ;; A temp table has no IDENTITY lineage worth breaking, and its
@@ -60,7 +68,7 @@
         (ast/set-arg! column "db" nil)
         (ast/set-arg! column "catalog" nil))
       (ast/replace! table (wrap-base-table table table-alias)))
-    (ast/set-arg! stmt "into" (ast/create "Into" {"this" (ast/to-table table-name)}))
+    (ast/set-arg! into-select "into" (ast/create "Into" {"this" (ast/to-table table-name)}))
     (ast/sql stmt dialect)))
 
 ;;; ------------------------------------------------ add-insert-clause ------------------------------------------------
