@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useMetadataProvider } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import type { CustomListItem } from "metabase/querying/filters/components/FilterPicker/types";
 import {
   ActionIcon,
   Box,
@@ -13,15 +15,58 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { segmentFilterables } from "../../segments/to-event-definition";
+import { useSegmentPickerItems } from "../../segments/use-segment-picker-items";
+
 import S from "./ConditionsEditor.module.css";
 
 const STAGE_INDEX = -1;
+
+/**
+ * The picker's props for this session's drafts, listed after the table's saved
+ * segments, or none. Picking a draft adds its conditions to `query`, after
+ * taking out `filter` when one is being replaced.
+ */
+const useDraftPickerProps = (
+  query: Lib.Query,
+  withDrafts: boolean,
+  onChange: (query: Lib.Query) => void,
+  filter?: Lib.FilterClause,
+) => {
+  const metadataProvider = useMetadataProvider(Lib.databaseID(query));
+  const { getGroupItems, findSegment } = useSegmentPickerItems({
+    query,
+    withEventDrafts: withDrafts,
+  });
+
+  const onCustomItemSelect = (item: CustomListItem) => {
+    const segment = findSegment(item);
+    if (segment === undefined) {
+      return;
+    }
+    const base =
+      filter !== undefined
+        ? Lib.removeClause(query, STAGE_INDEX, filter)
+        : query;
+    const filterables = segmentFilterables(query, metadataProvider, segment);
+    onChange(
+      filterables.reduce(
+        (current, filterable) => Lib.filter(current, STAGE_INDEX, filterable),
+        base,
+      ),
+    );
+  };
+
+  return { getGroupItems, onCustomItemSelect };
+};
 
 type ConditionsEditorProps = {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
   /** Opens the condition picker right away, for a query without conditions. */
   initialOpened?: boolean;
+  /** Lists this session's drafts after the table's saved segments. */
+  withDrafts?: boolean;
 };
 
 /**
@@ -32,6 +77,7 @@ export const ConditionsEditor = ({
   query,
   onChange,
   initialOpened = false,
+  withDrafts = true,
 }: ConditionsEditorProps) => {
   const filters = Lib.filters(query, STAGE_INDEX);
 
@@ -43,12 +89,14 @@ export const ConditionsEditor = ({
           query={query}
           filter={filter}
           filterIndex={filterIndex}
+          withDrafts={withDrafts}
           onChange={onChange}
         />
       ))}
       <AddCondition
         query={query}
         isFirst={filters.length === 0}
+        withDrafts={withDrafts}
         onChange={onChange}
         initialOpened={initialOpened}
       />
@@ -60,6 +108,8 @@ type ConditionPillProps = {
   query: Lib.Query;
   filter: Lib.FilterClause;
   filterIndex: number;
+  /** Lists this session's drafts after the table's saved segments. */
+  withDrafts?: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
@@ -68,15 +118,26 @@ export const ConditionPill = ({
   query,
   filter,
   filterIndex,
+  withDrafts = true,
   onChange,
 }: ConditionPillProps) => {
   const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, STAGE_INDEX, filter);
   const isSegment = Lib.isSegmentFilter(query, STAGE_INDEX, filter);
 
-  const handleSelect = (newFilter: Lib.Filterable) => {
-    onChange(Lib.replaceClause(query, STAGE_INDEX, filter, newFilter));
+  const handleChange = (newQuery: Lib.Query) => {
+    onChange(newQuery);
     setIsOpened(false);
+  };
+  const draftPickerProps = useDraftPickerProps(
+    query,
+    withDrafts,
+    handleChange,
+    filter,
+  );
+
+  const handleSelect = (newFilter: Lib.Filterable) => {
+    handleChange(Lib.replaceClause(query, STAGE_INDEX, filter, newFilter));
   };
 
   return (
@@ -100,6 +161,7 @@ export const ConditionPill = ({
             filter={filter}
             filterIndex={filterIndex}
             onSelect={handleSelect}
+            {...draftPickerProps}
           />
         </Box>
       </Popover.Dropdown>
@@ -110,6 +172,7 @@ export const ConditionPill = ({
 type AddConditionProps = {
   query: Lib.Query;
   isFirst: boolean;
+  withDrafts: boolean;
   onChange: (query: Lib.Query) => void;
   initialOpened: boolean;
 };
@@ -117,14 +180,20 @@ type AddConditionProps = {
 const AddCondition = ({
   query,
   isFirst,
+  withDrafts,
   onChange,
   initialOpened,
 }: AddConditionProps) => {
   const [isOpened, setIsOpened] = useState(initialOpened);
 
-  const handleSelect = (filter: Lib.Filterable) => {
-    onChange(Lib.filter(query, STAGE_INDEX, filter));
+  const handleChange = (newQuery: Lib.Query) => {
+    onChange(newQuery);
     setIsOpened(false);
+  };
+  const draftPickerProps = useDraftPickerProps(query, withDrafts, handleChange);
+
+  const handleSelect = (filter: Lib.Filterable) => {
+    handleChange(Lib.filter(query, STAGE_INDEX, filter));
   };
 
   return (
@@ -156,6 +225,7 @@ const AddCondition = ({
             query={query}
             stageIndex={STAGE_INDEX}
             onSelect={handleSelect}
+            {...draftPickerProps}
           />
         </Box>
       </Popover.Dropdown>

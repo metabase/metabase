@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
+import { setupSegmentsEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -56,6 +57,7 @@ type SetupOpts = {
 
 const setup = ({ value }: SetupOpts) => {
   const onChange = jest.fn<void, [EventDefinition[]]>();
+  setupSegmentsEndpoints([]);
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
   });

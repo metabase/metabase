@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -8,7 +8,6 @@ import {
   isCustomListItem,
 } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
 import type {
-  ColumnGroupItemsContext,
   ColumnListItem,
   CustomListItem,
 } from "metabase/querying/filters/components/FilterPicker/types";
@@ -24,12 +23,8 @@ import {
   useSegmentDropTarget,
 } from "../../segments/drag-context";
 import { toPeopleSegmentRef } from "../../segments/people-segment-ref";
-import {
-  isTableColumnGroup,
-  toSegmentPickerItem,
-} from "../../segments/picker-items";
 import { isPeopleSegment } from "../../segments/to-event-definition";
-import { usePeoplePickerSegments } from "../../segments/use-people-picker-segments";
+import { useSegmentPickerItems } from "../../segments/use-segment-picker-items";
 import { useTableQuery } from "../events/use-table-query";
 
 import S from "./BreakoutMenu.module.css";
@@ -192,21 +187,14 @@ const BreakoutPicker = ({
   onChange,
   onClose,
 }: BreakoutPickerProps) => {
-  const peopleSegments = usePeoplePickerSegments(usersTable);
+  const { getGroupItems, findSegment } = useSegmentPickerItems({
+    query,
+    usersTable,
+  });
   const pickedSegments = value?.type === "cohorts" ? value.segments : [];
 
-  const getGroupItems = useCallback(
-    ({ info, columns }: ColumnGroupItemsContext): CustomListItem[] =>
-      usersTable !== undefined &&
-      !info.isSourceTable &&
-      isTableColumnGroup(query, columns, usersTable.table)
-        ? peopleSegments.map(toSegmentPickerItem)
-        : [],
-    [query, usersTable, peopleSegments],
-  );
-
   const handleSegmentSelect = (item: CustomListItem) => {
-    const segment = peopleSegments.find(({ key }) => key === item.key);
+    const segment = findSegment(item);
     if (segment === undefined) {
       return;
     }

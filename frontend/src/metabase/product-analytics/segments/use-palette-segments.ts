@@ -10,6 +10,18 @@ import type {
   SegmentSource,
 } from "./types";
 
+/** A draft as a palette item. */
+export const toDraftPaletteSegment = (
+  draft: SegmentDraft,
+  source: SegmentSource,
+): DraftPaletteSegment => ({
+  key: draft.id,
+  source,
+  status: "draft",
+  name: draft.name,
+  query: draft.query,
+});
+
 /** The saved segments on a table plus this session's drafts, as palette items. */
 export const usePaletteSegments = (
   tableId: TableId | undefined,
@@ -38,15 +50,8 @@ export const usePaletteSegments = (
     [segments, tableId, source],
   );
 
-  const drafted = useMemo<DraftPaletteSegment[]>(
-    () =>
-      drafts.map((draft) => ({
-        key: draft.id,
-        source,
-        status: "draft",
-        name: draft.name,
-        query: draft.query,
-      })),
+  const drafted = useMemo(
+    () => drafts.map((draft) => toDraftPaletteSegment(draft, source)),
     [drafts, source],
   );
 

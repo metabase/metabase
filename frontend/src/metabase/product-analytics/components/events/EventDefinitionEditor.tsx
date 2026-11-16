@@ -21,6 +21,8 @@ type EventDefinitionEditorProps = {
   value: EventDefinition | null;
   tableQuery: Lib.Query;
   namePlaceholder?: string;
+  /** Lists this session's drafts in the condition picker, after saved segments. */
+  withDrafts?: boolean;
   onCancel: () => void;
   onSubmit: (value: EventDefinition) => void;
 };
@@ -36,6 +38,7 @@ export const EventDefinitionEditor = ({
   value,
   tableQuery,
   namePlaceholder = t`Give this set of conditions a name`,
+  withDrafts = true,
   onCancel,
   onSubmit,
 }: EventDefinitionEditorProps) => {
@@ -113,6 +116,7 @@ export const EventDefinitionEditor = ({
         query={query}
         onChange={setQuery}
         initialOpened={filters.length === 0}
+        withDrafts={withDrafts}
       />
       {filters.length > 0 && (
         <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>

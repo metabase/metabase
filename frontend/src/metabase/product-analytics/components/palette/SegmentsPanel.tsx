@@ -269,6 +269,7 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
               value={editingDraft}
               tableQuery={tableQuery}
               namePlaceholder={t`Name this draft`}
+              withDrafts={false}
               onCancel={() => setEditingDraftId(null)}
               onSubmit={(event) => {
                 updateDraft(editingDraft.id, event);
@@ -333,6 +334,7 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
           value={null}
           tableQuery={tableQuery}
           namePlaceholder={t`Name this draft`}
+          withDrafts={false}
           onCancel={() => setIsDrafting(false)}
           onSubmit={(event) => {
             addDraft(event);

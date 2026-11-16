@@ -41,7 +41,11 @@ export type FilterPickerProps = {
   readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
-  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+  | "withColumnItemIcon"
+  | "withColumnGroupIcon"
+  | "withCustomExpression"
+  | "getGroupItems"
+  | "onCustomItemSelect"
 >;
 
 export function FilterPicker({
@@ -56,6 +60,8 @@ export function FilterPicker({
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
+  getGroupItems,
+  onCustomItemSelect,
   readOnly,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
@@ -168,6 +174,8 @@ export function FilterPicker({
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}
+        getGroupItems={getGroupItems}
+        onCustomItemSelect={onCustomItemSelect}
       />
     );
   }

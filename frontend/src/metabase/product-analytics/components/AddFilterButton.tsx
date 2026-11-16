@@ -1,15 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import type {
-  ColumnGroupItemsContext,
-  CustomListItem,
-} from "metabase/querying/filters/components/FilterPicker/types";
+import type { CustomListItem } from "metabase/querying/filters/components/FilterPicker/types";
 import { Icon, Popover, UnstyledButton } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
@@ -21,13 +18,7 @@ import {
   withFilterQuery,
   withSegmentFilter,
 } from "../filters";
-import {
-  isTableColumnGroup,
-  toSegmentPickerItem,
-} from "../segments/picker-items";
-import { usePaletteSegments } from "../segments/use-palette-segments";
-import { usePeoplePickerSegments } from "../segments/use-people-picker-segments";
-import { useSegmentDrafts } from "../segments/use-segment-drafts";
+import { useSegmentPickerItems } from "../segments/use-segment-picker-items";
 
 import S from "./AddFilterButton.module.css";
 import { useFilterCount } from "./FilterPills";
@@ -117,31 +108,14 @@ const FilterPickerWithSegments = ({
 }: FilterPickerWithSegmentsProps) => {
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const tableQuery = useTableQuery(table);
-  const eventDrafts = useSegmentDrafts(table?.id).drafts;
-  const { drafted: eventSegments } = usePaletteSegments(
-    table?.id,
-    "event",
-    eventDrafts,
-  );
-  const peopleSegments = usePeoplePickerSegments(usersTable);
-
-  const getGroupItems = useCallback(
-    ({ info, columns }: ColumnGroupItemsContext): CustomListItem[] => {
-      if (info.isSourceTable) {
-        return eventSegments.map(toSegmentPickerItem);
-      }
-      return usersTable !== undefined &&
-        isTableColumnGroup(query, columns, usersTable.table)
-        ? peopleSegments.map(toSegmentPickerItem)
-        : [];
-    },
-    [query, usersTable, eventSegments, peopleSegments],
-  );
+  const { getGroupItems, findSegment } = useSegmentPickerItems({
+    query,
+    withEventDrafts: true,
+    usersTable,
+  });
 
   const handleCustomItemSelect = (item: CustomListItem) => {
-    const segment = [...peopleSegments, ...eventSegments].find(
-      ({ key }) => key === item.key,
-    );
+    const segment = findSegment(item);
     if (segment !== undefined && tableQuery !== undefined) {
       onChange(withSegmentFilter(value, segment, metadataProvider, tableQuery));
     }
