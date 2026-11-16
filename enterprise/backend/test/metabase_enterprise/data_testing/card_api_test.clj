@@ -292,6 +292,6 @@
                   (create 400)))
           (is (not (t2/exists? :model/CardTest :name "lower case"))))
         (testing "on a database that ignores case, the same names are the table's columns, and the test is saved"
-          ;; Stands in for MySQL, SQL Server, Redshift and DuckDB, which no test of this namespace runs on.
+          ;; Stands in for the databases that ignore case in column names, which no test of this namespace runs on.
           (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
             (t2/delete! :model/CardTest :id (:id (create 200)))))))))

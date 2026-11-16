@@ -9,10 +9,7 @@
 
 (mu/defn fold-identifier :- [:maybe :string]
   "`identifier`, a schema, table or column name, lower-cased, or nil when there is none: the form in which this module
-  compares names without regard to case.
-
-  Schema and table names always compare so: that is how the rewrite matches, and how an engine reads an unquoted
-  identifier. Column names compare so only on a database that ignores case in them (see [[column-key]])."
+  compares names without regard to case."
   [identifier :- [:maybe :string]]
   (some-> identifier u/lower-case-en))
 

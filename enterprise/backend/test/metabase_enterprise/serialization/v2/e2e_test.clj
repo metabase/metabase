@@ -1753,8 +1753,7 @@
                     (t2/select-one :model/SegmentTest :entity_id test-eid)))))))))
 
 (deftest export-takes-the-tests-of-the-segments-it-takes-test
-  (testing "An export takes the tests of the segments it exports: none without the data model, and none of an archived
-            segment it skips"
+  (testing "An export takes a segment's test with the data model, none without it, and none of an archived segment when it skips archived content"
     (ts/with-dbs [source-db]
       (ts/with-db source-db
         (let [creator (ts/create! :model/User :email "creator@example.com")

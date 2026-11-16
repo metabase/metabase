@@ -106,6 +106,11 @@
                              "id"))))
   (testing "a name no table has gives none"
     (is (= [] (candidates "SELECT \"Missing\" FROM \"public\".\"events\"" "missing"))))
+  (testing "a name no table has gives an empty vector, not nil"
+    (let [{:keys [returned-fields]} (sql-tools/field-references :postgres "SELECT \"Missing\" FROM \"public\".\"events\"")]
+      (is (= [] (sql-tools/field-candidates :postgres events-and-users (first returned-fields))))))
+  (testing "a source whose columns are unknown, such as a table function, gives a candidate that belongs to no table"
+    (is (= #{:none 100} (set (candidates "SELECT id FROM \"public\".\"events\", generate_series(1, 2) AS g" "id")))))
   (testing "`resolve-field` picks the first candidate"
     (doseq [[sql column] [["SELECT \"Name\" FROM \"public\".\"events\"" "name"]
                           ["SELECT id FROM \"public\".\"events\" e JOIN \"public\".\"users\" u ON e.id = u.id" "id"]

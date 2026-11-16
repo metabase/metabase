@@ -179,22 +179,23 @@
              :columns    {"PUBLIC.PEOPLE" ["SOURCE"]}
              :message    #"(?s).*PUBLIC\.PEOPLE: SOURCE.*"}
             (validation-refusal (assoc people-test :inputs [(people-rows-input "ID" "NAME")])))))
-  (testing "on a database that keeps case, a name that differs only in case is missing; `columns` holds the table's
-            name, and the message gives the input's spelling"
+  (testing "on a database that keeps case, a name that differs only in case is missing; `columns` gives the table's spelling, and the message gives the input's"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"PUBLIC.PEOPLE" ["ID"]}
              :message    #"(?s).*ID \(declared as id, which differs in case\).*"}
             (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "SOURCE")])))))
   (testing "on a database that ignores case, a name that differs only in case is the column"
     (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "source")] :ignore-case? true)))))
+  (testing "on a database that ignores case, a declared name with upper- and lower-case letters is the column"
+    (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "Id" "Source")] :ignore-case? true)))))
   (testing "an input given as SQL declares no columns, so nothing is checked"
     (is (nil? (validation-refusal (assoc people-test :inputs [(sql-input "PUBLIC" "PEOPLE")])))))
   (testing "with no columns read, as when the parser reports an error, nothing is checked"
     (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "ID")] :columns-read nil))))))
 
 (def ^:private mixed-case-test
-  "A test on a database that keeps case, such as Postgres, of a query that reads `id` and `CreatedAt` of
-  `public.events`."
+  "A test of a query that reads `id` and `CreatedAt` of `public.events`, on a database that keeps case, such as
+  Postgres."
   (assoc complete-test
          :inputs            []
          :referenced-tables #{{:schema "public" :name "events"}}
@@ -213,15 +214,17 @@
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"public.events" ["CreatedAt"]}}
             (validation-refusal (assoc mixed-case-test :inputs [(events-input "id")])))))
-  (testing "control: an input that spells it as the table does is accepted"
+  (testing "control: an input that spells `CreatedAt` as the table does is accepted"
     (is (nil? (validation-refusal (assoc mixed-case-test :inputs [(events-input "id" "CreatedAt")])))))
   (testing "an input that spells its table in another case is checked against that table"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"PUBLIC.Events" ["CreatedAt"]}}
             (validation-refusal (assoc mixed-case-test
                                        :inputs [(assoc (events-input "id") :table {:schema "PUBLIC" :name "Events"})])))))
-  (testing "of two tables read whose names differ only in case, an input is checked against the one it spells exactly"
-    (is (nil? (validation-refusal (assoc mixed-case-test
-                                         :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
-                                         :columns-read #{{:schema "public" :name "Events" :column "id"}
-                                                         {:schema "public" :name "events" :column "CreatedAt"}}))))))
+  (testing "of two tables read whose names differ only in case, an input is checked against both, as the rewrite replaces both with it"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"public.Events" ["CreatedAt"]}}
+            (validation-refusal (assoc mixed-case-test
+                                       :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
+                                       :columns-read #{{:schema "public" :name "Events" :column "id"}
+                                                       {:schema "public" :name "events" :column "CreatedAt"}}))))))

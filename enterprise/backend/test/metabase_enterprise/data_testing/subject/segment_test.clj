@@ -70,10 +70,13 @@
         (is (< 2 (count (people-columns)))))
       (testing "the output has the columns the input declares for the segment's table"
         (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])))))
-      (testing "on a database that keeps case, such as H2, a declared name that differs only in case is another column"
+      (testing "on a database that keeps case, such as H2, a declared name that differs only in case selects no column"
         (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "Source")])))))
-      (testing "on a database that ignores case, it is the column"
+      (testing "on a database that ignores case, a declared name that differs only in case selects the column"
         (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
+          (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")]))))))
+      (testing "the case rule is the one of the driver of the segment's database"
+        (with-redefs [data-testing.u/column-names-ignore-case? #(= :h2 %)]
           (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")]))))))
       (testing "a declared column the table lacks adds nothing"
         (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "NOT_A_COLUMN")]))))))))

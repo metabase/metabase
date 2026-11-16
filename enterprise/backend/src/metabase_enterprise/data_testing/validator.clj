@@ -28,10 +28,10 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn table-match? :- :boolean
-  "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by name, with schema
-  equal, or the reference bare (nil schema) against a declared table in `default-schema` — the one-directional
-  defaulting `table-replacements` uses when it rewrites (a bare read resolves to the default schema; a bare
-  declaration does not cover a qualified read).
+  "Do the tables `ref` and `decl` name the same table? Names match case aside. Schemas match case aside, or `ref` has
+  none and `decl` is in `default-schema`. The default applies to `ref` only, as `table-replacements` applies it when
+  it rewrites: a bare reference in a query resolves to the default schema, and a bare declared input does not cover a
+  qualified reference.
 
   Names match case-agnostically. The parser reports a reference as a bare string, so nothing here can tell a quoted
   `\"Orders\"` — which an engine reads literally — from an unquoted `ORDERS`, and counting them as the same table is
@@ -200,30 +200,14 @@
    [:name   :string]
    [:column :string]])
 
-(mu/defn- tables-of-input :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
-  "The tables of the columns in `columns-read` that match the declared `table`, as `{:schema :name}` maps. A table
-  matches when its name and schema equal the declared ones, case aside; a declared table without a schema stands for
-  one in `default-schema`. When one match is spelled exactly as declared, returns only that one."
-  [table          :- ::data-testing.schema/table
-   columns-read   :- [:set ::column-read]
-   default-schema :- [:maybe :string]]
-  (let [schema   (or (:schema table) default-schema)
-        same     (fn [a b] (= (data-testing.u/fold-identifier a) (data-testing.u/fold-identifier b)))
-        matching (into #{}
-                       (comp (map #(select-keys % [:schema :name]))
-                             (filter #(and (same (:name %) (:name table))
-                                           (same (or (:schema %) default-schema) schema))))
-                       columns-read)
-        exact    (into #{} (filter #(= [(or (:schema %) default-schema) (:name %)] [schema (:name table)])) matching)]
-    (if (seq exact) exact matching)))
-
 (mu/defn- missing-input-columns :- [:sequential [:map
                                                  [:table    ::data-testing.schema/table]
                                                  [:columns  [:sequential :string]]
                                                  [:declared [:map-of :string :string]]]]
   "For each rows input, the columns that it lacks, spelled as their table spells them; an input that lacks none is
-  left out. An input lacks a column of `columns-read` when the column's table matches the input's table, as
-  [[tables-of-input]] matches, and no name that the input declares has the same [[data-testing.u/column-key]] as the column.
+  left out. An input lacks a column of `columns-read` when the input's table matches the column's table, as
+  [[table-match?]] matches with the input's table as `ref`, and no name that the input declares has the same
+  [[data-testing.u/column-key]] as the column.
   `:declared` maps a column the input lacks to the input's spelling of it, when the two differ only in case."
   [inputs         :- ::data-testing.schema/inputs
    columns-read   :- [:set ::column-read]
@@ -232,10 +216,11 @@
   (into []
         (keep (fn [{:keys [table columns format]}]
                 (when (= :rows format)
-                  (let [tables   (tables-of-input table columns-read default-schema)
-                        declared (into #{} (map #(data-testing.u/column-key ignore-case? (:name %))) columns)
+                  (let [declared (into #{} (map #(data-testing.u/column-key ignore-case? (:name %))) columns)
                         missing  (into (sorted-set)
-                                       (comp (filter #(contains? tables (select-keys % [:schema :name])))
+                                       ;; The input is `ref`, so an input without a schema stands for its table in the
+                                       ;; default schema; Guard A has already refused one for a qualified reference.
+                                       (comp (filter #(table-match? table (select-keys % [:schema :name]) default-schema))
                                              (map :column)
                                              (remove #(contains? declared (data-testing.u/column-key ignore-case? %))))
                                        columns-read)]

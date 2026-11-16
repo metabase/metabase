@@ -26,8 +26,8 @@
   #{:advanced-permissions :transforms-basic :transforms-testing})
 
 (defn refusal
-  "The `:error-type` and message of the refusal `thunk` throws, with the entries of its ex-data under `data-keys`, or
-  nil when it does not throw."
+  "The `:error-type` and message of the refusal that `thunk` throws, with the entries of its ex-data under
+  `data-keys`, or nil when `thunk` does not throw."
   [thunk & data-keys]
   (try
     (thunk)

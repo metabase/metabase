@@ -409,7 +409,7 @@
                         (mt/user-http-request :crowberto :post status "ee/transform-test"
                                               {:transform_id transform-id :name test-name :inputs test-inputs
                                                :expectations expectations}))]
-        (testing "an input naming its table without a schema, lacking a column the transform reads, is refused, naming it"
+        (testing "an input naming its table without a schema, lacking a column the transform reads, is refused, naming the column"
           (is (=? {:error-code "transform-test.missing-input-columns"
                    :columns    {:PEOPLE ["NAME"]}}
                   (create 400 "id only" (no-schema "ID"))))
