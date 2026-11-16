@@ -1539,7 +1539,8 @@
 
 (defmulti do-with-test-connection
   "Calls `f` with a single connection to `database` that keeps its temp tables between statements and rolls back
-  everything it did afterwards."
+  everything it did afterwards. The connection's session uses the report timezone when one is set and `database`
+  supports `:set-timezone`, as a query run's does."
   {:added "0.64.0", :arglists '([driver database f])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

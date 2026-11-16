@@ -9,9 +9,11 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -131,6 +133,26 @@
                                                   (lib.metadata/segment (mt/metadata-provider) segment-id))
                                       {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
                                       [1]))))))))
+
+(deftest pinned-run-reads-the-day-in-the-report-timezone-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
+      (let [query      (lib/filter (orders-query) (lib/time-interval (created-at) :current :day))
+            ;; June 18 in Tokyo, June 17 in UTC; order 1 is created on the Tokyo day, order 2 on the UTC day
+            pinned     "2020-06-17T20:00:00Z"
+            inputs     [(orders-input {1 (t/offset-date-time "2020-06-18T01:00:00Z")
+                                       2 (t/offset-date-time "2020-06-17T10:00:00Z")})]
+            run!       #(run-card-test! query {:now pinned} inputs [(selects [1])])
+            session-tz #(-> (qp/process-query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT current_setting('TimeZone')"))
+                            mt/rows
+                            ffirst)]
+        (testing "on a fresh pool, today is the pinned day in the report timezone"
+          (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+          (is (= :passed (run!))))
+        (testing "control: after a query sets the pooled session to the report timezone, the same test passes"
+          (is (= "Asia/Tokyo" (session-tz)))
+          (is (= :passed (run!))))))))
 
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and

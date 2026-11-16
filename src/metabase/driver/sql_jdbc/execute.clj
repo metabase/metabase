@@ -1040,7 +1040,10 @@
   (do-with-connection-with-options
    driver
    database
-   {:write? true}
+   ;; The session reads dates in the report timezone, as a query run does; without the option it keeps whatever
+   ;; timezone the pooled connection last had.
+   {:write?           true
+    :session-timezone (driver-api/report-timezone-id-if-supported driver database)}
    (fn [^Connection conn]
      (.setAutoCommit conn false)
      (try
