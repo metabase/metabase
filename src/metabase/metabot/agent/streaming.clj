@@ -29,8 +29,10 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  ;; research_plan_update is large picker hydration. Clients read it only on
-  ;; the live stream. No reader loads it from storage.
+  ;; research_plan_update is large picker hydration. The explorations UI reads
+  ;; it only on the live stream. Stored rows used it only for a debug JSON card
+  ;; (Metabot sidebar debug mode, EE AI auditing conversation page). The stored
+  ;; add_research_groups tool part keeps the args and the text summary.
   #{research-plan-update-type
     search-results-type
     state-type
