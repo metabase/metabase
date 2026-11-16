@@ -152,14 +152,6 @@
   ^javax.sql.DataSource []
   (.data-source (current-application-db)))
 
-(defn mariadb?
-  "Whether the application DB is MariaDB.
-  Since [[db-type]] reports MariaDB as `:mysql`, this reads the product name from a connection."
-  []
-  (and (= (db-type) :mysql)
-       (with-open [conn (.getConnection (data-source))]
-         (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))))
-
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s
   dedicated Quartz connection pool (or its regular data source if it was created without pooling).

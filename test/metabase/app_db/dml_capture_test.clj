@@ -103,6 +103,12 @@
          (:h2 :mysql)   " (id BIGINT AUTO_INCREMENT PRIMARY KEY,")
        " name VARCHAR(255) NOT NULL, group_id INT NOT NULL, n INT NOT NULL DEFAULT 0)"))
 
+(defn- mariadb?
+  "Whether the app DB is MariaDB, which `mdb/db-type` reports as `:mysql`."
+  []
+  (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
 (defn- drop-table-sql []
   (str "DROP TABLE IF EXISTS " table-name))
 
@@ -151,7 +157,7 @@
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 82))))
   ;; MariaDB rejects an alias on a single-table DELETE.
-  (when-not (mdb/mariadb?)
+  (when-not (mariadb?)
     (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture and still deletes"
       (reset-capture!)
       (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
