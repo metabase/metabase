@@ -205,7 +205,7 @@ export const getLightTheme = (
     "illustration-secondary-brand": brand[10],
     "illustration-tertiary-brand": brand[5],
     "input-background": baseColors.orionAlpha[5],
-    "input-focus": baseColors.blue[20],
+    "input-focus": brand[60],
     "modal-border": baseColors.transparent,
     "modal-overlay": baseColors.blackAlpha[10],
     "navbar-admin": baseColors.octopus[60],

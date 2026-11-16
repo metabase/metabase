@@ -221,7 +221,7 @@ export function SearchResult({
             <Group wrap="nowrap" gap="sm" data-testid="result-description">
               <Divider
                 size="md"
-                color="input-focus"
+                color="border-brand"
                 orientation="vertical"
                 bdrs="xxs"
               />

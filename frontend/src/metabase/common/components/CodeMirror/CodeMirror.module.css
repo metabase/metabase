@@ -55,7 +55,7 @@
   }
 
   :global(.cm-selectionBackground) {
-    background: var(--mb-color-input-focus) !important;
+    background: var(--mb-color-background_surface-selected) !important;
     border-radius: 1px;
   }
 

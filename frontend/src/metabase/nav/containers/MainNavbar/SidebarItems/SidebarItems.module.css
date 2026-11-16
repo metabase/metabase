@@ -2,7 +2,7 @@
   padding-left: calc(var(--tree-depth) * 1rem);
   color: var(--mb-color-text-primary);
 
-  &:has(.link:focus, .button:focus) {
+  &:has(.link:focus-visible, .button:focus-visible) {
     outline: 2px solid var(--mb-color-input-focus);
     outline-offset: -2px;
   }
