@@ -156,7 +156,8 @@
           (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
         (when (and enabled? (not default-role))
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
-                          {:user-id api/*current-user-id*
+                          {:status-code 400
+                           :user-id     api/*current-user-id*
                            :database-id (u/id database)})))
         (when-let [role (or impersonation-role default-role)]
           ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
