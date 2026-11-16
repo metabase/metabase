@@ -4,9 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli :as mu]))
 
@@ -69,7 +68,7 @@
   "Walk the viz settings and update the refs using the provided function.
 
   `ref-fn` will be called with a ref and should return either a string to be used as a column name."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
@@ -80,26 +79,25 @@
                 ref-or-name))
           (update-legacy-refs-or-names [refs-or-names]
             (into [] (keep update-legacy-ref-or-name) refs-or-names))
-          (column-setting-ref [#::vs{:keys [field-id field-metadata]}]
-            (-> (lib/normalize :mbql.clause/field [:field (or field-metadata {}) field-id])
+          (column-setting-ref [{:keys [field-id field-options]}]
+            (-> (lib/normalize :mbql.clause/field [:field (or field-options {}) field-id])
                 lib/ensure-uuid))
           (update-column-setting [k v]
-            (or (when (::vs/field-id k)
-                  (let [ref (column-setting-ref k)]
-                    (when-some [new-ref-or-name (ref-fn ref)]
-                      (cond
-                        (string? new-ref-or-name)
-                        [{::vs/column-name new-ref-or-name} v]
-                        (lib.util/field-clause? new-ref-or-name)
-                        [{::vs/field-id (lib/field-ref-id new-ref-or-name)
-                          ::vs/field-metadata (lib/options new-ref-or-name)} v]))))
+            (or (when-some [parsed-key (lib/parse-column-settings-key k)]
+                  (when-some [new-ref-or-name (when (:field-id parsed-key)
+                                                (ref-fn (column-setting-ref parsed-key)))]
+                    (cond
+                      (string? new-ref-or-name)
+                      [(lib/column-name->column-settings-key new-ref-or-name) v]
+                      (lib.util/field-clause? new-ref-or-name)
+                      [(lib/ref->column-settings-key new-ref-or-name) v])))
                 [k v]))
           (update-column-settings [column-settings]
             (m/map-kv update-column-setting column-settings))
           (update-column-formatting [column-formatting]
             (into [] (map #(m/update-existing % :columns update-legacy-refs-or-names)) column-formatting))]
     (-> viz-settings
-        (m/update-existing ::vs/column-settings update-column-settings)
+        (m/update-existing :column_settings update-column-settings)
         (m/update-existing :table.column_formatting update-column-formatting)
         (m/update-existing-in [:pivot_table.column_split :rows] update-legacy-refs-or-names)
         (m/update-existing-in [:pivot_table.column_split :columns] update-legacy-refs-or-names)
@@ -108,44 +106,44 @@
 
 (mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
   "Returns the card ID from a click behavior if it links to a card."
-  [click-behavior :- ::lib.schema.visualization-settings/visualization-settings]
-  (when (= ::vs/card (::vs/link-type click-behavior))
-    (::vs/link-target-id click-behavior)))
+  [click-behavior :- ::lib.schema.visualization/visualization-settings]
+  (when (= "question" (:linkType click-behavior))
+    (:targetId click-behavior)))
 
 (mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the click behaviors in the viz settings."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings]
+  [viz-settings :- ::lib.schema.visualization/visualization-settings]
   (into #{}
         (concat
          ;; global click behavior (non-table cards)
-         (when-some [id (some-> viz-settings ::vs/click-behavior click-behavior-card-id)]
+         (when-some [id (some-> viz-settings :click_behavior click-behavior-card-id)]
            [id])
          ;; per-column click behaviors
          (keep (fn [[_col-key col-viz]]
-                 (some-> col-viz ::vs/click-behavior click-behavior-card-id))
-               (::vs/column-settings viz-settings)))))
+                 (some-> col-viz :click_behavior click-behavior-card-id))
+               (:column_settings viz-settings)))))
 
 (mu/defn walk-viz-settings-click-behaviors :- :map
   "Walk the click behaviors in the viz settings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
    target-fn    :- fn?]
   (letfn [(update-mapping [card-id mapping]
-            (or (when-some [target (some->> mapping ::vs/param-mapping-target ::vs/param-dimension
+            (or (when-some [target (some->> mapping :target :dimension
                                             (lib/normalize ::lib.schema.parameter/target))]
                   (when-some [target' (target-fn target card-id)]
-                    (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target')))
+                    (assoc-in mapping [:target :dimension] target')))
                 mapping))
           (update-click-behavior [click-behavior]
             (or (when-some [card-id (some-> click-behavior click-behavior-card-id)]
-                  (m/update-existing click-behavior ::vs/parameter-mapping
+                  (m/update-existing click-behavior :parameterMapping
                                      (fn [mappings]
                                        (m/map-vals #(update-mapping card-id %) mappings))))
                 click-behavior))
           (update-column-settings [col-settings]
-            (m/map-vals #(m/update-existing % ::vs/click-behavior update-click-behavior)
+            (m/map-vals #(m/update-existing % :click_behavior update-click-behavior)
                         col-settings))]
     (-> viz-settings
-        (m/update-existing ::vs/click-behavior update-click-behavior)
-        (m/update-existing ::vs/column-settings update-column-settings))))
+        (m/update-existing :click_behavior update-click-behavior)
+        (m/update-existing :column_settings update-column-settings))))

@@ -181,7 +181,7 @@
           (is (= 1 (t2/count :model/Card :collection_id coll-id)))
           (mt/with-non-admin-groups-no-collection-perms coll-id
             (mt/with-current-user (mt/user->id :rasta)
-              (is (not-any? mi/can-read? (t2/select :model/Card :collection_id coll-id))))))))))
+              (is (not-any? mi/can-read? (t2/hydrate (t2/select :model/Card :collection_id coll-id) :can_read))))))))))
 
 (deftest duplicate-native-question-without-authoring-perms-test
   (testing "GHY-4218: copying is not authoring. A caller who can read and run a native card but

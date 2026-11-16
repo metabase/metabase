@@ -110,7 +110,6 @@
 (defmethod serialization/spec :model/Setting [_]
   {:schema    ::settings.schema/external-setting
    :identity  [:key]
-   :primary-key :key
    :copy      [:value]
    :skip      [:value_with_aad]
    :transform {:key {:export (fn [_ _ ks _] (mapv name ks))

@@ -1,0 +1,19 @@
+## Permission checks on published Tables look them up by is_published, by Database, and read their Collection: an
+## index over those three columns serves them without reading metabase_table rows.
+
+databaseChangeLog:
+  - changeSet:
+      id: mwdy5s
+      author: ranquild
+      comment: Add index on metabase_table(is_published, db_id, collection_id)
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_published_db_id_collection_id
+            columns:
+              - column:
+                  name: is_published
+              - column:
+                  name: db_id
+              - column:
+                  name: collection_id

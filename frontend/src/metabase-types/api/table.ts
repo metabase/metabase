@@ -278,6 +278,7 @@ export interface PublishTablesResponse {
 }
 
 export type TableUserSettings = {
+  id: number;
   table_id: TableId;
   display_name: string | null;
   description: string | null;
