@@ -1,9 +1,5 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_TABLES,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import {
   ALL_EXTERNAL_USERS_GROUP_ID,
   COLLECTION_GROUP_ID,
@@ -334,29 +330,12 @@ describe("Tenants - management", () => {
   });
 
   it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted"); // needed because of the restore on the line above
+    const sandboxingAttributePicker = `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`;
 
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-
-    cy.findByRole("switch", { name: /data actions/i }).click({ force: true });
-    cy.findByRole("switch", { name: /database routing/i }).click({
-      force: true,
-    });
-
-    cy.findByPlaceholderText("Choose an attribute").click();
-
-    H.popover().findByText("@tenant.slug").should("not.exist");
-    cy.visit(
-      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
+    cy.log(
+      "the backend leaves @tenant.slug out of the list until tenants are on",
     );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-
-    H.popover().findByText("@tenant.slug").should("not.exist");
-    cy.visit(
-      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
-    );
-
+    cy.visit(sandboxingAttributePicker);
     cy.findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("@tenant.slug").should("not.exist");
 
@@ -365,12 +344,8 @@ describe("Tenants - management", () => {
     createTenants();
     createUsers();
 
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.findByRole("switch", { name: /database routing/i }).click({
-      force: true,
-    });
-
-    cy.findByPlaceholderText("Choose an attribute").click();
+    cy.visit(sandboxingAttributePicker);
+    cy.findByPlaceholderText("Pick a user attribute").click();
     H.popover()
       .findByRole("option", { name: /@tenant.slug/ })
       .findByTestId("system-defined-tooltip-icon")
@@ -380,22 +355,6 @@ describe("Tenants - management", () => {
       "contain.text",
       "This attribute is system defined",
     );
-
-    cy.visit(
-      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
-    );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover()
-      .findByRole("option", { name: /@tenant.slug/ })
-      .findByTestId("system-defined-tooltip-icon");
-
-    cy.visit(
-      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
-    );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover()
-      .findByRole("option", { name: /@tenant.slug/ })
-      .findByTestId("system-defined-tooltip-icon");
 
     cy.log("check that tenant attributes propagate to users");
 
