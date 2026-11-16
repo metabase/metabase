@@ -77,14 +77,18 @@
   (settings-map {:description "click behavior parameter reference"}
                 [:dimension ::click-behavior.dimension]))
 
+(mr/def ::click-behavior.parameter-mapping.entry
+  "What one parameter of a click behavior destination gets: the source of its value and the target it fills."
+  (settings-map {:description "click behavior parameter mapping"}
+                [:source ::click-behavior.parameter-ref]
+                [:target ::click-behavior.parameter-ref]))
+
 (mr/def ::click-behavior.parameter-mapping
   "The `:parameterMapping` of a click behavior: what each parameter of its destination gets, by the JSON-encoded id of
   that parameter or dimension."
   [:map-of {:decode/normalize #(cond-> % (map? %) (perf/update-keys lib.schema.common/normalize-string-key))}
    :string
-   [:maybe (settings-map {:description "click behavior parameter mapping"}
-                         [:source ::click-behavior.parameter-ref]
-                         [:target ::click-behavior.parameter-ref])]])
+   [:maybe ::click-behavior.parameter-mapping.entry]])
 
 (defn- normalize-link-type
   "The link type `x`, with the `page` that older settings give for a dashboard as `dashboard`."
@@ -282,13 +286,17 @@
    ::lib.schema.id/document
    ::lib.schema.id/table])
 
+(mr/def ::link-card.entity
+  "The entity a link card links to, by model and id."
+  (settings-map {:description "link card entity"}
+                [:id    ::link-card.entity-id]
+                [:model :string]))
+
 (mr/def ::link-card
   "The `:link` of a link card: the URL it links to, or the model and id of the entity it links to."
   (settings-map {:description "link card"}
                 [:url    :string]
-                [:entity (settings-map {:description "link card entity"}
-                                       [:id    ::link-card.entity-id]
-                                       [:model :string])]))
+                [:entity ::link-card.entity]))
 
 (mr/def ::global-column-settings
   "The column settings the formatting settings of the instance give every column of a type, by that type."

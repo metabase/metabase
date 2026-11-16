@@ -162,6 +162,10 @@
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
   [:map {:closed false, :description "options map of any MBQL clause"}])
 
+(mr/def ::open-json.object
+  "A JSON object kept as it arrived, whatever its keys."
+  [:map {:closed false, :description "a JSON object kept as it arrived"}])
+
 (mr/def ::open-json
   "A JSON value kept as it arrived: a scalar, a sequence of such values, or a map of any keys."
   [:or
@@ -170,7 +174,7 @@
    :keyword
    number?
    [:sequential [:maybe [:ref ::open-json]]]
-   [:map {:closed false, :description "a JSON object kept as it arrived"}]])
+   ::open-json.object])
 
 (mr/def ::database-details
   "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."

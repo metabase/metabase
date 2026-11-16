@@ -32,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
    [throttle.core :as throttle])
@@ -104,16 +105,16 @@
   way of the customer's page, so treat it as caller-controlled and keep it to a bounded run of token characters."
   #"[A-Za-z0-9._~+/=-]{1,512}")
 
-(def ^:private TrackEnvelope
-  "The `{:type :payload}` wrapper the tracker library puts around every send. `identify` is not accepted: nothing in
-  Metabase calls it, and an anonymous relay has no reason to carry it. Otherwise deliberately open — `:payload`
-  carries browser-derived fields the library may add to over time, and `:data` inside it is arbitrary nested JSON."
-  ;; `{:closed false}` is what opts a map out of `defendpoint`'s strip-extra-keys decoding — without it the event
-  ;; data would be stripped off before we ever forwarded it.
+(mr/def ::track-payload
+  "The payload of a tracker send, open because it carries browser-derived fields and arbitrary nested event data."
+  [:map {:closed false, :description "a Metabase Track event payload"}
+   [:website ms/NonBlankString]])
+
+(mr/def ::track-envelope
+  "The `{:type :payload}` wrapper the tracker library puts around every send, open so nothing it adds is stripped."
   [:map {:closed false, :description "a Metabase Track send envelope"}
    [:type    [:enum "event"]]
-   [:payload [:map {:closed false, :description "a Metabase Track event payload"}
-              [:website ms/NonBlankString]]]])
+   [:payload ::track-payload]])
 
 (defn- cache-token
   "The tracker echoes the collector's cache token back in `x-track-cache` on later sends, letting the collector skip a
@@ -173,7 +174,7 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   body :- TrackEnvelope]
+   body :- ::track-envelope]
   (if-not (analytics.settings/metaplow-tracking-enabled)
     ;; Gated on the same switch as the instance's own emission — anonymous tracking on and a collector configured.
     ;; An admin who opted out must not have the instance relaying a caller's events either.

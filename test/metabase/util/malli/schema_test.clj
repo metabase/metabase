@@ -35,8 +35,8 @@
             :failed-cases  [[] 1 "a"]
             :success-cases [{} {:a :b}]}
            {:schema        ms/OpaqueJSONObject
-            :failed-cases  [[] 1 "a" {:a :b}]
-            :success-cases [{} {"a" {:b 1}}]}
+            :failed-cases  [[] 1 "a" {:a :b} {"a" {:b 1}}]
+            :success-cases [{} {"a" {"b" 1}} {"a" [{"b" :c}]}]}
            {:schema        ms/Email
             :failed-cases  ["abc.com" 1]
             :success-cases ["ngoc@metabase.com"]}

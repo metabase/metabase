@@ -217,10 +217,14 @@
    [:map {:closed false, :description description}]
    (deferred-tru "Value must be a map.")))
 
+(mr/def ::database-details
+  "Connection details for a Database, keyed by the `connection-properties` of its driver."
+  (open-map "database connection details"))
+
 (def DatabaseDetails
   "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
   are not knowable here."
-  (open-map "database connection details"))
+  ::database-details)
 
 (defn- open-json
   "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
@@ -288,10 +292,14 @@
   "The attributes of a tenant, whose keys are defined by the admin."
   (open-map "tenant attributes"))
 
+(mr/def ::database-settings
+  "The database-local settings of a Database, keyed by the settings registry."
+  (open-map "database settings"))
+
 (def DatabaseSettings
   "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
-  (open-map "database settings"))
+  ::database-settings)
 
 (def UserSettings
   "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
@@ -315,11 +323,11 @@
     (deferred-tru "Value must be a map."))))
 
 (mr/def ::json-value
-  "A JSON value kept as it arrived: a map of any keys, a sequence of JSON values, or anything that is neither."
+  "A JSON value: an object keyed by strings, a sequence of JSON values, or a scalar."
   [:multi {:dispatch #(cond (map? %) :object (sequential? %) :array :else :scalar)}
-   [:object [:map {:closed false, :description "a JSON object kept as it arrived"}]]
+   [:object [:map-of :string [:ref ::json-value]]]
    [:array  [:sequential [:ref ::json-value]]]
-   [:scalar [:fn {:error/message "a scalar", :json-schema {}} #(not (or (map? %) (sequential? %)))]]])
+   [:scalar [:fn {:error/message "a scalar", :json-schema {}} (complement coll?)]]])
 
 (def OpaqueJSONObject
   "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a

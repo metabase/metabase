@@ -43,6 +43,8 @@
     [:map-of :string :int]
     [:map-of [:enum :a :b] :int]
     (ms/string-keyed-map :string)
+    ms/OpaqueJSONObject
+    (ms/string-keyed-object ["id" :int])
     [:enum :type/Text :type/Integer]
     [:fn string?]))
 
@@ -55,8 +57,6 @@
     ::nested
     [:or :int ::open]
     ms/DatabaseDetails
-    ms/OpaqueJSONObject
-    (ms/string-keyed-object ["id" :int])
     [:multi {:dispatch :type} [:a [:map {:closed false} [:type [:= :a]]]]]))
 
 (deftest ^:parallel keyword-keyed-map-of-is-found-test
