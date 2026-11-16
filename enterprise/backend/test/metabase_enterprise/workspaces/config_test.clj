@@ -491,15 +491,15 @@
             "the message must not echo a templated value")))))
 
 (deftest build-workspace-config-empty-workspace-test
-  (testing "A workspace with no databases still produces the version+config outer shape"
+  (testing "A workspace with no databases has no config: a 422 that names the workspace"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
                                                  :creator_id (mt/user->id :crowberto)}]
-      (let [cfg (config/build-workspace-config ws-id)]
-        (is (= 1 (:version cfg)))
-        (is (= "Empty" (-> cfg :config :workspace :name)))
-        (is (empty? (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases)))
-            "no non-stub, non-sample databases since the workspace has none of its own")
-        (is (= {} (-> cfg :config :workspace :databases)))))))
+      (is (=? {:message #"Workspace \"Empty\" has no databases.*"
+               :data    {:status-code 422 :workspace_id ws-id}}
+              (try
+                (config/build-workspace-config ws-id)
+                (catch clojure.lang.ExceptionInfo e
+                  {:message (ex-message e) :data (ex-data e)})))))))
 
 (deftest build-workspace-config-injects-stubs-for-non-workspace-dbs-test
   (testing "Databases that exist in the instance but are not provisioned for the workspace appear
@@ -606,8 +606,15 @@
                                                  :engine    :h2
                                                  :details   {:db "real-sample-details"}
                                                  :is_sample true}
+                   :model/Database ws-db        {:name "sample-emit-ws-db" :engine :postgres :details {}}
                    :model/Workspace {ws-id :id} {:name       "sample-emit-ws"
-                                                 :creator_id (mt/user->id :crowberto)}]
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _   {:workspace_id     ws-id
+                                                 :database_id      (:id ws-db)
+                                                 :database_details {}
+                                                 :output_namespace ""
+                                                 :input_schemas    ["public"]
+                                                 :status           :provisioned}]
       (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
             samples (filter :is_sample cfg-dbs)]
         (testing "exactly one sample entry is emitted"

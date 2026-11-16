@@ -74,10 +74,12 @@
     (t2/hydrate workspace :creator :databases)))
 
 (defn- with-workspace-database-defaults
-  "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
+  "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them. `updated_at` is
+  this instance's current time, the clock the busy window of a delete uses."
   [wsd workspace-id]
   (merge {:database_details {}
-          :output_namespace ""}
+          :output_namespace ""
+          :updated_at       (mi/current-timestamp)}
          wsd
          {:workspace_id workspace-id}))
 

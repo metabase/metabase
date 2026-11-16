@@ -80,7 +80,7 @@ export type SetupOpts = {
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
   id: 1,
-  name: "'Your personal collection",
+  name: "John Doe Personal Collection",
   originalName: "John's Personal Collection",
 });
 
