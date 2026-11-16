@@ -696,24 +696,26 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged.
 
-  Make one transducer for each LLM call. It also records the usage of its call only, as `:ai/usage` with the same
-  shape as the turn's, on the eval span of that call. Some models have a rate that changes with the size of one
-  request, so the evals price each call, not the sum of the turn."
+  One reduction is the stream of one LLM call. The transducer also records the usage of that call only, as
+  `:ai/usage` with the same shape as the turn's, on the eval span of the call. Some models have a rate that changes
+  with the size of one request, so the evals price each call, not the sum of the turn."
   [usage-atom provider-and-model]
-  (let [model      (or (some-> provider-and-model llm.provider/strip-managed-prefix)
-                       "unknown")
-        add-usage  (partial merge-with +)
-        call-usage (volatile! {})]
-    (map (fn [{:keys [usage] :as part}]
-           (if (= (:type part) :usage)
-             (do
-               (when (ait/capture-active?)
-                 (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}}))
-               (assoc part
-                      :model model
-                      :usage (-> (swap! usage-atom update model add-usage usage)
-                                 (get model))))
-             part)))))
+  (let [model     (or (some-> provider-and-model llm.provider/strip-managed-prefix)
+                      "unknown")
+        add-usage (partial merge-with +)]
+    (fn [rf]
+      (let [call-usage (volatile! {})]
+        ((map (fn [{:keys [usage] :as part}]
+                (if (= (:type part) :usage)
+                  (do
+                    (when (ait/capture-active?)
+                      (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}}))
+                    (assoc part
+                           :model model
+                           :usage (-> (swap! usage-atom update model add-usage usage)
+                                      (get model))))
+                  part)))
+         rf)))))
 
 (defn- step-limit-reply-parts
   "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.

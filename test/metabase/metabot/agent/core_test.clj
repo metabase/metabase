@@ -1041,6 +1041,22 @@
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
+(deftest step-limit-reply-eval-usage-test
+  (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
+    (mt/as-admin
+      (let [reply           #(mut/mock-llm-response [{:type :text :text "The customer table has no link to orders."}
+                                                     {:type  :usage
+                                                      :usage {:promptTokens 700 :completionTokens 30}}])
+            {:keys [trace]} (ait/capturing (step-limit-turn! :document-generate-content reply))
+            turn            (first trace)]
+        (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 700 :completionTokens 30}}]
+               (map #(get-in % [:attributes :ai/usage])
+                    (sort-by #(get-in % [:attributes :ai/iteration]) (:children turn)))))
+        (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
+               (get-in turn [:attributes :ai/usage])))))))
+
 (def ^:private partial-reply
   "The text that the last call streams before it stops."
   "I couldn't chart revenue by customer segment because")
