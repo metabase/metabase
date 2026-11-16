@@ -48,8 +48,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :once ssh-test/do-with-mock-servers)
+(use-fixtures :once (fixtures/initialize :db) ssh-test/do-with-mock-servers)
 
 ;;; this is mostly testing [[h2/*allow-testing-h2-connections*]] so it's ok to hardcode driver names below. [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
