@@ -1,7 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
 
-import type { Card, CreateCardRequest } from "./card";
+import type { Card, CardId, CreateCardRequest } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { TimelineEvent } from "./timeline";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -27,6 +28,7 @@ export type Document = {
   public_uuid?: string | null;
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
+  card_timeline_events?: Record<CardId, TimelineEvent[]>; // Map of card ID -> the events it shows, for public documents
   view_count?: number;
   exploration_id?: number | null;
   is_placeholder?: boolean;

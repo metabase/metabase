@@ -952,6 +952,17 @@
              (events-enabled? settings))
     (selected-timeline-ids settings)))
 
+(defn remove-unreadable-timelines
+  "`card` with its timeline selection narrowed to the timelines the current user can read, dropping deleted timelines
+  and malformed entries. Without a bound user, `card` is returned unchanged."
+  [card]
+  (let [selected-ids (selected-timeline-ids (:visualization_settings card))]
+    ;; without a bound user every timeline reads as unreadable, so an internal write would lose the whole selection
+    (if (or (nil? api/*current-user-id*) (empty? selected-ids))
+      card
+      (let [readable-ids (into #{} (comp (filter mi/can-read?) (map :id)) (queries.db/timelines selected-ids))]
+        (update-in card [:visualization_settings :timeline.selected_timeline_ids] #(filterv readable-ids %))))))
+
 (defn dashcard-hides-card-events?
   "Whether `dashcard` never shows its card's timeline events, whatever the card selects: a visualizer dashcard renders
   its own visualization, an action dashcard renders a button, and a virtual dashcard has no card of its own."

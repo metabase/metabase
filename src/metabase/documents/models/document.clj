@@ -171,7 +171,7 @@
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
   card fields are declared locally: the model layer doesn't depend on the REST card schema. `source_card_id`, if
-  given, must be a Card the user can read; the new card inherits its timeline selection for permission purposes."
+  given, must be a Card the user can read; the new card is treated as its copy for timeline permission purposes."
   [:map {:closed true}
    [:name ms/NonBlankString]
    [:dataset_query ::lib-be.schema/maybe-legacy-query]
@@ -189,7 +189,7 @@
   "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
   checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
   read access to any card the parameters draw values from, and query permission on the fields the parameter targets
-  name."
+  name. The saved card keeps only the timelines the user can read."
   [{query :dataset_query :as card} creator]
   (api/create-check :model/Card {:collection_id (:collection_id card)})
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
@@ -198,10 +198,14 @@
    (into []
          (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
          (:parameters card)))
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+  (card/create-card! (-> card
+                         card/remove-unreadable-timelines
+                         (assoc :type :question :dashboard_id nil))
+                     creator))
 
 (defn clone-card!
-  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
+  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document. The copy keeps
+  only the timelines the user can read, so a document never shows events its editors could not see.
 
   Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
   checks (run permission on the query, parameter source-card and parameter field permissions): the query and
@@ -212,7 +216,10 @@
   [source-card creator]
   (api/create-check :model/Card {:collection_id (:collection_id source-card)})
   (card/with-copy-source-card source-card
-    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
+    (card/create-card! (-> source-card
+                           card/remove-unreadable-timelines
+                           (assoc :type :question :dashboard_id nil))
+                       creator)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -684,7 +691,7 @@
   {:schema    ::documents.schema/external-document
    :copy      [:archived :archived_directly :content_type :entity_id :name :collection_position]
    :skip      [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id
-               :is_placeholder]
+               :is_placeholder :show_public_timeline_events]
    :transform {:document      {:export (fn [store documents _ _]
                                          (serialization/export-in-bulk store documents walk-export-document))
                                :import (fn [store entities _ opts]

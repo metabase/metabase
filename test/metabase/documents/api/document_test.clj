@@ -341,50 +341,54 @@
                 (testing "no Card carrying that target may exist afterwards"
                   (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
 
-(deftest document-draft-card-inherits-source-card-timeline-visibility-test
-  (testing "a draft card forked from a saved card inherits the source card's timeline selection"
+(deftest document-draft-card-keeps-only-readable-timelines-test
+  (testing "a draft card saved with a document keeps only the timelines the user can read"
     (mt/with-model-cleanup [:model/Document :model/Card]
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {coll-id :id}       {}
                        :model/Collection {restricted-id :id} {}
+                       :model/Timeline   readable-timeline   {:collection_id coll-id}
                        :model/Timeline   private-timeline    {:collection_id restricted-id}
                        :model/Timeline   private-timeline-2  {:collection_id restricted-id}
                        :model/Card       source              {:collection_id          coll-id
                                                               :display                :line
                                                               :dataset_query          (mt/mbql-query venues)
                                                               :visualization_settings {:timeline.selected_timeline_ids
-                                                                                       [(:id private-timeline)]}}
+                                                                                       [(:id readable-timeline)
+                                                                                        (:id private-timeline)]}}
                        :model/Card       unreadable-source   {:collection_id          restricted-id
                                                               :display                :line
                                                               :dataset_query          (mt/mbql-query venues)
                                                               :visualization_settings {:timeline.selected_timeline_ids
                                                                                        [(:id private-timeline)]}}]
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
-          (let [draft     (-> source
-                              (select-keys [:dataset_query :visualization_settings])
-                              (assoc :name "Draft" :display "bar"))
-                save-doc! (fn [status card]
-                            (mt/user-http-request :rasta :post status "document/"
-                                                  {:name          "d"
-                                                   :collection_id coll-id
-                                                   :document      {:type "doc" :content []}
-                                                   :cards         {"-1" card}}))]
-            (testing "with the source card id the draft saves with the inherited timeline selection"
-              (let [doc-id (:id (save-doc! 200 (assoc draft :source_card_id (:id source))))]
-                (is (=? {:display                :bar
-                         :visualization_settings {:timeline.selected_timeline_ids [(:id private-timeline)]}}
-                        (t2/select-one :model/Card :document_id doc-id)))))
+          (let [draft           (-> source
+                                    (select-keys [:dataset_query :visualization_settings])
+                                    (assoc :name "Draft" :display "bar"))
+                save-doc!       (fn [status card]
+                                  (mt/user-http-request :rasta :post status "document/"
+                                                        {:name          "d"
+                                                         :collection_id coll-id
+                                                         :document      {:type "doc" :content []}
+                                                         :cards         {"-1" card}}))
+                saved-timelines (fn [card]
+                                  (-> (t2/select-one :model/Card :document_id (:id (save-doc! 200 card)))
+                                      (get-in [:visualization_settings :timeline.selected_timeline_ids])))]
+            (testing "with the source card id"
+              (is (= [(:id readable-timeline)]
+                     (saved-timelines (assoc draft :source_card_id (:id source))))))
+            (testing "without the source card id"
+              (is (= [(:id readable-timeline)]
+                     (saved-timelines draft))))
+            (testing "with another unreadable timeline added"
+              (is (= [(:id readable-timeline)]
+                     (saved-timelines (-> draft
+                                          (assoc :source_card_id (:id source))
+                                          (update-in [:visualization_settings :timeline.selected_timeline_ids]
+                                                     conj (:id private-timeline-2)))))))
             (t2/delete! :model/Card :name "Draft")
-            (testing "without the source card id the unreadable timeline is refused"
-              (save-doc! 403 draft))
-            (testing "a newly added unreadable timeline is still refused"
-              (save-doc! 403 (-> draft
-                                 (assoc :source_card_id (:id source))
-                                 (assoc-in [:visualization_settings :timeline.selected_timeline_ids]
-                                           [(:id private-timeline) (:id private-timeline-2)]))))
             (testing "a source card the user cannot read is refused"
-              (save-doc! 403 (assoc draft :source_card_id (:id unreadable-source))))
-            (testing "no draft card exists after the refused saves"
+              (save-doc! 403 (assoc draft :source_card_id (:id unreadable-source)))
               (is (empty? (t2/select :model/Card :name "Draft"))))))))))
 
 (deftest copy-document-archived-document-test
@@ -2163,6 +2167,16 @@
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
                                                 (format "document/%d/public-link" (:id document))))))))))
+    (testing "Sharing a Document shows its timeline events on the public link"
+      (mt/with-temp [:model/Document document {:name                        "Test Document"
+                                               :document                    (documents.test-util/text->prose-mirror-ast "Test content")
+                                               :show_public_timeline_events false}]
+        (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+        (is (true? (t2/select-one-fn :show_public_timeline_events :model/Document :id (:id document))))))
+    (testing "Re-sharing an already shared Document keeps its timeline events hidden"
+      (mt/with-temp [:model/Document document (document-with-public-link {:show_public_timeline_events false})]
+        (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+        (is (false? (t2/select-one-fn :show_public_timeline_events :model/Document :id (:id document))))))
     (mt/with-temp [:model/Document document {:name "Test Document"
                                              :document (documents.test-util/text->prose-mirror-ast "Test content")}]
       (testing "Test that we *cannot* share a Document if we aren't admins"
@@ -2564,11 +2578,12 @@
                 (is (t2/exists? :model/Card :document_id (:id result)))))))))))
 
 (deftest copy-document-with-inaccessible-timeline-selection-test
-  (testing "POST /api/document/:id/copy keeps a timeline selection the copier cannot read (mirrors card copy behavior)"
+  (testing "POST /api/document/:id/copy drops the timelines the copier cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-model-cleanup [:model/Document :model/Card]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Collection {timeline-coll-id :id} {}
+                       :model/Timeline {readable-timeline-id :id} {:collection_id coll-id}
                        :model/Timeline {timeline-id :id} {:collection_id timeline-coll-id}
                        :model/Document {doc-id :id} {:name          "Doc with timeline card"
                                                      :collection_id coll-id
@@ -2577,7 +2592,8 @@
                                                   :collection_id          coll-id
                                                   :document_id            doc-id
                                                   :dataset_query          (mt/mbql-query venues)
-                                                  :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
+                                                  :visualization_settings {:timeline.selected_timeline_ids
+                                                                           [readable-timeline-id timeline-id]}}]
           (t2/update! :model/Document :id doc-id {:document (card-embed-ast card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
@@ -2587,9 +2603,37 @@
             (testing "the document-owned card is cloned"
               (is (some? cloned-card))
               (is (not= card-id (:id cloned-card))))
-            (testing "the inherited timeline selection is preserved without a fresh read check"
-              (is (= [timeline-id]
+            (testing "the copy keeps only the timeline the copier can read"
+              (is (= [readable-timeline-id]
                      (get-in cloned-card [:visualization_settings :timeline.selected_timeline_ids]))))))))))
+
+(deftest document-embedded-card-copy-keeps-only-readable-timelines-test
+  (testing "embedding an existing card saves a copy that keeps only the timelines the user can read"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id}       {}
+                       :model/Collection {restricted-id :id} {}
+                       :model/Timeline   {readable-id :id}   {:collection_id coll-id}
+                       :model/Timeline   {private-id :id}    {:collection_id restricted-id}
+                       :model/Card       {card-id :id}       {:collection_id          coll-id
+                                                              :display                :line
+                                                              :dataset_query          (mt/mbql-query venues)
+                                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                                       [readable-id private-id]}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (let [selection        (fn [card] (get-in card [:visualization_settings :timeline.selected_timeline_ids]))
+                create-document! (fn [content]
+                                   (:id (mt/user-http-request :rasta :post 200 "document/"
+                                                              {:name "d" :collection_id coll-id :document content})))]
+            (testing "when the document is created"
+              (let [doc-id (create-document! (card-embed-ast card-id))]
+                (is (= [readable-id] (selection (t2/select-one :model/Card :document_id doc-id))))))
+            (testing "when the document is updated"
+              (let [doc-id (create-document! {:type "doc" :content []})]
+                (mt/user-http-request :rasta :put 200 (format "document/%d" doc-id) {:document (card-embed-ast card-id)})
+                (is (= [readable-id] (selection (t2/select-one :model/Card :document_id doc-id))))))
+            (testing "the embedded card keeps its own selection"
+              (is (= [readable-id private-id] (selection (t2/select-one :model/Card :id card-id)))))))))))
 
 (deftest post-document-draft-native-card-still-requires-native-perms-test
   (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"

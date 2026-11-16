@@ -99,4 +99,5 @@
       (is (contains? excluded-columns :collection_id))
       (is (contains? excluded-columns :collection_position))
       (is (contains? excluded-columns :public_uuid_prefix))
-      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))
+      (is (contains? excluded-columns :show_public_timeline_events))
+      (is (= 12 (count excluded-columns)) "Should exclude exactly 12 metadata fields"))))

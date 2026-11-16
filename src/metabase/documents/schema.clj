@@ -49,6 +49,7 @@
    [:public_uuid         {:optional true} [:maybe :string]]
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
+   [:show_public_timeline_events {:optional true} :boolean]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 

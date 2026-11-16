@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.permissions.core :as perms]
    [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -156,6 +157,39 @@
                                          {:entity :document
                                           :id document-id
                                           :revision_id prev-rev-id})))))))))
+
+(deftest document-revert-keeps-card-timelines-test
+  (testing "reverting brings back the document's own cards with their timeline selection, including timelines the
+           reverting user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id}       {}
+                     :model/Collection {restricted-id :id} {}
+                     :model/Timeline   {timeline-id :id}   {:collection_id restricted-id}
+                     :model/Document   {doc-id :id}        {:collection_id coll-id
+                                                            :document      {:type "doc" :content []}
+                                                            :creator_id    (mt/user->id :crowberto)}
+                     :model/Card       {card-id :id}       {:collection_id          coll-id
+                                                            :document_id            doc-id
+                                                            :display                :line
+                                                            :visualization_settings {:timeline.selected_timeline_ids
+                                                                                     [timeline-id]}}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+        ;; node attrs come back from the app DB with string keys
+        (let [with-card {:type    "doc"
+                         :content [{:type    "resizeNode"
+                                    :attrs   {"height" 400 "minHeight" 280}
+                                    :content [{:type "cardEmbed" :attrs {"id" card-id "name" nil "_id" "1"}}]}]}]
+          (t2/update! :model/Document :id doc-id {:document with-card})
+          (create-document-revision! doc-id true :crowberto)
+          (t2/update! :model/Document :id doc-id {:document {:type "doc" :content []}})
+          (create-document-revision! doc-id false :crowberto)
+          (let [[_ {with-card-rev-id :id}] (revision/revisions :model/Document doc-id)]
+            (mt/user-http-request :rasta :post 200 "revision/revert"
+                                  {:entity :document :id doc-id :revision_id with-card-rev-id})
+            (is (= with-card (t2/select-one-fn :document :model/Document :id doc-id)))
+            (is (= [timeline-id]
+                   (get-in (t2/select-one :model/Card :id card-id)
+                           [:visualization_settings :timeline.selected_timeline_ids])))))))))
 
 (deftest document-revision-cross-boundary-integration-test
   (testing "Document revisions integrate properly with OSS revision system"

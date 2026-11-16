@@ -1,0 +1,30 @@
+## Public documents show their charts' timeline events from 66 on. Documents that were already public kept those
+## events hidden, so they don't start showing them on upgrade: their admins checked the public link without events.
+## Making a document public sets the flag again.
+
+databaseChangeLog:
+  - changeSet:
+      id: obttie
+      author: kevinkelleher12
+      comment: Add document.show_public_timeline_events
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: show_public_timeline_events
+                  type: ${boolean.type}
+                  remarks: Whether the public link shows the timeline events of the document's charts. False only for documents that were public before public documents showed events.
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: kisr5n
+      author: kevinkelleher12
+      comment: Hide timeline events on the public links of documents that are already public
+      changes:
+        - sql:
+            sql: UPDATE document SET show_public_timeline_events = FALSE WHERE public_uuid IS NOT NULL
+      # Rolling back the column drops the flag along with it.
+      rollback:
