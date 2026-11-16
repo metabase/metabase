@@ -39,13 +39,8 @@ export function getStatsBase(
     return null;
   }
 
-  let newQuery = query;
-  const ownFilter = Lib.filters(query, stageIndex).find(
-    (clause) => clause === filter,
-  );
-  if (ownFilter != null) {
-    newQuery = Lib.removeClause(newQuery, stageIndex, ownFilter);
-  }
+  let newQuery =
+    filter != null ? removeOwnFilter(query, stageIndex, filter) : query;
   while (Lib.stageCount(newQuery) > stageIndex + 1) {
     const droppedQuery = Lib.dropStage(newQuery);
     if (Lib.stageCount(droppedQuery) >= Lib.stageCount(newQuery)) {
@@ -75,6 +70,79 @@ export function getStatsBase(
     findStatsColumn(removeSummary(newQuery, stageIndex), stageIndex, column) ??
     findStatsColumn(Lib.appendStage(newQuery), stageIndex + 1, column)
   );
+}
+
+/**
+ * Remove the filter that the user edits. The filter bar gives a copy of the
+ * clause, not the clause of the query, and the clause can be a part of an AND
+ * or an OR group. Thus compare the clauses by their content.
+ */
+function removeOwnFilter(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.Filterable,
+): Lib.Query {
+  const ownKey = getFilterKey(query, stageIndex, filter);
+  if (ownKey == null) {
+    return query;
+  }
+  const isOwn = (clause: Lib.Filterable) =>
+    clause === filter || getFilterKey(query, stageIndex, clause) === ownKey;
+
+  type Clause = Lib.FilterClause | Lib.ExpressionClause;
+  const withoutOwn = (clause: Clause): Clause | null => {
+    if (isOwn(clause)) {
+      return null;
+    }
+    const parts = Lib.expressionParts(query, stageIndex, clause);
+    if (parts.operator !== "and" && parts.operator !== "or") {
+      return clause;
+    }
+    const args = parts.args
+      .map((arg) => withoutOwn(Lib.expressionClause(arg)))
+      .filter((arg): arg is Clause => arg != null);
+    if (args.length === parts.args.length) {
+      return clause;
+    }
+    if (args.length === 0) {
+      return null;
+    }
+    return args.length === 1
+      ? args[0]
+      : Lib.expressionClause(parts.operator, args);
+  };
+
+  return Lib.filters(query, stageIndex).reduce((newQuery, clause) => {
+    const newClause = withoutOwn(clause);
+    if (newClause === clause) {
+      return newQuery;
+    }
+    return newClause == null
+      ? Lib.removeClause(newQuery, stageIndex, clause)
+      : Lib.replaceClause(newQuery, stageIndex, clause, newClause);
+  }, query);
+}
+
+/** The filter as MBQL without the clause uuids, to compare two filters. */
+function getFilterKey(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.Filterable,
+): string | null {
+  const emptyQuery = Lib.filters(query, stageIndex).reduce(
+    (newQuery, clause) => Lib.removeClause(newQuery, stageIndex, clause),
+    query,
+  );
+  // `toJsQuery` gives an opaque type, but the value is MBQL 5 with stages.
+  const jsQuery = Lib.toJsQuery(
+    Lib.filter(emptyQuery, stageIndex, filter),
+  ) as unknown as { stages?: { filters?: unknown[] }[] };
+  const mbql = jsQuery.stages?.[stageIndex]?.filters?.[0];
+  return mbql != null
+    ? JSON.stringify(mbql, (key, value: unknown) =>
+        key === "lib/uuid" ? undefined : value,
+      )
+    : null;
 }
 
 function findStatsColumn(
@@ -205,7 +273,7 @@ export function getHistogramQuery(
 }
 
 export function parseHistogramRows(rows: RowValue[][]): number[] {
-  const counts = new Array(BUCKET_COUNT).fill(0);
+  const counts = new Array<number>(BUCKET_COUNT).fill(0);
   for (const [bucket, count] of rows) {
     if (typeof bucket === "number" && typeof count === "number") {
       // The max value is on the upper bound, so it gets bucket BUCKET_COUNT.
