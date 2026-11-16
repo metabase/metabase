@@ -76,28 +76,9 @@
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
   {:table_ids (schema.field/field-ids->table-ids field_ids)})
 
-(defn- check-field-in-same-database!
-  "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
-   the target field does not exist or belongs to a different database. Uses a single query."
-  [source-field-id target-field-id param-name]
-  (let [result (first (warehouse-schema-rest.db/field-and-target-database-ids source-field-id target-field-id))]
-    (api/checkp result param-name "Invalid target field")
-    (api/checkp (= (:source_db_id result) (:target_db_id result))
-                param-name "Target field must belong to the same database")))
-
 (defn- check-can-point-at-field!
-  [source-field-id target-field-id current-target-field-id param-name]
-  (when target-field-id
-    (check-field-in-same-database! source-field-id target-field-id param-name)
-    (when (not= target-field-id current-target-field-id)
-      (-> (warehouse-schema-rest.db/field target-field-id)
-          :table_id
-          warehouse-schema-rest.db/table
-          schema.table/check-data-model-perms))))
-
-(defn- check-can-change-fk-target!
   "Throws a 403 unless the current user manages the metadata of the Table of the Field with `target-field-id`, a new
-  target for a foreign key."
+  target for a foreign key or a remapping."
   [target-field-id current-target-field-id]
   (when (and target-field-id (not= target-field-id current-target-field-id))
     (some-> (warehouse-schema-rest.db/field target-field-id)
@@ -155,7 +136,7 @@
                        :coercion-strategy (keyword coercion-strategy)
                        :effective-type    effective-type
                        :response/keys     #{:base-type :coercion-strategy :effective-type}})))
-    (check-can-change-fk-target! (:fk_target_field_id body) (:fk_target_field_id field))
+    (check-can-point-at-field! (:fk_target_field_id body) (:fk_target_field_id field))
     (schema.field-user-settings/upsert-field-user-settings!
      field
      (cond-> body
@@ -210,14 +191,8 @@
        [:name                    ms/NonBlankString]
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
-  (api/check (or (= dimension-type :internal)
-                 (and (= dimension-type :external)
-                      human-readable-field-id))
-             [400 "Foreign key based remappings require a human readable field id"])
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
-    (check-can-point-at-field! id human-readable-field-id
-                               (:human_readable_field_id existing-dimension)
-                               :human_readable_field_id)
+    (check-can-point-at-field! human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
       (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
                                                   {:type                    dimension-type

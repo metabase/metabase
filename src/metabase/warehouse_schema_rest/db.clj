@@ -12,18 +12,6 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn field-and-target-database-ids
-  "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
-  [source-field-id :- ::lib.schema.id/field
-   target-field-id :- ::lib.schema.id/field]
-  (t2/query {:select [[:source_t.db_id :source_db_id]
-                      [:target_t.db_id :target_db_id]]
-             :from      [[(t2/table-name :model/Field) :sf]]
-             :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
-                      [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
-                      [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
-             :where  [:= :sf.id source-field-id]}))
-
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]

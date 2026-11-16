@@ -3,9 +3,11 @@
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-remaps`."
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
@@ -29,6 +31,59 @@
 
 (def ^:private dimension-slug "___dimension")
 
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-type
+  "Throws a 400 unless `dimension` is internal, or external with the Field its values come from."
+  [{dimension-type :type, :keys [human_readable_field_id]}]
+  (let [dimension-type (some-> dimension-type keyword)]
+    (when-not (#{:internal :external} dimension-type)
+      (throw (ex-info (tru "A Dimension is internal or external.") {:status-code 400})))
+    (when (and (= :external dimension-type) (nil? human_readable_field_id))
+      (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))))
+
+(defn- field-databases
+  "The Database id of the Field of each of `dimensions` and of the Field its values come from, by Field id, loaded
+  together."
+  [dimensions]
+  (if (some :human_readable_field_id dimensions)
+    (warehouse-schema.db/field-database-ids
+     (into #{} (comp (mapcat (juxt :field_id :human_readable_field_id)) (remove nil?)) dimensions))
+    {}))
+
+(defn- check-human-readable-field
+  "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field, per
+  `field-id->database-id`."
+  [{:keys [field_id human_readable_field_id]} field-id->database-id]
+  (let [target-database-id (field-id->database-id human_readable_field_id)]
+    (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
+    (api/checkp (= target-database-id (field-id->database-id field_id))
+                :human_readable_field_id (tru "Target field must belong to the same database"))))
+
+(mi/define-before-insert :model/Dimension
+  [dimensions]
+  (let [field-id->database-id (field-databases dimensions)]
+    (doseq [dimension dimensions]
+      (check-type dimension)
+      (when (:human_readable_field_id dimension)
+        (check-human-readable-field dimension field-id->database-id)))
+    dimensions))
+
+(mi/define-before-update :model/Dimension
+  [dimensions]
+  (let [field-id->database-id (field-databases (filter #(:human_readable_field_id (t2/changes %)) dimensions))]
+    (doseq [dimension dimensions
+            :let      [changes (t2/changes dimension)]]
+      (when (contains? changes :field_id)
+        (throw (ex-info (tru "You cannot move a Dimension to another Field.") {:status-code 400})))
+      (when (some #(contains? changes %) [:type :human_readable_field_id])
+        (check-type dimension))
+      (when (:human_readable_field_id changes)
+        (check-human-readable-field dimension field-id->database-id)))
+    dimensions))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
 (def ^:private field-id-transform
   "The transform of `field_id`, which keeps the Field id that a Dimension nested in its Field's entity loads with."
   (assoc serialization/field-transform
@@ -51,6 +106,8 @@
             (update field-path (dec (count field-path))
                     (fn [segment] (assoc segment :suffix dimension-slug)))))
         entities))
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/Dimension
   [_model]

@@ -421,6 +421,12 @@
    dimension-type :- [:enum :internal :external]]
   (t2/delete! :model/Dimension :field_id field-id :type dimension-type))
 
+(mu/defn delete-dimensions-reading-field!
+  "Delete the Dimensions whose values come from the ::warehouse-schema.schema/field with `field-id`, returning the
+  number deleted."
+  [field-id :- ::lib.schema.id/field]
+  (t2/delete! :model/Dimension :human_readable_field_id field-id))
+
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]

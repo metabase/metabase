@@ -246,7 +246,8 @@
       (check-fk-target field databases))
     (when (false? (:active changes))
       (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
-      (warehouse-schema.db/clear-fk-targets-to-field! id))
+      (warehouse-schema.db/clear-fk-targets-to-field! id)
+      (warehouse-schema.db/delete-dimensions-reading-field! id))
     (when removed-fk?
       (warehouse-schema.db/unset-user-settings-fk-target! id)
       (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
