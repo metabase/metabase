@@ -7,8 +7,8 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -39,15 +39,14 @@
   [_subject-type
    {query :dataset_query card-name :name} :- ::data-testing.subject/card]
   (let [database (data-testing.subject/testable-database (lib/database-id query))
-        {sql :query params :params native? :native?}
+        {:keys [compiled native?]}
         (try
           ;; The same preparation a transform's query gets: remaps would add joins to tables the test does
           ;; not declare, and the default row limit would cut the result set. A persisted model in the query
           ;; stays its query: its cache table is not a table the test can declare, and the test is of the query.
           (model-persistence/with-persisted-substituion-disabled
-            (let [query (transforms-base.u/massage-sql-query query)]
-              (assoc (qp.compile/compile query)
-                     :native? (data-testing.subject/hand-written-sql? query))))
+            (data-testing.subject/compile-preprocessed
+             (qp.preprocess/preprocess (transforms-base.u/massage-sql-query query))))
           (catch Exception e
             (throw (data-testing.errors/ex
                     ::data-testing.errors/uncompilable-subject
@@ -59,7 +58,7 @@
                     {}
                     e))))]
     {:database      database
-     :compiled      {:query sql :params params}
+     :compiled      compiled
      :native?       native?
      ;; A card has no table of its own, so expectation SQL names its result by the token, which
      ;; [[data-testing.compile/replace-tables]] turns into this reserved name.

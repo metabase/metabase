@@ -19,13 +19,14 @@
             ::data-testing.errors/unsupported-transform
             (tru "Only query transforms can be tested.")
             {})))
-  (let [database               (data-testing.subject/testable-database
-                                (transforms-base.u/transform-source-database transform))
-        target                 (select-keys (:target transform) [:schema :name])
-        {:keys [query params]} (transforms-base.u/compile-source transform nil)]
+  (let [database                  (data-testing.subject/testable-database
+                                   (transforms-base.u/transform-source-database transform))
+        target                    (select-keys (:target transform) [:schema :name])
+        {:keys [compiled native?]} (data-testing.subject/compile-preprocessed
+                                    (transforms-base.u/preprocess-source transform nil))]
     {:database      database
-     :compiled      {:query query :params params}
-     :native?       (data-testing.subject/hand-written-sql? (get-in transform [:source :query]))
+     :compiled      compiled
+     :native?       native?
      :output-tables [target]
      :output-token  nil
      :output-label  (data-testing.validator/table-label target)}))

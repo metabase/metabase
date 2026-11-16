@@ -11,7 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
-   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -67,7 +67,12 @@
               {:driver driver})))
     database))
 
-(mu/defn hand-written-sql? :- :boolean
-  "Whether `query` compiles to SQL that holds SQL written by hand: a native stage of its own, or of a card it reads."
-  [query :- ::lib.schema/query]
-  (lib/any-native-stage? (qp.preprocess/preprocess query)))
+(mu/defn compile-preprocessed :- [:map {:closed true}
+                                  [:compiled ::data-testing.compile/compiled-query]
+                                  [:native?  :boolean]]
+  "`preprocessed`, a preprocessed query, compiled to SQL, and whether that SQL includes SQL written by hand: a native
+  stage of the query, or of a card it reads."
+  [preprocessed :- ::lib.schema/query]
+  (let [{:keys [query params]} (qp.compile/compile-preprocessed preprocessed)]
+    {:compiled {:query query :params params}
+     :native?  (lib/any-native-stage? preprocessed)}))
