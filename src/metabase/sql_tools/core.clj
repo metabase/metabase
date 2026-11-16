@@ -236,7 +236,7 @@
   (common/resolve-field driver mp col-spec))
 
 (defn field-candidates
-  "Every column that a field reference could read; [[resolve-field]] picks one of them.
+  "Every candidate column for a field reference; [[resolve-field]] picks the first.
   See [[metabase.sql-tools.common/field-candidates]] for details."
   [driver mp col-spec]
   (common/field-candidates driver mp col-spec))

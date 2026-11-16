@@ -75,8 +75,8 @@
                 {:id id :table-id table-id :name field-name :base-type :type/Text :active true})}))
 
 (defn- candidates
-  "The ids of the candidate columns of the reference to `column` in the select list of `sql`, on Postgres, or `:none`
-  for a candidate that is not a column of a table."
+  "The ids of the candidate columns of the reference to `column` in the select list of `sql`, on Postgres; a candidate
+  that belongs to no table appears as `:none`."
   [sql column]
   (let [{:keys [returned-fields]} (sql-tools/field-references :postgres sql)
         field                     (some #(when (= column (:column %)) %) returned-fields)]

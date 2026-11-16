@@ -17,8 +17,8 @@
   (some-> identifier u/lower-case-en))
 
 (mu/defn column-key :- :string
-  "The form in which this module compares the column name `column-name` on a database that ignores case in column
-  names iff `ignore-case?`: two names are one column there iff their keys are equal."
+  "The key by which this module compares the column name `column-name`: two names are one column iff their keys are
+  equal. `ignore-case?` says whether the database ignores case in column names."
   [ignore-case? :- :boolean
    column-name  :- :string]
   (if ignore-case? (fold-identifier column-name) column-name))

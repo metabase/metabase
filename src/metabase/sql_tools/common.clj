@@ -149,10 +149,12 @@
      {:error (lib/missing-column-error (:column col-spec))})])
 
 (defn field-candidates
-  "The columns that `col-spec`, a `:single-column` field spec of `field-references`, could read: those whose name,
-  normalized for `driver`, equals the spec's column name, from the innermost scope that has any; empty when no scope
-  has such a column. [[resolve-field]] picks the first of them. A column without `:table-id` is not a column of a
-  table: a computed value, or a stand-in for a source whose columns are unknown."
+  "Every candidate for the column reference `col-spec`, a `:single-column` field spec of `field-references`. A
+  candidate is a column that one of the reference's sources provides and whose name equals the reference's, both
+  names normalized for `driver`. Only the innermost scope that has a candidate counts: an inner query before the one
+  around it. Returns the candidates in the order of the sources, or `[]` when no scope has one; [[resolve-field]]
+  picks the first. A candidate without `:table-id` belongs to no table: it is a computed value, or a stand-in for a
+  source whose columns are unknown."
   [driver metadata-provider {:keys [column source-columns]}]
   (let [column-name (normalize-name driver column)]
     (or (some (fn [scope]

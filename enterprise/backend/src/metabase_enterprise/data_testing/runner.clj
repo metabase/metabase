@@ -188,7 +188,7 @@
 (mu/defn- columns-read :- [:maybe [:set ::data-testing.validator/column-read]]
   "The columns of tables that `sql` reads, as `metadata-provider` spells them, or nil when the parser reports an error
   in `sql`. A column is left out when its reference could also read something else: a column of another table, a
-  column whose name differs only in case, or a computed value. A wildcard reads no column."
+  column whose name differs only in case, or a computed value. Columns read through a wildcard are left out."
   [driver            :- :keyword
    metadata-provider :- ::lib.schema.metadata/metadata-provider
    sql               :- :string]

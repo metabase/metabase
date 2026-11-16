@@ -194,16 +194,16 @@
                :response/keys #{:placeholders}})))))
 
 (mr/def ::column-read
-  "A column of a table that SQL reads, with the table's schema and name, each spelled as Metabase's metadata spells it."
+  "A column that SQL reads, with the schema and name of its table, all three spelled as Metabase's metadata spells them."
   [:map {:closed true}
    [:schema [:maybe :string]]
    [:name   :string]
    [:column :string]])
 
 (mu/defn- tables-of-input :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
-  "The tables of `columns-read` that the declared `table` names, as `{:schema :name}` maps. A table matches when its
-  name and schema equal the declared ones, case aside; a declared table without a schema stands for one in
-  `default-schema`. When one match is spelled exactly as declared, only that one."
+  "The tables of the columns in `columns-read` that match the declared `table`, as `{:schema :name}` maps. A table
+  matches when its name and schema equal the declared ones, case aside; a declared table without a schema stands for
+  one in `default-schema`. When one match is spelled exactly as declared, returns only that one."
   [table          :- ::data-testing.schema/table
    columns-read   :- [:set ::column-read]
    default-schema :- [:maybe :string]]
@@ -221,10 +221,10 @@
                                                  [:table    ::data-testing.schema/table]
                                                  [:columns  [:sequential :string]]
                                                  [:declared [:map-of :string :string]]]]
-  "For each rows input, the columns of its table in `columns-read` that the input does not declare, spelled as the
-  table spells them; inputs with none are left out. Declared names compare with the table's under
-  [[data-testing.u/column-key]]. `:declared` maps a missing column to the input's spelling of it when the two differ
-  only in case."
+  "For each rows input, the columns that it lacks, spelled as their table spells them; an input that lacks none is
+  left out. An input lacks a column of `columns-read` when the column's table matches the input's table, as
+  [[tables-of-input]] matches, and no name that the input declares has the same [[data-testing.u/column-key]] as the column.
+  `:declared` maps a column the input lacks to the input's spelling of it, when the two differ only in case."
   [inputs         :- ::data-testing.schema/inputs
    columns-read   :- [:set ::column-read]
    default-schema :- [:maybe :string]
