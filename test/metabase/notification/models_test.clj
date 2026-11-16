@@ -252,7 +252,7 @@
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
     (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack
-                                                   :details {:channel "#general"}}
+                                                  :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
