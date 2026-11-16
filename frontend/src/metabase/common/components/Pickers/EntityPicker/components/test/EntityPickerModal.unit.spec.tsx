@@ -370,6 +370,26 @@ describe("EntityPickerModal", () => {
       ).toBeEnabled();
     });
 
+    it("should not offer a library that holds none of the picked models", async () => {
+      await setup({
+        libraryCollection: { ...libraryCollection, below: [] },
+        models: ["table", "card", "dataset", "metric"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeVisible();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+
+    it("should offer an empty library when picking a collection", async () => {
+      await setup({
+        libraryCollection: { ...libraryCollection, below: [] },
+        libraryCollectionItems: [],
+        models: ["collection"],
+      });
+
+      expect(await screen.findByText("Library")).toBeVisible();
+    });
+
     it("should include synthetic library sections when auto-selecting a promoted descendant path", async () => {
       await setup({
         ...libraryPickerSetup,

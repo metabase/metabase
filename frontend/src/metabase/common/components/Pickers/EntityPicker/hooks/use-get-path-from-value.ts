@@ -16,6 +16,7 @@ import {
 import {
   allCollectionModels,
   getCollectionItemsOptions,
+  hasLibraryItems,
 } from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_DATA_APPS, PLUGIN_LIBRARY } from "metabase/plugins";
@@ -50,15 +51,21 @@ const getDefaultPath = async ({
   libraryCollection,
   namespaces,
   models,
+  pickedModels,
   dispatch,
 }: {
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  pickedModels: OmniPickerItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
-  if (libraryCollection && options.hasLibrary) {
+  if (
+    libraryCollection &&
+    options.hasLibrary &&
+    hasLibraryItems(libraryCollection, pickedModels)
+  ) {
     const libraryChildrenResponse = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
         id: libraryCollection.id,
@@ -101,12 +108,15 @@ export function useGetPathFromValue({
   options,
   namespaces,
   models,
+  pickedModels,
   showsDataApps = false,
 }: {
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  /** The models the picker picks, without the collections it only navigates; `models` by default. */
+  pickedModels?: OmniPickerItem["model"][];
   showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
@@ -144,6 +154,7 @@ export function useGetPathFromValue({
         libraryCollection,
         namespaces,
         models,
+        pickedModels: pickedModels ?? models,
         dispatch,
       }).then((path) => {
         setPath(path);

@@ -36,6 +36,7 @@ export const EntityPickerProvider = ({
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
+    pickedModels: value.models,
     showsDataApps: shouldShowDataApps(value),
   });
 

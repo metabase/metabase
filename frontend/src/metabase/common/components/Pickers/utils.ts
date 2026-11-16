@@ -54,6 +54,17 @@ export const getValidCollectionItemModels = (
 ): CollectionItemModel[] =>
   _.uniq(models.filter(isValidCollectionItemModel).concat(["collection"]));
 
+/** Whether a picker of `models` offers the Library: when it picks collections, or the Library holds one of `models`. */
+export const hasLibraryItems = (
+  libraryCollection: { here?: string[]; below?: string[] },
+  models: string[],
+): boolean =>
+  models.includes("collection") ||
+  _.intersection<string>(models, [
+    ...(libraryCollection.here ?? []),
+    ...(libraryCollection.below ?? []),
+  ]).length > 0;
+
 /** Shared options for collection item requests across EntityPicker and MiniPicker. */
 export const getCollectionItemsOptions = ({
   models,

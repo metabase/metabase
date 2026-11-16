@@ -24,6 +24,7 @@ import type {
   OmniPickerTableItem,
   SearchScope,
 } from "../..";
+import { hasLibraryItems } from "../../../utils";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -230,7 +231,11 @@ const LocationInfo = ({
 };
 
 export function SearchScopeSelector() {
-  const { setSearchScope, options: pickerOptions } = useOmniPickerContext();
+  const {
+    setSearchScope,
+    options: pickerOptions,
+    models,
+  } = useOmniPickerContext();
   const searchScope = useCurrentSearchScope();
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
@@ -239,7 +244,7 @@ export function SearchScopeSelector() {
 
   const options = [
     { label: t`Everywhere`, value: "all" },
-    libraryCollection?.id
+    libraryCollection?.id && hasLibraryItems(libraryCollection, models)
       ? { label: libraryCollection.name, value: String(libraryCollection.id) }
       : null,
     lastCollection
