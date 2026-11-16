@@ -1078,3 +1078,63 @@
     (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
       (workspaces.tu/with-workspace-locked-by-config
         (fn [] (is (true? (ws/workspace-locked-by-config?))))))))
+
+(deftest delete-during-a-create-longer-than-the-busy-window-test
+  (doseq [[aged expected] [["only the unfinished database's row is older than the busy window" :busy]
+                           ["every row of the workspace is older than the busy window" :deleted]]]
+    (testing (str "a DELETE after the first database is provisioned, before the second's starts, when " aged)
+      (do-with-committed-databases!
+       (fn [db1-id db2-id]
+         (let [ws-name   (str "Long create " (name expected))
+               inited    (atom #{})
+               destroyed (atom #{})
+               at-gate   (promise)
+               release   (promise)]
+           (try
+             (is (nil? t2.connection/*current-connectable*)
+                 "premise: no app-DB connection is bound, so each thread uses its own")
+             (with-redefs [provisioning/dispatching-provisioner       (recording-provisioner inited destroyed)
+                           provisioning/provision-workspace-database! (gated-provision-workspace-database! :after at-gate release)]
+               (let [create  (future (try
+                                       (ws/create-workspace! {:name         ws-name
+                                                              :creator_id   (mt/user->id :crowberto)
+                                                              :database_ids [db1-id db2-id]})
+                                       (catch Throwable e e)))
+                     _       (is (not= ::timeout (deref at-gate 20000 ::timeout))
+                                 "premise: the create reached the gate")
+                     ws-id   (t2/select-one-pk :model/Workspace :name ws-name)
+                     old     (t/minus (t/offset-date-time) (t/minutes 16))
+                     ;; the create wrote the second database's row only at the insert
+                     _       (t2/update! :model/WorkspaceDatabase
+                                         (cond-> {:workspace_id ws-id}
+                                           (= expected :busy) (assoc :status :provisioning))
+                                         {:updated_at old})
+                     _       (is (= [:provisioned :provisioning]
+                                    (t2/select-fn-vec :status :model/WorkspaceDatabase :workspace_id ws-id
+                                                      {:order-by [:id]}))
+                                 "premise: the first database is provisioned, the second has not started")
+                     delete  (try
+                               (ws/delete-workspace! ws-id)
+                               :deleted
+                               (catch ExceptionInfo e (ex-data e)))
+                     _       (deliver release true)
+                     created (deref create 30000 ::timeout)]
+                 (case expected
+                   :busy
+                   (do
+                     (is (=? {:status-code 409 :error-code "workspace_busy"} delete)
+                         "the first database's row was written within the window, so the workspace is busy")
+                     (is (= #{} (reduce disj @destroyed @inited))
+                         "the refused DELETE destroyed nothing of the database that has not started")
+                     (is (=? {:databases [{:status :provisioned} {:status :provisioned}]}
+                             created)
+                         "the refused DELETE left the create alone"))
+
+                   :deleted
+                   (do
+                     (is (= :deleted delete)
+                         "no row was written within the window, so the create counts as crashed")
+                     (is (= #{db1-id db2-id} @destroyed))
+                     (is (not (t2/exists? :model/Workspace :id ws-id)))))))
+             (finally
+               (deliver release true)))))))))
