@@ -737,7 +737,12 @@ describe("fetchDashboardCardData > dashcard queries", () => {
     await store.dispatch(fetchDashboardCardData());
 
     const { dashcardData } = store.getState().dashboard;
-    expect(dashcardData[1][1]).toHaveProperty("error");
+    expect(dashcardData[1][1]).toMatchObject({
+      error: {
+        status: 500,
+        data: { cause: "some error", data: {}, message: "some error" },
+      },
+    });
     expect(dashcardData[2][2]).toEqual(successfulDataset);
   });
 });
