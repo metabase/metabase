@@ -29,6 +29,7 @@ import {
   computeContinuousScaleBarWidth,
   getDataLabelFormatter,
 } from "../../option/series";
+import { applyYAxisTicks } from "../../option/y-axis";
 import { getTimelineEventsSelectionSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 import {
@@ -249,6 +250,13 @@ export const getWaterfallChartOption = (
   ].flatMap((option) => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
+  const axes = buildAxes(
+    chartModel,
+    chartLayout,
+    settings,
+    hasTimelineEvents,
+    renderingContext,
+  );
 
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
@@ -258,12 +266,7 @@ export const getWaterfallChartOption = (
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(
-      chartModel,
-      chartLayout,
-      settings,
-      hasTimelineEvents,
-      renderingContext,
-    ),
+    ...axes,
+    yAxis: applyYAxisTicks(axes.yAxis, chartModel, chartLayout, settings),
   };
 };
