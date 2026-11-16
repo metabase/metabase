@@ -31,6 +31,7 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [taoensso.nippy :as nippy]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
@@ -1621,10 +1622,10 @@
                     (sql-error-code #(jdbc/query (workspace-user-spec {:database_details no-processes})
                                                  ["SELECT query_id, user, query FROM system.processes LIMIT 0"])))))
            (driver.conn/with-swapped-connection-details (mt/id) no-processes
-             (testing "init answers 412, names the grant, and creates nothing"
+             (testing "init answers 412, names the grant, creates nothing, and forbids teardown"
                (let [e (is (thrown? clojure.lang.ExceptionInfo
                                     (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)))]
-                 (is (= {:status-code 412} (ex-data e)))
+                 (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
                  (is (str/includes? (str (ex-message e))
                                     (format "GRANT SELECT ON system.processes TO `%s`" (:user no-processes)))))
                (is (not (user-exists?)))
@@ -1632,3 +1633,102 @@
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
              (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-processes))]))))))))
+
+(deftest check-admin-reads-system-processes-errors-forbid-teardown-test
+  (testing "every error of the check says :workspace/cleanup? false: init runs it before any DDL"
+    (let [denied (SQLException. "Code: 497. DB::Exception: access denied" "" 497)
+          check  (fn [errors]
+                   ;; `errors` maps a regex of the SQL to the exception that SQL throws
+                   (mt/with-dynamic-fn-redefs [jdbc/query (fn [_ [sql]]
+                                                            (if-let [e (some (fn [[re e]] (when (re-find re sql) e)) errors)]
+                                                              (throw e)
+                                                              [{:login "admin"}]))]
+                     (try
+                       (#'clickhouse/check-admin-reads-system-processes! nil)
+                       nil
+                       (catch Exception e
+                         e))))]
+      (testing "the 412 when the login cannot read system.processes"
+        (is (= {:status-code 412, :workspace/cleanup? false}
+               (ex-data (check {#"system\.processes" denied})))))
+      (testing "another error reading system.processes"
+        (let [e (check {#"system\.processes" (SQLException. "connection reset" "" 0)})]
+          (is (false? (:workspace/cleanup? (ex-data e))))
+          (is (str/includes? (str (ex-message e)) "connection reset"))))
+      (testing "an error reading the login's name"
+        (let [e (check {#"system\.processes" denied
+                        #"currentUser"       (SQLException. "currentUser failed" "" 0)})]
+          (is (false? (:workspace/cleanup? (ex-data e))))
+          (is (str/includes? (str (ex-message e)) "currentUser failed")))))))
+
+(deftest ^:synchronized provisioning-keeps-same-named-objects-when-the-admin-cannot-read-system-processes-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [provision!   (requiring-resolve 'metabase-enterprise.workspaces.provisioning/provision-workspace-database!)
+             provisioner  @(requiring-resolve 'metabase-enterprise.workspaces.provisioning/dispatching-provisioner)
+             details      (requiring-resolve 'metabase-enterprise.workspaces.provisioning/details)
+             admin        (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             ;; an admin login with every grant init and teardown use, but no SELECT on the system database
+             no-processes {:user (str "mb_test_no_processes_" (rand-int 100000000)) :password "no-processes-pw"}
+             destroyed    (atom 0)
+             destroy      driver/destroy-workspace-isolation!]
+         (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-no-processes-provision" :creator_id (mt/user->id :crowberto)}
+                        :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
+                                                               :database_id      (mt/id)
+                                                               :input_schemas    []
+                                                               :database_details {}
+                                                               :output_namespace ""
+                                                               :status           :provisioning}]
+           ;; the names provisioning derives for this row; another parent owns a database and a user with them
+           (let [{db-name :schema {user :user} :database_details} (details provisioner :clickhouse (mt/db)
+                                                                           {:id wsd-id :name (str "wsd-" wsd-id)})
+                 other-db-rows #(try (jdbc/query admin [(format "SELECT x FROM `%s`.t" db-name)])
+                                     (catch SQLException e (ex-message e)))
+                 user-exists?  #(boolean (seq (jdbc/query admin ["SELECT 1 FROM system.users WHERE name = ?" user])))]
+             (try
+               (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-processes) (:password no-processes))])
+               (jdbc/execute! admin [(format "GRANT CURRENT GRANTS ON *.* TO `%s` WITH GRANT OPTION" (:user no-processes))])
+               (jdbc/execute! admin [(format "REVOKE SELECT ON system.* FROM `%s`" (:user no-processes))])
+               (jdbc/execute! admin [(format "CREATE DATABASE `%s`" db-name)])
+               (jdbc/execute! admin [(format "CREATE TABLE `%s`.t (x Int32) ENGINE = MergeTree ORDER BY x" db-name)])
+               (jdbc/execute! admin [(format "INSERT INTO `%s`.t VALUES (1)" db-name)])
+               (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY 'other-owner-pw'" user)])
+               (testing "precondition: the other parent's database, its row, and its user exist"
+                 (is (= [{:x 1}] (other-db-rows)))
+                 (is (true? (user-exists?))))
+               (let [e (with-redefs [driver/destroy-workspace-isolation! (fn [& args]
+                                                                           (swap! destroyed inc)
+                                                                           (apply destroy args))]
+                         (driver.conn/with-swapped-connection-details (mt/id) no-processes
+                           (try
+                             (provision! wsd-id provisioner)
+                             nil
+                             (catch Exception e
+                               e))))]
+                 (testing "provisioning throws init's 412"
+                   (is (=? {:status-code 412} (ex-data e)))
+                   (is (str/includes? (str (ex-message e)) "cannot read system.processes")))
+                 (testing "provisioning runs no teardown"
+                   (is (zero? @destroyed)))
+                 (testing "the other parent's database, its table and row, and its user survive"
+                   (is (= [{:x 1}] (other-db-rows)))
+                   (is (true? (user-exists?))))
+                 (testing "the row is deleted: nothing in the warehouse is this workspace's"
+                   (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id)))))
+               (finally
+                 (jdbc/execute! admin [(format "DROP DATABASE IF EXISTS `%s`" db-name)])
+                 (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" user)])
+                 (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-processes))]))))))))))
+
+(deftest ^:synchronized init-workspace-isolation-connection-error-forbids-teardown-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace (workspace-for-test "ws-no-connection")]
+         (testing "init that cannot connect created nothing, so its error says :workspace/cleanup? false"
+           (driver.conn/with-swapped-connection-details (mt/id) {:password "not-the-password"}
+             (let [e (workspace-init-error #(driver/init-workspace-isolation! :clickhouse (mt/db) workspace))]
+               (is (some? e))
+               (is (false? (:workspace/cleanup? (ex-data e)))
+                   (ex-message e))))))))))

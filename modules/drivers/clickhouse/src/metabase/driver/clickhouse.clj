@@ -774,20 +774,31 @@
 (defn- check-admin-reads-system-processes!
   "Throws a 412 when the login of `conn` cannot read `system.processes`. Teardown's KILL QUERY reads that table, even
   when no query matches. When the server requires a grant to read the `system` database, a login without one fails
-  every teardown. Init runs this check before any DDL."
+  every teardown. Init runs this check before any DDL, so every error the check throws says
+  `:workspace/cleanup? false`: init created nothing, and a teardown would drop a user and a database with the
+  workspace's names that may belong to another workspace."
   [^Connection conn]
   (try
     (jdbc/query {:connection conn} ["SELECT query_id, user, query FROM system.processes LIMIT 0"])
     (catch SQLException e
       ;; 497 is ACCESS_DENIED
       (when-not (= 497 (.getErrorCode e))
-        (throw e))
-      (let [login (-> (jdbc/query {:connection conn} ["SELECT currentUser() AS login"]) first :login)]
+        (throw (ex-info (format "Could not check whether the admin connection's login can read system.processes, so init created nothing: %s"
+                                (ex-message e))
+                        {:workspace/cleanup? false}
+                        e)))
+      (let [login (try
+                    (-> (jdbc/query {:connection conn} ["SELECT currentUser() AS login"]) first :login)
+                    (catch SQLException login-error
+                      (throw (ex-info (format "Could not read the admin connection's login, so init created nothing: %s"
+                                              (ex-message login-error))
+                                      {:workspace/cleanup? false}
+                                      login-error))))]
         (throw (ex-info (format (str "The admin connection's login cannot read system.processes. Workspace teardown "
                                      "reads it to end the workspace user's queries. Run GRANT SELECT ON "
                                      "system.processes TO %s and retry.")
                                 (quote-field login))
-                        {:status-code 412}
+                        {:status-code 412, :workspace/cleanup? false}
                         e))))))
 
 (defn- check-system-db-requires-grant!
@@ -810,24 +821,36 @@
         db-name          (:schema workspace)
         canonical-db     (:db (driver.conn/effective-details lib-db))
         {:keys [user password] :as read-user} (:database_details workspace)
-        escaped-password (sql.u/escape-sql password :ansi+backslashes)]
+        escaped-password (sql.u/escape-sql password :ansi+backslashes)
+        ddl-started?     (volatile! false)]
     ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
     ;; immediately. Failure recovery is compensation via the idempotent destroy.
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver lib-db {:write? true}
-     (fn [^Connection conn]
-       (check-admin-reads-system-processes! conn)
-       (check-workspace-names-free! conn user db-name)
-       (with-open [stmt (.createStatement conn)]
-         (let [[create-db create-user & grants] (init-workspace-sqls db-name user escaped-password canonical-db)]
-           (try
-             (create-workspace-object! stmt create-db :database db-name [])
-             (create-workspace-object! stmt create-user :user user
-                                       [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
-             (doseq [^String grant grants]
-               (.execute stmt grant))
-             (catch Throwable t
-               (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
+    (try
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver lib-db {:write? true}
+       (fn [^Connection conn]
+         (check-admin-reads-system-processes! conn)
+         (check-workspace-names-free! conn user db-name)
+         (with-open [stmt (.createStatement conn)]
+           (let [[create-db create-user & grants] (init-workspace-sqls db-name user escaped-password canonical-db)]
+             (vreset! ddl-started? true)
+             (try
+               (create-workspace-object! stmt create-db :database db-name [])
+               (create-workspace-object! stmt create-user :user user
+                                         [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
+               (doseq [^String grant grants]
+                 (.execute stmt grant))
+               (catch Throwable t
+                 (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
+      (catch Throwable t
+        ;; an error before the first CREATE, such as a failed connection, leaves nothing to tear down: it says
+        ;; `:workspace/cleanup? false`. After the first CREATE, something may exist, so the error goes to the caller as
+        ;; it is, and the caller tears down
+        (throw (if (or @ddl-started? (contains? (ex-data t) :workspace/cleanup?))
+                 t
+                 (ex-info (str "Init failed before it created anything: " (ex-message t))
+                          (assoc (ex-data t) :workspace/cleanup? false)
+                          t)))))
     ;; the workspace user connects with the database's own details, as workspace queries do
     (try
       (check-system-db-requires-grant! driver (merge (:details lib-db) (perf/select-keys read-user [:user :password])))
