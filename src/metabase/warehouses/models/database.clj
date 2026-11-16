@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.cache.core :as cache]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
@@ -454,6 +455,7 @@
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
+  (cache/delete-target-configs! "database" [id])
   ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
   ;; their search documents are enumerated first.
   ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
@@ -478,6 +480,8 @@
                  (map t2.realize/realize)
                  (partition-all 1000)
                  (warehouses.db/card-ids-for-database-reducible id)))]
+    (doseq [card-ids (partition-all tombstone-chunk-size gone)]
+      (cache/delete-target-configs! "question" card-ids))
     ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))

@@ -1165,6 +1165,7 @@
   (queries.db/delete-parameter-cards-for-card! id)
   (queries.db/delete-card-moderation-reviews! id)
   (queries.db/delete-card-revisions! id)
+  (cache/delete-target-configs! "question" [id])
   ;; delete any card-type notifications for this card — must materialize IDs first because
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
   ;; return empty by the time the actual DELETE executes.

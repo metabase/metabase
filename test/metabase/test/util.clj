@@ -133,6 +133,12 @@
              :name (u.random/random-name)
              :visualization_settings {}}))
 
+   :model/CacheConfig
+   (fn [_] {:model    "database"
+            :model_id (data/id)
+            :strategy :nocache
+            :config   {}})
+
    :model/Collection
    (fn [_] (default-created-at-timestamped {:entity_id (u/generate-nano-id)
                                             :name (u.random/random-name)}))

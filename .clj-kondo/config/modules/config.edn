@@ -809,6 +809,7 @@
            analytics
            api
            app-db
+           cache
            collections
            content-verification
            embedding
@@ -3484,6 +3485,7 @@
            api
            app-db
            audit-app
+           cache
            driver
            lib.schema
            models

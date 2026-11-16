@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -91,6 +92,7 @@
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
     (dashboards.db/delete-dashboard-revisions! dashboard-id)
+    (cache/delete-target-configs! "dashboard" [dashboard-id])
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
     (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
