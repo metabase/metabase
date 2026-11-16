@@ -38,10 +38,10 @@
 
 (defn- init!
   "[[driver/init-workspace-isolation!]]. Postgres init refuses a cluster where PUBLIC can create objects in any
-  database, the default in a cluster created before Postgres 15 or upgraded from one. Redshift init refuses a database
-  where PUBLIC can create objects in any schema, and `public` allows it by default. The shared test clusters are not
-  these tests' to change: metabase.driver.postgres.workspace-test and metabase.driver.redshift-test cover those
-  checks."
+  database, the default in a cluster created before Postgres 15 or upgraded from one. Redshift init refuses a cluster
+  where PUBLIC can create objects in any database or any schema of one, and `public` allows it by default in every
+  database. The shared test clusters are not these tests' to change: metabase.driver.postgres.workspace-test and
+  metabase.driver.redshift-test cover those checks."
   [driver database workspace]
   (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
     (if (= :redshift driver)

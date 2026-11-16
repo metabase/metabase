@@ -975,23 +975,23 @@
 ;;
 ;; - `grant-workspace-read-access!` adds `REVOKE CREATE ON SCHEMA … FROM <user>`
 ;;   and `REVOKE INSERT, UPDATE, DELETE, … ON ALL TABLES IN SCHEMA … FROM <user>`
-;;   per source schema, plus a pre-flight probe for the public-CREATE-grant
-;;   limit (see below).
+;;   per source schema, plus pre-flight probes for the public-CREATE-grant and
+;;   public-write limits (see below).
 ;;
 ;; - `destroy` replaces the postgres impl's `DROP OWNED BY` (which behaves
 ;;   differently in Redshift) with explicit per-schema REVOKEs.
 ;;
-;; Isolation limit, checked at init time via [[check-no-public-create-in-database!]]
-;; for every schema of the connected database, and again at grant time via [[assert-no-public-create-grant!]]
-;; for each input schema: Redshift's permission model (inherited from PostgreSQL)
-;; lets a user receive privileges either directly or through PUBLIC. REVOKE-ing
-;; CREATE from a specific user only removes their direct grant: it can't
+;; Isolation limit, checked at init time via [[check-no-public-create-in-cluster!]]
+;; for every database of the cluster and every schema of each, and at grant time via
+;; [[assert-no-public-create-grant!]] and [[check-no-public-writes!]] for each input schema:
+;; a user receives privileges either directly or through PUBLIC. REVOKE-ing
+;; a privilege from a specific user only removes their direct grant: it can't
 ;; override a PUBLIC grant. Redshift's `public` schema has CREATE granted to
-;; PUBLIC by default, so on a default-config cluster the workspace user inherits
-;; CREATE on `public` transitively: it can create tables there (privilege-escalation
-;; hole), becomes their owner, and `DROP USER` then fails at deprovisioning. Both
-;; checks fail fast with a 412 so the cluster admin can run
-;; `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before retrying.
+;; PUBLIC by default in every database, and Redshift has no CONNECT privilege to keep a
+;; user out of a database, so on a default-config cluster the workspace user can create
+;; tables in `public` of any database, becomes their owner, and `DROP USER` then fails at
+;; deprovisioning. The checks fail fast with a 412 that names the REVOKEs for the
+;; cluster admin to run before retrying.
 
 (defn- user-exists?
   "Check if a Redshift user exists."
