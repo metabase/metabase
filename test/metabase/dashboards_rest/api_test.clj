@@ -2495,6 +2495,26 @@
                                :dashcards []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 
+(deftest update-dashcards-track-question-added-snowplow-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                 :model/Card      {card-id :id}      {}]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection! [card-id]
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                                {:dashcards [{:id     -1
+                                              :card_id card-id
+                                              :row    0
+                                              :col    0
+                                              :size_x 4
+                                              :size_y 4}]
+                                 :tabs      []})
+          (is (some #{{:data    {"dashboard_id" dashboard-id
+                                 "question_id"  card-id
+                                 "event"        "question_added_to_dashboard"}
+                       :user-id (str (mt/user->id :rasta))}}
+                    (snowplow-test/pop-event-data-and-user-id!))))))))
+
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test

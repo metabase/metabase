@@ -21,6 +21,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -1277,13 +1278,12 @@
                   (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
                                                              :can_read))]
                     (mapv #(api/read-check (id->card %)) question_ids)))
-          dash  (t2/with-transaction [_conn]
-                  (let [dash (agent-api.db/insert-dashboard!
-                              {:name          dashboard-name
-                               :description   description
-                               :parameters    []
-                               :creator_id    api/*current-user-id*
-                               :collection_id collection_id})]
+          dash  (dashboards.write/create-dashboard!
+                 {:name          dashboard-name
+                  :description   description
+                  :collection_id collection_id}
+                 {:in-transaction
+                  (fn [dash]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
@@ -1293,9 +1293,7 @@
                                                     :card_id      (:id card)}))
                                   (conj placed position)))
                               []
-                              cards))
-                    dash))]
-      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+                              cards)))})]
       {:id              (:id dash)
        :name            (:name dash)
        :url             (frontend-url (channel.urls/dashboard-path (:id dash)))

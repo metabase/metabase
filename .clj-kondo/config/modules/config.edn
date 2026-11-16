@@ -860,9 +860,7 @@
            channel
            collections
            dashboards
-           embedding
            events
-           lib
            lib.be
            lib.schema
            models
@@ -870,28 +868,19 @@
            parameters.schema
            permissions
            public-sharing
-           pulse
            queries
-           query-permissions
            query-processor
            request
            revisions
            util
            xrays}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Field
-                    :model/ParameterCard
-                    :model/Pulse
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/Query
-                    :model/User}}
+                    :model/Query}}
 
   data-apps
   {:team       "Data Apps"

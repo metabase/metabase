@@ -1,6 +1,6 @@
 (ns metabase.dashboards.write
-  "Permission-checked create/update operations for Dashboards, used by MCP's tools and the Metabot toolkit.
-  The REST API keeps its own copies in `metabase.dashboards-rest.api`, so a change here may need making there too.
+  "Permission-checked create/update operations for Dashboards, used by the REST API, MCP's tools, the Metabot toolkit
+  and the Agent API.
 
   These functions return the saved Dashboard row; response-shaping concerns such as hydration and
   `:last-edit-info` belong to the callers."
@@ -57,7 +57,7 @@
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
-(defn- read-check-all
+(defn read-check-all
   "Throws unless the current user can read every row of `rows`, in the order of `ids`, with a 404 for an id without a row."
   [rows ids]
   (let [id->row (into {} (map (juxt :id identity)) (t2/hydrate rows :can_read))]
@@ -90,33 +90,40 @@
 (mu/defn create-dashboard! :- :map
   "Create a Dashboard owned by the current user and return the saved row. `:width` and
   `:auto_apply_filters` fall back to the column defaults when omitted or nil.
-  Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
-  [{:keys [name description parameters cache_ttl collection_id collection_position
-           width auto_apply_filters]} :- NewDashboard]
-  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (api/create-check :model/Dashboard {:collection_id collection_id})
-  (check-new-references no-references {:parameters parameters})
-  (let [dashboard-data (cond-> {:name                name
-                                :description         description
-                                :parameters          (or parameters [])
-                                :creator_id          api/*current-user-id*
-                                :cache_ttl           cache_ttl
-                                :collection_id       collection_id
-                                :collection_position collection_position}
-                         ;; both columns are NOT NULL with defaults, so only set them when asked
-                         (some? width)              (assoc :width width)
-                         (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
-        dash           (t2/with-transaction [_conn]
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                         ;; Ok, now save the Dashboard
-                         (dashboards.db/insert-dashboard! dashboard-data))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dash)})
-    dash))
+  Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`.
+  `:in-transaction`, when given, is called with the inserted row inside the creating transaction."
+  ([attrs :- NewDashboard]
+   (create-dashboard! attrs nil))
+  ([{:keys [name description parameters cache_ttl collection_id collection_position
+            width auto_apply_filters]} :- NewDashboard
+    {:keys [in-transaction]}           :- [:maybe [:map {:closed true} [:in-transaction {:optional true} ifn?]]]]
+   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+   (api/create-check :model/Dashboard {:collection_id collection_id})
+   (check-new-references no-references {:parameters parameters})
+   (let [dashboard-data (cond-> {:name                name
+                                 :description         description
+                                 :parameters          (or parameters [])
+                                 :creator_id          api/*current-user-id*
+                                 :cache_ttl           cache_ttl
+                                 :collection_id       collection_id
+                                 :collection_position collection_position}
+                          ;; both columns are NOT NULL with defaults, so only set them when asked
+                          (some? width)              (assoc :width width)
+                          (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
+         dash           (t2/with-transaction [_conn]
+                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                          ;; collection to change position, check that and fix up if needed
+                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                          ;; Ok, now save the Dashboard
+                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)]
+                            (when in-transaction
+                              (in-transaction dash))
+                            dash))]
+     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+     (analytics/track-event! :snowplow/dashboard
+                             {:event        :dashboard-created
+                              :dashboard-id (u/the-id dash)})
+     dash)))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
@@ -138,8 +145,7 @@
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   ;; `:dashcard-id`/`:card-id` are stamped on by the callers below before the check runs, and #82196 closed
-  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused. Kept identical to
-  ;; the REST copy in `metabase.dashboards-rest.api`, which this function is a fork of.
+  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused.
   [parameter-mappings :- [:sequential [:merge
                                        ::parameters.schema/parameter-mapping
                                        [:map {:closed true}
