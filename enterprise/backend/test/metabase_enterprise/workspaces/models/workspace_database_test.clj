@@ -152,11 +152,11 @@
     (mt/with-temp [:model/Workspace         {ws-id :id} {}
                    :model/WorkspaceDatabase wsd         {:workspace_id ws-id}]
       (testing "non-superuser — false"
-        (with-normal-user (is (false? (mi/can-read? wsd)))))
+        (with-normal-user (is (false? (mi/can-read? (t2/hydrate wsd :can_read))))))
       (testing "Data Analyst (non-superuser) — false"
-        (with-data-analyst (is (false? (mi/can-read? wsd)))))
+        (with-data-analyst (is (false? (mi/can-read? (t2/hydrate wsd :can_read))))))
       (testing "superuser — true"
-        (with-admin (is (true? (mi/can-read? wsd))))))))
+        (with-admin (is (true? (mi/can-read? (t2/hydrate wsd :can_read)))))))))
 
 (deftest can-create?-test
   (testing "WorkspaceDatabase `mi/can-create?`"
@@ -174,8 +174,8 @@
     (mt/with-temp [:model/Workspace         {ws-id :id} {}
                    :model/WorkspaceDatabase wsd         {:workspace_id ws-id}]
       (testing "non-superuser — false"
-        (with-normal-user (is (false? (mi/can-write? wsd)))))
+        (with-normal-user (is (false? (mi/can-write? (t2/hydrate wsd :can_write))))))
       (testing "Data Analyst (non-superuser) — false"
-        (with-data-analyst (is (false? (mi/can-write? wsd)))))
+        (with-data-analyst (is (false? (mi/can-write? (t2/hydrate wsd :can_write))))))
       (testing "superuser — true"
-        (with-admin (is (true? (mi/can-write? wsd))))))))
+        (with-admin (is (true? (mi/can-write? (t2/hydrate wsd :can_write)))))))))

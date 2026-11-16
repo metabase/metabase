@@ -7,7 +7,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.query-processor.util :as qp.util]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -178,7 +178,7 @@
                                           (if (string? x)
                                             x
                                             (u/qualified-name x)))}]
-   [:* ::lib.schema.visualization-settings/visualization-settings]])
+   [:* ::lib.schema.visualization/visualization-settings]])
 
 (def ^:private Width
   [:int {:min 1, :max populate/grid-width}])

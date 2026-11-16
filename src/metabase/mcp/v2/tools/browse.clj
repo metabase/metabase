@@ -27,12 +27,12 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.table :as schema.table]))
+   [metabase.warehouse-schema.table :as schema.table]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,9 +154,7 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        ;; `mi/can-read?` below is one permission check per database; load them in one query first.
-        _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
-        dbs  (filterv mi/can-read? rows)]
+        dbs  (filterv mi/can-read? (t2/hydrate rows :can_read))]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
                                                                  "permission on at least one database.")])}
@@ -232,6 +230,7 @@
   [{:keys [database_id] :as args}]
   (check-database! database_id)
   (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
+                    (#(t2/hydrate % :can_read))
                     (filterv mi/can-read?))]
     (paged-list-content args models {} #(project-rows :question args %))))
 
@@ -302,6 +301,7 @@
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
+                                (#(t2/hydrate % :can_read))
                                 (filter mi/can-read?)
                                 (u/index-by :id)))
         expand-ids       (into #{}
@@ -338,9 +338,7 @@
   ;; Read permission is not enough: values are rows of the table, not metadata about it. REST draws
   ;; the same line — `/api/field/:id/summary` gates on `read-check`, `/api/field/:id/values` on
   ;; `query-check` — so a metadata-only caller who is refused there must be refused here too.
-  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                  :table-ids (into #{} (keep :id) tables)})
-  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) tables)
+  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) (t2/hydrate tables :can_query))
         ;; Field ids are unique across tables, so restricting the fetch to queryable tables is the
         ;; whole gate — nothing withheld here can be looked up again below.
         field-ids  (into []

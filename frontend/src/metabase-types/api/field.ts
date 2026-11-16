@@ -180,6 +180,7 @@ export interface UpdateFieldValuesRequest {
 }
 
 export type FieldUserSettings = {
+  id: number;
   field_id: FieldId;
   display_name: string | null;
   description: string | null;

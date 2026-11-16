@@ -14,7 +14,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -90,8 +89,6 @@
 
 (doto :model/Table
   (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
@@ -317,84 +314,74 @@
   (u/prog1 table
     (set-new-table-permissions! table)))
 
-(defmethod mi/can-read? :model/Table
-  ;; Check if user can see this table's metadata.
-  ;; True if user has:
-  ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
-  ;; - Metadata management permission (manage-table-metadata :yes), OR
-  ([instance]
-   (or
-    ;; Has data access permissions
-    (and (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/view-data
-          :unrestricted
-          (:db_id instance)
-          (:id instance))
-         (or
-          (perms/user-has-permission-for-table?
-           api/*current-user-id*
-           :perms/create-queries
-           :query-builder
-           (:db_id instance)
-           (:id instance))
-          ;; Can access via published collection (EE feature)
-          (perms/can-access-via-collection? instance)))
-    ;; Has manage-table-metadata permission (allows viewing metadata without data access)
-    (perms/user-has-permission-for-table?
-     api/*current-user-id*
-     :perms/manage-table-metadata
-     :yes
-     (:db_id instance)
-     (:id instance))))
-  ([_ pk]
-   (mi/can-read? (warehouse-schema.db/table pk))))
+(defn- check-permission-keys
+  "Throws unless `table` has the columns its permission hydrations read."
+  [table]
+  (api/check-500 (some? (:id table)) "No :id is set for a Table.")
+  (api/check-500 (some? (:db_id table)) "No :db_id is set for a Table."))
 
-(defmethod mi/can-query? :model/Table
-  ;; Check if user can execute queries against this table.
-  ;; True if user has:
-  ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
-  ([instance]
-   (boolean
-    ;; Has both view-data and create-queries permissions
-    (and (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/view-data
-          :unrestricted
-          (:db_id instance)
-          (:id instance))
-         (or
-          (perms/user-has-permission-for-table?
-           api/*current-user-id*
-           :perms/create-queries
-           :query-builder
-           (:db_id instance)
-           (:id instance))
-          ;; Can access via published collection (EE feature)
-          (perms/can-access-via-collection? instance)))))
-  ([_ pk]
-   (mi/can-query? (warehouse-schema.db/table pk))))
+(defn- table-permissions
+  "The current user's `perm-type` value on each of `tables`, as `{table-id value}`, from one bulk question."
+  [perm-type tables]
+  (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                    perm-type
+                                    (into {} (map (juxt :id :db_id)) tables)))
+
+(defn- queryable-table-ids
+  "The ids of the `tables` the current user can query: those with unrestricted view-data on which they can create
+  queries, which on EE a Table published into a Collection they read also grants."
+  [tables]
+  (let [view-data      (table-permissions :perms/view-data tables)
+        create-queries (table-permissions :perms/create-queries tables)]
+    (into #{}
+          (comp (map :id)
+                (filter #(and (= :unrestricted (get view-data %))
+                              (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
+          tables)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_read]
+  "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
+  they manage."
+  [_model k tables]
+  (let [rows (into [] (remove nil?) tables)]
+    (run! check-permission-keys rows)
+    (let [queryable (queryable-table-ids rows)
+          others    (into [] (remove #(contains? queryable (:id %))) rows)
+          manage    (if (seq others)
+                      (table-permissions :perms/manage-table-metadata others)
+                      {})]
+      (for [table tables]
+        (when table
+          (vary-meta table assoc k (boolean (or (contains? queryable (:id table))
+                                                (= :yes (get manage (:id table)))))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_query]
+  "Whether the current user can run queries against each of `tables`."
+  [_model k tables]
+  (let [rows (into [] (remove nil?) tables)]
+    (run! check-permission-keys rows)
+    (let [queryable (queryable-table-ids rows)]
+      (for [table tables]
+        (when table
+          (assoc table k (contains? queryable (:id table))))))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
   read-only instance syncs it."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (remote-sync/can-write? :model/TableUserSettings (:id instance))
+  (and (collection/remote-sync-writable-table? instance)
        (mi/superuser?)))
 
-(defmethod mi/can-write? :model/Table
-  ;; Check if user can modify this table's metadata.
-  ;; Requires the manage-table-metadata permission
-  ([instance]
-   (current-user-can-write-table? instance))
-  ([_ pk]
-   (mi/can-write? (warehouse-schema.db/table pk))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Batched hydration for :can_write on tables."
+  "Whether the current user can change the metadata of each of `tables`."
   [_model k tables]
-  (mi/instances-with-hydrated-data tables k #(u/index-by :id mi/can-write? tables) :id {:default false}))
+  (let [publication (when (remote-sync/read-only?)
+                      (warehouse-schema.db/table-publication-columns (into [] (comp (keep :id) (distinct)) tables)))]
+    (for [table tables]
+      (when table
+        (check-permission-keys table)
+        (assoc table k (boolean (current-user-can-write-table? (merge table (get publication (:id table))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.
@@ -415,18 +402,6 @@
                  {:email (:owner_email table)}))))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
-
-(mu/defmethod mi/visible-filter-clause :model/Table
-  [_                  :- :keyword
-   column-or-exp      :- :any
-   user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection? active-only?]}]]
-  (perms/visible-table-filter-with-cte
-   column-or-exp user-info permission-mapping
-   (cond-> {}
-     (some? active-only?) (assoc :active-only? active-only?)
-     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -520,6 +495,7 @@
     (fn [table-ids]
       (->> (binding [card-schema/*skip-dimension-backfill?* true]
              (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
+           (#(t2/hydrate % :can_read))
            (filter mi/can-read?)))
     tables))
 
