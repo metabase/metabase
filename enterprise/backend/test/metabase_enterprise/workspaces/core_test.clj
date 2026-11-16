@@ -327,6 +327,22 @@
                 (is (nil? (delete! "Never-started lock" destroyed)))
                 (is (= #{db1-id db2-id} @destroyed)
                     "the delete does not destroy the never-started database either"))))
+          (testing "the teardown of the first row fails before the destroy"
+            (let [destroyed (atom #{})
+                  ;; the first lock of the first database's row is its provisioning, the second is its teardown
+                  e         (with-redefs [provisioning/dispatching-provisioner          (recording-provisioner-failing-init db2-id destroyed #{})
+                                          provisioning/do-with-workspace-database-lock (lock-that-fails-once db1-id 2)]
+                              (create! "First row lock"))]
+              (is (=? {:status-code 500 :cleanup_required true :message #"^boom; lock timed out$"}
+                      (ex-data e)))
+              (is (= "boom" (ex-message (ex-cause e))))
+              (is (= ["lock timed out"] (map ex-message (.getSuppressed ^Throwable e))))
+              (is (= {db1-id :teardown_failed} (rows "First row lock"))
+                  "the cleanup went on to the rows after the one that failed: both are gone")
+              (is (= #{db2-id} @destroyed))
+              (testing "a delete is not refused as busy"
+                (is (nil? (delete! "First row lock" destroyed)))
+                (is (= #{db1-id db2-id} @destroyed)))))
           (testing "the delete of the never-started row fails, and so does another database's destroy"
             (let [destroyed   (atom #{})
                   delete-row! ws.db/delete-workspace-database!
@@ -339,6 +355,11 @@
               (is (=? {:status-code 500 :cleanup_required true :message #"^boom; warehouse down; app db down$"}
                       (ex-data e)))
               (is (= "boom" (ex-message (ex-cause e))))
+              (let [[^Throwable cleanup-e :as suppressed] (.getSuppressed ^Throwable e)]
+                (is (= ["warehouse down; app db down"] (map ex-message suppressed))
+                    "the cleanup's combined error is attached as suppressed")
+                (is (= "warehouse down" (ex-message (ex-cause cleanup-e))))
+                (is (= ["app db down"] (map ex-message (.getSuppressed cleanup-e)))))
               (is (= {db1-id :teardown_failed, db3-id :never_started} (rows "Never-started delete"))
                   "no row that is left is :provisioning or :provisioned")
               (is (= #{db2-id} @destroyed))
@@ -346,6 +367,62 @@
                 (is (nil? (delete! "Never-started delete" destroyed)))
                 (is (= #{db1-id db2-id} @destroyed)
                     "the delete destroys the database whose destroy failed, and not the never-started one")))))))))
+
+(deftest create-workspace-cleanup-cannot-set-a-status-test
+  ;; Committed `with-temp`: the bookkeeping writes on a fresh autocommit connection.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db1-id :schema "public" :active true}
+                   :model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db2-id :schema "public" :active true}
+                   :model/Database {db3-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db3-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (testing "when the cleanup of a row fails and its status cannot be set, the row keeps its status and the write's error is attached as suppressed"
+          ;; The first database is provisioned, and its teardown fails before the destroy. The second one's init
+          ;; fails. The third never starts, and the delete of its row fails.
+          (let [delete-row! ws.db/delete-workspace-database!
+                update-row! ws.db/update-workspace-database!
+                e           (with-redefs [provisioning/dispatching-provisioner          (recording-provisioner-failing-init db2-id (atom #{}) #{})
+                                          provisioning/do-with-workspace-database-lock (lock-that-fails-once db1-id 2)
+                                          ws.db/delete-workspace-database!             (fn [wsd-id]
+                                                                                         (if (= db3-id (t2/select-one-fn :database_id :model/WorkspaceDatabase :id wsd-id))
+                                                                                           (throw (ex-info "app db down" {}))
+                                                                                           (delete-row! wsd-id)))
+                                          ws.db/update-workspace-database!             (fn [wsd-id changes]
+                                                                                         (if (#{:teardown_failed :never_started} (:status changes))
+                                                                                           (throw (ex-info (str "cannot set " (name (:status changes))) {}))
+                                                                                           (update-row! wsd-id changes)))]
+                              (try
+                                (ws/create-workspace! {:name         "Status write failed"
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :database_ids [db1-id db2-id db3-id]})
+                                nil
+                                (catch ExceptionInfo e e)))
+                ws-id       (t2/select-one-pk :model/Workspace :name "Status write failed")]
+            (try
+              (is (=? {:status-code 500 :cleanup_required true :workspace_id ws-id
+                       :message     #"^boom; lock timed out; app db down$"}
+                      (ex-data e))
+                  "the create still answers the 500 that asks for a delete")
+              (let [[^Throwable cleanup-e]  (.getSuppressed ^Throwable e)
+                    ^Throwable lock-e       (ex-cause cleanup-e)
+                    [^Throwable delete-e]   (.getSuppressed cleanup-e)]
+                (is (= "lock timed out" (ex-message lock-e)))
+                (is (= ["cannot set teardown_failed"] (map ex-message (.getSuppressed lock-e))))
+                (is (= "app db down" (ex-message delete-e)))
+                (is (= ["cannot set never_started"] (map ex-message (.getSuppressed delete-e)))))
+              (is (= {db1-id :provisioned, db3-id :provisioning}
+                     (into {} (map (juxt :database_id :status)) (t2/select :model/WorkspaceDatabase :workspace_id ws-id)))
+                  "each row keeps the status it had, and the second database's row is gone")
+              (finally
+                (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)))))))))
 
 (deftest delete-skips-the-warehouse-teardown-of-a-never-started-row-test
   ;; Committed `with-temp`: the bookkeeping writes on a fresh autocommit connection.
