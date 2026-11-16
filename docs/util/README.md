@@ -33,11 +33,11 @@ docs/util/check-links.sh                   # all three
 docs/util/check-links.sh docs              # only the markdown under docs/
 docs/util/check-links.sh nav               # only nav.yml
 docs/util/check-links.sh src               # only the source code
-docs/util/check-links.sh site              # metabase.com and GitHub wiki links against the live sites
+docs/util/check-links.sh site              # metabase.com links against the live site
 docs/util/check-links.sh --external [nav]  # also fetch links to other sites
 ```
 
-`docs/util/check-links.sh site` fetches every `metabase.com` link in the repo from the live site, and fails on a redirect as well as a 404: a link that only works through a redirect breaks silently when the site drops the redirect. It treats links to our GitHub wikis the same way, because a wiki that's been turned off redirects every page to the repo instead of answering 404. It skips `/docs/latest/` links: the live docs are the last release, so they don't have pages added on master since, and the offline checks already cover docs pages, including old paths that only survive under `redirect_from`. If it flags something that isn't a link people follow, like a CSP origin, add it to `site_not_links` in the script.
+`docs/util/check-links.sh site` fetches every `metabase.com` link in the repo from the live site, and fails on a redirect as well as a 404: a link that only works through a redirect breaks silently when the site drops the redirect. It skips `/docs/latest/` links: the live docs are the last release, so they don't have pages added on master since, and the offline checks already cover docs pages, including old paths that only survive under `redirect_from`. If it flags something that isn't a link people follow, like a CSP origin, add it to `site_not_links` in the script.
 
 `site` needs the network, so CI runs it every Sunday (`.github/workflows/docs-links-site.yml`) rather than on every PR. It keeps the broken links in one open "metabase/metabase broken links report" issue in the Growth team's Linear: a failing run opens the issue or updates it, and a passing run closes it. #growth-alerts in Slack hears when the issue opens or closes, and when the check can't run.
 
