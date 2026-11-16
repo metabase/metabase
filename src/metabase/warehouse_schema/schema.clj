@@ -3,7 +3,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -31,7 +31,7 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  ::lib.schema.visualization-settings/visualization-settings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
@@ -90,13 +90,14 @@
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  ::lib.schema.visualization-settings/visualization-settings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
   [:merge
    ::field-user-settings.update
    [:map {:closed true}
+    [:id    {:optional true} pos-int?]
     [:field {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field-user-settings.update
@@ -149,6 +150,7 @@
   [:merge
    ::table-user-settings.update
    [:map {:closed true}
+    [:id         {:optional true} pos-int?]
     [:table      {:optional true} [:maybe [:ref ::table]]]
     [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
@@ -192,6 +194,7 @@
     [:fields                  {:optional true} [:maybe [:sequential ::field]]]
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
     [:collection              {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:can_query               {:optional true} [:maybe :boolean]]
     [:owner                   {:optional true} [:maybe [:map {:closed true}
                                                         [:id          {:optional true} ::lib.schema.id/user]
                                                         [:email       {:optional true} :string]
