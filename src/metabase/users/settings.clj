@@ -88,7 +88,7 @@
   :default    true)
 
 (defsetting expand-library-in-nav
-  (deferred-tru "User preference for whether the ''Library'' section of the nav is expanded.")
+  (deferred-tru "User preference for whether the ''Semantic layer'' section of the nav is expanded.")
   :user-local :only
   :export?    false
   :visibility :authenticated
