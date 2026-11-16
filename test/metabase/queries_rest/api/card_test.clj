@@ -999,6 +999,59 @@
         (is (= :mbql/query
                (:lib/type (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
 
+(defn- native-dataset-query [native-stage]
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [(merge {:lib/type :mbql.stage/native} native-stage)]})
+
+(def ^:private blank-native-stages
+  [{} {:native ""} {:native "  \n\t "}])
+
+(deftest post-card-with-blank-native-query-returns-400-test
+  (mt/with-model-cleanup [:model/Card]
+    (doseq [stage blank-native-stages]
+      (testing (pr-str stage)
+        (let [card-name (mt/random-name)]
+          (is (= "A native query cannot be blank."
+                 (mt/user-http-request :crowberto :post 400 "card"
+                                       (card-with-name-and-query card-name (native-dataset-query stage)))))
+          (is (not (t2/exists? :model/Card :name card-name))))))
+    (testing "legacy native query"
+      (mt/user-http-request :crowberto :post 400 "card"
+                            (card-with-name-and-query (mt/random-name)
+                                                      {:type :native, :database (mt/id), :native {:query " "}})))
+    (testing "SELECT 1 is saved"
+      (is (=? {:id pos-int?}
+              (mt/user-http-request :crowberto :post 200 "card"
+                                    (card-with-name-and-query (mt/random-name)
+                                                              (native-dataset-query {:native "SELECT 1"}))))))))
+
+(deftest put-card-with-blank-native-query-returns-400-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (native-dataset-query {:native "SELECT 1"})}]
+    (doseq [stage blank-native-stages]
+      (testing (pr-str stage)
+        (is (= "A native query cannot be blank."
+               (mt/user-http-request :crowberto :put 400 (str "card/" card-id)
+                                     {:dataset_query (native-dataset-query stage)})))
+        (is (= "SELECT 1"
+               (-> (t2/select-one-fn :dataset_query :model/Card :id card-id) :stages first :native)))))
+    (testing "SELECT 2 is saved"
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                            {:dataset_query (native-dataset-query {:native "SELECT 2"})}))))
+
+(deftest card-already-saved-with-blank-native-query-test
+  (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (native-dataset-query {:native " "})}]
+    (testing "can be renamed"
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Renamed"}))))
+    (testing "can be saved with its query unchanged"
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                            {:name "Renamed again", :dataset_query (:dataset_query card)}))
+    (testing "can be copied"
+      (mt/with-model-cleanup [:model/Card]
+        (is (=? {:id pos-int?}
+                (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" card-id))))))))
+
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
     (with-temp-native-card-with-params [db card]

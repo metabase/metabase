@@ -1265,6 +1265,18 @@
       (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
         (queries.db/delete-dashcard-series! ids)))))
 
+;; not in model hooks or the query schema, so serdes and remote sync can still load existing cards
+(defn- blank-native-query? [query]
+  (some-> query not-empty lib-be/normalize-query not-empty lib/blank-native-query?))
+
+;; a copy keeps its source's query as is, even one saved blank before blank queries were refused
+(defn- copied-query? [card]
+  (and *copy-source-card*
+       (= (:dataset_query card) (:dataset_query *copy-source-card*))))
+
+(defn- throw-blank-native-query! []
+  (throw (ex-info (tru "A native query cannot be blank.") {:status-code 400})))
+
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
@@ -1282,6 +1294,9 @@
    ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
    (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
      (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
+   (when (and (not (copied-query? input-card-data))
+              (blank-native-query? (:dataset_query input-card-data)))
+     (throw-blank-native-query!))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id :document_id]
@@ -1570,6 +1585,10 @@
   included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
   an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+  ;; a card already saved blank can still be edited without fixing its query
+  (when (and (blank-native-query? (:dataset_query card-updates))
+             (not (blank-native-query? (:dataset_query card-before-update))))
+    (throw-blank-native-query!))
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
   (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)

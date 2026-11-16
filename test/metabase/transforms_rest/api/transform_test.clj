@@ -2238,3 +2238,85 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+(defn- native-transform-query [native-stage]
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [(merge {:lib/type :mbql.stage/native} native-stage)]})
+
+(def ^:private blank-native-stages
+  [{} {:native ""} {:native "  \n\t "}])
+
+(deftest blank-native-query-refused-on-create-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "blank_native_create"]
+          (let [payload (fn [stage]
+                          {:name   "Blank Native"
+                           :source {:type :query, :query (native-transform-query stage)}
+                           :target {:type "table", :schema (get-test-schema), :name table-name}})]
+            (doseq [stage blank-native-stages]
+              (testing (pr-str stage)
+                (is (= "A native query cannot be blank."
+                       (mt/user-http-request :crowberto :post 400 "transform" (payload stage))))
+                (is (not (t2/exists? :model/Transform :name "Blank Native")))))
+            (testing "SELECT 1 is saved"
+              (is (=? {:id pos-int?}
+                      (mt/user-http-request :crowberto :post 200 "transform" (payload {:native "SELECT 1"})))))))))))
+
+(deftest blank-native-query-refused-on-update-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "blank_native_update"]
+          (let [target {:type "table", :schema (get-test-schema), :name table-name}]
+            (mt/with-temp [:model/Transform {transform-id :id}
+                           {:name   "Native"
+                            :source {:type :query, :query (native-transform-query {:native "SELECT 1"})}
+                            :target target}]
+              (doseq [stage blank-native-stages]
+                (testing (pr-str stage)
+                  (is (= "A native query cannot be blank."
+                         (mt/user-http-request :crowberto :put 400 (format "transform/%d" transform-id)
+                                               {:source {:type :query, :query (native-transform-query stage)}})))
+                  (is (= "SELECT 1"
+                         (-> (t2/select-one-fn :source :model/Transform :id transform-id)
+                             :query :stages first :native))))))
+            (testing "a transform already saved blank"
+              (let [blank-source {:type :query, :query (native-transform-query {:native " "})}]
+                (mt/with-temp [:model/Transform {transform-id :id}
+                               {:name "Blank Native", :source blank-source, :target target}]
+                  (testing "can be renamed"
+                    (is (=? {:name "Renamed"}
+                            (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
+                                                  {:name "Renamed"}))))
+                  (testing "can be saved with its source resent"
+                    (is (=? {:name "Renamed again"}
+                            (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
+                                                  {:name "Renamed again", :source blank-source})))))))))))))
+
+(deftest blank-native-query-check-skips-mbql-and-python-transforms-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [mbql-table "blank_check_mbql"
+                                  python-table "blank_check_python"]
+          (doseq [[source-type source target] [["MBQL"
+                                                {:type :query, :query (make-query "Gadget")}
+                                                {:type "table", :schema (get-test-schema), :name mbql-table}]
+                                               ["Python"
+                                                {:type            :python
+                                                 :body            "print('hello world')"
+                                                 :source-tables   []
+                                                 :source-database (mt/id)}
+                                                {:type     "table"
+                                                 :schema   (get-test-schema)
+                                                 :name     python-table
+                                                 :database (mt/id)}]]]
+            (testing source-type
+              (let [{transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
+                                                             {:name source-type, :source source, :target target})]
+                (is (=? {:name (str source-type " renamed")}
+                        (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
+                                              {:name (str source-type " renamed"), :source source})))))))))))

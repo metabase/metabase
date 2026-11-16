@@ -976,3 +976,23 @@
               (lib.native/replace-template-tag-names
                query
                {"#133-foo" "#1206-foo", "#133-bar" "#1206-foo"}))))))
+
+(deftest ^:parallel blank-native-query?-test
+  (let [native-query (fn [text]
+                       (update-in (lib/native-query meta/metadata-provider "SELECT 1")
+                                  [:stages 0]
+                                  #(if (some? text) (assoc % :native text) (dissoc % :native))))]
+    (testing "missing, empty, and whitespace-only text is blank"
+      (are [text] (true? (lib/blank-native-query? (native-query text)))
+        nil
+        ""
+        "  \n\t "))
+    (testing "real text, comments, and snippet-only text are not blank"
+      (are [text] (false? (lib/blank-native-query? (native-query text)))
+        "SELECT 1"
+        "-- just a comment"
+        "{{snippet: x}}"))
+    (testing "a native query that isn't a string is not blank"
+      (is (false? (lib/blank-native-query? (native-query {:collection "venues" :pipeline []})))))
+    (testing "an MBQL query is not blank"
+      (is (false? (lib/blank-native-query? (lib/query meta/metadata-provider (meta/table-metadata :venues))))))))
