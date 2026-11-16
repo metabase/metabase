@@ -1106,7 +1106,7 @@
 
 (defn- public-create-findings
   "`[database-name schemas]` for each of `databases`: the schemas there that grant CREATE to PUBLIC, or `:unverifiable`
-  when the admin connection's login cannot connect to check. `current` is the connected database, read on `conn`."
+  when the admin connection's login cannot check. `current` is the connected database, read on `conn`."
   [database conn current databases]
   (for [db databases]
     [db (if (= db current)
@@ -1114,13 +1114,14 @@
           (try
             (do-in-other-database database db #(doall (public-create-schemas %)))
             ;; any failure to check leaves the database unverified, and init refuses it
-            (catch Exception _
+            (catch Exception e
+              (log/warnf e "Could not check database %s for schemas that grant CREATE to PUBLIC" db)
               :unverifiable)))]))
 
 (defn- public-create-error
   "The 412 init throws when the workspace user could create objects outside its output schema. `databases` grant
   CREATE to PUBLIC, `schemas` are `[database schema]` pairs whose schema grants CREATE to PUBLIC, and `unverifiable`
-  are databases the admin connection's login could not connect to check. Returns nil when all three are empty."
+  are databases the admin connection's login could not check. Returns nil when all three are empty."
   [databases schemas unverifiable]
   (when (or (seq databases) (seq schemas) (seq unverifiable))
     (ex-info
@@ -1132,9 +1133,11 @@
             (format " These schemas grant CREATE to PUBLIC: %s."
                     (str/join ", " (for [[db schema] schemas] (str db "." schema)))))
           (when (perf/some (fn [[_db schema]] (= "public" schema)) schemas)
-            " Redshift grants CREATE on `public` to PUBLIC by default, in every database.")
+            (str " Redshift grants CREATE on `public` to PUBLIC by default, in every database. The REVOKE on `public` "
+                 "also takes CREATE there from every other login that relies on PUBLIC's grant, so give such logins a "
+                 "direct GRANT."))
           (when (seq unverifiable)
-            (format (str " The admin connection's login could not connect to check these databases: %s. Every user may "
+            (format (str " The admin connection's login could not check these databases: %s. Every user may "
                          "connect to every database of the cluster, so they must be checked.")
                     (str/join ", " unverifiable)))
           (when (or (seq databases) (seq schemas))
@@ -1148,7 +1151,10 @@
                  "."))
           (when (seq unverifiable)
             " Make sure the admin connection's login can connect to each database named.")
-          " Then retry. The REVOKEs persist, so this is a one-time setup step.")
+          " Then retry."
+          (when (or (seq databases) (seq schemas))
+            (str " The REVOKEs persist, but each database created later has a `public` that grants CREATE to PUBLIC "
+                 "again, and init refuses it until its REVOKE runs.")))
      {:status-code        412
       :workspace/cleanup? false
       :databases          (vec databases)
@@ -1157,7 +1163,7 @@
 
 (defn- check-no-public-create-in-cluster!
   "Throws a 412 naming the REVOKEs to run when a database of the cluster grants CREATE to PUBLIC, or a schema of one
-  does (`public` does by default), or when the admin connection's login cannot connect to a database to check it.
+  does (`public` does by default), or when the admin connection's login cannot check a database.
   Every user, the workspace user included, may connect to every database of the cluster and create objects in such a
   schema: writes outside its output schema, and objects that keep `DROP USER` from succeeding."
   [database conn]
@@ -1261,8 +1267,9 @@
   "('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'ALTER', 'DROP', 'REFERENCES')")
 
 (defn- public-writes
-  "Every grant to PUBLIC that lets the workspace user change a table in `schema`, now or once it is created: on a table,
-  or in the default privileges of a user for the schema. Each is a map of `:kind` (`\"table\"` or `\"default\"`),
+  "The grants to PUBLIC of a privilege that changes a table in `schema`, now or once it is created: table-level grants
+  on its tables (`svv_relation_privileges`), and a user's default privileges for the schema (`svv_default_privileges`).
+  It does not read default privileges for the whole database, or column-level grants. Each is a map of `:kind` (`\"table\"` or `\"default\"`),
   `:object` (the table, or the user whose default privileges grant it) and `:privileges`, in the order of the query."
   [conn schema]
   (->> (jdbc/query conn [(str "SELECT 'table' AS kind, relation_name AS object, privilege_type AS privilege "

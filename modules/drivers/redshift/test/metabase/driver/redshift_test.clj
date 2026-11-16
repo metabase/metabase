@@ -1142,6 +1142,7 @@
             (is (=? {:status-code 412} (ex-data error)))
             (is (some #{(str db2 ".public")} (:schemas (ex-data error))))
             (is (not (some #{db2} (:unverifiable (ex-data error)))))
+            (is (empty? (:unverifiable (ex-data error))))
             (is (str/includes? (ex-message error)
                                (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
         (finally
@@ -1459,15 +1460,20 @@
                   (ex-data error)))
           (is (str/includes? (ex-message error)
                              "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"db2\"")))))
-    (testing "a database the admin connection's login cannot connect to is refused as unverifiable"
-      (let [{:keys [error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database
-                                                        (fn [_database db _f]
-                                                          (if (= "db3" db)
-                                                            (throw (java.sql.SQLException. "connection refused" "08001"))
-                                                            []))]
-                              (run-with-fake-jdbc answer init!))]
-        (is (=? {:status-code 412, :schemas [], :unverifiable ["db3"]} (ex-data error)))
-        (is (str/includes? (ex-message error) "could not connect to check these databases: db3"))))
+    (testing "a database the admin connection's login cannot check is refused as unverifiable, and the cause logged"
+      (log.capture/with-log-messages-for-level [messages [metabase.driver.redshift :warn]]
+        (let [{:keys [error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database
+                                                          (fn [_database db _f]
+                                                            (if (= "db3" db)
+                                                              (throw (java.sql.SQLException. "connection refused" "08001"))
+                                                              []))]
+                                (run-with-fake-jdbc answer init!))]
+          (is (=? {:status-code 412, :schemas [], :unverifiable ["db3"]} (ex-data error)))
+          (is (str/includes? (ex-message error) "could not check these databases: db3"))
+          (is (=? [{:level   :warn
+                    :message "Could not check database db3 for schemas that grant CREATE to PUBLIC"
+                    :e       #(= "connection refused" (ex-message %))}]
+                  (messages))))))
     (testing "init passes when no database is found to grant CREATE to PUBLIC"
       (let [{:keys [error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database (constantly [])]
                               (run-with-fake-jdbc answer init!))]
@@ -1486,13 +1492,16 @@
              (ex-data e)))
       (is (= (str "The workspace user could create objects outside its output schema. These databases grant CREATE "
                   "to PUBLIC, so it could create schemas there: db2. These schemas grant CREATE to PUBLIC: dev.public, "
-                  "db2.x. Redshift grants CREATE on `public` to PUBLIC by default, in every database. The admin "
-                  "connection's login could not connect to check these databases: db3. Every user may connect to "
+                  "db2.x. Redshift grants CREATE on `public` to PUBLIC by default, in every database. The REVOKE on "
+                  "`public` also takes CREATE there from every other login that relies on PUBLIC's grant, so give such "
+                  "logins a direct GRANT. The admin connection's login could not check these databases: db3. Every "
+                  "user may connect to "
                   "every database of the cluster, so they must be checked. As the owner of each database and schema "
                   "named, or a superuser, run `REVOKE CREATE ON DATABASE \"db2\" FROM PUBLIC;`, `REVOKE CREATE ON "
                   "SCHEMA \"public\" FROM PUBLIC;` in database \"dev\", `REVOKE CREATE ON SCHEMA \"x\" FROM PUBLIC;` "
                   "in database \"db2\". Make sure the admin connection's login can connect to each database named. "
-                  "Then retry. The REVOKEs persist, so this is a one-time setup step.")
+                  "Then retry. The REVOKEs persist, but each database created later has a `public` that grants CREATE "
+                  "to PUBLIC again, and init refuses it until its REVOKE runs.")
              (ex-message e))))))
 
 (deftest workspace-grant-refuses-public-writes-test
