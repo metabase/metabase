@@ -7,8 +7,6 @@ redirect_from:
 
 # Customizing the appearance of modular embeds
 
-You can style your embedded [Metabase components](./components.md) with a **theme**.
-
 ![Share button to embed dashboard](./images/sharing-embed.png)
 
 On OSS and Starter plans, embeds come with two theme presets: [light and dark](#dark-mode-and-light-mode).

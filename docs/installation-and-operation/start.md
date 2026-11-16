@@ -5,8 +5,6 @@ summary: Install, configure, back up, and upgrade your Metabase. Also covers ser
 
 # Installation and operation overview
 
-The birth, care, and feeding of your Metabase.
-
 ## [Installing Metabase](./installing-metabase.md)
 
 Options for installing Metabase.

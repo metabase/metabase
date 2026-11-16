@@ -10,7 +10,7 @@ redirect_from:
 
 ![SQL snippet](../images/sql-snippets.png)
 
-**Snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [native editor](./writing-sql.md) can create and edit snippets, which are then available for all native query authors.
+Anyone with permissions to the [native editor](./writing-sql.md) can create and edit snippets, which are then available for all native query authors.
 
 For example, if you frequently write queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 

@@ -11,8 +11,6 @@ redirect_from:
 
 _Admin > Databases > Writable connection_
 
-Writable connection is an optional connection that Metabase will use for functionality that involves writing into the database (for example, transforms or CSV uploads). This allows you to keep your main Metabase connection read-only, and only to switch to a connection with write permissions for the operations that require write access.
-
 ![Writable connection in database settings](./images/writeable-connection.png)
 
 ## How writable connection works

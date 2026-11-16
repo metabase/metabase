@@ -11,8 +11,6 @@ redirect_from:
 
 ![Data Studio](./images/data-studio.png)
 
-Data Studio provides tools to shape and track your data so everyone can trust the numbers.
-
 - **Create an easy-to-understand semantic layer** to match how people think about your business.
 - **Speed up queries** by transforming tables to anticipate usage patterns.
 - **View dependency graphs** to identify and fix problems before they impact reports.

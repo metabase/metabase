@@ -11,8 +11,6 @@ _Data Studio > Schema viewer_
 
 {% include plans-blockquote.html feature="Schema viewer" %}
 
-The schema viewer helps you understand relationships between tables in your database.
-
 ![Schema viewer](../images/schema-viewer.png)
 
 If you're looking for a visual representation of dependencies between _Metabase entities_ (questions, metrics etc) and their underlying tables, check out the [dependency graph](graph.md) instead.

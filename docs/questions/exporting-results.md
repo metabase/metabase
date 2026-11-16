@@ -7,8 +7,6 @@ redirect_from:
 
 # Exporting results
 
-You can export the results of a question or dashboard.
-
 ## Exporting results of a question
 
 To export the results of a question, click on the **Download** button in the lower right of a question.

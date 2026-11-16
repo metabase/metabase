@@ -11,8 +11,6 @@ redirect_from:
 
 > If you are just starting out with Metabase embedding, consider using [Modular embedding](./modular-embedding.md) - an improved, more customizable option for embedding Metabase components.
 
-You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
-
 ## Prerequisites
 
 {% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true%}

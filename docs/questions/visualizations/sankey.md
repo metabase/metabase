@@ -7,7 +7,7 @@ redirect_from:
 
 # Sankey charts
 
-Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.
+Sankey charts are useful for showing which elements, called nodes, contribute to the overall flow.
 
 ![Left-aligned sankey chart](../images/sankey-left-aligned.png)
 

@@ -9,8 +9,6 @@ summary: Mark items as verified to show they're accurate and up to date. Verifie
 
 ![Verified icon](./images/verified-icon.png)
 
-Admins can verify items to let others know that the content is accurate and up to date.
-
 ## Benefits of verifying an item
 
 - Verified items get a fancy blue checkmark next to them.

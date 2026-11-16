@@ -14,8 +14,6 @@ section: Migrate
 
 > If you're running Metabase 50 or above, check out [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
-The migration from a self-hosted Metabase to Metabase Cloud will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
-
 And don't stress. You won't lose any of your work, and if you get stuck, we're here to help.
 
 ## Prepare to migrate

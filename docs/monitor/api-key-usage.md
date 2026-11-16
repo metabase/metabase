@@ -9,7 +9,7 @@ summary: See which API keys are still in use, which routes they call, and which 
 
 _Monitor > API key usage_
 
-The API key usage page lets admins see how [API keys](../people-and-groups/api-keys.md) are used. Metabase records one row for every API request authenticated with an API key. Tabs on the page include:
+Metabase records one row for every API request authenticated with an [API key](../people-and-groups/api-keys.md). Tabs on the page include:
 
 - [**Usage**](#usage): Charts and a table that summarize API key activity over the date range you pick.
 - [**Events**](#events): One row per request, to see individual API calls.

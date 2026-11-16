@@ -7,7 +7,7 @@ redirect_from:
 
 # Alerts management
 
-The Alerts management page lists every [alert](../questions/alerts.md) in your Metabase. Use this page to find and fix failing or ownerless alerts. Alerts management doesn't include [dashboard subscriptions](../dashboards/subscriptions.md).
+Alerts management covers [alerts](../questions/alerts.md) only, not [dashboard subscriptions](../dashboards/subscriptions.md).
 
 Alerts management is only available to admins.
 

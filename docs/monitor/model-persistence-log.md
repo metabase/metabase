@@ -4,9 +4,7 @@ summary: View the status of persisted models and refresh their cached results.
 ---
  
 # Model persistence log
- 
-The Model persistence log lists your [persisted models](../data-modeling/models/model-persistence.md) and the status of their refreshes.
- 
+
 To open the Model persistence log:
  
 1. Open [Monitor](./start.md).

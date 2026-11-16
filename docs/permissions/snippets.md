@@ -9,8 +9,6 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Snippet controls" %}
 
-This article covers **Snippet folders**, which allow you to organize and set permissions on [Snippets](../questions/native-editor/snippets.md).
-
 Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
 ## Folders

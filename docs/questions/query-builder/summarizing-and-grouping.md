@@ -5,8 +5,6 @@ summary: Learn how to summarize and group your data in Metabase's query builder 
 
 # Summarizing and grouping
 
-This page covers the Summarize and Grouping steps in the [query builder](./editor.md).
-
 ![Summarizing](../images/summarize-step.png)
 
 When we have a question like "how many people downloaded our app each day last week?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more _numbers_ we care about (called a "metric" in data-speak), and how we want to see that number _grouped_ or _broken out_. To answer that example question of "How many people downloaded our app each day last week?"

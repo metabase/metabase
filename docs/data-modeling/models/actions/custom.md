@@ -7,8 +7,6 @@ redirect_from:
 
 # Custom actions
 
-Write SQL to update records in your databases.
-
 ![Custom action](./images/custom-action.png)
 
 ## Creating a custom action

@@ -7,8 +7,6 @@ redirect_from:
 
 # X-rays
 
-X-rays are a way to get automatic insights and explorations of your data.
-
 ## Get automatic insights when clicking on a chart
 
 One great way to explore your data in general in Metabase is to click on points of interest in charts and select **Automatic insights**.

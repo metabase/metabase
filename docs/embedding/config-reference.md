@@ -5,8 +5,6 @@ summary: "Reference for the page-level config settings for web components, and t
 
 # Config reference
 
-Reference material for the config that every modular embed on a page shares: the `defineMetabaseConfig()` settings for web components, and the `MetabaseProvider` props for the React SDK.
-
 For how to set all this up, check out [Configure your embeds](./config.md).
 
 ## Web component `defineMetabaseConfig()` settings

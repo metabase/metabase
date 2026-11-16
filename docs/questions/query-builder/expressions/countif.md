@@ -5,7 +5,7 @@ summary: Count only the rows that meet a condition you define.
 
 # CountIf
 
-`CountIf` counts the total number of rows in a table that match a condition. `CountIf` counts every row, not just unique rows.
+`CountIf` counts every row, not just unique rows.
 
 Syntax: `CountIf(condition)`.
 

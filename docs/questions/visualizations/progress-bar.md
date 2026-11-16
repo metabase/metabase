@@ -7,8 +7,6 @@ redirect_from:
 
 # Progress bars
 
-**Progress bars** are for comparing a single number to a goal value that you set.
-
 ![Progress bar](../images/progress.png)
 
 ## When to use a progress bar

@@ -1,6 +1,6 @@
 ---
 title: "IP addresses to whitelist"
-summary: The IP addresses Metabase Cloud connects from in each region, to add to your firewall or security group rules.
+summary: The IP addresses Metabase Cloud connects from in each region. Add them to your firewall or security group rules so they don't block calls from Metabase Cloud to your databases.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -12,8 +12,6 @@ redirect_from:
 ---
 
 # IP addresses to whitelist
-
-Since we host your Metabase for you, you may need to add our IP addresses to the whitelist for your security group or firewall rules so they don't block calls from your Metabase Cloud to your connected databases.
 
 Here are the IP addresses we use in each region.
 

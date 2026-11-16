@@ -9,8 +9,6 @@ redirect_from:
 
 > Python transforms require the [Advanced transforms add-on](addons.md)
 
-Use Python to write [transforms](transforms-overview.md).
-
 ## How Python transforms work
 
 Python-based transforms require a dedicated [Python execution environment](#set-up-a-python-runner).

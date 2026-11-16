@@ -7,7 +7,7 @@ redirect_from:
 
 # Configure your embeds
 
-Every modular embed on a page shares one configuration. How you configure your embeds depends on which embedding method you use:
+How you configure your embeds depends on which embedding method you use:
 
 - **[Web components](#configure-web-components)**: call `defineMetabaseConfig()` once per page. All Metabase components on the page use that config.
 - **[React SDK](#configure-the-react-sdk)**: pass your config as props to `MetabaseProvider`. All Metabase components inside the provider use that config.

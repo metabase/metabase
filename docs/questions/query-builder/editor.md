@@ -8,8 +8,6 @@ redirect_from:
 
 # The query builder
 
-Metabase includes a graphical query builder that lets you build interactive charts by building a query step by step from building blocks like filters and summaries.
-
 ![Metabase query builder](../images/notebook-editor.png)
 
 ## Create a new question with the query builder

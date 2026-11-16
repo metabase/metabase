@@ -7,7 +7,7 @@ redirect_from:
 
 # Gauge chart
 
-Ah, **gauges**: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number in the context of a set of colored ranges that you can specify.
+Ah, **gauges**: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess.
 
 ![Gauge](../images/gauge.png)
 

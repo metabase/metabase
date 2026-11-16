@@ -5,8 +5,6 @@ summary: You can move questions, dashboards, models, and metrics to Trash where 
 
 # Delete and restore
 
-Sometimes your questions, dashboards, models, metrics, or collections outlive their usefulness. You can send outdated items to **Trash**.
-
 ![Move to trash](./images/move-to-trash.png)
 
 Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md)), and you won't be able to use them to create new questions and dashboards.

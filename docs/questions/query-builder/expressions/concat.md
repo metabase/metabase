@@ -5,8 +5,6 @@ summary: Join two or more columns or values into a single string.
 
 # Concat
 
-`concat` concatenates data from two or more columns or values, and returns a string.
-
 ## Syntax
 
 ```

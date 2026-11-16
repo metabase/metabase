@@ -5,8 +5,6 @@ summary: "Reference for the metabase-dashboard web component attributes, the Sta
 
 # Dashboard component reference
 
-Reference material for embedding a dashboard: the attributes you can set on the `<metabase-dashboard>` web component, the props you can pass to the SDK's `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` components, and the options for creating dashboards from your app.
-
 For how to set all this up, check out [Embed a dashboard](./dashboard.md).
 
 ## Web component `metabase-dashboard` attributes

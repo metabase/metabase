@@ -9,8 +9,6 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Authenticated embeds" sdk=true is_plural=true%}
 
-For using modular embedding with SSO in production, you'll need to set up authentication.
-
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
 You can set up SSO with JWT or SAML.

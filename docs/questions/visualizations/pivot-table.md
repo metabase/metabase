@@ -9,7 +9,7 @@ redirect_from:
 
 > Pivot tables are currently only supported for questions built in the [query builder](../query-builder/editor.md). Pivot tables are not supported for NoSQL databases like MongoDB.
 
-Pivot tables allow you to swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+You can group one or more metrics by one or more dimensions.
 
 {% include youtube.html id='yTRzCQeTmO8' %}
 

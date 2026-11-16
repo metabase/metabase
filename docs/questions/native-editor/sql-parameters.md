@@ -9,8 +9,6 @@ redirect_from:
 
 ![Variables](../images/filter-and-parameter.png)
 
-You can create SQL templates by adding parameters (a.k.a. variables) to your SQL queries in the [Native/SQL editor](./writing-sql.md).
-
 These variables create widgets that people can use to plug in values for those variables. You can also connect [dashboard widgets to these parameters](../../dashboards/filters.md).
 
 ## SQL variable types

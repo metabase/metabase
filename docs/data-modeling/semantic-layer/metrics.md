@@ -9,8 +9,6 @@ summary: Metrics are reusable, standardized aggregations that let your team cons
 
 # Metrics
 
-Metrics define the official way to calculate important numbers for your team.
-
 ![Metric home page](./images/metric.png)
 
 Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.

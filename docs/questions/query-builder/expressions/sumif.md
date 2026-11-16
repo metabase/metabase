@@ -5,8 +5,6 @@ summary: Add up a column's values only for the rows that meet a condition.
 
 # SumIf
 
-`SumIf` adds up the values in a column based on a condition.
-
 Syntax: `SumIf(column, condition)`.
 
 Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 200.

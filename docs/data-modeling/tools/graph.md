@@ -14,7 +14,7 @@ _Data Studio > Dependency graph_
 
 ![Dependency graph](../images/dependency-graph.png)
 
-The dependency graph provides a visual representation of how your Metabase content is connected. You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
+You can use the dependency graph to follow how data flows through your Metabase to better understand the impact of any changes you make.
 
 If you're looking for a visual representation of foreign key relationships between tables, check out the [Schema viewer](schema-viewer.md) instead.
 

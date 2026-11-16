@@ -10,7 +10,7 @@ redirect_from:
 
 _Data Studio > Connected data > Segments_
 
-Segments are saved filters on tables. You can use segments to create official definitions of a subset of customers, users, or products that everyone on your team can refer to consistently (for example what constitutes an "active user").
+You can use segments to create official definitions of a subset of customers, users, or products that everyone on your team can refer to consistently (for example what constitutes an "active user").
 
 People will see segments as options in the Filter block of the [query builder](../../questions/query-builder/editor.md).
 

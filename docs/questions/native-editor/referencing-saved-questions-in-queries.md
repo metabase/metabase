@@ -7,8 +7,6 @@ redirect_from:
 
 # Referencing models and saved questions
 
-With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][cte].
-
 For example, let's say we have a lot of data spread across a number of tables, but people are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
 ## Search for models and questions as you type

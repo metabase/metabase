@@ -7,8 +7,6 @@ summary: Admins can create, update, and delete data in tables right in Metabase.
 
 {% include plans-blockquote.html feature="Editable tables"  %}
 
-Admins can enable editable tables in Metabase, which will allow admins to edit data in tables directly from Metabase.
-
 ![Add option](./images/add-option.png)
 
 ## Databases that support editable tables

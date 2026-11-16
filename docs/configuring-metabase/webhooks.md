@@ -5,7 +5,7 @@ summary: Set up webhooks to send alerts to your app, a third-party service, or w
 
 # Webhooks
 
-Admins and people with [settings access](../permissions/application.md#settings-access) can set up webhooks to send [alerts](../questions/alerts.md) to a particular URL. This means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
+Admins and people with [settings access](../permissions/application.md#settings-access) can set up webhooks to send [alerts](../questions/alerts.md) to a particular URL.
 
 Only admins and people with settings access can send alerts to webhooks.
 

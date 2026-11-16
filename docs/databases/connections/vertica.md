@@ -7,10 +7,6 @@ redirect_from:
 
 # Working with Vertica in Metabase
 
-Starting in v0.20.0, Metabase provides a driver for connecting to Vertica databases. Under the hood, Metabase uses Vertica's JDBC driver;
-due to licensing restrictions, we can't include it as part of Metabase. Luckily, downloading it yourself and making it available to Metabase
-is straightforward and only takes a few minutes.
-
 ## Downloading the Vertica JDBC Driver JAR
 
 You can download the JDBC driver from [Vertica's JDBC driver downloads page](https://vertica.com/download/vertica/client-drivers/).

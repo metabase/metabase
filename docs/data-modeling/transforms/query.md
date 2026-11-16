@@ -9,8 +9,6 @@ redirect_from:
 
 > On Metabase Cloud, you need the [**Basic transforms** add-on](addons.md) to run query-based transforms.
 
-With query-based transforms, you can write a query in SQL or Metabase's query builder, and then write the results of the query back into the database on schedule.
-
 ![Query transform](../images/sql-transform.png)
 
 For general information about Metabase transforms, see [Transforms](transforms-overview.md).

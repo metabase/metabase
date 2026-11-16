@@ -5,8 +5,6 @@ summary: "Reference for the metabase-question web component attributes, the Stat
 
 # Question component reference
 
-Reference material for embedding a chart or a query editor: the attributes you can set on the `<metabase-question>` web component, the props you can pass to the SDK's `StaticQuestion` and `InteractiveQuestion` components, and the namespaced components you can use to build your own layout.
-
 For how to set all this up, check out [Embed a chart](./chart.md) and [Embed the query builder](./query-builder.md).
 
 ## Web component `metabase-question` attributes

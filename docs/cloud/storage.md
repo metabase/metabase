@@ -11,8 +11,6 @@ layout: new-docs
 
 # Metabase Cloud Storage
 
-If you have data stored in spreadsheets and don't have a data warehouse, Metabase Cloud Storage has you covered.
-
 ## How Metabase Cloud Storage works
 
 Metabase Cloud Storage is a feature you can add to your Metabase Cloud plan (and it's only available for plans on Metabase Cloud).

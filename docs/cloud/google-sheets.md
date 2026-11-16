@@ -15,8 +15,6 @@ layout: new-docs
 
 ![Sync Google Sheets](./images/connect-google-sheets.png)
 
-If you've set up [Metabase Cloud Storage](https://www.metabase.com/docs/latest/cloud/storage), an admin can set up Metabase to sync with Google Sheets in a Google Drive folder. Metabase will create tables in your Metabase Cloud Storage for the synced Google Sheets.
-
 Currently, you can't sync Google Sheets to your own database.
 
 ## How to sync Google Sheets with Metabase

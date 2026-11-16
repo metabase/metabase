@@ -9,7 +9,7 @@ summary: See which operations the Metabase CLI runs, who runs them, and when eac
 
 _Monitor > CLI analytics_
 
-The CLI analytics page shows how people use the [Metabase CLI](../installation-and-operation/metabase-cli.md) with your instance. Metabase records one row for every API call the CLI makes, so you can see whether anyone is using it, which operations they run, how often they run them, and when each person last used it.
+Metabase records one row for every API call the [Metabase CLI](../installation-and-operation/metabase-cli.md) makes.
 
 Only admins can view CLI analytics. See [Permissions for Monitor](./start.md#permissions-for-monitor).
 

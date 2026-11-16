@@ -5,7 +5,7 @@ summary: View the recurring jobs Metabase runs automatically, and the triggers t
 
 # Scheduled jobs
 
-The Scheduled jobs page lists the recurring work Metabase performs on a schedule, like cache refreshes, model persistence refreshes, and health checks. To manage these jobs, Metabase uses the [Quartz scheduler](https://www.quartz-scheduler.org/).
+Scheduled jobs include cache refreshes, model persistence refreshes, and health checks. To manage these jobs, Metabase uses the [Quartz scheduler](https://www.quartz-scheduler.org/).
 
 While [Background tasks](./background-tasks.md) shows the work Metabase performed, Scheduled jobs shows the schedules themselves, including which jobs exist and when they'll fire next.
 

@@ -5,7 +5,7 @@ summary: "Which attribute or prop to use, the value formats each filter type acc
 
 # Embedding parameters reference
 
-Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md).
+For how to use all this, check out [Embedding parameters](./parameters.md).
 
 For each attribute's or prop's type and description, see:
 

@@ -7,8 +7,6 @@ redirect_from:
 
 # Embedding introduction
 
-You can embed Metabase tables, charts, dashboards, AI chat---even Metabase's query builder---in your website or application.
-
 There are two ways to embed Metabase.
 
 - **[Modular embedding](#modular-embedding)**: embed individual Metabase components, like questions, dashboards, and AI chat, so they seamlessly integrate with your app.

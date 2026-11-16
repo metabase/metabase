@@ -7,7 +7,7 @@ summary: Research automatically creates and ranks charts using your metrics and 
 
 ![A Research showing generated charts in the sidebar and a selected bar chart](./images/research-results.png)
 
-Use Research to ask broad questions about your data without building charts one at a time. Research is available from the [AI exploration](./metabot.md) page. Describe what you want to investigate, and Metabase creates a bunch of charts, scores them for interestingness, and presents them in a single grouped view. Metabase saves each Research as its own entity, like a question or dashboard, so you can move the Research to a collection and share it.
+Research is available from the [AI exploration](./metabot.md) page. Describe what you want to investigate, and Metabase creates a bunch of charts, scores them for interestingness, and presents them in a single grouped view. Metabase saves each Research as its own entity, like a question or dashboard, so you can move the Research to a collection and share it.
 
 Research requires an [AI provider](./settings.md). It also requires at least one [metric](../data-modeling/semantic-layer/metrics.md), because Research builds its charts by breaking out your metrics by their dimensions. More metrics give Research more to work with. If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
 

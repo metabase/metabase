@@ -8,8 +8,6 @@ redirect-from:
 
 # SQL editor
 
-If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
-
 You can also use [Metabot](../../ai/metabot.md) to generate SQL from natural language. Just ask Metabot to "Write a SQL query that..." and describe what you want to know about your data.
 
 ## What's SQL?

@@ -9,7 +9,7 @@ redirect_from:
 
 ![Dashboard Filters](./images/filters.png)
 
-Instead of creating duplicate dashboards to show different cuts of the same data (like a different dashboard for each quarter), you can add filter or parameter widgets to let people change _what_ data is displayed (filter the data), or _how_ it's displayed (parameterize the data).
+Filter widgets let people change _what_ data a dashboard displays (filter the data), and parameter widgets let people change _how_ the dashboard displays it (parameterize the data).
 
 ## Filter and parameter widgets
 
