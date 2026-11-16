@@ -621,7 +621,7 @@
       "duration": 22023
     },
     {
-      "spec": "../test/scenarios/data-apps/embed-js-setup-data-app.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/embed-wizard-data-app.cy.spec.ts",
       "duration": 21676
     },
     {
