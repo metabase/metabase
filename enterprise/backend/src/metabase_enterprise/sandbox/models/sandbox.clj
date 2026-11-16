@@ -263,11 +263,13 @@
   (when (some #(contains? changes %) [:content :name :archived])
     (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id)))
 
-(defenterprise pre-delete-check-sandbox-constraints-for-snippet
-  "Refuses a non-admin's deletion of a snippet in the sandbox dependency set."
+(defenterprise sandboxes-allow-snippet-update?
+  "Whether sandboxing lets the current user apply `changes` to a snippet: only an admin may change the `:content`,
+  `:name` or `:archived` of one in the sandbox dependency set."
   :feature :sandboxes
-  [{snippet-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id))
+  [{snippet-id :id} changes]
+  (not (and (some #(contains? changes %) [:content :name :archived])
+            (non-admin-affects-sandboxing? :snippet snippet-id))))
 
 (defenterprise sandboxes-allow-segment-update?
   "Whether sandboxing lets the current user apply `changes` to a Segment: only an admin may change the `:definition`

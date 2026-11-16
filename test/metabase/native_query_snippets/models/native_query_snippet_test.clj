@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -16,6 +17,50 @@
            (t2/update! :model/NativeQuerySnippet :id snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest snippet-name-format-test
+  (doseq [invalid-name [" starts with a space" "\tstarts with a tab" "contains a } character"]]
+    (testing (format "A snippet cannot be inserted with the name %s" (pr-str invalid-name))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"snippet names cannot include"
+           (t2/insert! :model/NativeQuerySnippet
+                       {:name invalid-name, :content "1 = 1", :creator_id (mt/user->id :rasta)}))))
+    (testing (format "A snippet cannot be renamed to %s" (pr-str invalid-name))
+      (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "valid name"}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"snippet names cannot include"
+             (t2/update! :model/NativeQuerySnippet :id snippet-id {:name invalid-name})))
+        (is (= "valid name" (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id))))))
+  (testing "A name with whitespace after its first character and no brace is valid"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "valid name"}]
+      (is (= 1 (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "also valid "}))))))
+
+(deftest insert-resolves-snippet-references-in-one-lookup-test
+  (testing "The snippets one statement inserts resolve their references together"
+    (mt/with-temp [:model/NativeQuerySnippet {first-id :id}  {:name "referenced first"}
+                   :model/NativeQuerySnippet {second-id :id} {:name "referenced second"}]
+      (let [lookups (fn [n]
+                      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+                        (t2/with-call-count [call-count]
+                          (t2/insert! :model/NativeQuerySnippet
+                                      (for [i (range n)]
+                                        {:name       (format "referring %d" i)
+                                         :content    "{{snippet: referenced first}} {{snippet: referenced second}}"
+                                         :creator_id (mt/user->id :rasta)}))
+                          (call-count))))]
+        (testing "MySQL reads each inserted row back, which is the only per-row statement"
+          (is (= (if (= :mysql (mdb/db-type)) 4 0)
+                 (- (lookups 6) (lookups 2)))))
+        (mt/with-model-cleanup [:model/NativeQuerySnippet]
+          (t2/insert! :model/NativeQuerySnippet
+                      [{:name "referring a", :content "{{snippet: referenced first}}", :creator_id (mt/user->id :rasta)}
+                       {:name "referring b", :content "{{snippet: referenced second}}", :creator_id (mt/user->id :rasta)}])
+          (is (= first-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring a")
+                                  ["snippet: referenced first" :snippet-id])))
+          (is (= second-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring b")
+                                   ["snippet: referenced second" :snippet-id]))))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"

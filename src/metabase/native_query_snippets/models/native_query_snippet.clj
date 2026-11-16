@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; ------------------------------------------------------ Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
 
@@ -45,49 +45,87 @@
 (doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
   (events/derive! e ::event))
 
-(defn add-template-tags
-  "Update the template tags based on the new contents."
-  [{old-tags :template_tags :as snippet}]
-  ;; Parse the snippet content to identify all template tags (like {{snippet: FilterA}} or {{var}}).
-  ;; For snippet references, we need to resolve them to snippet IDs while preserving reference stability.
-  ;;
-  ;; Key behavior for snippet references:
-  ;; 1. If a snippet with the exact referenced name exists in the DB, use its ID
-  ;; 2. Otherwise, preserve the existing snippet-id from old tags if available
-  ;;    (this maintains references even when the target snippet has been renamed)
-  ;; 3. If neither exists, keep the tag without a snippet-id (reference to non-existent snippet)
-  ;;
-  ;; This approach ensures that:
-  ;; - References remain stable when target snippets are renamed
-  ;; - References update to exact matches when the content is re-saved
-  ;; - Creating a new snippet with a referenced name will cause queries to switch to it on next save
-  (let [snippet-tag? (fn [tag] (= (:type tag) :snippet))
-        name->old-tag (into {} (comp (map val)
+;;; ------------------------------------------------------ Hooks -----------------------------------------------------
+
+(defn valid-name?
+  "Whether `snippet-name` is a string that includes no \"}\" and does not start with whitespace."
+  [snippet-name]
+  (and (string? snippet-name)
+       (not (re-find #"^\s+" snippet-name))
+       (not (re-find #"}" snippet-name))))
+
+(def ^:private name-error
+  "The message for a snippet name `valid-name?` refuses."
+  (deferred-tru "snippet names cannot include ''}'' or start with spaces"))
+
+(def NativeQuerySnippetName
+  "Schema checking that snippet names do not include \"}\" or start with spaces."
+  (mu/with-api-error-message
+   [:fn {:json-schema {:type "string"}} valid-name?]
+   name-error))
+
+(defn- check-name
+  "Throws a 400 unless the name of `snippet` is valid."
+  [{snippet-name :name}]
+  (when-not (valid-name? snippet-name)
+    (throw (ex-info (str name-error) {:status-code 400, :errors {:name (str name-error)}}))))
+
+(defn- check-collections
+  "Throws unless the Collections of `snippets` can hold snippets, each Collection checked once."
+  [snippets]
+  (doseq [collection-id (into #{} (keep :collection_id) snippets)]
+    (collection/check-allowed-content :model/NativeQuerySnippet collection-id)
+    (collection/check-collection-namespace :model/NativeQuerySnippet collection-id)))
+
+(defn- snippet-tag?
+  "Whether `tag` is a reference to a snippet."
+  [tag]
+  (= (:type tag) :snippet))
+
+(defn- referenced-snippet-ids
+  "The ids of the snippets the contents of `snippets` refer to as `{{snippet: <name>}}`, by name, loaded together."
+  [snippets]
+  (let [names (into #{}
+                    (comp (mapcat (comp lib/recognize-template-tags :content))
+                          (filter snippet-tag?)
+                          (map :snippet-name))
+                    snippets)]
+    (if (seq names)
+      (native-query-snippets.db/snippet-ids-by-names (vec names))
+      {})))
+
+(defn- snippet-template-tags
+  "The template tags of `snippet` for its content, with its snippet references resolved against `name->id`.
+
+  A reference to a snippet named in `name->id` gets that snippet's id. Otherwise it keeps the id of the same reference
+  in the old tags, so that references survive the rename of their target, or none when there was none."
+  [{old-tags :template_tags :as snippet} name->id]
+  (let [name->old-tag (into {} (comp (map val)
                                      (filter snippet-tag?)
                                      (map (juxt :snippet-name identity)))
                             old-tags)
-        new-tags (into {}
-                       (map (juxt :name identity))
-                       (lib/recognize-template-tags (:content snippet)))
+        new-tags      (into {}
+                            (map (juxt :name identity))
+                            (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
-                         ;; Check for exact match in database:
-                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name)]
+                         (if-let [snippet-id (get name->id snippet-name)]
                            (assoc tag :snippet-id snippet-id)
-                           ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
-    (->> (update-vals new-tags (fn [tag]
-                                 (cond-> tag
-                                   ;; Preserve :id from old tags if available
-                                   (get-in old-tags [(:name tag) :id])
-                                   (assoc :id (get-in old-tags [(:name tag) :id]))
-                                   (snippet-tag? tag)
-                                   (set-snippet-id))))
-         (assoc snippet :template_tags))))
+    (update-vals new-tags (fn [tag]
+                            (cond-> tag
+                              (get-in old-tags [(:name tag) :id])
+                              (assoc :id (get-in old-tags [(:name tag) :id]))
+                              (snippet-tag? tag)
+                              (set-snippet-id))))))
 
-(t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
-    (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
-    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+(mi/define-before-insert :model/NativeQuerySnippet
+  [snippets]
+  (check-collections snippets)
+  (let [name->id (referenced-snippet-ids snippets)]
+    (mapv (fn [snippet]
+            (check-name snippet)
+            (assoc snippet :template_tags (snippet-template-tags snippet name->id)))
+          snippets)))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -99,22 +137,20 @@
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
-(defenterprise pre-delete-check-sandbox-constraints-for-snippet
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_])
-
-(t2/define-before-update :model/NativeQuerySnippet
-  [snippet]
-  ;; additional checks (Enterprise Edition only)
-  (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
-  (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
-  (u/prog1 (cond-> snippet
-             (:content snippet) add-template-tags)
-    ;; throw an Exception if someone tries to update creator_id
-    (when (contains? (t2/changes <>) :creator_id)
-      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
-    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+(mi/define-before-update :model/NativeQuerySnippet
+  [snippets]
+  (check-collections (filter #(contains? (t2/changes %) :collection_id) snippets))
+  (let [name->id (referenced-snippet-ids (filter :content snippets))]
+    (mapv (fn [snippet]
+            (let [changes (t2/changes snippet)]
+              (pre-update-check-sandbox-constraints-for-snippet snippet changes)
+              (when (contains? changes :creator_id)
+                (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
+              (when (contains? changes :name)
+                (check-name snippet))
+              (cond-> snippet
+                (:content snippet) (assoc :template_tags (snippet-template-tags snippet name->id)))))
+          snippets)))
 
 (t2/define-after-update :model/NativeQuerySnippet
   [snippet]
@@ -123,10 +159,10 @@
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
-  ;; additional checks (Enterprise Edition only)
-  (pre-delete-check-sandbox-constraints-for-snippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn- check-permission-keys
   "Throws unless `snippet` has the columns its `:can_read` and `:can_write` hydrations read."
@@ -160,27 +196,20 @@
   (and (snippet.perms/can-create? model snippet)
        (not (remote-sync/read-only?))))
 
+(defenterprise sandboxes-allow-snippet-update?
+  "Whether sandboxing lets the current user apply `changes` to `snippet`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_snippet _changes]
+  true)
+
 (defmethod mi/can-update? :model/NativeQuerySnippet
   [snippet changes]
   (and (snippet.perms/can-update? snippet changes)
+       (sandboxes-allow-snippet-update? snippet changes)
        (or (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes))
            (not (remote-sync/read-only?)))))
 
-;;; ---------------------------------------------------- Schemas -----------------------------------------------------
-
-(def NativeQuerySnippetName
-  "Schema checking that snippet names do not include \"}\" or start with spaces."
-  (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}}
-    (fn [x]
-      ((every-pred
-        string?
-        (complement #(boolean (re-find #"^\s+" %)))
-        (complement #(boolean (re-find #"}" %))))
-       x))]
-   (deferred-tru "snippet names cannot include ''}'' or start with spaces")))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ---------------------------------------------------- Serialization ----------------------------------------------------
 
 (defn- walk-export-renames
   "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id, with the
