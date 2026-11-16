@@ -462,6 +462,26 @@
                     :workspace {:name      (:name ws)
                                 :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
 
+(defn check-no-tunnelled-databases
+  "Throw a 422 naming the first database of workspace `workspace-id` whose SSH tunnel is on. A config download by a
+  credential with the `mb:workspace-manager` scope must not carry the parent's tunnel secrets, and a tunnel without them
+  cannot authenticate, so such a download is refused."
+  [workspace-id]
+  (when-let [db (some->> (workspace/get-workspace workspace-id)
+                         :databases
+                         (mapv :database_id)
+                         not-empty
+                         ws.db/databases
+                         (filter (comp :tunnel-enabled :details))
+                         first)]
+    (throw (ex-info (format (str "Database %s uses an SSH tunnel. A credential with the mb:workspace-manager scope "
+                                 "cannot download the config of a workspace with a tunnelled database, because the "
+                                 "config would need the parent's tunnel secrets. Download it with an unscoped admin "
+                                 "credential, or remove the database from the workspace.")
+                            (pr-str (:name db)))
+                    {:status-code 422
+                     :database_id (:id db)}))))
+
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."
   [config]
