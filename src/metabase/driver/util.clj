@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.events.unlisted-connection-parameter]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.events.core :as events]
@@ -299,8 +300,6 @@
              (distinct))
             parameters))
     []))
-
-(events/derive! :event/unlisted-connection-parameter :metabase/event)
 
 (mr/def :event/unlisted-connection-parameter
   [:map {:closed true}
