@@ -202,6 +202,14 @@
   crashed instance, so a delete tears it down instead of refusing."
   (t/minutes 15))
 
+(defn- workspace-busy-exception
+  "The 409 with error code `workspace_busy` for the workspace `workspace-id`."
+  [workspace-id]
+  (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Nothing was changed. Retry once it finishes."
+           {:status-code  409
+            :error-code   "workspace_busy"
+            :workspace_id workspace-id}))
+
 (defn- assert-workspace-not-busy
   "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
   running on any of the workspace's databases. Without this, a delete waits on
@@ -210,10 +218,7 @@
   [workspace-id]
   (when (ws.db/workspace-has-in-flight-databases? workspace-id
                                                   (t/minus (t/offset-date-time) in-flight-stale-after))
-    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Nothing was changed. Retry once it finishes."
-                    {:status-code  409
-                     :error-code   "workspace_busy"
-                     :workspace_id workspace-id}))))
+    (throw (workspace-busy-exception workspace-id))))
 
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
@@ -297,22 +302,65 @@
   (provisioning/with-workspace-database-lock wsd-id
     (ws.db/delete-workspace-database! wsd-id)))
 
+(defn- restore-workspace-database-status!
+  "Set the WorkspaceDatabase `wsd` back to the status and `updated_at` it has in `wsd`, if it is `:deprovisioning`.
+  `wsd` is the row as read before [[mark-workspace-databases-deprovisioning!]] marked it. The old `updated_at` matters
+  for a row a crashed instance left `:provisioning` or `:deprovisioning`: with a new one, the busy check would refuse
+  the next delete."
+  [wsd]
+  (ws.db/transition-workspace-database-at! (:id wsd) :deprovisioning (:status wsd) (:updated_at wsd)))
+
+(defn- mark-workspace-databases-deprovisioning!
+  "Set every WorkspaceDatabase of `workspace-id` to `:deprovisioning`, so the busy checks refuse other requests while
+  a delete tears the workspace down. Refuses (409, error code `workspace_busy`) while a create or deprovision is
+  running. Returns the rows as they were before the mark; each keeps the status and `updated_at` to set back when
+  its teardown fails before the warehouse call. A `:never_started` row is not marked: its teardown only deletes it.
+
+  Two concurrent deletes cannot both mark a row. This one reads the rows before the busy check, and each mark is
+  conditional on the status it read. So another delete's mark either shows in the busy check, or makes a mark here
+  update no row. Then this delete sets back the rows it marked and refuses. Rows older than
+  [[in-flight-stale-after]] are not covered: two deletes can both take over a stale `:deprovisioning` row."
+  [workspace-id]
+  (let [wsds (ws.db/workspace-databases workspace-id)
+        now  (t/offset-date-time)]
+    (assert-workspace-not-busy workspace-id)
+    (reduce (fn [marked wsd]
+              (when-not (pos? (ws.db/transition-workspace-database-at! (:id wsd) (:status wsd) :deprovisioning now))
+                (run! restore-workspace-database-status! marked)
+                (throw (workspace-busy-exception workspace-id)))
+              (conj marked wsd))
+            []
+            (remove #(= :never_started (:status %)) wsds))
+    wsds))
+
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
+  Marks them `:deprovisioning` first, see [[mark-workspace-databases-deprovisioning!]].
   Mirrors [[provision-workspace-databases!]], but continues past failures so each
   row gets its attempt: rows whose teardown succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
-  rows whose teardown fails are kept. Throws the combined failures when any
-  teardown failed: with the failure's own `:status-code` when there is one
-  failure, else 500."
+  rows whose teardown fails are kept. A failed destroy leaves its row
+  `:teardown_failed`. A row whose teardown failed and that is still
+  `:deprovisioning` is set back to the status it had: the failure came before the
+  warehouse call (a lock timeout, a failed lookup), or after a destroy that
+  succeeded. An error from setting the status back is attached to that row's
+  failure as suppressed, and the row stays `:deprovisioning`, so the busy check
+  refuses a delete until the row is older than [[in-flight-stale-after]]. Throws
+  the combined failures when any teardown failed: with the failure's own
+  `:status-code` when there is one failure, else 500."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
                                (try
                                  (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
                                  nil
-                                 (catch Throwable t t))))
-                       (ws.db/workspace-databases workspace-id))]
+                                 (catch Throwable t
+                                   (try
+                                     (restore-workspace-database-status! wsd)
+                                     (catch Throwable restore-t
+                                       (.addSuppressed t restore-t)))
+                                   t))))
+                       (mark-workspace-databases-deprovisioning! workspace-id))]
     (when (seq failures)
       ;; a single failure keeps its status, such as a driver's 409 naming what must happen before a retry
       (throw (combined-exception failures
@@ -446,10 +494,11 @@
   left dangling. Refuses with a 409 (`workspace_busy`) while a create or
   deprovision is still running on any of its databases; a `:provisioning` or
   `:deprovisioning` row left behind by a crashed instance is torn down once it
-  is older than [[in-flight-stale-after]]. Returns nil."
+  is older than [[in-flight-stale-after]]. Before its first warehouse call, the
+  delete sets every database `:deprovisioning`, so a second delete gets that 409
+  while this one runs. Returns nil."
   [id]
   (assert-workspace-exists id)
-  (assert-workspace-not-busy id)
   (teardown-workspace-databases! id)
   (workspace/delete-workspace! id)
   nil)

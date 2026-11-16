@@ -163,6 +163,18 @@
    to-status             :- ::status]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status} {:status to-status}))
 
+(mu/defn transition-workspace-database-at!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
+  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
+  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::status
+   to-status             :- ::status
+   updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/update! :model/WorkspaceDatabase
+              {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at updated-at}))
+
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
   `to-status`. Returns the number of rows updated."

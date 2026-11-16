@@ -125,7 +125,9 @@
   while a create or deprovision is running on any of its databases, meaning a row
   that is `:provisioning` or `:deprovisioning` and was last updated within the
   last 15 minutes. An older such row is treated as left by a crashed instance and
-  is torn down. A `never_started` row is deleted without a warehouse teardown: a
+  is torn down. A DELETE sets every database `deprovisioning` before its first
+  warehouse call, so a second DELETE and the config download answer 409 while it
+  runs. A `never_started` row is deleted without a warehouse teardown: a
   create that failed before that database's provisioning started left it, so the
   warehouse has nothing of its. A row whose teardown succeeds is deleted. A row whose teardown
   fails is kept as `teardown_failed`, the workspace is kept with it, and the
