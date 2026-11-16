@@ -298,8 +298,16 @@
                    [:membership_id ms/PositiveInt]]
                   (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
-        (is (nil?
-             (get id->member :trashbird)))))
+        (mt/with-temp [:model/User {inactive-id :id} {:is_active false}]
+          (let [group-id (:id (perms-group/all-users))]
+            (testing "the deactivated user is still a member of the group"
+              (is (t2/exists? :model/PermissionsGroupMembership
+                              :user_id inactive-id :group_id group-id)))
+            (is (nil? (->> (mt/user-http-request
+                            :crowberto :get 200 (format "permissions/group/%d" group-id))
+                           :members
+                           (m/index-by :user_id)
+                           (#(get % inactive-id)))))))))
     (testing "returns 404 for nonexistent id"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "permissions/group/10000"))))
