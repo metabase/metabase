@@ -196,7 +196,7 @@ describe("scenarios > notebook > data source", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(0, "Library").should(
+        H.entityPickerModalItem(0, "Semantic layer").should(
           "have.attr",
           "data-active",
           "true",
@@ -224,7 +224,7 @@ describe("scenarios > notebook > data source", () => {
       cy.log("data picker: verify the picker when nothing is selected");
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(0).findByText("Semantic layer").click();
         H.entityPickerModalLevel(1).findByText("Data").click();
         cy.findByText("Orders").click();
       });
@@ -232,7 +232,7 @@ describe("scenarios > notebook > data source", () => {
       H.join();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(0).findByText("Semantic layer").click();
         H.entityPickerModalLevel(1).findByText("Data").click();
         cy.findByText("Products").click();
       });

@@ -85,7 +85,7 @@
       (let [result (collection/maybe-localize-system-collection-name
                     {:name "Wrong Name" :type collection/library-collection-type
                      :entity_id @#'collection/library-entity-id})]
-        (is (= "Library" (str (:name result))))))
+        (is (= "Semantic layer" (str (:name result))))))
     (testing "Data gets canonical name"
       (let [result (collection/maybe-localize-system-collection-name
                     {:name "Wrong Name" :type collection/library-data-collection-type
@@ -1970,7 +1970,7 @@
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
-        (is (= "Library" (:name library)))
+        (is (= "Semantic layer" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
           (mt/with-current-user (mt/user->id :rasta)

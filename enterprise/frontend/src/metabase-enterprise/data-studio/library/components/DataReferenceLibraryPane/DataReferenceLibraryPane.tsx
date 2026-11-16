@@ -80,7 +80,7 @@ export const DataReferenceLibraryPane = ({
       className={CS.fullHeight}
     >
       <SidebarContent
-        title={t`Library`}
+        title={t`Semantic layer`}
         icon="repository"
         onBack={onBack}
         onClose={onClose}
@@ -115,7 +115,7 @@ export const DataReferenceLibraryPane = ({
           ) : (
             <Box ta="center" py="xl" px="lg">
               <Text c="text-secondary">
-                {t`No published tables in your library yet.`}
+                {t`No published tables in your semantic layer yet.`}
               </Text>
             </Box>
           )}

@@ -65,7 +65,7 @@ describe("NavbarLibrarySection", () => {
       });
       setup({ collections: [regularCollection] });
 
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
     });
   });
 

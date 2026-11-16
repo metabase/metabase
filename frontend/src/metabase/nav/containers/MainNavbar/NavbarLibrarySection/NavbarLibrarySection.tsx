@@ -132,12 +132,12 @@ export function NavbarLibrarySection({
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
+          header={<SidebarHeading>{t`Semantic layer`}</SidebarHeading>}
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Library`}
+          aria-label={t`Semantic layer`}
           onToggle={setExpandLibrary}
         >
           <Tree

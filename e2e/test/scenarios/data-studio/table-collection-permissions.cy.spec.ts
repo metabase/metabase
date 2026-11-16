@@ -488,7 +488,9 @@ function popoverByIndex(index: number) {
 }
 
 function librarySidebarSection() {
-  return H.navigationSidebar().findByRole("section", { name: "Library" });
+  return H.navigationSidebar().findByRole("section", {
+    name: "Semantic layer",
+  });
 }
 
 function assertQueryPermissionError() {

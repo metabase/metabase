@@ -8,7 +8,7 @@ export const Messages = {
     return t`Data Analysts always have full access to edit table metadata.`;
   },
   get UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS() {
-    return t`Data Analysts always have full access to library collections.`;
+    return t`Data Analysts always have full access to semantic layer collections.`;
   },
   get ONLY_ADMINS_CAN_CURATE_DATA_ACTIONS() {
     return t`Only administrators can create and edit data actions. Groups with View access can run them.`;

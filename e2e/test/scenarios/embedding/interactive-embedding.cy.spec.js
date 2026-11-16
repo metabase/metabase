@@ -603,7 +603,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion();
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").should("be.visible");
+          cy.findByText("Semantic layer").should("be.visible");
         });
       });
     });
@@ -794,7 +794,7 @@ describe("scenarios > embedding > full app", () => {
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Saved Questions").should("not.exist");
         cy.findByText("Metrics").should("be.visible");
-        cy.findByText("Library").should("be.visible");
+        cy.findByText("Semantic layer").should("be.visible");
       });
 
       cy.log("test providing `entity_types` as an empty string");
@@ -1203,7 +1203,7 @@ describe("scenarios > embedding > full app", () => {
 
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Orders").click();
         });
         cy.wait("@getTableMetadata");
@@ -1221,7 +1221,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").button("Join data").click();
         goBackToBucketStep();
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Products").click();
         });
 
@@ -1252,7 +1252,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
 
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Finance").click();
           cy.findByText("Products").click();
         });
@@ -1281,7 +1281,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
 
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Finance").click();
           cy.findByText("Products").click();
         });
@@ -1322,7 +1322,7 @@ describe("scenarios > embedding > full app", () => {
 
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").should("not.exist");
+          cy.findByText("Semantic layer").should("not.exist");
         });
       });
 
@@ -1341,7 +1341,7 @@ describe("scenarios > embedding > full app", () => {
 
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").should("not.exist");
+          cy.findByText("Semantic layer").should("not.exist");
         });
       });
 
@@ -1382,7 +1382,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
 
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           // Client A and Client B share one "Data" entry, not one each
           cy.findAllByText("Data").should("have.length", 1);
           cy.findByText("Client A").should("be.visible");

@@ -435,7 +435,7 @@ describe("Onboarding", () => {
       ["invite", 'Admin panel with the "Invite someone" button'],
       ["ai", "Connecting an AI provider in the admin settings"],
       ["query", "The three ways to query your data, each producing a chart"],
-      ["data-studio", "A table in the Data Studio library"],
+      ["data-studio", "A table in the Data Studio semantic layer"],
       ["permissions", "A key unlocking a keyhole"],
     ])("'%s' item should render its illustration", (item, name) => {
       setup({ openItem: item });

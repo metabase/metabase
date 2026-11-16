@@ -289,7 +289,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Our analytics").click();
-      cy.findByText("Library").click();
+      cy.findByText("Semantic layer").click();
       cy.findByText("Metrics").click();
       cy.button("Select this collection").click();
     });

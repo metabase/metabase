@@ -71,7 +71,7 @@ describe("scenarios > data studio > library", () => {
     H.popover().findByText("Duplicate").click();
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(0, "Semantic layer").click();
     H.entityPickerModalItem(1, "Metrics").click();
     H.entityPickerModal().button("Select this collection").click();
     H.modal().button("Duplicate").click();
@@ -90,7 +90,7 @@ describe("scenarios > data studio > library", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(0, "Semantic layer").click();
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Orders").should("exist");
 
@@ -108,7 +108,7 @@ describe("scenarios > data studio > library", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(0, "Semantic layer").click();
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Orders").click();
 
@@ -118,7 +118,7 @@ describe("scenarios > data studio > library", () => {
     H.miniPickerHeader().click();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalItem(0, "Library").should(
+    H.entityPickerModalItem(0, "Semantic layer").should(
       "have.attr",
       "data-active",
       "true",
@@ -179,7 +179,7 @@ describe("scenarios > data studio > library", () => {
         cy.findByTestId("collection-picker-button").click();
       });
 
-      H.entityPickerModalItem(0, "Library").should("be.visible");
+      H.entityPickerModalItem(0, "Semantic layer").should("be.visible");
       H.entityPickerModalItem(1, "Data").should("be.visible");
 
       cy.log("Check that non-library collections are not visible");

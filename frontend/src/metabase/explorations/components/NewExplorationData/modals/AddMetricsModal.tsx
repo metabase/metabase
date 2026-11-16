@@ -117,7 +117,7 @@ export function AddMetricsModal({
         <Tabs.Tab
           value="library"
           leftSection={<Icon name="repository" size={14} />}
-        >{t`Library`}</Tabs.Tab>
+        >{t`Semantic layer`}</Tabs.Tab>
         <Tabs.Tab value="all">{t`All`}</Tabs.Tab>
       </Tabs.List>
     </Tabs>
