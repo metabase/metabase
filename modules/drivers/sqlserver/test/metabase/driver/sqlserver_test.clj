@@ -1641,6 +1641,32 @@
           (finally
             (jdbc/execute! admin-spec [(format "DROP SCHEMA [%s]" (:schema ws))])))))))
 
+(def ^:private admin-with-session-permissions
+  "What [[sqlserver/admin-session-permissions]] returns for an admin login that can see and end any session."
+  {:login "[admin]", :view-sessions? true, :end-sessions? true})
+
+(deftest check-admin-can-end-sessions-test
+  (let [check! #'sqlserver/check-admin-can-end-sessions!]
+    (testing "a login with both permissions, such as a sysadmin, passes"
+      (is (nil? (check! admin-with-session-permissions))))
+    (testing "a login without VIEW SERVER STATE gets a 412 that names it and its GRANT"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! (assoc admin-with-session-permissions :view-sessions? false))))]
+        (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+        (is (= (str "The admin connection's login [admin] lacks VIEW SERVER STATE, which it needs to see and end the "
+                    "workspace user's sessions when it removes the workspace. Have an administrator run "
+                    "`USE master; GRANT VIEW SERVER STATE TO [admin];` and retry.")
+               (ex-message e)))))
+    (testing "a login without ALTER ANY CONNECTION gets a 412 that names it and its GRANT"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! (assoc admin-with-session-permissions :end-sessions? false))))]
+        (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "lacks ALTER ANY CONNECTION,"))
+        (is (str/includes? (ex-message e) "`USE master; GRANT ALTER ANY CONNECTION TO [admin];`"))))
+    (testing "a login without either gets a 412 that names both"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! {:login "[admin]", :view-sessions? false, :end-sessions? false})))]
+        (is (str/includes? (ex-message e) "lacks VIEW SERVER STATE and ALTER ANY CONNECTION,"))
+        (is (str/includes? (ex-message e)
+                           "`USE master; GRANT VIEW SERVER STATE TO [admin]; GRANT ALTER ANY CONNECTION TO [admin];`"))))))
+
 (defn- recording-connection
   "A Connection whose batch, rollback and commit throw `batch-error`, `rollback-error` and `commit-error` when each is
   non-nil. Each JDBC call it gets is appended to `calls` as `[method-name & args]`."
@@ -1664,11 +1690,29 @@
                   "commit"          (when commit-error (throw commit-error))
                   nil)))))
 
+(deftest ^:synchronized init-workspace-isolation-checks-session-permissions-first-test
+  (testing "init refuses an admin login that cannot end sessions before it looks for existing objects or runs any DDL"
+    (let [calls (atom [])
+          e     (is (thrown? clojure.lang.ExceptionInfo
+                             (with-redefs [sqlserver/admin-session-permissions
+                                           (constantly (assoc admin-with-session-permissions :end-sessions? false))
+                                           sqlserver/existing-workspace-principals
+                                           (fn [& _] (swap! calls conj ["existing-workspace-principals"]) [])
+                                           sql-jdbc.execute/do-with-connection-with-options
+                                           (fn [_driver _db _options f] (f (recording-connection calls {})))]
+                               (driver/init-workspace-isolation! :sqlserver
+                                                                 {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+                                                                 {:schema           "ws_schema"
+                                                                  :database_details {:user "ws_user", :password "s3cret"}}))))]
+      (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+      (is (= [] @calls)))))
+
 (deftest ^:synchronized init-workspace-isolation-rollback-failure-test
   (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
         database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
         init!    (fn [calls rollback-error]
-                   (with-redefs [sqlserver/existing-workspace-principals (constantly [])
+                   (with-redefs [sqlserver/admin-session-permissions   (constantly admin-with-session-permissions)
+                                 sqlserver/existing-workspace-principals (constantly [])
                                  ;; the real one ignores non-c3p0 connections, so record the call instead
                                  sql-jdbc.conn/discard-pooled-connection! (fn [_conn] (swap! calls conj ["discard"]))
                                  sql-jdbc.execute/do-with-connection-with-options
@@ -1697,7 +1741,8 @@
   (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
         database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
         init!    (fn [existing-principals errors]
-                   (with-redefs [sqlserver/existing-workspace-principals existing-principals
+                   (with-redefs [sqlserver/admin-session-permissions   (constantly admin-with-session-permissions)
+                                 sqlserver/existing-workspace-principals existing-principals
                                  sql-jdbc.execute/do-with-connection-with-options
                                  (fn [_driver _db _options f]
                                    (f (recording-connection (atom []) errors)))]
@@ -1764,6 +1809,44 @@
               (jdbc/execute! admin-spec [(format "IF OBJECT_ID(N'[%s].[kept]') IS NOT NULL DROP TABLE [%s].[kept]" schema schema)])
               (jdbc/execute! admin-spec [(format "IF SCHEMA_ID(N'%s') IS NOT NULL DROP SCHEMA [%s]" schema schema)])
               (jdbc/execute! admin-spec [(format "IF SUSER_ID(N'%s') IS NOT NULL DROP LOGIN [%s]" user user)]))))))))
+
+(deftest ^:synchronized init-workspace-isolation-refuses-admin-without-session-permissions-test
+  (mt/test-driver :sqlserver
+    (testing "an admin login without VIEW SERVER STATE and ALTER ANY CONNECTION gets a 412, and init creates nothing"
+      (let [{:keys [database ws admin-spec]} (workspace-isolation-fixture)
+            admin       (str "wsfix_admin_" (subs (str (random-uuid)) 0 8))
+            password    "Admin!Passw0rd"
+            master-spec (sql-jdbc.conn/connection-details->spec :sqlserver (assoc (:details database) :db "master"))]
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'%s'" admin password)])
+          (jdbc/execute! admin-spec [(format "CREATE USER [%s] FOR LOGIN [%s]" admin admin)])
+          ;; enough to create the workspace's objects, so only the session permissions are missing
+          (jdbc/execute! master-spec [(format "GRANT ALTER ANY LOGIN TO [%s]" admin)])
+          (jdbc/execute! admin-spec [(format "ALTER ROLE db_owner ADD MEMBER [%s]" admin)])
+          (mt/with-temp [:model/Database low-db {:engine  :sqlserver
+                                                 :details (assoc (:details database) :user admin :password password)}]
+            (try
+              (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver low-db ws)))]
+                (is (=? {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+                (is (str/includes? (ex-message e) "lacks VIEW SERVER STATE and ALTER ANY CONNECTION,")))
+              (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+              (testing "with VIEW SERVER STATE granted, the 412 names only ALTER ANY CONNECTION"
+                (jdbc/execute! master-spec [(format "GRANT VIEW SERVER STATE TO [%s]" admin)])
+                (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver low-db ws)))]
+                  (is (=? {:status-code 412} (ex-data e)))
+                  (is (str/includes? (ex-message e) "lacks ALTER ANY CONNECTION,"))
+                  (is (str/includes? (ex-message e) (format "`USE master; GRANT ALTER ANY CONNECTION TO [%s];`" admin))))
+                (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws))))
+              (finally
+                (sql-jdbc.conn/invalidate-pool-for-db! (:id low-db)))))
+          (finally
+            (jdbc/execute! admin-spec [(format (str "DECLARE @kill NVARCHAR(MAX) = ''; "
+                                                    "SELECT @kill += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                                    "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                                    "EXEC sp_executesql @kill")
+                                               admin)])
+            (jdbc/execute! admin-spec [(format "IF USER_ID(N'%s') IS NOT NULL DROP USER [%s]" admin admin)])
+            (jdbc/execute! admin-spec [(format "IF SUSER_ID(N'%s') IS NOT NULL DROP LOGIN [%s]" admin admin)])))))))
 
 (deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
   (mt/test-driver :sqlserver

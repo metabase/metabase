@@ -1376,6 +1376,41 @@
         (pos? (.getInt rs "user_count"))   (conj (str "database user " (quote-field username)))
         (pos? (.getInt rs "schema_count")) (conj (str "schema " (quote-schema schema-name)))))))
 
+(defn- admin-session-permissions
+  "Whether the admin connection's login can see every session (`:view-sessions?`) and end another login's session
+  (`:end-sessions?`), with the login's name as QUOTENAME gives it (`:login`). Teardown reads sys.dm_exec_sessions,
+  which shows a login only its own sessions unless it has VIEW SERVER PERFORMANCE STATE on SQL Server 2022 and later,
+  or VIEW SERVER STATE before 2022. VIEW SERVER STATE implies VIEW SERVER PERFORMANCE STATE. HAS_PERMS_BY_NAME
+  returns NULL for a permission that the server does not know, so before 2022 the check falls back to VIEW SERVER
+  STATE. KILL needs ALTER ANY CONNECTION. A sysadmin has both."
+  [^Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt (str "SELECT QUOTENAME(SUSER_SNAME()) AS login, "
+                                            "COALESCE(HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW SERVER PERFORMANCE STATE'), "
+                                            "HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW SERVER STATE')) AS view_sessions, "
+                                            "HAS_PERMS_BY_NAME(NULL, NULL, 'ALTER ANY CONNECTION') AS end_sessions"))]
+    (.next rs)
+    {:login          (.getString rs "login")
+     :view-sessions? (= 1 (.getInt rs "view_sessions"))
+     :end-sessions?  (= 1 (.getInt rs "end_sessions"))}))
+
+(defn- check-admin-can-end-sessions!
+  "Throws a 412 unless the admin connection's login, described by `permissions` from [[admin-session-permissions]], can
+  see and end the workspace user's sessions. Teardown ends them: ALTER LOGIN DISABLE leaves open sessions connected,
+  and a session that holds a lock makes the drops wait. An idle session makes DROP LOGIN fail."
+  [{:keys [login view-sessions? end-sessions?]}]
+  (let [missing (cond-> []
+                  (not view-sessions?) (conj "VIEW SERVER STATE")
+                  (not end-sessions?)  (conj "ALTER ANY CONNECTION"))]
+    (when (seq missing)
+      (throw (ex-info (format (str "The admin connection's login %s lacks %s, which it needs to see and end the workspace "
+                                   "user's sessions when it removes the workspace. Have an administrator run `USE master; %s` "
+                                   "and retry.")
+                              login
+                              (str/join " and " missing)
+                              (str/join " " (map #(format "GRANT %s TO %s;" % login) missing)))
+                      {:status-code 412, :workspace/cleanup? false})))))
+
 (defn- workspace-exists-error
   "The 409 for a login, user or schema that init found already there, described by `found`. That object may belong to
   another workspace, so the caller must not tear down the workspace that init was provisioning: see
@@ -1434,6 +1469,7 @@
       (sql-jdbc.execute/do-with-connection-with-options
        driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
+         (check-admin-can-end-sessions! (admin-session-permissions conn))
          ;; The names are deterministic from the workspace id, so a login, user or schema of the same name may belong
          ;; to another workspace, such as one restored from the same backup. Adopting it would hand that workspace's
          ;; objects and grants to this one, and tearing this one down would drop them.
