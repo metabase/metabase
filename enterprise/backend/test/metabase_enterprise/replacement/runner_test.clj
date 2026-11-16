@@ -104,8 +104,7 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query venues)}
                    :model/Segment {segment-id :id} {:name "Test Segment"}
-                   :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Measure"
+                   :model/Measure {measure-id :id} {:name       "Test Measure"
                                                     :definition (let [mp (mt/metadata-provider)
                                                                       table-metadata (lib.metadata/table mp (mt/id :venues))]
                                                                   (-> (lib/query mp table-metadata)

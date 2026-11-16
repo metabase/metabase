@@ -206,6 +206,13 @@
     (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
       (is (some #{"authoritative"} (tree-seq coll? seq where))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
 (defn- table-definition
   "A full query on `table-id` with an always-true filter."
   [table-id]
@@ -220,8 +227,8 @@
         (collections.tu/with-library [{data :data}]
           (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
                          :model/Table   plain-tbl {:name "plain_tbl"}
-                         :model/Measure _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
-                         :model/Measure _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
+                         :model/Measure _ {:name "inplace measure lib"   :definition (table-measure-definition (:id lib-tbl))}
+                         :model/Measure _ {:name "inplace measure plain" :definition (table-measure-definition (:id plain-tbl))}
                          :model/Segment _ {:name "inplace segment lib"   :definition (table-definition (:id lib-tbl))}
                          :model/Segment _ {:name "inplace segment plain" :definition (table-definition (:id plain-tbl))}]
             (is (= #{"inplace measure lib" "inplace segment lib"}

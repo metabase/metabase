@@ -365,9 +365,8 @@
   [f]
   (mt/with-temp [:model/PermissionsGroup group   {}
                  :model/Segment          segment {:table_id (mt/id :venues), :definition (price-above 2)}
-                 :model/Measure          measure {:table_id   (mt/id :venues)
-                                                  :definition (sum-where-measure-definition (:id segment))}
-                 :model/Measure          other   {:table_id (mt/id :venues), :definition (sum-of-price 1)}
+                 :model/Measure          measure {:definition (sum-where-measure-definition (:id segment))}
+                 :model/Measure          other   {:definition (sum-of-price 1)}
                  :model/Card             policy  {:dataset_query (measure-then-filter-query (:id measure))}
                  :model/Sandbox          _       {:table_id (mt/id :venues)
                                                   :group_id (:id group)
@@ -513,8 +512,7 @@
                        :model/Collection         free-snippet-coll   {:namespace "snippets"}
                        :model/Segment            seg-1       {:table_id (mt/id :venues), :definition (price-above 2)}
                        :model/Segment            seg-2       {:table_id (mt/id :venues), :definition (price-above 3)}
-                       :model/Measure            measure     {:table_id   (mt/id :venues)
-                                                              :definition (sum-where-measure-definition (:id seg-2))}
+                       :model/Measure            measure     {:definition (sum-where-measure-definition (:id seg-2))}
                        :model/Card               nested-card {:collection_id (:id chain-coll)
                                                               :dataset_query (lib/filter (venues-query)
                                                                                          (lib.metadata/segment mp (:id seg-1)))}

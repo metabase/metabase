@@ -349,8 +349,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
-      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                      :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                       :definition query}]
         ;; Measure schema requires :source-table (no :source-card), so no real field ref upgrade can happen.
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
@@ -363,8 +362,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/count)))]
-      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                      :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                       :definition query}]
         (t2/query-one {:update :measure
                        :set    {:definition "{\"x\": \"y\"}"}
@@ -378,8 +376,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-      (mt/with-temp [:model/Measure {measure-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
-                                                                              :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id, updated-at :updated_at} {:name       "test measure"
                                                                               :definition query}]
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Measure :id measure-id))))))))

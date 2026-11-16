@@ -654,7 +654,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -669,7 +668,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/sum price-col)))]
       (mt/with-temp [:model/Measure measure {:name       "Total Price"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -684,7 +682,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/avg (lib/case [[(lib/>= rating-col 4) 1]] 0))))]
       (mt/with-temp [:model/Measure measure {:name       "High Rating Ratio"
-                                             :table_id   (mt/id :products)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -714,7 +711,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -732,7 +728,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -750,7 +745,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Checkin Count"
-                                             :table_id   (mt/id :checkins)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
@@ -768,7 +762,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
@@ -786,7 +779,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -840,7 +832,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
@@ -863,7 +854,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Accessible Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -891,7 +881,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         ;; crowberto is admin and can bypass data perms
         (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"

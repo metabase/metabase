@@ -1004,8 +1004,7 @@
              orders (lib.metadata/table mp orders-id)
              quantity (lib.metadata/field mp (mt/id :orders :quantity))
              subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-         (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                         :definition (-> (lib/query mp orders)
+         (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                          (lib/aggregate (lib/sum quantity)))}]
            (testing "creating a measure creates dependency to its table"
              (assert-pending :measure measure-id)
@@ -1122,12 +1121,10 @@
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))
            subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-       (mt/with-temp [:model/Measure {measure1-id :id} {:table_id orders-id
-                                                        :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure1-id :id} {:definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum quantity)))}]
          (let [mp' (mt/metadata-provider)]
-           (mt/with-temp [:model/Measure {measure2-id :id} {:table_id orders-id
-                                                            :definition (-> (lib/query mp' orders)
+           (mt/with-temp [:model/Measure {measure2-id :id} {:definition (-> (lib/query mp' orders)
                                                                             (lib/aggregate (lib/+ (lib.metadata/measure mp' measure1-id)
                                                                                                   (lib/sum subtotal))))}]
              (testing "creating a measure that references another measure creates dependencies to both"
@@ -1149,8 +1146,7 @@
      (let [orders-id (mt/id :orders)
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))]
-       (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                       :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                        (lib/aggregate (lib/sum quantity)))}]
          (deps.test/synchronously-run-dependency-job!)
          (testing "creating a card using a measure creates dependencies to both measure and table"

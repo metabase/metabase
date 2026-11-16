@@ -792,11 +792,9 @@
       (mt/with-temp [:model/Measure {measure-id :id}
                      {:name       "query-test order count"
                       :creator_id (mt/user->id :crowberto)
-                      :definition {:lib/type :mbql/query
-                                   :database (mt/id)
-                                   :stages   [{:lib/type     :mbql.stage/mbql
-                                               :source-table (mt/id :orders)
-                                               :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                      :definition (let [mp (mt/metadata-provider)]
+                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                        (lib/aggregate (lib/count))))}]
         (let [sid  (str (random-uuid))
               body (payload (call! sid {:query (numeric-orders-query
                                                 {:aggregation [["measure" {} measure-id]]})}))]

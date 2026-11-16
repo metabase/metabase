@@ -210,8 +210,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (replacement.source-swap/swap-source! [:measure measure-id]
@@ -229,8 +228,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/count)))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (t2/query-one {:update :measure
                            :set    {:definition "{}"}
@@ -453,8 +451,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (mt/with-model-cleanup [:model/Dependency]

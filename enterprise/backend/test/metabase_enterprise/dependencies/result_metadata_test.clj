@@ -234,7 +234,6 @@
   (testing "changing a measure's definition re-derives a card using it"
     (with-dependencies-feature
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
-                                                      :table_id   (mt/id :orders)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (-> (table-query :orders) (lib/aggregate (lib/count)))}
                      :model/Card    {card-id :id}    {:dataset_query (measure-query measure-id)}]
@@ -252,11 +251,9 @@
   (testing "changing a measure's definition re-derives a card using a measure built on it"
     (with-dependencies-feature
       (mt/with-temp [:model/Measure {inner-id :id} {:name       "Inner"
-                                                    :table_id   (mt/id :orders)
                                                     :creator_id (mt/user->id :rasta)
                                                     :definition (-> (table-query :orders) (lib/aggregate (lib/count)))}]
         (mt/with-temp [:model/Measure {outer-id :id} {:name       "Outer"
-                                                      :table_id   (mt/id :orders)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-query inner-id)}
                        :model/Card    {card-id :id}  {:dataset_query (measure-query outer-id)}]

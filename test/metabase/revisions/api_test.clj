@@ -969,7 +969,6 @@
   (testing "POST /api/revision/revert <Measure>"
     (mt/with-temp
       [:model/Measure  {:keys [id]}             {:name       "Venue count"
-                                                 :table_id   (mt/id :venues)
                                                  :definition (measure-definition (mt/id :venues))}
        :model/Revision {users-revision-id :id}  {:model    "Measure"
                                                  :model_id id

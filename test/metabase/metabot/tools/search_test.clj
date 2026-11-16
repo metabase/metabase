@@ -962,8 +962,10 @@
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Measure
                        {measure-id :id measure-eid :entity_id}
-                       {:name     "MeasureSearch Sample Revenue"
-                        :table_id (mt/id :orders)}
+                       {:name       "MeasureSearch Sample Revenue"
+                        :definition (let [mp (mt/metadata-provider)]
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/aggregate (lib/count))))}
 
                        :model/Segment
                        {segment-id :id segment-eid :entity_id}

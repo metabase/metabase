@@ -583,19 +583,16 @@
         quantity (lib.metadata/field mp (mt/id :orders :quantity))]
     (testing "measure depending only on table"
       (mt/with-temp [:model/Measure measure {:name "Total Quantity"
-                                             :table_id orders-id
                                              :definition (-> (lib/query mp orders)
                                                              (lib/aggregate (lib/sum quantity)))}]
         (is (= {:measure #{} :segment #{} :table #{orders-id}}
                (calculation/calculate-deps :measure measure)))))
     (testing "measure depending on another measure"
       (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
-                                                                      :table_id orders-id
                                                                       :definition (-> (lib/query mp orders)
                                                                                       (lib/aggregate (lib/sum quantity)))}]
         (let [mp' (mt/metadata-provider)]
           (mt/with-temp [:model/Measure measure-b {:name "Measure B"
-                                                   :table_id orders-id
                                                    :definition (-> (lib/query mp' orders)
                                                                    (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id) 100)))}]
             (testing "base measure depends only on table"
@@ -613,16 +610,13 @@
           quantity (lib.metadata/field mp (mt/id :orders :quantity))
           total (lib.metadata/field mp (mt/id :orders :total))]
       (mt/with-temp [:model/Measure {measure-a-id :id} {:name "Measure A"
-                                                        :table_id orders-id
                                                         :definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum quantity)))}
                      :model/Measure {measure-b-id :id} {:name "Measure B"
-                                                        :table_id orders-id
                                                         :definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum total)))}]
         (let [mp' (mt/metadata-provider)]
           (mt/with-temp [:model/Measure measure-c {:name "Measure C"
-                                                   :table_id orders-id
                                                    :definition (-> (lib/query mp' orders)
                                                                    (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                          (lib.metadata/measure mp' measure-b-id))))}]
@@ -639,7 +633,6 @@
           visible-cols (lib/visible-columns base-query)
           venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
       (mt/with-temp [:model/Measure measure {:name "Total Venue Price"
-                                             :table_id checkins-id
                                              :definition (lib/aggregate base-query (lib/sum venue-price))}]
         (is (= {:measure #{} :segment #{} :table #{checkins-id venues-id}}
                (calculation/calculate-deps :measure measure)))))))
@@ -651,7 +644,6 @@
           orders (lib.metadata/table mp orders-id)
           quantity (lib.metadata/field mp (mt/id :orders :quantity))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name "Total Quantity"
-                                                      :table_id orders-id
                                                       :definition (-> (lib/query mp orders)
                                                                       (lib/aggregate (lib/sum quantity)))}]
         (let [mp' (mt/metadata-provider)]
@@ -671,7 +663,6 @@
         (let [mp' (mt/metadata-provider)
               segment-meta (lib.metadata/segment mp' segment-id)]
           (mt/with-temp [:model/Measure measure {:name "Quantity Where Total > 100"
-                                                 :table_id orders-id
                                                  :definition (-> (lib/query mp' orders)
                                                                  (lib/aggregate (lib/sum-where quantity (lib/ref segment-meta))))}]
             (is (= {:measure #{} :segment #{segment-id} :table #{orders-id}}

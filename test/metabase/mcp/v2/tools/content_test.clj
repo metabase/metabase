@@ -111,7 +111,6 @@
             (is (= "metric" (:type row))))))
       (testing "measure"
         (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                                :table_id   (mt/id :venues)
                                                 :creator_id (mt/user->id :rasta)
                                                 :definition (measure-definition (lib/count))}]
           (let [row (content-one {:items [{:type "measure" :id id}]})]
@@ -1058,7 +1057,6 @@
             nil, so a broken exporter looks exactly like a type that has nothing to export."
     (testing "measure — the aggregation clause"
       (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                              :table_id   (mt/id :venues)
                                               :creator_id (mt/user->id :rasta)
                                               :definition (measure-definition (lib/count))}]
         (mt/with-test-user :crowberto
@@ -1272,7 +1270,6 @@
               (is (= rest mcp)))))))
     (testing "a measure"
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
-                                                      :table_id   (mt/id :venues)
                                                       :creator_id (mt/user->id :crowberto)
                                                       :definition (measure-definition (lib/count))}]
         ;; Seed first so the generated dimension ids are persisted and both reads reconcile against

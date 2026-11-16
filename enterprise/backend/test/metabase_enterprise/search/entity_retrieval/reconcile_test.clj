@@ -319,8 +319,7 @@
               total  (mt/id :orders :total)]
           (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                          :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
-                         :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals"
-                                                          :table_id orders :creator_id (mt/user->id :crowberto)
+                         :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals" :creator_id (mt/user->id :crowberto)
                                                           :definition (measures.tu/measure-definition orders total)}
                          :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
                                                           :definition (let [mp (mt/metadata-provider)]

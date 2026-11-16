@@ -1459,7 +1459,6 @@
         (mt/with-temp [:model/Measure {measure-id :id}
                        {:name       "Order Revenue"
                         :description "sum of order totals"
-                        :table_id   orders
                         :creator_id (mt/user->id :crowberto)
                         :definition (measure-definition orders total)}]
           (testing "metabase://measure/{id} returns the measure with parent-table context + portable entity id"
@@ -1523,7 +1522,6 @@
             total  (mt/id :orders :total)]
         (mt/with-temp [:model/Measure {measure-id :id}
                        {:name       "Order Revenue"
-                        :table_id   orders
                         :creator_id (mt/user->id :crowberto)
                         :definition (measure-definition orders total)}
                        :model/Segment {segment-id :id}
@@ -1888,7 +1886,9 @@
           (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
                          :model/Card    {question-id :id} {:type :question :database_id destination-id}
                          :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}
-                         :model/Measure {measure-id :id}  {:table_id table-id}
+                         :model/Measure {measure-id :id}  {:definition (let [mp (lib-be/application-database-metadata-provider destination-id)]
+                                                                         (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                             (lib/aggregate (lib/count))))}
                          :model/Segment {segment-id :id}  {:definition (let [mp (lib-be/application-database-metadata-provider destination-id)]
                                                                          (-> (lib/query mp (lib.metadata/table mp table-id))
                                                                              (lib/filter (lib/= 1 1))))}]

@@ -3174,8 +3174,7 @@
         orders-name (t2/select-one-fn :name :model/Table :id (mt/id :orders))
         people-name (t2/select-one-fn :name :model/Table :id (mt/id :people))]
     (testing "GET /api/database/:id/schema/:schema?include_measures=true hydrates :measures per table"
-      (mt/with-temp [:model/Measure _ {:table_id   (mt/id :orders)
-                                       :name       "Some measure"
+      (mt/with-temp [:model/Measure _ {:name       "Some measure"
                                        :creator_id (mt/user->id :crowberto)
                                        :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                        (lib/aggregate (lib/count)))}]

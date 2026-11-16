@@ -1314,7 +1314,6 @@
                        :model/Segment    {segment-id :id}    {:name       "Bars"
                                                               :definition (lib/filter venues (lib/= category "Bar"))}
                        :model/Measure    {measure-id :id}    {:name       "Categories"
-                                                              :table_id   (mt/id :venues)
                                                               :definition (lib/aggregate venues (lib/distinct category))}]
           (let [mp (mt/metadata-provider)]
             (doseq [[label query] [["another table" (lib/query mp (lib.metadata/table mp (mt/id :users)))]

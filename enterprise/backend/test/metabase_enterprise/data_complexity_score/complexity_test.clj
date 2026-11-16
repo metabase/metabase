@@ -23,6 +23,9 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -62,6 +65,13 @@
   (embedders/fn-embedder
    (fn [names]
      (mapv #(when-let [v (get name->vec-literal %)] (float-array v)) names))))
+
+(defn- table-count-definition
+  "A full query on `table-id` in database `db-id` with a count aggregation."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 (deftest ^:parallel score-catalog-pure-test
   (testing "empty catalog scores zero — every leaf reports the zero, group totals roll up zero"
@@ -1095,16 +1105,16 @@
        :model/Field _                     {:table_id t-audit :name "audit_ts"
                                            :active true :base_type :type/DateTime}
        ;; Library measures: "revenue" on two library tables → one repeated-measure pair in library.
-       :model/Measure _                   {:table_id t1 :name "revenue"
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
-       :model/Measure _                   {:table_id t2 :name "revenue"
+                                           :definition (table-count-definition db-id t1) :archived false}
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
+                                           :definition (table-count-definition db-id t2) :archived false}
        ;; Non-library measure with the same name → bumps universe repeated-measures above library.
-       :model/Measure _                   {:table_id t-audit :name "revenue"
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
+                                           :definition (table-count-definition db-id t-audit) :archived false}
        ;; Two library metric cards named "Revenue" → one name-collision pair in library.
        :model/Card _                      {:database_id db-id :type :metric :name "Revenue"
                                            :archived false :collection_id metrics-id}

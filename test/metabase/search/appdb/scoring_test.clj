@@ -385,6 +385,13 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
 (defn- table-definition
   "A full query on `table-id` with an always-true filter."
   [table-id]
@@ -399,8 +406,8 @@
       (collections.tu/with-library [{data :data}]
         (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
                        :model/Table   plain-tbl {:name "plain_tbl"}
-                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
-                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
+                       :model/Measure _ {:name "foo measure lib"   :definition (table-measure-definition (:id lib-tbl))}
+                       :model/Measure _ {:name "foo measure plain" :definition (table-measure-definition (:id plain-tbl))}
                        :model/Segment _ {:name "foo segment lib"   :definition (table-definition (:id lib-tbl))}
                        :model/Segment _ {:name "foo segment plain" :definition (table-definition (:id plain-tbl))}]
           (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
@@ -422,7 +429,7 @@
     (testing "measures and segments follow a table published and unpublished through its user settings"
       (collections.tu/with-library [{data :data}]
         (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
-                       :model/Measure _ {:name "foo measure" :table_id table-id}
+                       :model/Measure _ {:name "foo measure" :definition (table-measure-definition table-id)}
                        :model/Segment _ {:name "foo segment" :definition (table-definition table-id)}]
           (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
             (is (= [[false false] [true true] [false false]]

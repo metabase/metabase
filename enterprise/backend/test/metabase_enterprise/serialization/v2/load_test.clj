@@ -875,7 +875,7 @@
             (reset! table1s (ts/create! :model/Table :name "sales" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+            (reset! msr1s   (ts/create! :model/Measure :name "Total Sales"
                                         :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -937,7 +937,7 @@
             (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             ;; Create base measure: sum(amount)
-            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+            (reset! msr1s   (ts/create! :model/Measure :name "Total Sales"
                                         :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             ;; Create derived measure: base_measure * 2
@@ -946,7 +946,7 @@
                   query (lib/query mp table)
                   base-measure (lib.metadata/measure mp (:id @msr1s))
                   derived-definition (lib/aggregate query (lib/* base-measure 2))]
-              (reset! msr2s (ts/create! :model/Measure :table_id (:id @table1s) :name "Double Sales"
+              (reset! msr2s (ts/create! :model/Measure :name "Double Sales"
                                         :definition derived-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -1012,7 +1012,7 @@
                   query (lib/query mp table)
                   segment (lib.metadata/segment mp (:id @seg1s))
                   measure-definition (lib/aggregate query (lib/count-where segment))]
-              (reset! msr1s (ts/create! :model/Measure :table_id (:id @table1s) :name "Expensive Count"
+              (reset! msr1s (ts/create! :model/Measure :name "Expensive Count"
                                         :definition measure-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -2567,7 +2567,7 @@
                 table    (ts/create! :model/Table :name "sales" :db_id (:id db))
                 field    (ts/create! :model/Field :name "amount" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                _measure (ts/create! :model/Measure :name "Total Sales"
                                      :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -3129,7 +3129,7 @@
                 table    (ts/create! :model/Table :name "sales" :db_id (:id db))
                 field    (ts/create! :model/Field :name "amount" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                _measure (ts/create! :model/Measure :name "Total Sales"
                                      :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))

@@ -781,7 +781,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)
@@ -805,7 +804,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)

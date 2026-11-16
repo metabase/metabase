@@ -238,7 +238,6 @@
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/filter (lib/> price 50)))}
                            :model/Measure {:as measure} {:name "Measure on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/aggregate (lib/sum price)))}
                            :model/Transform _ {:name   "Transform on products"
@@ -1001,7 +1000,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
@@ -1027,14 +1025,12 @@
               price (lib.metadata/field mp (mt/id :products :price))
               rating (lib.metadata/field mp (mt/id :products :rating))]
           (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
-                                                                          :table_id products-id
                                                                           :definition (-> (lib/query mp products)
                                                                                           (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure-a :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [mp' (mt/metadata-provider)]
               (mt/with-temp [:model/Measure {measure-b-id :id :as measure-b} {:name "Measure B"
-                                                                              :table_id products-id
                                                                               :definition (-> (lib/query mp' products)
                                                                                               (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                                                     (lib/sum rating))))}]
@@ -1065,7 +1061,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}
                          :model/User user {:email "test@test.com"}]
@@ -1573,10 +1568,8 @@
             measure-definition (-> (lib/query mp products)
                                    (lib/aggregate (lib/sum price)))]
         (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition}
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition
                                                                                       :archived true}]
           (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
@@ -1718,8 +1711,10 @@
                                                   :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
                                                                 (-> (lib/query mp (lib.metadata/table mp table1-id))
                                                                     (lib/filter (lib/= 1 1))))}
-                     :model/Measure            _ {:name     "Measure with Table 2 sorttest"
-                                                  :table_id table2-id}]
+                     :model/Measure            _ {:name       "Measure with Table 2 sorttest"
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table2-id))
+                                                                    (lib/aggregate (lib/count))))}]
         (deps.test/synchronously-run-dependency-job!)
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200

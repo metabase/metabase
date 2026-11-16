@@ -79,6 +79,13 @@
    :table_schema               nil
    :updated_at                 true})
 
+(defn- table-count-definition
+  "A full query on `table-id` in database `db-id` with a count aggregation."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
 (defn- table-search-results
   "Segments come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment
   put them in the `:checkins` Table."
@@ -248,7 +255,7 @@
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                               :type :metric)
                      :model/Segment     segment        (data-map "segment %s segment")
-                     :model/Measure     measure        (assoc (data-map "measure %s measure") :table_id (mt/id :checkins))]
+                     :model/Measure     measure        (data-map "measure %s measure")]
         (f {:action     action
             :collection coll
             :card       card
@@ -801,8 +808,8 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id  db-id
                                                    :schema nil}
-                   :model/Measure  _ {:table_id table-id
-                                      :name     "test measure"}]
+                   :model/Measure  _ {:name       "test measure"
+                                      :definition (table-count-definition db-id table-id)}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (search-request-data :rasta :q "test")))))))
@@ -1022,7 +1029,7 @@
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
                      :model/Segment     _ (archived {:name "segment test segment"})
-                     :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
@@ -1040,7 +1047,7 @@
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
                      :model/Segment     _ (archived {:name "segment test segment"})
-                     :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 
@@ -2250,7 +2257,6 @@
   (testing "Should be able to find measures by description"
     (let [unique-desc (mt/random-name)]
       (mt/with-temp [:model/Measure _ {:name        "Some Measure"
-                                       :table_id    (mt/id :venues)
                                        :description unique-desc}]
         (is (=? [{:name "Some Measure" :model "measure" :description unique-desc}]
                 (search-request-data :crowberto :q unique-desc)))))))
@@ -2258,16 +2264,14 @@
 (deftest measure-table-db-id-filter-test
   (testing "Measures are returned when searching with matching table_db_id"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure _ {:name     measure-name
-                                       :table_id (mt/id :venues)}]
+      (mt/with-temp [:model/Measure _ {:name measure-name}]
         (is (=? [{:name measure-name :model "measure"}]
                 (search-request-data :crowberto :q measure-name
                                      :table_db_id (mt/id)))))))
   (testing "Measures are NOT returned when searching with non-matching table_db_id"
     (let [measure-name (mt/random-name)]
       (mt/with-temp [:model/Database {other-db-id :id} {}
-                     :model/Measure  _ {:name     measure-name
-                                        :table_id (mt/id :venues)}]
+                     :model/Measure  _ {:name measure-name}]
         (is (= []
                (binding [*search-request-results-database-id* other-db-id]
                  (search-request-data :crowberto :q measure-name
@@ -2276,8 +2280,8 @@
 (deftest measure-search-result-shape-test
   (testing "Measure search results contain table and database context fields"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure _ {:name     measure-name
-                                       :table_id (mt/id :venues)}]
+      (mt/with-temp [:model/Measure _ {:name       measure-name
+                                       :definition (table-count-definition (mt/id) (mt/id :venues))}]
         (is (=? [{:name        measure-name
                   :model       "measure"
                   :table_id    true
@@ -2297,7 +2301,7 @@
   (testing "User with view-data access can see measures in search"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      {table-id :id} {:db_id db-id :schema nil}
-                   :model/Measure                    _ {:table_id table-id :name "test measure"}
+                   :model/Measure                    _ {:name "test measure" :definition (table-count-definition db-id table-id)}
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
@@ -2310,8 +2314,7 @@
 (deftest measure-archive-round-trip-test
   (testing "Archived measures appear in archived results and not in default results"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure {measure-id :id} {:name     measure-name
-                                                      :table_id (mt/id :venues)}]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name measure-name}]
         (testing "measure appears in default (non-archived) results"
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
@@ -2331,8 +2334,7 @@
     (testing "Measures are indexed and returned by the appdb search engine"
       (let [measure-name (mt/random-name)]
         (search.tu/with-temp-index-table
-          (mt/with-temp [:model/Measure _ {:name     measure-name
-                                           :table_id (mt/id :venues)}]
+          (mt/with-temp [:model/Measure _ {:name measure-name}]
             (search/reindex! {:async? false :in-place? true})
             (is (=? [{:name measure-name :model "measure"}]
                     (search-request-data :crowberto :q measure-name

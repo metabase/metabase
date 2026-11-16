@@ -24,6 +24,13 @@
     (-> (lib/query mp (lib.metadata/table mp table-id))
         (lib/filter (lib/= 1 1)))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
 (deftest synced-models-test
   (testing "content models define which of their rows are synced"
     (is (every? (set (remote-sync/synced-models))
@@ -104,8 +111,8 @@
                  :model/FieldUserSettings unsynced-fs     {:field_id (:id unsynced-field) :display_name "Unsynced"}
                  :model/Segment           synced-seg      {:definition (table-segment-definition (:id synced-table)) :name "Synced segment"}
                  :model/Segment           unsynced-seg    {:definition (table-segment-definition (:id unsynced-table)) :name "Unsynced segment"}
-                 :model/Measure           synced-measure  {:table_id (:id synced-table) :name "Synced measure"}
-                 :model/Measure           unsynced-measure {:table_id (:id unsynced-table) :name "Unsynced measure"}
+                 :model/Measure           synced-measure  {:definition (table-measure-definition (:id synced-table)) :name "Synced measure"}
+                 :model/Measure           unsynced-measure {:definition (table-measure-definition (:id unsynced-table)) :name "Unsynced measure"}
                  :model/Document          synced-doc      {:name "Synced" :collection_id (:id synced)}
                  :model/Document          unsynced-doc    {:name "Unsynced" :collection_id (:id unsynced)}
                  :model/Timeline          synced-tl       {:name "Synced" :collection_id (:id synced)}

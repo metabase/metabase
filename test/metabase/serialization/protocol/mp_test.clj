@@ -584,13 +584,7 @@
 (deftest ^:parallel import-fk-measure-happy-path-test
   (testing "resolves a measure's entity_id to its numeric id when the measure's table is in the same database"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                   {:name "Test Measure"
-                    :table_id (mt/id :orders)
-                    :definition {:lib/type :mbql/query
-                                 :database (mt/id)
-                                 :stages [{:lib/type :mbql.stage/mbql
-                                           :source-table (mt/id :orders)
-                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                   {:name "Test Measure"}]
       (let [mp (lib-be/application-database-metadata-provider (mt/id))
             ir (import-store mp)]
         (is (= measure-id (import-pk ir :model/Measure measure-eid)))))))
@@ -632,13 +626,7 @@
 (deftest ^:parallel export-fk-measure-happy-path-test
   (testing "exports a measure's numeric id back to its entity_id"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                   {:name "Round-trip Measure"
-                    :table_id (mt/id :orders)
-                    :definition {:lib/type :mbql/query
-                                 :database (mt/id)
-                                 :stages [{:lib/type :mbql.stage/mbql
-                                           :source-table (mt/id :orders)
-                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                   {:name "Round-trip Measure"}]
       (let [mp (lib-be/application-database-metadata-provider (mt/id))
             er (export-store mp)]
         (is (= measure-eid (export-eid er :model/Measure measure-id)))))))

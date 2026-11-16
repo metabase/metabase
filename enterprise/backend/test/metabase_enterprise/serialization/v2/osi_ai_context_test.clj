@@ -57,7 +57,7 @@
     (let [orders (mt/id :orders)
           total  (mt/id :orders :total)]
       (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                     {:name "M" :table_id orders :creator_id (mt/user->id :crowberto)
+                     {:name "M" :creator_id (mt/user->id :crowberto)
                       :definition (measures.tu/measure-definition orders total)}
                      :model/Segment {segment-id :id segment-eid :entity_id}
                      {:name "S"}]
