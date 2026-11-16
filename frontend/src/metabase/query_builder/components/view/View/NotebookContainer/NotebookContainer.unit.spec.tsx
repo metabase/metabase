@@ -1,5 +1,8 @@
 import { createMockMetadataFromState } from "__support__/metadata";
-import { setupNativeDatasetEndpoint } from "__support__/server-mocks";
+import {
+  setupNativeDatasetEndpoint,
+  setupNativeQuerySnippetEndpoints,
+} from "__support__/server-mocks";
 import { setupCardDashboardsEndpoint } from "__support__/server-mocks/card";
 import {
   createMockQueryBuilderState,
@@ -34,6 +37,7 @@ interface SetupOpts {
 
 const setup = ({ database }: SetupOpts) => {
   setupNativeDatasetEndpoint();
+  setupNativeQuerySnippetEndpoints();
   setupCardDashboardsEndpoint(CARD.id, []);
 
   const state = createMockState({
