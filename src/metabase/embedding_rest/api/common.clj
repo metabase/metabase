@@ -373,21 +373,6 @@
     :json :embedded-json-download
     :embedded-question))
 
-(defn- sets-a-value?
-  "Whether parameter value `v` sets anything. An empty value doesn't: `[]` turns a locked filter off."
-  [v]
-  (cond
-    (nil? v)     false
-    (string? v)  (valid-param-value? v)
-    (seqable? v) (boolean (seq v))
-    :else        true))
-
-(defn- signed-parameter-ids
-  "The ids of the `parameters` that `token-params` sign a value for."
-  [parameters token-params]
-  (let [signed-slugs (into #{} (keep (fn [[slug v]] (when (sets-a-value? v) (name slug)))) token-params)]
-    (into #{} (keep (fn [{:keys [slug id]}] (when (signed-slugs slug) id))) parameters)))
-
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
 ;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
@@ -410,7 +395,6 @@
                 :context     (get-embed-card-context export-format)
                 :constraints constraints
                 :qp          qp
-                :signed-parameter-ids (signed-parameter-ids parameters token-params)
                 options))))
 
 (defn- tile-slug->value
@@ -448,6 +432,36 @@
   [card parameters zoom x y lat-field lon-field]
   (database-routing/with-anonymous-router-access
     (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
+
+;;; ------------------------------- Dynamic goal values for /api/embed and /api/preview_embed -------------------------------
+
+(defn- sets-a-value?
+  "Whether parameter value `v` sets anything. An empty value doesn't: `[]` turns a locked filter off."
+  [v]
+  (cond
+    (nil? v)     false
+    (string? v)  (valid-param-value? v)
+    (seqable? v) (boolean (seq v))
+    :else        true))
+
+(defn- signs-a-parameter-value?
+  "Whether `token-params` sign a value for any of `parameters`."
+  [parameters token-params]
+  (let [slugs (into #{} (map :slug) parameters)]
+    (boolean (some (fn [[slug v]] (and (slugs (name slug)) (sets-a-value? v))) token-params))))
+
+(defn goal-values-response
+  "A response with the values of the goal sources pre-loaded `card` draws on `dashcard` (nil for a card on its own) of
+  `dashboard` (nil for none). A goal source runs without parameter values, and a signed value is often what separates
+  tenants, so when `token-params` sign a value for any parameter of the card or dashboard, each goal fails as
+  `withheld` and nothing runs. Runs with database routing off (see above [[process-query-for-card-with-params]])."
+  [& {:keys [card dashcard dashboard token-params]}]
+  {:pre [(map? card) (map? token-params)]}
+  (let [parameters (if dashboard (:parameters dashboard) (resolve-card-parameters card))]
+    (database-routing/with-anonymous-router-access
+      (api.public/goal-values-response card dashcard
+                                       :dashboard-id (:id dashboard)
+                                       :withhold?    (signs-a-parameter-value? parameters token-params)))))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
@@ -525,8 +539,7 @@
        :qp            qp
        :context       (get-embed-dashboard-context export-format)
        :constraints   constraints
-       :middleware    middleware
-       :signed-parameter-ids (signed-parameter-ids parameters token-params)))))
+       :middleware    middleware))))
 
 (defn process-tiles-query-for-dashcard
   "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card

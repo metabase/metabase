@@ -13,7 +13,6 @@
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
    [metabase.query-processor.card]
-   [metabase.query-processor.template-tags]
    [potemkin :as p]))
 
 (comment metabase.queries.cached-result/keep-me
@@ -26,8 +25,7 @@
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
          metabase.queries.models.stored-result-use/keep-me
-         metabase.query-processor.card/keep-me
-         metabase.query-processor.template-tags/keep-me)
+         metabase.query-processor.card/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -43,6 +41,7 @@
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   check-new-goal-references!
+  reads-parameters?
   check-shared-dashboard-goal-permissions!
   check-newly-exposed-dashcards-goal-permissions!
   create-card!
@@ -94,7 +93,7 @@
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
   carry-pairings-for-document!]
- [metabase.query-processor.template-tags
+ [metabase.query-processor.card
   parameter-template-tag?])
 
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

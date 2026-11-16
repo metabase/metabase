@@ -5,9 +5,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.embedding-rest.api.embed-test :as embed-test]
-   [metabase.query-processor.template-tags :as qp.template-tags]
+   [metabase.queries.core :as queries]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [metabase.util :as u]))
 
 (def ^:private by-tenant-and-price
   (str "SELECT COUNT(*) AS \"count\" FROM venues WHERE 1 = 1"
@@ -35,18 +36,29 @@
   source for parameters, and these sources have none."
   [f]
   (let [runs (atom 0)]
-    (mt/with-dynamic-fn-redefs [qp.template-tags/reads-parameters? (fn [_]
-                                                                     (swap! runs inc)
-                                                                     false)]
+    (mt/with-dynamic-fn-redefs [queries/reads-parameters? (fn [_]
+                                                            (swap! runs inc)
+                                                            false)]
       (f runs))))
 
 (defn- goal-result [response goal-id]
-  (get-in response [:data :referenced_entities :card goal-id]))
+  (get-in response [:card goal-id]))
 
 (defn- card-response
-  "GET the embedded card `card` with a token signing `params`, plus `url-params` from the viewer."
+  "GET the query results of the embedded card `card` with a token signing `params`, plus `url-params` from the viewer."
   [card params & [url-params]]
   (client/client :get 202 (str (embed-test/card-query-url card "" {:params params}) url-params)))
+
+(defn- card-goal-values
+  "GET the goal values of the embedded card `card` with a token signing `params`."
+  [card params]
+  (client/client :get 202 (str "embed/card/" (embed-test/card-token card {:params params}) "/goal-values")))
+
+(defn- dashcard-goal-values
+  "GET the goal values of the embedded `dashcard` with a token signing `params`."
+  [dashcard params]
+  (client/client :get 202 (str "embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) {:params params})
+                               "/dashcard/" (u/the-id dashcard) "/goal-values")))
 
 (deftest static-embed-card-withholds-goals-for-signed-values-test
   (embed-test/with-embedding-enabled-and-new-secret-key!
@@ -73,9 +85,9 @@
           (mt/with-temp [:model/Card card (main-card goal-id embedding-params)]
             (do-with-goal-runs
              (fn [runs]
-               (let [response (card-response card params url-params)]
+               (let [response (card-goal-values card params)]
                  (testing "the main query applies the parameters"
-                   (is (= rows (mt/rows response))))
+                   (is (= rows (mt/rows (card-response card params url-params)))))
                  (if withheld?
                    (testing "the goal is withheld and its source never runs"
                      (is (= {:status "failed" :error_type "withheld"} (goal-result response goal-id)))
@@ -138,13 +150,13 @@
         (testing label
           (do-with-goal-runs
            (fn [runs]
-             (let [response (client/client :get 202 (embed-test/dashcard-url dashcard {:params {:tenant [7]}}))]
-               (is (= rows (mt/rows response)))
+             (let [response (dashcard-goal-values dashcard {:tenant [7]})]
+               (is (= rows (mt/rows (client/client :get 202 (embed-test/dashcard-url dashcard {:params {:tenant [7]}})))))
                (is (= {:status "failed" :error_type "withheld"} (goal-result response goal-id)))
                (is (zero? @runs))))))
         (testing (str label ", locked filter turned off")
-          (let [response (client/client :get 202 (embed-test/dashcard-url dashcard {:params {:tenant []}}))]
-            (is (= [[100]] (mt/rows response)))
+          (let [response (dashcard-goal-values dashcard {:tenant []})]
+            (is (= [[100]] (mt/rows (client/client :get 202 (embed-test/dashcard-url dashcard {:params {:tenant []}})))))
             (is (= "completed" (:status (goal-result response goal-id))))))))))
 
 (deftest preview-embed-withholds-goals-for-signed-values-test
@@ -153,13 +165,13 @@
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query
                                                                 {:query "SELECT COUNT(*) AS \"count\" FROM venues"})}
                      :model/Card card (main-card goal-id {:tenant "locked"})]
-        (let [response (mt/user-http-request :crowberto :get 202
-                                             (str "preview_embed/card/"
-                                                  (embed-test/card-token card {:_embedding_params {:tenant "locked"}
-                                                                               :params            {:tenant 7}})
-                                                  "/query"))]
-          (is (= [[10]] (mt/rows response)))
-          (is (= {:status "failed" :error_type "withheld"} (goal-result response goal-id))))))))
+        (let [url #(str "preview_embed/card/"
+                        (embed-test/card-token card {:_embedding_params {:tenant "locked"}
+                                                     :params            {:tenant 7}})
+                        %)]
+          (is (= [[10]] (mt/rows (mt/user-http-request :crowberto :get 202 (url "/query")))))
+          (is (= {:status "failed" :error_type "withheld"}
+                 (goal-result (mt/user-http-request :crowberto :get 202 (url "/goal-values")) goal-id))))))))
 
 (deftest failing-goal-source-error-is-scrubbed-test
   (testing "embed and public viewers get the generic error for a failing goal source, not the driver's message"
@@ -169,11 +181,10 @@
                                                                   {:query "SELECT * FROM no_such_table"})}
                        :model/Card card (assoc (main-card goal-id {:tenant "enabled"})
                                                :public_uuid (str (random-uuid)))]
-          (doseq [[label response] {"static embed" (card-response card {})
+          (doseq [[label response] {"static embed" (card-goal-values card {})
                                     "public"       (client/client :get 202 (str "public/card/" (:public_uuid card)
-                                                                                "/query"))}]
+                                                                                "/goal-values"))}]
             (testing label
-              (is (= [[100]] (mt/rows response)))
               (is (=? {:status "failed" :error "An error occurred while running the query."}
                       (goal-result response goal-id)))
               (is (not (re-find #"(?i)no_such_table" (pr-str response)))))))))))

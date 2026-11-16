@@ -18,6 +18,7 @@
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding-rest.db :as embedding-rest.db]
@@ -30,6 +31,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -151,6 +153,19 @@
                 :format-rows? format-rows?
                 :pivot? pivot?}))
 
+(api.macros/defendpoint :get "/card/:token/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a Card using a JSON Web Token signed with the
+  `embedding-secret-key`. Withheld when the token signs a parameter value."
+  [{:keys [token]} :- [:map {:closed true}
+                       [:token api.embed.common/EncodedToken]]]
+  (let [unsigned-token (unsign-and-translate-ids token)
+        card           (api/check-404 (embedding-rest.db/card (api.embed.common/unsigned-token->card-id unsigned-token)))]
+    (api.embed.common/check-embedding-enabled-for-card card)
+    (api.embed.common/goal-values-response
+     :card         card
+     :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params]))))
+
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -219,6 +234,26 @@
    query-params :- api.embed.common/QueryParams]
   (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
                                                 (api.embed.common/parse-query-params query-params)))
+
+(api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a DashboardCard using a JSON Web Token signed with the
+  `embedding-secret-key`. Withheld when the token signs a parameter value."
+  [{:keys [token dashcard-id]} :- [:map {:closed true}
+                                   [:token       api.embed.common/EncodedToken]
+                                   [:dashcard-id ms/PositiveInt]]]
+  (let [unsigned-token (unsign-and-translate-ids token)
+        dashboard      (api/check-404 (embedding-rest.db/dashboard
+                                       (api.embed.common/unsigned-token->dashboard-id unsigned-token)))
+        dashcard       (api/check-404 (embedding-rest.db/dashcard dashcard-id))
+        _              (api/check-404 (= (:dashboard_id dashcard) (:id dashboard)))
+        card           (api/check-404 (some-> (:card_id dashcard) embedding-rest.db/active-card))]
+    (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
+    (api.embed.common/goal-values-response
+     :card         card
+     :dashcard     dashcard
+     :dashboard    dashboard
+     :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |

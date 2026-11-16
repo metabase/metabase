@@ -182,12 +182,12 @@
    [:unit           {:optional true} [:maybe :keyword]]])
 
 (mr/def ::ReferencedEntityResult
-  "One entity's result under a QP result's `[:data :referenced_entities type-string id-string]`, as built by
-  `metabase.query-processor.referenced-entities` for dynamic goals."
+  "One goal source's result under `[:data :referenced_entities type-string id-string]`, which notifications add to a
+  QP result from `metabase.dynamic-goals.core`."
   [:map {:closed true}
    [:status     [:enum "completed" "failed"]]
    [:error      {:optional true} [:maybe :string]]
-   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters"]]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "too-many-sources"]]]
    [:data       {:optional true} [:maybe [:map {:closed true}
                                           [:cols {:optional true}
                                            [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]

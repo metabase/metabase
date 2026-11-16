@@ -1025,6 +1025,22 @@
            workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
+  dynamic-goals
+  {:team "Gadget"
+   :api  #{metabase.dynamic-goals.api
+           metabase.dynamic-goals.core}
+   :uses #{api
+           api-scope
+           data-apps
+           lib
+           lib.be
+           queries
+           query-processor
+           server
+           util
+           visualization-settings}
+   :model-imports #{:model/Card :model/Measure}}
+
   embedding
   {:team "Embedding"
    :api  #{metabase.embedding.init
@@ -1077,6 +1093,7 @@
            api.eid-translation
            dashboards
            database-routing
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -1088,6 +1105,7 @@
            queries
            query-processor
            request
+           server
            tiles
            util}
    :model-imports #{:model/Card
@@ -1962,6 +1980,7 @@
            channel
            dashboards
            driver
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -2188,6 +2207,7 @@
            dashboards
            dashboards.rest
            documents
+           dynamic-goals
            events
            lib
            lib.metadata
@@ -2199,6 +2219,7 @@
            queries
            query-processor
            request
+           server
            tiles
            util}
    :model-imports #{:model/Action
@@ -2408,7 +2429,6 @@
               metabase.query-processor.streaming
               metabase.query-processor.streaming.common
               metabase.query-processor.streaming.interface
-              metabase.query-processor.template-tags
               metabase.query-processor.timezone
               metabase.query-processor.util
               metabase.query-processor.util.add-alias-info
@@ -2457,7 +2477,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/Measure
                     :model/QueryExecution
                     :model/Table}}
 

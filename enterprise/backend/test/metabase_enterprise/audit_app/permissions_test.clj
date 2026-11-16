@@ -245,13 +245,11 @@
                                                                     :query    {:source-table (u/the-id audit-view)
                                                                                :aggregation  [[:count]]}}}]
             (mt/with-temp [:model/Card {uuid :public_uuid} (chart goal-id)]
-              (let [view! (fn [] (client/client :get 202 (str "public/card/" uuid "/query")))
-                    goal #(get-in % [:data :referenced_entities :card goal-id])]
+              (let [goal! #(get-in (client/client :get 202 (str "public/card/" uuid "/goal-values")) [:card goal-id])]
                 (testing "with the audit-app feature, the goal resolves"
                   (mt/with-premium-features #{:audit-app}
-                    (is (=? {:status "completed"} (goal (view!))))))
+                    (is (=? {:status "completed"} (goal!)))))
                 (testing "without it, the goal fails and the chart still renders"
                   (mt/with-premium-features #{}
-                    (let [response (view!)]
-                      (is (= "completed" (:status response)))
-                      (is (=? {:status "failed"} (goal response))))))))))))))
+                    (is (= "completed" (:status (client/client :get 202 (str "public/card/" uuid "/query")))))
+                    (is (=? {:status "failed"} (goal!)))))))))))))

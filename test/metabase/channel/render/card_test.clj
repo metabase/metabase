@@ -11,9 +11,8 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -691,16 +690,11 @@
       (is (= 80 (:progress.goal @captured))))))
 
 (defn- run-and-render
-  "Run saved `card` with its goals through `qp.card`, the entry point notifications use, and render it with the JS
-  renderer stubbed. Returns the goal source's referenced-entity result and the viz settings the renderer got."
+  "Run saved `card` and its goals the way a notification does, and render it with the JS renderer stubbed. Returns the
+  goal source's result and the viz settings the renderer got."
   [card source-id]
   (let [captured (atom nil)
-        result   (mt/as-admin
-                   (qp.card/process-query-for-card
-                    card :api
-                    :make-run (fn [qp _export-format]
-                                (fn [query info]
-                                  (qp (update query :info merge info) qp.reducible/default-rff)))))]
+        result   (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))]
     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                   (reset! captured viz-settings)
                                                   {:type :svg :content "<svg></svg>"})]

@@ -266,24 +266,30 @@
   [goal-id]
   {:scalar.segments [{:min {:id goal-id :type "card" :column "count"} :max nil :color "red"}]})
 
-(deftest query-referenced-entities-test
-  (testing "GET /api/preview_embed/card/:token/query resolves the dynamic goal in the card's viz settings"
+(deftest card-goal-values-test
+  (testing "GET /api/preview_embed/card/:token/goal-values resolves the dynamic goal in the card's viz settings"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-card [card {:display :scalar :visualization_settings (goal-segments goal-id)}]
           (is (= [[1000]]
-                 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+                 (-> (mt/user-http-request :crowberto :get 202
+                                           (str "preview_embed/card/"
+                                                (embed-test/card-token card {:_embedding_params {}})
+                                                "/goal-values"))
+                     (get-in [:card goal-id :data :rows])))))))))
 
-(deftest dashcard-referenced-entities-test
-  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
+(deftest dashcard-goal-values-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:id/goal-values resolves the dynamic goal in the card's viz settings"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-dashcard [dashcard {:card {:display                :scalar
                                                          :visualization_settings (goal-segments goal-id)}}]
           (is (= [[1000]]
-                 (-> (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+                 (-> (mt/user-http-request :crowberto :get 202
+                                           (str "preview_embed/dashboard/"
+                                                (embed-test/dash-token (:dashboard_id dashcard) {:_embedding_params {}})
+                                                "/dashcard/" (:id dashcard) "/goal-values"))
+                     (get-in [:card goal-id :data :rows])))))))))
 
 (deftest dashcard-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"

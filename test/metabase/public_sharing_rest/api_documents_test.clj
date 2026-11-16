@@ -140,8 +140,8 @@
             (is (some? result))
             (is (= "completed" (:status result)))))))))
 
-(deftest public-document-card-referenced-entities-test
-  (testing "GET /api/public/document/:uuid/card/:card-id resolves the dynamic goal in the card's viz settings"
+(deftest public-document-card-goal-values-test
+  (testing "GET /api/public/document/:uuid/card/:card-id/goal-values resolves the dynamic goal in the card's viz settings"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                      :model/Document document (document-with-public-link {})
@@ -155,8 +155,12 @@
         (t2/update! :model/Document :id (:id document)
                     {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
         (is (= [[1000]]
-               (-> (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))
-                   (get-in [:data :referenced_entities :card goal-id :data :rows]))))))))
+               (-> (mt/client :get 202 (format "public/document/%s/card/%d/goal-values"
+                                               (:public_uuid document) (:id card)))
+                   (get-in [:card goal-id :data :rows]))))
+        (testing "a card not in the document is a 404"
+          (mt/with-temp [:model/Card {other-id :id} {}]
+            (mt/client :get 404 (format "public/document/%s/card/%d/goal-values" (:public_uuid document) other-id))))))))
 
 (deftest public-document-card-validates-association-test
   (testing "GET /api/public/document/:uuid/card/:card-id validates card is associated with document"

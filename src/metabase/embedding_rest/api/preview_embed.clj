@@ -11,6 +11,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
@@ -18,6 +19,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.tiles.api :as api.tiles]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
@@ -294,3 +296,33 @@
      (api.embed.common/tile-parameters-for-dashboard
       dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
      zoom x y latField lonField)))
+
+(api.macros/defendpoint :get "/card/:token/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a Card you're considering embedding by passing a JWT `token`."
+  [{:keys [token]} :- [:map {:closed true}
+                       [:token api.embed.common/EncodedToken]]]
+  (let [unsigned-token (check-and-unsign token)
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (api.embed.common/goal-values-response
+     :card         (api/check-404 (embedding-rest.db/card card-id))
+     :token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params]))))
+
+(api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a DashboardCard in a Dashboard you're considering embedding with
+  JWT `token`."
+  [{:keys [token dashcard-id]} :- [:map {:closed true}
+                                   [:token       api.embed.common/EncodedToken]
+                                   [:dashcard-id ms/PositiveInt]]]
+  (let [unsigned-token (check-and-unsign token)
+        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard      (api/check-404 (embedding-rest.db/dashboard dashboard-id))
+        dashcard       (api/check-404 (embedding-rest.db/dashcard dashcard-id))
+        _              (api/check-404 (= (:dashboard_id dashcard) (:id dashboard)))
+        card           (api/check-404 (some-> (:card_id dashcard) embedding-rest.db/active-card))]
+    (api.embed.common/goal-values-response
+     :card         card
+     :dashcard     dashcard
+     :dashboard    dashboard
+     :token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params]))))

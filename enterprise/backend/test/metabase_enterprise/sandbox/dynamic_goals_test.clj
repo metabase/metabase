@@ -1,7 +1,7 @@
-(ns metabase-enterprise.sandbox.referenced-entities-test
+(ns metabase-enterprise.sandbox.dynamic-goals-test
   "Dynamic goal queries run as the signed-in user, so sandboxing applies to them like to any query the user runs."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query
-                                                            {:namespaces [metabase-enterprise.sandbox.referenced-entities-test]}}}}}}
+                                                            {:namespaces [metabase-enterprise.sandbox.dynamic-goals-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
@@ -12,10 +12,9 @@
     (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:filter [:= $category_id 50]})}}}
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (letfn [(goal-rows [user]
-                  (-> (mt/user-http-request user :post 202 "dataset"
-                                            (assoc (mt/mbql-query venues {:aggregation [[:count]]})
-                                                   :referenced_entities [{:type "card" :id goal-id}]))
-                      (get-in [:data :referenced_entities :card goal-id :data :rows])))]
+                  (-> (mt/user-http-request user :post 202 "dynamic-goal/values"
+                                            {:sources [{:type "card" :id goal-id}]})
+                      (get-in [:card goal-id :data :rows])))]
           (testing "an admin counts every venue"
             (is (= [[100]] (goal-rows :crowberto))))
           (testing "a sandboxed user counts only the venues their sandbox lets through"

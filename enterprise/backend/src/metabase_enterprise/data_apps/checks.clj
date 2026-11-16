@@ -113,12 +113,12 @@
       (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
 
-(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
-  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
+(defenterprise-schema goal-source-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the dynamic goal `sources` that `data-app` may not run, keyed by `[type id]`."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
-   specs    :- [:sequential [:map [:type :string] [:id :int]]]]
-  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) specs))
+   sources  :- [:sequential [:map [:type :string] [:id :int]]]]
+  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) sources))
         external (if (preview? data-app)
                    card-ids
                    (some->> (not-empty (set card-ids))

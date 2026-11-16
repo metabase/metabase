@@ -31,7 +31,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -40,7 +39,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
@@ -63,15 +61,13 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
-   & {:keys [context export-format was-pivot referenced-entities-specs referenced-entity-refusals]
+   & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
              export-format :api}}
    :- [:maybe [:map {:closed true}
                [:context       {:optional true} ::lib.schema.info/context]
                [:export-format {:optional true} ::qp.schema/export-format]
-               [:was-pivot     {:optional true} [:maybe :boolean]]
-               [:referenced-entities-specs {:optional true} qp.referenced-entities/specs-schema]
-               [:referenced-entity-refusals {:optional true} [:maybe ifn?]]]]]
+               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
@@ -91,51 +87,34 @@
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
-        ;; must run before `process-query` sets up the QP store
-        (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs
-                                                                   referenced-entity-refusals)]
-          (if was-pivot
-            (let [constraints (if (= export-format :api)
-                                (qp.constraints/default-query-constraints)
-                                (:constraints query))]
-              (qp.pivot/run-pivot-query (-> query
-                                            (assoc :constraints constraints)
-                                            ;; Use assoc rather than merge so :info comes entirely from the
-                                            ;; server-built map. :info carries :card-id and similar fields the
-                                            ;; server derives, so we replace it rather than combining it with
-                                            ;; whatever was on the incoming query.
-                                            (assoc :info info))
-                                        rff))
-            (qp/process-query (assoc query :info info) rff)))))))
-
-(defn- request-referenced-entities
-  "The `referenced_entities` specs, read off the raw body. Normalizing the query to MBQL 5 rebuilds it and drops
-  every key that isn't part of the query itself, so they can't come in on the decoded `query` param."
-  [request]
-  (let [specs (get-in request [:body :referenced_entities])]
-    (api/check-400 (mr/validate qp.referenced-entities/specs-schema specs))
-    specs))
+        (if was-pivot
+          (let [constraints (if (= export-format :api)
+                              (qp.constraints/default-query-constraints)
+                              (:constraints query))]
+            (qp.pivot/run-pivot-query (-> query
+                                          (assoc :constraints constraints)
+                                          ;; Use assoc rather than merge so :info comes entirely from the
+                                          ;; server-built map. :info carries :card-id and similar fields the
+                                          ;; server derives, so we replace it rather than combining it with
+                                          ;; whatever was on the incoming query.
+                                          (assoc :info info))
+                                      rff))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- ::qp.streaming/query-result-response
-  "Execute a query and retrieve the results in the usual format. The query will not use the cache.
-  `referenced_entities` also runs the given cards' and measures' queries and returns their values under
-  `data.referenced_entities`."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   {:scope api-scope/data-app}
   [_route-params
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (let [data-app (data-apps/request-data-app request)]
-    (some-> data-app (data-apps/check-adhoc-query query))
-    (run-streaming-query
-     (-> query
-         (dissoc :cache-strategy :referenced-entities)
-         (update-in [:middleware :js-int-to-string?] (fnil identity true))
-         qp/userland-query-with-default-constraints)
-     :referenced-entities-specs (request-referenced-entities request)
-     ;; the specs come from the body, which `check-adhoc-query` doesn't read
-     :referenced-entity-refusals (when data-app (partial data-apps/referenced-entity-refusals data-app)))))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
+  (run-streaming-query
+   (-> query
+       (dissoc :cache-strategy)
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 

@@ -11,6 +11,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -38,6 +39,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -149,28 +151,13 @@
   [x]
   x)
 
-(defn- scrub-referenced-entity-errors
-  "A failed referenced query carries the raw driver message, which can name tables and columns. Public and
-  embedded viewers get the same generic text the `:failed` method gives the main query."
-  [referenced-entities]
-  (reduce-kv (fn [acc entity-type by-id]
-               (assoc acc entity-type
-                      (update-vals by-id (fn [result]
-                                           (cond-> result
-                                             (:error result)
-                                             (assoc :error (tru "An error occurred while running the query.")))))))
-             {}
-             referenced-entities))
-
 (defmethod transform-qp-result :completed
   [results]
-  (-> (u/select-nested-keys
-       results
-       ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
-       [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
-        [:json_query :parameters]
-        :status])
-      (m/update-existing-in [:data :referenced_entities] scrub-referenced-entity-errors)))
+  (u/select-nested-keys
+   results
+   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone]
+    [:json_query :parameters]
+    :status]))
 
 (defn error-response
   "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
@@ -226,8 +213,7 @@
                           [:dashcard       {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
                           [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                           [:ignore-cache   {:optional true} [:maybe :boolean]]
-                          [:card-transform {:optional true} [:maybe ifn?]]
-                          [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
+                          [:card-transform {:optional true} [:maybe ifn?]]]]]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
@@ -589,6 +575,53 @@
    :height  maxheight
    :html    (iframe url maxwidth maxheight)})
 
+;;; ----------------------------------------------- Dynamic goal values -----------------------------------------------
+
+(defn- scrub-goal-source-error
+  "A failed goal source carries the raw driver message, which can name tables and columns. Public and embedded viewers
+  get the same generic text the `:failed` method gives the main query."
+  [result]
+  (cond-> result
+    (:error result) (assoc :error (tru "An error occurred while running the query."))))
+
+(defn goal-values-response
+  "A response with the values of the goal sources `card` draws on `dashcard` (nil for a card on its own). Like the
+  chart's own query, they run with full superuser perms and no current user: saving a goal checks that its author can
+  read its source. With `withhold?`, each goal fails as `withheld` and nothing runs. `:dashboard-id` is recorded with
+  each run."
+  [card dashcard & {:keys [dashboard-id withhold?]}]
+  (dynamic-goals/goal-values-response
+   (fn []
+     (request/as-admin
+       (binding [api/*current-user-id* nil]
+         (update-vals (if withhold?
+                        (dynamic-goals/withheld-chart-goal-values card dashcard)
+                        (dynamic-goals/chart-goal-values card dashcard :dashboard-id dashboard-id))
+                      #(update-vals % scrub-goal-source-error)))))))
+
+(api.macros/defendpoint :get "/card/:uuid/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a publicly-accessible Card. Does not require auth credentials.
+  Public sharing must be enabled."
+  [{:keys [uuid]} :- [:map {:closed true}
+                      [:uuid ms/UUIDString]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (goal-values-response (api/check-404 (public-sharing/public-uuid->model :model/Card uuid)) nil))
+
+(api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a DashboardCard in a publicly-accessible Dashboard. Does not require
+  auth credentials. Public sharing must be enabled."
+  [{:keys [uuid dashcard-id]} :- [:map {:closed true}
+                                  [:uuid        ms/UUIDString]
+                                  [:dashcard-id ms/PositiveInt]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
+        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))
+        _         (api/check-404 (= (:dashboard_id dashcard) (:id dashboard)))
+        card      (api/check-404 (some-> (:card_id dashcard) public-sharing-rest.db/active-card))]
+    (goal-values-response card dashcard :dashboard-id (:id dashboard))))
+
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -935,6 +968,16 @@
               parameters
               :constraints (qp.constraints/default-query-constraints))
       (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
+
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id/goal-values"
+  :- (streaming-response/streaming-response-schema ::dynamic-goals/goal-values)
+  "Fetch the values of the dynamic goal sources of a Card embedded in a public Document. Does not require auth
+  credentials. Public sharing must be enabled."
+  [{:keys [uuid card-id]} :- [:map {:closed true}
+                              [:uuid    ms/UUIDString]
+                              [:card-id ms/PositiveInt]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (goal-values-response (validate-card-in-public-document uuid card-id) nil))
 
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
   :- (qp.streaming/export-response-schema :map)

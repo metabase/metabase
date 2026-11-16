@@ -989,8 +989,8 @@
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 
-(deftest embed-card-query-measure-goal-test
-  (testing "GET /api/embed/card/:token/query resolves a measure goal source in the card's viz settings"
+(deftest embed-card-goal-values-measure-test
+  (testing "GET /api/embed/card/:token/goal-values resolves a measure goal source in the card's viz settings"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
                                                       :table_id   (mt/id :venues)
@@ -1004,11 +1004,11 @@
                                                    :max   nil
                                                    :color "red"}]}}]
           (is (=? {:status "completed" :data {:rows [[100]]}}
-                  (-> (client/client :get 202 (card-query-url card ""))
-                      (get-in [:data :referenced_entities :measure measure-id])))))))))
+                  (-> (client/client :get 202 (str (card-url card) "/goal-values"))
+                      (get-in [:measure measure-id])))))))))
 
-(deftest embed-dashcard-query-referenced-entities-test
-  (testing "GET /api/embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
+(deftest embed-dashcard-goal-values-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:id/goal-values resolves the dynamic goal in the card's viz settings"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
@@ -1018,8 +1018,13 @@
                                                                   :max   nil
                                                                   :color "red"}]}}}]
           (is (= [[1000]]
-                 (-> (client/client :get 202 (dashcard-url dashcard))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+                 (-> (client/client :get 202 (str "embed/dashboard/" (dash-token (:dashboard_id dashcard))
+                                                  "/dashcard/" (u/the-id dashcard) "/goal-values"))
+                     (get-in [:card goal-id :data :rows]))))
+          (testing "embedding must be enabled for the dashboard"
+            (t2/update! :model/Dashboard :id (:dashboard_id dashcard) {:enable_embedding false})
+            (client/client :get 400 (str "embed/dashboard/" (dash-token (:dashboard_id dashcard))
+                                         "/dashcard/" (u/the-id dashcard) "/goal-values"))))))))
 
 (deftest running-card-as-logged-in-user-does-not-set-last-used-param-values
   (testing "running the card does not set last used param values"

@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
@@ -161,8 +162,18 @@
   (-> (select-keys qp-result [:status :row_count :database_id :error
                               :notification/truncated? :data.rows-file-size])
       (assoc :data (select-keys (:data qp-result)
-                                [:cols :rows :viz-settings :results_metadata :insights :referenced_entities
+                                [:cols :rows :viz-settings :results_metadata :insights
                                  :results_timezone :format-rows? :pivot-export-options]))))
+
+(defn- with-goal-values
+  "Add the values of the goal sources `card` draws on `dashcard` (nil for a card on its own) to its formatted `result`,
+  under `[:data :referenced_entities]`, where static viz and goal alerts read them. Runs them only for a completed
+  result, since a failed card draws no chart."
+  [result card dashcard dashboard-id]
+  (if-let [goal-values (and (= :completed (:status result))
+                            (not-empty (dynamic-goals/chart-goal-values card dashcard :dashboard-id dashboard-id)))]
+    (assoc-in result [:data :referenced_entities] goal-values)
+    result))
 
 (def cells-to-disk-threshold
   "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
@@ -238,7 +249,10 @@
                                                                         :card_id card-id
                                                                         :dashcard_id (u/the-id dashcard)})))))
                                                  fixup-viz-settings
-                                                 format-qp-result)}))
+                                                 format-qp-result
+                                                 ;; series cards draw no goals
+                                                 (cond-> (= card-id card_id)
+                                                   (with-goal-values card dashcard dashboard_id)))}))
                result         (result-fn card_id)
                series-results (mapv (comp result-fn :id) multi-cards)]
            (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -397,7 +411,8 @@
                                                                         {:budget (new-spill-budget)}
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
-                     format-qp-result))]
+                     format-qp-result
+                     (with-goal-values card nil nil)))]
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   card
      :result result
