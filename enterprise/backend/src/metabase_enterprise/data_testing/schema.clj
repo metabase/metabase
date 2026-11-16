@@ -171,7 +171,7 @@
    (mu/with-api-error-message
     (ms/InstanceOfClass java.time.OffsetDateTime)
     (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))
-   ;; Anything not yet a moment is the check above's to refuse, so that it gets one message.
+   ;; Passes a value that is not an OffsetDateTime, which the check above refuses, so its 400 carries one message.
    (mu/with-api-error-message
     [:fn #(or (not (instance? java.time.OffsetDateTime %)) (in-now-range? %))]
     (let [[first-moment last-moment] now-range]

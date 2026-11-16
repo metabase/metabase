@@ -109,23 +109,23 @@
       (testing "a filter in days: Redshift computes it from the JVM clock, the other drivers from the database's"
         (is (= {:pinned :passed :unpinned :failed}
                (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) -30 :day))
-                                    {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
-                                    [1]))))
+                                     {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
+                                     [1]))))
       (testing "a filter in hours: every driver writes the database's current-time function"
         (is (= {:pinned :passed :unpinned :failed}
                (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) -3 :hour))
-                                    {1 (pinned+ -1 :hours) 2 (pinned+ -5 :hours) 3 (real+ -1 :hours)}
-                                    [1]))))
+                                     {1 (pinned+ -1 :hours) 2 (pinned+ -5 :hours) 3 (real+ -1 :hours)}
+                                     [1]))))
       (testing "the current week"
         (is (= {:pinned :passed :unpinned :failed}
                (pinned-and-unpinned! (lib/filter orders (lib/time-interval (created-at) :current :week))
-                                    {1 (pinned+ 0 :days) 2 (pinned+ -8 :days) 3 (real+ 0 :hours)}
-                                    [1]))))
+                                     {1 (pinned+ 0 :days) 2 (pinned+ -8 :days) 3 (real+ 0 :hours)}
+                                     [1]))))
       (testing "the `now` expression"
         (is (= {:pinned :passed :unpinned :failed}
                (pinned-and-unpinned! (lib/filter orders (lib/< (created-at) (lib/now)))
-                                    {1 (pinned+ -1 :days) 2 (pinned+ 30 :days) 3 (real+ 30 :days)}
-                                    [1])))))))
+                                     {1 (pinned+ -1 :days) 2 (pinned+ 30 :days) 3 (real+ 30 :days)}
+                                     [1])))))))
 
 (deftest card-on-a-segment-reads-the-pinned-clock-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -137,9 +137,9 @@
         (testing "a card that filters by a segment of the last 30 days selects the rows of the pinned month"
           (is (= {:pinned :passed :unpinned :failed}
                  (pinned-and-unpinned! (lib/filter (orders-query)
-                                                  (lib.metadata/segment (mt/metadata-provider) segment-id))
-                                      {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
-                                      [1]))))))))
+                                                   (lib.metadata/segment (mt/metadata-provider) segment-id))
+                                       {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)}
+                                       [1]))))))))
 
 (deftest pinned-run-reads-the-day-in-the-report-timezone-test
   (mt/test-drivers #{:postgres}
@@ -163,18 +163,19 @@
 
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
-  one expectation that the target table holds exactly the orders with `ids`, then run the test. Returns its
-  [[outcome!]]."
-  [source-query test-fields inputs ids]
-  (let [{:keys [schema]} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))]
+  one expectation, `(expectation-of target)` where `target` is the target table's qualified name, then run the test.
+  Returns its [[outcome!]]."
+  [source-query test-fields inputs expectation-of]
+  (let [{:keys [schema]} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
+        target-name      (str "orders_now_" (rand-int 1000000))]
     (mt/with-temp [:model/Transform     transform {:source {:type :query :query source-query}
                                                    :target {:type     "table"
                                                             :schema   schema
-                                                            :name     (str "orders_now_" (rand-int 1000000))
+                                                            :name     target-name
                                                             :database (mt/id)}}
                    :model/TransformTest {test-id :id} (merge {:transform_id (:id transform)
                                                               :inputs       inputs
-                                                              :expectations [(selects ids)]}
+                                                              :expectations [(expectation-of (str schema "." target-name))]}
                                                              test-fields)]
       (outcome! :transform transform :model/TransformTest test-id))))
 
@@ -182,7 +183,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [query  (lib/filter (orders-query) (lib/time-interval (created-at) -30 :day))
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
-          run!   #(run-transform-test! query % inputs [1])]
+          run!   #(run-transform-test! query % inputs (constantly (selects [1])))]
       (testing "a transform test with `now` selects the rows of the pinned month"
         (is (= {:pinned :passed :unpinned :failed}
                {:pinned (run! {:now now}) :unpinned (run! {})}))))))
@@ -207,8 +208,8 @@
                     :unpinned (run-card-test! on-native {} inputs [(selects [1])])})))))
       (testing "a native transform"
         (is (= {:pinned refused :unpinned :passed}
-               {:pinned   (run-transform-test! native {:now now} inputs [1])
-                :unpinned (run-transform-test! native {} inputs [1])}))))))
+               {:pinned   (run-transform-test! native {:now now} inputs (constantly (selects [1])))
+                :unpinned (run-transform-test! native {} inputs (constantly (selects [1])))}))))))
 
 (deftest validate-test-refuses-now-on-native-sql-test
   (mt/test-drivers #{:h2}
@@ -226,3 +227,22 @@
             (is (= ::data-testing.errors/now-on-native-sql (refusal (assoc definition :now (t/offset-date-time now))))))
           (testing "control: without `now` the same test is accepted"
             (is (nil? (refusal definition)))))))))
+
+(deftest every-test-runs-in-the-report-timezone-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
+      (let [inputs     [(orders-input {1 (pinned+ -1 :days)})]
+            ;; Passes when the session's timezone is Tokyo; the output has one row, so a wrong timezone selects it.
+            in-tokyo   (fn [output]
+                         {:type :empty
+                          :name "session"
+                          :sql  (str "SELECT * FROM " output " WHERE current_setting('TimeZone') <> 'Asia/Tokyo'")})
+            fresh-pool #(sql-jdbc.conn/invalidate-pool-for-db! (mt/id))]
+        (testing "on a fresh pool, whose sessions start in the database's own timezone"
+          (doseq [[subject test-fields] [[:card {}] [:card {:now now}] [:transform {}] [:transform {:now now}]]]
+            (testing (str subject " " (if (:now test-fields) "with" "without") " `now`")
+              (fresh-pool)
+              (is (= :passed
+                     (if (= :card subject)
+                       (run-card-test! (orders-query) test-fields inputs [(in-tokyo "{{output}}")])
+                       (run-transform-test! (orders-query) test-fields inputs in-tokyo)))))))))))
