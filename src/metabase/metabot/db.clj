@@ -279,11 +279,14 @@
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
-(mu/defn participant?
-  "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string
+(mu/defn participated-conversation-ids :- [:maybe [:set :string]]
+  "The IDs of those of the MetabotConversations with `conversation-ids` the User with `user-id` has sent a message in,
+  or nil if none."
+  [conversation-ids :- [:sequential :string]
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+  (t2/select-fn-set :conversation_id :model/MetabotMessage
+                    :conversation_id [:in conversation-ids]
+                    :user_id user-id))
 
 (mu/defn- other-participant?
   "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
@@ -748,6 +751,11 @@
   "The ID and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :id :type] :id card-id))
+
+(mu/defn card-types-by-id :- [:map-of ::lib.schema.id/card :keyword]
+  "The type of each of the Cards with `card-ids`, by Card id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :type :model/Card :id [:in card-ids]))
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to

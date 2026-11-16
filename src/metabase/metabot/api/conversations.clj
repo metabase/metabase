@@ -189,12 +189,11 @@
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [message_id]} :- ForkConversationBody]
-  (let [conversation (api/check-404 (metabot.db/conversation-id-and-user-id id))]
-    (api/check-403 (= (:user_id conversation) api/*current-user-id*))
-    (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
-      (api/check-400 (some? new-conversation-id)
-                     (tru "Can only fork from a completed Metabot response."))
-      (with-context-window (metabot.persistence/conversation-detail new-conversation-id)))))
+  (api/write-check (metabot.db/conversation-id-and-user-id id))
+  (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
+    (api/check-400 (some? new-conversation-id)
+                   (tru "Can only fork from a completed Metabot response."))
+    (with-context-window (metabot.persistence/conversation-detail new-conversation-id))))
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the
