@@ -51,9 +51,42 @@
   height: 24px;
 }
 
-.toolbarButton {
-  padding-inline: var(--mantine-spacing-sm);
-  font-size: 12px;
+.segments {
+  display: flex;
+  height: 24px;
+  overflow: hidden;
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 6px;
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 100%;
+  color: var(--mb-color-text-primary);
+
+  & + & {
+    border-left: 0.5px solid var(--mb-color-border-neutral-strong);
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--mb-color-button-default-neutral-hover);
+  }
+
+  &[aria-pressed="true"]:not(:disabled),
+  &:active:not(:disabled) {
+    background-color: var(--mb-color-button-default-neutral-pressed);
+  }
+
+  &:disabled {
+    background-color: var(--mb-color-background_surface-disabled);
+    color: var(--mb-color-text-disabled);
+    cursor: default;
+  }
 }
 
 .editor {

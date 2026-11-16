@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Button, Divider } from "metabase/ui";
+import { Tooltip, UnstyledButton } from "metabase/ui";
 
 import type { ExpressionSidebarName } from "../ExpressionSidebar";
 
 import S from "./Editor.module.css";
+import InfoIcon from "./info.svg?component";
 
 type InlineToolbarProps = {
   openSidebar: ExpressionSidebarName | null;
@@ -20,20 +21,48 @@ export function InlineToolbar({
   end,
   onToggleSidebar,
 }: InlineToolbarProps) {
-  const isDocsOpen = openSidebar === "functions";
   return (
     <div className={S.inlineToolbar}>
-      {start}
-      <Button
-        size="sm"
-        variant="subtle"
-        color="neutral"
-        className={S.toolbarButton}
-        aria-pressed={isDocsOpen}
-        onClick={() => onToggleSidebar("functions")}
-      >{t`Docs`}</Button>
-      {end != null && <Divider orientation="vertical" />}
+      <div className={S.segments}>
+        {start}
+        <ToolbarSegment
+          icon={<InfoIcon />}
+          label={t`Docs`}
+          isPressed={openSidebar === "functions"}
+          onClick={() => onToggleSidebar("functions")}
+        />
+      </div>
       {end}
     </div>
+  );
+}
+
+/** An icon button in the group of buttons at the start of the toolbar. */
+export function ToolbarSegment({
+  icon,
+  label,
+  isPressed,
+  disabled,
+  onClick,
+}: {
+  /** A 12px icon. Icons of the icon set are drawn at 16px and blur at 12px. */
+  icon: ReactNode;
+  label: string;
+  isPressed?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip label={label}>
+      <UnstyledButton
+        className={S.segment}
+        aria-label={label}
+        aria-pressed={isPressed}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {icon}
+      </UnstyledButton>
+    </Tooltip>
   );
 }

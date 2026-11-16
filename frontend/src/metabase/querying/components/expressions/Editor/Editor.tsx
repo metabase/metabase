@@ -468,7 +468,7 @@ export function Editor(props: EditorProps) {
     onRejectProposed: handleRejectProposed,
   });
 
-  // "@" in the code opens a prompt to the AI at the cursor.
+  // "?" in the code opens a prompt to the AI at the cursor.
   const promptContainer = useMemo(() => document.createElement("span"), []);
   const [promptPos, setPromptPos] = useState<number | null>(null);
   const [promptError, setPromptError] = useState<string>();
@@ -730,7 +730,7 @@ export function Editor(props: EditorProps) {
         promptPos != null
           ? undefined
           : inline
-            ? t`Type “@” for AI, or expression, SQL code, Excel formula...`
+            ? t`AI prompt, expression, SQL code, or Excel formula...`
             : t`Type your expression, press '[' for columns…`
       }
       className={S.editor}

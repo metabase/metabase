@@ -5,8 +5,3 @@
   box-shadow: var(--mantine-shadow-xs);
   overflow: hidden;
 }
-
-.toolbarButton {
-  padding-inline: var(--mantine-spacing-sm);
-  font-size: 12px;
-}

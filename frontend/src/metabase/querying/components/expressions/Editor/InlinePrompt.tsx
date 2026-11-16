@@ -13,7 +13,7 @@ type InlinePromptProps = {
   onClose: () => void;
 };
 
-/** A prompt to the AI inside the code, at the place where the user typed "@". */
+/** A prompt to the AI inside the code, at the place where the user typed "?". */
 export function InlinePrompt({
   isLoading,
   onSubmit,

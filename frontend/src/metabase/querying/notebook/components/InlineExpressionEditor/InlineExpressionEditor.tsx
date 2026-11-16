@@ -15,6 +15,9 @@ import type {
   GenerateNow,
   ValidateNow,
 } from "../../../components/expressions/Editor/Editor";
+import { ToolbarSegment } from "../../../components/expressions/Editor/InlineToolbar";
+import CloseIcon from "../../../components/expressions/Editor/close.svg?component";
+import PlayIcon from "../../../components/expressions/Editor/play.svg?component";
 import { Layout } from "../../../components/expressions/Layout";
 
 import { ExpressionPreview } from "./ExpressionPreview";
@@ -278,30 +281,20 @@ export function InlineExpressionEditor({
         canGenerateFromText={isNewExpression && !readOnly}
         readOnly={readOnly}
         toolbarStart={
-          canGenerate ? (
-            <Tooltip label={t`Generate with AI (${PREVIEW_SHORTCUT})`}>
-              <Button
-                size="sm"
-                variant="subtle"
-                className={S.toolbarButton}
-                disabled={isGenerating}
-                onClick={runGenerate}
-              >{t`Generate with AI`}</Button>
-            </Tooltip>
+          readOnly ? undefined : canGenerate ? (
+            <ToolbarSegment
+              icon={<Icon name="ai" size={16} />}
+              label={t`Generate with AI (${PREVIEW_SHORTCUT})`}
+              disabled={isGenerating}
+              onClick={runGenerate}
+            />
           ) : (
-            !readOnly &&
-            previewRun == null && (
-              <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  color="neutral"
-                  className={S.toolbarButton}
-                  disabled={isEmpty}
-                  onClick={runPreview}
-                >{t`Preview`}</Button>
-              </Tooltip>
-            )
+            <ToolbarSegment
+              icon={<PlayIcon />}
+              label={t`Preview (${PREVIEW_SHORTCUT})`}
+              disabled={isEmpty}
+              onClick={runPreview}
+            />
           )
         }
         toolbarEnd={
@@ -309,8 +302,8 @@ export function InlineExpressionEditor({
             <>
               <Button
                 size="sm"
-                variant="subtle"
-                className={S.toolbarButton}
+                variant="default"
+                miw={64}
                 disabled={isEmpty}
                 onClick={handleSave}
               >{t`Save`}</Button>
@@ -322,7 +315,7 @@ export function InlineExpressionEditor({
                   aria-label={t`Close`}
                   onClick={onDiscard}
                 >
-                  <Icon name="close" size={12} />
+                  <CloseIcon />
                 </ActionIcon>
               </Tooltip>
             </>

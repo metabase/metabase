@@ -1,7 +1,7 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 
-export const PROMPT_TRIGGER = "@";
+export const PROMPT_TRIGGER = "?";
 
 /** True when the text before the cursor ends in code, not in a text or a column name. */
 function isInCode(prefix: string) {
@@ -75,7 +75,7 @@ export function closeInlinePrompt(view: EditorView) {
 }
 
 /**
- * Typing "@" in code opens a prompt to the AI at the cursor. The text after it
+ * Typing "?" in code opens a prompt to the AI at the cursor. The text after it
  * goes to the prompt in `container`, not to the code.
  */
 export function inlinePrompt({

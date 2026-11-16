@@ -44,7 +44,7 @@
    "\n"
    (read-reference "custom-expression-functions.md")
    "\n## How the user calls you\n\n"
-   "The user types the expression in a code editor. To call you, they type `@` at some place in the expression, "
+   "The user types the expression in a code editor. To call you, they type `?` at some place in the expression, "
    "and then a request or nothing. The " cursor-marker " marker in the current expression shows that place. The "
    "expression is often incomplete or not valid yet, because the user is still typing it.\n\n"
    "Find which of these the user wants, and do it:\n\n"
