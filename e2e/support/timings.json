@@ -621,7 +621,7 @@
       "duration": 22023
     },
     {
-      "spec": "../test/scenarios/data-apps/embed-wizard-data-app.cy.spec.ts",
+      "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/data-app.cy.spec.ts",
       "duration": 21676
     },
     {
@@ -677,7 +677,7 @@
       "duration": 4503
     },
     {
-      "spec": "../test/scenarios/data-apps/data-app-web-components.cy.spec.ts",
+      "spec": "../test/scenarios/embedding/sdk-iframe-embedding/data-app.cy.spec.ts",
       "duration": 13873
     },
     {
