@@ -24,7 +24,8 @@
 ;;; --------------------------------------------------- validate-query ---------------------------------------------------
 
 (defn- serialize-error
-  "A parse or qualification failure as a structured error. Unrecognised messages come back as `unhandled`."
+  "A parse or qualification failure as a structured error. Unrecognised messages come back as `unhandled`.
+  Port of `serialize_error`."
   [^Exception e]
   (let [message (ex-message e)]
     (if-let [[whole table] (re-find #"^Unknown table:\s*(.*)" message)]
@@ -37,7 +38,7 @@
 
 (defn validate-query
   "Whether `sql` qualifies against `schema` (strict: unknown tables and unresolved columns are errors) or, when the
-  schema is empty, against the schema it implies (permissive: only the syntax is checked)."
+  schema is empty, against the schema it implies (permissive: only the syntax is checked). Port of `validate_query`."
   [dialect sql default-table-schema schema]
   (let [strict? (boolean (seq schema))]
     (try
@@ -63,7 +64,7 @@
       expression)))
 
 (defn- pure-column?
-  "Whether the lineage graph under `root` is a path of columns ending in a table."
+  "Whether the lineage graph under `root` is a path of columns ending in a table. Port of `is_pure_column`."
   [^Lineage$Node root]
   (every? (fn [^Lineage$Node node]
             (and (<= (count (.downstream node)) 1)
@@ -88,7 +89,7 @@
 
 (defn returned-columns-lineage
   "`[name pure? [[catalog schema table column] ...]]` for each column `sql` returns: whether the column is a table
-  column passed through unchanged, and the table columns it is computed from."
+  column passed through unchanged, and the table columns it is computed from. Port of `returned_columns_lineage`."
   [dialect sql default-table-schema schema]
   (let [stmt (qualify! (ast/parse-one sql dialect)
                        {:db            default-table-schema

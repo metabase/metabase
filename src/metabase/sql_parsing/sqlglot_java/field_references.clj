@@ -21,23 +21,28 @@
 
 (def ^:private syntax-error {:type "syntax_error"})
 
-(defn- missing-table-alias-error [table-name]
+(defn- missing-table-alias-error
+  "Port of `FieldReferenceWalker._missing_table_alias_error`."
+  [table-name]
   {:type "missing_table_alias" :table table-name})
 
-(defn- missing-column-error [column-name]
+(defn- missing-column-error
+  "Port of `FieldReferenceWalker._missing_column_error`."
+  [column-name]
   {:type "missing_column" :column column-name})
 
 ;;; ------------------------------------------------------ sources ------------------------------------------------------
 
 (defn- table-matches?
-  "Whether `table-name`, a bare name, names the source with `names`: by its alias, or by its table name."
+  "Whether `table-name`, a bare name, names the source with `names`: by its alias, or by its table name.
+  Port of `FieldReferenceWalker._table_matches`."
   [table-name names]
   (boolean (and names
                 (or (= (:table_alias names) table-name)
                     (= (:table names) table-name)))))
 
 (defn- find-source
-  "The first source in `sources` that `table-name` names."
+  "The first source in `sources` that `table-name` names. Port of `FieldReferenceWalker._find_source`."
   [table-name sources]
   (some (fn [scope-sources]
           (some #(when (and % (table-matches? table-name (:names %))) %) scope-sources))
@@ -51,7 +56,7 @@
 
 (defn- source-might-have-column?
   "Whether `source` might hold the column: any source might when the column is unqualified; otherwise only the one
-  its qualifier names, ignoring case."
+  its qualifier names, ignoring case. Port of `FieldReferenceWalker._source_might_have_column`."
   [source table-ref]
   (boolean (and source
                 (or (empty? table-ref)
@@ -70,7 +75,7 @@
 
 (defn- get-column
   "The column `column-name`, qualified by `table-ref` (\"\" when unqualified), resolved against `sources`, with the
-  sources it might come from as `:source_columns`."
+  sources it might come from as `:source_columns`. Port of `FieldReferenceWalker._get_column`."
   [sources column-name table-ref return-table-matches?]
   (let [valid-sources  (if (seq table-ref)
                          (if-let [source (find-source table-ref sources)] [[source]] [[]])
@@ -148,7 +153,8 @@
   (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr))) results))
 
 (defn- find-used-fields
-  "The fields `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT expression)."
+  "The fields `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT expression).
+  Port of `FieldReferenceWalker._find_used_fields`."
   [expr sources withs]
   (let [recur-on (fn [e] (find-used-fields e sources withs))]
     (cond
@@ -234,7 +240,7 @@
       (into [] (mapcat recur-on) (ast/iter-expressions expr)))))
 
 (defn- find-returned-fields
-  "The fields the SELECT expression `expr` returns."
+  "The fields the SELECT expression `expr` returns. Port of `FieldReferenceWalker._find_returned_fields`."
   [expr sources withs]
   (cond
     (instance? Expressions$Alias expr)
@@ -282,7 +288,8 @@
    :errors          #{}})
 
 (defn- process-source
-  "The source `source-expr` (a table, a CTE reference, a subquery or a table function) in a FROM or JOIN."
+  "The source `source-expr` (a table, a CTE reference, a subquery or a table function) in a FROM or JOIN.
+  Port of `FieldReferenceWalker._process_source`."
   [source-expr outside-sources withs]
   (cond
     (instance? Expressions$UDTF source-expr)
@@ -315,7 +322,8 @@
            :names (when (seq (ast/node-alias source-expr)) {:table_alias (ast/node-alias source-expr)}))))
 
 (defn- build-sources
-  "The sources of `select-expr`: its JOINs, then its FROM, the order Macaw expands wildcards in."
+  "The sources of `select-expr`: its JOINs, then its FROM, the order Macaw expands wildcards in.
+  Port of `FieldReferenceWalker._build_sources`."
   [select-expr outside-sources withs]
   (into []
         (keep #(process-source % outside-sources withs))
@@ -345,7 +353,9 @@
             [withs #{}]
             (some-> with-clause ast/expressions))))
 
-(defn- process-select [select-expr outside-sources withs]
+(defn- process-select
+  "Port of `FieldReferenceWalker._process_select`."
+  [select-expr outside-sources withs]
   (let [[local-withs cte-errors] (process-ctes select-expr outside-sources withs)
         local-sources            (build-sources select-expr outside-sources local-withs)
         combined-sources         (into [local-sources] outside-sources)
@@ -375,7 +385,8 @@
                           (into (mapcat :errors) used))}))
 
 (defn- process-union
-  "A UNION's fields: each returned field is the composite of the fields both sides return in its place."
+  "A UNION's fields: each returned field is the composite of the fields both sides return in its place.
+  Port of `FieldReferenceWalker._process_union`."
   [union-expr outside-sources withs]
   (let [left  (process-query (ast/this union-expr) outside-sources withs)
         right (process-query (ast/arg union-expr "expression") outside-sources withs)
@@ -391,7 +402,8 @@
      :errors          (into (set (:errors left)) (:errors right))}))
 
 (defn- process-query
-  "The fields of the query `expr`: a SELECT or a UNION. Anything else is a syntax error."
+  "The fields of the query `expr`: a SELECT or a UNION. Anything else is a syntax error.
+  Port of `FieldReferenceWalker._process_query`."
   [expr outside-sources withs]
   (cond
     (instance? Expressions$Select expr) (process-select expr outside-sources withs)
@@ -412,7 +424,7 @@
 
 (defn field-references
   "`{:used_fields :returned_fields :errors}` for `sql`: the fields its clauses use, the fields it returns in order,
-  and the qualifiers and columns that resolve to nothing."
+  and the qualifiers and columns that resolve to nothing. Port of `field_references`."
   [dialect sql]
   (try
     (let [tree (strip-temp-table-qualifiers! (ast/parse-one sql dialect) dialect)

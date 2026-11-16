@@ -21,7 +21,7 @@
 
 (defn- wrap-base-table
   "A self-UNION subquery, aliased `table-alias`, that scans `table` once but strips any IDENTITY property inherited
-  from it (see [[add-into-clause]])."
+  from it (see [[add-into-clause]]). Port of `_wrap_base_table`."
   [table table-alias]
   (let [bare-table (ast/set-arg! (ast/copy table) "alias" nil)
         empty-side (ast/set-arg! (select-star-from (ast/copy bare-table))
@@ -43,7 +43,7 @@
   incremental append with SQL Server error 8101. The UNION's second branch is always empty and SQL Server elides it,
   so each table is still scanned once. CTEs, derived tables, table functions and `#`/`##` temp tables are left
   alone. A column that reached a wrapped table by a schema-qualified name loses the qualifier, since a derived table
-  is only reachable by its alias."
+  is only reachable by its alias. Port of `add_into_clause`."
   [dialect sql table-name]
   (let [stmt        (ast/parse-one sql dialect)
         ;; T-SQL takes the INTO of a set operation (UNION, INTERSECT, EXCEPT) in its first SELECT.
@@ -74,7 +74,8 @@
 ;;; ------------------------------------------------ add-insert-clause ------------------------------------------------
 
 (defn add-insert-clause
-  "`sql`, a query, as `INSERT INTO table-name <query>`. Any WITH clause of the query goes before INSERT INTO."
+  "`sql`, a query, as `INSERT INTO table-name <query>`. Any WITH clause of the query goes before INSERT INTO.
+  Port of `add_insert_clause`."
   [dialect sql table-name]
   (let [stmt (ast/parse-one sql dialect)]
     (when-not (instance? Expressions$Query stmt)
@@ -86,7 +87,8 @@
 (defn- parse-identifier
   "`ident` read the way the dialect reads a column alias, `SELECT 1 AS <ident>`: the identifier node when that is one
   query selecting one aliased expression, and an unquoted alias reads back as all of `ident`. Else nil, for a name
-  that is not one identifier (`x;y`, `x,y`, `x/*c*/`, a keyword, or a name that does not parse)."
+  that is not one identifier (`x;y`, `x,y`, `x/*c*/`, a keyword, or a name that does not parse).
+  Port of `parse_identifier`."
   [ident dialect]
   (when (seq ident)
     (let [stmt        (try (ast/parse-one (str "SELECT 1 AS " ident) dialect) (catch Exception _ nil))
@@ -98,7 +100,8 @@
         alias-node))))
 
 (defn- needs-quoting?
-  "Whether the identifier `ident` must be quoted because it holds a dash or a space, or starts with a digit."
+  "Whether the identifier `ident` must be quoted because it holds a dash or a space, or starts with a digit.
+  Port of `needs_quoting`."
   [^String ident]
   (and (seq ident)
        (or (str/includes? ident "-")
@@ -112,7 +115,7 @@
 
 (defn- fold-keys
   "A case-insensitive view of `mapping`, whose keys are tuples of name parts. Keys that differ only in case and map
-  to different values have no single answer, so they are dropped: an exact match still finds them."
+  to different values have no single answer, so they are dropped: an exact match still finds them. Port of `fold_keys`."
   [mapping]
   (let [{:keys [folded ambiguous]}
         (reduce (fn [{:keys [folded] :as acc} [k v]]
@@ -124,12 +127,15 @@
                 mapping)]
     (apply dissoc folded ambiguous)))
 
-(defn- fold-lookup [folded k]
+(defn- fold-lookup
+  "Port of `fold_lookup`."
+  [folded k]
   (get folded (fold-key k)))
 
 (defn- part-matches?
   "Whether one part of a replacement key names the same thing as the reference's. A quoted reference part is case
-  significant to the engine (Postgres \"Orders\" is not orders), so it matches only as written."
+  significant to the engine (Postgres \"Orders\" is not orders), so it matches only as written.
+  Port of `part_matches` in `replace_names`."
   [key-part ref-part quoted?]
   (if (or (nil? key-part) (nil? ref-part))
     (and (nil? key-part) (nil? ref-part))
@@ -140,7 +146,7 @@
 (defn- find-table-replacement
   "The replacement for the table `[db schema table]`, most specific key shape first. Each shape is tried as written
   before it is tried part by part, so an exact key wins, and keys that differ only in the case of an unquoted part
-  answer nothing rather than one of them arbitrarily."
+  answer nothing rather than one of them arbitrarily. Port of `find_table_replacement` in `replace_names`."
   [table-map db schema table quoted]
   (let [shapes [[db schema table] [nil schema table] [nil nil table]]]
     (or (some #(not-empty (get table-map %)) shapes)
@@ -153,7 +159,8 @@
               shapes))))
 
 (defn- quoted-parts
-  "Which parts of a table reference the query quoted, in replacement-key order."
+  "Which parts of a table reference the query quoted, in replacement-key order.
+  Port of `quoted_parts` in `replace_names`."
   [node table-arg]
   (mapv #(ast/quoted? (ast/arg node %)) ["catalog" "db" table-arg]))
 
@@ -162,7 +169,8 @@
   comes quoted, or if it needs quoting. The comments the parser attached to the old identifier move to the new one.
 
   A name that is not one identifier is quoted whole, so it can only ever be read back as that one name. sql_tools.py
-  instead raises for some such names (`x;y`) and writes others into the SQL as they are (`x,y`)."
+  instead raises for some such names (`x;y`) and writes others into the SQL as they are (`x,y`).
+  Port of `set_identifier` in `replace_names`."
   [node arg ident-name dialect]
   (let [parsed      (parse-identifier ident-name dialect)
         was-quoted? (ast/quoted? parsed)
@@ -175,7 +183,8 @@
 
 (defn- replace-table!
   "Apply a table replacement to the name parts `node` keeps under `catalog`, `db` and `table-arg`. A string renames
-  the table; a `{db? schema? table?}` map sets each part it names, and a nil db or schema clears that qualifier."
+  the table; a `{db? schema? table?}` map sets each part it names, and a nil db or schema clears that qualifier.
+  Port of `replace_table` in `replace_names`."
   [node replacement table-arg dialect]
   (let [replacement (if (string? replacement) {"table" replacement} replacement)]
     (doseq [[k arg] [["db" "catalog"] ["schema" "db"] ["table" table-arg]]]
@@ -196,7 +205,9 @@
   (when (and (not= replacement ::ambiguous) (seq replacement))
     replacement))
 
-(defn- rewrite-statement [stmt {:keys [schemas folded-schemas table-map column-map]} dialect]
+(defn- rewrite-statement
+  "Port of `rewrite` and `rename_fn` in `replace_names`."
+  [stmt {:keys [schemas folded-schemas table-map column-map]} dialect]
   ;; Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names.
   (let [aliases (into #{}
                       (keep #(ast/lower (not-empty (ast/node-alias %))))
@@ -258,7 +269,7 @@
 
   with string keys, as `sql_tools.py` reads them. Replacement values become identifiers, and one that is not a
   single identifier is quoted whole (see [[set-identifier!]]). Callers still pass system-generated names: the GraalPy
-  backend does not quote them."
+  backend does not quote them. Port of `replace_names`."
   [dialect sql replacements]
   (let [{:strs [schemas tables columns]} replacements
         schemas  (or schemas {})
