@@ -4,7 +4,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -27,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
@@ -328,12 +328,27 @@
       (let [db       (ts/create! :model/Database :name "my-db")
             table    (ts/create! :model/Table :name "customers" :db_id (:id db))
             email    (ts/create! :model/Field :name "email" :table_id (:id table))
-            _        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
-            settings (ts/extract-one "FieldUserSettings" (:id email))]
+            id       (t2/insert-returning-pk! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
+            settings (ts/extract-one "FieldUserSettings" id)]
         (t2/update! :model/FieldUserSettings :field_id (:id email) {:display_name "Local"})
         (serdes.load/load-metabase! (ts/ingestion-in-memory [settings]))
         (is (=? {:description "edited" :display_name nil}
                 (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))
+
+(deftest osi-ai-context-import-updates-one-row-test
+  (testing "importing an OsiAiContext over an existing row leaves the other rows of its entity type as they are"
+    (mt/with-empty-h2-app-db!
+      (let [db       (ts/create! :model/Database :name "my-db")
+            orders   (ts/create! :model/Table :name "orders" :db_id (:id db))
+            people   (ts/create! :model/Table :name "people" :db_id (:id db))
+            context  (fn [table] (t2/select-one-fn :ai_context :model/OsiAiContext
+                                                   :entity_type "table" :entity_local_id (:id table)))]
+        (t2/insert! :model/OsiAiContext [{:entity_type "table" :entity_local_id (:id orders) :ai_context {:instructions "Orders"}}
+                                         {:entity_type "table" :entity_local_id (:id people) :ai_context {:instructions "People"}}])
+        (let [exported (ts/extract-one "OsiAiContext" [:= :entity_local_id (:id orders)])]
+          (serdes.load/load-metabase! (ts/ingestion-in-memory [(assoc-in exported [:ai_context :instructions] "Sales")])))
+        (is (= {:instructions "Sales"} (context orders)))
+        (is (= {:instructions "People"} (context people)))))))
 
 (deftest nested-field-dimension-import-test
   (testing "a Dimension of a nested Field in a Table without a schema imports onto that Field"
@@ -1924,11 +1939,9 @@
                     source-id    (:id @target1s)]
                 (serdes.load/load-metabase!
                  (ts/ingestion-in-memory
-                  (walk/postwalk #(cond
-                                    (= % (display-name @target-eid)) (display-name source-id)
-                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name source-id))
-                                    :else                            %)
-                                 @serialized))))
+                  (match/replace-all @serialized
+                    #{(display-name @target-eid)} (display-name source-id)
+                    #'string? (str/replace &match (tag-name @target-eid) (tag-name source-id))))))
               (is (= query (stored-query))))
             (testing "an export whose tag name names another card's entity_id is repaired from :card-id"
               (let [tag-name     #(str "#" % "-bh-population-model")
@@ -1936,11 +1949,9 @@
                     other-eid    "otherCardEntityId0001"]
                 (serdes.load/load-metabase!
                  (ts/ingestion-in-memory
-                  (walk/postwalk #(cond
-                                    (= % (display-name @target-eid)) (display-name other-eid)
-                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name other-eid))
-                                    :else                            %)
-                                 @serialized))))
+                  (match/replace-all @serialized
+                    #{(display-name @target-eid)} (display-name other-eid)
+                    #'string? (str/replace &match (tag-name @target-eid) (tag-name other-eid))))))
               (is (= query (stored-query))))))))))
 
 (deftest load-database-with-user-scheduled-syncs-test

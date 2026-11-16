@@ -1,6 +1,7 @@
 (ns metabase.api-keys.api-test
   "Tests for /api/api-key endpoints"
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.models.api-key :as api-key]
@@ -8,6 +9,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
@@ -161,6 +165,90 @@
         (is (= "Unauthenticated"
                (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" api-key}}})))))))
 
+(deftest workspace-manager-api-key-test
+  (testing "POST /api/api-key with scope workspace-manager makes a key that is listed with its scope"
+    (mt/with-empty-h2-app-db!
+      (let [{api-key :unmasked_key, id :id, :as resp}
+            (mt/user-http-request :crowberto :post 200 "api-key"
+                                  {:group_id (:id (perms-group/admin))
+                                   :name     "CI workspaces"
+                                   :scope    "workspace-manager"})]
+        (is (= "workspace-manager" (:scope resp)))
+        (is (= :workspace-manager (t2/select-one-fn :scope :model/ApiKey :id id)))
+        (is (= [{:name "CI workspaces", :scope "workspace-manager"}]
+               (map #(select-keys % [:name :scope]) (mt/user-http-request :crowberto :get 200 "api-key"))))
+        (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
+        (testing "it authenticates, but only on endpoints tagged with its scope"
+          (is (=? {:error "scope_not_permitted"}
+                  (client/client :get 403 "setting" {:request-options {:headers {"x-api-key" api-key}}})))
+          (is (=? {:error "unsupported_scope"}
+                  (client/client :get 403 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))))
+        (testing "an unscoped admin key reaches an endpoint that has no scope tag"
+          (let [{unscoped :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                               {:group_id (:id (perms-group/admin))
+                                                                :name     "full admin"})]
+            (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" unscoped}}}))))))))
+
+(defn- pre-scope-build-user-id
+  "The user id a build from before the `workspace-manager` scope authenticates the raw key `raw-key` as, or nil. This
+  copies that build's lookup: master before #86791 (`metabase.server.middleware.session/current-user-info-for-api-key`
+  and `metabase.server.db/api-key-user-info`), the same on release-x.61.x to release-x.63.x. It checks that the key
+  starts with `mb_`, finds the key of an active user by the key's first 7 characters, and checks the key against the
+  stored bcrypt hash with an empty salt. It never reads `scope`. v1.50.0 does the same without the `mb_` check."
+  [raw-key]
+  (when (str/starts-with? raw-key "mb_")
+    (when-let [{stored :key, user-id :user_id}
+               (t2/query-one {:select    [:api_key.key :api_key.user_id]
+                              :from      [:api_key]
+                              :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
+                              :where     [:and
+                                          [:= :user.is_active true]
+                                          [:= :api_key.key_prefix (subs raw-key 0 7)]]
+                              :limit     [:inline 1]})]
+      (when (u.password/verify-password raw-key "" (encryption/maybe-decrypt stored))
+        user-id))))
+
+(deftest workspace-manager-api-key-is-refused-by-a-build-without-scopes-test
+  (mt/with-model-cleanup [:model/ApiKey :model/User]
+    (let [create!  (fn [body]
+                     (mt/user-http-request :crowberto :post 200 "api-key"
+                                           (merge {:group_id (:id (perms-group/admin))} body)))
+          as-key   (fn [k] {:request-options {:headers {"x-api-key" k}}})
+          scoped   (create! {:name "CI workspaces, old build", :scope "workspace-manager"})
+          unscoped (create! {:name "full admin, old build"})]
+      (testing "a build without scopes authenticates an unscoped key"
+        (is (= (:user_id (t2/select-one :model/ApiKey :id (:id unscoped)))
+               (pre-scope-build-user-id (:unmasked_key unscoped)))))
+      (testing "a build without scopes does not authenticate a workspace-manager key"
+        (is (nil? (pre-scope-build-user-id (:unmasked_key scoped)))))
+      (testing "this build authenticates the workspace-manager key, and keeps it to its scope"
+        (is (=? {:error "scope_not_permitted"}
+                (client/client :get 403 "setting" (as-key (:unmasked_key scoped))))))
+      (testing "the key list shows the workspace-manager key"
+        (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "api-key"))) (:id scoped))))
+      (testing "a regenerated workspace-manager key keeps the form a build without scopes refuses"
+        (let [{regenerated :unmasked_key} (mt/user-http-request :crowberto :put 200
+                                                                (format "api-key/%s/regenerate" (:id scoped)))]
+          (is (nil? (pre-scope-build-user-id regenerated)))
+          (is (=? {:error "scope_not_permitted"}
+                  (client/client :get 403 "setting" (as-key regenerated))))
+          (testing "and the old key no longer authenticates"
+            (is (= "Unauthenticated"
+                   (client/client :get 401 "setting" (as-key (:unmasked_key scoped)))))))))))
+
+(deftest api-keys-with-an-unknown-scope-fail-closed-test
+  (testing "a key whose scope the REST API does not know fails closed, even with a user (product SCIM keys have none)"
+    (let [unhashed (api-key/generate-key)]
+      (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key unhashed
+                                      :name                   "SCIM key with a user"
+                                      :user_id                (mt/user->id :crowberto)
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :updated_by_id          (mt/user->id :crowberto)
+                                      :scope                  :scim}]
+        (is (= "Unauthenticated"
+               (client/client :get 401 "user/current"
+                              {:request-options {:headers {"x-api-key" (u.secret/expose unhashed)}}})))))))
+
 (deftest api-keys-can-be-updated
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
                  :model/PermissionsGroup {group-id-2 :id} {:name "Uncool Friends"}]
@@ -311,6 +399,16 @@
                     (mt/latest-audit-log-entry :api-key-create id)))
             (is (= #{:name :group :key_prefix :user_id}
                    (-> (mt/latest-audit-log-entry :api-key-create id) :details keys set)))))))))
+
+(deftest workspace-manager-api-key-creation-audit-logs-its-scope-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-empty-h2-app-db!
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "api-key"
+                                           {:group_id (:id (perms-group/admin))
+                                            :name     "CI workspaces"
+                                            :scope    "workspace-manager"})]
+        (is (=? {:details {:name "CI workspaces", :scope "workspace-manager"}}
+                (mt/latest-audit-log-entry :api-key-create id)))))))
 
 (deftest api-key-operations-are-audit-logged-2
   (mt/with-premium-features #{:audit-app}

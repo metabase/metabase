@@ -395,12 +395,14 @@
       ;; same turn by the tool itself, see edit-chart-tool) can carry
       ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
       ;; structured-output doesn't know about; a full replace would drop them.
+      ;; The query comes from memory when it holds one under that id: queries are stored before charts, so a SQL
+      ;; edit later in the same response is already there, and the chart must show the edited query.
       (memory/set-chart mem
                         chart-id
                         (merge (get-in mem [:state :charts chart-id])
                                {:chart_id chart-id
                                 :query_id query-id
-                                :queries [query]
+                                :queries [(get-in mem [:state :queries query-id] query)]
                                 :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))

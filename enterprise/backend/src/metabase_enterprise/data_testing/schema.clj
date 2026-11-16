@@ -98,7 +98,7 @@
   [:sequential ::input])
 
 (mr/def ::expectation.equals
-  "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
+  "A check that the output of the query under test holds exactly the expected rows, over exactly their columns."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
@@ -25,6 +26,7 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -33,9 +35,10 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
+import { Box, Flex } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
-import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import S from "./AppComponent.module.css";
 import { AppKBarProvider } from "./AppKBarProvider";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
@@ -113,16 +116,34 @@ export function App() {
     <ErrorBoundary onError={onError}>
       <AppKBarProvider>
         <KeyboardTriggeredErrorModal />
-        <AppContainer className={CS.spread}>
+        <Flex className={CS.spread} direction="column">
           <AppBanner />
           {isAppBarVisible && <AppBarContainer />}
-          <AppContentContainer isAdminApp={isAdminApp}>
+          <Flex
+            className={cx(
+              CS.overflowHidden,
+              S.printFullHeight,
+              S.printOverflowVisible,
+            )}
+            flex="1 1 auto"
+            direction={isAdminApp ? "column" : "row"}
+            pos="relative"
+            bg="background_page-primary"
+          >
             {isNavBarEnabled && <Navbar />}
-            <AppContent ref={setViewportElement} {...RESET_SCROLL_ON_NAVIGATE}>
+            <Box
+              component="main"
+              ref={setViewportElement}
+              className={cx(CS.overflowAuto, S.printOverflowVisible)}
+              w="100%"
+              h="100%"
+              style={{ scrollMarginTop: APP_BAR_HEIGHT }}
+              {...RESET_SCROLL_ON_NAVIGATE}
+            >
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : <Outlet />}
               </ContentViewportContext.Provider>
-            </AppContent>
+            </Box>
             <UndoListing />
             <StatusListing />
             <NewModals />
@@ -136,8 +157,8 @@ export function App() {
                 isDataApp
               }
             />
-          </AppContentContainer>
-        </AppContainer>
+          </Flex>
+        </Flex>
         <Palette />
       </AppKBarProvider>
     </ErrorBoundary>

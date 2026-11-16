@@ -52,7 +52,13 @@ export const WelcomePage = (): JSX.Element | null => {
           {t`Looks like everything is working.`}{" "}
           {t`Now let’s get to know you, connect to your data, and start finding you some answers!`}
         </Box>
-        <Button variant="filled" mt="xxl" autoFocus onClick={handleStepSubmit}>
+        <Button
+          variant="filled"
+          size="lg"
+          mt="xxl"
+          autoFocus
+          onClick={handleStepSubmit}
+        >
           {t`Let's get started`}
         </Button>
       </Flex>

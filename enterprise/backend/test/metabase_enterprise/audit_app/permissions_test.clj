@@ -5,16 +5,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
-   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.collection.graph :refer [update-graph!]]
    [metabase.permissions.models.collection.graph-test :refer [graph]]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -95,7 +94,7 @@
                    have data perms for the audit DB"
           (mt/with-full-data-perms-for-all-users!
             (mt/with-test-user :rasta
-              (binding [api/*current-user-permissions-set* (delay #{})]
+              (mt/with-non-admin-groups-no-collection-perms (audit/default-audit-collection)
                 (let [audit-view (->> (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})
                                       (tu/poll-until 5000))]
                   (is (= {:message "You do not have access to the audit database"
@@ -125,20 +124,20 @@
                     audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"
           ;; Audit DB starts with full data access but no query builder access
-          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
-          (is (= :no (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table))))
+          (is (= :unrestricted (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {(:id view-table) database-id}) (:id view-table))))
+          (is (= :no (get (data-perms/table-permissions-for-groups #{group-id} :perms/create-queries {(:id view-table) database-id}) (:id view-table))))
           ;; Granting access to the audit collection also grants query builder access to the DB
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
-          (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))
+          (is (= :unrestricted (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {(:id view-table) database-id}) (:id view-table))))
+          (is (= :query-builder (get (data-perms/table-permissions-for-groups #{group-id} :perms/create-queries {(:id view-table) database-id}) (:id view-table)))))
         (testing "Setting audit collection to :write downgrades to :read instead of throwing (#71300)"
           (update-graph! (assoc-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
                                    [:groups group-id (:id collection)] :write))
           (is (= :read (get-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
                                [:groups group-id (:id collection)]))
               "Audit collection permission should be stored as :read, not :write")
-          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
-          (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))))))
+          (is (= :unrestricted (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {(:id view-table) database-id}) (:id view-table))))
+          (is (= :query-builder (get (data-perms/table-permissions-for-groups #{group-id} :perms/create-queries {(:id view-table) database-id}) (:id view-table)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
 (defn install-audit-db-if-needed!
@@ -159,16 +158,16 @@
   (install-audit-db-if-needed!)
   (mt/with-temp [:model/Card audit-child-card {:collection_id (:id (audit/default-audit-collection))}
                  :model/Card root-child-card {:collection_id nil}]
-    (is (false? (mi/can-write? audit-child-card)))
-    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
-      (is (true? (mi/can-write? root-child-card))))
-    (binding [api/*current-user-permissions-set* (delay #{"/"})]
-      (is (true? (mi/can-write? root-child-card))))))
+    (is (false? (mi/can-write? (t2/hydrate audit-child-card :can_write))))
+    (mt/with-test-user :rasta
+      (is (true? (mi/can-write? (t2/hydrate root-child-card :can_write)))))
+    (mt/with-test-user :crowberto
+      (is (true? (mi/can-write? (t2/hydrate root-child-card :can_write)))))))
 
 (deftest can-write-is-false-for-audit-content-cards-test
   (install-audit-db-if-needed!)
   (let [audit-cards (t2/select :model/Card :collection_id (:id (audit/default-audit-collection)))]
-    (is (= #{false} (set (map mi/can-write? audit-cards))))))
+    (is (= #{false} (set (map mi/can-write? (t2/hydrate audit-cards :can_write)))))))
 
 (deftest cannot-edit-audit-content-cards-over-api
   (install-audit-db-if-needed!)
@@ -180,16 +179,16 @@
   (install-audit-db-if-needed!)
   (mt/with-temp [:model/Dashboard audit-child-dashboard {:collection_id (:id (audit/default-audit-collection))}
                  :model/Dashboard root-child-dashboard {:collection_id nil}]
-    (is (false? (mi/can-write? audit-child-dashboard)))
-    (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
-      (is (true? (mi/can-write? root-child-dashboard))))
-    (binding [api/*current-user-permissions-set* (delay #{"/"})]
-      (is (true? (mi/can-write? root-child-dashboard))))))
+    (is (false? (mi/can-write? (t2/hydrate audit-child-dashboard :can_write))))
+    (mt/with-test-user :rasta
+      (is (true? (mi/can-write? (t2/hydrate root-child-dashboard :can_write)))))
+    (mt/with-test-user :crowberto
+      (is (true? (mi/can-write? (t2/hydrate root-child-dashboard :can_write)))))))
 
 (deftest can-write-is-false-for-audit-content-dashboards-test
   (install-audit-db-if-needed!)
   (let [audit-dashboards (t2/select :model/Dashboard :collection_id (:id (audit/default-audit-collection)))]
-    (is (= #{false} (set (map mi/can-write? audit-dashboards))))))
+    (is (= #{false} (set (map mi/can-write? (t2/hydrate audit-dashboards :can_write)))))))
 
 (deftest cannot-edit-audit-content-dashboards-over-api
   (install-audit-db-if-needed!)
