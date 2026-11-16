@@ -150,15 +150,34 @@
     (instance? java.time.ZonedDateTime x) (t/offset-date-time x)
     :else                               x))
 
+(def ^:private now-range
+  "The first and last moments a MySQL app DB stores in a `TIMESTAMP` column, the narrowest range of the app DBs."
+  [(t/instant "1970-01-01T00:00:01Z") (t/instant "2038-01-19T03:14:07Z")])
+
+(defn- in-now-range?
+  "Whether the moment `x` lies in [[now-range]]."
+  [x]
+  (let [[first-moment last-moment] now-range
+        moment                     (t/instant x)]
+    (not (or (t/before? moment first-moment) (t/after? moment last-moment)))))
+
 (mr/def ::now
   "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
-  as `2026-10-13T00:00:00Z`. SQL the test's author writes, in inputs and expectations, reads the database's own clock."
+  as `2026-10-13T00:00:00Z`, from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z. SQL the test's author writes, in inputs
+  and expectations, reads the database's own clock."
   [:and
    {:decode/normalize ->offset-date-time
     :json-schema      {:type "string" :format "date-time"}}
    (mu/with-api-error-message
     (ms/InstanceOfClass java.time.OffsetDateTime)
-    (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))])
+    (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))
+   (mu/with-api-error-message
+    [:fn in-now-range?]
+    (deferred-tru "must be from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z"))])
+
+(mr/def ::now-string
+  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset."
+  [:and :string [:fn #(mr/validate ::now (->offset-date-time %))]])
 
 (mr/def ::test.definition
   "A test as a client writes it, without the subject it covers. Without `now`, the subject reads the real clock."
@@ -359,7 +378,7 @@
    [:merge
     [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
     [:map {:closed true}
-     [:now         {:optional true} [:maybe ms/TemporalString]]
+     [:now         {:optional true} [:maybe ::now-string]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-transform-test
