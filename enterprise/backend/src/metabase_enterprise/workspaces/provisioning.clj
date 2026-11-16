@@ -312,7 +312,8 @@
               (binding [t2.connection/*current-connectable* nil]
                 (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
                                                              :output_namespace schema
-                                                             :database_details db-details}))
+                                                             :database_details db-details
+                                                             :updated_at       (mi/current-timestamp)}))
               (throw t))
             (finally
               ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -329,7 +330,8 @@
   fresh autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status :teardown_failed})))
+    (ws.db/update-workspace-database! workspace-database-id {:status     :teardown_failed
+                                                             :updated_at (mi/current-timestamp)})))
 
 (defn mark-workspace-database-never-started!
   "Set the WorkspaceDatabase with `workspace-database-id` to `:never_started`, which makes its teardown skip the
@@ -338,7 +340,8 @@
   autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status :never_started})))
+    (ws.db/update-workspace-database! workspace-database-id {:status     :never_started
+                                                             :updated_at (mi/current-timestamp)})))
 
 (defn abandon-teardown-failed-workspace-database!
   "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
