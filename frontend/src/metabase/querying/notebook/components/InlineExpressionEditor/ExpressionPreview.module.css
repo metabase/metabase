@@ -3,11 +3,15 @@
   grid-row: 3;
   grid-column: 1;
   min-width: 0;
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
-/* The rows of an outdated preview fade, the header stays. */
+/* The rows of an outdated preview fade. */
 .outdated .body {
   opacity: 0.5;
+}
+
+/* A message in place of the table. */
+.message {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
 }

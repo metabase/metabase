@@ -351,7 +351,7 @@ export function InlineExpressionEditor({
               )}
               <ToolbarSegment
                 icon={<PlayIcon />}
-                label={t`Preview (${PREVIEW_SHORTCUT})`}
+                label={t`Preview column (${PREVIEW_SHORTCUT})`}
                 disabled={isEmpty}
                 onClick={runPreview}
               />
@@ -397,9 +397,6 @@ export function InlineExpressionEditor({
           name={previewRun.name ?? name ?? t`New column`}
           refreshKey={previewRefreshKey}
           isOutdated={isPreviewOutdated}
-          runShortcut={PREVIEW_SHORTCUT}
-          onRun={runPreview}
-          onClose={() => setPreviewRun(undefined)}
         />
       )}
     </Layout>

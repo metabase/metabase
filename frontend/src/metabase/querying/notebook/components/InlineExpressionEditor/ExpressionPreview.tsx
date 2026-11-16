@@ -5,26 +5,17 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
-import {
-  ActionIcon,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Loader, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
-import { VisualizationPreview } from "../NotebookStep/NotebookStepPreview";
-
 import S from "./ExpressionPreview.module.css";
+import { PreviewTable } from "./PreviewTable";
 
 // Rows to run the expression on, and rows to show from them.
 const QUERY_ROW_COUNT = 200;
-const SHOWN_ROW_COUNT = 8;
+const SHOWN_ROW_COUNT = 6;
 
 type ExpressionPreviewProps = {
   query: Lib.Query;
@@ -37,9 +28,6 @@ type ExpressionPreviewProps = {
   refreshKey: number;
   /** True when the text in the editor is not the expression in the preview. */
   isOutdated: boolean;
-  runShortcut: string;
-  onRun: () => void;
-  onClose: () => void;
 };
 
 /**
@@ -54,9 +42,6 @@ export function ExpressionPreview({
   name,
   refreshKey,
   isOutdated,
-  runShortcut,
-  onRun,
-  onClose,
 }: ExpressionPreviewProps) {
   // The query is built only for a run. Each valid edit saves the expression,
   // which changes `query`, and a new build of the same query has new ids, so
@@ -113,7 +98,7 @@ export function ExpressionPreview({
     [data, preview, seed],
   );
 
-  // The sample, as a result for the normal table visualization.
+  // The sample as a series, for the column settings of a table question.
   const buildQuestion = useQuestionFromOptsBuilder();
   const sampleSeries = useMemo(() => {
     if (data?.data == null || sample == null || preview == null) {
@@ -131,10 +116,7 @@ export function ExpressionPreview({
       .setDisplay("table")
       .setSettings({ "table.pivot": false })
       .card();
-    return {
-      rawSeries: [{ card, data: sampleData }],
-      result: { ...data, data: sampleData },
-    };
+    return { rawSeries: [{ card, data: sampleData }] };
   }, [data, sample, preview, buildQuestion]);
 
   const errorMessage =
@@ -147,61 +129,28 @@ export function ExpressionPreview({
       className={cx(S.preview, { [S.outdated]: isOutdated && !isFetching })}
       data-testid="expression-preview"
     >
-      <Flex align="center" gap="xs" mb="sm">
-        <Text fw="bold" fz="sm">
-          {t`Preview`}
-        </Text>
-        {isFetching ? (
-          <Loader size="xs" ml="xs" />
-        ) : (
-          isOutdated && (
-            <Text fz="sm" c="text-secondary">
-              {"· "}
-              {t`Outdated`}
-            </Text>
-          )
-        )}
-        <Flex ml="auto" gap="xs">
-          {isOutdated ? (
-            <Tooltip label={t`Run the new expression (${runShortcut})`}>
-              <Button
-                size="md"
-                variant="filled"
-                leftSection={<Icon name="refresh" />}
-                onClick={onRun}
-              >{t`Refresh`}</Button>
-            </Tooltip>
-          ) : (
-            <Tooltip label={t`Show other rows`}>
-              <ActionIcon
-                aria-label={t`Show other rows`}
-                onClick={() => setSeed((seed) => seed + 1)}
-                disabled={sample == null}
-              >
-                <Icon name="refresh" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-          <ActionIcon aria-label={t`Close preview`} onClick={onClose}>
-            <Icon name="close" />
-          </ActionIcon>
-        </Flex>
-      </Flex>
       <div className={S.body}>
         {errorMessage != null ? (
-          <Text c="feedback-negative" fz="sm">
+          <Text c="feedback-negative" fz="sm" className={S.message}>
             {errorMessage}
           </Text>
         ) : sample == null ? (
-          <Loader size="sm" />
+          <div className={S.message}>
+            <Loader size="sm" />
+          </div>
         ) : sample.rows.length === 0 ? (
-          <Text c="text-secondary" fz="sm">{t`No rows`}</Text>
+          <Text c="text-secondary" fz="sm" className={S.message}>
+            {t`No rows`}
+          </Text>
         ) : (
-          <VisualizationPreview
-            rawSeries={sampleSeries?.rawSeries ?? null}
-            result={sampleSeries?.result ?? null}
-            error={null}
-          />
+          sampleSeries != null && (
+            <PreviewTable
+              rawSeries={sampleSeries.rawSeries}
+              cols={sample.cols}
+              rows={sample.rows}
+              hasKey={sample.hasKey}
+            />
+          )
         )}
       </div>
     </div>
@@ -380,6 +329,7 @@ function getSample(
     cols: order.map((index) => cols[index]),
     rows: picked.map(reorder),
     resultIndex: order.length - 1,
+    hasKey: keyIndex >= 0,
   };
 }
 
