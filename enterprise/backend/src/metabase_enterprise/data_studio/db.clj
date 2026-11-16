@@ -103,18 +103,23 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
 
-(mu/defn publish-tables!
-  "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
-  [table-ids     :- [:set ::lib.schema.id/table]
-   collection-id :- ::lib.schema.id/collection]
-  (schema.table-user-settings/upsert-table-user-settings-for-tables!
-   table-ids {:collection_id collection-id, :is_published true}))
+(mu/defn publish-tables! :- [:set ::lib.schema.id/table]
+  "Publish the Tables with `table-ids` into the Collection with `collection-id`, skipping those already published there,
+  or every published one with `unpublished-only?`. Returns the ids of the Tables that changed."
+  ([table-ids     :- [:set ::lib.schema.id/table]
+    collection-id :- ::lib.schema.id/collection]
+   (publish-tables! table-ids collection-id {}))
+  ([table-ids     :- [:set ::lib.schema.id/table]
+    collection-id :- ::lib.schema.id/collection
+    opts          :- [:map {:closed true}
+                      [:unpublished-only? {:optional true} :boolean]]]
+   (schema.table-user-settings/set-tables-published! table-ids collection-id opts)))
 
-(mu/defn unpublish-tables!
-  "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
+(mu/defn unpublish-tables! :- [:set ::lib.schema.id/table]
+  "Unpublish the published Tables among `table-ids` and detach them from their Collection, returning the ids of the
+  Tables that changed."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (schema.table-user-settings/upsert-table-user-settings-for-tables!
-   table-ids {:collection_id nil, :is_published false}))
+  (schema.table-user-settings/set-tables-published! table-ids nil))
 
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."

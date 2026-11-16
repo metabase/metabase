@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.core :as perms]
@@ -11,7 +12,10 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -188,6 +192,43 @@
                                  {:table_ids [(mt/id :venues)]})
            (testing "updated_at bumps on unpublish"
              (is (pos? (compare (updated-at) baseline))))))))))
+
+(deftest concurrent-publishes-send-one-event-test
+  (testing "when two publishes race for a Table, only the first changes it, so one table-publish event is sent"
+    (mt/with-premium-features #{:library :audit-app}
+      (without-library
+       ;; Not `mt/with-temp`: it runs its body in one rolled-back transaction on one connection, which the two
+       ;; publishing threads would share, so neither could see the other's uncommitted work.
+       (let [collection-id (t2/insert-returning-pk! :model/Collection
+                                                    (assoc (mt/with-temp-defaults :model/Collection)
+                                                           :type collection/library-data-collection-type))
+             table-id      (t2/insert-returning-pk! :model/Table (mt/with-temp-defaults :model/Table))]
+         (try
+           (let [upsert        @#'schema.table-user-settings/upsert-table-user-settings-for-tables!
+                 first-call?   (atom true)
+                 first-updated (CountDownLatch. 1)
+                 publish!      #(mt/with-current-user (mt/user->id :crowberto)
+                                  (data-studio.db/publish-tables! #{table-id} collection-id))]
+             (mt/with-dynamic-fn-redefs [schema.table-user-settings/upsert-table-user-settings-for-tables!
+                                         (fn [table-ids settings]
+                                           (let [result (upsert table-ids settings)]
+                                             ;; Hold the first publish's transaction open after its update, so the
+                                             ;; second publish starts while the first is uncommitted.
+                                             (when (compare-and-set! first-call? true false)
+                                               (.countDown first-updated)
+                                               (Thread/sleep 500))
+                                             result))]
+               (let [first-publish  (future (publish!))
+                     _              (.await first-updated 10 TimeUnit/SECONDS)
+                     second-publish (future (publish!))]
+                 (is (= [#{table-id} #{}]
+                        [(deref first-publish 10000 ::timeout) (deref second-publish 10000 ::timeout)]))
+                 (is (= 1 (t2/count :model/AuditLog :topic "table-publish" :model_id table-id))))))
+           (finally
+             (t2/delete! :model/AuditLog :model "Table" :model_id table-id)
+             (t2/delete! :model/TableUserSettings :table_id table-id)
+             (t2/delete! :model/Table :id table-id)
+             (t2/delete! :model/Collection :id collection-id))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
@@ -445,6 +486,18 @@
                                                  :semantic_type :type/FK :base_type :type/Integer}
                  :model/Dimension  _            {:field_id y-fk :human_readable_field_id x-name :type :external}]
     (f {:coll-a coll-a :coll-b coll-b :x-id x-id :y-id y-id})))
+
+(deftest unpublish-on-collection-archive-emits-events-test
+  (mt/with-premium-features #{:library :audit-app}
+    (testing "archiving a Library collection emits table-unpublish events for its own tables, not just FK-linked ones"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+          (doseq [table-id [x-id y-id]]
+            (is (=? {:topic :table-unpublish :model "Table" :model_id table-id}
+                    (mt/latest-audit-log-entry "table-unpublish" table-id)))))))))
 
 (deftest unpublish-fk-linked-tables-on-collection-delete-test
   (mt/with-premium-features #{:library}

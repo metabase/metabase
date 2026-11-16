@@ -139,6 +139,31 @@
              existing (with-set-flags settings settings settings))))
         (warehouse-schema.db/update-tables! table-ids settings)))))
 
+(mu/defn set-tables-published! :- [:set ::lib.schema.id/table]
+  "Publish the Tables among `table-ids` into the Collection with `collection-id`, or unpublish them when it is nil,
+  changing only the Tables whose state differs, and return the ids of those that changed.
+
+  Publishing skips the Tables already published in that Collection, or, with `unpublished-only?`, every published
+  Table. Unpublishing skips the unpublished ones. The rows are locked before they are checked, so when two calls race
+  for a Table only the first changes it, and the Table model's hooks send one publish event for it."
+  ([table-ids     :- [:set ::lib.schema.id/table]
+    collection-id :- [:maybe ::lib.schema.id/collection]]
+   (set-tables-published! table-ids collection-id {}))
+  ([table-ids                   :- [:set ::lib.schema.id/table]
+    collection-id               :- [:maybe ::lib.schema.id/collection]
+    {:keys [unpublished-only?]} :- [:map {:closed true}
+                                    [:unpublished-only? {:optional true} :boolean]]]
+   (if (empty? table-ids)
+     #{}
+     (t2/with-transaction [_]
+       (let [changed (cond
+                       (nil? collection-id) (warehouse-schema.db/lock-table-ids-with-published-state table-ids true)
+                       unpublished-only?    (warehouse-schema.db/lock-table-ids-with-published-state table-ids false)
+                       :else                (warehouse-schema.db/lock-table-ids-not-published-in table-ids collection-id))]
+         (upsert-table-user-settings-for-tables! changed {:collection_id collection-id
+                                                          :is_published  (some? collection-id)})
+         changed)))))
+
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
