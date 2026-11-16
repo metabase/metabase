@@ -1068,11 +1068,11 @@
                       (try (#'clickhouse/destroy-workspace! (failing-statement {drop-user drop-user-error}) "d" "u")
                            nil
                            (catch Throwable t t))))))
-  (testing "when only the first KILL QUERY fails, for lack of the grant, the error names the grant"
+  (testing "when only the first KILL QUERY fails, for lack of a grant, the error names both grants it may lack"
     (let [kill-error (SQLException. "Code: 497. DB::Exception: <Unreadable error message> (transport error: 403)" "" 497)
           e          (is (thrown? clojure.lang.ExceptionInfo
                                   (#'clickhouse/destroy-workspace! (statement-failing-at {1 kill-error}) "d" "u")))]
-      (is (re-find #"lacks the KILL QUERY grant" (ex-message e)))
+      (is (re-find #"lacks the KILL QUERY grant or SELECT on system\.processes" (ex-message e)))
       (is (identical? kill-error (ex-cause e)))))
   (testing "when only the first KILL QUERY fails for another reason, its error is rethrown as is"
     (let [kill-error (SQLException. "kill failed")]
@@ -1339,7 +1339,7 @@
      (mt/with-premium-features #{:workspaces}
        (let [workspace  (workspace-for-test "ws-no-kill")
              user       (-> workspace :database_details :user)
-             ;; an admin login that can drop users and databases, but lacks KILL QUERY
+             ;; an admin login that can drop users and databases, and read system.processes, but lacks KILL QUERY
              no-kill    {:user (str "mb_test_no_kill_" (rand-int 100000000)) :password "no-kill-pw"}
              admin      (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
              running?   #(seq (jdbc/query admin ["SELECT 1 FROM system.processes WHERE user = ?" user]))
@@ -1347,6 +1347,8 @@
          (try
            (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-kill) (:password no-kill))])
            (jdbc/execute! admin [(format "GRANT SHOW, DROP DATABASE, DROP USER ON *.* TO `%s`" (:user no-kill))])
+           ;; without it, KILL QUERY is denied for lack of SELECT on system.processes, not of KILL QUERY
+           (jdbc/execute! admin [(format "GRANT SELECT ON system.processes TO `%s`" (:user no-kill))])
            (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)
            (future
              (try
@@ -1361,10 +1363,11 @@
                                   (driver.conn/with-swapped-connection-details (mt/id) no-kill
                                     (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))]
                (testing "with a message that names the missing grant and says what teardown dropped"
-                 (is (= (format (str "Dropped the workspace user `%s` and its database `%s`, but could not end the "
-                                     "user's running queries: the admin connection's login lacks the KILL QUERY grant. "
-                                     "The queries run until they finish, and teardown fails until then. Grant KILL "
-                                     "QUERY to the login, or wait for the queries to finish, and retry.")
+                 (is (= (format (str "Dropped the workspace user `%s` and its database `%s`, but could not check for "
+                                     "and end the user's running queries: the admin connection's login lacks the KILL "
+                                     "QUERY grant or SELECT on system.processes. Without SELECT on system.processes, "
+                                     "teardown fails on every retry. Without KILL QUERY, the queries run until they "
+                                     "finish, and teardown fails until then. Grant both to the login and retry.")
                                 user (:schema workspace))
                         (ex-message e))))
                (is (= 497 (some-> ^SQLException (ex-cause e) .getErrorCode)))) ; ACCESS_DENIED
@@ -1596,3 +1599,36 @@
              (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" user)])
              (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user admin2))])
              (jdbc/execute! admin [(format "DROP DATABASE IF EXISTS `%s`" (:schema workspace))]))))))))
+
+(deftest ^:synchronized init-workspace-isolation-requires-the-admin-to-read-system-processes-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace    (workspace-for-test "ws-no-processes")
+             user         (-> workspace :database_details :user)
+             ;; an admin login with every grant init and teardown use, KILL QUERY included, but no SELECT on the
+             ;; system database: teardown's KILL QUERY reads system.processes
+             no-processes {:user (str "mb_test_no_processes_" (rand-int 100000000)) :password "no-processes-pw"}
+             admin        (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             user-exists? #(seq (jdbc/query admin ["SELECT 1 FROM system.users WHERE name = ?" user]))
+             db-exists?   #(seq (jdbc/query admin ["SELECT 1 FROM system.databases WHERE name = ?" (:schema workspace)]))]
+         (try
+           (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-processes) (:password no-processes))])
+           (jdbc/execute! admin [(format "GRANT CURRENT GRANTS ON *.* TO `%s` WITH GRANT OPTION" (:user no-processes))])
+           (jdbc/execute! admin [(format "REVOKE SELECT ON system.* FROM `%s`" (:user no-processes))])
+           (testing "precondition: the login cannot read system.processes"
+             (is (= 497 ; ACCESS_DENIED
+                    (sql-error-code #(jdbc/query (workspace-user-spec {:database_details no-processes})
+                                                 ["SELECT query_id, user, query FROM system.processes LIMIT 0"])))))
+           (driver.conn/with-swapped-connection-details (mt/id) no-processes
+             (testing "init answers 412, names the grant, and creates nothing"
+               (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                    (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)))]
+                 (is (= {:status-code 412} (ex-data e)))
+                 (is (str/includes? (str (ex-message e))
+                                    (format "GRANT SELECT ON system.processes TO `%s`" (:user no-processes)))))
+               (is (not (user-exists?)))
+               (is (not (db-exists?)))))
+           (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
+             (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-processes))]))))))))

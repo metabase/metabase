@@ -771,6 +771,25 @@
              false
              (throw e))))))))
 
+(defn- check-admin-reads-system-processes!
+  "Throws a 412 when the login of `conn` cannot read `system.processes`. Teardown's KILL QUERY reads that table, even
+  when no query matches. When the server requires a grant to read the `system` database, a login without one fails
+  every teardown. Init runs this check before any DDL."
+  [^Connection conn]
+  (try
+    (jdbc/query {:connection conn} ["SELECT query_id, user, query FROM system.processes LIMIT 0"])
+    (catch SQLException e
+      ;; 497 is ACCESS_DENIED
+      (when-not (= 497 (.getErrorCode e))
+        (throw e))
+      (let [login (-> (jdbc/query {:connection conn} ["SELECT currentUser() AS login"]) first :login)]
+        (throw (ex-info (format (str "The admin connection's login cannot read system.processes. Workspace teardown "
+                                     "reads it to end the workspace user's queries. Run GRANT SELECT ON "
+                                     "system.processes TO %s and retry.")
+                                (quote-field login))
+                        {:status-code 412}
+                        e))))))
+
 (defn- check-system-db-requires-grant!
   "Throws a 412 when the workspace user can read the `system` database without a grant: see [[system-db-readable?]].
   Then it could read `system.query_log` and `system.processes`, which hold the queries of every user."
@@ -797,6 +816,7 @@
     (sql-jdbc.execute/do-with-connection-with-options
      driver lib-db {:write? true}
      (fn [^Connection conn]
+       (check-admin-reads-system-processes! conn)
        (check-workspace-names-free! conn user db-name)
        (with-open [stmt (.createStatement conn)]
          (let [[create-db create-user & grants] (init-workspace-sqls db-name user escaped-password canonical-db)]
@@ -879,10 +899,13 @@
   KILL QUERY errors are attached to it as suppressed.
 
   When both drops succeed, an ALTER USER error is logged, not thrown: a dropped user cannot log in. So the admin
-  connection's login does not need the ALTER USER grant. Without it, the lock-out step is skipped. A KILL QUERY error
-  is thrown, with the other KILL QUERY's error attached as suppressed. When it is access denied (the admin may lack the
-  KILL QUERY grant, which ClickHouse checks only when another user's query matches), the thrown error names the missing
-  grant. When both KILL QUERYs are denied, only the first error is kept."
+  connection's login does not need the ALTER USER grant. Without it, the lock-out step is skipped. The login needs
+  KILL QUERY, SELECT ON system.processes, DROP DATABASE and DROP USER.
+
+  A KILL QUERY error is thrown, with the other KILL QUERY's error attached as suppressed. When it is access denied, the
+  thrown error names both grants the login may lack: ClickHouse checks KILL QUERY only when another user's query
+  matches, and checks SELECT ON system.processes every time when the server requires a grant to read the `system`
+  database. When both KILL QUERYs are denied, only the first error is kept."
   [^Statement stmt db-name user]
   (let [[lock kill drop-db drop-user kill-again] (destroy-workspace-sqls db-name user)
         lock-error                     (execute-for-error stmt lock)
@@ -908,10 +931,12 @@
       (doseq [^Throwable other others]
         (.addSuppressed error other))
       (throw (if (and (not drop-error) (denied? error))
-               (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not end the user's "
-                                     "running queries: the admin connection's login lacks the KILL QUERY grant. The "
-                                     "queries run until they finish, and teardown fails until then. Grant KILL QUERY "
-                                     "to the login, or wait for the queries to finish, and retry.")
+               (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not check for "
+                                     "and end the user's running queries: the admin connection's login lacks the "
+                                     "KILL QUERY grant or SELECT on system.processes. Without SELECT on "
+                                     "system.processes, teardown fails on every retry. Without KILL QUERY, the "
+                                     "queries run until they finish, and teardown fails until then. Grant both to "
+                                     "the login and retry.")
                                 (quote-field user) (quote-schema db-name))
                         {:user user, :database db-name}
                         error)
