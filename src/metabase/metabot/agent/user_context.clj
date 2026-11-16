@@ -24,7 +24,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -419,7 +420,7 @@
   [{card-id :id card-type :type :as card}]
   ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
   ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
-  (when (mi/can-read? :model/Database (:database-id card))
+  (when (some-> (:database-id card) metabot.db/database (t2/hydrate :can_read) mi/can-read?)
     ;; The checks of a `read_resource` call on the card's URI, so the line never points at a read that fails.
     (resources-tools/check-card-resource-database card-id)
     (when (or (not (shared/curated-only?))
