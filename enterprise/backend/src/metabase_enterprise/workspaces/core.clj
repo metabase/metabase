@@ -32,9 +32,11 @@
          └──────────────────────────────────────── provisioned
 
    Deleting a workspace tears down each of its databases, except while a create
-   or deprovision is running (409). A teardown that fails leaves the row
-   `teardown_failed`: warehouse objects may remain, the row keeps blocking
-   deletion of its Database, and a retried delete tears it down again.
+   or deprovision is running (409). Only a failure of the warehouse teardown itself
+   leaves the row `teardown_failed`: warehouse objects may remain, the row keeps
+   blocking deletion of its Database, and a retried delete tears it down again. A
+   failure before the warehouse call (a lock timeout, a failed connection lookup)
+   leaves the row's status as it was, and the next delete retries it.
 
    A failed create marks a row whose provisioning never started, and that it could
    not delete, `never_started`. The warehouse has nothing of such a row, so a delete
