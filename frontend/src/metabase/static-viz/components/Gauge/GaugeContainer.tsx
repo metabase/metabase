@@ -2,7 +2,7 @@ import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
-import { truncateText } from "metabase/viz-core";
+import { fixSwappedMinMax, truncateText } from "metabase/viz-core";
 
 import Gauge from "./Gauge";
 import {
@@ -21,7 +21,6 @@ import {
   calculateRelativeValueAngle,
   calculateSegmentLabelPosition,
   calculateSegmentLabelTextAnchor,
-  fixSwappedMinMax,
   gaugeSorter,
   populateDefaultColumnSettings,
   removeDuplicateElements,

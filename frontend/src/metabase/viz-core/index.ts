@@ -410,6 +410,7 @@ export {
   columnsAreValid,
   DATA_IMAGE_URI_PATTERN,
   findSensibleSankeyColumns,
+  fixSwappedMinMax,
   getCardAfterVisualizationClick,
   getCardKey,
   getColumnExtent,
