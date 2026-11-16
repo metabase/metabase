@@ -543,7 +543,9 @@
             (reset! db2s (ts/create! :model/Database :name "db2"))
             (reset! t2s  (ts/create! :model/Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! :model/Field    :name "Target Field" :table_id (:id @t1s)))
-            (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
+            (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"
+                                     :table_id (:id (ts/create! :model/Table :name "comments" :db_id (:id @db1s)))
+                                     :fk_target_field_id (:id @f1s)))
             (reset! f3s  (ts/create! :model/Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "serialization of databases is based on the :name"

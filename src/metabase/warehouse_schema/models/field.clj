@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -159,18 +160,111 @@
           (assoc field :effective_type base-raw))
       field)))
 
-(t2/define-before-insert :model/Field
+(defn- coercion-strategy
+  "The `:coercion_strategy` of `field` as a keyword, or nil when it has none or one the column does not take."
   [field]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (-> (merge defaults field)
-        enforce-effective-type-invariant)))
+  (let [coercion (some-> (:coercion_strategy field) keyword)]
+    (when (isa? coercion :Coercion/*)
+      coercion)))
 
-(t2/define-before-update :model/Field
-  [field]
-  (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
-  (enforce-effective-type-invariant field))
+(defn- coercion-changes
+  "The `:coercion_strategy` and `:effective_type` to write for `field` given the columns `changes` writes: the effective
+  type of a newly set strategy that comes without one, and neither once the `:base_type` moves away from the strategy."
+  [{:keys [base_type] :as field} changes]
+  (when-let [coercion (coercion-strategy field)]
+    (cond
+      (and (contains? changes :coercion_strategy) (not (contains? changes :effective_type)))
+      {:effective_type (types/effective-type-for-coercion coercion)}
+
+      (and (contains? changes :base_type)
+           (not (contains? changes :coercion_strategy))
+           (not (types/is-coercible-from? coercion (keyword base_type))))
+      {:coercion_strategy nil, :effective_type base_type})))
+
+(defn- fk-databases
+  "The Database ids the foreign key checks of `fields` compare, loaded together: those of their Tables under `:tables`
+  and of their targets under `:targets`, by id."
+  [fields]
+  (let [target-ids (into #{} (keep :fk_target_field_id) fields)]
+    (when (seq target-ids)
+      {:tables  (warehouse-schema.db/table-database-ids (into #{} (keep :table_id) fields))
+       :targets (warehouse-schema.db/field-database-ids target-ids)})))
+
+(defn- check-fk-target
+  "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the same Database, per `databases`, the
+  [[fk-databases]] of its statement."
+  [{:keys [table_id fk_target_field_id]} {:keys [tables targets]}]
+  (let [target-database-id (get targets fk_target_field_id)]
+    (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
+    (api/checkp (= target-database-id (get tables table_id))
+                :fk_target_field_id (tru "Target field must belong to the same database"))))
+
+(defn- fk-semantic-type?
+  "Whether `semantic-type` marks a foreign key."
+  [semantic-type]
+  (isa? (some-> semantic-type keyword) :type/FK))
+
+(defn- internal-remapping-allowed?
+  "Whether a Field of `base-type` and `semantic-type` can hold an internal remapping."
+  [base-type semantic-type]
+  (let [semantic-type (some-> semantic-type keyword)]
+    (and (isa? (keyword base-type) :type/Integer)
+         (or (nil? semantic-type)
+             (isa? semantic-type :type/Category)
+             (isa? semantic-type :type/Enum)))))
+
+(defn nested-fields-pattern
+  "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
+  [field-name]
+  (str "[\"" field-name "\",%]"))
+
+(mi/define-before-insert :model/Field
+  [fields]
+  (let [databases (fk-databases fields)]
+    (for [field fields]
+      (let [field (merge field
+                         {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
+                         (coercion-changes field field))]
+        (when (:fk_target_field_id field)
+          (check-fk-target field databases))
+        (enforce-effective-type-invariant field)))))
+
+(defn- checked-update
+  "`field`, a row an UPDATE writes, with its rules checked, its derived columns set, and the rows that follow it kept in
+  step; `databases` are the [[fk-databases]] of the statement."
+  [{:keys [id table_id] :as field} databases]
+  (let [changes     (t2/changes field)
+        original    (t2/original field)
+        removed-fk? (and (contains? changes :semantic_type)
+                         (fk-semantic-type? (:semantic_type original))
+                         (not (fk-semantic-type? (:semantic_type field))))
+        field       (cond-> (merge field (coercion-changes field changes))
+                      removed-fk? (assoc :fk_target_field_id nil))]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
+      (check-fk-target field databases))
+    (when (false? (:active changes))
+      (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
+      (warehouse-schema.db/clear-fk-targets-to-field! id))
+    (when removed-fk?
+      (warehouse-schema.db/unset-user-settings-fk-target! id)
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
+    (when (and (:display_name changes) (not removed-fk?))
+      (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
+    (when (and (some #(contains? changes %) [:semantic_type :base_type])
+               (not (internal-remapping-allowed? (:base_type field) (:semantic_type field))))
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))
+    (when (contains? changes :json_unfolding)
+      (warehouse-schema.db/set-nested-fields-active! table_id
+                                                     (nested-fields-pattern (:name field))
+                                                     (boolean (:json_unfolding field))))
+    (enforce-effective-type-invariant field)))
+
+(mi/define-before-update :model/Field
+  [fields]
+  (let [databases (fk-databases (filter #(contains? (t2/changes %) :fk_target_field_id) fields))]
+    (mapv #(checked-update % databases) fields)))
 
 (t2/define-before-delete :model/Field
   [field]

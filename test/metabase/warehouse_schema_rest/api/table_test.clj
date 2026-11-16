@@ -787,7 +787,8 @@
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
   that for `category_id`, then invoke `f` and roll it back afterwards"
   [semantic-type f]
-  (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:semantic_type semantic-type}
+  (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:semantic_type      semantic-type
+                                                                      :fk_target_field_id (mt/id :categories :id)}
     (f)))
 
 (deftest query-metadata-remappings-test
@@ -847,11 +848,8 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-semantic-type!
-                :type/Category
-                (fn []
-                  (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
+               (narrow-fields ["PRICE" "CATEGORY_ID"]
+                              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
 
 (deftest ^:parallel related-test
   (testing "GET /api/table/:id/related"

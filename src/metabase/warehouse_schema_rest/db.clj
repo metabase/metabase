@@ -29,13 +29,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn set-nested-fields-active!
-  "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
-  `nfc-path-pattern`, returning the number updated."
-  [table-id          :- ::lib.schema.id/table
-   nfc-path-pattern  :- :string
-   active?           :- :boolean]
-  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+(mu/defn nested-fields-exist? :- :boolean
+  "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
+  [table-id         :- ::lib.schema.id/table
+   nfc-path-pattern :- :string]
+  (t2/exists? :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern]))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
@@ -52,17 +50,6 @@
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
   (t2/update! :model/Dimension :id id changes))
-
-(mu/defn rename-dimension-for-field!
-  "Set the name of the Dimension of the Field with `field-id`."
-  [field-id       :- ::lib.schema.id/field
-   dimension-name :- :string]
-  (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
-
-(mu/defn delete-dimension!
-  "Delete the Dimension with `id`."
-  [id :- ::lib.schema.id/dimension]
-  (t2/delete! :model/Dimension :id id))
 
 (mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."

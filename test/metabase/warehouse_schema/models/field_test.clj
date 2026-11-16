@@ -163,10 +163,10 @@
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
       (t2/update! :model/Field :id field-id {:effective_type    :type/Number
-                                             :coercion_strategy :Coercion/String->Number})
+                                             :coercion_strategy :Coercion/String->Float})
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
-               :coercion_strategy :Coercion/String->Number}
+               :coercion_strategy :Coercion/String->Float}
               (t2/select-one :model/Field :id field-id))))))
 
 (deftest effective-type-guard-clearing-coercion-resets-effective-type-test
@@ -178,7 +178,7 @@
                                                 :name              "clearing_coercion"
                                                 :base_type         :type/Text
                                                 :effective_type    :type/Number
-                                                :coercion_strategy :Coercion/String->Number}]
+                                                :coercion_strategy :Coercion/String->Float}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
       (t2/update! :model/Field :id field-id {:coercion_strategy nil})
       (is (=? {:base_type         :type/Text
@@ -251,7 +251,7 @@
                                   :database_type     "TEXT"
                                   :base_type         :type/Text
                                   :effective_type    :type/Number
-                                  :coercion_strategy :Coercion/String->Number
+                                  :coercion_strategy :Coercion/String->Float
                                   :position          0
                                   :database_position 0}))]
                   (t2/update! :model/Field :id id {:coercion_strategy nil})
