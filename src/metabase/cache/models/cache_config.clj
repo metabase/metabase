@@ -54,7 +54,7 @@
     "database"  (boolean (some-> target-database mi/can-write?))
     ("dashboard" "question")
     (mi/current-user-has-full-permissions?
-     (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
+     (perms/perms-objects-set-for-parent-collection nil target-collection-id :write))))
 
 (defmethod mi/can-write? :model/CacheConfig
   ([instance]

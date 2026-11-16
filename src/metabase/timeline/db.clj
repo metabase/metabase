@@ -83,11 +83,6 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Timeline :id id))
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
-
 (mu/defn insert-timeline-event!
   "Insert the TimelineEvent `row` and return the inserted instance."
   [row :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :timestamp :timezone :timeline_id :creator_id :description :time_matters :icon :archived])]

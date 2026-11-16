@@ -1,5 +1,6 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [metabase.collections.core :as collections]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
@@ -35,6 +36,8 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/search-index))
+
+(defmethod collections/root-namespace :model/ModerationReview [_model] nil)
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

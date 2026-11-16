@@ -2,6 +2,7 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.governing-collection]
    [metabase.collections.models.collection]
    [metabase.collections.update]
    [metabase.collections.util]
@@ -9,6 +10,7 @@
 
 (comment
   metabase.collections.create/keep-me
+  metabase.collections.governing-collection/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.update/keep-me
   metabase.collections.util/keep-me)
@@ -16,6 +18,12 @@
 (p/import-vars
  [metabase.collections.create
   create-collection!]
+ [metabase.collections.governing-collection
+  can-read-governing-collection?
+  can-write-governing-collection?
+  check-read-governing-collection
+  check-write-governing-collection
+  root-namespace]
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection

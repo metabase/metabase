@@ -11,6 +11,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
@@ -1988,14 +1989,11 @@
   [object-before-update object-updates]
   ;; if collection_id is set to change...
   (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
-    ;; check that we're allowed to modify the old Collection
-    (if-let [coll-id (:collection_id object-before-update)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
-    ;; check that we're allowed to modify the new Collection
-    (if-let [coll-id (:collection_id object-updates)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
+    (let [root-namespace (governing-collection/root-namespace object-before-update)]
+      ;; check that we're allowed to modify the old Collection
+      (governing-collection/check-write-governing-collection root-namespace (:collection_id object-before-update))
+      ;; check that we're allowed to modify the new Collection
+      (governing-collection/check-write-governing-collection root-namespace (:collection_id object-updates)))
     ;; check that the new location is not archived. the root can't be archived.
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))

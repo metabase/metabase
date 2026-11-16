@@ -416,7 +416,7 @@
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (collections.children/visible-model-kwds root-collection model-set)
         restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
-                                  (not (mi/can-read? root-collection)))
+                                  (not (collections/can-read-governing-collection? namespace nil)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)

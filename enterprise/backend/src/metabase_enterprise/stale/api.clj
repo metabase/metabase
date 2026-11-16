@@ -112,10 +112,7 @@
                                                      "' expected format: 'yyyy-MM-dd'")
                                                 {:status-code 400}))))
                          (t/minus (t/local-date) (t/months 6)))
-        collection     (if (= id :root)
-                         collection/root-collection
-                         (stale.db/collection id))
-        _              (api/read-check collection)
+        collection     (collections/check-read-governing-collection nil (when-not (= id :root) id))
         collection-ids (->> (if is_recursive
                               (conj (effective-children-ids collection @api/*current-user-permissions-set*)
                                     id)
