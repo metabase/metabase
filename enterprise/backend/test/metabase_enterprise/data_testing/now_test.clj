@@ -229,20 +229,26 @@
             (is (nil? (refusal definition)))))))))
 
 (deftest every-test-runs-in-the-report-timezone-test
-  (mt/test-drivers #{:postgres}
-    (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
-      (let [inputs     [(orders-input {1 (pinned+ -1 :days)})]
-            ;; Passes when the session's timezone is Tokyo; the output has one row, so a wrong timezone selects it.
-            in-tokyo   (fn [output]
-                         {:type :empty
-                          :name "session"
-                          :sql  (str "SELECT * FROM " output " WHERE current_setting('TimeZone') <> 'Asia/Tokyo'")})
-            fresh-pool #(sql-jdbc.conn/invalidate-pool-for-db! (mt/id))]
-        (testing "on a fresh pool, whose sessions start in the database's own timezone"
-          (doseq [[subject test-fields] [[:card {}] [:card {:now now}] [:transform {}] [:transform {:now now}]]]
-            (testing (str subject " " (if (:now test-fields) "with" "without") " `now`")
-              (fresh-pool)
-              (is (= :passed
-                     (if (= :card subject)
-                       (run-card-test! (orders-query) test-fields inputs [(in-tokyo "{{output}}")])
-                       (run-transform-test! (orders-query) test-fields inputs in-tokyo)))))))))))
+  ;; pgjdbc starts a session in the JVM's default timezone, so the report timezone must differ from it for a session
+  ;; that was never set to show.
+  (let [report-tz (if (= "Asia/Tokyo" (str (t/zone-id))) "America/Sao_Paulo" "Asia/Tokyo")]
+    (mt/test-drivers #{:postgres}
+      (mt/with-temporary-setting-values [report-timezone report-tz]
+        (let [inputs     [(orders-input {1 (pinned+ -1 :days)})]
+              ;; Passes when the session's timezone is the report timezone; the output has one row, so a session in
+              ;; another timezone selects it.
+              in-report  (fn [output]
+                           {:type :empty
+                            :name "session"
+                            :sql  (str "SELECT * FROM " output " WHERE current_setting('TimeZone') <> '" report-tz "'")})
+              fresh-pool #(sql-jdbc.conn/invalidate-pool-for-db! (mt/id))]
+          (testing "premise: a session nothing sets starts in a timezone other than the report timezone"
+            (is (not= report-tz (str (t/zone-id)))))
+          (testing "on a fresh pool, whose sessions start in the JVM's timezone"
+            (doseq [[subject test-fields] [[:card {}] [:card {:now now}] [:transform {}] [:transform {:now now}]]]
+              (testing (str subject " " (if (:now test-fields) "with" "without") " `now`")
+                (fresh-pool)
+                (is (= :passed
+                       (if (= :card subject)
+                         (run-card-test! (orders-query) test-fields inputs [(in-report "{{output}}")])
+                         (run-transform-test! (orders-query) test-fields inputs in-report))))))))))))

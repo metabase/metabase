@@ -38,7 +38,7 @@
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
-  whether that SQL holds SQL written by hand, the tables whose names expectation SQL may use for the output, the token
+  whether that SQL includes SQL written by hand, the tables whose names expectation SQL may use for the output, the token
   expectation SQL may write for the output instead (nil when there is none), and how a message names the output."
   [:map {:closed true}
    [:database      ::lib.schema.metadata/database]
