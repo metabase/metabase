@@ -163,9 +163,11 @@
           (testing "a 300-character name is a 400"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name (apply str (repeat 300 "n")) :database_ids [db-id]}))
-          (testing "the limit counts UTF-16 code units, so 128 two-unit characters are a 400"
-            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
-                                  {:name (apply str (repeat 128 "\uD83D\uDE00")) :database_ids [db-id]}))
+          (testing "the limit counts UTF-16 code units, so 128 two-unit characters are a 400 that names the unit"
+            (is (=? {:errors          {:name #".*at most 254 UTF-16 code units.*"}
+                     :specific-errors {:name [#".*at most 254 UTF-16 code units.*"]}}
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name (apply str (repeat 128 "\uD83D\uDE00")) :database_ids [db-id]}))))
           (testing "no over-long name reached the app DB"
             (is (= [254]
                    (t2/select-fn-vec (comp count :name) :model/Workspace
@@ -181,6 +183,11 @@
       (is (=? {:errors {:name some?}}
               (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/" ws-id)
                                     {:name (apply str (repeat 255 "n"))})))
+      (testing "the limit counts UTF-16 code units, so 128 two-unit characters are a 400 that names the unit"
+        (is (=? {:errors          {:name #".*at most 254 UTF-16 code units.*"}
+                 :specific-errors {:name [#".*at most 254 UTF-16 code units.*"]}}
+                (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/" ws-id)
+                                      {:name (apply str (repeat 128 "\uD83D\uDE00"))}))))
       (is (= 254 (count (t2/select-one-fn :name :model/Workspace :id ws-id)))))))
 
 (deftest rename-workspace-test

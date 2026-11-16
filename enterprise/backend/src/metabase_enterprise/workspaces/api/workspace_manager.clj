@@ -12,6 +12,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -24,8 +26,12 @@
 (def ^:private WorkspaceName
   "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
   code points and H2 in UTF-16 code units. `:max` counts UTF-16 code units, the larger count, so a name this schema
-  accepts fits on each of them."
-  [:and ms/NonBlankString [:string {:max 254}]])
+  accepts fits on each of them. The message names the unit, because a reader counts an emoji as one character."
+  [:and
+   ms/NonBlankString
+   (mu/with-api-error-message
+    [:string {:max 254}]
+    (deferred-tru "value must be at most 254 UTF-16 code units; an emoji counts as two."))])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
