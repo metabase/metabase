@@ -179,7 +179,14 @@
     (testing "nor does a successful clarification question in the same iteration"
       (is (not (#'agent/terminal-tool-call? (conj terminal "ask_for_sql_clarification")
                                             (into warned [{:type :tool-input :id "c" :function "ask_for_sql_clarification"}
-                                                          {:type :tool-output :id "c" :result {:output "Asked"}}])))))))
+                                                          {:type :tool-output :id "c" :result {:output "Asked"}}])))))
+    (testing "on the last step the turn ends as :terminal-tool, because no step is left to act on the warning"
+      (is (not (#'agent/should-continue? 20 20 terminal warned)))
+      (is (= :terminal-tool (#'agent/finish-reason 20 20 terminal warned))))
+    (testing "on the last step a failed terminal-tool call still ends the turn at the step limit"
+      (is (= :max-iterations
+             (#'agent/finish-reason 20 20 terminal
+                                    (assoc-in warned [1 :result :error] {:class :recoverable :code :test/failure})))))))
 
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))
@@ -623,6 +630,33 @@
             (testing "the second LLM request holds the warning, and the first does not"
               (is (not (holds-warning? (first requests))))
               (is (holds-warning? (second requests))))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest sql-reference-warning-on-the-last-step-ends-the-turn-test
+  (testing "in the :sql profile, SQL with a reference warning on the last step ends the turn with no step-limit call"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [get-profile                        (mt/original-fn #'profiles/get-profile)
+                {:keys [llm-calls requests parts]} (mt/with-dynamic-fn-redefs [profiles/get-profile
+                                                                               (comp #(assoc % :max-iterations 1) get-profile)]
+                                                     (run-turn! :sql "Fix this SQL query"
+                                                                [[{:type      :tool-input
+                                                                   :id        "t1"
+                                                                   :function  "create_sql_query"
+                                                                   :arguments {:database_id (mt/id)
+                                                                               :sql_query   "SELECT a.customer_name FROM account a"
+                                                                               :title       "Results"}}]]
+                                                                :context {:capabilities    ["permission:write_sql_queries"]
+                                                                          :user_is_viewing sql-editor-viewing}))]
+            (is (= 1 llm-calls))
+            (is (not-any? #(= "none" (:tool_choice %)) requests))
+            (is (=? [{:result {:non-terminal? true}}] (filter #(= :tool-output (:type %)) parts)))
+            (is (not-any? #(and (= :text (:type %)) (str/includes? (:text %) "step limit")) parts))
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
 (deftest a-turn-survives-one-undeclared-failure-test

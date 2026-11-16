@@ -99,8 +99,8 @@
 (defn- non-terminal-on-new-warnings
   "`result` marked `:non-terminal?` when `validation-result` has reference warnings that are new in this turn.
 
-  A profile that ends its turn on this tool then gives the model one more turn to act on them. Warnings that this turn
-  has already shown do not, so sending the SQL again accepts it instead of looping."
+  A profile that ends its turn on this tool then gives the model one more step to act on them, when the turn has one
+  left. Warnings that this turn has already shown do not, so sending the SQL again accepts it instead of looping."
   [result {:keys [warnings repeated-warnings?]}]
   (cond-> result
     (and (seq warnings) (not repeated-warnings?)) (assoc :non-terminal? true)))

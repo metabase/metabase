@@ -140,7 +140,8 @@
   `metabase.metabot.agent.user-context`, and EE analytics persistence).
 
   `:non-terminal?` keeps the turn open after a successful call to a tool that would end it, so the model can act on
-  what the output asks it to check (`metabase.metabot.agent.core/terminal-tool-call?`)."
+  what the output asks it to check. It has no effect on the turn's last step
+  (`metabase.metabot.agent.core/terminal-tool-call?`)."
   [:map {:closed true}
    [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]

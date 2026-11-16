@@ -191,28 +191,34 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
-(defn- terminal-tool-call?
+(defn- successful-terminal-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
-  tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
-  `:sql` profile after a successful `edit_sql_query`, or `ask_for_sql_clarification`) instead of
-  forcing the model to keep emitting tool calls under `:required-tool-call?`.
-
-  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct. No call
-  ends it while any result in `parts` is marked `:non-terminal?`, such as SQL with new reference
-  warnings: the model has not read that result yet."
+  tool-name strings), whatever the `:non-terminal?` marks on the results."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
      (let [outputs (u/index-by :id (filter #(= :tool-output (:type %)) parts))]
-       ;; Checked over every output, not only the terminal call's own: a second call that repeats the warning of a
-       ;; first one in the same response is accepted and unmarked, though the model has seen neither.
-       (and (not-any? #(get-in % [:result :non-terminal?]) (vals outputs))
-            (some (fn [p]
-                    (and (= (:type p) :tool-input)
-                         (contains? terminal-tools (:function p))
-                         (successful-tool-output? (get outputs (:id p)))))
-                  parts))))))
+       (some (fn [p]
+               (and (= (:type p) :tool-input)
+                    (contains? terminal-tools (:function p))
+                    (successful-tool-output? (get outputs (:id p)))))
+             parts)))))
+
+(defn- terminal-tool-call?
+  "Whether `parts` contain a successful call to one of the profile's `terminal-tools` that ends the turn. This lets a
+  profile end the turn as soon as it produces its answer (e.g. the `:sql` profile after a successful `edit_sql_query`,
+  or `ask_for_sql_clarification`) instead of forcing the model to keep emitting tool calls under
+  `:required-tool-call?`.
+
+  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct. No call
+  ends it while any result in `parts` is marked `:non-terminal?`, such as SQL with new reference
+  warnings: the model has not read that result yet. On the last step [[finish-reason]] ignores the marks."
+  [terminal-tools parts]
+  ;; Checked over every output, not only the terminal call's own: a second call that repeats the warning of a
+  ;; first one in the same response is accepted and unmarked, though the model has seen neither.
+  (and (not-any? #(and (= :tool-output (:type %)) (get-in % [:result :non-terminal?])) parts)
+       (successful-terminal-call? terminal-tools parts)))
 
 (defn- truncated?
   "Whether the provider cut this iteration off at its output-token limit. A truncated
@@ -285,15 +291,20 @@
        (not (errored? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped."
+  "Determine why the agent loop stopped.
+
+  On the last step a successful terminal-tool call ends the turn as `:terminal-tool` even when a result is marked
+  `:non-terminal?`: the model has no step left to act on the mark."
   [iteration max-iterations terminal-tools parts]
-  (cond
-    (truncated? parts)                         :length
-    (errored? parts)                           :error
-    (terminal-tool-call? terminal-tools parts) :terminal-tool
-    (and (>= iteration max-iterations)
-         (has-tool-calls? parts))              :max-iterations
-    :else                                      :stop))
+  (let [last-step? (>= iteration max-iterations)]
+    (cond
+      (truncated? parts)                               :length
+      (errored? parts)                                 :error
+      (if last-step?
+        (successful-terminal-call? terminal-tools parts)
+        (terminal-tool-call? terminal-tools parts))    :terminal-tool
+      (and last-step? (has-tool-calls? parts))         :max-iterations
+      :else                                            :stop)))
 
 ;;; Call LLM
 (defn- part->invert-links-key
