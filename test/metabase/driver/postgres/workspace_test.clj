@@ -203,6 +203,93 @@
          (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
+(defn- rows-or-error
+  "The rows of `sql`, or the error message when it fails, such as on a table that is gone."
+  [spec sql]
+  (try
+    (jdbc/query spec [sql])
+    (catch java.sql.SQLException e
+      (ex-message e))))
+
+(deftest init-refuses-an-existing-schema-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2120)
+           user      (-> workspace :database_details :user)
+           schema    (:schema workspace)
+           kept      (format "SELECT id FROM \"%s\".kept" schema)]
+       ;; a schema of the output name that the admin login made and filled before the workspace existed
+       ;; one statement, so that SET ROLE holds for the rest of it
+       (exec! spec [(format (str "SET ROLE %1$s; CREATE SCHEMA \"%2$s\"; CREATE TABLE \"%2$s\".kept (id int); "
+                                 "INSERT INTO \"%2$s\".kept VALUES (1); RESET ROLE")
+                            (:user admin-login) schema)])
+       (is (= (:user admin-login) (schema-owner spec schema)))
+       (let [result (try
+                      (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+                      :initialized
+                      (catch clojure.lang.ExceptionInfo e
+                        e))]
+         (testing "init throws a 409 naming the schema, which tells the caller not to clean up"
+           (is (instance? clojure.lang.ExceptionInfo result))
+           (is (= {:status-code 409, :workspace/cleanup? false, :user user, :schema schema} (ex-data result)))
+           (is (str/includes? (str (ex-message result)) (format "\"%s\"" schema))))
+         (testing "init made nothing"
+           (is (not (role-exists? spec user))))
+         ;; a workspace that init accepted is torn down one day; one it refused is not
+         (when-not (false? (:workspace/cleanup? (ex-data result)))
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+       (testing "the schema, its table and its row are still there"
+         (is (= [{:id 1}] (rows-or-error spec kept))))))))
+
+(deftest init-refuses-a-schema-created-after-its-check-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2123)
+           user      (-> workspace :database_details :user)
+           schema    (:schema workspace)]
+       (exec! spec [(format "CREATE SCHEMA \"%s\"" schema)])
+       (testing "a schema another session commits between the check and CREATE SCHEMA is the same 409"
+         ;; the check runs before the other session commits
+         (mt/with-dynamic-fn-redefs [postgres/schema-exists? (constantly false)]
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 409, :workspace/cleanup? false, :user user, :schema schema} (ex-data e))))))
+       (is (not (role-exists? spec user)))
+       (is (some? (schema-owner spec schema)))))))
+
+(deftest init-then-destroy-twice-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2121)
+           user      (-> workspace :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (is (some? (schema-owner spec (:schema workspace))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
+       (is (nil? (schema-owner spec (:schema workspace))))
+       (is (not (role-exists? spec user)))
+       (testing "a second destroy returns without error"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace)))))))))
+
+(deftest init-again-after-a-failed-init-or-a-destroy-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2122)
+           user      (-> workspace :database_details :user)]
+       (testing "an init that fails after creating the schema and the user rolls both back"
+         (mt/with-dynamic-fn-redefs [postgres/grant-connect! (fn [& _] (throw (ex-info "boom" {})))]
+           (is (thrown? clojure.lang.ExceptionInfo
+                        (provisioning #(driver/init-workspace-isolation! :postgres database workspace)))))
+         (is (nil? (schema-owner spec (:schema workspace))))
+         (is (not (role-exists? spec user))))
+       (testing "a retry of that init succeeds"
+         (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+         (is (role-exists? spec user)))
+       (testing "after a destroy, the same workspace inits again"
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
+         (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+         (is (role-exists? spec user)))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
 (deftest concurrent-init-test
   (do-with-warehouse!
    (fn [spec database]
