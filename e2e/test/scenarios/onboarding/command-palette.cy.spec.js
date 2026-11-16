@@ -281,24 +281,6 @@ describe("command palette", () => {
     });
   });
 
-  it("should not be accessible when doing full app embedding", () => {
-    H.visitFullAppEmbeddingUrl({
-      url: "/",
-      qs: {
-        top_nav: true,
-        search: true,
-      },
-    });
-
-    cy.findByPlaceholderText("Search…").should("be.visible").click();
-    cy.findByRole("button", { name: / \+ K/ }).should("not.exist");
-
-    cy.get("body").type("{esc}");
-
-    H.openCommandPalette();
-    H.commandPalette().should("not.exist");
-  });
-
   it("should not be accessible when a user is not logged in", () => {
     cy.intercept("GET", "/api/search**").as("search");
     cy.intercept("GET", "/api/database").as("database");

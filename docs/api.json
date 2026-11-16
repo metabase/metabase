@@ -4205,13 +4205,6 @@
             "type" : "integer",
             "minimum" : 1
           },
-          "token" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "user_name" : {
             "anyOf" : [ {
               "type" : "string"
