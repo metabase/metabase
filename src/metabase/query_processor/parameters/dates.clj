@@ -338,6 +338,15 @@
     :minute
     :day))
 
+(defn- absolute-date-filter
+  "Compares `field-clause` to `date` with `compare-fn`, bucketing by minute when `date` includes a time."
+  [compare-fn date field-clause]
+  (let [unit (absolute-date->unit date)]
+    (compare-fn (with-temporal-unit-if-field field-clause unit)
+                (case unit
+                  :day    (->iso-8601-date date)
+                  :minute (->iso-8601-date-time date)))))
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -357,11 +366,7 @@
     :range  (fn [{:keys [date]} _]
               {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (let [unit        (absolute-date->unit date)
-                    iso8601str  (case unit
-                                  :day    (->iso-8601-date date)
-                                  :minute (->iso-8601-date-time date))]
-                (lib/= (with-temporal-unit-if-field field-clause unit) iso8601str)))}
+              (absolute-date-filter lib/= date field-clause))}
    ;; day range
    {:parser (regex->parser #"([0-9-T]+)~([0-9-T]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
@@ -382,13 +387,13 @@
     :range  (fn [{:keys [date]} _]
               {:end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (lib/< (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)))}
+              (absolute-date-filter lib/< date field-clause))}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (lib/> (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)))}
+              (absolute-date-filter lib/> date field-clause))}
    ;; exclusions
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]

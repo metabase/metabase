@@ -306,8 +306,9 @@ export function linkTargets(
   if (fetchDashboard.fulfilled.match(action)) {
     return action.payload.linkTargets;
   }
-  if (action.type === RESET) {
-    return INITIAL_DASHBOARD_STATE.linkTargets;
+  if (initialize.match(action)) {
+    const { clearCache = true } = action.payload ?? {};
+    return clearCache ? INITIAL_DASHBOARD_STATE.linkTargets : state;
   }
   return state;
 }
