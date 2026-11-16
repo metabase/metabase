@@ -32,7 +32,7 @@ export const SdkError = ({
 
   const componentPerformance = useSdkComponentPerformance();
   useEffect(() => {
-    // A "fixed" error is a banner over the page (the version mismatch), and the component still loads
+    // A "fixed" error is a banner over the page (e.g. the bundle and instance version mismatch), and the component still loads
     if (type === "relative") {
       componentPerformance?.finish({ result: "failure", error: "load" });
     }
