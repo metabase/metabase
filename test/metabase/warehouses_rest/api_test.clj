@@ -10,6 +10,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -47,6 +48,7 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
@@ -1810,6 +1812,17 @@
       (testing "values-2 still exists?"
         (is (= false
                (t2/exists? :model/FieldValues :id (u/the-id values-2))))))))
+
+(deftest discard-db-fieldvalues-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Database    {db-id :id}    {:engine "h2", :details (:details (mt/db))}
+                   :model/Table       {table-id :id} {:db_id db-id}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+          (warehouses-rest.db/delete-field-values-for-database! db-id))
+        (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"

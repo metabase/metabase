@@ -137,7 +137,7 @@
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
+  (t2/delete! :model/FieldValues :field_id [:in field-ids]))
 
 (mu/defn update-or-insert-full-field-values!
   "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting

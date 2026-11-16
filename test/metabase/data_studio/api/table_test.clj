@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -209,6 +210,16 @@
   (testing "Non-admins should not be allowed to trigger discard values"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "data-studio/table/discard-values" {:database_ids [(mt/id)]})))))
+
+(deftest bulk-discard-values-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Table       {table-id :id} {}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+          (data-studio.db/delete-field-values-for-tables! [table-id]))
+        (is (contains? @deleted fv-id))))))
 
 (deftest bulk-discard-values-test
   (mt/with-empty-h2-app-db!

@@ -104,7 +104,7 @@
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! (t2/table-name :model/FieldValues)
+  (t2/delete! :model/FieldValues
               :field_id [:in ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/Field)]
                                                :where  [:in :table_id table-ids]}]))

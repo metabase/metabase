@@ -3534,6 +3534,7 @@
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
+                    :model/FieldValues
                     :model/Table}}
 
   warehouses.schema

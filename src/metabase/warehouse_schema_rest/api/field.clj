@@ -231,17 +231,6 @@
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
-(defn- validate-human-readable-pairs
-  "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
-  returns a boolean indicating whether human readable values were found."
-  [value-pairs]
-  (let [human-readable-missing? #(= ::not-found (get % 1 ::not-found))
-        has-human-readable-values? (not-any? human-readable-missing? value-pairs)]
-    (api/check (or has-human-readable-values?
-                   (every? human-readable-missing? value-pairs))
-               [400 "If remapped values are specified, they must be specified for all field values"])
-    has-human-readable-values?))
-
 (api.macros/defendpoint :post "/:id/values" :- [:map {:closed true} [:status [:= :success]]]
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
@@ -254,12 +243,10 @@
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (let [human-readable-values? (validate-human-readable-pairs value-pairs)
-          values                 (map first value-pairs)
-          human-readable-values  (when human-readable-values?
-                                   (map second value-pairs))
-          updated-pk             (warehouse-schema-rest.db/update-or-insert-full-field-values!
-                                  (u/the-id field) values human-readable-values)]
+    (let [values                (map first value-pairs)
+          human-readable-values (not-empty (into [] (comp (filter #(= 2 (count %))) (map second)) value-pairs))
+          updated-pk            (warehouse-schema-rest.db/update-or-insert-full-field-values!
+                                 (u/the-id field) values human-readable-values)]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 

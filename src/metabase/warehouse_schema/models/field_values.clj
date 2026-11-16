@@ -99,10 +99,6 @@
   (into #{:full} ;; default type for fieldvalues where it contains values for a field without constraints
         advanced-field-values-types))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             Entity & Lifecycle                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
 
 (doto :model/FieldValues
@@ -115,11 +111,20 @@
    :values                mi/transform-json
    :type                  mi/transform-keyword})
 
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
   (when-not (mr/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
+
+(defn- check-human-readable-values-cover-values
+  "Throws unless `field-values` has no human-readable values or one for each of its values."
+  [{values :values, human-readable-values :human_readable_values}]
+  (when (and (seq human-readable-values) (not= (count human-readable-values) (count values)))
+    (throw (ex-info (tru "If remapped values are specified, they must be specified for all field values")
+                    {:status-code 400}))))
 
 (defn- assert-valid-type-hash-combo
   "Ensure that type is present, valid, and that a hash_key is provided iff this is an advanced field type."
@@ -163,6 +168,7 @@
   [{:keys [field_id] :as field-values}]
   (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-human-readable-values field-values)
+    (check-human-readable-values-cover-values field-values)
     (assert-valid-type-hash-combo <>)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= :full (:type <>))
@@ -174,6 +180,8 @@
     (u/prog1 (update field-values :type #(keyword (or % :full)))
       (assert-no-identity-changes (:id field-values) changes)
       (assert-valid-human-readable-values field-values)
+      (when (some #(contains? changes %) [:values :human_readable_values])
+        (check-human-readable-values-cover-values field-values))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
       (when (and (contains? changes :values) (= :full (:type <>)))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
@@ -228,9 +236,33 @@
                                        :else
                                        [])))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Utils fns                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn- hydrate-field-permission
+  "Sets on each of `field-values` the answer its Field gives for `k`, `:can_read` or `:can_write`, the Fields answered
+  together."
+  [k field-values]
+  (let [field-ids (into #{} (keep :field_id) field-values)
+        fields    (when (seq field-ids) (warehouse-schema.db/fields field-ids))
+        answers   (into {} (map (juxt :id (if (= k :can_read) mi/can-read? mi/can-write?))) (t2/hydrate fields k))]
+    (for [fv field-values]
+      (when fv
+        (let [answer (boolean (get answers (:field_id fv)))]
+          (if (= k :can_read)
+            (vary-meta fv assoc k answer)
+            (assoc fv k answer)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/FieldValues :can_read]
+  "Whether the current user can read each of `field-values`, which they can when they read its Field."
+  [_model k field-values]
+  (hydrate-field-permission k field-values))
+
+(methodical/defmethod t2/batched-hydrate [:model/FieldValues :can_write]
+  "Whether the current user can write each of `field-values`, which they can when they write its Field."
+  [_model k field-values]
+  (hydrate-field-permission k field-values))
+
+;;; ----------------------------------------------------- Utils ------------------------------------------------------
 
 (defn inactive?
   "If FieldValues have not been accessed recently they are considered inactive."
@@ -313,9 +345,7 @@
     (map vector values human_readable_values)
     (map vector values)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               Advanced FieldValues                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; ---------------------------------------------- Advanced FieldValues ----------------------------------------------
 
 (defn advanced-field-values-expired?
   "Checks if an advanced FieldValues expired."
@@ -347,9 +377,7 @@
   (when (seq constraints)
     {:constraints constraints}))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                    CRUD fns                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; ------------------------------------------------------ CRUD ------------------------------------------------------
 
 (defn limit-values
   "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
@@ -684,9 +712,7 @@
           (warehouse-schema.db/touch-field-values! (:id existing))
           existing)))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Serialization                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (def ^:private field-values-slug "___fieldvalues")
 
@@ -706,8 +732,6 @@
             (update field-path (dec (count field-path))
                     (fn [segment] (assoc segment :suffix field-values-slug)))))
         entities))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
 (defmethod serialization/before-load :model/FieldValues [_ items]
   (mapv (fn [{:keys [local] :as item}]

@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.collections.core :as collections]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -25,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
+   [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors)))
@@ -876,6 +878,16 @@
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
+
+(deftest discard-values-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Table       {table-id :id} {}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+          (warehouse-schema-rest.db/delete-field-values-for-fields! #{field-id}))
+        (is (contains? @deleted fv-id))))))
 
 (deftest field-ordering-test
   (let [original-field-order (user-table-fn :field_order (mt/id :venues))]

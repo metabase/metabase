@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -501,6 +502,49 @@
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
              (t2/update! :model/FieldValues :id id {:human_readable_values {"1" "A", "2", "B"}})))))))
+
+(deftest human-readable-values-cover-values-test
+  (let [field-id (mt/id :venues :price)]
+    (testing "insert refuses human-readable values that do not match values one to one"
+      (is (thrown-with-msg? ExceptionInfo
+                            #"must be specified for all field values"
+                            (t2/insert! :model/FieldValues {:field_id              field-id
+                                                            :values                [1 2 3]
+                                                            :human_readable_values ["a" "b"]}))))
+    (mt/with-temp [:model/FieldValues {:keys [id]} {:field_id              field-id
+                                                    :values                [1 2 3]
+                                                    :human_readable_values ["a" "b" "c"]}]
+      (testing "update refuses values that no longer match human-readable values"
+        (is (thrown-with-msg? ExceptionInfo
+                              #"must be specified for all field values"
+                              (t2/update! :model/FieldValues :id id {:values [1 2]}))))
+      (testing "update refuses human-readable values that no longer match values"
+        (is (thrown-with-msg? ExceptionInfo
+                              #"must be specified for all field values"
+                              (t2/update! :model/FieldValues :id id {:human_readable_values ["a" "b" "c" "d"]}))))
+      (testing "update accepts values and human-readable values changed together"
+        (t2/update! :model/FieldValues :id id {:values [1 2], :human_readable_values ["a" "b"]})
+        (is (=? {:values [1 2], :human_readable_values ["a" "b"]}
+                (t2/select-one :model/FieldValues :id id))))
+      (testing "update accepts values without human-readable values"
+        (t2/update! :model/FieldValues :id id {:values [1 2 3 4], :human_readable_values nil})
+        (is (=? {:values [1 2 3 4], :human_readable_values []}
+                (t2/select-one :model/FieldValues :id id)))))))
+
+(deftest field-values-permissions-follow-field-test
+  (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :price), :values [1 2 3 4]}]
+    (testing "admin reads and writes FieldValues"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (true? (mi/can-read? (t2/hydrate fv :can_read))))
+        (is (true? (mi/can-write? (t2/hydrate fv :can_write))))))
+    (testing "user who reads but cannot write Field reads but cannot write its FieldValues"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (true? (mi/can-read? (t2/hydrate fv :can_read))))
+        (is (false? (mi/can-write? (t2/hydrate fv :can_write))))))
+    (testing "user without data permissions cannot read FieldValues"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (false? (mi/can-read? (t2/hydrate fv :can_read)))))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
