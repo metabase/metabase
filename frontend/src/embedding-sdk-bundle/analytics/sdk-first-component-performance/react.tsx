@@ -2,7 +2,7 @@ import {
   type ReactNode,
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useState,
 } from "react";
 
@@ -25,7 +25,7 @@ export function SdkComponentPerformanceBoundary({
     () => new SdkComponentPerformance(sdkComponentName),
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     componentPerformance.mount();
     return () => componentPerformance.unmount();
   }, [componentPerformance]);
