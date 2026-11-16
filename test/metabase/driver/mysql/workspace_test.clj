@@ -58,6 +58,37 @@
            (map #(#'mysql/account-lock-supported? (apply metadata %))
                 [["MySQL" 5 7] ["MariaDB" 10 2] ["MariaDB" 10 3] ["MariaDB" 10 4] ["MariaDB" 10 11] ["MariaDB" 11 4]])))))
 
+(deftest kill-privileges-test
+  (testing "MySQL ends sessions with CONNECTION_ADMIN or SUPER; MariaDB with SUPER before 10.5, either up to 11.0, then CONNECTION ADMIN only"
+    (is (= [["CONNECTION_ADMIN" "SUPER"] ["SUPER"] ["CONNECTION ADMIN" "SUPER"] ["CONNECTION ADMIN" "SUPER"]
+            ["CONNECTION ADMIN"] ["CONNECTION ADMIN"]]
+           (map #(#'mysql/kill-privileges (apply metadata %))
+                [["MySQL" 8 4] ["MariaDB" 10 4] ["MariaDB" 10 5] ["MariaDB" 10 11] ["MariaDB" 11 0] ["MariaDB" 13 0]])))))
+
+(deftest global-privileges-test
+  (testing "only the privileges granted on *.* count; role, proxy and database grants do not"
+    (is (= #{"PROCESS" "SUPER" "BACKUP_ADMIN" "CONNECTION_ADMIN" "CONNECTION ADMIN"}
+           (#'mysql/global-privileges
+            ["GRANT PROCESS, SUPER ON *.* TO `a`@`%`"
+             "GRANT BACKUP_ADMIN,CONNECTION_ADMIN ON *.* TO `a`@`%` WITH GRANT OPTION"
+             "GRANT `r` TO `a`@`%`"
+             "GRANT CONNECTION ADMIN ON *.* TO `r`"
+             "GRANT PROXY ON ''@'%' TO 'a'@'%'"
+             "GRANT SELECT, INSERT ON `db`.* TO `a`@`%`"
+             "REVOKE INSERT ON `mysql`.* FROM `a`@`%`"])))))
+
+(deftest missing-session-privileges-test
+  (let [kill ["CONNECTION_ADMIN" "SUPER"]]
+    (is (= [] (#'mysql/missing-session-privileges #{"PROCESS" "SUPER"} kill)))
+    (is (= [] (#'mysql/missing-session-privileges #{"ALL PRIVILEGES"} kill)))
+    (is (= ["PROCESS"] (#'mysql/missing-session-privileges #{"CONNECTION_ADMIN"} kill)))
+    (is (= ["CONNECTION_ADMIN"] (#'mysql/missing-session-privileges #{"PROCESS"} kill)))
+    (testing "no privilege read, for example when the lines cannot be parsed, means everything is missing"
+      (is (= ["PROCESS" "CONNECTION_ADMIN"] (#'mysql/missing-session-privileges #{} kill))))))
+
+(deftest quote-account-test
+  (is (= "`a@b`@`%`" (#'mysql/quote-account "a@b@%"))))
+
 ;;; ------------------------------------------------ Live tests ------------------------------------------------------
 
 (defn- admin-spec [database]
@@ -223,6 +254,106 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace)
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" admin)]))))))
+
+(defn- mariadb? [database]
+  (str/includes? (:v (first (jdbc/query (admin-spec database) ["SELECT VERSION() AS v"]))) "MariaDB"))
+
+(defn- do-with-login
+  "Calls `(f login)` with `login`, the `{:user :password}` of a new login that holds every global privilege except
+  `revoked`. When `role-privileges` is set, the login also holds a role with those privileges, which is active in its
+  sessions only when `active-role?`."
+  [database {:keys [revoked role-privileges active-role?]} f]
+  (let [admin  (admin-spec database)
+        user   (str "ws_adm_" (rand-int 1000000))
+        role   (str "ws_role_" (rand-int 1000000))
+        login  {:user user :password "TestAdm1n!"}]
+    (try
+      (jdbc/execute! admin [(format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" user (:password login))])
+      (jdbc/execute! admin [(format "GRANT ALL PRIVILEGES ON *.* TO `%s`@'%%' WITH GRANT OPTION" user)])
+      (when (seq revoked)
+        (jdbc/execute! admin [(format "REVOKE %s ON *.* FROM `%s`@'%%'" (str/join ", " revoked) user)]))
+      (when role-privileges
+        (jdbc/execute! admin [(format "CREATE ROLE `%s`" role)])
+        (jdbc/execute! admin [(format "GRANT %s ON *.* TO `%s`" (str/join ", " role-privileges) role)])
+        (jdbc/execute! admin [(format "GRANT `%s` TO `%s`@'%%'" role user)])
+        (when active-role?
+          (jdbc/execute! admin [(format (if (mariadb? database)
+                                          "SET DEFAULT ROLE `%s` FOR `%s`@'%%'"
+                                          "SET DEFAULT ROLE `%s` TO `%s`@'%%'")
+                                        role user)])))
+      (f login)
+      (finally
+        (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`@'%%'" user)])
+        (when role-privileges
+          (jdbc/execute! admin [(format "DROP ROLE IF EXISTS `%s`" role)]))))))
+
+(defn- ends-another-users-session?
+  "Whether `login` finds the session of another user in the process list and ends it with KILL: what the server
+  allows, independent of the code under test."
+  [database login]
+  (let [victim {:user (str "ws_victim_" (rand-int 1000000)) :password "Victim0ne!"}]
+    (try
+      (jdbc/execute! (admin-spec database) [(format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" (:user victim) (:password victim))])
+      (jdbc/execute! (admin-spec database) [(format "GRANT SELECT ON `%s`.* TO `%s`@'%%'" (-> database :details :db) (:user victim))])
+      (with-open [session (open-session database {:database_details victim})
+                  conn    (open-session database {:database_details login})
+                  stmt    (.createStatement conn)]
+        (let [ids (map :id (jdbc/query {:connection conn} ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?"
+                                                           (:user victim)]))]
+          (boolean
+           (and (seq ids)
+                (try
+                  (doseq [id ids]
+                    (.execute stmt (format "KILL %d" (long id))))
+                  true
+                  (catch java.sql.SQLException _
+                    false))
+                (not (.isValid session 2))))))
+      (finally
+        (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user victim))])))))
+
+(deftest ^:synchronized init-refuses-an-admin-that-cannot-end-sessions-test
+  (mt/test-driver :mysql
+    (let [database (mt/db)
+          kill     (if (mariadb? database) "CONNECTION ADMIN" "CONNECTION_ADMIN")
+          ;; [description, login, whether init must accept it (nil: whatever the server allows)]
+          cases    [["every privilege" {} true]
+                    ["without PROCESS" {:revoked ["PROCESS"]} false]
+                    [(str "without " kill ", with SUPER") {:revoked [kill]} nil]
+                    [(str "without " kill " or SUPER") {:revoked [kill "SUPER"]} false]
+                    ["without SUPER" {:revoked ["SUPER"]} true]
+                    ["with PROCESS and the kill privilege through an active role"
+                     {:revoked ["PROCESS" kill "SUPER"] :role-privileges ["PROCESS" kill] :active-role? true} true]
+                    ["with PROCESS and the kill privilege through a role that is not active"
+                     {:revoked ["PROCESS" kill "SUPER"] :role-privileges ["PROCESS" kill] :active-role? false} false]]
+          results  (mapv (fn [[description setup expected]]
+                           (do-with-login
+                            database setup
+                            (fn [login]
+                              (let [workspace (new-workspace database)
+                                    allowed?  (ends-another-users-session? database login)
+                                    refused   (refusal #(driver.conn/with-swapped-connection-details (mt/id) login
+                                                          (driver/init-workspace-isolation! :mysql database workspace)))
+                                    created?  (or (user-exists? database (-> workspace :database_details :user))
+                                                  (database-exists? database (:schema workspace)))]
+                                (driver/destroy-workspace-isolation! :mysql database workspace)
+                                (testing description
+                                  (testing "init accepts the login exactly when the server lets it see and end another user's session"
+                                    (is (= allowed? (nil? refused)) (pr-str refused)))
+                                  (when (some? expected)
+                                    (testing "the server behaves as documented"
+                                      (is (= expected allowed?))))
+                                  (when refused
+                                    (testing "the refusal is a 412 that names the grant, and init created nothing"
+                                      (is (= {:status-code 412, :workspace/cleanup? false} (:data refused)))
+                                      (is (re-find (re-pattern (str "`GRANT [^`]*(PROCESS|" kill "|SUPER)[^`]* ON \\*\\.\\* TO `"
+                                                                    (:user login) "`@`%`;`"))
+                                                   (:message refused)))
+                                      (is (not created?)))))
+                                allowed?))))
+                         cases)]
+      (testing "the cases include logins the server lets end sessions and logins it does not"
+        (is (= #{true false} (set results)))))))
 
 (defn- init-error
   "Runs `init`; returns the exception it throws, or nil."

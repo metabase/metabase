@@ -1467,6 +1467,59 @@
       (log/warnf "Cannot drop workspace database %s after a user of the same workspace appeared: %s"
                  db-name (ex-message e)))))
 
+(defn- kill-privileges
+  "The global privileges that each let a login end another user's session on the server `metadata` describes. The
+  first one is the one to grant. MySQL accepts CONNECTION_ADMIN or the deprecated SUPER. MariaDB has CONNECTION ADMIN
+  from 10.5, and from 11.0 SUPER no longer includes it."
+  [^DatabaseMetaData metadata]
+  (let [version [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)]]
+    (cond
+      (not= "MariaDB" (.getDatabaseProductName metadata)) ["CONNECTION_ADMIN" "SUPER"]
+      (neg? (compare version [10 5]))                     ["SUPER"]
+      (neg? (compare version [11 0]))                     ["CONNECTION ADMIN" "SUPER"]
+      :else                                               ["CONNECTION ADMIN"])))
+
+(defn- global-privileges
+  "The privileges that `grants`, the lines of `SHOW GRANTS`, grant on `*.*`."
+  [grants]
+  (into #{}
+        (comp (keep #(second (re-find #"^GRANT (.+?) ON \*\.\* TO " %)))
+              (mapcat #(str/split % #","))
+              (map str/trim))
+        grants))
+
+(defn- missing-session-privileges
+  "The privileges to grant a login with the global `privileges` so that it can see other users' sessions (PROCESS) and
+  end them (one of `kill-privileges`). Empty when it has them."
+  [privileges kill-privileges]
+  (if (contains? privileges "ALL PRIVILEGES")
+    []
+    (cond-> []
+      (not (contains? privileges "PROCESS")) (conj "PROCESS")
+      (not-any? privileges kill-privileges)  (conj (first kill-privileges)))))
+
+(defn- quote-account
+  "`account`, a `user@host` as `CURRENT_USER()` returns it, quoted for a GRANT."
+  [account]
+  (let [at (str/last-index-of account "@")]
+    (str (quote-field (subs account 0 at)) "@" (quote-field (subs account (inc at))))))
+
+(defn- check-admin-can-end-sessions!
+  "Throws a 412 unless the admin connection's login can see and end other users' sessions: teardown ends the workspace
+  user's sessions, which otherwise keep their access to the bound database after DROP USER. `SHOW GRANTS` without FOR
+  lists the grants of the login and of its active roles, including the roles those roles hold, so a privilege held
+  through a role counts. When the lines cannot be read, the check finds no privilege and refuses."
+  [^Connection conn]
+  (let [grants  (map (comp first vals) (jdbc/query {:connection conn} ["SHOW GRANTS"]))
+        missing (missing-session-privileges (global-privileges grants) (kill-privileges (.getMetaData conn)))]
+    (when (seq missing)
+      (let [login (quote-account (:login (first (jdbc/query {:connection conn} ["SELECT CURRENT_USER() AS login"]))))]
+        (throw (ex-info (format (str "The admin connection's login %s lacks %s, which it needs to see and end the workspace "
+                                     "user's sessions when it removes the workspace. Have an administrator run "
+                                     "`GRANT %s ON *.* TO %s;` and retry.")
+                                login (str/join " and " missing) (str/join ", " missing) login)
+                        {:status-code 412, :workspace/cleanup? false}))))))
+
 (defmethod driver/init-workspace-isolation! :mysql
   [driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
@@ -1481,6 +1534,7 @@
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        ;; refused before any DDL, so the refusal leaves nothing to tear down
+       (check-admin-can-end-sessions! conn)
        (when (mysql-user-exists? {:connection conn} user)
          (throw (workspace-object-exists-error "user" (quote-field user))))
        (when (database-exists? {:connection conn} db-name)
