@@ -92,7 +92,7 @@
                         [(shorthand->constraint %orders.total [:> 150])]
                         {:via-path via-path})]
           (is (= [$$orders]
-                 (map #(:id (lib/joined-thing query %)) (lib/joins query 0)))))))))
+                 (map #(get-in % [:stages 0 :source-table]) (lib/joins query 0)))))))))
 
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"
