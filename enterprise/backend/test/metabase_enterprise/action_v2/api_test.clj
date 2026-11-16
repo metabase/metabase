@@ -425,6 +425,33 @@
                    (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
           (is (= [] (table-rows table-id))))))))
 
+(deftest ^:synchronized undo-and-redo-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses undo and redo, and the table keeps its rows"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (let [undo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/undo" :scope {:table-id table-id} :input {}}))
+                redo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/redo" :scope {:table-id table-id} :input {}}))]
+            (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}])
+            (action-v2.tu/update-rows! table-id [{:id 1 :song "Hold music"}])
+            (action-v2.tu/update-rows! table-id [{:id 1 :song "Dial tone"}])
+            (undo! 200)
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+              (is (= "Editing table data is not supported on a workspace instance." (undo! 400)))
+              (is (= "Editing table data is not supported on a workspace instance." (redo! 400))))
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (testing "outside workspace mode, the same redo and undo change the table"
+              (redo! 200)
+              (is (= [[1 "Pidgey" "Dial tone"]] (table-rows table-id)))
+              (undo! 200)
+              (undo! 200)
+              (is (= [[1 "Pidgey" "Car alarms"]] (table-rows table-id))))))))))
+
 (defn- check-coercion-fn-coverage
   ([test-cases]
    (check-coercion-fn-coverage #{} test-cases))
