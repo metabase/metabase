@@ -56,7 +56,6 @@ import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
-import { caseCounts, useCaseCounts } from "./case-counts";
 import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
@@ -236,7 +235,6 @@ export function Editor(props: EditorProps) {
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
-  const getEditorView = useCallback(() => ref.current?.view, []);
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -620,16 +618,6 @@ export function Editor(props: EditorProps) {
 
   const parameterHintsExtensions = useParameterHints();
 
-  useCaseCounts({
-    getView: getEditorView,
-    source,
-    query,
-    stageIndex,
-    expressionIndex,
-    expressionMode,
-    compile: compileSource,
-  });
-
   // A new list of extensions reconfigures the editor, which drops the fields
   // of an active snippet (CodeMirror adds their state with appendConfig). So
   // the list depends on the text only while the diff shows, and the text does
@@ -642,14 +630,12 @@ export function Editor(props: EditorProps) {
         ? [
             ...baseExtensions,
             ...parameterHintsExtensions,
-            caseCounts,
             unifiedMergeView({ original: diffOriginal, mergeControls: false }),
             ...diffControlsExtensions,
           ]
         : [
             ...baseExtensions,
             ...parameterHintsExtensions,
-            caseCounts,
             ...inlinePromptExtensions,
           ],
     [
