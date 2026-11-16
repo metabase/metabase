@@ -143,6 +143,16 @@ export type PreviewSessionResponse = StartPreviewResponse & {
   expires_at: number;
 };
 
+export type PreviewCodeResponse = StartPreviewResponse & {
+  /** The preview host session, for `POST /preview/end`; its key lives only in the preview host's cookie. */
+  session_id: string;
+  /** One use, until `code_expires_at` (epoch seconds): the frame trades it for the cookie. */
+  code: string;
+  code_expires_at: number;
+  /** The preview host's origin, such as `http://preview.localhost:3000`. */
+  preview_origin: string;
+};
+
 export type PreviewGrantResponse = StartPreviewResponse & {
   grant: string;
   /** Epoch seconds. */
@@ -255,7 +265,10 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
       void,
       {
         request: StartPreviewRequest;
-        preview: StartPreviewResponse | PreviewSessionResponse;
+        preview:
+          | StartPreviewResponse
+          | PreviewSessionResponse
+          | PreviewCodeResponse;
       }
     >({
       query: ({ request, preview }) => ({
@@ -269,6 +282,7 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
           attributes: preview.attributes,
           session_token:
             "session_token" in preview ? preview.session_token : undefined,
+          session_id: "session_id" in preview ? preview.session_id : undefined,
         },
       }),
     }),
@@ -279,6 +293,16 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
       query: ({ type, id, attributes }) => ({
         method: "POST",
         url: "/api/ee/permission_debug/preview/session",
+        body: { principal_type: type, principal_id: id, attributes },
+      }),
+    }),
+    startPreviewCode: builder.mutation<
+      PreviewCodeResponse,
+      StartPreviewRequest
+    >({
+      query: ({ type, id, attributes }) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/code",
         body: { principal_type: type, principal_id: id, attributes },
       }),
     }),
@@ -313,5 +337,6 @@ export const {
   useEndPreviewMutation,
   useStartPreviewMutation,
   useStartPreviewSessionMutation,
+  useStartPreviewCodeMutation,
   useIssuePreviewGrantMutation,
 } = permissionPreviewApi;

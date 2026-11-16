@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -19,6 +19,7 @@ import {
 } from "metabase/ui";
 
 import {
+  type PreviewCodeResponse,
   type PreviewSessionResponse,
   type Principal,
   type PrincipalType,
@@ -26,8 +27,14 @@ import {
   type StartPreviewResponse,
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
+  useStartPreviewCodeMutation,
   useStartPreviewSessionMutation,
 } from "../api";
+import {
+  getContentPreviewUrl,
+  getPreviewHostContentUrl,
+  getPreviewHostSignInUrl,
+} from "../content-preview";
 import { PreviewSidebar } from "../preview/PreviewSidebar";
 import { WhySidesheet } from "../preview/WhySidesheet";
 import {
@@ -37,22 +44,14 @@ import {
 } from "../preview/urls";
 
 import { AttributesPanel } from "./AttributesPanel";
-import {
-  ContentPreviewFrame,
-  getContentFrameSource,
-} from "./ContentPreviewFrame";
+import { ContentPreviewFrame } from "./ContentPreviewFrame";
 import { LinkBar } from "./LinkBar";
 import { parseOpenedItem } from "./item-path";
 import { useWhyTarget } from "./use-why-target";
 
 const START_PATH = "/collection/root";
 
-/** How the frame loads the app as the previewed person: its address, and the key that remounts it. */
-export type GetFrameSource = (options: {
-  path: string;
-  preview: StartPreviewResponse;
-  principal: Principal;
-}) => { src: string; key: string };
+type FramePreview = PreviewSessionResponse | PreviewCodeResponse;
 
 /**
  * How the SDK frame signs in as the person: on this origin with a session token in its memory, or on the preview host
@@ -123,11 +122,19 @@ export function TroubleshootPage() {
     setRestartCount((count) => count + 1);
   };
 
+  // the preview host's code works once: later loads of the same preview go straight to the content, with the cookie
+  const signedInPreviewIdRef = useRef<string | null>(null);
+  const frameSrc = useMemo(
+    () =>
+      preview != null
+        ? getFrameSrc(preview, openedPath, signedInPreviewIdRef.current)
+        : null,
+    // a new address only when the frame remounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [preview, openCount],
+  );
+
   const whoName = getWhoName(principalType, preview);
-  const frameSource =
-    preview != null && principal != null
-      ? getContentFrameSource({ path: openedPath, preview, principal })
-      : null;
   const frameTitle = t`What ${whoName} sees`;
 
   return (
@@ -246,12 +253,22 @@ export function TroubleshootPage() {
               </Flex>
             ) : (
               <ContentPreviewFrame
-                key={`${frameSource?.key}-${openCount}`}
+                key={`${preview.preview_id}-${openCount}`}
                 title={frameTitle}
-                src={frameSource?.src ?? "about:blank"}
-                sessionToken={preview.session_token}
+                src={frameSrc ?? "about:blank"}
+                frameOrigin={
+                  "preview_origin" in preview
+                    ? preview.preview_origin
+                    : window.location.origin
+                }
+                sessionToken={
+                  "session_token" in preview ? preview.session_token : undefined
+                }
                 onPathChange={setFramePath}
                 onRestart={handleContentFrameRestart}
+                onLoad={() => {
+                  signedInPreviewIdRef.current = preview.preview_id;
+                }}
               />
             )}
           </Box>
@@ -263,6 +280,19 @@ export function TroubleshootPage() {
       />
     </PermissionsPageLayout>
   );
+}
+
+function getFrameSrc(
+  preview: FramePreview,
+  path: string,
+  signedInPreviewId: string | null,
+) {
+  if (!("code" in preview)) {
+    return getContentPreviewUrl(path);
+  }
+  return signedInPreviewId === preview.preview_id
+    ? getPreviewHostContentUrl(preview.preview_origin, path)
+    : getPreviewHostSignInUrl(preview.preview_origin, path, preview.code);
 }
 
 function getTroubleshootUrl(principal: Principal | { type: PrincipalType }) {
@@ -310,8 +340,8 @@ function usePreviewRequest(
 }
 
 /**
- * Starts the preview with a session of the person's own, and ends it when the person, values or mode change, the
- * frame restarts, or the page closes.
+ * Starts the preview with a session of the person's own (a token on this origin, or a code for the preview host's
+ * cookie), and ends it when the person, values or mode change, the frame restarts, or the page closes.
  */
 function usePreviewSession(
   request: StartPreviewRequest | null,
@@ -319,8 +349,9 @@ function usePreviewSession(
   restartCount: number,
 ) {
   const [startPreviewSession] = useStartPreviewSessionMutation();
+  const [startPreviewCode] = useStartPreviewCodeMutation();
   const [endPreview] = useEndPreviewMutation();
-  const [preview, setPreview] = useState<PreviewSessionResponse | null>(null);
+  const [preview, setPreview] = useState<FramePreview | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
@@ -330,8 +361,10 @@ function usePreviewSession(
       return;
     }
     let isCurrent = true;
-    let started: PreviewSessionResponse | null = null;
-    startPreviewSession(request)
+    let started: FramePreview | null = null;
+    const start =
+      frameMode === "subdomain" ? startPreviewCode : startPreviewSession;
+    start(request)
       .unwrap()
       .then((response) => {
         started = response;
@@ -348,7 +381,14 @@ function usePreviewSession(
         endPreview({ request, preview: started });
       }
     };
-  }, [request, frameMode, restartCount, startPreviewSession, endPreview]);
+  }, [
+    request,
+    frameMode,
+    restartCount,
+    startPreviewSession,
+    startPreviewCode,
+    endPreview,
+  ]);
 
   return { preview, error };
 }

@@ -2,10 +2,14 @@ import { getMetabaseRootPath } from "embedding-sdk-shared/lib/get-current-metaba
 import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
 /**
- * The document of the troubleshooting page's "Content only" frame: the SDK on the main origin,
- * signed in as the previewed person by a session token the page posts to it.
+ * The document of the troubleshooting page's frame: the SDK signed in as the previewed person, either on the main
+ * origin by a session token the page posts to it, or on the preview host by that host's cookie.
  */
 export const CONTENT_PREVIEW_PATH = "/embed/permission-preview-content";
+
+/** Marks the frame on the preview host, signed in by its cookie: `?session=cookie`. */
+const COOKIE_SESSION_PARAM = "session";
+const COOKIE_SESSION_VALUE = "cookie";
 
 /** frame to page: "send me a session token"; sent on every load, so a reload asks again. */
 export const CONTENT_PREVIEW_READY_MESSAGE_TYPE =
@@ -34,6 +38,41 @@ export function isContentPreviewPath(pathname: string): boolean {
 export function getContentPreviewUrl(path: string): string {
   const item = parseContentPreviewItem(path);
   return `${getMetabaseRootPath()}${CONTENT_PREVIEW_PATH}${item != null ? getContentPreviewItemPath(item) : ""}`;
+}
+
+/** Whether this document is the frame on the preview host, which its cookie signs in. */
+export function isCookieContentPreview(): boolean {
+  return (
+    new URLSearchParams(window.location.search).get(COOKIE_SESSION_PARAM) ===
+    COOKIE_SESSION_VALUE
+  );
+}
+
+/** The content frame's address on the preview host for the app's `path`, once its cookie is set. */
+export function getPreviewHostContentUrl(
+  previewOrigin: string,
+  path: string,
+): string {
+  const item = parseContentPreviewItem(path);
+  const url = new URL(
+    `${CONTENT_PREVIEW_PATH}${item != null ? getContentPreviewItemPath(item) : ""}`,
+    previewOrigin,
+  );
+  url.searchParams.set(COOKIE_SESSION_PARAM, COOKIE_SESSION_VALUE);
+  return url.toString();
+}
+
+/** The preview host's exchange, which trades `code` for its cookie and opens the content frame at `path`. */
+export function getPreviewHostSignInUrl(
+  previewOrigin: string,
+  path: string,
+  code: string,
+): string {
+  const content = new URL(getPreviewHostContentUrl(previewOrigin, path));
+  const url = new URL("/preview-session", previewOrigin);
+  url.searchParams.set("code", code);
+  url.searchParams.set("to", `${content.pathname}${content.search}`);
+  return url.toString();
 }
 
 /** The item an app path opens, or null for anything else. */

@@ -4,39 +4,36 @@ import { Box } from "metabase/ui";
 
 import {
   CONTENT_PREVIEW_SESSION_MESSAGE_TYPE,
-  getContentPreviewUrl,
   isContentPreviewLocationMessage,
   isContentPreviewPath,
   isContentPreviewReadyMessage,
 } from "../content-preview";
 
-import type { GetFrameSource } from "./TroubleshootPage";
-
-/** Only the item, rendered with the SDK on this origin, signed in by the preview session's token. */
-export const getContentFrameSource: GetFrameSource = ({ path, preview }) => ({
-  key: preview.preview_id,
-  src: getContentPreviewUrl(path),
-});
-
 type ContentPreviewFrameProps = {
   title: string;
   src: string;
-  sessionToken: string;
+  /** Where the frame's document is: this origin, or the preview host's. */
+  frameOrigin: string;
+  /** On this origin, the token the frame asks for; on the preview host its cookie signs it in. */
+  sessionToken?: string;
   onPathChange: (path: string) => void;
   /** The frame lost its token (it reloaded): start a new preview session for a new frame. */
   onRestart: () => void;
+  onLoad?: () => void;
 };
 
 /**
- * The "Content only" frame: hands the person's session token to the frame when it asks, once, by `postMessage`
- * to this origin only, and follows the item it reports.
+ * The troubleshooting page's frame: on this origin, hands the person's session token to the frame when it asks,
+ * once, by `postMessage` to this origin only; on either origin, follows the item the frame reports.
  */
 export function ContentPreviewFrame({
   title,
   src,
+  frameOrigin,
   sessionToken,
   onPathChange,
   onRestart,
+  onLoad,
 }: ContentPreviewFrameProps) {
   const ref = useRef<HTMLIFrameElement>(null);
   const hasSentTokenRef = useRef(false);
@@ -47,11 +44,11 @@ export function ContentPreviewFrame({
       const isFromFrame =
         frameWindow != null &&
         event.source === frameWindow &&
-        event.origin === window.location.origin;
+        event.origin === frameOrigin;
       if (!isFromFrame) {
         return;
       }
-      if (isContentPreviewReadyMessage(event.data)) {
+      if (isContentPreviewReadyMessage(event.data) && sessionToken != null) {
         if (hasSentTokenRef.current) {
           onRestart();
           return;
@@ -67,7 +64,7 @@ export function ContentPreviewFrame({
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [sessionToken, onPathChange, onRestart]);
+  }, [frameOrigin, sessionToken, onPathChange, onRestart]);
 
   // A link that navigates the frame itself (a link card, a click behavior) would load the full app with the
   // admin's cookie: stop it there and start the content frame again.
@@ -76,7 +73,9 @@ export function ContentPreviewFrame({
     if (frameWindow != null && hasLeftContentPreview(frameWindow)) {
       frameWindow.location.replace("about:blank");
       onRestart();
+      return;
     }
+    onLoad?.();
   };
 
   return (
