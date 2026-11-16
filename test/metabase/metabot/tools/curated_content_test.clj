@@ -1630,3 +1630,54 @@
               (let [text (out reviews-metric)]
                 (is (str/includes? text "source-card") "the query text renders")
                 (is (not (str/includes? text "Source metric")))))))))))
+
+(defn- source-card-uris
+  "The entity URI and the columns URI that the `Source …` line of a viewing context names, or nil when it has none."
+  [viewing-context]
+  (some->> (re-find #"Source \w+ \"[^\"]*\": (metabase://\S+) \(read its columns at (metabase://[^)\s]+)\)"
+                    viewing-context)
+           rest
+           vec))
+
+(deftest viewing-context-source-card-uris-read-test
+  ;; `readable-source-card` in `metabase.metabot.agent.user-context` repeats the gates of `read_resource` by hand.
+  ;; This test reads the URIs that the line names, so a change on one side only fails here.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {plain-model :id} {:type :model :name "plain model" :dataset_query (orders-query)}
+                     :model/Card {verified-model :id} {:type :model :name "verified model"
+                                                       :dataset_query (orders-query)}
+                     :model/Card {verified-question :id} {:type :question :name "verified question"
+                                                          :dataset_query (orders-query)}
+                     :model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (verify-card! verified-model)
+        (verify-card! verified-question)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (doseq [[profile-id card-type card-id line?] [[:internal "model"    verified-model    true]
+                                                        [:internal "question" verified-question true]
+                                                        [:internal "metric"   orders-metric     true]
+                                                        [:sql      "model"    plain-model       true]
+                                                        [:internal "metric"   reviews-metric    false]]]
+            (testing (str profile-id " " card-type " " card-id)
+              ;; `lib/query` on a metric card does not make the metric the source card, so build the stage by hand.
+              (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" card-id)}}
+                    uris  (source-card-uris
+                           (as-metabot metabot profile-id
+                                       #(user-context/format-viewing-context
+                                         {:user_is_viewing [{:type "adhoc" :query query}]})))]
+                (if line?
+                  (do
+                    (is (= 2 (count uris)) "the line names the card and its columns")
+                    (doseq [{:keys [uri error]} (apply read-uris metabot profile-id uris)]
+                      (is (nil? error) (str "read_resource reads " uri))))
+                  (do
+                    (is (nil? uris) "no line")
+                    (is (denied? (first (read-uris metabot profile-id
+                                                   (str "metabase://" card-type "/" card-id))))
+                        "read_resource refuses the card")))))))))))
