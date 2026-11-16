@@ -158,17 +158,22 @@
           :maxProperties :maximum :minContains :minItems :minLength :minProperties :minimum :multipleOf :pattern
           :patternProperties :prefixItems :properties :propertyNames :required :uniqueItems}))
 
+(def ^:private type-array-keys
+  "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
+  itself, and an `:enum`, which `null` joins."
+  (conj null-neutral-keys :type :enum))
+
 (defn- nullable
   "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
-  Where `schema` has one non-null `:type` and otherwise only [[null-neutral-keys]], returns it with `null` added to
-  that type and to any `:enum`.
+  Where `schema` has one non-null `:type` and otherwise only [[type-array-keys]], returns it with `null` added to that
+  type and to any `:enum`.
   Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
   [schema]
   (let [{:keys [type description]} schema]
     ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
     (if (and (string? type)
              (not= "null" type)
-             (every? (conj null-neutral-keys :type :enum) (keys schema)))
+             (every? type-array-keys (keys schema)))
       (cond-> (assoc schema :type [type "null"])
         ;; an enum rejects a `null` it does not list
         (:enum schema) (update :enum #(vec (distinct (conj (vec %) nil)))))
@@ -176,8 +181,10 @@
         description (assoc :description description)))))
 
 (defn- one-of-replacement
-  "What replaces the `oneOf` `branches`: [[nullable]] X for `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`,
-  `{:not {}}`, which accepts nothing, for no branches, and otherwise an `anyOf` of the same branches."
+  "What replaces the `oneOf` `branches`.
+  For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
+  For no branches, returns `{:not {}}`, which accepts nothing.
+  For any other branches, returns an `anyOf` of the same branches."
   [[x y :as branches]]
   (cond
     (and (= 2 (count branches)) (= {:type "null"} y)) (nullable x)
@@ -191,8 +198,8 @@
   Where any other keyword does, the replacement joins those keywords under `allOf`, and its description, if the
   siblings have none, stays on the property."
   [json-schema]
-  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
-  ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so a falsy value valid for X matches
+  ;; both branches of a nullable `oneOf` and fails it, where an `anyOf` or a type array passes it.
   ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
   ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
   ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.

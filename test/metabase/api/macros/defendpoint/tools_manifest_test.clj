@@ -93,10 +93,11 @@
              (get-in jss [:properties :id :description]))))))
 
 (deftest ^:parallel maybe-publishes-nullable-type-test
-  (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client validator fails for false, 0 and \"\""
+  (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client fails for a falsy value valid for X"
     (is (= {:type                 "object"
             :properties           {:flag   {:type ["boolean" "null"], :description "A flag."}
                                    :limit  {:type ["integer" "null"], :minimum 1}
+                                   :sample {:type ["integer" "null"], :example 5}
                                    :mode   {:type ["string" "null"], :enum ["a" "b" nil]}
                                    :pick   {:anyOf [{:type "string", :const "x"} {:type "null"}], :description "Pick."}
                                    :filter {:type                 ["object" "null"]
@@ -107,13 +108,15 @@
                                                           {:type "null"}]
                                             :description "A string or an id."}
                                    :value  {:anyOf [{} {:type "null"}]}}
-            :required             [:flag :limit :mode :pick :filter :either :value]
+            :required             [:flag :limit :sample :mode :pick :filter :either :value]
             :additionalProperties false}
            (tools-manifest/strict-tool-input-schema
             (tools-manifest/malli->json-schema
              [:map
               [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
               [:limit {:optional true} [:maybe [:int {:min 1}]]]
+              ;; Malli emits the OpenAPI `:example`, an annotation like `:description`
+              [:sample {:optional true} [:maybe {:json-schema/example 5} :int]]
               [:mode {:optional true} [:maybe [:enum "a" "b"]]]
               [:pick {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
               [:filter {:optional true} [:maybe [:map [:x :string]]]]
@@ -150,49 +153,54 @@
                                                                      :b ["c"]}}}]]])
                      [:properties :k]))))))
 
-(deftest ^:parallel one-of-rewrite-keeps-meaning-test
-  (testing "a hand-written `oneOf` rewrite accepts exactly what the `oneOf` and its sibling keywords accepted"
-    (let [published (fn [json-schema]
-                      (get-in (tools-manifest/malli->json-schema [:map [:k [:any {:json-schema json-schema}]]])
-                              [:properties :k]))]
-      ;; a keyword that may reject `null` keeps the branches apart
-      (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
-             (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
-      ;; an enum that already lists `null` lists it once
-      (is (= {:type ["string" "null"], :enum ["a" nil]}
-             (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
-      ;; an empty `oneOf` accepts nothing, which an `anyOf` cannot say, as JSON Schema requires it a branch
-      (is (= {:not {}}
-             (published {:oneOf []})))
-      ;; an `:example` beside the `oneOf`, as `[:maybe {:json-schema/example 5} :int]` gives, is an annotation
-      (is (= {:type ["integer" "null"], :example 5}
-             (get-in (tools-manifest/malli->json-schema [:map [:k [:maybe {:json-schema/example 5} :int]]])
-                     [:properties :k])))
-      ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
-      (is (= {:anyOf [{:type "string"}]
-              :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
-             (published {:anyOf [{:type "string"}], :oneOf [{:minLength 1} {:maxLength 0}]})))
-      ;; and so must a sibling `type`
-      (is (= {:type  "string"
-              :allOf [{:type ["integer" "null"]}]}
-             (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]})))
-      ;; a branch's `additionalProperties` must not start reading the sibling `properties`
-      (is (= {:properties {:a {}}
-              :allOf      [{:type                 ["object" "null"]
-                            :additionalProperties false}]}
-             (published {:properties {:a {}}
-                         :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]})))
-      ;; under `allOf`, the replacement's description stays on the property, unless the property has its own
-      (is (= {:type        "string"
-              :description "An id."
-              :allOf       [{:type ["integer" "null"]}]}
-             (published {:type "string", :oneOf [{:type "integer", :description "An id."} {:type "null"}]})))
-      (is (= {:type        "string"
-              :description "Outer."
-              :allOf       [{:type ["integer" "null"], :description "An id."}]}
-             (published {:type        "string"
-                         :description "Outer."
-                         :oneOf       [{:type "integer", :description "An id."} {:type "null"}]}))))))
+(defn- published
+  "The JSON Schema published for a property whose hand-written `:json-schema` is `json-schema`."
+  [json-schema]
+  (get-in (tools-manifest/malli->json-schema [:map [:k [:any {:json-schema json-schema}]]])
+          [:properties :k]))
+
+(deftest ^:parallel nullable-type-array-test
+  (testing "a nullable `oneOf` becomes a type array only when nothing else in X could reject `null`"
+    ;; a keyword that may reject `null` keeps the branches apart
+    (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
+           (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
+    ;; a `null` type has no type array to join
+    (is (= {:anyOf [{:type "null"} {:type "null"}]}
+           (published {:oneOf [{:type "null"} {:type "null"}]})))
+    ;; an enum that already lists `null` lists it once
+    (is (= {:type ["string" "null"], :enum ["a" nil]}
+           (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
+    ;; an empty `oneOf` accepts nothing, and JSON Schema has no empty `anyOf`
+    (is (= {:not {}}
+           (published {:oneOf []})))))
+
+(deftest ^:parallel one-of-siblings-test
+  (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
+    ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
+    (is (= {:anyOf [{:type "string"}]
+            :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
+           (published {:anyOf [{:type "string"}], :oneOf [{:minLength 1} {:maxLength 0}]})))
+    ;; and so must a sibling `type`
+    (is (= {:type  "string"
+            :allOf [{:type ["integer" "null"]}]}
+           (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]})))
+    ;; a branch's `additionalProperties` must not start reading the sibling `properties`
+    (is (= {:properties {:a {}}
+            :allOf      [{:type                 ["object" "null"]
+                          :additionalProperties false}]}
+           (published {:properties {:a {}}
+                       :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]})))
+    ;; under `allOf`, the replacement's description stays on the property, unless the property has its own
+    (is (= {:type        "string"
+            :description "An id."
+            :allOf       [{:type ["integer" "null"]}]}
+           (published {:type "string", :oneOf [{:type "integer", :description "An id."} {:type "null"}]})))
+    (is (= {:type        "string"
+            :description "Outer."
+            :allOf       [{:type ["integer" "null"], :description "An id."}]}
+           (published {:type        "string"
+                       :description "Outer."
+                       :oneOf       [{:type "integer", :description "An id."} {:type "null"}]})))))
 
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
