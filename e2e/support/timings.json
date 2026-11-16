@@ -677,7 +677,7 @@
       "duration": 4503
     },
     {
-      "spec": "../test/scenarios/data-apps/embed-js-data-app.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/data-app-web-components.cy.spec.ts",
       "duration": 13873
     },
     {
