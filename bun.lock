@@ -383,6 +383,7 @@
   ],
   "patchedDependencies": {
     "@loki/runner@0.35.0": "patches/@loki%2Frunner@0.35.0.patch",
+    "@loki/target-chrome-core@0.35.0": "patches/@loki%2Ftarget-chrome-core@0.35.0.patch",
   },
   "overrides": {
     "@codemirror/autocomplete": "^6.18.6",

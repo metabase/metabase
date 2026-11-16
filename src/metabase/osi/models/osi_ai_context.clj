@@ -2,8 +2,8 @@
   "The `osi_ai_context` appdb table: one row per library entity holding OSI `ai_context` metadata
   (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
-  Identity is the logical `(entity_type, entity_local_id)` pair — that compound key is the primary key, so
-  there is one row per entity and no surrogate id. The `entity_id` NanoID only orders exported rows.
+  Identity is the logical `(entity_type, entity_local_id)` pair, unique in the table, so there is one row per entity.
+  The `entity_id` NanoID only orders exported rows.
 
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
@@ -29,9 +29,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
-
-;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
-(methodical/defmethod t2/primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
 
 (defn ->ai-context
   "Coerce the OSI `ai_context` oneOf into the object form we store.
@@ -126,7 +123,6 @@
 (defmethod serialization/spec :model/OsiAiContext [_]
   {:schema    ::osi.schema/external-osi-ai-context
    :identity  [:entity_type :entity_local_id]
-   :primary-key :entity_type
    :copy      [:ai_context :entity_id :entity_type]
    :transform {:entity_local_id {:export (fn [store rows _ _]
                                            (serialization/export-in-bulk store rows walk-export-local-id))

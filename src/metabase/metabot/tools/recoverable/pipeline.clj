@@ -23,7 +23,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +57,7 @@
     (when (and (pos-int? id)
                ;; `read_resource` 404s on a destination even when the user can read its router.
                (empty? (metabot.db/destination-database-ids #{id}))
-               (mi/can-read? :model/Database id))
+               (some-> (metabot.db/database id) (t2/hydrate :can_read) mi/can-read?))
       id)))
 
 (def ^:private id-keys
