@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [select-keys every? empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -20,7 +21,9 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias sql.qp.like-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
   (:import
    (java.sql Connection ResultSet Types)))
@@ -172,17 +175,23 @@
             :database-position idx})))))})
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
-(defmethod driver/execute-reducible-query :sparksql
-  [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
-  (assert (empty? params) "Spark SQL does not support parameterized JDBC queries.")
-  (let [inner-query (-> (assoc inner-query
-                               :remark   (driver-api/query->remark :sparksql outer-query)
-                               :query    sql
-                               ;; driver still executes legacy outer queries; legacy limit calculation matches
-                               :max-rows #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->max-rows-limit outer-query))
-                        (dissoc :params))
-        query       (assoc outer-query :native inner-query)]
-    ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
+(mu/defmethod driver/execute-reducible-query :sparksql
+  [driver  :- :keyword
+   query   :- ::lib.schema/native-only-query
+   context :- ::driver/execute-reducible-query.context
+   respond :- ::driver/execute-reducible-query.respond-fn]
+  (assert (empty? (:params (lib/query-stage query 0)))
+          "Spark SQL does not support parameterized JDBC queries.")
+  (let [query (lib/update-query-stage 0 assoc
+                                      ;; TODO (Cam 2026-11-16) verify whether `:remark` and `:max-rows` are actually
+                                      ;; doing anything important at all, there was a second implementation of this
+                                      ;; method in this namespace after this one that didn't add these which means we
+                                      ;; haven't been using them for a while.
+                                      :remark   (driver-api/query->remark :sparksql query)
+                                      ;; calculate the max rows limit using the original MBQL query we compiled the
+                                      ;; SQL from
+                                      :max-rows (lib/max-rows-limit (set/rename-keys query {:qp/original-stages :stages})))]
+    ((get-method driver/execute-reducible-query :hive-like) driver query context respond)))
 
 (defmethod sql.qp/format-honeysql :sparksql
   [driver honeysql-form]
@@ -211,12 +220,6 @@
                                                         :paranoid
                                                         :friendly)]
       ((get-method sql.qp/format-honeysql :hive-like) driver honeysql-form))))
-
-(defmethod driver/execute-reducible-query :sparksql
-  [driver query context respond]
-  (assert (empty? (get-in query [:native :params]))
-          "Spark SQL queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
-  ((get-method driver/execute-reducible-query :hive-like) driver query context respond))
 
 ;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)

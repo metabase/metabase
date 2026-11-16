@@ -677,8 +677,54 @@
 
 (defmethod extra-info ::driver [_] nil)
 
+(mr/def ::execute-reducible-query.context
+  [:map
+   [:canceled-chan (lib.schema.common/instance-of-class clojure.core.async.impl.channels.ManyToManyChannel)]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
+  [:sequential
+   [:map
+    [:name          string?] ; allowed to be a blank string :(
+    [:base_type     ::lib.schema.common/base-type]
+    [:database_type ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata
+  [:map
+   [:cols ::execute-reducible-query.respond-fn.results-metadata.cols]])
+
+(mr/def ::execute-reducible-query.respond-fn.rows
+  [:or
+   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+   [:fn {:error/message "sequential?"} sequential?]])
+
+(mr/def ::execute-reducible-query.respond-fn
+  [:=>
+   [:cat ::execute-reducible-query.respond-fn.results-metadata ::execute-reducible-query.respond-fn.rows]
+   ;; return value is ignored
+   :any])
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66):
+
+    {:stages           [{:lib/type :mbql.stage/native
+                         :native   \"SELECT * FROM table WHERE id = ?\"
+                         :params   [1]}]
+    :qp/original-stages <original MBQL stages if this was compiled from MBQL>
+     :info              ...}
+
+  Otherwise `query` is in a Legacy MBQL shape:
+
+    {:native {:query  \"SELECT * FROM table WHERE id = ?\"
+              :params [1]}
+     :query  <original legacy MBQL 'inner query' if this was compiled from MBQL>
+     :info   ...}
+
+  Note that in 69 or later `query` will always be in an MBQL 5 shape as legacy shapes will be unsupported.
+
+  `context` is a map that matches the shape of `::execute-reducible-query.context`.
 
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
@@ -1092,7 +1138,19 @@
     ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
     ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
     ;; this has the same value as `:stage-ctes`.
-    :stage-ctes/nested})
+    :stage-ctes/nested
+    ;;
+    ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
+    ;;
+    ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
+    ;; MBQL shape? Default `false` This only affects the shape of arguments passed to
+    ;; [[execute-reducible-query]]. See driver changelog for more notes on the differences between the shapes.
+    ;;
+    :mbql-5-native-query-execution})
+
+(mr/def ::feature
+  "Valid driver feature keyword."
+  (into [:enum] (sort features)))
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1120,8 +1178,11 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(mu/defmethod database-supports? :default
+  [_driver   :- :keyword
+   _feature  :- ::feature
+   _database :- :map]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true
@@ -1502,7 +1563,11 @@
 
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
-  Drivers that support `:actions/custom` must implement this method."
+  Drivers that support `:actions/custom` must implement this method.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66), otherwise the query is in Legacy MBQL shape. See docstring
+  for [[execute-reducible-query]] for more information."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -16,10 +16,13 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some select-keys mapv empty? not-empty get-in]])
   (:import
    (java.sql Connection DatabaseMetaData Date ResultSet Time Types)
@@ -760,9 +763,12 @@
   (binding [driver/*compile-with-inline-parameters* true]
     ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
-(defmethod driver/execute-reducible-query :athena
-  [driver query context respond]
-  (assert (empty? (get-in query [:native :params]))
+(mu/defmethod driver/execute-reducible-query :athena
+  [driver  :- :keyword
+   query   :- ::lib.schema/native-only-query
+   context :- ::driver/execute-reducible-query.context
+   respond :- ::driver/execute-reducible-query.respond-fn]
+  (assert (empty? (:params (lib/query-stage query 0)))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
 

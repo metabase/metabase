@@ -21,6 +21,8 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -207,20 +209,19 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- :metabase.lib.util/legacy-query]
-  (u/prog1 query
-    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
-    ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
-    ;; reasons
-    (when (= (keyword query-type) :native)
-      (let [details (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
-            user              (db-details->user details)]
-        (when (and config/is-prod? ;; we elevated permissions in workspace tests
-                   (or (str/blank? user)
-                       (= user "sa")))        ; "sa" is the default USER
-          (throw
-           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-                    {:type driver-api/qp.error-type.db})))))))
+(mu/defn- check-native-query-not-using-default-user
+  [query :- ::lib.schema/native-only-query]
+  ;; For native queries check to make sure the DB in question has a (non-default) NAME property specified in the
+  ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
+  ;; reasons
+  (let [details (driver.conn/effective-details (driver-api/database query))
+        user    (db-details->user details)]
+    (when (and config/is-prod? ;; we elevated permissions in workspace tests
+               (or (str/blank? user)
+                   (= user "sa")))      ; "sa" is the default USER
+      (throw
+       (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+                {:type driver-api/qp.error-type.db})))))
 
 (mu/defn- make-h2-parser :- [:maybe (driver-api/instance-of-class Parser)]
   "Returns an H2 Parser object for the Lib metadata `h2-database` of an H2 Database."
@@ -255,11 +256,11 @@
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
-  [database      :- ::lib.schema.metadata/database
-   ^String query :- :string]
+  [database    :- ::lib.schema.metadata/database
+   ^String sql :- :string]
   (when-let [^Parser h2-parser (make-h2-parser database)]
     (try
-      (let [command            (.prepareCommand h2-parser query)
+      (let [command            (.prepareCommand h2-parser sql)
             first-command-type (.getCommandType command)
             command-types      (cond-> [first-command-type]
                                  (not (instance? org.h2.command.CommandContainer command))
@@ -305,7 +306,8 @@
            (re-seq unsupported-builtin-function-regex
                    (StringUtils/toUpperEnglish sql))))))
 
-(defn- check-no-unsupported-functions [sql]
+(mu/defn- check-no-unsupported-functions
+  [sql :- :string]
   (when-let [fns (unsupported-functions-in-query sql)]
     (throw (ex-info (tru "These functions are not supported in native queries: {0}" (str/join ", " (sort fns)))
                     {:type      driver-api/qp.error-type.db
@@ -339,15 +341,13 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
-  (when query
-    (check-no-unsupported-functions query)
-    (when-let [query-classification (classify-query (driver-api/with-metadata-provider database
-                                                      (driver-api/database (driver-api/metadata-provider)))
-                                                    query)]
-      (when-not (every-command-allowed-for-actions? query-classification)
-        (throw (ex-info "DDL commands are not allowed to be used with H2."
-                        {:classification query-classification}))))))
+(mu/defn- check-action-commands-allowed
+  [{[{sql :native}] :stages, :as query} :- ::lib.schema/native-only-query]
+  (check-no-unsupported-functions sql)
+  (when-let [query-classification (classify-query (driver-api/database query) sql)]
+    (when-not (every-command-allowed-for-actions? query-classification)
+      (throw (ex-info "DDL commands are not allowed to be used with H2."
+                      {:classification query-classification})))))
 
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
@@ -357,7 +357,8 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- :metabase.lib.util/legacy-query]
+(mu/defn- check-read-only-statements
+  [{[{sql :native}] :stages} :- ::lib.schema/native-only-query]
   (when sql
     (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
@@ -367,15 +368,18 @@
                         {:type           driver-api/qp.error-type.invalid-query
                          :classification query-classification}))))))
 
-(defmethod driver/execute-reducible-query :h2
-  [driver query chans respond]
+(mu/defmethod driver/execute-reducible-query :h2
+  [driver  :- :keyword
+   query   :- ::lib.schema/native-only-query
+   context :- ::driver/execute-reducible-query.context
+   respond :- ::driver/execute-reducible-query.respond-fn]
   (check-native-query-not-using-default-user query)
   (check-read-only-statements query)
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- :metabase.lib.util/legacy-query]
+   query  :- ::lib.schema/native-only-query]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))

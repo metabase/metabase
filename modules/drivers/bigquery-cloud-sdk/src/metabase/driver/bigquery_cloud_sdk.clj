@@ -27,6 +27,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.http :as u.http]
@@ -1151,13 +1153,16 @@
             (thunk)
             (throw e)))))))
 
-(defmethod driver/execute-reducible-query :bigquery-cloud-sdk
-  [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
+(mu/defmethod driver/execute-reducible-query :bigquery-cloud-sdk
+  [_driver                                              :- :keyword
+   {[{sql :native, params :params}] :stages, :as query} :- ::lib.schema/native-only-query
+   _context                                             :- ::driver/execute-reducible-query.context
+   respond                                              :- ::driver/execute-reducible-query.respond-fn]
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
-                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query))
+                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk query))
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
@@ -1180,6 +1185,7 @@
                               ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
                               :index/fetch                      true
                               :index/inline-create              true
+                              :mbql-5-query-execution           true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :native-pivot-tables              true

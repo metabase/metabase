@@ -1,7 +1,12 @@
 (ns metabase.query-processor.execute
+  (:refer-clojure :exclude [get-in])
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -13,7 +18,8 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,16 +82,22 @@
 
 (def ^:private execute* nil)
 
-(mu/defn- run [query :- ::qp.schema/any-query
+(mu/defn- run [query :- ::lib.schema/query
                rff   :- ::qp.schema/rff]
-  ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
-  ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
-  ;; checks in the middleware
-  (let [query (cond-> query
-                ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
-                (:lib/type query) lib/->legacy-MBQL)
-        query (cond-> query
-                (not (:native query)) (assoc :native (:qp/compiled query)))]
+  (let [query (if (driver.u/supports? driver/*driver* :mbql-5-native-query-execution (lib.metadata/database query))
+                ;; keep MBQL 5 for execution
+                (if (lib/native-only-query? query)
+                  query
+                  (let [native-stage {:lib/type :mbql.stage/native
+                                      :native   (get-in query [:qp/compiled :query])
+                                      :params   (get-in query [:qp/compiled :params])}]
+                    (assoc query
+                           :stages             [native-stage]
+                           :qp/original-stages (:stages query))))
+                ;; convert to legacy (drop this code branch in 69)
+                (let [legacy-query (lib/->legacy-MBQL query)]
+                  (cond-> legacy-query
+                    (not (:native legacy-query)) (assoc :native (:qp/compiled legacy-query)))))]
     (qp.pipeline/*run* query rff)))
 
 (mu/defn- execute-fn :- ::qp.schema/qp

@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
@@ -11,6 +12,7 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -246,9 +248,10 @@
                 :type   driver-api/qp.error-type.invalid-query}
                e))))
 
-(defn execute-reducible-query
+(mu/defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
-  [{{query :query collection-name :collection :as native-query} :native} respond]
+  [{[{query :native, collection-name :collection, :as native-query}] :stages} :- ::lib.schema/native-only-query
+   respond                                                                    :- ::driver/execute-reducible-query.respond-fn]
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)

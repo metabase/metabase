@@ -18,6 +18,7 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -585,10 +586,13 @@
    query   :- ::lib.schema/query]
   (mongo.qp/mbql->native query))
 
-(defmethod driver/execute-reducible-query :mongo
-  [_driver query _context respond]
-  (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
-  (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
+(mu/defmethod driver/execute-reducible-query :mongo
+  [_driver  :- :keyword
+   query    :- ::lib.schema/native-only-query
+   _context :- ::driver/execute-reducible-query.context
+   respond  :- ::driver/execute-reducible-query.respond-fn]
+  (assert (string? (:collection (lib/query-stage query 0))) "Cannot execute MongoDB query without a :collection name")
+  (mongo.connection/with-mongo-client [_ (driver-api/database query)]
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters-in-stage-method :mongo

@@ -78,13 +78,15 @@
 
   'Hey, this is a 20 character query! What's it talking about, error at position 120?'
   This gets fixed, but in a spooky-action-at-a-distance way, in
-  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`"
+  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`
+
+  `query` will be MBQL 5 if the driver supports `:mbql-5-native-query-execution`, otherwise `query` will be Legacy MBQL."
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod query->remark :default
-  [_ query]
+  [_driver query]
   (default-query->remark query))
 
 ;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.

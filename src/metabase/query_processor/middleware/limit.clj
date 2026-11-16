@@ -39,7 +39,7 @@
            (not (lib/aggregated-output? query)))
       (lib/limit -1 max-rows))))
 
-(defn determine-query-max-rows
+(mu/defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
   2. the value of [[download-row-limit]] if this is for a download
@@ -47,11 +47,12 @@
 
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
-  [query]
+  [query :- ::qp.schema/any-query]
   (if-not (:lib/type query)
     ;; handle legacy queries... for now.
     ;;
-    ;; TODO (Cam 8/19/25) -- update this to be MBQL 5 only once the preprocessor spits out MBQL 5.
+    ;; TODO (Cam 2026-11-16) We can remove support for Legacy MBQL once we remove the `:mbql-5-native-query-execution`
+    ;; feature in 69.
     (recur (lib/query (qp.store/metadata-provider) (case (:type query)
                                                      ;; sometimes this is called with a compiled query that has both
                                                      ;; MBQL plus native.
