@@ -1937,9 +1937,9 @@
   (boolean (seq (jdbc/query conn ["SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = ?::text" schema-name]))))
 
 (defn- schema-exists-error [user schema-name cause]
-  (ex-info (format (str "The warehouse already has a schema named %s, the workspace's output schema. It may hold data "
-                        "that is not the workspace's, and removing the workspace would drop it, so it was left "
-                        "unchanged. Drop or rename that schema, then retry.")
+  (ex-info (format (str "The warehouse already has a schema named %s, the name this workspace's output schema would "
+                        "take. Removing a workspace drops its output schema with every table in it, and this schema "
+                        "may hold tables that are not the workspace's, so it was left unchanged.")
                    (quote-schema schema-name))
            {:status-code 409, :workspace/cleanup? false, :user user, :schema schema-name}
            cause))
@@ -1948,7 +1948,7 @@
   (ex-info (format (str "Another session created a role named %s or a schema named %s at the same time. It may "
                         "belong to another workspace, so it was left unchanged.")
                    (quote-field user) (quote-schema schema-name))
-           {:status-code 409, :workspace/cleanup? false, :user user}
+           {:status-code 409, :workspace/cleanup? false, :user user, :schema schema-name}
            cause))
 
 (defn- connectable-databases

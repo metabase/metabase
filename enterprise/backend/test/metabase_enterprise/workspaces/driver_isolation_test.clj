@@ -1031,8 +1031,8 @@
           ;; CANNOT create users: postgres/redshift check CREATE at the database
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
-          ;; Postgres refuses an output schema that already exists, so it does
-          ;; not pre-create one.
+          ;; Postgres refuses an output schema that already exists, so the test
+          ;; does not pre-create one there.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
           ;; helps engines that check existence before privileges (SQL Server's

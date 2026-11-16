@@ -307,8 +307,10 @@
                                       (ex-data e))))))
                _         (.countDown latch)
                results   (mapv #(deref % 60000 :timed-out) inits)]
+           ;; the loser's error names the schema when it lost the race on CREATE SCHEMA, not when it saw the role
            (is (= #{:created {:status-code 409, :workspace/cleanup? false, :user (-> workspace :database_details :user)}}
-                  (set results)))
+                  (set (map #(cond-> % (map? %) (dissoc :schema)) results))))
+           (is (every? #{(:schema workspace)} (keep :schema results)))
            (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
 
 (deftest init-keeps-the-password-out-of-statements-test
