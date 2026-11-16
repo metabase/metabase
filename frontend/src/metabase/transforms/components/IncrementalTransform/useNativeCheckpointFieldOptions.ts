@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect/KeysetColumnSelect";
 import type { CheckpointFieldOption } from "./useClearUnsupportedLookback";
@@ -17,10 +17,10 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
     }
     try {
       const templateTags = Lib.templateTags(query);
-      const tableTags = Object.values(templateTags).filter(
+      const tableTags = templateTags.filter(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       );
-      return tableTags.map((tag) => tag["table-id"]).filter(isConcreteTableId);
+      return tableTags.map((tag) => tag["table-id"]).filter(isNotNull);
     } catch {
       return [];
     }

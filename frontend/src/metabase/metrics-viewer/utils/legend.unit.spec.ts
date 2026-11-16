@@ -1,9 +1,11 @@
+import { createMockMetadata } from "__support__/metadata";
+import type { JsMetadata } from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { NormalizedMetric } from "metabase-types/api";
 import {
-  createMockMetric,
   createMockMetricDimension,
   createMockMetricDimensionGroup,
+  createMockNormalizedMetric,
 } from "metabase-types/api/mocks/metric";
 
 import type {
@@ -15,7 +17,7 @@ import type {
 
 import { buildLegendGroups } from "./legend";
 
-const REVENUE_METRIC = createMockMetric({
+const REVENUE_METRIC = createMockNormalizedMetric({
   id: 1,
   name: "Revenue",
   dimensions: [
@@ -39,7 +41,7 @@ const REVENUE_METRIC = createMockMetric({
   ],
 });
 
-const ORDERS_METRIC = createMockMetric({
+const ORDERS_METRIC = createMockNormalizedMetric({
   id: 2,
   name: "Orders",
   dimensions: [
@@ -52,16 +54,15 @@ const ORDERS_METRIC = createMockMetric({
   ],
 });
 
-function createMetadata(metrics: ReturnType<typeof createMockMetric>[]) {
-  const metadata = new Metadata();
-  for (const metric of metrics) {
-    metadata.metrics[metric.id] = metric;
-  }
-  return metadata;
+function createMetadata(metrics: NormalizedMetric[]) {
+  return {
+    ...createMockMetadata(),
+    metrics: Object.fromEntries(metrics.map((metric) => [metric.id, metric])),
+  };
 }
 
 function setupDefinition(
-  metadata: Metadata,
+  metadata: JsMetadata,
   metricId: number,
 ): LibMetric.MetricDefinition {
   const provider = LibMetric.metadataProvider(metadata);
@@ -73,7 +74,7 @@ function setupDefinition(
 }
 
 function setupDefinitionWithBreakout(
-  metadata: Metadata,
+  metadata: JsMetadata,
   metricId: number,
   dimensionIndex: number,
 ): LibMetric.MetricDefinition {

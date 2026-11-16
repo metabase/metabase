@@ -42,6 +42,7 @@
    [malli.core :as mc]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.config.core :as config]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -107,7 +108,7 @@
                    [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                    [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
                    [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
-                   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]]
+                   [:viz-settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]]]]
           config/is-test?
           (conj [::mc/default
                  [:map {:closed true}
@@ -118,7 +119,7 @@
                   [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
                   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
-                  [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]))))
+                  [:viz-settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]]]))))
 
 (defn- validate-internal-query
   [query]

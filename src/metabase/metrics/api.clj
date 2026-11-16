@@ -8,6 +8,9 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
@@ -393,7 +396,13 @@
                                                        [:id             ms/NonBlankString]
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
-                                                       [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
+                                                       ;; This is not `::lib-metric.schema/dimension-mapping.target`
+                                                       ;; because `field-ref->key` strips `:base-type`, which is
+                                                       ;; required for name-based refs (#85634).
+                                                       [:mapping_target [:tuple
+                                                                         [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]
+                                                                         [:ref ::lib.schema.ref/field.options]
+                                                                         [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]]]]]]]
   (let [before (write-check-metric! id)]
     (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
       (notify-dimensions-changed! id before))))

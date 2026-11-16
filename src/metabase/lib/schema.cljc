@@ -33,6 +33,8 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
@@ -103,7 +105,7 @@
    [:metabase.query-processor.util.add-alias-info/join-alias->escaped
     {:optional true}
     [:map-of [:ref ::join/alias] :string]]
-   [:metabase.driver.sql.query-processor/cte-level {:optional true} nat-int?]])
+   [:metabase.driver.sql.query-processor/cte-name {:optional true} :string]])
 
 (mr/def ::stage.native
   [:and
@@ -435,7 +437,8 @@
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
    [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
@@ -443,10 +446,9 @@
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
-   [:mbql.stage/native [:fn
-                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
-                        (constantly false)]]
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
+   [:mbql.stage/native (mu/never {:error/message "Native stages are only allowed as the first stage of a query or join."})]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
                         (complement (some-fn :source-table :source-card))]]])
@@ -728,7 +730,7 @@
    [:pivot_measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:show_row_totals    {:optional true} [:maybe :boolean]]
    [:show_column_totals {:optional true} [:maybe :boolean]]
-   [:viz-settings {:optional true} [:maybe [:ref ::common/visualization-settings]]]
+   [:viz-settings {:optional true} [:maybe [:ref ::lib.schema.visualization-settings/visualization-settings]]]
    [:user-parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib.convert/converted? {:optional true} :boolean]
    [:qp/compiled        {:optional true} [:ref ::compiled-native-query]]

@@ -1,6 +1,6 @@
 import type { RowValue } from "./dataset";
-import type { DimensionReference, FieldReference } from "./query";
-import type { ConcreteTableId, Table, TableId } from "./table";
+import type { DimensionReference } from "./query";
+import type { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -60,6 +60,8 @@ export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
   id: number;
+  field_id: FieldId;
+  field?: Field;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
@@ -67,7 +69,7 @@ export type FieldDimension = {
 };
 
 export interface Field {
-  id: FieldId | FieldReference;
+  id: FieldId;
   table_id: TableId;
   table?: Table;
   field_ref?: DimensionReference;
@@ -89,8 +91,6 @@ export interface Field {
   parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
-  values?: FieldValue[];
-  remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
@@ -99,7 +99,6 @@ export interface Field {
   max_value?: number;
   min_value?: number;
   has_field_values: FieldValuesType;
-  has_more_values?: boolean;
 
   caveats?: string | null;
   points_of_interest?: string;
@@ -129,7 +128,7 @@ export interface GetFieldTableIdsRequest {
 }
 
 export interface GetFieldTableIdsResponse {
-  table_ids: ConcreteTableId[];
+  table_ids: TableId[];
 }
 
 export interface UpdateFieldRequest {
@@ -177,3 +176,10 @@ export interface UpdateFieldValuesRequest {
   id: FieldId;
   values: FieldValue[];
 }
+
+export type FieldUserSettings = {
+  field_id: FieldId;
+  display_name: string | null;
+  description: string | null;
+  field?: Field;
+};

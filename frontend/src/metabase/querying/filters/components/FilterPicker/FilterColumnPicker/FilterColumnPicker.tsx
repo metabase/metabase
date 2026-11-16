@@ -324,7 +324,7 @@ function getFrequentlyUsedSection(
   const seenKeys = new Set<string>();
   const items = columnItems
     .flatMap((item) => {
-      const { fieldId } = Lib.fieldValuesSearchInfo(query, item.column);
+      const { fieldId } = Lib.fieldSearchInfo(query, item.column);
       const ratio = fieldId !== null ? ratioByFieldId.get(fieldId) : undefined;
       const key = `${fieldId}:${item.tableDisplayName}`;
       if (ratio === undefined || seenKeys.has(key)) {

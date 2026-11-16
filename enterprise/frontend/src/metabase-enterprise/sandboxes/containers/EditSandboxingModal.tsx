@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { getGroupsBasePath } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Modal } from "metabase/ui";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
@@ -16,7 +17,7 @@ import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 
-const EditSandboxingModalContainer = ({
+const EditSandboxingModalBody = ({
   params,
   location,
   onClose,
@@ -95,6 +96,26 @@ const EditSandboxingModalContainer = ({
     />
   );
 };
+
+const EditSandboxingModalContainer = ({
+  params,
+  location,
+  onClose,
+}: ModalComponentProps) => (
+  <Modal
+    opened
+    density="relaxed"
+    withCloseButton={false}
+    title={t`Configure row and column security for this table`}
+    onClose={onClose}
+  >
+    <EditSandboxingModalBody
+      params={params}
+      location={location}
+      onClose={onClose}
+    />
+  </Modal>
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EditSandboxingModalContainer;

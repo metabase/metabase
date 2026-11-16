@@ -5,8 +5,10 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.db :as models.db]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,17 +19,26 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
+(mu/defn synced-field-clause :- [:fn vector?]
+  "The clause over the table aliased `alias`, with a `field_id` column, selecting the rows of synced tables' fields."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings opts)}])
+
+(mu/defn synced-table-user-settings-clause :- [:fn vector?]
+  "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   [:= (u/qualified-key alias :is_published) true]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
+
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
-
-(mu/defn field-in-path
-  "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
-  `table-id`, or nil. See `metabase.models.db/field-in-path`, which owns the shared query."
-  [table-id    :- [:maybe ::lib.schema.id/table]
-   field-names :- [:sequential :string]]
-  (models.db/field-in-path table-id field-names))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -198,24 +209,6 @@
                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
 
-(mu/defn dimension-ids-for-table :- [:set ::lib.schema.id/dimension]
-  "The ids of the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (set (t2/select-pks-set :model/Dimension
-                          {:from  [[(t2/table-name :model/Dimension) :d]]
-                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
-                           :where [:= :f.table_id table-id]})))
-
-(mu/defn field-user-settings-for-tables
-  "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/FieldUserSettings
-             {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
-              :from     [[(t2/table-name :model/FieldUserSettings) :u]]
-              :join     [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
-              :where    [:in :f.table_id table-ids]
-              :order-by [[:f.name :asc]]}))
-
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
   [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]]
@@ -282,11 +275,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/TableUserSettings :table_id table-id))
 
-(mu/defn table-user-settings-exist?
-  "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings :table_id table-id))
-
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
@@ -324,13 +312,6 @@
   (if (seq table-ids)
     (t2/delete! :model/TableUserSettings :table_id [:in table-ids])
     0))
-
-(mu/defn table-user-settings-for-tables
-  "The TableUserSettings of the Tables with `table-ids`, or every TableUserSettings when nil."
-  [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (if table-ids
-    (t2/select :model/TableUserSettings :table_id [:in table-ids])
-    (t2/select :model/TableUserSettings)))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
@@ -515,22 +496,10 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
-(mu/defn segment-ids-for-table
-  "The IDs of the Segments of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
-  [table-id       :- ::lib.schema.id/table
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Segment {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
-
 (mu/defn unarchived-measures-for-tables
   "The unarchived Measures of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
-
-(mu/defn measure-ids-for-table
-  "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
-  [table-id       :- ::lib.schema.id/table
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Measure {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
 
 (mu/defn unarchived-metric-cards-for-tables
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
@@ -565,11 +534,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn databases-by-id
-  "A map of ID to ::warehouses.schema/database for `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
-
 (mu/defn database-engine
   "The engine of the ::warehouses.schema/database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -580,40 +544,38 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name :model/Database :id database-id))
 
-(mu/defn database-id-by-name
-  "The ID of the ::warehouses.schema/database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-pk :model/Database :name database-name))
-
 ;;; ---------------------------------------------- Other models ----------------------------------------------
-
-(mu/defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn cards-with-moderated-status
-  "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select :model/Card
-             {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                          :c.description :c.collection_id :c.database_id :c.type
-                          :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                          ;; required alongside :card_schema for the Card schema upgrade
-                          :c.dimensions :c.dimension_mappings
-                          [:r.status :moderated_status]]
-              :from      [[:report_card :c]]
-              :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
-                                             :from     [:moderation_review]
-                                             :where    [:and
-                                                        [:= :moderated_item_type "card"]
-                                                        [:= :most_recent true]]
-                                             :order-by [[:id :desc]]
-                                             :limit    1} :r]
-                          [:= :r.moderated_item_id :c.id]]
-              :where     [:in :c.id card-ids]}))
+(mu/defn synced-table-user-settings-items :- [:sequential ::warehouse-schema.schema/table-user-settings]
+  "The TableUserSettings of the Tables with `ids`, with their Table, and their Collection and its ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/TableUserSettings :table_id :display_name :collection_id] :table_id [:in ids])
+        (t2/hydrate :table [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-field-user-settings-items :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "The FieldUserSettings of the Fields with `ids`, with their Field, its Table, and that Table's Collection and
+  ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/FieldUserSettings :field_id :display_name] :field_id [:in ids])
+        (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [settings]
+                     (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-dimension-items :- [:sequential ::warehouse-schema.schema/dimension]
+  "The Dimensions with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Dimension :id :field_id :name] :id [:in ids])
+        (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [dimension]
+                     (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))

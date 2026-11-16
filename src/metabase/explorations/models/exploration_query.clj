@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
@@ -35,6 +36,11 @@
   ([_model pk]
    (when-let [q (explorations.db/query-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :can_write]
+  "Add whether the current user can write each ExplorationQuery, which is whether they can write its parent."
+  [_model k instances]
+  (exploration/hydrate-can-write-from-parents k instances :exploration_thread_id :model/ExplorationThread))
 
 (defn- hydrate-score-from-result [score-key queries]
   (mi/instances-with-hydrated-data

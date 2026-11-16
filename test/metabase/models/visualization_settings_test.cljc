@@ -3,7 +3,7 @@
 
   TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
   `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-  also [[metabase.models.interface/normalize-visualization-settings]]."
+  also [[metabase.lib.schema.visualization-settings]]."
   (:require #?@(:cljs [[goog.string :as gstring]]
                 :default [])
             [clojure.test :as t]
@@ -71,6 +71,16 @@
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
+
+(t/deftest ^:parallel currency-position-conversion-test
+  (doseq [position ["before" "after"]]
+    (let [db-form   {:column_settings {"[\"name\",\"Price\"]" {:currency_position position}}}
+          norm-form {::mb.viz/column-settings {{::mb.viz/column-name "Price"}
+                                               {::mb.viz/currency-position position}}}]
+      (t/is (= norm-form (mb.viz/db->norm db-form)))
+      (t/is (= db-form (mb.viz/norm->db norm-form)))
+      (t/is (= {::mb.viz/currency-position position}
+               (mb.viz/db->norm-column-settings-entries {:currency_position position}))))))
 
 (t/deftest ^:parallel form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"

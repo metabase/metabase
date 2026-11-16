@@ -166,6 +166,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
@@ -310,9 +311,9 @@
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+          (nil? (:collection_id instance))
+          (remote-sync/can-write? :model/Collection (:collection_id instance)))
     (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-    ;; a path no permissions set holds, not even an admin's `/`, so nobody writes what remote sync keeps read-only
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -600,7 +601,10 @@
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
     (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (shared-tenant-collection? collection)
+      (when-not (or (shared-tenant-collection? collection)
+                    ;; Tenant groups access data apps through read grants on its resource collection.
+                    (and (pos-int? (:id collection))
+                         (data-perms/collection-owned-by-data-app? (:id collection))))
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 

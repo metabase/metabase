@@ -17,7 +17,6 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -41,7 +40,6 @@ const clickActionMode = new Mode(getQueryMode, {
 
 interface ViewMainContainerProps {
   question: Question;
-  query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -67,7 +65,7 @@ interface ViewMainContainerProps {
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setQuery: (query: Lib.Query) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;

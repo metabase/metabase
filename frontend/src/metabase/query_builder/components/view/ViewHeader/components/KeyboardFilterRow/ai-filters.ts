@@ -209,7 +209,7 @@ function toAiOperator(operator: DraftOperator): AiOperator[] {
 function getAiColumns(query: Lib.Query, stageIndex: number): AiColumn[] {
   return getColumnGroups(query, stageIndex).flatMap((group) =>
     group.columns.flatMap(({ column, label, kind, operators }): AiColumn[] => {
-      const fieldId = Lib.fieldValuesSearchInfo(query, column).fieldId;
+      const fieldId = Lib.fieldSearchInfo(query, column).fieldId;
       const base = { table: group.label, name: label, fieldId };
       if (operators != null && kind !== "other" && kind !== "date") {
         return [{ ...base, kind, operators: operators.flatMap(toAiOperator) }];

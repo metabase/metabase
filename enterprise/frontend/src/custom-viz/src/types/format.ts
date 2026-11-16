@@ -9,6 +9,7 @@ export type FormatValueOptions = {
   compact?: boolean;
   currency?: string;
   currency_style?: Intl.NumberFormatOptionsCurrencyDisplay;
+  currency_position?: "before" | "after";
   date_format?: string;
   date_style?: string | null;
   date_separator?: string;

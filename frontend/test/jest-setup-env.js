@@ -64,7 +64,7 @@ jest.mock("@floating-ui/dom", () => ({
         // act() itself warns where the environment is not set up for it, which
         // is the case inside Testing Library's async helpers.
         if (globalThis.IS_REACT_ACT_ENVIRONMENT) {
-          jest.requireActual("react-dom/test-utils").act(() => {
+          jest.requireActual("react").act(() => {
             onFulfilled(position);
           });
         } else {

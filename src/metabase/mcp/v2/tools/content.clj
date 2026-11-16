@@ -67,7 +67,7 @@
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))
       (when-let [tags (some (comp not-empty :template-tags) (:stages dataset-query))]
-        (into {} (map (juxt :name identity)) tags))))
+        (u/index-by :name tags))))
 
 (defn- source-cards-readable?
   "Whether the current user can read every Card `query` reads, at any depth.
@@ -326,7 +326,7 @@
   [row]
   (let [markdown   (:content_markdown row)
         spans      (::spans row)
-        span-by-id (into {} (map (juxt :node-id identity)) spans)
+        span-by-id (u/index-by :node-id spans)
         ancestor-ids (node-id->ancestor-ids row)
         threads    (->> (comments/comments-for-document (:id row))
                         (group-by :child_target_id)

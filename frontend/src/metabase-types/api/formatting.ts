@@ -1,5 +1,7 @@
 export type CurrencyStyle = Intl.NumberFormatOptionsCurrencyDisplay;
 
+export type CurrencyPosition = "before" | "after";
+
 export type TimeEnabled = "minutes" | "milliseconds" | "seconds";
 
 export interface TimeOnlyOptions {

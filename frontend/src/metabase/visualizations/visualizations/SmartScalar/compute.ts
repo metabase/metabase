@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import type { JSX } from "react";
 import { t } from "ttag";
 
@@ -22,7 +23,6 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
-  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -75,7 +75,7 @@ interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: LegacyDatasetQuery["type"];
+  isNative: boolean;
 }
 
 interface MetricData {
@@ -341,7 +341,7 @@ function getCurrentMetricData({
     dateColumn: dateColumnWithUnit,
     dateColumnSettings: displaySettings,
     dateUnit: displayUnit ?? dateUnit,
-    queryType: isNative ? "native" : "query",
+    isNative,
   };
 
   const formatOptions = {
@@ -736,10 +736,10 @@ function formatDateStr({
   dateUnitSettings: DateUnitSettings;
   options?: ColumnSettings;
 }) {
-  const { dateColumn, dateColumnSettings, dateUnit, queryType } =
+  const { dateColumn, dateColumnSettings, dateUnit, isNative } =
     dateUnitSettings;
 
-  if (!dateUnit || queryType === "native") {
+  if (!dateUnit || isNative) {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,

@@ -79,9 +79,7 @@ describe("DataSelectorSchemaPicker", () => {
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
     // focus the "‹ Warehouse" back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: "chevronleft icon Warehouse" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Warehouse" })).toHaveFocus();
     await userEvent.keyboard("{Enter}");
 
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -97,9 +95,7 @@ describe("DataSelectorSchemaPicker", () => {
 
     // focus the "‹ Warehouse" back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: "chevronleft icon Warehouse" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Warehouse" })).toHaveFocus();
     await userEvent.keyboard(" ");
 
     expect(onBack).toHaveBeenCalledTimes(1);

@@ -1,7 +1,7 @@
 (ns metabase.metabot.tools.shared.content-store
-  "Permission-aware wrappers around [[resolve.mp/ContentStore]].
+  "Permission-aware wrappers around [[serialization.protocol.mp/ContentStore]].
 
-  The resolver in `resolve.mp` is permission-agnostic so serdes import and background tasks can
+  The store in `protocol.mp` is permission-agnostic so serdes import and background tasks can
   use it with no authenticated user. HTTP and agent-tool paths run under a current user and must
   layer a check on top; this namespace is that chokepoint.
 
@@ -14,7 +14,7 @@
   What varies is whether a refusal is audited: [[api/read-check]] leaves an ERROR log line and an
   `:event/read-permission-failure`, [[api/check-403]] throws the same bare 403 without them.
   [[default-store]] audits the `-by-entity-id` methods only, [[audited-store]] audits all six,
-  and [[resolve.mp/*audit-refusals?*]] suppresses auditing for a caller that discards the
+  and [[*audit-refusals?*]] suppresses auditing for a caller that discards the
   refusal."
   (:require
    [metabase.api.common :as api]
@@ -23,11 +23,18 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *audit-refusals?*
+  "Whether a permission-aware [[serialization.protocol.mp/ContentStore]] audits a refusal, i.e. leaves the ERROR log
+  line and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare 403. Bind to false
+  around a lookup whose refusal you catch and discard; the permission check itself is unaffected."
+  true)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *last-lookup-refused?*
@@ -73,7 +80,7 @@
   (cond
     (nil? row)              nil
     api/*current-user-id*   (try
-                              (if (and audited? resolve.mp/*audit-refusals?*)
+                              (if (and audited? *audit-refusals?*)
                                 (api/read-check row)
                                 (do (api/check-403 (mi/can-read? row)) row))
                               (catch clojure.lang.ExceptionInfo e
@@ -91,23 +98,23 @@
   ([store audited-by-id?]
    (let [by-eid {:audited? true            :collapse-denial? false}
          by-id  {:audited? audited-by-id?  :collapse-denial? true}]
-     (reify resolve.mp/ContentStore
-       (card-by-entity-id    [_ eid] (permission-checked by-eid (resolve.mp/card-by-entity-id    store eid)))
-       (measure-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/measure-by-entity-id store eid)))
-       (segment-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/segment-by-entity-id store eid)))
-       (card-by-id           [_ id]  (permission-checked by-id  (resolve.mp/card-by-id           store id)))
-       (measure-by-id        [_ id]  (permission-checked by-id  (resolve.mp/measure-by-id        store id)))
-       (segment-by-id        [_ id]  (permission-checked by-id  (resolve.mp/segment-by-id        store id)))))))
+     (reify serialization.protocol.mp/ContentStore
+       (card-by-entity-id    [_ eid] (permission-checked by-eid (serialization.protocol.mp/card-by-entity-id    store eid)))
+       (measure-by-entity-id [_ eid] (permission-checked by-eid (serialization.protocol.mp/measure-by-entity-id store eid)))
+       (segment-by-entity-id [_ eid] (permission-checked by-eid (serialization.protocol.mp/segment-by-entity-id store eid)))
+       (card-by-id           [_ id]  (permission-checked by-id  (serialization.protocol.mp/card-by-id           store id)))
+       (measure-by-id        [_ id]  (permission-checked by-id  (serialization.protocol.mp/measure-by-id        store id)))
+       (segment-by-id        [_ id]  (permission-checked by-id  (serialization.protocol.mp/segment-by-id        store id)))))))
 
 (def default-store
-  "[[resolve.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent
+  "[[serialization.protocol.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent
   or tool path running under an authenticated request, over a query loaded from the app DB."
-  (read-checked resolve.mp/unchecked-app-db-content-store))
+  (read-checked serialization.protocol.mp/unchecked-app-db-content-store))
 
 (def audited-store
   "[[default-store]] with `-by-id` refusals audited too. For a query the client supplied rather
   than one loaded from the app DB, where the numeric ids in it are the caller's own."
-  (read-checked resolve.mp/unchecked-app-db-content-store true))
+  (read-checked serialization.protocol.mp/unchecked-app-db-content-store true))
 
 ;;; The stores gate the content *inside* an export. Exporting also resolves table and field ids
 ;;; to names through an unfiltered provider, so the query's database and referenced tables need

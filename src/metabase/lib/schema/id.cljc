@@ -160,8 +160,9 @@
   :string)
 
 (mr/def ::external-dashcard
-  "A DashboardCard as serialization references it, as `[dashboard-entity-id dashcard-entity-id]`."
-  [:tuple ::external-dashboard :string])
+  "A DashboardCard as serialization references it, by entity id, or as `[dashboard-entity-id dashcard-entity-id]` in
+  older exports."
+  [:or :string [:tuple ::external-dashboard :string]])
 
 (mr/def ::external-user
   "A User as serialization references it, by email."
@@ -188,8 +189,9 @@
   :string)
 
 (mr/def ::external-dashboard-tab
-  "A DashboardTab as serialization references it, as `[dashboard-entity-id tab-entity-id]`."
-  [:tuple ::external-dashboard :string])
+  "A DashboardTab as serialization references it, by entity id, or as `[dashboard-entity-id tab-entity-id]` in older
+  exports."
+  [:or :string [:tuple ::external-dashboard :string]])
 
 (mr/def ::external-transform-tag
   "A TransformTag as serialization references it, by entity id."

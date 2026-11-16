@@ -73,7 +73,8 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl])
+  add-into-clause-impl
+  add-insert-clause-impl])
 
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."
@@ -144,7 +145,7 @@
 
    SECURITY: Replacement values are injected into the SQL AST as identifier names
    without sanitization. Callers MUST ensure replacement values are system-generated
-   (e.g., database metadata). Never pass
+   (e.g., workspace isolation schema names, database metadata). Never pass
    user-controlled input as replacement values."
   ([driver :- [:maybe :keyword]
     sql-string :- :string
@@ -174,6 +175,7 @@
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple
@@ -205,6 +207,21 @@
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
+
+(mu/defn add-insert-clause :- :string
+  "Make an INSERT INTO statement that inserts the result of `sql`, a SELECT, into `table-name`. If `sql` has a `WITH`
+  clause, the `WITH` clause goes before `INSERT INTO`.
+
+  Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+  Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
+
+  Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`."
+  [driver :- :keyword
+   sql :- :string
+   table-name :- :string]
+  (let [parser (sql-tools.settings/current-parser-backend)]
+    (metrics/with-operation-timing [parser "add-insert-clause"]
+      (interface/add-insert-clause-impl parser driver sql table-name))))
 
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
@@ -274,9 +291,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
-  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
-  `:unparseable`.
+  `:session-function`, `:external-table`, `:sql-executing-function`, `:dynamic-function-call`,
+  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:lone-carriage-return`, `:unicode-identifier`,
+  `:large-literal-list`, `:too-long` and `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword

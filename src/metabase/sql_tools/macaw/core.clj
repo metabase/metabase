@@ -184,6 +184,11 @@
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
 
+(defmethod sql-tools/add-insert-clause-impl :macaw
+  [_parser _driver sql table-name]
+  ;; Macaw does not move a `WITH` clause before `INSERT INTO`.
+  (format "INSERT INTO %s %s" table-name sql))
+
 (defmethod sql-tools/replace-names-impl :macaw
   [_parser driver sql-string replacements opts]
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names

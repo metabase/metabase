@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -16,7 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 (def ^:private KeypathComponents
   [:map {:closed true}
@@ -57,8 +59,10 @@
        (when-let [table-id (sync.db/active-table-id-by-name (u/the-id database) table-name)]
          (if field-name
            (when-let [field-id (sync.db/field-id-by-name table-id field-name)]
-             (sync-util/update-field-unless-user-set! field-id {k value}))
-           (sync-util/update-table-unless-user-set! table-id {k value})))
+             (sync-util/update-field-unless-user-set!
+              field-id (lib/normalize ::warehouse-schema.schema/field.update {k value})))
+           (sync-util/update-table-unless-user-set!
+            table-id (lib/normalize ::warehouse-schema.schema/table.update {k value}))))
        (sync.db/update-database! (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!

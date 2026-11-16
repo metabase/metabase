@@ -27,6 +27,7 @@ import { resolveSavedTheme } from "../utils/resolve-saved-theme";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
+import { SdkIframeDataAppEmbedPreview } from "./SdkIframeDataAppEmbedPreview";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
@@ -45,12 +46,13 @@ const SdkIframeEmbedPreviewInner = () => {
     guestEmbedSignedTokenForPreview,
   } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
+  const isDataApp = settings.componentName === "metabase-data-app";
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
 
   const { data: savedThemes } = useListEmbeddingThemesQuery(undefined, {
-    skip: !isSimpleEmbedFeatureAvailable || !settings.theme?.id,
+    skip: isDataApp || !isSimpleEmbedFeatureAvailable || !settings.theme?.id,
   });
 
   const embedElementRef = useRef<HTMLElement | null>(null);
@@ -100,6 +102,10 @@ const SdkIframeEmbedPreviewInner = () => {
   );
 
   const theme = useMemo(() => {
+    if (isDataApp) {
+      return undefined;
+    }
+
     if (effectiveTheme?.preset) {
       return applyThemePreset(effectiveTheme);
     }
@@ -125,7 +131,12 @@ const SdkIframeEmbedPreviewInner = () => {
     });
 
     return derivedTheme;
-  }, [isSimpleEmbedFeatureAvailable, applicationColors, effectiveTheme]);
+  }, [
+    isDataApp,
+    isSimpleEmbedFeatureAvailable,
+    applicationColors,
+    effectiveTheme,
+  ]);
 
   const metabaseConfig = useMemo(
     () => ({
@@ -169,16 +180,18 @@ const SdkIframeEmbedPreviewInner = () => {
   });
 
   // The embed's own loading indicator only appears after the iframe loads, so we
-  // show a "fake" loader (cleared by the "ready" event) to avoid a white flash.
+  // show a "fake" loader until "ready" (or iframe load for data apps) to avoid a white flash.
   // The ref callback wires up that listener — see `setEmbedElementRef` above.
   const embedAttributes = { ...attributes, ref: setEmbedElementRef };
 
   return (
     <Card
       className={S.EmbedPreviewIframe}
+      data-testid="iframe-embed-container"
       id="iframe-embed-container"
       style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
+      p={isDataApp ? 0 : undefined}
       pos="relative"
       // `key` forces a remount when chart colors change. The embed runtime
       // propagates other theme keys via CSS variables, but chart colors are
@@ -203,6 +216,9 @@ const SdkIframeEmbedPreviewInner = () => {
         .with({ componentName: "metabase-metabot" }, () =>
           createElement("metabase-metabot", embedAttributes),
         )
+        .with({ componentName: "metabase-data-app" }, ({ path }) => (
+          <SdkIframeDataAppEmbedPreview path={path} onLoad={handleEmbedReady} />
+        ))
         .exhaustive()}
 
       <EmbedPreviewLoadingOverlay
@@ -216,14 +232,20 @@ const SdkIframeEmbedPreviewInner = () => {
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
+  const dataAppPath =
+    settings.componentName === "metabase-data-app" ? settings.path : undefined;
+
   const remountKey = useMemo(
     () =>
       JSON.stringify({
         // We must re-mount preview when `isGuest` setting is changed
         // to force its change for embed.js
         isGuest: settings.isGuest,
+
+        // Reset the loading indicator when the selected app changes.
+        dataAppPath,
       }),
-    [settings.isGuest],
+    [settings.isGuest, dataAppPath],
   );
 
   return <SdkIframeEmbedPreviewInner key={remountKey} />;

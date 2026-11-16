@@ -23,6 +23,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/table-update :metabase/event)
+
 (mr/def ::table-selectors
   [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)

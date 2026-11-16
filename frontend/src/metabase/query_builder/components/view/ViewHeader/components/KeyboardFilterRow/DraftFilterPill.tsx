@@ -1159,7 +1159,7 @@ function ValueInput({
   const hasNoDropdown = isAiPromptText || operator.hasNoValueSuggestions;
   const fieldValues = useFieldValues(query, column, hasNoDropdown ? "" : text);
   const isListed = useMemo(
-    () => canListFieldValues(Lib.fieldValuesSearchInfo(query, column)),
+    () => canListFieldValues(Lib.fieldSearchInfo(query, column)),
     [query, column],
   );
   const countsMode = getValueCountsMode(
@@ -1630,7 +1630,7 @@ function useFieldValues(
   text: string,
 ): ValueAndLabel[] {
   const fieldInfo = useMemo(
-    () => Lib.fieldValuesSearchInfo(query, column),
+    () => Lib.fieldSearchInfo(query, column),
     [query, column],
   );
   const searchText = text.trim();

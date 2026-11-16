@@ -1171,6 +1171,15 @@
                      [:ref :mbql.clause/field]]]
   (lib.join.util/current-join-alias field-or-join))
 
+(mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+  "Resolve the join on `stage-number` of `query` with alias `join-alias`, or nil if there is no such join.
+
+  **Code Health:** Healthy."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (lib.join/maybe-resolve-join query stage-number join-alias))
+
 (mu/defn with-join-alias :- [:or
                              ::lib.schema.metadata/column
                              ::lib.join.util/partial-join
@@ -1196,7 +1205,10 @@
 (shared.ns/import-fns
  [lib.join
   join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
-  raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
+  raw-join-strategy                  ;; TODO: Unexport this; it's only used from tests.
+  standard-join-condition?
+  standard-join-condition-lhs
+  standard-join-condition-rhs])
 
 ;;; ## Column selection
 ;;; These functions control what subset of the available columns are returned from a given stage of a query. This is

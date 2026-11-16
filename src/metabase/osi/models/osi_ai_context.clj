@@ -15,11 +15,10 @@
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.osi.db :as osi.db]
    [metabase.osi.schema :as osi.schema]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -80,7 +79,7 @@
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;
 ;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than its `entity_id`
-;;; NanoID, serdes nests the row under its entity's portable path (mirroring
+;;; NanoID, serdes nests the row under its entity's storage path (mirroring
 ;;; [[metabase.warehouse-schema.models.field-user-settings]], which hangs off its Field): the path is the
 ;;; entity's path plus a constant `OsiAiContext` segment. So both key columns are carried by the path —
 ;;; `entity_local_id` is resolved from it on import, and `entity_type` is read back from the parent segment.
@@ -95,97 +94,48 @@
    "measure"  :model/Measure
    "segment"  :model/Segment})
 
-(def ^:private parent-model->entity-type
-  "Inverse of the parent's serdes model name back to the stored `entity_type`."
-  {"Table"   "table"
-   "Card"    "card"
-   "Measure" "measure"
-   "Segment" "segment"})
-
-(defn- entity-parent-path
-  "Portable serdes path of the entity a row describes — the path its `OsiAiContext` segment hangs under.
-  A Table expands to its `[Database Schema Table]` path; card/measure/segment refs are a single segment
-  keyed on the entity's `entity_id`. An unmapped type yields a raw-id segment rather than aborting export."
-  [entity-type entity-local-id]
-  (cond
-    (= entity-type "table")           (serdes/table->path (serdes/*export-table-fk* entity-local-id))
-    (entity-type->toucan entity-type) (let [model (entity-type->toucan entity-type)]
-                                        [{:model (name model) :id (serdes/*export-fk* entity-local-id model)}])
-    :else                             [{:model entity-type :id entity-local-id}]))
-
-(defn- parent-path->entity
-  "Inverse of [[entity-parent-path]]: resolve a parent path back to `{:entity_type :entity_local_id}` (the
-  local id), or `nil` when the referenced entity is absent."
-  [parent-path]
-  (let [{:keys [model id]} (last parent-path)]
-    (if (= model "Table")
-      {:entity_type "table"
-       :entity_local_id (serdes/*import-table-fk* (serdes/table-path->table-ref parent-path))}
-      (when-let [etype (parent-model->entity-type model)]
-        (when-let [toucan (entity-type->toucan etype)]
-          {:entity_type etype :entity_local_id (serdes/*import-fk* id toucan)})))))
-
-(defn- portable-parent-path
-  "The parent path of an ingested row from its `entity_type` and its portable `entity_local_id`."
-  [entity-type portable-id]
-  (cond
-    (= entity-type "table")           (serdes/table->path portable-id)
-    (entity-type->toucan entity-type) [{:model (name (entity-type->toucan entity-type)) :id portable-id}]
-    :else                             [{:model entity-type :id portable-id}]))
-
-(defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
-
-(defmethod serdes/generate-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
-  (conj (vec (entity-parent-path entity_type entity_local_id))
-        {:model "OsiAiContext" :id "ai_context"}))
-
-(defmethod serdes/ingested-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
-  (conj (portable-parent-path entity_type entity_local_id)
-        {:model "OsiAiContext" :id "ai_context"}))
-
-(defmethod serdes/storage-path "OsiAiContext" [entity _ctx]
-  ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
-  ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
-  ;; The row's identity still lives in its nested generate-path; this is only the file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
-  ;; `[model id]` pairs (ids can contain "/" and ":", so a delimiter-joined string could collide for distinct
-  ;; paths). The slug is just a readable filename — the unique-name generator disambiguates it by `:key`.
-  (let [parent (pop (vec (serdes/path entity)))]
-    [{:label "osi_ai_context"}
-     {:label (u/slugify (str/join "-" (map :id parent)) {:unicode? true})
-      :key   (pr-str (mapv (juxt :model :id) parent))}]))
+(defmethod serialization/storage-paths :model/OsiAiContext [_ entities _ctx]
+  (mapv (fn [{:keys [entity_type entity_local_id]}]
+          (let [ids (if (sequential? entity_local_id) entity_local_id [entity_local_id])]
+            [{:label "osi_ai_context"}
+             {:label (u/slugify (str/join "-" ids) {:unicode? true})
+              :key   (pr-str [entity_type entity_local_id])}]))
+        entities))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
-(defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
+;; verbatim. The key columns are exported so the path can be rebuilt on import, and imported from that path.
+
+(defn- walk-export-local-id
+  "The ref of the entity a row describes, which `visit` resolves: a Table's reference, or the entity id of a card,
+  measure or segment; an unmapped type keeps its raw id."
+  [visit {:keys [entity_type entity_local_id]}]
+  (cond
+    (= entity_type "table")           (visit :model/Table entity_local_id)
+    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
+    :else                             entity_local_id))
+
+(defn- walk-import-local-id
+  "The local id of the entity a row describes, which `visit` resolves from its ref: a Table's reference, or the entity
+  id of a card, measure or segment; an unmapped type keeps its raw id."
+  [visit {:keys [entity_type entity_local_id]}]
+  (cond
+    (= entity_type "table")           (visit :model/Table entity_local_id)
+    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
+    :else                             entity_local_id))
+
+(defmethod serialization/spec :model/OsiAiContext [_]
   {:schema    ::osi.schema/external-osi-ai-context
-   :copy      [:ai_context :entity_id]
-   :transform {:entity_type     {:export identity
-                                 :import-with-context
-                                 (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
-               :entity_local_id {::serdes/fk true
-                                 :export-with-context
-                                 (fn [current _ local-id]
-                                   (let [parent (entity-parent-path (:entity_type current) local-id)]
-                                     (if (= "table" (:entity_type current))
-                                       (serdes/table-path->table-ref parent)
-                                       (:id (last parent)))))
-                                 :import-with-context
-                                 (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
+   :identity  [:entity_type :entity_local_id]
+   :primary-key :entity_type
+   :copy      [:ai_context :entity_id :entity_type]
+   :transform {:entity_local_id {:export (fn [store rows _ _]
+                                           (serialization/export-in-bulk store rows walk-export-local-id))
+                                 :import (fn [store entities _ opts]
+                                           (serialization/import-in-bulk store entities opts walk-import-local-id))}}})
 
-(defmethod serdes/deserialization-dependencies "OsiAiContext"
-  [entity]
-  ;; Depend on the entity this row describes (its parent path), so it imports after that entity exists.
-  [(vec (pop (serdes/path entity)))])
-
-(defmethod serdes/load-find-local "OsiAiContext"
-  [path]
-  ;; Resolve the parent path back to a local entity, then find this row by its (entity_type, local-id) key.
-  (when-let [{:keys [entity_type entity_local_id]} (parent-path->entity (pop path))]
-    (osi.db/ai-context (entity-retrieval/normalize-entity-type entity_type) entity_local_id)))
-
-(defmethod serdes/load-update! "OsiAiContext"
-  [_model-name ingested local]
-  ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
-  ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context))
-  (osi.db/ai-context (:entity_type local) (:entity_local_id local)))
+(defmethod serialization/import-dependencies :model/OsiAiContext [_ entities]
+  (mapv (fn [{:keys [entity_type entity_local_id]}]
+          (cond
+            (= entity_type "table")           #{[:model/Table entity_local_id]}
+            (entity-type->toucan entity_type) #{[(entity-type->toucan entity_type) entity_local_id]}))
+        entities))

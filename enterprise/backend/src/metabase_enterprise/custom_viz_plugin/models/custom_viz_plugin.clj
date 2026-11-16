@@ -6,7 +6,7 @@
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -31,6 +31,20 @@
   {:status   mi/transform-keyword
    :manifest mi/transform-json
    :bundle   transform-bundle})
+
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
+  [row]
+  (cond-> row
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
+
+(t2/define-before-insert :model/CustomVizPlugin
+  [plugin]
+  (with-bundle-hash plugin))
+
+(t2/define-before-update :model/CustomVizPlugin
+  [plugin]
+  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
@@ -67,17 +81,26 @@
 (defn- b64->bundle ^bytes [^String s]
   (some-> s codecs/b64->bytes))
 
-(defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name _opts]
+(defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-               :status :error_message
-               ;; dev-only plugins are never served from another instance
-               :dev_bundle_url]
+   :identity  [:identifier]
+   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip      [:status :error_message :dev_bundle_url :bundle_hash]
    :defaults  {:enabled true}
-   :transform {:bundle     {:export bundle->b64
-                            :import b64->bundle}}})
+   :transform {:bundle {:export (fn [_store _batch bundles _opts] (mapv bundle->b64 bundles))
+                        :import (fn [_store _batch encoded _opts] (mapv b64->bundle encoded))}}})
+
+(defmethod serialization/rows-by-refs :model/CustomVizPlugin [_ identifiers columns]
+  (let [identifiers (filterv some? identifiers)
+        rows        (when (seq identifiers)
+                      (custom-viz-plugin.db/plugins-by-identifiers
+                       identifiers
+                       (some->> columns (concat [:id :identifier]) distinct vec)))]
+    (reduce (fn [found {:keys [identifier] :as row}]
+              (cond-> found
+                (not (contains? found identifier)) (assoc identifier row)))
+            {}
+            rows)))
 
 (defn- bundle-columns
   "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
@@ -92,27 +115,21 @@
       {:status        :error
        :error_message (ex-message e)})))
 
-(defmethod serdes/load-insert! "CustomVizPlugin"
-  [_model-name ingested]
-  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
+(defmethod serialization/storage-paths :model/CustomVizPlugin [_ entities _ctx]
+  (mapv (fn [entity]
+          [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+        entities))
 
-(defmethod serdes/load-update! "CustomVizPlugin"
-  [_model-name ingested {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
-  (cache/purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
-(defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
-  identifier)
+(defmethod serialization/before-load :model/CustomVizPlugin [_ items]
+  (mapv (fn [{:keys [row local] :as item}]
+          (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
+            (update item :row dissoc :bundle)
+            (update item :row #(merge % (bundle-columns %)))))
+        items))
 
-(defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
-  [{:model "CustomVizPlugin"
-    :id    (:identifier entity)
-    :label (:identifier entity)}])
-
-(defmethod serdes/load-find-local "CustomVizPlugin" [path]
-  (let [{:keys [id]} (last path)]
-    (custom-viz-plugin.db/plugin-by-identifier id)))
-
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+(defmethod serialization/after-load :model/CustomVizPlugin [_ items]
+  (doseq [{:keys [local]} items
+          :when local]
+    (cache/purge-plugin-cache! {:id (:id local)})))

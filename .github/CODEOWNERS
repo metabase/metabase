@@ -120,6 +120,12 @@ enterprise/backend/src/metabase_enterprise/search.* @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search_test.* @metabase/metabot
 
+# enterprise/serialization (Data Apps)
+enterprise/backend/src/metabase_enterprise/serialization @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/serialization.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/serialization @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/serialization_test.* @metabase/data-apps
+
 # data-apps (Data Apps)
 src/metabase/data_apps @metabase/data-apps
 src/metabase/data_apps.* @metabase/data-apps

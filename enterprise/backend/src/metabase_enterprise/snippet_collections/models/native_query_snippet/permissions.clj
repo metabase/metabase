@@ -7,7 +7,6 @@
    [metabase.native-query-snippets.schema :as snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]))
 
 (mu/defn- has-parent-collection-perms?
@@ -37,8 +36,7 @@
    (and
     (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
-    (has-parent-collection-perms? snippet :write)
-    (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
+    (has-parent-collection-perms? snippet :write)))
   ([_model id]
    (can-write? (snippet-collections.db/snippet-with-collection-id id))))
 
@@ -49,8 +47,7 @@
   (and
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? m :write)
-   (remote-sync/model-editable? :model/NativeQuerySnippet m)))
+   (has-parent-collection-perms? m :write)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
@@ -61,5 +58,4 @@
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
-       (has-parent-collection-perms? changes :write))
-   (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
+       (has-parent-collection-perms? changes :write))))

@@ -54,20 +54,34 @@ export const SidebarCacheForm = ({
     askBeforeDiscardingChanges,
   } = useConfirmIfFormIsDirty();
 
+  const confirmLeave = useCallback((): boolean | Promise<boolean> => {
+    if (!isStrategyFormDirty) {
+      return true;
+    }
+    return new Promise((resolve) =>
+      askBeforeDiscardingChanges(
+        () => resolve(true),
+        () => resolve(false),
+      ),
+    );
+  }, [isStrategyFormDirty, askBeforeDiscardingChanges]);
+  const backIfConfirmed = async () => {
+    if (await confirmLeave()) {
+      onBack();
+    }
+  };
+
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
   return (
     <SidesheetSubPage
       title={t`Caching settings`}
       isOpen={isOpen}
-      onClose={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose()
-      }
+      onClose={onClose}
+      confirmClose={confirmLeave}
       withOverlay={withOverlay}
       overlayProps={overlayProps}
-      onBack={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
-      }
+      onBack={backIfConfirmed}
       withBackButton={withBackButton}
     >
       <Stack
@@ -87,11 +101,7 @@ export const SidebarCacheForm = ({
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onCancel={() =>
-              isStrategyFormDirty
-                ? askBeforeDiscardingChanges(onBack)
-                : onBack()
-            }
+            onCancel={backIfConfirmed}
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
             layout="sidebar"
           />

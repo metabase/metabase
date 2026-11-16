@@ -5,7 +5,8 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -51,15 +52,12 @@
     (mi/perms-objects-set dashboard read-or-write)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
+(defmethod serialization/spec :model/DashboardTab [_]
   {:schema    ::dashboards.schema/external-dashboard-tab
    :copy      [:entity_id :name :position]
-   :skip      []
-   :transform {:dashboard_id (serdes/parent-ref)}})
+   :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
+   :transform {:dashboard_id serialization/import-only-transform}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
@@ -123,3 +121,7 @@
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+
+(defmethod remote-sync/spec :model/DashboardTab
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})

@@ -11,12 +11,14 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
            (java.net SocketException)
-           (java.sql Timestamp)
+           (java.sql SQLException Timestamp)
            (java.time Duration Instant InstantSource)
+           (java.util.concurrent ExecutionException)
            (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
@@ -41,6 +43,22 @@
     (is (= :transient (semantic.dlq/categorize-error (SocketException. "Connection reset"))))
     (is (= :permanent (semantic.dlq/categorize-error (AssertionError. "Invalid assertion"))))
     (is (= :permanent (semantic.dlq/categorize-error (NullPointerException. "NPE")))))
+  (testing "SQL errors that fail the same way on every retry"
+    (doseq [state ["54000"   ; program limit exceeded, e.g. an index row too large
+                   "22021"   ; invalid byte sequence for the encoding
+                   "23502"]] ; not-null violation
+      (testing state
+        (is (= :permanent (semantic.dlq/categorize-error (SQLException. "boom" state))))
+        (testing "when wrapped, as the pooled index upsert does"
+          (is (= :permanent (semantic.dlq/categorize-error
+                             (ExecutionException. (SQLException. "boom" state)))))))))
+  (testing "other SQL errors stay transient"
+    (doseq [state ["08006"   ; connection failure
+                   "40001"   ; serialization failure
+                   "57014"   ; query canceled
+                   nil]]
+      (testing state
+        (is (= :transient (semantic.dlq/categorize-error (SQLException. "boom" ^String state)))))))
   (testing "Default to transient"
     (is (= :transient (semantic.dlq/categorize-error (RuntimeException. "Unknown error"))))
     (is (= :transient (semantic.dlq/categorize-error (Exception. "Generic exception")))))
@@ -329,7 +347,9 @@
                          :model_id       "2"
                          :document       nil                ; deletion
                          :gated_at       (ts "2025-01-04T09:00:00Z")
-                         :error_gated_at (ts "2025-01-04T09:00:00Z")}]]
+                         :error_gated_at (ts "2025-01-04T09:00:00Z")}]
+        ;; two upserts, so a failure can't be pinned on either one
+        upsert-batch   [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
       (testing "batch processing singles out orphans (dlq entry with no associated gate record)"
@@ -359,4 +379,39 @@
                 (is (= 1 (count dlq-docs)))
                 (is (= 43 (:retry_count dlq-entry)))
                 (is (= now (:last_attempted_at dlq-entry)))
-                (is (= (.plus now ^Duration (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry)))))))))))
+                (is (= (.plus now ^Duration (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry))))))))
+      (testing "only a lone document gets the permanent policy"
+        (let [now (Instant/parse "2025-01-01T13:14:33Z")]
+          (with-redefs [rand                         (constantly 1.0)
+                        semantic.index/upsert-index! (fn [& _] (throw (SQLException. "boom" "54000")))
+                        semantic.dlq/clock           (reify InstantSource (instant [_] now))]
+            (let [attempts (fn [docs]
+                             (->> (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 42) docs))
+                                  :failures
+                                  (map (comp :attempt_at :dlq-entry))
+                                  set))
+                  after    #(.plus now ^Duration (semantic.dlq/next-delay 43 %))]
+              (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upsert-batch))))
+              (is (= #{(after semantic.dlq/transient-policy)} (attempts upsert-batch)))))))
+      (testing "documents that fail together are rescheduled apart"
+        (let [policy semantic.dlq/transient-policy
+              docs   (map #(assoc % :retry_count 5) upsert-batch)
+              draws  (atom [0.0 0.99 0.99])]
+          (mt/with-dynamic-fn-redefs [rand                         (fn [] (ffirst (swap-vals! draws rest)))
+                                      semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "boom")))]
+            (is (apply distinct? (->> (semantic.dlq/try-batch! pgvector index docs)
+                                      :failures
+                                      (map (comp :attempt_at :dlq-entry)))))
+            (testing "and never past the cap"
+              (is (= (:cap policy) (semantic.dlq/next-delay 1000 policy)))))))
+      (testing "a permanent failure is logged without its message"
+        (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!
+                                    (fn [& _] (throw (SQLException. "row holds the private description" "54000")))]
+          (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
+            (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) (take 1 upsert-batch)))
+            (is (=? [{:level :warn, :message #".*card_1.*SQLState 54000.*"}] (logs)))
+            (is (not-any? #(re-find #"private description" (:message %)) (logs))))
+          (testing "a failed batch logs no warning"
+            (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
+              (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) upsert-batch))
+              (is (empty? (logs))))))))))

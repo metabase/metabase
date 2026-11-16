@@ -1,5 +1,6 @@
 ---
 title: Concat
+summary: Join two or more columns or values into a single string.
 ---
 
 # Concat

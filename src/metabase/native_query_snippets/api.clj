@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
@@ -94,9 +93,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (t2/with-transaction [_conn]
-        (native-query-snippets.db/update-snippet! id changes)
-        (collections/check-for-remote-sync-update snippet)))
+      (native-query-snippets.db/update-snippet! id changes))
     (get-native-query-snippet id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

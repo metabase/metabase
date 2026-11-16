@@ -65,7 +65,7 @@ export function useAiFilterValues({
     try {
       const response = await suggestFilterValues({
         prompt,
-        field_id: Lib.fieldValuesSearchInfo(query, column.column).fieldId,
+        field_id: Lib.fieldSearchInfo(query, column.column).fieldId,
         table_name:
           Lib.displayInfo(query, stageIndex, column.column).table
             ?.displayName ?? "",

@@ -4,6 +4,23 @@ export function setupPasswordCheckEndpoint() {
   fetchMock.post("path:/api/session/password-check", 204);
 }
 
+/**
+ * The number of requests so far with this method, and with a URL that
+ * contains urlPart. It is synchronous, unlike findRequests, so it can be the
+ * callback of a waitFor under fake timers, where an async callback resolves
+ * the waitFor before its last act() ends.
+ */
+export function countRequests(
+  method: "PUT" | "POST" | "GET" | "DELETE",
+  urlPart = "",
+): number {
+  return fetchMock.callHistory
+    .calls()
+    .filter(
+      (call) => call.request?.method === method && call.url.includes(urlPart),
+    ).length;
+}
+
 type ResponseInfo = {
   url: string;
   body: any;

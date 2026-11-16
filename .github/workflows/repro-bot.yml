@@ -76,16 +76,16 @@ jobs:
           sudo ./install
           rm install
 
-          # Install bbin
+          # Install bbin v0.2.5
           mkdir -p ~/.bbin/bin
-          curl -sL https://raw.githubusercontent.com/babashka/bbin/main/bbin > ~/.bbin/bin/bbin
+          curl -sL https://raw.githubusercontent.com/babashka/bbin/e0b7719824f7a32ab16484a626aeaf55e0b9289f/bbin > ~/.bbin/bin/bbin
           chmod +x ~/.bbin/bin/bbin
           export PATH="$HOME/.bbin/bin:$PATH"
           export BBIN_HOME="$HOME/.bbin"
 
           # Install clj-nrepl-eval via bbin
           bbin install https://github.com/bhauman/clojure-mcp-light.git \
-            --tag v0.2.1 \
+            --git/tag v0.2.1 \
             --as clj-nrepl-eval \
             --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
 

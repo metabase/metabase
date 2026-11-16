@@ -3,12 +3,14 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
+import type {
+  OpaqueDatasetQuery,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -18,53 +20,66 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
 const sampleDatabase = createSampleDatabase();
 
-const rawDataQuery: StructuredQueryObject = {
-  "source-table": ORDERS_ID,
-};
+const rawDataQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: ORDERS_ID } }],
+});
 
-const summarizedQuery: StructuredQueryObject = {
-  ...rawDataQuery,
-  aggregation: [["count"]],
-  breakout: [
-    [
-      "field",
-      PRODUCTS.CATEGORY,
-      { "source-field": ORDERS.PRODUCT_ID, "base-type": "type/Integer" },
-    ],
+const filteredAndSummarizedStage = {
+  source: { type: "table", id: ORDERS_ID },
+  aggregations: [{ type: "operator", operator: "count" }],
+  breakouts: [
+    {
+      type: "column",
+      fieldId: PRODUCTS.CATEGORY,
+      sourceFieldId: ORDERS.PRODUCT_ID,
+    },
   ],
-};
+  filters: [
+    {
+      type: "operator",
+      operator: "=",
+      args: [
+        { type: "column", fieldId: ORDERS.USER_ID },
+        { type: "literal", value: 1 },
+      ],
+    },
+  ],
+} satisfies TestStageWithSourceSpec;
 
-const filteredQuery: StructuredQueryObject = {
-  ...rawDataQuery,
-  filter: ["=", ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }], 1],
-};
+const filteredAndSummarizedQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [filteredAndSummarizedStage],
+});
 
-const filteredAndSummarizedQuery: StructuredQueryObject = {
-  ...summarizedQuery,
-  ...filteredQuery,
-};
+const postAggregationFilterQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [
+    filteredAndSummarizedStage,
+    {
+      filters: [
+        {
+          type: "operator",
+          operator: ">",
+          args: [
+            { type: "column", name: "count" },
+            { type: "literal", value: 10 },
+          ],
+        },
+      ],
+      aggregations: [{ type: "operator", operator: "count" }],
+    },
+  ],
+});
 
-const postAggregationFilterQuery: StructuredQueryObject = {
-  "source-query": filteredAndSummarizedQuery,
-  filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
-  aggregation: [["count"]],
-};
-
-const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const question = Question.create({
-    metadata,
-    dataset_query: { database: database.id, type: "query", query },
-  });
+const getQuestionStepsForMBQLQuery = (query: OpaqueDatasetQuery) => {
+  const question = Question.create({ metadata, dataset_query: query });
   return getQuestionSteps(question, sampleDatabase, {});
 };
 
-const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
+const getMetricStepsForMBQLQuery = (query: OpaqueDatasetQuery) => {
   const question = Question.create({
     metadata,
-    dataset_query: { database: database.id, type: "query", query },
+    dataset_query: query,
     cardType: "metric",
   });
   return getQuestionSteps(question, sampleDatabase, {});

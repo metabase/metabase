@@ -32,19 +32,14 @@
     action-type :type} :- [:map {:closed true}
                            [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                            [:type     {:optional true} [:maybe ::actions.schema/type]]
-                           [:archived {:default false} :boolean]]
-   _body
-   request]
+                           [:archived {:default false} :boolean]]]
   (when model-id
     (api/read-check :model/Card model-id))
-  (let [data-app   (data-apps/request-data-app request)
-        action-ids (actions-rest.db/action-ids-visible-to-user
+  (let [action-ids (actions-rest.db/action-ids-visible-to-user
                     {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
                      (actions/select-actions-for-ids action-ids))]
-    (t2/hydrate (cond->> (filterv mi/can-read? actions)
-                  data-app (data-apps/data-app-actions data-app))
-                :creator :can_write)))
+    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -57,20 +52,12 @@
   "Fetch an Action."
   {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
+                           [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
       (t2/hydrate :creator :can_write)
       api/read-check))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:action-id"
+(api.macros/defendpoint :delete "/:action-id" :- ::api/generic-204-no-content
   "Delete an Action."
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
@@ -160,12 +147,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/public_link"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :delete "/:id/public_link" :- ::api/generic-204-no-content
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]

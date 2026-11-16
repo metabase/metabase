@@ -2,15 +2,18 @@ import { t } from "ttag";
 
 import { FeatureEmptyState } from "metabase/common/data-studio/components/FeatureEmptyState";
 
-import { DataAppBuildSteps } from "../DataAppBuildGuide";
+import {
+  DataAppBuildDocsLink,
+  getDataAppsIntroDescription,
+  getDataAppsIntroTitle,
+} from "../DataAppBuildGuide";
 
 export function DataAppListEmptyState() {
   return (
     <FeatureEmptyState
-      title={t`Apps built on your semantic layer`}
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins.
-      description={t`Have your AI agent build a data app with the Metabase CLI. The app lives in your Git repository, and reaches each Metabase that syncs with it when you pull the changes.`}
-      actions={<DataAppBuildSteps />}
+      title={getDataAppsIntroTitle()}
+      description={getDataAppsIntroDescription()}
+      actions={<DataAppBuildDocsLink />}
       features={[
         {
           icon: "ai",

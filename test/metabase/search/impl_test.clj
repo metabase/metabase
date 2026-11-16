@@ -71,6 +71,7 @@
              [:like [:lower :database_name] (h2x/like-substring "foo")] [:inline 0]
              [:like [:lower :model_name] (h2x/like-substring "foo")] [:inline 0]
              [:like [:lower :dataset_query] (h2x/like-substring "foo")] [:inline 0]
+             [:like [:lower :slug] (h2x/like-substring "foo")] [:inline 0]
              :else [:inline 1]]]
            (search.legacy/order-clause "Foo")))))
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type JSX, useState } from "react";
 import { Navigate, generatePath, useLocation, useParams } from "react-router";
 

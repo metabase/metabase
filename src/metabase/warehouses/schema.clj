@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.cron]
@@ -35,6 +36,10 @@
   "The `:write_data_details` column of a Database, decoded."
   [:or ms/DatabaseDetails ::database.undecryptable-column])
 
+(mr/def ::database.admin-details
+  "The `:admin_details` column of a Database, decoded."
+  [:or ms/DatabaseDetails ::database.undecryptable-column])
+
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."
   [:merge
@@ -60,7 +65,7 @@
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      {:optional true} [:maybe [:or :keyword :string]]]
+   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]
@@ -73,7 +78,7 @@
    [:auto_run_queries            {:optional true} [:maybe :boolean]]
    [:refingerprint               {:optional true} [:maybe :boolean]]
    [:cache_ttl                   {:optional true} [:maybe :int]]
-   [:initial_sync_status         {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial_sync_status         {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:initial_sync_error          {:optional true} [:maybe :string]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:settings                    {:optional true} [:maybe ::database.settings]]
@@ -86,6 +91,7 @@
    [:router_database_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
+   [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata
@@ -103,7 +109,7 @@
                               :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
                               :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                               :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
-                              :write_data_details :creator_id :router_database_id :initial_sync_status :is_sample
-                              :is_stub]]
+                              :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status
+                              :is_sample :is_stub]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
