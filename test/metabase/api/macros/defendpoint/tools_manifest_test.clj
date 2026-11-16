@@ -161,6 +161,13 @@
       ;; an enum that already lists `null` lists it once
       (is (= {:type ["string" "null"], :enum ["a" nil]}
              (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
+      ;; an empty `oneOf` accepts nothing, which an `anyOf` cannot say
+      (is (= {:oneOf []}
+             (published {:oneOf []})))
+      ;; an `:example` beside the `oneOf`, as `[:maybe {:json-schema/example 5} :int]` gives, is an annotation
+      (is (= {:type ["integer" "null"], :example 5}
+             (get-in (tools-manifest/malli->json-schema [:map [:k [:maybe {:json-schema/example 5} :int]]])
+                     [:properties :k])))
       ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
       (is (= {:anyOf [{:type "string"}]
               :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
