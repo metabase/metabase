@@ -81,30 +81,19 @@
    [:column :string]])
 
 (defn- field-columns
-  "The `{:schema :name :column}` columns that `field`, a `:single-column` field spec of `sql-tools/field-references`,
-  can read, one per way the parser could resolve it; `::unresolved` stands for a resolution that is not a column of a
-  table."
+  "The columns that `field`, a `:single-column` field spec of `sql-tools/field-references`, could read: a set with one
+  `::column-read` per way the parser could resolve it, and `::unresolved` for a resolution that is not a column of a
+  table. The parser lists the columns inside a computed value, a subquery or a CTE as fields of their own, so a
+  resolution to another query's column needs no descent."
   [{:keys [column source-columns]}]
   (into #{}
         (for [group  source-columns
-              source group
-              column (case (:type source)
-                       :all-columns   [{:schema (get-in source [:table :schema])
-                                        :name   (get-in source [:table :table])
-                                        :column column}]
-                       :single-column (field-columns source)
-                       [::unresolved])]
-          column)))
-
-(defn- single-columns
-  "The single-column fields of `field`: `field` itself when it is one, else those among the members of a custom or
-  composite field, at any depth."
-  [{:keys [type used-fields member-fields] :as field}]
-  (case type
-    :single-column   [field]
-    :custom-field    (mapcat single-columns used-fields)
-    :composite-field (mapcat single-columns member-fields)
-    []))
+              source group]
+          (if (= :all-columns (:type source))
+            {:schema (get-in source [:table :schema])
+             :name   (get-in source [:table :table])
+             :column column}
+            ::unresolved))))
 
 (mu/defn columns-read :- [:maybe [:set ::column-read]]
   "The columns of real tables that `sql` reads, or nil when the parser reports an error in `sql`. A column is included
@@ -115,7 +104,7 @@
   (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
     (when (empty? errors)
       (into #{}
-            (comp (mapcat single-columns)
+            (comp (filter #(= :single-column (:type %)))
                   (map field-columns)
                   (keep (fn [pairs]
                           (when (and (= 1 (count pairs)) (not (contains? pairs ::unresolved)))

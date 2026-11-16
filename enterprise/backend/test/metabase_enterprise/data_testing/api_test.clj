@@ -394,3 +394,25 @@
                                               {:transform_id transform-id :name "complete" :inputs inputs
                                                :expectations expectations})]
             (t2/delete! :model/TransformTest :id (:id created))))))))
+
+(deftest an-input-without-a-schema-is-checked-against-the-table-in-the-default-schema-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {transform-id :id} (assoc-in (transform) [:source :query]
+                                                                 (lib/native-query (mt/metadata-provider)
+                                                                                   "SELECT ID, NAME FROM PEOPLE"))]
+      (let [no-schema (fn [& column-names]
+                        [{:table   {:name "PEOPLE"}
+                          :format  "rows"
+                          :columns (mapv (fn [n] {:name n :cast_type "VARCHAR"}) column-names)
+                          :rows    []}])
+            create    (fn [status test-name test-inputs]
+                        (mt/user-http-request :crowberto :post status "ee/transform-test"
+                                              {:transform_id transform-id :name test-name :inputs test-inputs
+                                               :expectations expectations}))]
+        (testing "an input naming its table without a schema, lacking a column the transform reads, is refused, naming it"
+          (is (=? {:error-code "transform-test.missing-input-columns"
+                   :columns    {:PEOPLE ["NAME"]}}
+                  (create 400 "id only" (no-schema "ID"))))
+          (is (not (t2/exists? :model/TransformTest :name "id only"))))
+        (testing "control: the same input declaring every column the transform reads is saved"
+          (t2/delete! :model/TransformTest :id (:id (create 200 "complete" (no-schema "ID" "NAME")))))))))

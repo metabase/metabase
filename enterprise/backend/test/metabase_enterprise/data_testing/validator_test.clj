@@ -229,6 +229,14 @@
                                                             {:schema "public" :name "events" :column "name"}}
                                          :metadata-tables [{:schema "public" :name "events"
                                                             :columns #{"id" "Name" "name"}}])))))
+  (testing "with the parser's own output for Postgres, a quoted mixed-case column is required by the table's spelling"
+    (is (=? {:error-type ::errors/missing-input-columns
+             :columns    {"public.events" ["CreatedAt"]}}
+            (validation-refusal (assoc mixed-case-test
+                                       :inputs       [(events-input "id")]
+                                       :columns-read (data-testing.compile/columns-read
+                                                      :postgres
+                                                      "SELECT \"t\".\"id\", \"t\".\"CreatedAt\" FROM \"public\".\"events\" \"t\""))))))
   (testing "an input that spells its table in another case is checked against that table"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"PUBLIC.Events" ["CreatedAt"]}}

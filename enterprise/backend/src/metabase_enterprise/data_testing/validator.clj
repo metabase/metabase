@@ -201,14 +201,18 @@
    [:columns [:set :string]]])
 
 (mu/defn- metadata-table :- [:maybe ::metadata-table]
-  "The table of `metadata-tables` that the declared `table` names, matched as [[table-match?]] matches, preferring the
-  one spelled exactly as `table` when several match; nil when none, or several, match."
+  "The table of `metadata-tables` that the declared `table` names: same name and schema, case aside, a declared table
+  without a schema standing for one in `default-schema`. When several match, the one spelled exactly as `table`; nil
+  when none, or several, match."
   [metadata-tables :- [:sequential ::metadata-table]
    table           :- ::data-testing.schema/table
    default-schema  :- [:maybe :string]]
-  (let [matching (filter #(table-match? (select-keys % [:schema :name]) table default-schema) metadata-tables)]
+  (let [schema   (or (:schema table) default-schema)
+        matching (filter #(and (= (data-testing.u/fold-identifier (:name %)) (data-testing.u/fold-identifier (:name table)))
+                               (= (data-testing.u/fold-identifier (:schema %)) (data-testing.u/fold-identifier schema)))
+                         metadata-tables)]
     (if (next matching)
-      (let [exact (filter #(= [(:schema %) (:name %)] [(or (:schema table) default-schema) (:name table)]) matching)]
+      (let [exact (filter #(= [(:schema %) (:name %)] [schema (:name table)]) matching)]
         (when-not (next exact) (first exact)))
       (first matching))))
 
