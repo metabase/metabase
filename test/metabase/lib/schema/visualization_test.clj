@@ -125,6 +125,23 @@
              normalized))
       (is (mr/validate ::lib.schema.visualization/visualization-settings normalized)))))
 
+(deftest ^:parallel normalize-duration-settings-test
+  (testing "duration settings are kept, and unknown values of them are dropped"
+    (is (= {:column_settings {"[\"name\",\"A\"]" {:number_style       "duration"
+                                                  :duration_unit      "millisecond"
+                                                  :duration_style     "narrow"
+                                                  :duration_precision "minute"}
+                              "[\"name\",\"B\"]" {:number_style "duration"}}}
+           (lib/normalize ::lib.schema.visualization/visualization-settings
+                          {"column_settings" {"[\"name\",\"A\"]" {"number_style"       "duration"
+                                                                  "duration_unit"      "millisecond"
+                                                                  "duration_style"     "narrow"
+                                                                  "duration_precision" "minute"}
+                                              "[\"name\",\"B\"]" {"number_style"       "duration"
+                                                                  "duration_unit"      "fortnight"
+                                                                  "duration_style"     "long"
+                                                                  "duration_precision" "hours"}}})))))
+
 (deftest ^:parallel normalize-keeps-entry-order-test
   (testing "normalizing keeps the order of the entries, which the frontend reads the visualizer columns in"
     (let [normalized (lib/normalize ::lib.schema.visualization/visualization-settings
