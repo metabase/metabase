@@ -5,6 +5,8 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
+   [metabase.change-log.hooks :as change-log.hooks]
+   [metabase.change-log.numbering :as change-log.numbering]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
@@ -109,6 +111,16 @@
             (is (= [["metabase_field_user_settings" (:id f) "insert"]]
                    (logged-by #(t2/insert! :model/FieldUserSettings {:field_id (:id f), :semantic_type :type/Email
                                                                      :semantic_type_set true}))))))))))
+
+(deftest wake-numbering-test
+  (testing "a log wakes the numbering, but not in tests"
+    (let [woken (atom 0)]
+      (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
+        (#'change-log.hooks/log! [])
+        (is (= 0 @woken))
+        (with-redefs [config/is-test? false]
+          (#'change-log.hooks/log! []))
+        (is (= 1 @woken))))))
 
 (deftest other-hooks-test
   (testing "a model with other hooks is logged, and its other hooks still run"

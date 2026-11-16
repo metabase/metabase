@@ -9,6 +9,7 @@
   (:require
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.db :as change-log.db]
+   [metabase.change-log.numbering :as change-log.numbering]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -34,8 +35,8 @@
     (throw (ex-info message {}))))
 
 (defn- log!
-  "Logs `changes`, a seq of `[table-name row-ids action]`. A row key that is not an integer goes to
-  [[throw-or-log]], and gets no entry."
+  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering. A row key that is not an integer
+  goes to [[throw-or-log]], and gets no entry."
   [changes]
   (doseq [[table-name row-ids action] changes
           :let  [n (count (remove integer? row-ids))]
@@ -46,7 +47,10 @@
         (partition-all 1000 (for [[table-name row-ids action] changes
                                   id                          row-ids
                                   :when                       (integer? id)]
-                              {:table_name table-name, :row_id id, :action action}))))
+                              {:table_name table-name, :row_id id, :action action})))
+  ;; Tests number the entries themselves.
+  (when-not config/is-test?
+    (change-log.numbering/stay-awake!)))
 
 (mu/defn log-rows!
   "Logs `action` on the rows of `model` that match `conditions`, for a write that skips the model. `conditions` are

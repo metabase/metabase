@@ -1,9 +1,7 @@
-(ns metabase.change-log.task.number-change-log-test
+(ns metabase.change-log.numbering-test
   (:require
    [clojure.test :refer :all]
-   [metabase.change-log.task.number-change-log :as task.number-change-log]
-   [metabase.config.core :as config]
-   [metabase.test :as mt]
+   [metabase.change-log.numbering :as change-log.numbering]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -22,7 +20,7 @@
   (t2/select-one-fn :position :change_log :id id))
 
 (defn- number-entries! []
-  (#'task.number-change-log/number-entries!))
+  (#'change-log.numbering/number-entries!))
 
 (deftest number-entries-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -78,15 +76,23 @@
         (deliver commit-slow true)
         (t2/delete! :change_log :table_name "test_table")))))
 
-(deftest number-change-log-test
-  (t2/with-transaction [_conn nil {:rollback-only true}]
-    (let [a (entry!)]
-      (testing "while the change log is off, the task numbers nothing"
-        (mt/with-premium-features #{}
-          (#'task.number-change-log/number-change-log! 1 0))
-        (is (nil? (position a))))
-      (when config/ee-available?
-        (testing "while the change log is on, the task numbers the entries"
-          (mt/with-premium-features #{:change-log}
-            (#'task.number-change-log/number-change-log! 1 0))
-          (is (some? (position a))))))))
+(deftest stay-awake-test
+  (with-redefs [change-log.numbering/awake-ms    200
+                change-log.numbering/interval-ms 20]
+    (let [poll      #(u/poll {:thunk %, :done? some?, :timeout-ms 10000, :interval-ms 20})
+          numbered? (fn [id] (poll #(position id)))
+          asleep?   (fn [] (poll #(when (nil? @@#'change-log.numbering/awake-until) true)))]
+      (try
+        (testing "the numbering wakes, and numbers an entry that commits while it is awake"
+          (change-log.numbering/stay-awake!)
+          (is (some? (numbered? (entry!)))))
+        (testing "it goes to sleep when the time is up"
+          (is (true? (asleep?))))
+        (testing "it wakes again"
+          (let [a (entry!)]
+            (is (nil? (position a)))
+            (change-log.numbering/stay-awake!)
+            (is (some? (numbered? a)))))
+        (finally
+          (asleep?)
+          (t2/delete! :change_log :table_name "test_table"))))))
