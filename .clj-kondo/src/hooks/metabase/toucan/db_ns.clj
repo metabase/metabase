@@ -410,9 +410,7 @@
 
 (def ^:private pk-columns
   "Models whose primary key is not `:id`, mirroring their `t2/primary-keys` methods."
-  {:model/FieldUserSettings :field_id
-   :model/TableUserSettings :table_id
-   :model/Setting           :key
+  {:model/Setting           :key
    :model/QueryCache        :query_hash
    :model/QueryAction       :action_id
    :model/ImplicitAction    :action_id})

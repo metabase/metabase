@@ -16,7 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
@@ -173,7 +173,7 @@
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
-  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
+  (let [cards          (filterv mi/can-read? (t2/hydrate (cards-for-filter-option f model-id) :can_read))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
@@ -194,13 +194,8 @@
         (t2/hydrate :based_on_upload :creator :can_write :dashboard_count [:dashboard :moderation_status] :average_query_time :last_query_start :parameter_usage_count :can_restore :can_delete :can_manage_db [:collection :is_personal] [:moderation_reviews :moderator_details] :param_fields :is_remote_synced)
         (update :creator select-keys [:id :first_name :last_name :email :common_name])
         (update :param_fields (fn [param-fields]
-                                (perms/prime-table-perms-cache
-                                 {:table-ids (into #{} (comp cat (keep :table_id)) (vals param-fields))})
                                 (let [viewable? (memoize (fn [table-id]
-                                                           (perms/user-has-permission-for-table?
-                                                            api/*current-user-id*
-                                                            :perms/view-data :unrestricted
-                                                            (:database_id card) table-id)))]
+                                                           (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {table-id (:database_id card)})))]
                                   (update-vals param-fields
                                                (fn [fields]
                                                  (filterv #(viewable? (:table_id %)) fields))))))
@@ -256,7 +251,7 @@
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
-    (doseq [dashboard dashboards]
+    (doseq [dashboard (t2/hydrate dashboards :can_write)]
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
 
@@ -365,8 +360,7 @@
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough
                          (when page-size (+ 10 page-size)))
-        compatible-cards (->> matching-cards
-                              (filter mi/can-read?)
+        compatible-cards (->> (filterv mi/can-read? (t2/hydrate matching-cards :can_read))
                               (filter #(or
                                         ;; columns name on native query are not match with the column name in viz-settings. why??
                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
@@ -462,7 +456,7 @@
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                CardDisplay]
-   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
+   [:visualization_settings ::lib.schema.visualization/visualization-settings]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
@@ -546,7 +540,7 @@
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe CardDisplay]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]
@@ -729,7 +723,7 @@
           ;; whole, as the update event's previous object: a listener reads a card's metadata from it
           before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
-      (doseq [card cards]
+      (doseq [card (t2/hydrate cards :can_write)]
         (api/write-check card))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]
