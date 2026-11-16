@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   canAccessDataStudio,
   getUserCanWriteSegments,
@@ -12,9 +13,9 @@ import { useSelector } from "metabase/redux";
 import {
   Box,
   Button,
+  Center,
   Group,
   Icon,
-  Loader,
   Paper,
   Stack,
   Text,
@@ -110,16 +111,26 @@ export const SegmentsPanel = ({
             isUsersTableLinked={isUsersTableLinked}
           />
         ) : (
-          <PaletteSection
-            source="event"
-            table={table}
-            emptyMessage={t`No segments on this table yet.`}
-          />
+          <EventSection table={table} />
         )}
       </Box>
     </Paper>
   );
 };
+
+/** Fills the panel's body, centered, like Data Studio's table pages. */
+const SectionLoader = ({ error }: { error?: unknown }) => (
+  <Center h="100%">
+    <DelayedLoadingAndErrorWrapper loading={error == null} error={error} />
+  </Center>
+);
+
+const EventSection = ({ table }: Pick<SegmentsPanelProps, "table">) =>
+  table !== undefined ? (
+    <PaletteSection source="event" table={table} />
+  ) : (
+    <SectionLoader />
+  );
 
 type PeopleSectionProps = Pick<
   SegmentsPanelProps,
@@ -140,41 +151,25 @@ const PeopleSection = ({
     );
   }
   if (usersTable === undefined) {
-    return (
-      <Box px="lg" py="xs">
-        <Loader size="xs" />
-      </Box>
-    );
+    return <SectionLoader />;
   }
-  return (
-    <PaletteSection
-      source="people"
-      table={usersTable.table}
-      emptyMessage={t`No segments on this table yet.`}
-    />
-  );
+  return <PaletteSection source="people" table={usersTable.table} />;
 };
 
 type PaletteSectionProps = {
   source: SegmentSource;
-  /** Undefined while the table loads. */
-  table: Table | undefined;
-  emptyMessage: string;
+  table: Table;
 };
 
 type ModalState = { draft: SegmentDraft } | null;
 
-const PaletteSection = ({
-  source,
-  table,
-  emptyMessage,
-}: PaletteSectionProps) => {
+const PaletteSection = ({ source, table }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
   const { drafts, addDraft, updateDraft, removeDraft, restoreDraft } =
-    useSegmentDrafts(table?.id);
-  const { saved, drafted, isLoading } = usePaletteSegments(
-    table?.id,
+    useSegmentDrafts(table.id);
+  const { saved, drafted, isLoading, error } = usePaletteSegments(
+    table.id,
     source,
     drafts,
   );
@@ -183,7 +178,7 @@ const PaletteSection = ({
   const [modal, setModal] = useState<ModalState>(null);
   const findDraft = (key: string) => drafts.find((d) => d.id === key);
   // An event dragged out of the setup panel lands here as a draft.
-  const takesEvents = source === "event" && table !== undefined;
+  const takesEvents = source === "event";
   const eventDrop = useEventDropTarget({
     onDrop: (event) => {
       if (takesEvents) {
@@ -206,11 +201,10 @@ const PaletteSection = ({
             segment.key === editingDraftId ||
             segment.name.toLowerCase().includes(search),
         );
-  const canEdit = table !== undefined && tableQuery !== undefined;
+  const canEdit = tableQuery !== undefined;
   // Who can create, edit or remove segments in Data Studio can do it from here.
-  const canWriteSegments = useSelector(
-    (state) =>
-      table !== undefined && getUserCanWriteSegments(state, table.is_published),
+  const canWriteSegments = useSelector((state) =>
+    getUserCanWriteSegments(state, table.is_published),
   );
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [updateSegment] = useUpdateSegmentMutation();
@@ -230,7 +224,7 @@ const PaletteSection = ({
 
   // Writers get the segment editor, its history and its Data Studio page.
   const getSavedActions = (segment: Segment): SavedSegmentActions => {
-    if (!canWriteSegments || table === undefined) {
+    if (!canWriteSegments) {
       return {};
     }
     return {
@@ -243,9 +237,12 @@ const PaletteSection = ({
     };
   };
 
+  if (isLoading || error !== undefined) {
+    return <SectionLoader error={error} />;
+  }
+
   return (
     <Stack className={S.section} gap="xs" px="md" py="xs" {...eventDropProps}>
-      {isLoading && <Loader size="xs" />}
       {isSearchable && (
         <TextInput
           value={searchText}
@@ -320,11 +317,16 @@ const PaletteSection = ({
           />
         );
       })}
-      {items.length === 0 && !isDrafting && !isLoading && (
-        <Text c="text-disabled">{emptyMessage}</Text>
+      {items.length === 0 && !isDrafting && (
+        <Text px="xxs" c="text-secondary">
+          {c("{0} is a table name")
+            .t`No segments defined on ${table.display_name} yet.`}
+        </Text>
       )}
       {items.length > 0 && shownItems.length === 0 && (
-        <Text c="text-disabled">{t`No segments match “${searchText.trim()}”.`}</Text>
+        <Text px="xxs" c="text-secondary">
+          {t`No segments match “${searchText.trim()}”.`}
+        </Text>
       )}
       {isDrafting && tableQuery !== undefined && (
         <EventDefinitionEditor
@@ -350,7 +352,7 @@ const PaletteSection = ({
           </Button>
         </Box>
       )}
-      {modal !== null && table !== undefined && tableQuery !== undefined && (
+      {modal !== null && tableQuery !== undefined && (
         <NewSegmentModal
           table={table}
           tableQuery={tableQuery}

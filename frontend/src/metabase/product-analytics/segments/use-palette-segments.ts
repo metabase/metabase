@@ -16,7 +16,7 @@ export const usePaletteSegments = (
   source: SegmentSource,
   drafts: SegmentDraft[],
 ) => {
-  const { data: segments, isLoading } = useListSegmentsQuery();
+  const { data: segments, isLoading, error } = useListSegmentsQuery();
 
   const saved = useMemo<SavedPaletteSegment[]>(
     () =>
@@ -50,5 +50,5 @@ export const usePaletteSegments = (
     [drafts, source],
   );
 
-  return { saved, drafted, isLoading };
+  return { saved, drafted, isLoading, error };
 };
