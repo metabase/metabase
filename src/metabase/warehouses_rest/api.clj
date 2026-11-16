@@ -61,7 +61,7 @@
   "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
   [dbs & {:keys [can-query?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
-        filtered-tables (cond->> (filter mi/can-read? (t2/hydrate all-tables :can_read))
+        filtered-tables (cond->> (mi/readable all-tables)
                           can-query?          (#(t2/hydrate % :can_query))
                           can-query?          (filter mi/can-query?))
         db-id->tables (group-by :db_id filtered-tables)]
@@ -415,7 +415,7 @@
                           (if-not include-editable-data-model?
                             ;; If we're filtering by data model perms, table perm checks were already done by
                             ;; check-db-data-model-perms
-                            (filter mi/can-read? (t2/hydrate tables :can_read))
+                            (mi/readable tables)
                             tables)))
         (update :tables (fn [tables]
                           (let [readable (into #{}
@@ -504,7 +504,7 @@
   lowercased table and field names."
   [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (t2/hydrate (autocomplete-tables db-id like-pattern limit) :can_read))
+        tables (mi/readable (autocomplete-tables db-id like-pattern limit))
         fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
@@ -619,7 +619,7 @@
                         (let [table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms
                                                              (distinct (map :table fields))))]
                           (filter (comp table-ids :table_id) fields))
-                        (filter mi/can-read? (t2/hydrate fields :can_read)))]
+                        (mi/readable fields))]
     (sort-by (comp u/lower-case-en :name :table) fields)))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

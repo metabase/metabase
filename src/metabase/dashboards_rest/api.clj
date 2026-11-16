@@ -67,7 +67,7 @@
                                        (when (= (keyword filter-option) :mine)
                                          api/*current-user-id*)) <>
     (t2/hydrate <> :creator)
-    (filterv mi/can-read? (t2/hydrate <> :can_read))))
+    (mi/readable <>)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

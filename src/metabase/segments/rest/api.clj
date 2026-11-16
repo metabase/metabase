@@ -80,7 +80,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (-> (filterv mi/can-read? (t2/hydrate (segments.db/unarchived-segments) :can_read))
+  (-> (mi/readable (segments.db/unarchived-segments))
       (t2/hydrate :creator :definition_description)))
 
 (defn write-check-and-update-segment!

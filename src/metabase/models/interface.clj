@@ -641,6 +641,16 @@
   [instance]
   (hydrated-answer instance :can_query (:can_query instance)))
 
+(defn readable
+  "Those of `instances` the current user can read, in a vector, their `:can_read` hydrated together."
+  [instances]
+  (filterv can-read? (t2/hydrate instances :can_read)))
+
+(defn writable
+  "Those of `instances` the current user can write, in a vector, their `:can_write` hydrated together."
+  [instances]
+  (filterv can-write? (t2/hydrate instances :can_write)))
+
 (methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
   "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
   the row."

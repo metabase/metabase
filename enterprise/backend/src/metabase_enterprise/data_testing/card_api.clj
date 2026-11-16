@@ -37,7 +37,7 @@
    {:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/card-tests {:card-id card-id}) :can_read))
+  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response

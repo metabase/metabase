@@ -44,7 +44,7 @@
   [ids]
   (when (seq ids)
     (let [fields (warehouse-schema.db/fields ids)]
-      (-> (filter mi/can-read? (t2/hydrate fields :can_read))
+      (-> (mi/readable fields)
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
 
 (defn field-ids->table-ids

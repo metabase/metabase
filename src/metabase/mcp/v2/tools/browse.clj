@@ -154,7 +154,7 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        dbs  (filterv mi/can-read? (t2/hydrate rows :can_read))]
+        dbs  (mi/readable rows)]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
                                                                  "permission on at least one database.")])}

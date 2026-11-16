@@ -99,7 +99,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (->> (t2/hydrate (filterv mi/can-read? (t2/hydrate (measures.db/unarchived-measures) :can_read)) :creator :definition_description)
+  (->> (t2/hydrate (mi/readable (measures.db/unarchived-measures)) :creator :definition_description)
        (mapv with-api-dimensions)))
 
 (defn write-check-and-update-measure!

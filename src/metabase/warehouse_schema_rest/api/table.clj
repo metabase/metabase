@@ -117,7 +117,7 @@
       (apply t2/hydrate tables hydrations)
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
-        (filter mi/can-read? (t2/hydrate tables :can_read)))
+        (mi/readable tables))
       (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
             (cond-> tables can-query (t2/hydrate :can_query))))))
