@@ -25,6 +25,7 @@ import {
   type PrincipalType,
   type StartPreviewRequest,
   type StartPreviewResponse,
+  sendEndPreviewBeacon,
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
   useStartPreviewCodeMutation,
@@ -385,8 +386,17 @@ function usePreviewSession(
         }
       })
       .catch((startError: unknown) => isCurrent && setError(startError));
+    // a reload or a closed tab ends the preview now, not when its session expires
+    const handlePageHide = () => {
+      if (started != null) {
+        sendEndPreviewBeacon(request, started);
+        started = null;
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
     return () => {
       isCurrent = false;
+      window.removeEventListener("pagehide", handlePageHide);
       if (started != null) {
         endPreview({ request, preview: started });
       }

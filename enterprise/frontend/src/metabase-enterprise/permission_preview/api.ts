@@ -205,6 +205,40 @@ function principalParams({ type, id }: Principal) {
   return { "principal-type": type, "principal-id": id };
 }
 
+const END_PREVIEW_URL = "/api/ee/permission_debug/preview/end";
+
+function getEndPreviewBody(
+  request: Principal,
+  preview: StartPreviewResponse | PreviewSessionResponse | PreviewCodeResponse,
+) {
+  return {
+    preview_id: preview.preview_id,
+    user_id: preview.user_id,
+    principal_type: request.type,
+    principal_id: request.id,
+    attributes: preview.attributes,
+    session_token:
+      "session_token" in preview ? preview.session_token : undefined,
+    session_id: "session_id" in preview ? preview.session_id : undefined,
+  };
+}
+
+/**
+ * Ends a preview while the page goes away (a reload, a closed tab, a full navigation), when a normal request may be
+ * cancelled: the same body as `endPreview`, sent with the admin's cookie.
+ */
+export function sendEndPreviewBeacon(
+  request: Principal,
+  preview: StartPreviewResponse | PreviewSessionResponse | PreviewCodeResponse,
+) {
+  navigator.sendBeacon(
+    END_PREVIEW_URL,
+    new Blob([JSON.stringify(getEndPreviewBody(request, preview))], {
+      type: "application/json",
+    }),
+  );
+}
+
 const permissionPreviewApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listPreviewPrincipals: builder.query<PreviewPrincipalsResponse, void>({
@@ -278,17 +312,8 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ request, preview }) => ({
         method: "POST",
-        url: "/api/ee/permission_debug/preview/end",
-        body: {
-          preview_id: preview.preview_id,
-          user_id: preview.user_id,
-          principal_type: request.type,
-          principal_id: request.id,
-          attributes: preview.attributes,
-          session_token:
-            "session_token" in preview ? preview.session_token : undefined,
-          session_id: "session_id" in preview ? preview.session_id : undefined,
-        },
+        url: END_PREVIEW_URL,
+        body: getEndPreviewBody(request, preview),
       }),
     }),
     startPreviewSession: builder.mutation<

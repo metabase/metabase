@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -8,6 +8,7 @@ import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import {
   type Principal,
   type PrincipalType,
+  sendEndPreviewBeacon,
   useGetAffectingAttributesQuery,
   useListPreviewPrincipalsQuery,
   useStartPreviewMutation,
@@ -62,6 +63,8 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
   const accessSummary = useAccessSummary(
     whyOpen === "summary" ? principal : null,
   );
+
+  useEndPreviewOnPageHide(state);
 
   const handlePanelToggle = (isOpen: boolean) => {
     window.sessionStorage.setItem(
@@ -284,6 +287,32 @@ function SwitchPersonMenu({
       </Menu.Dropdown>
     </Menu>
   );
+}
+
+/**
+ * Leaving the page (a reload, a closed tab, a switch of person, the exit) ends this load's preview, so the audit gets
+ * its end now; a reload starts it again (`restartStoredPreview`).
+ */
+function useEndPreviewOnPageHide(state: PreviewState) {
+  useEffect(() => {
+    const handlePageHide = () => {
+      // read when the page goes: a reload's restart replaces the id after the first render
+      if (state.previewId != null) {
+        sendEndPreviewBeacon(
+          { type: state.principalType, id: state.principalId },
+          {
+            preview_id: state.previewId,
+            user_id: state.userId,
+            user_name: state.userName,
+            principal_name: state.principalName,
+            attributes: state.attributes,
+          },
+        );
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, [state]);
 }
 
 function readIsPanelOpen() {

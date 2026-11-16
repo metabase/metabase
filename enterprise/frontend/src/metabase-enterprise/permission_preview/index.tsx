@@ -15,6 +15,7 @@ import {
   getPreviewAsHeaderHandler,
   readFramePreviewState,
   readPreviewState,
+  restartStoredPreview,
 } from "./preview-state";
 import { TableUsersPreview } from "./preview/TableUsersPreview";
 import { getDataRoutes, getTabRoutes } from "./preview/routes";
@@ -41,7 +42,10 @@ export function initializePlugin() {
 
   if (previewState != null) {
     PLUGIN_API.onBeforeRequestHandlers.setPreviewAsHeader =
-      getPreviewAsHeaderHandler(previewState);
+      getPreviewAsHeaderHandler(
+        previewState,
+        restartStoredPreview(previewState),
+      );
     PLUGIN_PERMISSION_PREVIEW.PreviewBanner = function PreviewBannerSlot() {
       return <PreviewBanner state={previewState} />;
     };

@@ -38,6 +38,8 @@ const FRAME_NAME_PREFIX = "metabase-permission-preview:";
 
 let framePreviewState: PreviewState | null = null;
 
+let isPreviewStateFromUrl = false;
+
 /**
  * Reads the preview this tab switched into (from the URL on the first load, then from this tab's
  * sessionStorage), so every request of this tab, and only this tab, previews the same user.
@@ -49,6 +51,7 @@ export function readPreviewState(): PreviewState | null {
   if (state != null) {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     removeParams(params, Object.values(URL_PARAMS));
+    isPreviewStateFromUrl = true;
     return state;
   }
 
@@ -227,14 +230,53 @@ export function getPreviewUrl(path: string, state: PreviewState) {
   return url.toString();
 }
 
+/**
+ * A full load of a tab already previewing (a reload, a link that loads the whole app): the old page's `pagehide` beacon
+ * ended its preview, so this load starts it again with the same person and values, and keeps the new preview's id for
+ * its own end. A load from a preview link already has a fresh preview.
+ */
+export async function restartStoredPreview(state: PreviewState) {
+  if (isPreviewStateFromUrl) {
+    return;
+  }
+  const response = await fetch("/api/ee/permission_debug/preview/start", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      principal_type: state.principalType,
+      principal_id: state.principalId,
+      attributes: state.attributes,
+    }),
+  });
+  const started: unknown = response.ok ? await response.json() : null;
+  if (
+    typeof started === "object" &&
+    started != null &&
+    "preview_id" in started &&
+    typeof started.preview_id === "string" &&
+    "user_id" in started &&
+    typeof started.user_id === "number"
+  ) {
+    state.previewId = started.preview_id;
+    state.userId = started.user_id;
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+}
+
 /** The admin's own debugging calls (the people list, attributes, "Why?") run as the admin, not the person. */
 const ADMIN_URL_PREFIX = "/api/ee/permission_debug/";
 
+/** `ready`: the tab's preview has started, so the person's requests wait for it. */
 export function getPreviewAsHeaderHandler(
   state: PreviewState,
+  ready?: Promise<void>,
 ): OnBeforeRequestHandler {
-  return async ({ url }) =>
-    url.startsWith(ADMIN_URL_PREFIX)
-      ? undefined
-      : { headers: { "X-Metabase-Preview-As": String(state.userId) } };
+  return async ({ url }) => {
+    if (url.startsWith(ADMIN_URL_PREFIX)) {
+      return undefined;
+    }
+    await ready;
+    return { headers: { "X-Metabase-Preview-As": String(state.userId) } };
+  };
 }
