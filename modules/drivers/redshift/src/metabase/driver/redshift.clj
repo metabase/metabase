@@ -1206,6 +1206,25 @@
   (doseq [{:keys [process]} (jdbc/query conn ["SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?" user])]
     (jdbc/query conn ["SELECT pg_terminate_backend(?) AS ended" process])))
 
+(defn- block-logins-sql
+  "The statement that keeps `user` from opening a new session. A connection limit of 0 refuses every new connection of a
+  user that is not a superuser, whatever it authenticates with, and leaves its open sessions as they are."
+  [user]
+  (format "ALTER USER %s CONNECTION LIMIT 0" (quote-field user)))
+
+(defn- block-logins!
+  "Keeps the workspace user `user` from opening a new session, in a transaction of its own that commits before teardown
+  ends the user's sessions. Returns the error when that fails, or nil."
+  [spec user]
+  (try
+    (jdbc/with-db-transaction [t-conn spec]
+      (start-workspace-transaction! t-conn)
+      (when (user-exists? t-conn user)
+        (jdbc/execute! t-conn [(block-logins-sql user)])))
+    nil
+    (catch Exception e
+      e)))
+
 (defn- assert-no-public-create-grant!
   [conn schema-name]
   (when (public-create-grant? conn schema-name)
@@ -1538,53 +1557,66 @@
         username      (-> workspace :database_details :user)
         quoted-user   (quote-field username)
         quoted-schema (quote-schema schema-name)
-        spec          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
+        spec          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))
+        block-error   (block-logins! spec username)]
     ;; One transactional batch: foreign-grantor default-priv revokes, relation
     ;; revokes, iso-schema bare REVOKE, DROP SCHEMA, DROP USER. Redshift has no
     ;; SAVEPOINT and aborts the whole transaction on the first error, so a
     ;; stale row (e.g. a schema dropped between discovery and execution) fails
     ;; the entire destroy — that's fine: the workspace layer records the
     ;; failure and the deprovision is retried, re-discovering fresh state.
-    (jdbc/with-db-transaction [t-conn spec]
-      (start-workspace-transaction! t-conn)
-      (let [user-exists     (user-exists? t-conn username)
-            schema-exists   (schema-exists? t-conn schema-name)
-            granted-schemas (when user-exists
-                              (schemas-with-user-grants t-conn username))]
-        (when user-exists
-          (end-sessions! t-conn username))
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (when user-exists
-            ;; Foreign-grantor default-priv rows must be revoked FOR USER their
-            ;; grantor before DROP USER (GHY-3709); Redshift has no DROP OWNED BY.
-            (doseq [{:keys [grantor schema]} (default-acl-grants-for-user t-conn username)]
-              (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
-                                         (quote-field grantor) (quote-schema schema) quoted-user)))
-            (doseq [schema granted-schemas
-                    :let [quoted-granted-schema (quote-schema schema)]]
-              (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s"
-                                         quoted-granted-schema quoted-user))
-              (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"
-                                         quoted-granted-schema quoted-user)))
-            ;; Iso-namespace default-priv was issued by the connection user at init time, so a
-            ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
-            ;; erroring on a schema that was dropped manually.
-            (when schema-exists
-              (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
-                                         quoted-schema quoted-user))))
-          ;; These are safe with IF EXISTS
-          (.addBatch ^Statement stmt
-                     ^String (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema))
-          (.addBatch ^Statement stmt
-                     ^String (format "DROP USER IF EXISTS %s" quoted-user))
-          (try
-            (.executeBatch ^Statement stmt)
-            (catch Throwable t
-              (throw (driver.u/batch-exception t)))))))))
+    ;;
+    ;; Logins are blocked first, in a transaction that commits before the sessions end, so that no session opened after
+    ;; the kills holds a lock the drops wait on. A failure to block them does not stop the drops: it is logged when the
+    ;; drops succeed, and kept as suppressed when they fail.
+    (u/prog1 (try
+               (jdbc/with-db-transaction [t-conn spec]
+                 (start-workspace-transaction! t-conn)
+                 (let [user-exists     (user-exists? t-conn username)
+                       schema-exists   (schema-exists? t-conn schema-name)
+                       granted-schemas (when user-exists
+                                         (schemas-with-user-grants t-conn username))]
+                   (when user-exists
+                     (end-sessions! t-conn username))
+                   (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+                     (when user-exists
+                       ;; Foreign-grantor default-priv rows must be revoked FOR USER their
+                       ;; grantor before DROP USER (GHY-3709); Redshift has no DROP OWNED BY.
+                       (doseq [{:keys [grantor schema]} (default-acl-grants-for-user t-conn username)]
+                         (.addBatch ^Statement stmt
+                                    ^String (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                                    (quote-field grantor) (quote-schema schema) quoted-user)))
+                       (doseq [schema granted-schemas
+                               :let [quoted-granted-schema (quote-schema schema)]]
+                         (.addBatch ^Statement stmt
+                                    ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s"
+                                                    quoted-granted-schema quoted-user))
+                         (.addBatch ^Statement stmt
+                                    ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"
+                                                    quoted-granted-schema quoted-user)))
+                       ;; Iso-namespace default-priv was issued by the connection user at init time, so a
+                       ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
+                       ;; erroring on a schema that was dropped manually.
+                       (when schema-exists
+                         (.addBatch ^Statement stmt
+                                    ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                                    quoted-schema quoted-user))))
+                     ;; These are safe with IF EXISTS
+                     (.addBatch ^Statement stmt
+                                ^String (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema))
+                     (.addBatch ^Statement stmt
+                                ^String (format "DROP USER IF EXISTS %s" quoted-user))
+                     (try
+                       (.executeBatch ^Statement stmt)
+                       (catch Throwable t
+                         (throw (driver.u/batch-exception t)))))))
+               (catch Throwable t
+                 (when block-error
+                   (.addSuppressed t ^Throwable block-error))
+                 (throw t)))
+      (when block-error
+        (log/warnf block-error "Could not keep workspace user %s from logging in before teardown ended its sessions"
+                   username)))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "metabot/prompts/dialects/redshift.md")

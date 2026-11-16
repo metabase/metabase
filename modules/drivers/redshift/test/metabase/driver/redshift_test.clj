@@ -34,6 +34,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
@@ -1166,6 +1167,52 @@
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
 
+(deftest ^:synchronized workspace-block-logins-live-test
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          user       (str "ws_block_logins_" (u/lower-case-en (mt/random-name)))
+          password   "Pwd_ws_block_1!"
+          user-spec  (sql-jdbc.conn/connection-details->spec
+                      :redshift (assoc (tx/dbdef->connection-details :redshift) :user user :password password))]
+      (try
+        (execute! "CREATE USER \"%s\" WITH PASSWORD '%s'" user password)
+        (testing "control: the user can log in"
+          (is (= [{:one 1}] (jdbc/query user-spec ["SELECT 1 AS one"]))))
+        (testing "Redshift accepts the statement that blocks logins"
+          (is (nil? (#'redshift/block-logins! admin-spec user))))
+        (testing "and the user can no longer log in"
+          (is (thrown? java.sql.SQLException (jdbc/query user-spec ["SELECT 1 AS one"]))))
+        (finally
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" user)))))))
+
+(deftest ^:synchronized workspace-destroy-leaves-no-user-and-no-session-live-test
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          workspace  {:id (rand-int Integer/MAX_VALUE), :name (str "wsd-dest-session-" suffix)}
+          workspace  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+          {iso-user :user, password :password} (:database_details workspace)
+          user-spec  (sql-jdbc.conn/connection-details->spec
+                      :redshift (assoc (tx/dbdef->connection-details :redshift) :user iso-user :password password))]
+      ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
+      (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-cluster! (constantly nil)]
+        (driver/init-workspace-isolation! :redshift (mt/db) workspace))
+      (try
+        (sql-jdbc.execute/do-with-connection-with-options
+         :redshift user-spec nil
+         (fn [^java.sql.Connection held]
+           (testing "control: the workspace user has an open session"
+             (jdbc/query {:connection held} ["SELECT 1"])
+             (is (seq (jdbc/query admin-spec ["SELECT 1 FROM stv_sessions WHERE TRIM(user_name) = ?" iso-user]))))
+           (driver/destroy-workspace-isolation! :redshift (mt/db) workspace)
+           (testing "teardown leaves no workspace user"
+             (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+           (testing "and no session of it"
+             (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM stv_sessions WHERE TRIM(user_name) = ?" iso-user]))))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" (:schema workspace)))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))))
+
 (deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
   ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
   ;; privilege on some object` when the iso-user holds a schema-level USAGE
@@ -1446,6 +1493,60 @@
                          (answer-with {})
                          #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
       (is (not-any? (fn [[_ sql]] (str/includes? sql "pg_terminate_backend")) log)))))
+
+(def ^:private block-logins-statement
+  "ALTER USER \"mb__isolation_user_1\" CONNECTION LIMIT 0")
+
+(defn- fail-block-logins
+  "Calls `(f)` with `jdbc/execute!` failing on the statement that blocks logins, as a login without the ALTER USER
+  privilege would."
+  [f]
+  (mt/with-dynamic-fn-redefs [jdbc/execute! (fn [_conn [sql]]
+                                              (when (= block-logins-statement sql)
+                                                (throw (java.sql.SQLException. "permission denied" "42501")))
+                                              [0])]
+    (f)))
+
+(deftest workspace-destroy-blocks-logins-before-ending-sessions-test
+  (let [answer (answer-with {"FROM pg_user WHERE"      [{:?column? 1}]
+                             "FROM pg_namespace WHERE" [{:?column? 1}]
+                             "FROM stv_sessions"       [{:process 41}]})]
+    (testing "destroy blocks the workspace user's logins, then ends its sessions, then drops"
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 answer
+                                 #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))
+            positions           (map #(.indexOf ^java.util.List log %)
+                                     [[:execute block-logins-statement]
+                                      [:query "SELECT pg_terminate_backend(?) AS ended" [41]]
+                                      [:execute "DROP SCHEMA IF EXISTS \"mb__isolation_ws_1\" CASCADE"]
+                                      [:execute "DROP USER IF EXISTS \"mb__isolation_user_1\""]])]
+        (is (nil? error))
+        (is (every? nat-int? positions))
+        (is (apply < positions))))
+    (testing "destroy blocks no logins when the workspace user is already gone"
+      (let [{:keys [log]} (run-with-fake-jdbc
+                           (answer-with {})
+                           #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
+        (is (not-any? #{[:execute block-logins-statement]} log))))
+    (testing "a failure to block logins does not stop the drops, and is logged when they succeed"
+      (log.capture/with-log-messages-for-level [messages [metabase.driver.redshift :warn]]
+        (let [{:keys [log error]} (run-with-fake-jdbc
+                                   answer
+                                   #(fail-block-logins
+                                     (fn [] (driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))))]
+          (is (nil? error))
+          (is (some #{[:execute "DROP USER IF EXISTS \"mb__isolation_user_1\""]} log))
+          (is (=? [{:level :warn, :message #"Could not keep workspace user mb__isolation_user_1 from logging in.*"}]
+                  (messages))))))
+    (testing "when the drops fail too, their error is thrown with the failure to block logins as suppressed"
+      (let [batch-error     (java.sql.BatchUpdateException. "Batch entry 0 was aborted" "2BP01" 0 (int-array 0))
+            {:keys [error]} (run-with-fake-jdbc
+                             answer
+                             #(fail-block-logins
+                               (fn [] (driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace)))
+                             {:batch-error batch-error})]
+        (is (some? error))
+        (is (= ["permission denied"] (map ex-message (.getSuppressed ^Throwable error))))))))
 
 (deftest workspace-init-refuses-late-collision-test
   (testing "control: a schema that the check finds gives the 409 refusal"
