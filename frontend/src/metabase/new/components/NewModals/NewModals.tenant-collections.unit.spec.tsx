@@ -61,6 +61,21 @@ describe("NewModals > shared tenant collections", () => {
     location: "/",
     can_write: true,
   });
+  const officialSharedCollection = createMockCollection({
+    id: 13,
+    name: "Official Shared Collection",
+    namespace: "shared-tenant-collection",
+    authority_level: "official",
+    location: "/",
+    can_write: true,
+  });
+  const officialRegularCollection = createMockCollection({
+    id: 14,
+    name: "Official Regular Collection",
+    authority_level: "official",
+    location: "/",
+    can_write: true,
+  });
 
   beforeEach(() => {
     mockGetBoundingClientRect();
@@ -73,7 +88,13 @@ describe("NewModals > shared tenant collections", () => {
   const setupSharedCollection = (collection: Collection) => {
     setupRecentViewsAndSelectionsEndpoints([], ["views", "selections"]);
     setupCollectionsEndpoints({
-      collections: [sharedCollection, sharedSubCollection, regularCollection],
+      collections: [
+        sharedCollection,
+        sharedSubCollection,
+        regularCollection,
+        officialSharedCollection,
+        officialRegularCollection,
+      ],
       rootCollection,
     });
     setupCollectionByIdEndpoint({
@@ -82,6 +103,8 @@ describe("NewModals > shared tenant collections", () => {
         sharedCollection,
         sharedSubCollection,
         regularCollection,
+        officialSharedCollection,
+        officialRegularCollection,
       ],
     });
     setupRootCollectionItemsEndpoint({
@@ -126,6 +149,14 @@ describe("NewModals > shared tenant collections", () => {
     });
     setupCollectionItemsEndpoint({
       collection: regularCollection,
+      collectionItems: [],
+    });
+    setupTenantCollectionItemsEndpoint({
+      collection: officialSharedCollection,
+      collectionItems: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: officialRegularCollection,
       collectionItems: [],
     });
 
@@ -223,6 +254,26 @@ describe("NewModals > shared tenant collections", () => {
     expect(
       within(menu).queryByText("Remove Official badge"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should not offer to remove the Official badge from an official shared collection", async () => {
+    setupSharedCollection(officialSharedCollection);
+
+    const menu = await openCollectionMenu();
+    expect(within(menu).getByText("Move")).toBeVisible();
+    expect(
+      within(menu).queryByText("Remove Official badge"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(menu).queryByText("Make collection official"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer to remove the Official badge from an official regular collection with the same setup", async () => {
+    setupSharedCollection(officialRegularCollection);
+
+    const menu = await openCollectionMenu();
+    expect(within(menu).getByText("Remove Official badge")).toBeVisible();
   });
 
   it.each([
