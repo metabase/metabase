@@ -31,6 +31,7 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -454,22 +455,32 @@ describe("fetchDashboard", () => {
         parameterMapping: {},
       },
     });
+    // The embed API returns numeric ids, like the backend does.
     const dashboard = createMockDashboard({
-      id: token,
+      id: 42,
       dashcards: [
         createMockDashboardCard({
           id: 1,
-          card: createMockCard({ display: "line" }),
+          dashboard_id: 42,
+          card: createMockCard({ id: 11, display: "line" }),
           visualization_settings: linkTo("dashboard", 2),
         }),
         createMockDashboardCard({
           id: 2,
-          card: createMockCard({ display: "line" }),
+          dashboard_id: 42,
+          card: createMockCard({ id: 12, display: "line" }),
           visualization_settings: linkTo("question", 3),
         }),
       ],
     });
+    const embedQueryPath = (dashcardId: number, cardId: number) =>
+      `path:/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`;
+    const dashboardQueryRoute =
+      "express:/api/dashboard/:id/dashcard/:dashcardId/card/:cardId/query";
     fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+    fetchMock.get(embedQueryPath(1, 11), createMockDataset());
+    fetchMock.get(embedQueryPath(2, 12), createMockDataset());
+    fetchMock.post(dashboardQueryRoute, createMockDataset());
     const store = setup({
       dashboard: createMockDashboardState({
         linkTargets: {
@@ -481,6 +492,20 @@ describe("fetchDashboard", () => {
     await store.dispatch(
       fetchDashboard({ dashId: token, queryParams: {}, options: {} }),
     );
+
+    for (const dashcardId of [1, 2]) {
+      const dashcard = store.getState().dashboard.dashcards[dashcardId];
+      if (!isQuestionDashCard(dashcard)) {
+        throw new Error("Expected a question dashcard");
+      }
+      const result = await store.dispatch(
+        fetchCardDataAction({ card: dashcard.card, dashcard, options: {} }),
+      );
+      expect(result.type).toBe(fetchCardDataAction.fulfilled.type);
+    }
+    expect(fetchMock.callHistory.called(embedQueryPath(1, 11))).toBe(true);
+    expect(fetchMock.callHistory.called(embedQueryPath(2, 12))).toBe(true);
+    expect(fetchMock.callHistory.called(dashboardQueryRoute)).toBe(false);
 
     const getClickActions = (dashcardId: number) => {
       const { result } = renderHookWithProviders(
