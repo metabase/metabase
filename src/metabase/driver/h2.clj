@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -214,14 +213,17 @@
   ;; For native queries check to make sure the DB in question has a (non-default) NAME property specified in the
   ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
   ;; reasons
-  (let [details (driver.conn/effective-details (driver-api/database query))
-        user    (db-details->user details)]
-    (when (and config/is-prod? ;; we elevated permissions in workspace tests
-               (or (str/blank? user)
-                   (= user "sa")))      ; "sa" is the default USER
-      (throw
-       (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-                {:type driver-api/qp.error-type.db})))))
+  ;;
+  ;; A query compiled from MBQL also arrives as a native-only query, with `:qp/original-stages`; those are allowed.
+  (when-not (:qp/original-stages query)
+    (let [details (driver.conn/effective-details (driver-api/database query))
+          user    (db-details->user details)]
+      (when (and config/is-prod? ;; we elevated permissions in workspace tests
+                 (or (str/blank? user)
+                     (= user "sa")))    ; "sa" is the default USER
+        (throw
+         (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+                  {:type driver-api/qp.error-type.db}))))))
 
 (mu/defn- make-h2-parser :- [:maybe (driver-api/instance-of-class Parser)]
   "Returns an H2 Parser object for the Lib metadata `h2-database` of an H2 Database."
@@ -343,11 +345,12 @@
 
 (mu/defn- check-action-commands-allowed
   [{[{sql :native}] :stages, :as query} :- ::lib.schema/native-only-query]
-  (check-no-unsupported-functions sql)
-  (when-let [query-classification (classify-query (driver-api/database query) sql)]
-    (when-not (every-command-allowed-for-actions? query-classification)
-      (throw (ex-info "DDL commands are not allowed to be used with H2."
-                      {:classification query-classification})))))
+  (when sql
+    (check-no-unsupported-functions sql)
+    (when-let [query-classification (classify-query (driver-api/database query) sql)]
+      (when-not (every-command-allowed-for-actions? query-classification)
+        (throw (ex-info "DDL commands are not allowed to be used with H2."
+                        {:classification query-classification}))))))
 
 (defn- read-only-statements? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]

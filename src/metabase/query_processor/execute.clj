@@ -1,6 +1,6 @@
 (ns metabase.query-processor.execute
-  (:refer-clojure :exclude [get-in])
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -18,8 +18,7 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,9 +87,10 @@
                 ;; keep MBQL 5 for execution
                 (if (lib/native-only-query? query)
                   query
-                  (let [native-stage {:lib/type :mbql.stage/native
-                                      :native   (get-in query [:qp/compiled :query])
-                                      :params   (get-in query [:qp/compiled :params])}]
+                  ;; keep any driver-specific keys in the compiled query, e.g. MongoDB's `:collection`
+                  (let [native-stage (-> (:qp/compiled query)
+                                         (set/rename-keys {:query :native})
+                                         (assoc :lib/type :mbql.stage/native))]
                     (assoc query
                            :stages             [native-stage]
                            :qp/original-stages (:stages query))))

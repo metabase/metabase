@@ -679,13 +679,15 @@
 
 (mr/def ::execute-reducible-query.context
   [:map
+   {:closed true}
    [:canceled-chan (lib.schema.common/instance-of-class clojure.core.async.impl.channels.ManyToManyChannel)]])
 
 (mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
   [:sequential
    [:map
     [:name          string?] ; allowed to be a blank string :(
-    [:base_type     ::lib.schema.common/base-type]
+    ;; can be `nil` when the driver has no base type for the database type, e.g. H2's `NULL`
+    [:base_type     [:maybe ::lib.schema.common/base-type]]
     [:database_type ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::execute-reducible-query.respond-fn.results-metadata
@@ -1149,8 +1151,11 @@
     :mbql-5-native-query-execution})
 
 (mr/def ::feature
-  "Valid driver feature keyword."
-  (into [:enum] (sort features)))
+  "Valid driver feature keyword: one of [[features]], or a namespace-qualified keyword, which [[database-supports?]]
+  accepts without it being listed there (allowed since tests define them for various purposes)."
+  [:or
+   (into [:enum {:error/message "valid driver feature"}] (sort features))
+   qualified-keyword?])
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1181,7 +1186,7 @@
 (mu/defmethod database-supports? :default
   [_driver   :- :keyword
    _feature  :- ::feature
-   _database :- :map]
+   _database :- [:maybe :map]]
   false)
 
 (doseq [[feature supported?] {:convert-timezone                       false

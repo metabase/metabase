@@ -37,7 +37,10 @@
     :as query} :- ::qp.schema/any-query]
   {:user-id      executed-by
    :query-type   (if (:lib/type query)
-                   (case (keyword (:lib/type (lib/query-stage query -1)))
+                   ;; a query compiled from MBQL reaches the driver as a single native stage plus
+                   ;; `:qp/original-stages`, see [[metabase.query-processor.execute]]
+                   (case (keyword (:lib/type (or (last (:qp/original-stages query))
+                                                 (lib/query-stage query -1))))
                      :mbql.stage/mbql   "MBQL"
                      :mbql.stage/native "native")
                    (case (keyword (:type query))

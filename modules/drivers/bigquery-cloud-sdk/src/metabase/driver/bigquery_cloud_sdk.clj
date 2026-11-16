@@ -27,7 +27,6 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -1185,7 +1184,7 @@
                               ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
                               :index/fetch                      true
                               :index/inline-create              true
-                              :mbql-5-query-execution           true
+                              :mbql-5-native-query-execution    true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :native-pivot-tables              true

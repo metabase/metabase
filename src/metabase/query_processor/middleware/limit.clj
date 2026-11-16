@@ -66,7 +66,12 @@
             attachment-context? #{:dashboard-subscription :pulse :notification}
             download-limit      (when (download-context? context) (qp.settings/download-row-limit))
             attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
-            res                 (u/safe-min (lib/max-rows-limit query)
+            ;; a query that was compiled from MBQL arrives here from the driver with a single native stage and
+            ;; the MBQL stages it was compiled from in `:qp/original-stages` (see
+            ;; [[metabase.query-processor.execute]]); the limit has to come from the MBQL stages.
+            res                 (u/safe-min (lib/max-rows-limit (cond-> query
+                                                                  (:qp/original-stages query)
+                                                                  (assoc :stages (:qp/original-stages query))))
                                             download-limit
                                             attachment-limit)]
         (if (#{:xlsx-download :embedded-xlsx-download :public-xlsx-download} context)

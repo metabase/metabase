@@ -522,6 +522,7 @@
                               :index-info                           false ; Index sync is turned off across the application as it is not used ATM.
                               :inner-join                           true
                               :left-join                            true
+                              :mbql-5-native-query-execution        true
                               :metadata/key-constraints             false
                               :native-parameter-card-reference      false
                               :native-parameters                    true

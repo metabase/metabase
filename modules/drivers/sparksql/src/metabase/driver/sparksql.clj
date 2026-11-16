@@ -1,5 +1,5 @@
 (ns metabase.driver.sparksql
-  (:refer-clojure :exclude [select-keys every? empty? not-empty get-in])
+  (:refer-clojure :exclude [select-keys every? empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
+   [metabase.util.performance :refer [select-keys every? empty? not-empty]])
   (:import
    (java.sql Connection ResultSet Types)))
 
@@ -182,7 +182,7 @@
    respond :- ::driver/execute-reducible-query.respond-fn]
   (assert (empty? (:params (lib/query-stage query 0)))
           "Spark SQL does not support parameterized JDBC queries.")
-  (let [query (lib/update-query-stage 0 assoc
+  (let [query (lib/update-query-stage query 0 assoc
                                       ;; TODO (Cam 2026-11-16) verify whether `:remark` and `:max-rows` are actually
                                       ;; doing anything important at all, there was a second implementation of this
                                       ;; method in this namespace after this one that didn't add these which means we
