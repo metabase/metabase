@@ -1122,9 +1122,9 @@
   (t2/select-one-fn :is_data_analyst :model/User :id user-id))
 
 (mu/defn member-flags :- [:sequential [:map {:closed true}
-                                          [:id           ::lib.schema.id/user]
-                                          [:tenant_id    [:maybe ms/PositiveInt]]
-                                          [:is_superuser :boolean]]]
+                                       [:id           ::lib.schema.id/user]
+                                       [:tenant_id    [:maybe ms/PositiveInt]]
+                                       [:is_superuser :boolean]]]
   "The id, tenant id and superuser flag of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select [:model/User :id :tenant_id :is_superuser] :id [:in user-ids]))
