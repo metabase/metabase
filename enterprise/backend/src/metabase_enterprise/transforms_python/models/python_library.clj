@@ -115,5 +115,6 @@
 
 (defmethod remote-sync/spec :model/PythonLibrary
   [_model]
-  {:label                :path
+  {:name                 :path
+   :synced-items         transforms-python.db/synced-python-library-items
    :synced-filter-clause transforms-python.db/synced-python-libraries-clause})

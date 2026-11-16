@@ -77,6 +77,7 @@ interface SetupOpts {
   sortOrder?: ExplorationSortOrder;
   readPageIds?: ReadonlySet<string>;
   tab?: ExplorationSidebarTab;
+  withUndos?: boolean;
 }
 
 export function setup({
@@ -91,6 +92,7 @@ export function setup({
   sortOrder = DEFAULT_SORT_ORDER,
   readPageIds = new Set<string>(),
   tab = "all",
+  withUndos = false,
 }: SetupOpts) {
   const onPreviousPage = jest.fn();
   const onNextPage = jest.fn();
@@ -179,6 +181,7 @@ export function setup({
 
   renderWithProviders(<Route path={explorationPath} element={sidebar} />, {
     withRouter: true,
+    withUndos,
     initialRoute: explorationPath,
   });
   return {

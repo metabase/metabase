@@ -4,7 +4,7 @@ import type {
   ExportPreflightResponse,
   GetBranchesResponse,
   HasRemoteChangesResponse,
-  RemoteSyncEntity,
+  RemoteSyncDirtyItem,
   RemoteSyncTask,
   RemoteSyncTaskId,
   RemoteSyncUnsyncedDependenciesErrorData,
@@ -31,7 +31,9 @@ export function setupRemoteSyncBranchesEndpoint(
   fetchMock.get("path:/api/ee/remote-sync/branches", response);
 }
 
-export function setupRemoteSyncDirtyEndpoint(dirty: RemoteSyncEntity[] = []) {
+export function setupRemoteSyncDirtyEndpoint(
+  dirty: RemoteSyncDirtyItem[] = [],
+) {
   fetchMock.get(
     "path:/api/ee/remote-sync/dirty",
     createMockRemoteSyncChangesResponse({ dirty }),
@@ -113,7 +115,7 @@ export function setupRemoteSyncTestConnectionEndpoint() {
 }
 
 type SetupRemoteSyncEndpointsOpts = {
-  dirty?: RemoteSyncEntity[];
+  dirty?: RemoteSyncDirtyItem[];
   hasRemoteChanges?: boolean;
   currentTask?: RemoteSyncTask | null;
   settingsTaskId?: RemoteSyncTaskId;

@@ -564,4 +564,5 @@
 
 (defmethod remote-sync/spec :model/Dashboard
   [_model]
-  {:synced-filter-clause dashboards.db/synced-dashboards-clause})
+  {:synced-items         dashboards.db/synced-dashboard-items
+   :synced-filter-clause dashboards.db/synced-dashboards-clause})

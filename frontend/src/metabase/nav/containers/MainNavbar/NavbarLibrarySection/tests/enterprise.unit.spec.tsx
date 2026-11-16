@@ -4,8 +4,8 @@ import { screen, waitFor } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import {
   createMockCollection,
-  createMockRemoteSyncEntity,
-  createMockRemoteSyncEntityCollection,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncDirtyItem,
 } from "metabase-types/api/mocks";
 
 import { createChildCollection, createLibraryCollection, setup } from "./setup";
@@ -94,8 +94,12 @@ describe("NavbarLibrarySection", () => {
         isEnterprise: true,
         collections: [libraryCollection],
         dirty: [
-          createMockRemoteSyncEntity({
-            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          createMockRemoteSyncDirtyItem({
+            model: "card",
+            data: createMockRemoteSyncCardData({
+              collection_id: 10,
+              collection: createMockCollection({ id: 10 }),
+            }),
           }),
         ],
       });
@@ -115,8 +119,12 @@ describe("NavbarLibrarySection", () => {
           }),
         ],
         dirty: [
-          createMockRemoteSyncEntity({
-            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          createMockRemoteSyncDirtyItem({
+            model: "card",
+            data: createMockRemoteSyncCardData({
+              collection_id: 10,
+              collection: createMockCollection({ id: 10 }),
+            }),
           }),
         ],
       });

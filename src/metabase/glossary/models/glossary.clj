@@ -46,4 +46,5 @@
 
 (defmethod remote-sync/spec :model/Glossary
   [_model]
-  {:label :term})
+  {:name         :term
+   :synced-items glossary.db/synced-glossary-items})

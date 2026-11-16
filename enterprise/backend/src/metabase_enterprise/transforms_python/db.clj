@@ -2,6 +2,7 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -76,3 +77,8 @@
              :parent_id nil
              :nfc_path nil
              {:order-by [[:database_position :asc]]}))
+
+(mu/defn synced-python-library-items :- [:sequential ::transforms-python.schema/python-library]
+  "The PythonLibraries with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/PythonLibrary :id :path] :id [:in ids]))

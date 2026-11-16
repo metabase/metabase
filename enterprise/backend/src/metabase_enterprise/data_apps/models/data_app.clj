@@ -146,10 +146,10 @@
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
+;; The search index drops the app after the delete commits, through delete capture.
 (t2/define-before-delete :model/DataApp
   [app]
-  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!)
-  (search/delete! :model/DataApp [(str (:id app))]))
+  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
 
 (search/define-spec "data-app"
   {:model        :model/DataApp
@@ -244,4 +244,5 @@
 
 (defmethod remote-sync/spec :model/DataApp
   [_model]
-  {:label :slug})
+  {:name         :slug
+   :synced-items data-apps.db/synced-data-app-items})

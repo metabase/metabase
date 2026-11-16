@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import type {
+  DataTestData,
+  DataTestExpectation,
   Transform,
-  TransformTestData,
-  TransformTestExpectation,
 } from "metabase-types/api";
 
 import { DataTestSection } from "../../../components/DataTestSection";
@@ -12,7 +12,7 @@ import { TransformTestDataCard } from "../TransformTestDataCard";
 
 type TransformTestOutputSectionProps = {
   transform: Transform;
-  expectations: TransformTestExpectation[];
+  expectations: DataTestExpectation[];
 };
 
 export function TransformTestOutputSection({
@@ -39,7 +39,7 @@ export function TransformTestOutputSection({
   );
 }
 
-function getExpectationDescription(expectation: TransformTestExpectation) {
+function getExpectationDescription(expectation: DataTestExpectation) {
   switch (expectation.type) {
     case "equals":
       return t`Must hold exactly these rows`;
@@ -48,9 +48,7 @@ function getExpectationDescription(expectation: TransformTestExpectation) {
   }
 }
 
-function getExpectationData(
-  expectation: TransformTestExpectation,
-): TransformTestData {
+function getExpectationData(expectation: DataTestExpectation): DataTestData {
   if (expectation.type === "empty") {
     return { format: "sql", sql: expectation.sql };
   }

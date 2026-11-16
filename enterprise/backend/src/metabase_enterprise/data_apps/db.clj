@@ -277,3 +277,8 @@
                :id [:in collection-ids]
                :archived false)
     []))
+
+(mu/defn synced-data-app-items :- [:sequential ::data-apps.schema/data-app]
+  "The DataApps with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/DataApp :id :slug :name] :id [:in ids]))
