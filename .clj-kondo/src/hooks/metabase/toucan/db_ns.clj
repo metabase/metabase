@@ -447,6 +447,13 @@
                                        (pk-column (nth args i)) (hooks/sexpr pk) (hooks/sexpr fn-node))
                       :type :metabase/t2-implicit-pk)))))))))
 
+(defn- facade-call?
+  "Whether `node` calls `metabase.toucan.core`, whose macros bind every runtime value themselves."
+  [node]
+  (let [sym (some-> node :children first hooks/sexpr)]
+    (and (symbol? sym)
+         (= "metabase.toucan.core" (namespace (resolved-symbol sym))))))
+
 (defn lint-query-call
   "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
   namespace."
@@ -464,6 +471,7 @@
   (when (and ns
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))
-             (read-call? node))
+             (read-call? node)
+             (not (facade-call? node)))
     (lint-unmarked-values! node))
   input)

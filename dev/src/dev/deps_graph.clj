@@ -753,14 +753,27 @@
                       {:file file}
                       e)))))
 
+(defn- model-keyword-token?
+  "Whether `node` is a `:model/X` keyword token."
+  [node]
+  (and node
+       (= (n/tag node) :token)
+       (keyword? (n/sexpr node))
+       (= "model" (namespace (n/sexpr node)))))
+
 (mu/defn find-model-definitions :- [:set :keyword]
-  "Find all models with their `t2/table-name` defined in this file."
+  "Find all models with their `t2/table-name` defined in this file, by `defmethod` or `t2/define-table-name`."
   [file :- File]
   (let [models (atom #{})]
     (module-source/walk-parsed-ignore-comments!
      (fn [node]
        (when (= (n/tag node) :list)
          (let [[fst snd trd] (remove module-source/skip-node? (n/children node))]
+           (when (and fst
+                      (= (n/tag fst) :token)
+                      (= (n/sexpr fst) 't2/define-table-name)
+                      (model-keyword-token? snd))
+             (swap! models conj (n/sexpr snd)))
            (when (and fst (= (n/tag fst) :token)
                       (some-> (n/string fst) (str/ends-with? "/defmethod")))
              (when (and fst snd trd
