@@ -123,11 +123,12 @@
   "Delete a Workspace: tear down each database's warehouse isolation (blocking),
   then delete the workspace. 409 (error code `workspace_busy`, nothing changed)
   while a create or deprovision is running on any of its databases, meaning a row
-  that is `:provisioning` or `:deprovisioning` and was last updated within the
-  last 15 minutes. An older such row is treated as left by a crashed instance and
-  is torn down. A row whose teardown succeeds is deleted. A row whose teardown
-  fails is kept, the workspace is kept with it, and the combined failure is the
-  error, so the delete can be retried. 204 on success, no response body."
+  is `:provisioning` or `:deprovisioning` and any row of the workspace was last
+  updated within the last 15 minutes. Once every row is older, such a row is
+  treated as left by a crashed instance and is torn down. A row whose teardown
+  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept
+  with it, and the combined failure is the error, so the delete can be retried.
+  204 on success, no response body."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
