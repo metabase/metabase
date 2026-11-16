@@ -15,7 +15,7 @@
   (let [cases (for [[sm v] view-count-percentiles]
                 [[:= :search_index.model (name sm)] (max (or v 0) 1)])]
     (search.scoring/size :view_count (if (seq cases)
-                                       (into [:case] cat cases)
+                                       (into (into [:case] cat cases) [:else 1])
                                        1))))
 
 (defn base-scorers
@@ -26,7 +26,7 @@
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         (specialization/text-score)
+    {:text         (specialization/text-score search-ctx)
      :view-count   (view-count-expr view-count-percentiles)
      :pinned       (search.scoring/truthy :pinned)
      :bookmarked   search.scoring/bookmark-score-expr
