@@ -160,8 +160,10 @@
   failure is the error, so the delete can be retried. Only a failure of the
   warehouse teardown itself marks the row `teardown_failed`. A failure before the
   warehouse call (a lock timeout, a failed connection lookup) leaves the row's
-  status as it was, and the next DELETE retries it. 204 on success, no response
-  body.
+  status as it was, and the next DELETE retries it. After a successful warehouse
+  teardown, a failed row delete or remapping cleanup also restores the row's
+  previous status, so a `provisioned` row can then name dropped objects until the
+  DELETE is retried. 204 on success, no response body.
 
   `force=true` deletes `teardown_failed` rows without a warehouse teardown and
   logs at WARN the identifiers of what may remain. It does so after the busy
@@ -184,9 +186,10 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`. The body does not say which
-  status; read `GET /:id`. Retry while a database is `provisioning`. In any other
-  status, waiting does not clear the 409; delete the workspace. 422 if a
-  database's connection settings need an admin to fix them; retrying does not help."
+  status; read `GET /:id`. Retry while a database is `provisioning` or
+  `deprovisioning`. In any other status, waiting does not clear the 409; delete
+  the workspace. 422 if a database's connection settings need an admin to fix
+  them; retrying does not help."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
