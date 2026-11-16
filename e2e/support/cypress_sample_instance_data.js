@@ -65,14 +65,6 @@ export const READ_ONLY_PERSONAL_COLLECTION_ID = _.findWhere(
 /**
  * @type number
  */
-export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
-  SAMPLE_INSTANCE_DATA.collections,
-  { name: "No Data Tableton's Personal Collection" },
-).id;
-
-/**
- * @type number
- */
 export const NO_COLLECTION_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "No Collection Tableton's Personal Collection" },

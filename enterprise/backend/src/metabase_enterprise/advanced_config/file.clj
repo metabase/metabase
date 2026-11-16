@@ -94,7 +94,6 @@
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
@@ -111,6 +110,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]))
 
 (comment
@@ -235,11 +235,8 @@
     (str/join (map expand-template-str-part (lib/parse-parameters s)))))
 
 (defn- expand-templates [m]
-  (walk/postwalk
-   (fn [form]
-     (cond-> form
-       (string? form) expand-templates-in-str))
-   m))
+  (match/replace-all m
+    #'string? (expand-templates-in-str &match)))
 
 (defn- config-from-disk
   "Read the config file from disk."

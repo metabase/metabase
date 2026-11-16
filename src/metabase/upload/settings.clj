@@ -5,7 +5,8 @@
    [metabase.settings.core :refer [defsetting]]
    [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,7 +18,7 @@
   "Checks that we have the required permissions to change upload settings for this database."
   [db-id]
   (or (not-handling-api-request?)
-      (mi/can-write? :model/Database db-id)
+      (some-> (upload.db/database db-id) (t2/hydrate :can_write) mi/can-write?)
       (upload.db/database-is-attached-dwh? db-id)
       (api/throw-403)))
 

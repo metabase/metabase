@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -555,6 +556,20 @@
   [_]
   "SET TIMEZONE TO %s;")
 
+(defn- normalize-details
+  "Get rid of details that were added that aren't relevant anymore."
+  [details]
+  (let [details (if (nil? (:auth-mode details))
+                  (assoc details :auth-mode "password")
+                  details)]
+    (if (= (:auth-mode details) "password")
+      details
+      (dissoc details :username :password))))
+
+(defmethod driver/normalize-db-details :redshift
+  [_ database]
+  (m/update-existing database :details normalize-details))
+
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
@@ -750,13 +765,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db dbname], :as opts}]
+  [_ {:keys [host port db dbname auth-mode] :as opts}]
   (when (and db dbname)
     (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
-     :subprotocol                   "redshift"
+     ;; https://docs.aws.amazon.com/redshift/latest/mgmt/jdbc20-configure-authentication-ssl.html#jdbc20-configure-iam-authentication
+     :subprotocol                   (if (and (string? auth-mode)
+                                             (re-find #"^iam" auth-mode))
+                                      "redshift:iam"
+                                      "redshift")
      :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}

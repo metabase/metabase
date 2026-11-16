@@ -625,11 +625,12 @@
   ;; The output-namespace name init creates is *deterministic* from `workspace.id`
   ;; (see `driver.u/workspace-isolation-namespace-name`), not random — so init can
   ;; land on an already-existing namespace (e.g., from a partial prior init that
-  ;; was never cleaned up, or from another process). All current driver impls use
-  ;; `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
+  ;; was never cleaned up, or from another process). The drivers this test runs on
+  ;; use `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
   ;; the namespace exists. This test pins that behavior: init must not crash on
   ;; collision and the standard read-only-input + full-output contract must still
-  ;; hold afterward.
+  ;; hold afterward. Postgres refuses an existing output schema with a 409, which
+  ;; `metabase.driver.postgres.workspace-test` pins, so this test leaves it out.
   ;;
   ;; KNOWN LIMITATION: pre-existing data in the colliding namespace is *not*
   ;; cleared by init. If an attacker who can predict the namespace name (the
@@ -640,7 +641,7 @@
   ;; Redshift refuses the existing namespace with a 409: metabase.driver.redshift-test covers that.
   (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
                         (filter #(isa? driver/hierarchy % :sql-jdbc))
-                        (remove #{:redshift}))
+                        (remove #{:postgres :redshift}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1036,8 +1037,8 @@
           ;; CANNOT create users: postgres/redshift check CREATE at the database
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
-          ;; Redshift init refuses a schema that already exists (409), so it
-          ;; gets no pre-created namespace: its plain CREATE SCHEMA succeeds.
+          ;; Postgres and Redshift refuse an output schema that already exists
+          ;; (409), so the test does not pre-create one there.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
           ;; helps engines that check existence before privileges (SQL Server's
@@ -1049,7 +1050,7 @@
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))
                                                (driver.u/workspace-isolation-user-name ws-a))]))
-          (when-not (= :redshift driver)
+          (when-not (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)]))
           (mt/with-temp [:model/Database low-priv-db {:engine  driver
                                                       :details (merge details (:database_details ws-a))}]

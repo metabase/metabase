@@ -65,13 +65,13 @@
   (or (not (transforms-base.u/native-query-transform? instance))
       (and source-db-id
            (= :query-builder-and-native
-              (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+              (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [source-db-id]) source-db-id)))))
 
 (mu/defn- transform-database-permissions? :- :boolean
   [instance :- ::instance]
   (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
         target-db-id (transforms-base.i/target-db-id instance)]
-    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+    (every? #(perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) %)
             (distinct (keep identity [source-db-id target-db-id])))))
 
 (mu/defn- transform-writable? :- [:maybe :boolean]
@@ -91,41 +91,27 @@
   ([instance]
    (transform-deletable? instance nil))
   ([instance models-cache]
-   (and (remote-sync/can-write? :model/Transform (:id instance))
+   (and (not (remote-sync/read-only?))
         (transform-writable? instance models-cache))))
 
-(defmethod mi/can-read? :model/Transform
-  ([instance]
-   (transform-readable? instance))
-  ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
-     (mi/can-read? transform))))
-
-(defmethod mi/can-write? :model/Transform
-  ([instance]
-   (transform-deletable? instance))
-  ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
-     (mi/can-write? transform))))
-
-;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
-(defmethod mi/can-query? :model/Transform
-  ([instance]
-   (mi/can-read? instance))
-  ([model pk]
-   (mi/can-read? model pk)))
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_query]
+  "Whether the current user can query each of `transforms`, which is whether they can read it."
+  [_model k transforms]
+  (for [transform (t2/hydrate transforms :can_read)]
+    (when transform
+      (assoc transform k (boolean (mi/can-read? transform))))))
 
 (defmethod mi/can-update? :model/Transform
   [instance changes]
   (and (transform-writable? instance)
        (transform-writable? (merge instance changes))
        (or (not (remote-sync/synced-changes? :model/Transform instance changes))
-           (remote-sync/can-write? :model/Transform (:id instance)))))
+           (not (remote-sync/read-only?)))))
 
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: not a read-only remote sync instance, can-read? and has-db-transforms-permission?
+  ;; can-write? requires: not a read-only remote sync instance, can-read? and user-has-transforms-permission-for-database?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (not (remote-sync/read-only?))
        (transforms.u/check-feature-enabled (transforms.u/->definition instance))
@@ -238,27 +224,24 @@
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
-(mu/defn- hydrate-permission :- [:sequential ::instance]
+(mu/defn- hydrate-permission
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
    (`transform-readable?`/`transform-writable?`) with a `models-cache` prefetched once for the whole
    list, so checking N transforms doesn't issue a query per transform."
   [k          :- :keyword
    transforms :- [:sequential ::instance]
    pred       :- [:=> [:cat ::instance ::transforms.u/source-models] [:maybe :boolean]]]
-  (let [models-cache (transforms.u/prefetch-source-models transforms)]
-    (mi/instances-with-hydrated-data
-     transforms k
-     #(into {}
-            (map (fn [{:keys [id] :as transform}]
-                   [id (pred transform models-cache)]))
-            transforms)
-     :id
-     {:default false})))
+  (let [models-cache (transforms.u/prefetch-source-models (into [] (remove nil?) transforms))]
+    (for [transform transforms]
+      (when transform
+        (assoc transform k (boolean (pred transform models-cache)))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
   [_model k transforms]
-  (hydrate-permission k transforms transform-readable?))
+  (for [transform (hydrate-permission k transforms transform-readable?)]
+    (when transform
+      (vary-meta transform assoc k (boolean (get transform k))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
@@ -368,15 +351,12 @@
   [_transform-id]
   nil)
 
+;; The search index drops a deleted transform after the delete commits, through delete capture (see
+;; [[metabase.search.models]]), so this transaction never writes a search-index row.
 (t2/define-before-delete :model/Transform [transform]
-  ;; An update writes the transform row, then its search-index row when search indexes synchronously, in one
-  ;; transaction. Locking the transform row before the search-index delete below takes the rows in the same order, so
-  ;; a delete and an update cannot deadlock.
-  (transforms.db/lock-transform! (:id transform))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))
-  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (mu/defn update-transform-tags! :- :nil
