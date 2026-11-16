@@ -19,6 +19,7 @@ You can use Metabase to:
 - Use [AI](#ai-in-metabase) to ask questions in plain language, generate SQL, and more.
 - Save results as [Questions](#questions) and organize them into [dashboards](#dashboards) and [collections](#collections).
 - Create [transforms](#data-studio) and [Metrics](#metrics) to standardize the datasets and calculations your team relies on.
+- Build custom [data apps](#data-studio) on your semantic layer with an AI coding agent.
 
 ## Core concepts
 
@@ -30,7 +31,7 @@ Metabase has a lot of tools (more than we can cover here), but here is the basic
 - [**Documents**](#documents) are like reports. Great for when you want to combine charts and text.
 - [**Collections**](#collections) are like folders to organize and manage permissions for your questions, dashboards, and other items.
 - [**Metrics**](#metrics) define the official way to calculate important numbers for your team.
-- [**Data Studio**](#data-studio) is a workbench for analysts. It's where data teams prep data for everyone else, using transforms to build analytics-ready tables.
+- [**Data Studio**](#data-studio) is a workbench for analysts. It's where data teams prep data for everyone else, using transforms to build analytics-ready tables and publishing them to the Library, your semantic layer.
 
 ## Questions
 
@@ -83,6 +84,7 @@ If you know SQL (or your database's query language), you can also create questio
 Metabase gives you different ways to use AI to get answers and build stuff (AI is also completely optional).
 
 - [Metabot](../ai/metabot.md) is Metabase's AI assistant. You can ask Metabot questions in plain language ("What was the average order value last month?"), have it [generate and debug SQL](../ai/metabot.md#metabot-in-the-native-editor), and get it to explain charts, in Metabase or in Slack.
+- [Research](../ai/research.md) takes a broad question ("What drove revenue last quarter?") and generates and ranks a bunch of charts from your metrics, so you can explore many angles at once.
 - Connect AI tools like Claude Code/Desktop to your Metabase via the [MCP server](../ai/mcp.md).
 - Pair an agent with the [Metabase CLI](../installation-and-operation/metabase-cli.md) to create Metabase content via the API. See [Agent-driven development](../ai/agent-driven-development.md).
 
@@ -138,9 +140,11 @@ To compare metrics side by side, check out the [Metrics Explorer](../questions/m
 
 The main tool here is [transforms](../data-modeling/transforms/transforms-overview.md): these scheduled queries turn raw, normalized data into clean, analytics-ready tables. For example, a "Customer Orders" transform could join your orders, people, and products tables, filter out test orders, and add calculated fields like "Total Lifetime Value".
 
-Data teams also use Data Studio to curate metadata, publish vetted tables and metrics to the [Library](../data-modeling/semantic-layer/library.md), view a [dependency graph](../data-modeling/tools/graph.md) of what a change would affect, and explore how your tables connect to each other with a fancy schema viewer.
+Data teams also use Data Studio to curate metadata, publish vetted tables and metrics to the [Library](../data-modeling/semantic-layer/library.md) (your semantic layer), view a [dependency graph](../data-modeling/tools/graph.md) of what a change would affect, and explore how your tables connect to each other with a fancy schema viewer.
 
 You can also version your changes and push them to a git repo with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
+
+Admins can have an AI coding agent build [data apps](../data-apps/start.md) (beta, pro feature) on your semantic layer: custom apps with their own layout and pages, and forms that can add, edit, and delete rows in your database.
 
 ## One last tip
 

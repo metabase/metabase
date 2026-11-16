@@ -368,15 +368,12 @@
   [_transform-id]
   nil)
 
+;; The search index drops a deleted transform after the delete commits, through delete capture (see
+;; [[metabase.search.models]]), so this transaction never writes a search-index row.
 (t2/define-before-delete :model/Transform [transform]
-  ;; An update writes the transform row, then its search-index row when search indexes synchronously, in one
-  ;; transaction. Locking the transform row before the search-index delete below takes the rows in the same order, so
-  ;; a delete and an update cannot deadlock.
-  (transforms.db/lock-transform! (:id transform))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))
-  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (mu/defn update-transform-tags! :- :nil

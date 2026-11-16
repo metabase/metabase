@@ -364,14 +364,18 @@
   (t2/delete! :model/Action :id [:in action-ids]))
 
 (mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
+  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id))
+  ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
 
 (mu/defn delete-card-revisions!
-  "Delete the Revisions of the Card with `card-id`, returning the number deleted."
+  "Delete the Revisions of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Revision :model "Card" :model_id card-id))
+  ;; By table name, so search's delete capture skips it: these revisions only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."

@@ -198,6 +198,19 @@
         (finally
           (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
 
+(deftest ^:parallel hook-where-fields-test
+  (are [model fields] (= fields (search.spec/hook-where-fields model))
+    ;; single-key :id joins collapse to #{:id}
+    :model/Card             #{:id}
+    :model/Collection       #{:id}
+    :model/Database         #{:id}
+    :model/Table            #{:id}
+    ;; multi-clause joins collect every :updated-qualified column in the where
+    :model/ModerationReview #{:moderated_item_id :moderated_item_type :most_recent}
+    :model/Revision         #{:model :model_id :most_recent}
+    ;; a model that feeds no search-model hooks has nothing to capture
+    :model/User             nil))
+
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
     (let [hash1 (search.spec/index-version-hash)

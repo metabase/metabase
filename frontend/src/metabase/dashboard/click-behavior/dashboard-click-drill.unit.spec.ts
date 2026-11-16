@@ -289,6 +289,27 @@ describe("getDashboardDrillUrl", () => {
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
   });
+
+  it("omits the tab and filter params when the link has no tab and the target has no filters", () => {
+    const url = getDashboardDrillUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "dashboard",
+          targetId: 3,
+          tabId: undefined,
+          parameterMapping: {},
+        },
+      }),
+      data: [{ col: stateColumn, value: "CA" }],
+      extraData: {
+        ...drillExtraData,
+        dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+      },
+    });
+
+    expect(url).toBe("/dashboard/3?");
+  });
 });
 
 describe("getDashboardDrillLinkUrl", () => {

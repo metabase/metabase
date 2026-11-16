@@ -15,6 +15,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -843,10 +844,9 @@
             (t2/select [(t2/table-name :model/Card) :id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
-  "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
-  ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
+  "Return the source cards in `card-ids`, with their name and entity ID and the columns needed by `can-read?`."
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
+  (t2/select (into [:model/Card :name :entity_id] queries/card-read-check-columns) :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
@@ -854,10 +854,10 @@
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
 (mu/defn cards-for-read-check
-  "The ID, Collection ID, and Document ID of the unarchived Cards with `card-ids`, which is what `mi/can-read?` needs
-  to check a Card without another query."
+  "The unarchived Cards with `card-ids`, with only the columns `mi/can-read?` needs to check a Card without another
+  query."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :collection_id :document_id] :id [:in card-ids] :archived false))
+  (t2/select (into [:model/Card] queries/card-read-check-columns) :id [:in card-ids] :archived false))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
