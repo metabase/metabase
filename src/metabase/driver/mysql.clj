@@ -1520,6 +1520,39 @@
                                 login (str/join " and " missing) (str/join ", " missing) login)
                         {:status-code 412, :workspace/cleanup? false}))))))
 
+(defn- public-role-supported?
+  "Whether the server has MariaDB's PUBLIC role, which every login holds: MariaDB has it from 10.11, MySQL never."
+  [^DatabaseMetaData metadata]
+  (and (= "MariaDB" (.getDatabaseProductName metadata))
+       (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 11]) 0)))
+
+(defn- public-revoke-sql
+  "The statement that revokes the grant on the line `grant` of `SHOW GRANTS FOR PUBLIC`."
+  [grant]
+  (str/replace grant #"^GRANT (.+) TO PUBLIC.*$" "REVOKE $1 FROM PUBLIC;"))
+
+(defn- check-no-roles-for-every-login!
+  "Throws a 412 when the server gives every login, the workspace user included, the privileges of some role: a role
+  named in MySQL's `mandatory_roles`, which a login can activate with SET ROLE even when it is not active at login, or
+  a grant to MariaDB's PUBLIC role. Through them the workspace user could reach beyond its own database. Any such role
+  counts, whatever it grants. `mandatory_roles` does not exist on MariaDB, and the PUBLIC role exists only from
+  MariaDB 10.11; any login can read both."
+  [^Connection conn]
+  (let [mandatory (:value (first (jdbc/query {:connection conn} ["SHOW GLOBAL VARIABLES LIKE 'mandatory_roles'"])))]
+    (when-not (str/blank? mandatory)
+      (throw (ex-info (format (str "The warehouse's `mandatory_roles` setting names %s, which every login holds, so a "
+                                   "workspace user could use their privileges outside its own database. Have an "
+                                   "administrator run `SET PERSIST mandatory_roles = '';` and retry.")
+                              mandatory)
+                      {:status-code 412, :workspace/cleanup? false}))))
+  (when (public-role-supported? (.getMetaData conn))
+    (when-let [grants (seq (map (comp first vals) (jdbc/query {:connection conn} ["SHOW GRANTS FOR PUBLIC"])))]
+      (throw (ex-info (format (str "The warehouse grants privileges to PUBLIC, which every login holds, so a workspace "
+                                   "user could use them outside its own database. Have an administrator run `%s` and "
+                                   "retry.")
+                              (str/join " " (map public-revoke-sql grants)))
+                      {:status-code 412, :workspace/cleanup? false})))))
+
 (defmethod driver/init-workspace-isolation! :mysql
   [driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
@@ -1535,6 +1568,7 @@
      (fn [^Connection conn]
        ;; refused before any DDL, so the refusal leaves nothing to tear down
        (check-admin-can-end-sessions! conn)
+       (check-no-roles-for-every-login! conn)
        (when (mysql-user-exists? {:connection conn} user)
          (throw (workspace-object-exists-error "user" (quote-field user))))
        (when (database-exists? {:connection conn} db-name)

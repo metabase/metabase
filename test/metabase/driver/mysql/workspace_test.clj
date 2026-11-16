@@ -89,6 +89,16 @@
 (deftest quote-account-test
   (is (= "`a@b`@`%`" (#'mysql/quote-account "a@b@%"))))
 
+(deftest public-role-supported?-test
+  (testing "MariaDB has the PUBLIC role from 10.11; MySQL has none"
+    (is (= [false false false true true]
+           (map #(#'mysql/public-role-supported? (apply metadata %))
+                [["MySQL" 8 4] ["MariaDB" 10 6] ["MariaDB" 10 10] ["MariaDB" 10 11] ["MariaDB" 13 0]])))))
+
+(deftest public-revoke-sql-test
+  (is (= "REVOKE INSERT, UPDATE ON `mb_test`.* FROM PUBLIC;"
+         (#'mysql/public-revoke-sql "GRANT INSERT, UPDATE ON `mb_test`.* TO PUBLIC"))))
+
 ;;; ------------------------------------------------ Live tests ------------------------------------------------------
 
 (defn- admin-spec [database]
@@ -363,6 +373,82 @@
                          cases)]
       (testing "the cases include logins the server lets end sessions and logins it does not"
         (is (= #{true false} (set results)))))))
+
+(defn- server-version [database]
+  (with-open [conn (jdbc/get-connection (admin-spec database))]
+    (let [md (.getMetaData conn)]
+      [(.getDatabaseProductName md) (.getDatabaseMajorVersion md) (.getDatabaseMinorVersion md)])))
+
+(deftest ^:synchronized init-refuses-a-role-every-login-holds-test
+  (mt/test-driver :mysql
+    (let [database   (mt/db)
+          admin      (admin-spec database)
+          bound-db   (-> database :details :db)
+          [product major minor] (server-version database)
+          mariadb?   (= "MariaDB" product)
+          role       (str "ws_every_" (rand-int 1000000))
+          ;; [statements that give every login INSERT on the bound database, statements that undo them]
+          [set-up undo] (cond
+                          (not mariadb?)
+                          [[(format "CREATE ROLE `%s`" role)
+                            (format "GRANT INSERT ON `%s`.* TO `%s`" bound-db role)
+                            (format "SET GLOBAL mandatory_roles = '`%s`@`%%`'" role)]
+                           ["SET GLOBAL mandatory_roles = ''"
+                            (format "DROP ROLE IF EXISTS `%s`" role)]]
+
+                          (>= (compare [major minor] [10 11]) 0)
+                          [[(format "GRANT INSERT ON `%s`.* TO PUBLIC" bound-db)]
+                           [(format "REVOKE INSERT ON `%s`.* FROM PUBLIC" bound-db)]])]
+      (if-not set-up
+        (testing "MariaDB before 10.11 has no PUBLIC role: the check reads nothing and passes"
+          (with-open [conn (jdbc/get-connection admin)]
+            (is (nil? (#'mysql/check-no-roles-for-every-login! conn)))))
+        (do-with-source-table
+         database
+         (fn [table]
+           (let [insert! (fn [workspace]
+                           (with-open [session (open-session database workspace)
+                                       stmt    (.createStatement session)]
+                             (try
+                               (when-not mariadb?
+                                 (.execute stmt "SET ROLE ALL"))
+                               (.execute stmt (format "INSERT INTO `%s` VALUES (2)" table))
+                               :inserted
+                               (catch java.sql.SQLException e
+                                 (ex-message e)))))]
+             (try
+               (doseq [sql set-up]
+                 (jdbc/execute! admin [sql]))
+               (let [workspace (new-workspace database)]
+                 (try
+                   (mt/with-dynamic-fn-redefs [mysql/check-no-roles-for-every-login! (constantly nil)]
+                     (driver/init-workspace-isolation! :mysql database workspace))
+                   (driver/grant-workspace-read-access! :mysql database workspace [])
+                   (testing "premise: without the check, the workspace user inserts into the bound database"
+                     (is (= :inserted (insert! workspace))))
+                   (finally
+                     (driver/destroy-workspace-isolation! :mysql database workspace))))
+               (let [workspace (new-workspace database)
+                     refused   (refusal #(driver/init-workspace-isolation! :mysql database workspace))]
+                 (testing "init refuses with a 412 that names the statement to run, and creates nothing"
+                   (is (= {:status-code 412, :workspace/cleanup? false} (:data refused)))
+                   (is (re-find (if mariadb?
+                                  #"`REVOKE INSERT ON `[^`]+`\.\* FROM PUBLIC;`"
+                                  #"`SET PERSIST mandatory_roles = '';`")
+                                (str (:message refused))))
+                   (is (not (user-exists? database (-> workspace :database_details :user))))
+                   (is (not (database-exists? database (:schema workspace))))))
+               (finally
+                 (doseq [sql undo]
+                   (jdbc/execute! admin [sql]))))
+             (let [workspace (new-workspace database)]
+               (try
+                 (testing "with the setting removed, init succeeds and the workspace user cannot insert into the bound database"
+                   (is (nil? (refusal #(driver/init-workspace-isolation! :mysql database workspace))))
+                   (driver/grant-workspace-read-access! :mysql database workspace [])
+                   (is (re-find #"denied" (str (insert! workspace)))))
+                 (finally
+                   (driver/destroy-workspace-isolation! :mysql database workspace)))))))))))
 
 (defn- init-error
   "Runs `init`; returns the exception it throws, or nil."
