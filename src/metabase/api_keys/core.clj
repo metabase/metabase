@@ -12,6 +12,7 @@
  [metabase.api-keys.models.api-key
   generate-key
   is-api-key-user?
+  key-hash-salt
   prefix
   create-api-key-with-new-user!])
 

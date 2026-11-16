@@ -10,11 +10,12 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { DocumentContent } from "metabase-types/api";
+import type { Comment, DocumentContent } from "metabase-types/api";
 import {
   createMockDocument,
   createMockDocumentContent,
 } from "metabase-types/api/mocks";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { DocumentPage } from "./DocumentPage";
 
@@ -50,6 +51,10 @@ const CONTENT: DocumentContent["content"] = [
   },
 ];
 
+interface SetupOpts {
+  comments?: Comment[];
+}
+
 describe("document block menus", () => {
   const { setAllIntersecting } = setupMockIntersectionObserver();
 
@@ -57,7 +62,7 @@ describe("document block menus", () => {
     jest.restoreAllMocks();
   });
 
-  async function setup() {
+  async function setup({ comments = [] }: SetupOpts = {}) {
     mockSettings({ "site-url": SITE_URL });
     setupBookmarksEndpoints([]);
     setupDocumentEndpoints(
@@ -66,7 +71,7 @@ describe("document block menus", () => {
         document: createMockDocumentContent({ content: CONTENT }),
       }),
     );
-    setupCommentEndpoints([], {
+    setupCommentEndpoints(comments, {
       target_type: "document",
       target_id: DOCUMENT_ID,
     });
@@ -141,5 +146,47 @@ describe("document block menus", () => {
       `${SITE_URL}/document/${DOCUMENT_ID}#heading-block-2`,
     );
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
+  });
+
+  it("shows the unresolved comments count of a block on its comments menu without hover", async () => {
+    const deleted = { deleted_at: "2024-01-02T00:00:00Z" };
+    const resolved = { is_resolved: true };
+    const comment = (opts: Partial<Comment>) =>
+      createMockComment({
+        target_type: "document",
+        target_id: DOCUMENT_ID,
+        child_target_id: "paragraph-block-1",
+        ...opts,
+      });
+
+    await setup({
+      comments: [
+        // thread with the 1st comment deleted: 2
+        comment({ id: 1, ...deleted }),
+        comment({ id: 2, parent_comment_id: 1 }),
+        comment({ id: 3, parent_comment_id: 1 }),
+        // thread with the 2nd comment deleted: 2
+        comment({ id: 4 }),
+        comment({ id: 5, parent_comment_id: 4, ...deleted }),
+        comment({ id: 6, parent_comment_id: 4 }),
+        // resolved thread: 0
+        comment({ id: 7, ...resolved }),
+        comment({ id: 8, parent_comment_id: 7 }),
+        // thread with all comments deleted: 0
+        comment({ id: 9, ...deleted }),
+        comment({ id: 10, parent_comment_id: 9, ...deleted }),
+      ],
+    });
+
+    await waitFor(() =>
+      expect(getVisibleMenus("comments-menu")).toHaveLength(1),
+    );
+    const [commentsMenu] = getVisibleMenus("comments-menu");
+    const link = within(commentsMenu).getByRole("link", { name: /comments/i });
+    expect(link).toHaveAttribute(
+      "href",
+      `/document/${DOCUMENT_ID}/comments/paragraph-block-1`,
+    );
+    expect(link).toHaveTextContent("4");
   });
 });
