@@ -52,7 +52,7 @@ const getLocationCrumbs = (
   library: LibraryCollection | undefined,
 ): Crumb[] => {
   const libraryCrumb = {
-    name: t`Semantic layer`,
+    name: library?.name ?? t`Semantic layer`,
     href:
       library &&
       Urls.modelToUrl({

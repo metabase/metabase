@@ -94,8 +94,12 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
+  const libraryCollection = useMemo(
+    () => collections.find(isLibraryCollection),
+    [collections],
+  );
+
   const libraryTree = useMemo(() => {
-    const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
       return [];
     }
@@ -122,9 +126,9 @@ export function NavbarLibrarySection({
     return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections]);
+  }, [collections, libraryCollection]);
 
-  if (libraryTree.length === 0) {
+  if (!libraryCollection || libraryTree.length === 0) {
     return null;
   }
 
@@ -132,12 +136,12 @@ export function NavbarLibrarySection({
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Semantic layer`}</SidebarHeading>}
+          header={<SidebarHeading>{libraryCollection.name}</SidebarHeading>}
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Semantic layer`}
+          aria-label={libraryCollection.name}
           onToggle={setExpandLibrary}
         >
           <Tree

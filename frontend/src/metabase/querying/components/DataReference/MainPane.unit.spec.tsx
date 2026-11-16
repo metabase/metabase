@@ -54,24 +54,24 @@ describe("MainPane", () => {
     reinitialize();
   });
 
-  it("does not render a Semantic layer option when the library feature is disabled", async () => {
+  it("does not render a Library option when the library feature is disabled", async () => {
     setup({ hasLibrary: false });
 
     expect(await screen.findByText("Sample Database")).toBeInTheDocument();
-    expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
+    expect(screen.queryByText("Library")).not.toBeInTheDocument();
   });
 
-  it("does not render a Semantic layer option when the feature is enabled but no library has been created", async () => {
+  it("does not render a Library option when the feature is enabled but no library has been created", async () => {
     setup({ hasLibrary: true, hasLibraryCollection: false });
 
     expect(await screen.findByText("Sample Database")).toBeInTheDocument();
-    expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
+    expect(screen.queryByText("Library")).not.toBeInTheDocument();
   });
 
-  it("renders a Semantic layer option that opens its pane when the feature is enabled", async () => {
+  it("renders a Library option that opens the library pane when the feature is enabled", async () => {
     const { onItemClick } = setup({ hasLibrary: true });
 
-    await userEvent.click(await screen.findByText("Semantic layer"));
+    await userEvent.click(await screen.findByText("Library"));
 
     expect(onItemClick).toHaveBeenCalledWith({ type: "library" });
   });

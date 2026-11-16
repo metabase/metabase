@@ -80,7 +80,7 @@ export const DataReferenceLibraryPane = ({
       className={CS.fullHeight}
     >
       <SidebarContent
-        title={t`Semantic layer`}
+        title={libraryCollection?.name ?? t`Semantic layer`}
         icon="repository"
         onBack={onBack}
         onClose={onClose}

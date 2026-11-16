@@ -46,7 +46,7 @@ export const MainPane = ({
                 onClick={() => onItemClick({ type: "library" })}
               >
                 <NodeListItemIcon name="repository" />
-                <NodeListItemName>{t`Semantic layer`}</NodeListItemName>
+                <NodeListItemName>{libraryCollection.name}</NodeListItemName>
               </NodeListItemLink>
             </li>
           )}
