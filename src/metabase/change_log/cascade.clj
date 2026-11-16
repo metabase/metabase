@@ -1,6 +1,6 @@
 (ns metabase.change-log.cascade
-  "Finds the rows of logged tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`)
-  when a row is deleted, also through tables that are not logged. No model hook sees those writes. The foreign keys
+  "Finds the rows of tracked tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`)
+  when a row is deleted, also through tables that are not tracked. No model hook sees those writes. The foreign keys
   come from the app DB's metadata, and are cached."
   (:require
    [metabase.app-db.core :as mdb]
@@ -12,8 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn logged-models
-  "The logged models that have loaded, by table name."
+(defn tracked-models
+  "The tracked models that have loaded, by table name."
   []
   (into {}
         (for [model (descendants :hook/change-log)
@@ -40,10 +40,10 @@
      :column        (keyword (u/lower-case-en (:fkcolumn_name fk)))
      :rule          rule}))
 
-(defn- to-logged-tables
-  "The foreign keys of `fks` that a delete follows to a logged table, by the table they reference. One is kept when
-  its child is logged, or when it is a cascade to a child that a kept one references. `:child-pk` is the primary key
-  of a logged child, from `table->pk`."
+(defn- to-tracked-tables
+  "The foreign keys of `fks` that a delete follows to a tracked table, by the table they reference. One is kept when
+  its child is tracked, or when it is a cascade to a child that a kept one references. `:child-pk` is the primary key
+  of a tracked child, from `table->pk`."
   [fks table->pk]
   (loop [kept #{}]
     (let [parents (into #{} (map :parent) kept)
@@ -59,17 +59,17 @@
   (mdb/memoize-for-application-db
    ;; cached by the hook's descendants, so that a model that loads later gets a new entry
    (fn [_descendants]
-     (to-logged-tables (cascades (change-log.db/foreign-keys))
-                       (update-vals (logged-models) #(first (t2/primary-keys %)))))))
+     (to-tracked-tables (cascades (change-log.db/foreign-keys))
+                        (update-vals (tracked-models) #(first (t2/primary-keys %)))))))
 
 (defn foreign-keys
-  "The cascade and set-null foreign keys that lead to the tables of the [[logged-models]], by the table they
+  "The cascade and set-null foreign keys that lead to the tables of the [[tracked-models]], by the table they
   reference:
 
       {\"metabase_table\" [{:parent \"metabase_table\", :parent-column :id, :rule :cascade,
                           :child \"metabase_field\", :child-pk :id, :column :table_id}]}
 
-  `:child-pk` is nil for a child that is not logged."
+  `:child-pk` is nil for a child that is not tracked."
   []
   (foreign-keys* (descendants :hook/change-log)))
 
@@ -79,11 +79,11 @@
   (distinct (map :parent-column (get fks table-name))))
 
 (defn changes
-  "What the database changes in logged tables when `rows` of `table-name` are deleted, as
+  "What the database changes in tracked tables when `rows` of `table-name` are deleted, as
   `[table-name row-ids action]`. The action is `delete` for a cascade, which is followed down, and `update` for a
   SET NULL. `rows` must include the [[referenced-columns]] of `table-name`."
   [fks table-name rows]
-  ;; `found` is `{[table pk action] #{row}}`, where `pk` is nil for a table that is not logged. A row already found
+  ;; `found` is `{[table pk action] #{row}}`, where `pk` is nil for a table that is not tracked. A row already found
   ;; is not followed again, which ends a cycle.
   (loop [queue [[table-name rows]], found {}]
     (if-let [[[table rows] & queue] (seq queue)]

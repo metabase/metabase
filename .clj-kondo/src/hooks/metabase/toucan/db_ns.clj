@@ -491,7 +491,7 @@
          (and (symbol? f) (= fn-name (name f))))))
 
 (defn- change-log-table-node?
-  "Whether `node` names the table of a logged model: `:report_card`, `(t2/table-name :model/Card)`, or either one
+  "Whether `node` names the table of a tracked model: `:report_card`, `(t2/table-name :model/Card)`, or either one
   first in a vector, as in `[:report_card :c]`. `(t2/table-name model)` counts too, since `model` can be any model."
   [node]
   (cond
@@ -504,7 +504,7 @@
     :else                        false))
 
 (defn- lint-change-log-raw-write!
-  "Register a `:metabase/change-log-raw-write` finding when a write names the table of a logged model rather than the
+  "Register a `:metabase/change-log-raw-write` finding when a write names the table of a tracked model rather than the
   model, as in `(t2/update! (t2/table-name :model/Card) ...)` and `(t2/query {:update :report_card ...})`. Such a
   write skips the hooks that write the change log."
   [node]

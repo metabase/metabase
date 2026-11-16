@@ -61,7 +61,7 @@
       (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id)
       (t2/delete! :pulse_channel_recipient :pulse_channel_id channel-id))
 
-  While the log is off, it only checks `model`: one that is not logged goes to [[throw-or-log]]. It does not log what a
+  While the log is off, it only checks `model`: one that is not tracked goes to [[throw-or-log]]. It does not log what a
   delete cascades to: those rows need their own call."
   [model  :- :keyword
    action :- [:enum :insert :update :delete]
@@ -113,7 +113,7 @@
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/change-log :default]
   "Logs the keys of the rows the UPDATE matches, if Toucan sends one. It sends none when no row would change, because
-  each logged model has a before-update. An update that sets only [[ignored-columns]] logs nothing."
+  each tracked model has a before-update. An update that sets only [[ignored-columns]] logs nothing."
   [rf query-type model parsed-args resolved-query]
   ;; We log an update that sets a column we do not ignore. With nothing to set, Toucan sends no UPDATE.
   (if (and (not-every? (ignored-columns model) (keys (:changes parsed-args)))
@@ -132,7 +132,7 @@
             (log! [[(table model) (map (pk-of model) rows) "update"]])))))
     (next-method rf query-type model parsed-args resolved-query)))
 
-;; A logged model needs a before-update. With one, Toucan sends no UPDATE when no row would change, and the hook above
+;; A tracked model needs a before-update. With one, Toucan sends no UPDATE when no row would change, and the hook above
 ;; logs nothing. A model that has none derives this one, which does nothing. Remove that derive when the model gets a
 ;; real before-update.
 (t2/define-before-update :hook/change-log-before-update-noop
@@ -140,24 +140,24 @@
   row)
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* :metabase/model :default]
-  "Logs the rows the DELETE removes, and the rows of logged tables that the database deletes or updates with them. It
-  is on every model, because a delete of a model that is not logged can cascade to a logged table: removing a
+  "Logs the rows the DELETE removes, and the rows of tracked tables that the database deletes or updates with them. It
+  is on every model, because a delete of a model that is not tracked can cascade to a tracked table: removing a
   dashboard card deletes a subscription's `pulse_card`. While the log is off, it only checks the feature. It runs
   before the model's before-delete, while the child rows still exist."
   [rf query-type model parsed-args resolved-query]
-  (let [logged?      (isa? model :hook/change-log)
+  (let [tracked?      (isa? model :hook/change-log)
         ;; Nil while the log is off, so everything below falls through to the plain delete.
         foreign-keys (when (premium-features/enable-change-log?) (change-log.cascade/foreign-keys))
-        ;; The columns of this table that other tables point at, on a path to a logged table.
+        ;; The columns of this table that other tables point at, on a path to a tracked table.
         referenced   (when foreign-keys (change-log.cascade/referenced-columns foreign-keys (table model)))]
-    ;; We have something to log if the model is logged, or if its delete can reach a logged table.
-    (if (and foreign-keys (or logged? (seq referenced)))
+    ;; We have something to log if the model is tracked, or if its delete can reach a tracked table.
+    (if (and foreign-keys (or tracked? (seq referenced)))
       (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
         ;; We read the rows before they go: their keys, and the columns that lead us to their children.
         (let [rows (change-log.db/rows-to-change model :toucan.query-type/select.instances parsed-args resolved-query
                                                  (cons (first (t2/primary-keys model)) referenced))]
-          ;; The rows themselves, if the model is logged. Then what the database deletes or nulls with them.
-          (log! (concat (when logged? [[(table model) (map (pk-of model) rows) "delete"]])
+          ;; The rows themselves, if the model is tracked. Then what the database deletes or nulls with them.
+          (log! (concat (when tracked? [[(table model) (map (pk-of model) rows) "delete"]])
                         (change-log.cascade/changes foreign-keys (table model) rows)))
           (next-method rf query-type model parsed-args resolved-query)))
       (next-method rf query-type model parsed-args resolved-query))))

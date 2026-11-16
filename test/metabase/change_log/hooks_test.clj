@@ -210,7 +210,7 @@
             (t2/with-transaction [_conn nil {:rollback-only true}]
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
-        (testing "`log-rows!` on a model that is not logged throws in dev and test, also while the log is off"
+        (testing "`log-rows!` on a model that is not tracked throws in dev and test, also while the log is off"
           (mt/with-premium-features #{}
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not derive :hook/change-log"
                                   (change-log/log-rows! :model/Collection :update :id 1))))
@@ -221,7 +221,7 @@
                 (is (= 1 (count (messages))))))))))))
 
 (deftest foreign-keys-test
-  (testing "reads the foreign keys that lead to logged tables, with their ON DELETE rule, from the app DB"
+  (testing "reads the foreign keys that lead to tracked tables, with their ON DELETE rule, from the app DB"
     (let [fks  (change-log.cascade/foreign-keys)
           edge (fn [parent child column]
                  (some #(when (and (= child (:child %)) (= column (:column %))) (:rule %)) (get fks parent)))]
@@ -231,14 +231,14 @@
       (is (= :cascade (edge "pulse_channel" "pulse_channel_recipient" :pulse_channel_id)))
       (is (= :set-null (edge "metabase_field" "metabase_field" :fk_target_field_id)))
       (is (= :set-null (edge "report_card" "report_card" :source_card_id)))
-      (testing "including those that reference a table that is not logged"
+      (testing "including those that reference a table that is not tracked"
         (is (= :cascade (edge "report_dashboardcard" "pulse_card" :dashboard_card_id)))
         (is (= :set-null (edge "collection" "report_card" :collection_id))))
-      (testing "including a cascade to a table that is not logged, when one of these references that table"
+      (testing "including a cascade to a table that is not tracked, when one of these references that table"
         (is (= :cascade (edge "report_dashboard" "report_dashboardcard" :dashboard_id))))
-      (testing "and none to a table that is not logged and that none of these references"
-        (let [logged (change-log.cascade/logged-models)]
-          (is (every? #(or (contains? logged (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
+      (testing "and none to a table that is not tracked and that none of these references"
+        (let [tracked (change-log.cascade/tracked-models)]
+          (is (every? #(or (contains? tracked (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
 
 (defn- load-models!
   "Loads the namespace of every model, and returns the models. A model derives the hook when its namespace loads, and
@@ -248,8 +248,8 @@
              :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
          (t2/resolve-model model))))
 
-(deftest logged-model-keys-test
-  (testing "each logged model's key is one integer column"
+(deftest tracked-model-keys-test
+  (testing "each tracked model's key is one integer column"
     (load-models!)
     (let [column-types (t2/with-connection [^Connection conn]
                          (with-open [rs (.getColumns (.getMetaData conn) (.getCatalog conn) (.getSchema conn) "%" "%")]
@@ -257,7 +257,7 @@
                                  (map (fn [{:keys [table_name column_name data_type]}]
                                         [[(u/lower-case-en table_name) (u/lower-case-en column_name)] data_type]))
                                  (resultset-seq rs))))]
-      (doseq [model (vals (change-log.cascade/logged-models))
+      (doseq [model (vals (change-log.cascade/tracked-models))
               :let  [pks (t2/primary-keys model)]]
         (is (= 1 (count pks))
             (str model " has a key of " (count pks) " columns"))
@@ -265,10 +265,10 @@
                        (column-types [(name (t2/table-name model)) (u/lower-case-en (name (first pks)))]))
             (str model "'s key is not an integer column"))))))
 
-(deftest logged-models-before-update-test
-  (testing "each logged model has a before-update"
+(deftest tracked-models-before-update-test
+  (testing "each tracked model has a before-update"
     (load-models!)
-    (doseq [model (vals (change-log.cascade/logged-models))]
+    (doseq [model (vals (change-log.cascade/tracked-models))]
       (is (isa? model :toucan2.tools.before-update/before-update)
           (str model " has no before-update. Without one, an update that changes no row is logged. Derive"
                " :hook/change-log-before-update-noop.")))))
@@ -287,16 +287,16 @@
                (conj found nspace)))
       found)))
 
-(deftest logged-models-load-at-startup-test
-  (testing "each logged model's namespace loads at startup, so a delete that cascades to its rows logs them"
+(deftest tracked-models-load-at-startup-test
+  (testing "each tracked model's namespace loads at startup, so a delete that cascades to its rows logs them"
     (load-models!)
     (let [startup (startup-namespaces)]
-      (doseq [model (vals (change-log.cascade/logged-models))]
+      (doseq [model (vals (change-log.cascade/tracked-models))]
         (is (contains? startup (models.resolution/model->namespace model))
             (str model "'s namespace does not load at startup: require it from a namespace that does"))))))
 
-(def ^:private logged-models
-  "The models we want logged. [[logged-models-test]] checks that each one derives `:hook/change-log` (see
+(def ^:private tracked-models
+  "The models we want tracked. [[tracked-models-test]] checks that each one derives `:hook/change-log` (see
   `metabase.change-log.core`)."
   #{:model/Card
     :model/Dashboard
@@ -319,9 +319,9 @@
     :model/Tenant
     :model/User})
 
-(def ^:private unlogged-models
-  "The models we do not want logged. [[logged-models-test]] checks that none derives `:hook/change-log`. A new model
-  goes here, or in [[logged-models]] when a reader of the change log needs its changes."
+(def ^:private untracked-models
+  "The models we do not want tracked. [[tracked-models-test]] checks that none derives `:hook/change-log`. A new model
+  goes here, or in [[tracked-models]] when a reader of the change log needs its changes."
   #{:model/Action
     :model/AgentApiCallLog
     :model/AiUsageLog
@@ -461,30 +461,30 @@
     :model/Workspace
     :model/WorkspaceDatabase})
 
-(deftest logged-models-test
+(deftest tracked-models-test
   (let [models (set (load-models!))]
-    (testing "each model is in `logged-models` or `unlogged-models`, and not in both"
-      (is (= models (set (filter models (concat logged-models unlogged-models)))))
-      (is (empty? (filter logged-models unlogged-models))))
-    (testing "the models in `logged-models` derive :hook/change-log, and no other model does"
-      (is (= (set (filter models logged-models))
+    (testing "each model is in `tracked-models` or `untracked-models`, and not in both"
+      (is (= models (set (filter models (concat tracked-models untracked-models)))))
+      (is (empty? (filter tracked-models untracked-models))))
+    (testing "the models in `tracked-models` derive :hook/change-log, and no other model does"
+      (is (= (set (filter models tracked-models))
              (set (filter #(isa? % :hook/change-log) models)))))
     (testing "both name only models"
-      (is (empty? (remove models.resolution/model->namespace (concat logged-models unlogged-models)))))))
+      (is (empty? (remove models.resolution/model->namespace (concat tracked-models untracked-models)))))))
 
 (deftest ignored-columns-test
-  (testing "ignored columns exist, and only logged models have them"
+  (testing "ignored columns exist, and only tracked models have them"
     (doseq [model (load-models!)
             :let  [columns (change-log/ignored-columns model)]
             :when (seq columns)]
-      (is (isa? model :hook/change-log) (str model " is not logged"))
+      (is (isa? model :hook/change-log) (str model " is not tracked"))
       (is (some? (t2/query {:select (vec columns), :from [(t2/table-name model)], :limit 1}))))))
 
 (deftest lint-tables-test
-  (testing "the `:metabase/change-log-raw-write` lint knows each logged model and its table"
-    (is (= logged-models (set (keys toucan.db-ns/change-log-tables))))
+  (testing "the `:metabase/change-log-raw-write` lint knows each tracked model and its table"
+    (is (= tracked-models (set (keys toucan.db-ns/change-log-tables))))
     (doseq [model (load-models!)
-            :when (logged-models model)]
+            :when (tracked-models model)]
       (is (= (t2/table-name model) (toucan.db-ns/change-log-tables model))))))
 
 (deftest cascade-test
@@ -512,7 +512,7 @@
               (is (nil? (t2/select-one :model/Field :id (:id f))))
               (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id (:id fk)))))))))))
 
-(deftest cascade-from-unlogged-model-test
+(deftest cascade-from-untracked-model-test
   (is (not (isa? :model/DashboardCard :hook/change-log)))
   (when config/ee-available?
     (mt/with-premium-features #{:change-log}
@@ -527,7 +527,7 @@
                  (logged-by #(t2/delete! :model/DashboardCard :id (:id dc)))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
-(deftest cascade-through-unlogged-table-test
+(deftest cascade-through-untracked-table-test
   (when config/ee-available?
     (mt/with-premium-features #{:change-log}
       (mt/with-temp [:model/Dashboard     dash  {}
@@ -569,7 +569,7 @@
                        (derive :model/PermissionsGroup :hook/change-log))))
         off      (mt/with-premium-features #{}
                    (call-counts))]
-    (testing "while the change log is off, a logged model runs no extra query"
+    (testing "while the change log is off, a tracked model runs no extra query"
       (is (= unhooked off)))
     (when config/ee-available?
       (let [on (mt/with-premium-features #{:change-log}

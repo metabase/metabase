@@ -417,7 +417,7 @@
           (lint-query-call form (or ns-sym 'metabase.foo.db) filename)))
 
 (deftest ^:parallel change-log-raw-write-test
-  (testing "a write to the table of a logged model is reported"
+  (testing "a write to the table of a tracked model is reported"
     (are [form] (=? [{:message #"This write skips the model.*"}] (raw-write-findings form))
       '(t2/update! (t2/table-name :model/Card) :id id {:name "x"})
       '(t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id id)
@@ -433,7 +433,7 @@
     (are [form] (=? [{:type :metabase/change-log-raw-write}] (raw-write-findings form))
       '(t2/query {:update (t2/table-name model), :set {:view_count 1}})
       '(t2/delete! (t2/table-name (:model entity)) :id id)))
-  (testing "a write through the model, or to a table that is not logged, is fine"
+  (testing "a write through the model, or to a table that is not tracked, is fine"
     (are [form] (empty? (raw-write-findings form))
       '(t2/update! :model/Card :id id {:name "x"})
       '(t2/delete! model :id id)
@@ -443,7 +443,7 @@
       '(t2/insert! :search_index rows)
       '(t2/query {:update :setting, :set {:value v}})
       '(t2/query {:update (t2/table-name :model/Session), :set {:ended_at now}})))
-  (testing "a read of a logged table is fine"
+  (testing "a read of a tracked table is fine"
     (are [form] (empty? (raw-write-findings form))
       '(t2/query {:select [:id], :from [(t2/table-name :model/Card)]})
       '(t2/select (t2/table-name :model/Card) :id id)
