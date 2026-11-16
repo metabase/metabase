@@ -45,7 +45,7 @@
   [driver database workspace]
   (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
     (if (= :redshift driver)
-      (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-in-database!) (constantly nil)}
+      (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-in-cluster!) (constantly nil)}
         #(driver/init-workspace-isolation! driver database workspace))
       (driver/init-workspace-isolation! driver database workspace))))
 

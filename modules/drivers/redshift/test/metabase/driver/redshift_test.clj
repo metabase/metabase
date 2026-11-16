@@ -1065,7 +1065,7 @@
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
         (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
               ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
-              _              (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
+              _              (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-cluster! (constantly nil)]
                                (driver/init-workspace-isolation! :redshift (mt/db) workspace+det))
               iso-user       (-> workspace+det :database_details :user)]
           (try
@@ -1121,6 +1121,51 @@
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
 
+(deftest ^:synchronized workspace-public-create-other-database-live-test
+  ;; a new database's `public` grants CREATE to PUBLIC by default, and every user may connect to it: init must find
+  ;; it from a connection to another database
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          db2        (str "ws_pc_db_" (u/lower-case-en (mt/random-name)))]
+      (try
+        ;; CREATE DATABASE and DROP DATABASE cannot run in a transaction block
+        (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2)] {:transaction? false})
+        (let [error (try
+                      (jdbc/with-db-transaction [conn admin-spec]
+                        (#'redshift/start-workspace-transaction! conn)
+                        (#'redshift/check-no-public-create-in-cluster! (mt/db) conn))
+                      nil
+                      (catch clojure.lang.ExceptionInfo e
+                        e))]
+          (testing "init's check refuses with a 412 naming the other database's `public`"
+            (is (=? {:status-code 412} (ex-data error)))
+            (is (some #{(str db2 ".public")} (:schemas (ex-data error))))
+            (is (not (some #{db2} (:unverifiable (ex-data error)))))
+            (is (str/includes? (ex-message error)
+                               (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
+        (finally
+          (try (jdbc/execute! admin-spec [(format "DROP DATABASE IF EXISTS \"%s\"" db2)] {:transaction? false})
+               (catch Throwable t
+                 (log/warnf t "Test cleanup failed: DROP DATABASE %s" db2))))))))
+
+(deftest ^:synchronized workspace-grant-refuses-public-writes-live-test
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          schema     (str "ws_public_write_" (u/lower-case-en (mt/random-name)))
+          workspace  {:id 1, :database_details {:user (str "ws_public_write_user_" (u/lower-case-en (mt/random-name)))}}]
+      (try
+        (execute! "CREATE SCHEMA \"%s\"; CREATE TABLE \"%s\".t (i int); GRANT INSERT ON \"%s\".t TO PUBLIC;"
+                  schema schema schema)
+        (testing "grant refuses with a 412 naming the table PUBLIC may write to"
+          (is (=? {:status-code 412, :schema schema, :objects ["t"]}
+                  (try
+                    (driver/grant-workspace-read-access! :redshift (mt/db) workspace [schema])
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (ex-data e))))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
+
 (deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
   ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
   ;; privilege on some object` when the iso-user holds a schema-level USAGE
@@ -1140,7 +1185,7 @@
         (execute! (format "CREATE SCHEMA \"%s\"" schema))
         (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
               ;; the shared test cluster's `public` may grant CREATE to PUBLIC, which init refuses: not this test's to change
-              _         (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-database! (constantly nil)]
+              _         (mt/with-dynamic-fn-redefs [redshift/check-no-public-create-in-cluster! (constantly nil)]
                           (driver/init-workspace-isolation! :redshift (mt/db) workspace))
               iso-user  (-> workspace :database_details :user)]
           (try
@@ -1254,9 +1299,16 @@
             {:status-code 409, :workspace/cleanup? false, :schema "mb__isolation_ws_1"}
             #"already has a schema named \"mb__isolation_ws_1\".*run `DROP SCHEMA \"mb__isolation_ws_1\" CASCADE;`"]
            ["a schema, any schema, that grants CREATE to PUBLIC"
-            {"svv_schema_privileges" [{:namespace_name "public"} {:namespace_name "other"}]}
-            {:status-code 412, :workspace/cleanup? false, :schemas ["public" "other"]}
-            #"REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;.*REVOKE CREATE ON SCHEMA \"other\" FROM PUBLIC;"]]]
+            {"SELECT current_database()" [{:db "dev"}]
+             "svv_schema_privileges"     [{:namespace_name "public"} {:namespace_name "other"}]}
+            {:status-code 412, :workspace/cleanup? false, :schemas ["dev.public" "dev.other"]}
+            (re-pattern (str "REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"dev\".*"
+                             "REVOKE CREATE ON SCHEMA \"other\" FROM PUBLIC;` in database \"dev\""))]
+           ["a database that grants CREATE to PUBLIC"
+            {"SELECT current_database()" [{:db "dev"}]
+             "svv_database_privileges"   [{:database_name "dev"}]}
+            {:status-code 412, :workspace/cleanup? false, :databases ["dev"]}
+            #"REVOKE CREATE ON DATABASE \"dev\" FROM PUBLIC;"]]]
     (testing (str "init refuses " desc ", and runs nothing but the search_path pin")
       (let [{:keys [log error]} (run-with-fake-jdbc
                                  (answer-with rows)
@@ -1276,6 +1328,82 @@
                   "WHERE identity_type = 'public' AND privilege_type = 'CREATE' ORDER BY namespace_name")
              sql))
       (is (= [] params)))))
+
+(deftest workspace-public-create-check-reads-every-local-database-test
+  (let [answer  (answer-with {"SELECT current_database()" [{:db "dev"}]
+                              "svv_redshift_databases"    [{:database_name "db2"} {:database_name "dev"}
+                                                           {:database_name "db3"}]})
+        checked (atom [])
+        init!   #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)]
+    (testing "init checks the connected database on its own connection, and connects to each other local database"
+      (let [{:keys [log error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database
+                                                            (fn [_database db _f]
+                                                              (swap! checked conj db)
+                                                              (case db "db2" ["public"] "db3" []))]
+                                  (run-with-fake-jdbc answer init!))]
+        (is (= ["db2" "db3"] @checked))
+        (is (some (fn [[kind sql]] (and (= :query kind) (str/includes? sql "WHERE database_type = 'local'"))) log))
+        (testing "and refuses with a 412 naming the database, the schema and the REVOKE to run there"
+          (is (=? {:status-code 412, :workspace/cleanup? false, :databases [], :schemas ["db2.public"], :unverifiable []}
+                  (ex-data error)))
+          (is (str/includes? (ex-message error)
+                             "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"db2\"")))))
+    (testing "a database the admin connection's login cannot connect to is refused as unverifiable"
+      (let [{:keys [error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database
+                                                        (fn [_database db _f]
+                                                          (if (= "db3" db)
+                                                            (throw (java.sql.SQLException. "connection refused" "08001"))
+                                                            []))]
+                              (run-with-fake-jdbc answer init!))]
+        (is (=? {:status-code 412, :schemas [], :unverifiable ["db3"]} (ex-data error)))
+        (is (str/includes? (ex-message error) "could not connect to check these databases: db3"))))
+    (testing "init passes when no database is found to grant CREATE to PUBLIC"
+      (let [{:keys [error]} (mt/with-dynamic-fn-redefs [redshift/do-in-other-database (constantly [])]
+                              (run-with-fake-jdbc answer init!))]
+        (is (nil? error))))))
+
+(deftest workspace-public-create-error-test
+  (testing "no finding, no error"
+    (is (nil? (#'redshift/public-create-error [] [] []))))
+  (testing "every finding is named, with the statement that fixes it"
+    (let [e (#'redshift/public-create-error ["db2"] [["dev" "public"] ["db2" "x"]] ["db3"])]
+      (is (= {:status-code        412
+              :workspace/cleanup? false
+              :databases          ["db2"]
+              :schemas            ["dev.public" "db2.x"]
+              :unverifiable       ["db3"]}
+             (ex-data e)))
+      (is (= (str "The workspace user could create objects outside its output schema. These databases grant CREATE "
+                  "to PUBLIC, so it could create schemas there: db2. These schemas grant CREATE to PUBLIC: dev.public, "
+                  "db2.x. Redshift grants CREATE on `public` to PUBLIC by default, in every database. The admin "
+                  "connection's login could not connect to check these databases: db3. Every user may connect to "
+                  "every database of the cluster, so they must be checked. As the owner of each database and schema "
+                  "named, or a superuser, run `REVOKE CREATE ON DATABASE \"db2\" FROM PUBLIC;`, `REVOKE CREATE ON "
+                  "SCHEMA \"public\" FROM PUBLIC;` in database \"dev\", `REVOKE CREATE ON SCHEMA \"x\" FROM PUBLIC;` "
+                  "in database \"db2\". Make sure the admin connection's login can connect to each database named. "
+                  "Then retry. The REVOKEs persist, so this is a one-time setup step.")
+             (ex-message e))))))
+
+(deftest workspace-grant-refuses-public-writes-test
+  (testing "grant refuses an input schema where PUBLIC may change a table, before any GRANT"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {"svv_default_privileges" [{:kind "default", :object "etl", :privilege "INSERT"}
+                                                                       {:kind "table", :object "t", :privilege "DELETE"}
+                                                                       {:kind "table", :object "t", :privilege "INSERT"}]})
+                               #(driver/grant-workspace-read-access! :redshift {:id 1} unit-workspace ["src"]))]
+      (is (= {:status-code 412, :schema "src", :objects ["default privileges for etl" "t"]} (ex-data error)))
+      (is (str/includes? (ex-message error)
+                         (str "run `ALTER DEFAULT PRIVILEGES FOR USER \"etl\" IN SCHEMA \"src\" REVOKE INSERT ON TABLES "
+                              "FROM PUBLIC; REVOKE DELETE, INSERT ON TABLE \"src\".\"t\" FROM PUBLIC;` and retry")))
+      (is (not-any? #(str/starts-with? % "GRANT") (executed log)))))
+  (testing "the query reads the input schema's table grants and default privileges to PUBLIC"
+    (let [{:keys [log]} (run-with-fake-jdbc
+                         (answer-with {})
+                         #(driver/grant-workspace-read-access! :redshift {:id 1} unit-workspace ["src"]))
+          [_ sql params] (first (filter (fn [[kind sql]] (and (= :query kind) (str/includes? sql "svv_default_privileges")))
+                                        log))]
+      (is (str/includes? sql "FROM svv_relation_privileges WHERE namespace_name = ? AND identity_type = 'public'"))
+      (is (= ["src" "src"] params)))))
 
 (deftest workspace-grant-pins-search-path-before-catalog-queries-test
   (testing "grant pins search_path before its preflight catalog queries, and again before the grants"
