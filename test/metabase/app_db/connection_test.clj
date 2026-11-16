@@ -11,9 +11,10 @@
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
-   (java.sql Connection SQLException Savepoint)
+   (java.sql Connection DatabaseMetaData SQLException Savepoint)
    (java.util.concurrent Semaphore)
-   (java.util.concurrent.locks ReentrantReadWriteLock)))
+   (java.util.concurrent.locks ReentrantReadWriteLock)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -934,3 +935,37 @@
                 (.. lock writeLock unlock)))
             (is (true? (deref acquire 5000 ::timed-out))
                 "getConnection should proceed once the write lock is released")))))))
+
+(defn- product-data-source
+  "A data source whose connections report `product`, counting its `getConnection` calls in `calls`.
+  The first call throws when `fail-first?` is set."
+  [product calls fail-first?]
+  (reify DataSource
+    (getConnection [_]
+      (when (and (= 1 (swap! calls inc)) fail-first?)
+        (throw (SQLException. "unreachable")))
+      (reify Connection
+        (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
+        (close [_])))))
+
+(deftest mariadb?-test
+  (testing "a :mysql application DB reads the product name once"
+    (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
+      (let [calls  (atom 0)
+            app-db (mdb.connection/application-db :mysql (product-data-source product calls false))]
+        (mdb.connection/with-application-db app-db
+          (is (= {:answers [expected expected], :calls 1}
+                 {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls @calls}))))))
+  (testing "a failed read is not cached, so the next call tries again"
+    (let [calls  (atom 0)
+          app-db (mdb.connection/application-db :mysql (product-data-source "MariaDB" calls true))]
+      (mdb.connection/with-application-db app-db
+        (is (thrown? SQLException (mdb.connection/mariadb?)))
+        (is (true? (mdb.connection/mariadb?)))
+        (is (= 2 @calls)))))
+  (testing "other application DB types are never MariaDB, and never connect"
+    (let [calls  (atom 0)
+          app-db (mdb.connection/application-db :h2 (product-data-source "MariaDB" calls false))]
+      (mdb.connection/with-application-db app-db
+        (is (false? (mdb.connection/mariadb?)))
+        (is (zero? @calls))))))

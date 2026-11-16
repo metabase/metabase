@@ -51,9 +51,9 @@
                              ;; reset the application DB with data from a SQL dump -- during the restore process it is
                              ;; important that we do not allow anyone to access the DB.
                              ^ReentrantReadWriteLock lock
-                             ;; A delay of whether the DB is MariaDB, which `db-type` reports as `:mysql`. Read it
-                             ;; via [[mariadb?]].
-                             mariadb?]
+                             ;; Whether the DB is MariaDB, which `db-type` reports as `:mysql`. It is `false` for other
+                             ;; types, and empty for `:mysql` until [[mariadb?]] reads it from a connection.
+                             ^clojure.lang.Atom    mariadb?]
   javax.sql.DataSource
   (getConnection [_]
     (try
@@ -92,22 +92,19 @@
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)
          (instance? javax.sql.DataSource data-source)]}
-  (let [app-db (map->ApplicationDB
-                {:db-type     db-type
-                 :data-source (if create-pool?
-                                (connection-pool-setup/connection-pool-data-source db-type data-source)
-                                data-source)
-                 :quartz-data-source (if create-pool?
-                                       (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
-                                       data-source)
-                 :status      (atom initial-db-status)
-                 ;; for memoization purposes. See [[unique-identifier]] for more information.
-                 :id          (swap! application-db-counter inc)
-                 :lock        (ReentrantReadWriteLock.)})]
-    ;; Connects through `app-db` itself, so the read uses its pool and respects its lock.
-    (assoc app-db :mariadb? (delay
-                              (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
-                                (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))))))
+  (map->ApplicationDB
+   {:db-type     db-type
+    :data-source (if create-pool?
+                   (connection-pool-setup/connection-pool-data-source db-type data-source)
+                   data-source)
+    :quartz-data-source (if create-pool?
+                          (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
+                          data-source)
+    :status      (atom initial-db-status)
+    ;; for memoization purposes. See [[unique-identifier]] for more information.
+    :id          (swap! application-db-counter inc)
+    :lock        (ReentrantReadWriteLock.)
+    :mariadb?    (atom (if (= db-type :mysql) nil false))}))
 
 ;; A plain def, not a defonce, so reloading the protocol or the handle type leaves a handle that still works. The root,
 ;; which owns the connection pool, is installed only the first time.
@@ -161,9 +158,16 @@
 
 (defn mariadb?
   "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
-  The first call for each application DB opens a connection to read the product name."
+  On a `:mysql` application DB, the first successful call opens a connection to read the product name."
   []
-  @(.mariadb? (current-application-db)))
+  (let [app-db (current-application-db)
+        cell   (.mariadb? app-db)]
+    (if-some [answer @cell]
+      answer
+      ;; Connects through `app-db` itself, so the read uses its pool and respects its lock. A failed read leaves the
+      ;; cell empty, so the next call tries again.
+      (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
+                     (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))))))
 
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s
