@@ -1600,6 +1600,7 @@
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
+  blank-native-query?
   engine
   extract-template-tags
   fully-parameterized-query?

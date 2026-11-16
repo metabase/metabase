@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -19,7 +20,7 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -57,6 +58,15 @@
     (throw (ex-info (:error error)
                     (assoc error
                            :status-code 400)))))
+
+;; not in model hooks or the query schema, so serdes and remote sync can still load existing transforms
+(mu/defn- blank-native-transform? :- :boolean
+  [transform :- ::transforms.schema/transform.definition]
+  (and (transforms-base.u/query-transform? transform)
+       (lib/blank-native-query? (get-in transform [:source :query]))))
+
+(defn- throw-blank-native-query! []
+  (throw (ex-info (tru "A native query cannot be blank.") {:status-code 400})))
 
 (mu/defn validate-target-schema! :- :nil
   "Require a non-blank `:target.schema` when the target database supports schemas.
@@ -171,6 +181,8 @@
   ([body       :- ::transforms.schema/transform.create
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
+     (when (blank-native-transform? definition)
+       (throw-blank-native-query!))
      (when (transforms-base.u/query-transform? definition)
        (validate-transform-query! definition))
      (validate-target-schema! definition)
@@ -212,6 +224,11 @@
                       (check-database-feature definition)
                       (when (contains? body :target)
                         (validate-target-schema! definition))
+                      ;; a transform already saved blank can still be edited without fixing its query
+                      (when (and (contains? body :source)
+                                 (blank-native-transform? definition)
+                                 (not (blank-native-transform? (transforms.u/->definition old))))
+                        (throw-blank-native-query!))
                       (when (contains? body :source)
                         (validate-incremental-column-type! definition))
                       (when (or (contains? body :source) (contains? body :target))

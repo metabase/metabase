@@ -337,6 +337,16 @@
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
+(mu/defn blank-native-query? :- :boolean
+  "Whether `query` starts with a native stage whose text is missing, empty, or only whitespace. A native query that
+  isn't a string, e.g. a MongoDB pipeline, is never blank."
+  [query :- ::lib.schema/query]
+  (let [stage (lib.util/query-stage query 0)
+        text  (:native stage)]
+    (and (lib.util/native-stage? stage)
+         (or (nil? text) (string? text))
+         (str/blank? text))))
+
 (mu/defn template-tags :- [:maybe ::lib.schema.template-tag/template-tags]
   "Returns the native query's template tags"
   [query :- ::lib.schema/query]
