@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -8,7 +9,7 @@ import {
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { AddCardToDashboardOpts } from "metabase/dashboard/actions/cards-typed";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -108,6 +109,15 @@ function setup({
     setupCollectionItemsEndpoint({ collection, collectionItems: [] }),
   );
 
+  fetchMock.modifyRoute("collection-tree", { delay: 300 });
+  fetchMock.modifyRoute("tenants", { delay: 300 });
+  [TENANT_SUBCOLLECTION, TENANT_COLLECTION, dashboardCollection].forEach(
+    (collection) =>
+      fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+        delay: 300,
+      }),
+  );
+
   setupEnterprisePlugins();
 
   renderWithProviders(
@@ -160,7 +170,9 @@ describe("AddCardSidebar with tenants (EMB-2312)", () => {
       });
 
       await screen.findByRole("menuitem", { name: TENANT_SUBCOLLECTION.name });
-      expect(within(getBreadcrumbs()).getByText("Acme")).toBeInTheDocument();
+      expect(
+        await within(getBreadcrumbs()).findByText("Acme"),
+      ).toBeInTheDocument();
       expect(getBreadcrumbs()).not.toHaveTextContent("Unknown");
 
       await userEvent.click(
@@ -185,9 +197,14 @@ describe("AddCardSidebar with tenants (EMB-2312)", () => {
         collections: [OUR_ANALYTICS],
       });
 
-      await screen.findByText("Collections");
-      expect(getBreadcrumbs()).toHaveTextContent("Collections");
-      expect(getBreadcrumbs()).toHaveTextContent("Our analytics");
+      await waitFor(() => {
+        expect(
+          within(getBreadcrumbs()).getByText("Collections"),
+        ).toBeInTheDocument();
+        expect(
+          within(getBreadcrumbs()).getByText("Our analytics"),
+        ).toBeInTheDocument();
+      });
 
       await goToTopLevel();
 
@@ -201,9 +218,13 @@ describe("AddCardSidebar with tenants (EMB-2312)", () => {
       await userEvent.click(
         screen.getByRole("menuitem", { name: "Tenant collections" }),
       );
-      await userEvent.click(screen.getByRole("menuitem", { name: "Acme" }));
       await userEvent.click(
-        screen.getByRole("menuitem", { name: TENANT_SUBCOLLECTION.name }),
+        await screen.findByRole("menuitem", { name: "Acme" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", {
+          name: TENANT_SUBCOLLECTION.name,
+        }),
       );
       await userEvent.click(
         await screen.findByRole("menuitem", { name: TENANT_QUESTION.name }),
@@ -224,7 +245,7 @@ describe("AddCardSidebar with tenants (EMB-2312)", () => {
         isTenantUser: true,
       });
 
-      await screen.findByText("Our data");
+      await within(getBreadcrumbs()).findByText("Our data");
       expect(getBreadcrumbs()).toHaveTextContent("Collections");
       expect(getBreadcrumbs()).toHaveTextContent("Our data");
 
@@ -251,7 +272,7 @@ describe("AddCardSidebar with tenants (EMB-2312)", () => {
         isTenantUser: true,
       });
 
-      await screen.findByText("My personal collection");
+      await within(getBreadcrumbs()).findByText("My personal collection");
       expect(getBreadcrumbs()).toHaveTextContent("Collections");
 
       await goToTopLevel();
