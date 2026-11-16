@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
+import type { DurationStyle, DurationUnit } from "metabase-types/api";
+
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
+import { formatDuration } from "./duration";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
@@ -22,6 +25,9 @@ export type FormatNumberOptions = {
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -91,6 +97,10 @@ export function formatNumber(
       formatNumber(-number, { ...options, negativeInParentheses: false }) +
       ")"
     );
+  }
+
+  if (options.number_style === "duration") {
+    return formatDuration(Number(number), options);
   }
 
   if (options.compact) {
@@ -182,6 +192,14 @@ export function formatChangeWithSign(
 export const formatPercent = (percent: number) =>
   `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;
 
+const INTL_NUMBER_STYLES = ["decimal", "percent", "currency"] as const;
+
+function getIntlNumberStyle(
+  numberStyle: string | undefined,
+): Intl.NumberFormatOptions["style"] {
+  return INTL_NUMBER_STYLES.find((style) => style === numberStyle);
+}
+
 const NUMBER_FORMATTER_CACHE_SIZE = 100;
 const numberFormatterCache = new Map<string, Intl.NumberFormat>();
 
@@ -191,8 +209,7 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
     ...options,
   };
   const formatterOptions: Intl.NumberFormatOptions = {
-    // Unjustified type cast. FIXME
-    style: options.number_style as Intl.NumberFormatOptions["style"],
+    style: getIntlNumberStyle(options.number_style),
     currency: options.currency,
     currencyDisplay:
       // Unjustified type cast. FIXME

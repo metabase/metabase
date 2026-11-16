@@ -1,7 +1,16 @@
 import { formatNumber as appFormatNumber } from "metabase/utils/formatting";
-import type { CurrencyStyle } from "metabase-types/api";
+import type {
+  CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
+} from "metabase-types/api";
 
-export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
+export type NumberStyle =
+  | "currency"
+  | "decimal"
+  | "scientific"
+  | "percent"
+  | "duration";
 
 export type NumberFormatOptions = {
   number_style?: NumberStyle;
@@ -9,6 +18,9 @@ export type NumberFormatOptions = {
   currency_style?: CurrencyStyle;
   number_separators?: string;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   scale?: number;
   prefix?: string;
   suffix?: string;
