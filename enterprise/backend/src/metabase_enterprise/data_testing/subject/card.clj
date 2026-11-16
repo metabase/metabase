@@ -37,7 +37,8 @@
 
 (mu/defmethod data-testing.subject/subject-plan :card :- ::data-testing.subject/subject-plan
   [_subject-type
-   {query :dataset_query card-name :name} :- ::data-testing.subject/card]
+   {query :dataset_query card-name :name} :- ::data-testing.subject/card
+   _definition                            :- ::data-testing.subject/definition-without-parameters]
   (let [database (data-testing.subject/testable-database (lib/database-id query))
         {sql :query params :params}
         (try

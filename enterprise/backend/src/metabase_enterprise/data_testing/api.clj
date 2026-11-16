@@ -40,12 +40,11 @@
   "Create a transform test."
   [_route-params
    _query-params
-   {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
+   {:keys [transform_id] :as body} :- ::data-testing.schema/transform-test.create]
   (api/create-check :model/TransformTest body)
   (refusing #(data-testing.runner/validate-test :transform
                                                 (data-testing.db/transform transform_id)
-                                                inputs
-                                                expectations))
+                                                (select-keys body [:inputs :expectations])))
   (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
@@ -57,11 +56,10 @@
   (let [transform-test (api/read-check :model/TransformTest id)]
     (api/update-check transform-test body)
     (when (some #(contains? body %) [:transform_id :inputs :expectations])
-      (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
+      (let [{:keys [transform_id] :as merged} (merge transform-test body)]
         (refusing #(data-testing.runner/validate-test :transform
                                                       (data-testing.db/transform transform_id)
-                                                      inputs
-                                                      expectations))))
+                                                      (select-keys merged [:inputs :expectations])))))
     (when (seq body)
       (data-testing.db/update-transform-test! id body)))
   (data-testing.db/transform-test id))

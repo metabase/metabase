@@ -27,6 +27,8 @@
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
+   ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE.
+   ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
@@ -36,6 +38,7 @@
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
+   ::uncheckable-write          422  ; The write of a subject cannot be checked in its database's SQL dialect.
 
    ;; 501 — not built yet
    ::unsupported-format         501}); The expectation is of a type the schema knows and no `build` method handles.

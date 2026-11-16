@@ -13,6 +13,10 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
+  A subject that modifies existing tables counts the tables it modifies among those it reads, so both guards cover
+  them. The parser sees no table inside a procedure or a function, so [[ensure-single-write]] admits only one INSERT,
+  UPDATE or DELETE.
+
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
    [clojure.string :as str]
@@ -21,6 +25,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -192,6 +197,41 @@
               {:placeholders  (vec unknown)
                :response/keys #{:placeholders}})))))
 
+(mu/defn ensure-single-write :- :string
+  "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
+  `driver`'s dialect that calls no function known to run SQL text or change the session. Throws
+  `::data-testing.errors/not-a-single-write` when it is not, and `::data-testing.errors/uncheckable-write` when the
+  dialect is unknown or the SQL is too large to check.
+
+  A function that writes, called by a name the check does not know, passes."
+  [driver :- :keyword
+   sql    :- :string]
+  (let [{:keys [verdict error reason] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
+    (case verdict
+      :allowed
+      checked
+
+      :disallowed
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/not-a-single-write
+              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that calls no function that runs SQL text. Only for such a statement can the test tell which tables the SQL writes.")
+              {}))
+
+      :unknown
+      (if error
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/unparseable-source
+                (tru "The SQL under test could not be parsed: {0}" error)
+                {}))
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncheckable-write
+                (tru "The SQL under test writes, and the test cannot check which tables it writes to in this database''s SQL dialect.")
+                {:reason reason}))))))
+
+(def ^:private compares-output
+  "The expectation types that compare the output of the query under test."
+  #{:equals})
+
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
   temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
@@ -200,9 +240,10 @@
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
   the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
-  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test."
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test;
+  `writes?` says that the query under test modifies existing tables and has no output for an expectation to compare."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema]}
+   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema writes?]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
@@ -210,7 +251,8 @@
        [:rewritten-query :string]
        [:replacements        ::data-testing.compile/table-replacements]
        [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
-       [:default-schema      [:maybe :string]]]]
+       [:default-schema      [:maybe :string]]
+       [:writes?             {:optional true} :boolean]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/missing-inputs
@@ -232,6 +274,12 @@
                  (str/join ", " colliding))
             {:tables (vec colliding)
              :response/keys #{:tables}})))
+  (when-let [{expectation-name :name} (and writes? (first (filter (comp compares-output :type) expectations)))]
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/no-output
+            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Read the tables it modifies in an `empty` expectation."
+                 (pr-str expectation-name))
+            {:expectation expectation-name})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
     (check-rewrite driver rewritten-query temp-tables nil)
     (doseq [{:keys [name sql]} expectations

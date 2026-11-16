@@ -92,10 +92,10 @@
 
 (mu/defn table-replacements :- ::table-replacements
   "The replacements mapping each input's table to its temp table in `input->table`, and each of `output-tables` to
-  `output-table`."
+  `output-table`. `output-table` is nil only when `output-tables` is empty."
   [output-tables  :- [:sequential ::output-table]
    input->table   :- [:map-of ::data-testing.schema/input ::lib.schema.common/non-blank-string]
-   output-table   :- ::lib.schema.common/non-blank-string
+   output-table   :- [:maybe ::lib.schema.common/non-blank-string]
    default-schema :- [:maybe :string]]
   (into {}
         (for [[{:keys [schema name]} table] (concat (map (fn [[input table]] [(:table input) table]) input->table)

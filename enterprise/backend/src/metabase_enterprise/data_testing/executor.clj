@@ -33,6 +33,14 @@
     (catch Exception e
       (log/warnf "Failed to drop data test temp table %s: %s" table (ex-message e)))))
 
+(mu/defn execute!
+  "Run the compiled statement `query`, which returns no rows, on `conn`."
+  [driver :- :keyword
+   conn   :- ::data-testing.schema/connection
+   query  :- ::data-testing.compile/compiled-query]
+  (driver/execute-on-connection! driver conn [(:query query) (vec (:params query))])
+  nil)
+
 (mu/defn table-columns :- [:sequential ::data-testing.schema/result-column]
   "The columns of the temp table `table` on `conn`, in order, fetching no rows."
   [driver :- :keyword

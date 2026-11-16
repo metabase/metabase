@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema :as lib.schema]
@@ -35,20 +36,44 @@
   [:or ::transforms.schema/transform ::card])
 
 (mr/def ::subject-plan
-  "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
-  the tables whose names expectation SQL may use for the output, the token expectation SQL may write for the output
-  instead (nil when there is none), and how a message names the output."
-  [:map {:closed true}
-   [:database      ::lib.schema.metadata/database]
-   [:compiled      ::data-testing.compile/compiled-query]
-   [:output-tables [:sequential ::data-testing.compile/output-table]]
-   [:output-token  [:maybe ::data-testing.compile/output-token]]
-   [:output-label  :string]])
+  "What a run needs from its subject: the database it runs on and its SQL before any temp-table rewrite, compiled with
+  the test's parameter values.
+
+  A subject that returns rows also gives the tables whose names expectation SQL may use for its output, the token
+  expectation SQL may write for the output instead (nil when there is none), and how a message names the output. A
+  subject that modifies existing tables (`:writes? true`) has no output: expectations read the tables its SQL names."
+  [:multi {:dispatch #(boolean (:writes? %))}
+   [false [:map {:closed true}
+           [:database      ::lib.schema.metadata/database]
+           [:compiled      ::data-testing.compile/compiled-query]
+           [:writes?       {:optional true} [:= false]]
+           [:output-tables [:sequential ::data-testing.compile/output-table]]
+           [:output-token  [:maybe ::data-testing.compile/output-token]]
+           [:output-label  :string]]]
+   [true  [:map {:closed true}
+           [:database ::lib.schema.metadata/database]
+           [:compiled ::data-testing.compile/compiled-query]
+           [:writes?  [:= true]]]]])
+
+(mr/def ::definition
+  "What a subject's plan may read of the test: its inputs, its expectations, and the values of the subject's
+  parameters."
+  [:map
+   [:inputs       ::data-testing.schema/inputs]
+   [:expectations ::data-testing.schema/expectations]
+   [:parameters   {:optional true} [:maybe ::data-testing.schema/parameters]]])
+
+(mr/def ::definition-without-parameters
+  "A [[::definition]] of a test of a subject that takes no parameters."
+  [:merge
+   ::definition
+   [:map [:parameters {:optional true} [:maybe [:map {:closed true}]]]]])
 
 (defmulti subject-plan
-  "The [[::subject-plan]] of `subject`, a `subject-type`. Throws a typed refusal when `subject` cannot be tested."
-  {:arglists '([subject-type subject])}
-  (fn [subject-type _subject]
+  "The [[::subject-plan]] of `subject`, a `subject-type`, for a test with `definition`, a [[::definition]]. Throws a typed
+  refusal when `subject` cannot be tested."
+  {:arglists '([subject-type subject definition])}
+  (fn [subject-type _subject _definition]
     subject-type))
 
 (mu/defn testable-database :- ::lib.schema.metadata/database

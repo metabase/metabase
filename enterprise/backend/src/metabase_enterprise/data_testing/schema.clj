@@ -138,6 +138,10 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
+(mr/def ::parameters
+  "The value of each parameter of the subject, by the parameter's id or slug."
+  (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
+
 (mr/def ::test.definition
   "A test as a client writes it, without the subject it covers."
   [:map {:closed true}
