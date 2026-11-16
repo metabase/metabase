@@ -161,8 +161,8 @@
       ;; an enum that already lists `null` lists it once
       (is (= {:type ["string" "null"], :enum ["a" nil]}
              (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
-      ;; an empty `oneOf` accepts nothing, which an `anyOf` cannot say
-      (is (= {:oneOf []}
+      ;; an empty `oneOf` accepts nothing, which an `anyOf` cannot say, as JSON Schema requires it a branch
+      (is (= {:not {}}
              (published {:oneOf []})))
       ;; an `:example` beside the `oneOf`, as `[:maybe {:json-schema/example 5} :int]` gives, is an annotation
       (is (= {:type ["integer" "null"], :example 5}
