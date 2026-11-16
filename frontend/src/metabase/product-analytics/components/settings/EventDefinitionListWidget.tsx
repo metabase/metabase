@@ -15,6 +15,7 @@ import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import { moveElement } from "metabase/utils/arrays";
 import type { Table } from "metabase-types/api";
 
+import { getEventNameFieldId } from "../../events/event-name";
 import type { EventDefinition } from "../../events/types";
 import { useSegmentDrag } from "../../segments/drag-context";
 import {
@@ -68,6 +69,7 @@ export const EventDefinitionListWidget = ({
   const { isPaletteOpen } = useSegmentDrag();
   const tableQuery = useTableQuery(table);
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  const eventNameFieldId = getEventNameFieldId(table);
   const [sendToast] = useToast();
   const sensors = useDndSensors({ distance: DRAG_DISTANCE });
   // `value.length` while adding a new event.
@@ -126,7 +128,13 @@ export const EventDefinitionListWidget = ({
       }
       return target === undefined
         ? segmentToEventDefinition(tableQuery, metadataProvider, segment)
-        : addSegmentToEvent(tableQuery, metadataProvider, target, segment);
+        : addSegmentToEvent(
+            tableQuery,
+            metadataProvider,
+            target,
+            segment,
+            eventNameFieldId,
+          );
     })();
     if (event === undefined) {
       sendToast({
@@ -151,6 +159,7 @@ export const EventDefinitionListWidget = ({
       key={`editor-${editingIndex}`}
       value={isAdding ? null : value[editingIndex]}
       tableQuery={tableQuery}
+      eventNameFieldId={eventNameFieldId}
       onCancel={() => setEditingIndex(null)}
       onSubmit={handleSubmit}
     />

@@ -24,6 +24,11 @@ export type SavedPaletteSegment = PaletteSegmentBase & {
 export type DraftPaletteSegment = PaletteSegmentBase & {
   status: "draft";
   query: OpaqueDatasetQuery;
+  /**
+   * Suggested from the table's event names rather than made by the user.
+   * Editing or saving one makes it the user's.
+   */
+  isSeed: boolean;
 };
 
 export type PaletteSegment = SavedPaletteSegment | DraftPaletteSegment;

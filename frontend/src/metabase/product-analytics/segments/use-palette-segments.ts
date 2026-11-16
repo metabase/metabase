@@ -20,6 +20,7 @@ export const toDraftPaletteSegment = (
   status: "draft",
   name: draft.name,
   query: draft.query,
+  isSeed: false,
 });
 
 /** The saved segments on a table plus this session's drafts, as palette items. */

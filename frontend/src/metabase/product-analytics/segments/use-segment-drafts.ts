@@ -104,12 +104,13 @@ export const useSegmentDrafts = (tableId: TableId | undefined) => {
     [key],
   );
 
+  /** Adds a draft after the others, and returns its id. */
   const addDraft = useCallback(
-    (draft: Omit<SegmentDraft, "id">) =>
-      update((current) => [
-        ...current,
-        { id: _.uniqueId(`draft-${Date.now()}-`), ...draft },
-      ]),
+    (draft: Omit<SegmentDraft, "id">): string => {
+      const id = _.uniqueId(`draft-${Date.now()}-`);
+      update((current) => [...current, { id, ...draft }]);
+      return id;
+    },
     [update],
   );
 
