@@ -311,8 +311,10 @@
                                         (into ["'self'"] data-app-connect-hosts)
                                         (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                                       ;; Every page needs it: the main app opens `/apps/<slug>` without a reload, under
-                                      ;; the policy of the page it loaded first.
-                                      (some-> (server.settings/isolated-origin) vector))
+                                      ;; the policy of the page it loaded first. The same goes for the permission
+                                      ;; troubleshooting page (EE), which frames the preview host.
+                                      (keep identity [(server.settings/isolated-origin)
+                                                      (config/config-str :mb-permission-preview-host)]))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))

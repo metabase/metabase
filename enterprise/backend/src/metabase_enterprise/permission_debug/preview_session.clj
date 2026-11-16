@@ -23,7 +23,8 @@
    [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
@@ -92,12 +93,93 @@
     (end-sessions! admin-id [session-id]))
   nil)
 
+(def ^:private code-lifetime-ms (* 60 1000))
+
+;; TODO (proof of concept): like [[session-admins]], the codes live in this JVM only.
+(defonce ^:private codes (atom {}))
+
+(defn start-host-session!
+  "Start a preview host session as `user-id` for `admin-id`, bound to the admin session whose `key_hashed` is
+  `admin-key-hash`, and a one-time code (60 seconds) that the frame on the preview host trades for its cookie.
+  Returns `{:session-id :code :code-expires-at :expires-at}`, times in epoch seconds. The admin's page gets the
+  session's id, to end it, never its key."
+  [admin-id admin-key-hash user-id]
+  (let [{:keys [session-id session-key expires-at]} (create-session! :host admin-id admin-key-hash user-id)
+        code                                        (session/generate-session-key)
+        now-ms                                      (System/currentTimeMillis)
+        code-expires-ms                             (+ now-ms code-lifetime-ms)]
+    (swap! codes (fn [entries]
+                   (-> (into {} (remove #(< (:expires-at-ms (val %)) now-ms)) entries)
+                       (assoc code {:session-key    session-key
+                                    :admin-id       admin-id
+                                    :admin-key-hash admin-key-hash
+                                    :expires-at-ms  code-expires-ms}))))
+    {:session-id      session-id
+     :code            code
+     :code-expires-at (quot code-expires-ms 1000)
+     :expires-at      expires-at}))
+
+(defn- redeem-code!
+  "The entry of `code` if it is known and unexpired, removing it either way: a code works once."
+  [code]
+  (when (string? code)
+    (let [[before] (swap-vals! codes dissoc code)
+          entry    (get before code)]
+      (when (and entry (< (System/currentTimeMillis) (:expires-at-ms entry)))
+        entry))))
+
 (defn end-session-by-id!
   "Delete the preview session with `session-id` (a preview host's, whose key the admin's page never sees) if `admin-id`
   started it."
   [admin-id session-id]
   (end-sessions! admin-id [session-id])
   nil)
+
+;;; ------------------------------------------------ The preview host's cookie ------------------------------------------------
+
+(def ^:private host-cookie "metabase.PREVIEW_SESSION")
+
+(def ^:private host-cookie-attributes
+  "The preview cookie is host-only (no `Domain`) and out of scripts' reach. It is set and sent inside a frame whose top
+  page is on the main host, another site to the browser, so only `SameSite=None` works, which needs `Secure` (Chrome
+  allows it over http on `*.localhost`). `Partitioned` keeps it to frames under the main host's site: the preview
+  host opened in its own tab doesn't get it."
+  "Path=/; HttpOnly; SameSite=None; Secure; Partitioned")
+
+(defn- safe-path?
+  "Whether `to` is the content document on this host, so the exchange can't redirect anywhere else."
+  [to]
+  (boolean (and (string? to)
+                (re-matches #"/embed/permission-preview-content(?:[/?][^\\\p{Cntrl}]*)?" to))))
+
+(defn- plain-refusal
+  [status message]
+  {:status  status
+   :headers {"Content-Type" "text/plain; charset=utf-8" "Cache-Control" "no-store"}
+   :body    message})
+
+(defenterprise preview-host-exchange
+  "EE implementation: the preview host's `GET /preview-session?code=…&to=<path>`. Redeems `code`, checks that the admin
+  session it was issued on is still live, sets the host-only preview cookie and redirects to `to`, the content
+  document."
+  :feature :advanced-permissions
+  [{:keys [query-string]}]
+  (let [params                                         (some-> query-string codec/form-decode)
+        {:strs [code to]}                              (when (map? params) params)
+        {:keys [session-key admin-id admin-key-hash]} (redeem-code! code)]
+    (cond
+      (not (safe-path? to))
+      (plain-refusal 400 "`to` must be the content preview on this host.")
+
+      (not (and session-key (permission-debug.db/live-superuser-session? admin-key-hash admin-id)))
+      (plain-refusal 403 "This preview code is used, expired or unknown, or its admin signed out.")
+
+      :else
+      {:status  302
+       :headers {"Location"      to
+                 "Cache-Control" "no-store"
+                 "Set-Cookie"    [(str host-cookie "=" session-key "; " host-cookie-attributes)]}
+       :body    ""})))
 
 ;;; ------------------------------------------------ Requests ------------------------------------------------
 

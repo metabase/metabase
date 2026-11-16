@@ -8,7 +8,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.config.core :as config]
+   [metabase.system.core :as system]
    [metabase.util.malli.schema :as ms]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -113,19 +117,21 @@
 (api.macros/defendpoint :post "/preview/end" :- :map
   "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`, or `/preview/session`) returned,
   recording it in the audit log with the caller as the actor and `user_id` as the target. Takes the start's principal
-  and attribute values, so the end row reads on its own. With `session_token`, also deletes that preview session.
+  and attribute values, so the end row reads on its own. With `session_token` (a header session) or `session_id` (a
+  preview host session), also deletes that preview session.
 
   Returns `{\"ok\": true}`."
   [_route-params
    _query-params
-   {:keys [preview_id user_id principal_type principal_id attributes session_token]}
+   {:keys [preview_id user_id principal_type principal_id attributes session_token session_id]}
    :- [:map {:closed true}
        [:preview_id ms/NonBlankString]
        [:user_id ms/PositiveInt]
        [:principal_type permission-debug.impl/PrincipalType]
        [:principal_id ms/PositiveInt]
        [:attributes {:optional true} [:maybe [:map-of :string :string]]]
-       [:session_token {:optional true} ms/NonBlankString]]]
+       [:session_token {:optional true} ms/NonBlankString]
+       [:session_id {:optional true} ms/NonBlankString]]]
   (permission-debug.impl/end-preview! {:preview-id     preview_id
                                        :user-id        user_id
                                        :principal-type principal_type
@@ -133,7 +139,46 @@
                                        :attributes     attributes})
   (when session_token
     (preview-session/end-session! api/*current-user-id* session_token))
+  (when session_id
+    (preview-session/end-session-by-id! api/*current-user-id* session_id))
   {:ok true})
+
+(api.macros/defendpoint :post "/preview/code" :- [:map
+                                                  [:preview_id :string]
+                                                  [:session_id :string]
+                                                  [:code :string]
+                                                  [:code_expires_at :int]
+                                                  [:preview_origin :string]
+                                                  [:user_id ms/PositiveInt]
+                                                  [:user_name :string]]
+  "Start previewing a user, group or tenant on the preview host (`MB_PERMISSION_PREVIEW_HOST`), with a session of
+  their own that lives in that host's cookie. Takes the same body as `POST /preview/start`, records the start in the
+  audit log, and returns what it does plus a one-time `code`, valid until `code_expires_at` (epoch seconds, a minute
+  from now), and `preview_origin`. The frame opens `<preview_origin>/preview-session?code=<code>&to=<path>`, which sets
+  the cookie and redirects to the content preview at `path`. `POST /preview/end` with `session_id` ends it.
+
+  Only a superuser's own browser session (the `metabase.SESSION` cookie) can get a code."
+  [_route-params
+   _query-params
+   {:keys [principal_type principal_id attributes]} :- [:map {:closed true}
+                                                        [:principal_type permission-debug.impl/PrincipalType]
+                                                        [:principal_id ms/PositiveInt]
+                                                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]]
+   {session-key-hash :metabase/authed-session-key-hash, session-type :metabase-session-type}]
+  (api/check (and session-key-hash (= :normal session-type))
+             [403 "Previewing on the preview host needs a browser session."])
+  (let [preview-host                       (api/check (config/config-str :mb-permission-preview-host)
+                                                      [400 "No preview host is set (MB_PERMISSION_PREVIEW_HOST)."])
+        {:keys [user_id] :as preview}      (permission-debug.impl/start-preview! {:principal-type principal_type
+                                                                                  :principal-id   principal_id
+                                                                                  :attributes     attributes})
+        {:keys [session-id code code-expires-at]} (preview-session/start-host-session! api/*current-user-id*
+                                                                                       session-key-hash user_id)]
+    (assoc preview
+           :session_id      session-id
+           :code            code
+           :code_expires_at code-expires-at
+           :preview_origin  (str (or (some-> ^String (system/site-url) (java.net.URI.) .getScheme) "http") "://" preview-host))))
 
 (api.macros/defendpoint :post "/preview/session" :- [:map
                                                      [:preview_id :string]

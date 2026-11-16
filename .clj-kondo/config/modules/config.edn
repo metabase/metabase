@@ -4361,8 +4361,10 @@
            query-processor
            request
            session
+           system
            users.tenants
-           util}
+           util
+           util.config}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/ConnectionImpersonation

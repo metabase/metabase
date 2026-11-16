@@ -103,17 +103,27 @@
      (wrap-session-key-with-strategy strategy request))
    [:preview-host :header :embedded-cookie :normal-cookie]))
 
+(defenterprise preview-host-exchange
+  "The preview host's `GET /preview-session?code=…&to=<path>`: trade a preview code for the host's preview cookie and
+  redirect to `to`. OSS: not found, since there is nothing to preview with."
+  metabase-enterprise.permission-debug.preview-session
+  [_request]
+  {:status 404 :headers {"Content-Type" "text/plain; charset=utf-8"} :body "Not found."})
+
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
   :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
 
-  On the permission preview host (EE) only the preview cookie counts, under `:metabase/preview-session`."
+  On the permission preview host (EE) only the preview cookie counts, under `:metabase/preview-session`, and the
+  host's `/preview-session` exchange is answered here."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-key-with-strategy :best request)
-                      request)]
-      (handler request respond raise))))
+    (if (and (= "/preview-session" (:uri request)) (request/permission-preview-host-request? request))
+      (respond (preview-host-exchange request))
+      (let [request (or (wrap-session-key-with-strategy :best request)
+                        request)]
+        (handler request respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
