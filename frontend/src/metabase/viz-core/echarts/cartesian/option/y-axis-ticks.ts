@@ -18,7 +18,7 @@ class ValueAxisScaleModel extends Model<ValueAxisOption> {
   }
 }
 
-export function getResponsiveYAxisSegments(height: number) {
+function getResponsiveYAxisSegments(height: number) {
   return height < PLOT_HEIGHT_BREAKPOINTS.medium ? 2 : 4;
 }
 
@@ -46,13 +46,11 @@ function getValueAxisBounds(extent: Extent, axis: ValueAxisOption): Extent {
   ];
 }
 
-export function getDurationYAxisTicks(
-  extent: Extent,
-  axis: ValueAxisOption,
+function getDurationAxisScale(
+  [lower, upper]: Extent,
   maxSegments: number,
   durationOptions: FormatDurationOptions,
-) {
-  const [lower, upper] = getValueAxisBounds(extent, axis);
+): { interval: number; min: number; max: number } {
   const interval = getDurationTickInterval(
     upper - lower,
     maxSegments,
@@ -60,6 +58,24 @@ export function getDurationYAxisTicks(
   );
   const min = Math.floor(lower / interval) * interval;
   const max = Math.max(Math.ceil(upper / interval) * interval, min + interval);
+  const segments = Math.round((max - min) / interval);
+
+  return segments <= maxSegments
+    ? { interval, min, max }
+    : getDurationAxisScale([min, max], maxSegments, durationOptions);
+}
+
+export function getDurationYAxisTicks(
+  extent: Extent,
+  axis: ValueAxisOption,
+  maxSegments: number,
+  durationOptions: FormatDurationOptions,
+) {
+  const { interval, min, max } = getDurationAxisScale(
+    getValueAxisBounds(extent, axis),
+    maxSegments,
+    durationOptions,
+  );
 
   return {
     ...axis,
@@ -67,6 +83,33 @@ export function getDurationYAxisTicks(
     min: axis.min ?? min,
     max: axis.max ?? max,
   };
+}
+
+export function getResponsiveDurationYAxisTicks(
+  extent: Extent,
+  axis: ValueAxisOption,
+  height: number,
+  durationOptions: FormatDurationOptions,
+) {
+  const ticks = getDurationYAxisTicks(
+    extent,
+    axis,
+    getResponsiveYAxisSegments(height),
+    durationOptions,
+  );
+  const hasBoundLabelsOnly = height < PLOT_HEIGHT_BREAKPOINTS.small;
+
+  return hasBoundLabelsOnly
+    ? {
+        ...ticks,
+        axisLabel: {
+          ...ticks.axisLabel,
+          customValues: [ticks.min, ticks.max].filter(
+            (bound) => typeof bound === "number",
+          ),
+        },
+      }
+    : ticks;
 }
 
 /** Uses the final axis options so explicit ticks share ECharts' rendered scale. */

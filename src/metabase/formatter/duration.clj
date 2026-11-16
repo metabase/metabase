@@ -25,9 +25,9 @@
    "week"        (* 7 ms-per-day)})
 
 (def ^:private precision->ms
-  {"minutes"      ms-per-minute
-   "seconds"      ms-per-second
-   "milliseconds" 1})
+  {"minute"      ms-per-minute
+   "second"      ms-per-second
+   "millisecond" 1})
 
 (def ^:private narrow-units
   [{:unit-ms ms-per-day,    :wrap-ms Long/MAX_VALUE, :label #(tru "{0}d" %)}
@@ -70,8 +70,8 @@
         seconds (zero-pad (quot (rem total-ms ms-per-minute) ms-per-second) 2)
         millis  (zero-pad (rem total-ms ms-per-second) 3)]
     (case precision
-      "minutes"      (str hours ":" minutes)
-      "milliseconds" (str hours ":" minutes ":" seconds decimal millis)
+      "minute"      (str hours ":" minutes)
+      "millisecond" (str hours ":" minutes ":" seconds decimal millis)
       (str hours ":" minutes ":" seconds))))
 
 (defn- format-narrow

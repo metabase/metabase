@@ -231,7 +231,7 @@ describe("duration Y-axis ticks", () => {
         column: () => ({
           number_style: "duration",
           duration_unit: "millisecond",
-          duration_precision: "minutes",
+          duration_precision: "minute",
         }),
       }),
     });

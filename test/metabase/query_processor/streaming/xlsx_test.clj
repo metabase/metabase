@@ -620,13 +620,13 @@
   (mt/with-temporary-setting-values [custom-formatting {}]
     (are [settings expected] (= expected (format-string (assoc settings :number_style "duration")))
       {}                                                      "[h]:mm:ss"
-      {:duration_precision "minutes"}                 "[h]:mm"
-      {:duration_precision "milliseconds"}            "[h]:mm:ss.000"
+      {:duration_precision "minute"}                 "[h]:mm"
+      {:duration_precision "millisecond"}            "[h]:mm:ss.000"
       {:duration_style "narrow"}                      "[h]\"h \"m\"m \"s\"s\""
       {:duration_style     "narrow"
-       :duration_precision "minutes"}                 "[h]\"h \"m\"m\""
+       :duration_precision "minute"}                 "[h]\"h \"m\"m\""
       {:duration_style     "narrow"
-       :duration_precision "milliseconds"}            "[h]\"h \"m\"m \"s.000\"s\""
+       :duration_precision "millisecond"}            "[h]\"h \"m\"m \"s.000\"s\""
       {:prefix "~" :suffix " total"}          "\"~\"[h]:mm:ss\" total\"")))
 
 (deftest duration-settings-on-other-number-styles-test
@@ -636,7 +636,7 @@
              (format-string {:number_style       "decimal"
                              :duration_unit      "hour"
                              :duration_style     "narrow"
-                             :duration_precision "minutes"}))))))
+                             :duration_precision "minute"}))))))
 
 (deftest duration-export-test
   (mt/with-temporary-setting-values [custom-formatting {}]
@@ -656,11 +656,14 @@
                                     [[1200]])))))
       (testing "value is rounded to precision, as in app"
         (is (= [#inst "1899-12-31T01:00:00.000-00:00"]
-               (second (xlsx-export cols (settings {:duration_precision "minutes"}) [[3599.5]])))))
+               (second (xlsx-export cols (settings {:duration_precision "minute"}) [[3599.5]])))))
       (testing "negative values are exported as text, since Excel cannot show negative times"
         (is (= [["-0:01:12"] ["-1m 12s"]]
                [(second (xlsx-export cols (settings {}) [[-72]]))
                 (second (xlsx-export cols (settings {:duration_style "narrow"}) [[-72]]))])))
+      (testing "prefix and suffix are added to negative values written as text"
+        (is (= ["about -0:01:12 total"]
+               (second (xlsx-export cols (settings {:prefix "about ", :suffix " total"}) [[-72]])))))
       (testing "values stay in duration unit when rows are not formatted"
         (is (= [72.0]
                (second (xlsx-export cols (settings {}) [[72]] :format-rows? false))))))))

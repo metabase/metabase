@@ -362,7 +362,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     widget: "radio",
     getProps: (_column, settings) => ({
-      options: (["minutes", "seconds", "milliseconds"] as const).map(
+      options: (["minute", "second", "millisecond"] as const).map(
         (durationPrecision) => ({
           name: formatDurationSample({
             ...settings,

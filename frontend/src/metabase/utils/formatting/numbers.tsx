@@ -5,7 +5,6 @@ import type {
   CurrencyPosition,
   DurationStyle,
   DurationUnit,
-  TimeEnabled,
 } from "metabase-types/api";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
@@ -32,7 +31,7 @@ export type FormatNumberOptions = {
   currency_position?: CurrencyPosition;
   currency_style?: string;
   decimals?: string | number;
-  duration_precision?: TimeEnabled;
+  duration_precision?: DurationUnit;
   duration_style?: DurationStyle;
   duration_unit?: DurationUnit;
   maximumFractionDigits?: number;

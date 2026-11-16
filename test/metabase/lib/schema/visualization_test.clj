@@ -130,13 +130,13 @@
     (is (= {:column_settings {"[\"name\",\"A\"]" {:number_style       "duration"
                                                   :duration_unit      "millisecond"
                                                   :duration_style     "narrow"
-                                                  :duration_precision "minutes"}
+                                                  :duration_precision "minute"}
                               "[\"name\",\"B\"]" {:number_style "duration"}}}
            (lib/normalize ::lib.schema.visualization/visualization-settings
                           {"column_settings" {"[\"name\",\"A\"]" {"number_style"       "duration"
                                                                   "duration_unit"      "millisecond"
                                                                   "duration_style"     "narrow"
-                                                                  "duration_precision" "minutes"}
+                                                                  "duration_precision" "minute"}
                                               "[\"name\",\"B\"]" {"number_style"       "duration"
                                                                   "duration_unit"      "fortnight"
                                                                   "duration_style"     "long"

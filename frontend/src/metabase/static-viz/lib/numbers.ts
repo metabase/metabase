@@ -4,7 +4,6 @@ import type {
   CurrencyStyle,
   DurationStyle,
   DurationUnit,
-  TimeEnabled,
 } from "metabase-types/api";
 
 export type NumberStyle =
@@ -21,7 +20,7 @@ export type NumberFormatOptions = {
   currency_position?: CurrencyPosition;
   number_separators?: string;
   decimals?: number;
-  duration_precision?: TimeEnabled;
+  duration_precision?: DurationUnit;
   duration_style?: DurationStyle;
   duration_unit?: DurationUnit;
   scale?: number;

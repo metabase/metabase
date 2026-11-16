@@ -364,7 +364,7 @@ describe("column settings", () => {
           number_style: "duration",
           duration_unit: "millisecond",
           duration_style: "narrow",
-          duration_precision: "milliseconds",
+          duration_precision: "millisecond",
           number_separators: ", ",
         }),
       ).toBe("51d 10h 5m 6s 500ms");
@@ -380,7 +380,7 @@ describe("column settings", () => {
 
       expect(computed.duration_unit).toBe("second");
       expect(computed.duration_style).toBe("digital");
-      expect(computed.duration_precision).toBe("seconds");
+      expect(computed.duration_precision).toBe("second");
     });
   });
 

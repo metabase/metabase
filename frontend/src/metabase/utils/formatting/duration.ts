@@ -2,11 +2,7 @@ import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
-import type {
-  DurationStyle,
-  DurationUnit,
-  TimeEnabled,
-} from "metabase-types/api";
+import type { DurationStyle, DurationUnit } from "metabase-types/api";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;
@@ -66,13 +62,13 @@ export function formatDurationLong(durationMs: number): string {
 export type FormatDurationOptions = {
   duration_unit?: DurationUnit;
   duration_style?: DurationStyle;
-  duration_precision?: TimeEnabled;
+  duration_precision?: DurationUnit;
   number_separators?: string;
 };
 
 export const DEFAULT_DURATION_UNIT: DurationUnit = "second";
 export const DEFAULT_DURATION_STYLE: DurationStyle = "digital";
-export const DEFAULT_DURATION_PRECISION: TimeEnabled = "seconds";
+export const DEFAULT_DURATION_PRECISION = "second";
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
 const MILLISECOND_MS = 1;
@@ -93,13 +89,9 @@ const DURATION_UNIT_MS: Record<DurationUnit, number> = {
   week: WEEK_MS,
 };
 
-const DURATION_PRECISION_MS: Record<TimeEnabled, number> = {
-  minutes: MINUTE_MS,
-  seconds: SECOND_MS,
-  milliseconds: MILLISECOND_MS,
-};
+const DURATION_PRECISIONS = ["minute", "second", "millisecond"] as const;
 
-const DURATION_PRECISIONS = ["minutes", "seconds", "milliseconds"] as const;
+type DurationPrecision = (typeof DURATION_PRECISIONS)[number];
 
 const DURATION_TICK_STEPS_MS = [
   ...[1, 2, 5, 10, 20, 50, 100, 200, 500].map(
@@ -185,7 +177,7 @@ function resolveDurationOptions({
       DURATION_UNIT_MS[DEFAULT_DURATION_UNIT],
     style: duration_style === "narrow" ? "narrow" : DEFAULT_DURATION_STYLE,
     precision,
-    precisionMs: DURATION_PRECISION_MS[precision],
+    precisionMs: DURATION_UNIT_MS[precision],
     decimalSeparator,
     groupingSeparator,
   };
@@ -219,7 +211,7 @@ export function formatDuration(
 
 function formatDigitalDuration(
   totalMs: number,
-  precision: TimeEnabled,
+  precision: DurationPrecision,
   {
     decimalSeparator,
     groupingSeparator,
@@ -231,10 +223,10 @@ function formatDigitalDuration(
   const milliseconds = padDigits(totalMs % SECOND_MS, 3);
 
   return match(precision)
-    .with("minutes", () => `${hours}:${minutes}`)
-    .with("seconds", () => `${hours}:${minutes}:${seconds}`)
+    .with("minute", () => `${hours}:${minutes}`)
+    .with("second", () => `${hours}:${minutes}:${seconds}`)
     .with(
-      "milliseconds",
+      "millisecond",
       () => `${hours}:${minutes}:${seconds}${decimalSeparator}${milliseconds}`,
     )
     .exhaustive();

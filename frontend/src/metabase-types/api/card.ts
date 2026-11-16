@@ -22,7 +22,6 @@ import type {
   CurrencyStyle,
   DurationStyle,
   DurationUnit,
-  TimeEnabled,
   TimeOnlyOptions,
 } from "./formatting";
 import type { ModerationReview } from "./moderation";
@@ -312,7 +311,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
-  duration_precision?: TimeEnabled;
+  duration_precision?: DurationUnit;
   duration_style?: DurationStyle;
   duration_unit?: DurationUnit;
   isExclude?: boolean;

@@ -166,36 +166,40 @@
                              (not grouping) (str/replace #"," ""))
         ;; A small cache of decimal-digits->formatter to avoid creating new ones all the time. This cache is bound by
         ;; the maximum number of decimal digits we can format which is 20 (constrained by `digits-after-decimal`).
-        fmtr-cache         (volatile! {})]
+        fmtr-cache         (volatile! {})
+        format-decimal     (fn [scaled-value]
+                             (let [decimals-in-value (digits-after-decimal scaled-value)
+                                   decimal-digits    (cond
+                                                       decimals    decimals ;; if user ever specifies # of decimals, use that
+                                                       integral?   0
+                                                       scientific? (min 2 (max decimals-in-value
+                                                                               ;; Scientific representation can introduce its own decimal
+                                                                               ;; digits even in integer numbers. Count how many integer
+                                                                               ;; digits are in the number (but limit to 2).
+                                                                               (int (Math/log10 (abs scaled-value)))))
+                                                       currency?   (get-in currency/currency [currency :decimal_digits])
+                                                       percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
+                                                       :else       (if (>= (abs scaled-value) 1)
+                                                                     (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
+                                                                     (let [n-figs (sig-figs-after-decimal scaled-value)]
+                                                                       (if (> n-figs 2)
+                                                                         (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
+                                                                         decimals-in-value))))
+                                   fmtr              (or (@fmtr-cache decimal-digits)
+                                                         (let [fmt-str (cond-> base
+                                                                         (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                                                                         scientific?                  (str "E0"))
+                                                               fmtr    (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
+                                                           (vswap! fmtr-cache assoc decimal-digits fmtr)
+                                                           fmtr))]
+                               (cond-> (.format ^DecimalFormat fmtr scaled-value)
+                                 (and (not currency?) (not decimals))
+                                 (strip-trailing-zeroes decimal))))]
     (fn [value]
       (if (number? value)
-        (let [scaled-value      (cond-> (* value (or scale 1))
-                                  percent?
-                                  (* 100))
-              decimals-in-value (digits-after-decimal scaled-value)
-              decimal-digits    (cond
-                                  decimals    decimals ;; if user ever specifies # of decimals, use that
-                                  integral?   0
-                                  scientific? (min 2 (max decimals-in-value
-                                                          ;; Scientific representation can introduce its own decimal
-                                                          ;; digits even in integer numbers. Count how many integer
-                                                          ;; digits are in the number (but limit to 2).
-                                                          (int (Math/log10 (abs scaled-value)))))
-                                  currency?   (get-in currency/currency [currency :decimal_digits])
-                                  percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                                  :else       (if (>= (abs scaled-value) 1)
-                                                (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                                (let [n-figs (sig-figs-after-decimal scaled-value)]
-                                                  (if (> n-figs 2)
-                                                    (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
-                                                    decimals-in-value))))
-              fmtr              (or (@fmtr-cache decimal-digits)
-                                    (let [fmt-str (cond-> base
-                                                    (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                                                    scientific?                  (str "E0"))
-                                          fmtr    (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
-                                      (vswap! fmtr-cache assoc decimal-digits fmtr)
-                                      fmtr))]
+        (let [scaled-value (cond-> (* value (or scale 1))
+                             percent?
+                             (* 100))]
           (->NumericWrapper
            (let [inline-currency? (and currency?
                                        (or
@@ -214,9 +218,7 @@
                                                                    :precision duration-precision
                                                                    :decimal   decimal
                                                                    :grouping  grouping})
-                           (cond-> (.format ^DecimalFormat fmtr scaled-value)
-                             (and (not currency?) (not decimals))
-                             (strip-trailing-zeroes decimal))))
+                           (format-decimal scaled-value)))
              (when percent?
                (.append sb "%"))
              (when (and inline-currency? currency-after?)

@@ -35,21 +35,21 @@
 
 (deftest ^:parallel duration-precision-test
   (are [value precision expected] (= expected (format-duration value {:precision precision}))
-    3723.25 "minutes"      "1:02"
-    3723.25 "seconds"      "1:02:03"
-    3723.25 "milliseconds" "1:02:03.250"
-    59.6    "seconds"      "0:01:00"))
+    3723.25 "minute"      "1:02"
+    3723.25 "second"      "1:02:03"
+    3723.25 "millisecond" "1:02:03.250"
+    59.6    "second"      "0:01:00"))
 
 (deftest ^:parallel narrow-style-test
   (are [value options expected] (= expected (format-duration value (assoc options :style "narrow")))
     3723    {}                          "1h 2m 3s"
     108245  {}                          "1d 6h 4m 5s"
     3600    {}                          "1h"
-    3723.25 {:precision "milliseconds"} "1h 2m 3s 250ms"
-    3723.25 {:precision "minutes"}      "1h 2m"
+    3723.25 {:precision "millisecond"} "1h 2m 3s 250ms"
+    3723.25 {:precision "minute"}      "1h 2m"
     0       {}                          "0s"
-    10      {:precision "minutes"}      "0m"
-    0.0002  {:precision "milliseconds"} "0ms"))
+    10      {:precision "minute"}      "0m"
+    0.0002  {:precision "millisecond"} "0ms"))
 
 (deftest ^:parallel negative-value-test
   (is (= "-0:01:12" (format-duration -72)))
@@ -58,12 +58,12 @@
 
 (deftest ^:parallel number-separators-test
   (is (= "1.234:05:06,500"
-         (format-duration 4442706.5 {:precision "milliseconds"} ",.")))
+         (format-duration 4442706.5 {:precision "millisecond"} ",.")))
   (is (= "1234:05:06" (format-duration 4442706 {} ".")))
   (is (= "1 000d" (format-duration 86400000 {:style "narrow"} ", "))))
 
 (deftest ^:parallel unknown-options-test
-  (is (= "0:01:12" (format-duration 72 {:unit "seconds", :style "clock", :precision "hours"})))
+  (is (= "0:01:12" (format-duration 72 {:unit "second", :style "clock", :precision "hours"})))
   (is (= "0:01:12" (format-duration 72 {:unit nil, :style nil, :precision nil}))))
 
 (deftest ^:parallel large-value-test
@@ -81,4 +81,4 @@
   (is (= 7.0 (duration/duration-days 1 "week" nil)))
   (is (= -1.0 (duration/duration-days -86400 nil nil)))
   (testing "value is rounded to precision"
-    (is (= (/ 1.0 24) (duration/duration-days 3599.5 nil "minutes")))))
+    (is (= (/ 1.0 24) (duration/duration-days 3599.5 nil "minute")))))

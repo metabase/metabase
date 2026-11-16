@@ -105,18 +105,18 @@
 
 (def ^:private duration-format-strings
   "Format strings for duration columns by style and precision."
-  {"digital" {"minutes"      "[h]:mm"
-              "seconds"      "[h]:mm:ss"
-              "milliseconds" "[h]:mm:ss.000"}
-   "narrow"  {"minutes"      "[h]\"h \"m\"m\""
-              "seconds"      "[h]\"h \"m\"m \"s\"s\""
-              "milliseconds" "[h]\"h \"m\"m \"s.000\"s\""}})
+  {"digital" {"minute"      "[h]:mm"
+              "second"      "[h]:mm:ss"
+              "millisecond" "[h]:mm:ss.000"}
+   "narrow"  {"minute"      "[h]\"h \"m\"m\""
+              "second"      "[h]\"h \"m\"m \"s\"s\""
+              "millisecond" "[h]\"h \"m\"m \"s.000\"s\""}})
 
 (defn- duration-format-string
   "Returns the format string for a duration column, whose cells hold the duration in days."
   [{duration-style :duration_style, duration-precision :duration_precision}]
   (let [by-precision (get duration-format-strings duration-style (duration-format-strings "digital"))]
-    (get by-precision duration-precision (by-precision "seconds"))))
+    (get by-precision duration-precision (by-precision "second"))))
 
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
@@ -499,15 +499,18 @@
   [value {duration-unit      :duration_unit
           duration-style     :duration_style
           duration-precision :duration_precision
-          number-separators  :number_separators}]
+          number-separators  :number_separators
+          :keys              [prefix suffix]}]
   (let [days               (formatter/duration-days value duration-unit duration-precision)
         [decimal grouping] (or number-separators ".,")]
     (if (neg? days)
-      (formatter/format-duration value {:unit      duration-unit
-                                        :style     duration-style
-                                        :precision duration-precision
-                                        :decimal   decimal
-                                        :grouping  grouping})
+      (str prefix
+           (formatter/format-duration value {:unit      duration-unit
+                                             :style     duration-style
+                                             :precision duration-precision
+                                             :decimal   decimal
+                                             :grouping  grouping})
+           suffix)
       days)))
 
 (defn- cell-value

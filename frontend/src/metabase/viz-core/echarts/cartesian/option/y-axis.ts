@@ -12,7 +12,7 @@ import { getGoalLineValue } from "./goal-line";
 import {
   type ValueAxisOption,
   getDurationYAxisTicks,
-  getResponsiveYAxisSegments,
+  getResponsiveDurationYAxisTicks,
   getResponsiveYAxisTicks,
 } from "./y-axis-ticks";
 
@@ -97,12 +97,7 @@ function getYAxisTicks(
     isResponsive: isResponsiveAxis(axisModel, settings),
   })
     .with({ isDuration: true, isResponsive: true }, () =>
-      getDurationYAxisTicks(
-        extent,
-        axis,
-        getResponsiveYAxisSegments(height),
-        columnSettings,
-      ),
+      getResponsiveDurationYAxisTicks(extent, axis, height, columnSettings),
     )
     .with({ isDuration: true, isResponsive: false }, () =>
       getDurationYAxisTicks(

@@ -67,7 +67,7 @@
                                                :prefix       "about "
                                                :suffix       " total"})))
       (is (= "1.234:05:06,500" (fmt-fn 4442706.5 {:number_style       "duration"
-                                                  :duration_precision "milliseconds"
+                                                  :duration_precision "millisecond"
                                                   :number_separators  ",."})))
       (is (= "1:02:03" (fmt-fn 3723.25 {:number_style "duration"
                                         :decimals     3}))))))

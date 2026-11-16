@@ -76,15 +76,15 @@ describe("formatDuration", () => {
   });
 
   it("rounds to configured precision", () => {
-    expect(formatDuration(3723.25, { duration_precision: "minutes" })).toBe(
+    expect(formatDuration(3723.25, { duration_precision: "minute" })).toBe(
       "1:02",
     );
-    expect(formatDuration(3723.25, { duration_precision: "seconds" })).toBe(
+    expect(formatDuration(3723.25, { duration_precision: "second" })).toBe(
       "1:02:03",
     );
-    expect(
-      formatDuration(3723.25, { duration_precision: "milliseconds" }),
-    ).toBe("1:02:03.250");
+    expect(formatDuration(3723.25, { duration_precision: "millisecond" })).toBe(
+      "1:02:03.250",
+    );
     expect(formatDuration(59.6)).toBe("0:01:00");
   });
 
@@ -97,13 +97,13 @@ describe("formatDuration", () => {
     expect(
       formatDuration(3723.25, {
         duration_style: "narrow",
-        duration_precision: "milliseconds",
+        duration_precision: "millisecond",
       }),
     ).toBe("1h 2m 3s 250ms");
     expect(
       formatDuration(3723.25, {
         duration_style: "narrow",
-        duration_precision: "minutes",
+        duration_precision: "minute",
       }),
     ).toBe("1h 2m");
   });
@@ -113,13 +113,13 @@ describe("formatDuration", () => {
     expect(
       formatDuration(0.0002, {
         duration_style: "narrow",
-        duration_precision: "milliseconds",
+        duration_precision: "millisecond",
       }),
     ).toBe("0ms");
     expect(
       formatDuration(10, {
         duration_style: "narrow",
-        duration_precision: "minutes",
+        duration_precision: "minute",
       }),
     ).toBe("0m");
   });
@@ -133,7 +133,7 @@ describe("formatDuration", () => {
   it("uses configured number separators", () => {
     expect(
       formatDuration(4_442_706.5, {
-        duration_precision: "milliseconds",
+        duration_precision: "millisecond",
         number_separators: ",.",
       }),
     ).toBe("1.234:05:06,500");
@@ -205,7 +205,7 @@ describe("getDurationTickInterval", () => {
     expect(
       getDurationTickInterval(100, 5, {
         duration_unit: "millisecond",
-        duration_precision: "milliseconds",
+        duration_precision: "millisecond",
       }),
     ).toBe(20);
     expect(getDurationTickInterval(90, 4, { duration_unit: "minute" })).toBe(
@@ -223,10 +223,10 @@ describe("getDurationTickInterval", () => {
   it("never steps below shown precision", () => {
     expect(getDurationTickInterval(0, 4)).toBe(1);
     expect(
-      getDurationTickInterval(60, 4, { duration_precision: "minutes" }),
+      getDurationTickInterval(60, 4, { duration_precision: "minute" }),
     ).toBe(60);
     expect(
-      getDurationTickInterval(2, 4, { duration_precision: "milliseconds" }),
+      getDurationTickInterval(2, 4, { duration_precision: "millisecond" }),
     ).toBe(0.5);
   });
 });

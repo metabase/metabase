@@ -130,7 +130,7 @@
                 [:duration_unit                  [:enum "nanosecond" "microsecond" "millisecond" "second" "minute"
                                                   "hour" "day" "week"]]
                 [:duration_style                 [:enum "digital" "narrow"]]
-                [:duration_precision             [:enum "minutes" "seconds" "milliseconds"]]
+                [:duration_precision             [:enum "minute" "second" "millisecond"]]
                 [:scale                          number?]
                 [:prefix                         :string]
                 [:suffix                         :string]
