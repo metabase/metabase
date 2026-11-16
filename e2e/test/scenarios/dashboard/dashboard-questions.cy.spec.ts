@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const DASHBOARD_ONE = "Dashboard One";
@@ -141,7 +142,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "anotherDashboardId" },
       );
 
-      cy.get("@anotherDashboardId").then((anotherDashboardId) => {
+      cy.get<DashboardId>("@anotherDashboardId").then((anotherDashboardId) => {
         H.createQuestion(
           {
             name: "Total Orders",
@@ -188,7 +189,7 @@ describe("Dashboard > Dashboard Questions", () => {
     it("can bulk move questions into a dashboard and tell users which dashboards will be affected", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-      new Array(20).fill("pikachu").forEach((_, i) => {
+      Cypress._.times(20, (i) => {
         H.createQuestion({
           name: `Question ${i + 1}`,
           collection_id: S.THIRD_COLLECTION_ID,
@@ -211,14 +212,14 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // we shouldn't be making 20 requests here
       // their staggered tail can land past cy.wait's default 5s under CPU load, so allow more time
-      cy.wait(new Array(20).fill("@updateCard"), { timeout: 30000 });
+      cy.wait(new Array<string>(20).fill("@updateCard"), { timeout: 30000 });
 
       H.undoToast().findByText("Moved 20 questions");
 
       // 20+ dashcard queries stagger behind the concurrency limit; allow their tail past the 5s default
       H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
 
-      new Array(20).fill("slowbro").forEach((_, i) => {
+      Cypress._.times(20, (i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
       });
 
@@ -335,7 +336,10 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("public-link-input")
         .invoke("val")
         .should("not.be.empty")
-        .then((publicLink) => {
+        .then((publicLink: unknown) => {
+          if (typeof publicLink !== "string") {
+            throw new Error("Expected a public link URL");
+          }
           cy.signOut();
           cy.visit(publicLink);
           cy.findByTestId("embed-frame-header")
@@ -412,7 +416,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "dashboardWithTitleId" },
       );
 
-      cy.get("@dashboardWithTitleId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardWithTitleId").then((dashboardId) => {
         // add a text card to the dashboard
         H.visitDashboard(dashboardId);
         H.editDashboard();
@@ -791,7 +795,7 @@ function seedMigrationToolData() {
       collection_id: S.FIRST_COLLECTION_ID,
     },
   }).then(({ body: { dashboard_id, card_id } }) => {
-    cy.get("@questionThreeCard").then((questionThreeCard) => {
+    cy.get<DashboardCard>("@questionThreeCard").then((questionThreeCard) => {
       H.updateDashboardCards({
         dashboard_id,
         cards: [
@@ -813,7 +817,7 @@ function seedMigrationToolData() {
       collection_id: S.FIRST_COLLECTION_ID,
     },
   }).then(({ body: { dashboard_id, card_id } }) => {
-    cy.get("@questionThreeCard").then((questionThreeCard) => {
+    cy.get<DashboardCard>("@questionThreeCard").then((questionThreeCard) => {
       H.updateDashboardCards({
         dashboard_id,
         cards: [
@@ -825,7 +829,7 @@ function seedMigrationToolData() {
   });
 }
 
-function selectCollectionItem(name) {
+function selectCollectionItem(name: string) {
   cy.findAllByTestId("collection-entry-name")
     .contains(name)
     .parent()
