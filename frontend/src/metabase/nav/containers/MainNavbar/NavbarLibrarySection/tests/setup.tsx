@@ -30,8 +30,8 @@ export const createChildCollection = (
     type: "library-metrics",
     is_library_root: true,
     location: "/1/",
-    here: ["card"],
-    below: ["card"],
+    here: ["metric"],
+    below: [],
     ...overrides,
   });
 export const createLibraryCollection = (
@@ -42,8 +42,8 @@ export const createLibraryCollection = (
     name: "Library",
     type: "library",
     location: "/",
-    here: ["card"],
-    below: ["card"],
+    here: [],
+    below: ["table", "metric"],
     ...overrides,
   });
 export const setup = ({
