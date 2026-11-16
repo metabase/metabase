@@ -1740,3 +1740,36 @@
               mbql5))
       (is (=? legacy (lib.convert/->legacy-MBQL mbql5)))
       (is (some? (-> mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5))))))
+
+(deftest ^:parallel discrete-percentile-not-supported-in-legacy-mbql-test
+  (testing "legacy MBQL has no discrete percentiles; converting :percentile-type must fail rather than drop the option"
+    (let [price    (meta/field-metadata :venues :price)
+          discrete (fn [clause]
+                     (lib/update-options clause assoc :percentile-type :discrete))]
+      (doseq [clause [(discrete (lib/percentile price 0.9))
+                      (discrete (lib/median price))]]
+        (testing (pr-str clause)
+          (testing "as an aggregation in a query"
+            (is (thrown-with-msg?
+                 #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                 #"The :percentile-type option is not supported in legacy MBQL"
+                 (lib.convert/->legacy-MBQL (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                                (lib/aggregate clause))))))
+          (testing "as a standalone clause"
+            (is (thrown-with-msg?
+                 #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                 #"The :percentile-type option is not supported in legacy MBQL"
+                 (lib.convert/->legacy-MBQL clause))))))
+      (testing "the default (continuous) percentile still converts"
+        (is (=? [:percentile [:field (meta/id :venues :price) {:base-type :type/Integer}] 0.9]
+                (lib.convert/->legacy-MBQL (lib/percentile price 0.9))))
+        (is (=? [:median [:field (meta/id :venues :price) {:base-type :type/Integer}]]
+                (lib.convert/->legacy-MBQL (lib/median price)))))
+      (testing "->legacy-MBQL-lossy, for code that only reads the query's structure, drops the option instead"
+        (is (=? [:percentile [:field (meta/id :venues :price) {:base-type :type/Integer}] 0.9]
+                (lib.convert/->legacy-MBQL-lossy (discrete (lib/percentile price 0.9)))))
+        (is (=? {:type  :query
+                 :query {:source-table (meta/id :venues)
+                         :aggregation  [[:median [:field (meta/id :venues :price) {:base-type :type/Integer}]]]}}
+                (lib.convert/->legacy-MBQL-lossy (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                                     (lib/aggregate (discrete (lib/median price)))))))))))

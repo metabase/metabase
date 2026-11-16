@@ -36,6 +36,9 @@
   (testing `::h2x/percentile-cont
     (is (= ["PERCENTILE_CONT(0.9) within group (order by a)"]
            (sql/format-expr [::h2x/percentile-cont :a 0.9]))))
+  (testing `::h2x/percentile-disc
+    (is (= ["PERCENTILE_DISC(0.9) within group (order by a)"]
+           (sql/format-expr [::h2x/percentile-disc :a 0.9]))))
   (testing `::h2x/at-time-zone
     (is (= ["(a AT TIME ZONE 'US/Pacific')"]
            (sql/format-expr [::h2x/at-time-zone :a "US/Pacific"])))))

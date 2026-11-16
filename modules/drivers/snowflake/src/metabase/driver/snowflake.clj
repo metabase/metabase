@@ -125,6 +125,7 @@
                               :uploads                                true
                               :metadata/table-existence-check         true
                               :native-pivot-tables                    true
+                              :percentile-aggregations/discrete       true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true

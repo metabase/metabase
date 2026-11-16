@@ -19,6 +19,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.premium-features.core :as premium-features]
@@ -972,3 +973,18 @@
         (is (= [[1345 "Alice Connelly"]]
                (mt/formatted-rows [int str] result)
                (mt/formatted-rows [int str] (qp/process-query native-query))))))))
+
+(deftest discrete-percentile-test
+  ;; no Oracle server needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp                  (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :oracle}})
+        price               (lib.metadata/field mp (meta/id :venues :price))
+        compile-aggregation (fn [aggregation]
+                              (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                              (lib/aggregate aggregation)))))
+        discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+    (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+      (discrete (lib/percentile price 0.9)) "PERCENTILE_DISC(0.9) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (discrete (lib/median price))         "PERCENTILE_DISC(0.5) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (lib/percentile price 0.9)            "PERCENTILE_CONT(0.9) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (lib/median price)                    "MEDIAN(\"PUBLIC\".\"VENUES\".\"PRICE\")")))

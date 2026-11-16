@@ -1515,6 +1515,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
+  ->legacy-MBQL-lossy
   ->mbql5
   legacy-default-join-alias
   without-cleaning]

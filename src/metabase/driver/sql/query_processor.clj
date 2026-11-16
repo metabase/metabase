@@ -1042,18 +1042,34 @@
     :%count.*))
 
 (defmethod ->honeysql [:sql :avg]    [driver [_ _opts field]] [:avg        (->honeysql driver field)])
-(defmethod ->honeysql [:sql :median] [driver [_ _opts field]] [:median     (->honeysql driver field)])
 (defmethod ->honeysql [:sql :stddev] [driver [_ _opts field]] [:stddev_pop (->honeysql driver field)])
 (defmethod ->honeysql [:sql :var]    [driver [_ _opts field]] [:var_pop    (->honeysql driver field)])
 (defmethod ->honeysql [:sql :sum]    [driver [_ _opts field]] [:sum        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :min]    [driver [_ _opts field]] [:min        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :max]    [driver [_ _opts field]] [:max        (->honeysql driver field)])
 
+(defn discrete-percentile?
+  "Whether a `:percentile` or `:median` clause asks for a discrete percentile, i.e. an actual value from the column
+  rather than one interpolated between the two nearest values. Drivers that declare the
+  `:percentile-aggregations/discrete` feature must honor this in their `:percentile` and `:median` implementations;
+  the QP rejects discrete percentiles for drivers that do not declare it."
+  [[_tag opts :as _clause]]
+  (= (:percentile-type opts) :discrete))
+
+(defmethod ->honeysql [:sql :median]
+  [driver [_ opts field :as clause]]
+  (if (discrete-percentile? clause)
+    ;; `MEDIAN` has no discrete variant in any dialect; `PERCENTILE_DISC(0.5)` is the discrete median.
+    (->honeysql driver [:percentile opts field 0.5])
+    [:median (->honeysql driver field)]))
+
 (defmethod ->honeysql [:sql :percentile]
-  [driver [_ _opts field p]]
+  [driver [_ _opts field p :as clause]]
   (let [field (->honeysql driver field)
         p     (->honeysql driver p)]
-    [::h2x/percentile-cont field p]))
+    (if (discrete-percentile? clause)
+      [::h2x/percentile-disc field p]
+      [::h2x/percentile-cont field p])))
 
 (defmethod ->honeysql [:sql :distinct]
   [driver [_ _opts field]]

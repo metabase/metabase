@@ -80,6 +80,7 @@
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
                               :now                              true
+                              :percentile-aggregations/discrete true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
                               :schemas                          true

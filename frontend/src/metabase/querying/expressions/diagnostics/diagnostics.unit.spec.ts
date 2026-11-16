@@ -196,6 +196,16 @@ describe("diagnostics", () => {
         },
       );
 
+      it("should accept the discrete option for Median and Percentile", () => {
+        expect(err(`Median([Total])`, "aggregation")).toBeUndefined();
+        expect(
+          err(`Median([Total], "discrete")`, "aggregation"),
+        ).toBeUndefined();
+        expect(
+          err(`Percentile([Total], 0.9, "discrete")`, "aggregation"),
+        ).toBeUndefined();
+      });
+
       it("should reject when there is not enough arguments for interval", () => {
         expect(err(`interval()`)).toBe(`Function interval expects 3 arguments`);
         expect(err(`interval([Created At])`)).toBe(

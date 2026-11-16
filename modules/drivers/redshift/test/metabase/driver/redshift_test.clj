@@ -17,8 +17,10 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+   [metabase.query-processor.compile :as qp.compile]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -1085,3 +1087,21 @@
               (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
+
+(deftest discrete-percentile-test
+  ;; no Redshift cluster needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp                  (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :redshift}})
+        price               (lib.metadata/field mp (meta/id :venues :price))
+        compile-aggregation (fn [aggregation]
+                              (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                              (lib/aggregate aggregation)))))
+        discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+    (testing "Redshift's only discrete percentile aggregate is APPROXIMATE PERCENTILE_DISC"
+      (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+        (discrete (lib/percentile price 0.9)) "APPROXIMATE PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")"
+        (discrete (lib/median price))         "APPROXIMATE PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")"))
+    (testing "continuous percentiles still use PERCENTILE_CONT"
+      (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+        (lib/percentile price 0.9) "PERCENTILE_CONT(0.9) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+        (lib/median price)         "PERCENTILE_CONT(0.5) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"))))

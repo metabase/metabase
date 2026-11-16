@@ -93,6 +93,7 @@
                               :metadata/table-existence-check true
                               :native-pivot-tables            true
                               :now                            true
+                              :percentile-aggregations/discrete true
                               :persist-models                 true
                               :rename                         true
                               :schemas                        true
@@ -677,8 +678,8 @@
        driver [:value opts raw-value]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
-  [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
+  [driver [_ opts arg]]
+  (sql.qp/->honeysql driver [:percentile opts arg 0.5]))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]

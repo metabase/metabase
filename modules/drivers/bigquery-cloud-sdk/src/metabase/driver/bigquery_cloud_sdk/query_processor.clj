@@ -615,14 +615,16 @@
                     quantiles)]
     [::approx-quantiles expr offset quantiles]))
 
+;; `APPROX_QUANTILES` returns actual values from the column and never interpolates, so it computes a discrete
+;; percentile whatever the `:percentile-type` option says, and the option needs no handling here.
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ _opts expr p]]
   (let [[offset quantiles] (percentile->quantile p)]
     (approx-quantiles (sql.qp/->honeysql driver expr) offset quantiles)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
-  [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
+  [driver [_ opts arg]]
+  (sql.qp/->honeysql driver [:percentile opts arg 0.5]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |

@@ -24,6 +24,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -1506,3 +1508,30 @@
              (is (= "scopeTempTablesToConnection"
                     (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
+
+(deftest discrete-percentile-test
+  ;; no SQL Server needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (letfn [(metadata-provider [major-version]
+            (lib.tu/merged-mock-metadata-provider
+             meta/metadata-provider
+             {:database {:engine       :sqlserver
+                         :dbms-version {:semantic-version [major-version 0]}}}))
+          (price [mp]
+            (lib.metadata/field mp (meta/id :venues :price)))
+          (compile-aggregation [mp aggregation]
+            (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                            (lib/aggregate aggregation)))))
+          (discrete [clause]
+            (lib/update-options clause assoc :percentile-type :discrete))]
+    (testing "SQL Server 2022 (major version 16) and newer"
+      (let [mp (metadata-provider 16)]
+        (are [aggregation expected] (str/includes? (compile-aggregation mp aggregation) expected)
+          (discrete (lib/percentile (price mp) 0.9)) "APPROX_PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")"
+          (discrete (lib/median (price mp)))         "APPROX_PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")"
+          (lib/percentile (price mp) 0.9)            "APPROX_PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")"
+          (lib/median (price mp))                    "APPROX_PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY \"PUBLIC\".\"VENUES\".\"PRICE\")")))
+    (testing "older versions have no APPROX_PERCENTILE_DISC, so the QP rejects discrete percentiles"
+      (let [mp (metadata-provider 15)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported by sqlserver driver"
+                              (compile-aggregation mp (discrete (lib/median (price mp))))))))))

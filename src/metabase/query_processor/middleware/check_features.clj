@@ -16,7 +16,7 @@
   [metadata-providerable feature]
   (let [database (lib.metadata/database metadata-providerable)]
     (when-not (driver.u/supports? driver/*driver* feature database)
-      (throw (ex-info (tru "{0} is not supported by {1} driver." (name feature) (name driver/*driver*))
+      (throw (ex-info (tru "{0} is not supported by {1} driver." (u/qualified-name feature) (name driver/*driver*))
                       {:type    qp.error-type/unsupported-feature
                        :feature feature
                        :driver  driver/*driver*})))))
@@ -31,6 +31,10 @@
      (fn [_query _path-type _stage-or-join-path clause]
        (when (lib/clause-of-type? clause :stddev)
          (vswap! required-features conj! :standard-deviation-aggregations))
+       (when (and (or (lib/clause-of-type? clause :percentile)
+                      (lib/clause-of-type? clause :median))
+                  (= (:percentile-type (lib/options clause)) :discrete))
+         (vswap! required-features conj! :percentile-aggregations/discrete))
        nil))
     (lib.walk/walk
      query

@@ -86,6 +86,7 @@
                               :identifiers-with-spaces          true
                               :native-pivot-tables              true
                               :now                              true
+                              :percentile-aggregations/discrete true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
                               :regex/lookaheads-and-lookbehinds false

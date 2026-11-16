@@ -138,15 +138,23 @@
 
 (defn tuple-clause-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple`. Use this for fixed-length
-  MBQL clause schemas. Use [[catn-clause-schema]] for variable-length schemas."
+  MBQL clause schemas. Use [[catn-clause-schema]] for variable-length schemas.
+
+  A map `{:options <schema>}` before the argument schemas replaces `::common/options` as the schema for the options
+  map, for clauses with their own options, e.g. `[:merge ::common/options ::my-clause-options]`."
   [tag & args]
   {:pre [(simple-keyword? tag)]}
-  (into [:tuple
-         {:error/message    (str "Valid " tag " clause")
-          :decode/normalize normalize-clause}
-         [:= {:decode/normalize common/normalize-keyword} tag]
-         [:ref ::common/options]]
-        args))
+  (let [[{options-schema :options} args] (if (map? (first args))
+                                            [(first args) (rest args)]
+                                            [nil args])]
+    (into [:tuple
+           {:error/message    (str "Valid " tag " clause")
+            :decode/normalize normalize-clause}
+           [:= {:decode/normalize common/normalize-keyword} tag]
+           (if options-schema
+             [:schema options-schema]
+             [:ref ::common/options])]
+          args)))
 
 ;;;; Even more convenient functions!
 

@@ -843,6 +843,11 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations
     ;;
+    ;; Does the driver support discrete percentiles, i.e. `:percentile` and `:median` clauses with the option
+    ;; `:percentile-type :discrete`, which return an actual value from the column instead of interpolating?
+    ;; Requires `:percentile-aggregations`.
+    :percentile-aggregations/discrete
+    ;;
     ;; Does the driver support date extraction functions? (i.e get year component of a datetime column)
     ;; DEFAULTS TO TRUE
     :temporal-extract

@@ -284,8 +284,7 @@
   "percentile")
 
 (lib.hierarchy/derive ::no-semantic-type ::aggregation)
-(doseq [tag [:percentile :var]]
-  (lib.hierarchy/derive tag ::no-semantic-type))
+(lib.hierarchy/derive :var ::no-semantic-type)
 
 ;; The default preserves the semantic type.
 ;; But for ::no-semantic-type we should drop
@@ -294,6 +293,15 @@
   [query stage-number clause]
   (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
           :semantic-type))
+
+;; a continuous percentile interpolates, so the result is not a value of the column and the semantic type does not
+;; carry over; a discrete percentile (`:percentile-type :discrete` in the options) returns an actual value of the
+;; column, so it keeps the semantic type like `:min`.
+(defmethod lib.metadata.calculation/metadata-method :percentile
+  [query stage-number [_tag opts :as clause]]
+  (if (= (:percentile-type opts) :discrete)
+    ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+    ((get-method lib.metadata.calculation/metadata-method ::no-semantic-type) query stage-number clause)))
 
 ;;; we don't currently have sophisticated logic for generating nice display names for filter clauses.
 ;;;

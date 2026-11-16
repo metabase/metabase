@@ -127,13 +127,22 @@ const AGGREGATION = defineClauses(
       displayName: "Median",
       type: "aggregation",
       requiresFeature: "percentile-aggregations",
+      hasOptions: true,
       description: () => t`Returns the median of all the values of a column.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The numeric column whose values to average.`,
+          description: t`The numeric column whose median to find.`,
           example: dimension(t`Quantity`),
+        },
+        {
+          name: "percentileType",
+          type: "string",
+          description: t`Optional. Set to \`"discrete"\` to return an actual value from the column instead of interpolating between values.`,
+          example: "discrete",
+          template: '"discrete"',
+          optional: true,
         },
       ],
     },
@@ -251,6 +260,7 @@ const AGGREGATION = defineClauses(
       displayName: "Percentile",
       type: "aggregation",
       requiresFeature: "percentile-aggregations",
+      hasOptions: true,
       description: () =>
         t`Returns the value of the column at the percentile value.`,
       args: () => [
@@ -265,6 +275,14 @@ const AGGREGATION = defineClauses(
           type: "number",
           description: t`The value of the percentile.`,
           example: 0.9,
+        },
+        {
+          name: "percentileType",
+          type: "string",
+          description: t`Optional. Set to \`"discrete"\` to return an actual value from the column instead of interpolating between values.`,
+          example: "discrete",
+          template: '"discrete"',
+          optional: true,
         },
       ],
     },

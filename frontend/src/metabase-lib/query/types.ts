@@ -337,6 +337,7 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "percentile-type"?: "continuous" | "discrete";
   "base-type"?: string;
   "effective-type"?: string;
   mode?: DatetimeMode;

@@ -74,6 +74,7 @@
                                 :ee.data-testing.expectations.equals/->EqualsRows 1
                                 :ee.data-testing.expectations.equals/->EqualsSql  1
                                 :lib.convert/->legacy-MBQL                        10
+                                :lib.convert/->legacy-MBQL-lossy                  2
                                 :lib.equality/find-column-indexes-for-refs        1
                                 :malli.core/explain                               1
                                 :malli.core/explainer                             1
@@ -86,7 +87,7 @@
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
                                 :discouraged-namespace                   15
-                                :discouraged-var                         14
+                                :discouraged-var                         18
                                 :inline-def                              1
                                 :main-without-gen-class                  1
                                 :metabase/defsetting-must-specify-export 1

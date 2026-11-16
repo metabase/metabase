@@ -2981,3 +2981,21 @@
           (is (= :ok (do (driver/init-workspace-isolation! :postgres database workspace) :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
+
+(deftest ^:parallel discrete-percentile-test
+  (mt/test-driver :postgres
+    (testing ":percentile-type :discrete compiles to PERCENTILE_DISC; the default stays PERCENTILE_CONT"
+      (let [mp       (mt/metadata-provider)
+            price    (lib.metadata/field mp (mt/id :venues :price))
+            discrete (fn [clause]
+                       (lib/update-options clause assoc :percentile-type :discrete))
+            compile  (fn [clause]
+                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                           (lib/aggregate clause)
+                           qp.compile/compile
+                           :query))]
+        (are [clause re] (re-find re (compile clause))
+          (discrete (lib/percentile price 0.9)) #"PERCENTILE_DISC\(0\.9\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)"
+          (discrete (lib/median price))         #"PERCENTILE_DISC\(0\.5\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)"
+          (lib/percentile price 0.9)            #"PERCENTILE_CONT\(0\.9\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)"
+          (lib/median price)                    #"PERCENTILE_CONT\(0\.5\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)")))))

@@ -7,6 +7,15 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature `:percentile-aggregations/discrete`: the driver can compute discrete percentiles, i.e.
+  `:percentile` and `:median` clauses whose options carry `:percentile-type :discrete`, which return an actual value
+  from the column instead of interpolating between the two nearest values. It defaults to false for every driver,
+  including `:sql`. A driver that declares it must honor the option in its `:percentile` and `:median`
+  implementations; `metabase.driver.sql.query-processor/discrete-percentile?` tells whether a clause asks for one. The
+  `:sql` default emits `PERCENTILE_DISC(p) WITHIN GROUP (ORDER BY x)` for a discrete `:percentile`, and compiles a
+  discrete `:median` as a discrete `:percentile` of 0.5, so a driver whose database has standard `PERCENTILE_DISC` only
+  needs to declare the feature. `metabase.util.honey-sql-2/percentile-disc` is the HoneySQL function for it.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of

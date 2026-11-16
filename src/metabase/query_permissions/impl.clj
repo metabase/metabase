@@ -96,9 +96,10 @@
   (if (:lib/type query)
     ;; convert MBQL 5 to legacy
     ;;
-    ;; legacy usage -- don't do things like this going forward
+    ;; legacy usage -- don't do things like this going forward. Only the structure (source tables and cards) is read,
+    ;; so the options legacy MBQL cannot express are dropped.
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
+    (recur (lib/->legacy-MBQL-lossy query) parent-source-card-id in-sandbox?)
     ;; already legacy MBQL
     (apply merge-with merge-source-ids
            (match/match-many query
@@ -365,9 +366,10 @@
              (:lib/metadata query))]
     (-> query
         lib/normalize
-        ;; allowing for now until we convert this namespace to be MBQL-5-only
+        ;; allowing for now until we convert this namespace to be MBQL-5-only. Only the structure is read, so the
+        ;; options legacy MBQL cannot express are dropped.
         #_{:clj-kondo/ignore [:discouraged-var]}
-        lib/->legacy-MBQL
+        lib/->legacy-MBQL-lossy
         (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 
 (defn required-perms-for-query
