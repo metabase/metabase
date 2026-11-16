@@ -657,7 +657,9 @@
               (with-redefs [provisioning/dispatching-provisioner (counting-provisioner destroys)]
                 (is (nil? (ws/delete-workspace! (:id ws)))))
               (is (= 1 @destroys))
-              (is (nil? (ws/get-workspace (:id ws))))))))))
+              (is (nil? (ws/get-workspace (:id ws)))))))))))
+
+(deftest delete-workspace-cannot-set-the-status-back-test
   (testing "when the status cannot be set back, the row stays :deprovisioning and the error is attached as suppressed"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws          (ws/create-workspace! {:name "Restore failed" :creator_id (mt/user->id :crowberto)})
@@ -665,7 +667,8 @@
                           (add-database! (:id ws) (mt/id) ["PUBLIC"]))
             wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
             transition! ws.db/transition-workspace-database-at!
-            e           (with-redefs [provisioning/do-with-workspace-database-lock (fn [_wsd-id _thunk]
+            e           (with-redefs [provisioning/dispatching-provisioner          (stub-provisioner)
+                                      provisioning/do-with-workspace-database-lock (fn [_wsd-id _thunk]
                                                                                      (throw (ex-info "lock timed out" {})))
                                       ws.db/transition-workspace-database-at!      (fn [id from to updated-at]
                                                                                      (if (= :deprovisioning to)
@@ -686,7 +689,9 @@
             "a retried DELETE is refused as busy until the row is 15 minutes old")
         (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:updated_at (t/minus (t/offset-date-time) (t/hours 1))})
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (is (nil? (ws/delete-workspace! (:id ws))))))))
+          (is (nil? (ws/delete-workspace! (:id ws)))))))))
+
+(deftest delete-workspace-loses-a-row-to-another-request-test
   (testing "a DELETE that loses a row to another request answers 409 and sets back the rows it marked"
     (mt/with-temp [:model/Database {db2-id :id} {:engine   :postgres
                                                  :details  {}
