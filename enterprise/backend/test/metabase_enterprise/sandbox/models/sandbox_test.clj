@@ -158,8 +158,6 @@
   #"You do not have permissions to modify a snippet that is used for row and column level security")
 (def ^:private forbidden-msg
   #"You don't have permissions to do that")
-(def ^:private measure-msg
-  #"You do not have permissions to modify a measure that is used for row and column level security")
 
 (defn- guarded-writes-test
   "Runs the sandbox-guard contract against a policy built by `with-policy`, a function that creates the policy's
@@ -378,23 +376,32 @@
 
 (deftest only-admins-can-change-a-measure-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-measure-policy
-     (fn [{:keys [measure]}]
-       [["definition" measure-msg #(t2/update! :model/Measure :id (:id measure) {:definition (sum-of-price 2)})]
-        ["archive"    measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
-        ["delete"     measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
-    (testing "a non-admin is refused a change to the segment the measure reads"
-      (with-measure-policy
-        (fn [{:keys [segment]}]
-          (mt/with-test-user :rasta
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
-                                  (api/update-check (t2/select-one :model/Segment :id (:id segment))
-                                                    {:definition (price-above 3)})))))))
-    (untouched-test
-     with-measure-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/Measure :id (:id other) {:definition (sum-of-price 2)})))))
+    (letfn [(update-check [model instance changes]
+              (api/update-check (t2/select-one model :id (:id instance)) changes))
+            (guarded-changes [{:keys [segment measure]}]
+              [["definition of the nested segment" :model/Segment segment {:definition (price-above 3)}]
+               ["definition"                       :model/Measure measure {:definition (sum-of-price 2)}]
+               ["archive"                          :model/Measure measure {:archived true}]])]
+      (testing "a non-admin is refused"
+        (with-measure-policy
+          (fn [policy]
+            (mt/with-test-user :rasta
+              (doseq [[change-name model instance changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                        (update-check model instance changes)))))))))
+      (testing "an admin may do all of it"
+        (with-measure-policy
+          (fn [policy]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name model instance changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (true? (update-check model instance changes)))))))))
+      (testing "an unrelated measure is untouched"
+        (with-measure-policy
+          (fn [{:keys [other]}]
+            (mt/with-test-user :crowberto
+              (is (true? (update-check :model/Measure other {:definition (sum-of-price 2)}))))))))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"

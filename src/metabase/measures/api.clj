@@ -5,13 +5,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -35,24 +33,12 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- definition-table-id
-  "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
-  [normalized-definition]
-  (api/check-400 (when (seq normalized-definition)
-                   (lib/primary-source-table-id normalized-definition))
-                 (tru "Measure definition must specify a source table.")))
-
 (defn create-measure!
-  "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
-  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
-  the create-check runs wherever a Measure is authored."
+  "Create-check and insert a new Measure; publishes `:event/measure-create` and returns the hydrated Measure. The
+  shared domain create path, so the create-check runs wherever a Measure is authored."
   [{:keys [name description definition], :as body}]
-  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
-  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
-  ;; `definition-table-id` requires a normalized definition.
-  (let [definition (lib-be/normalize-query definition)
-        table-id   (definition-table-id definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
+  (let [definition (lib-be/normalize-query definition)]
+    (api/create-check :model/Measure (assoc body :definition definition))
     (let [measure (api/check-500
                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
@@ -104,13 +90,10 @@
 
 (defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
-  wherever a Measure is edited."
+  event and returns updated/hydrated Measure. The shared domain update path, so the checks run wherever a Measure is
+  edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
-        ;; Normalized for the same reason as in `create-measure!` — non-REST callers (MCP's
-        ;; measure_write) arrive undecoded, and both the stored definition and the table-id
-        ;; derivation below need MBQL 5.
         clean-body (cond-> (u/select-keys-when body
                                                :present #{:description}
                                                :non-nil #{:archived :definition :name})
@@ -118,13 +101,7 @@
         new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
-    ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
-    ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
-    ;; new one.
-    (when-let [new-def (:definition clean-body)]
-      (let [new-table-id (definition-table-id new-def)]
-        (when (not= new-table-id (:table_id existing))
-          (api/create-check :model/Measure {:table_id new-table-id}))))
+    (api/update-check existing new-body)
     (when changes
       (measures.db/update-measure! id changes))
     (u/prog1 (hydrated-measure id false)

@@ -2537,8 +2537,6 @@
            dashboards
            events
            explorations.schema
-           lib
-           lib.be
            lib.schema
            measures.schema
            models

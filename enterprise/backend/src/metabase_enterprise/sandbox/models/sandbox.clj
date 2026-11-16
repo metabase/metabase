@@ -172,10 +172,7 @@
               {:status-code 403, :card-id id})
     :snippet (ex-info
               (tru "You do not have permissions to modify a snippet that is used for row and column level security.")
-              {:status-code 403, :snippet-id id})
-    :measure (ex-info
-              (tru "You do not have permissions to modify a measure that is used for row and column level security.")
-              {:status-code 403, :measure-id id})))
+              {:status-code 403, :snippet-id id})))
 
 (defn- non-admin-affects-sandboxing?
   "Whether the current user is a non-admin and the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`)
@@ -187,8 +184,8 @@
                 (contains? (get (sandbox-dependency-set) entity-kind) id))))
 
 (defn- check-non-admin-cannot-affect-sandboxing!
-  "Throws a 403 if the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`) entity with `id` is in the sandbox
-  dependency set and the current user is not an admin. Server-side writes (sync, serdes and the like) run with no user
+  "Throws a 403 if the `entity-kind` (`:card` or `:snippet`) entity with `id` is in the sandbox dependency set and
+  the current user is not an admin. Server-side writes (sync, serdes and the like) run with no user
   bound, or as a superuser, and are not subject to the check."
   [entity-kind id]
   (when (non-admin-affects-sandboxing? entity-kind id)
@@ -251,19 +248,13 @@
   (not (and (some #(contains? changes %) [:definition :archived])
             (non-admin-affects-sandboxing? :segment segment-id))))
 
-(defenterprise pre-update-check-sandbox-constraints-for-measure
-  "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches `:definition` or
-  `:archived`."
+(defenterprise sandboxes-allow-measure-update?
+  "Whether sandboxing lets the current user apply `changes` to a Measure: only an admin may change the `:definition`
+  or `:archived` of one in the sandbox dependency set."
   :feature :sandboxes
   [{measure-id :id} changes]
-  (when (some #(contains? changes %) [:definition :archived])
-    (check-non-admin-cannot-affect-sandboxing! :measure measure-id)))
-
-(defenterprise pre-delete-check-sandbox-constraints-for-measure
-  "Refuses a non-admin's deletion of a Measure in the sandbox dependency set."
-  :feature :sandboxes
-  [{measure-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! :measure measure-id))
+  (not (and (some #(contains? changes %) [:definition :archived])
+            (non-admin-affects-sandboxing? :measure measure-id))))
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be

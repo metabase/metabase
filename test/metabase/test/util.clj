@@ -250,10 +250,11 @@
    :model/Measure
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
+             :definition (let [mp (data/metadata-provider)]
+                           (-> (lib/query mp (lib.metadata/table mp (data/id :checkins)))
+                               (lib/aggregate (lib/count))))
              :entity_id (u/generate-nano-id)
-             :name "Mock Measure"
-             :table_id (data/id :checkins)}))
+             :name "Mock Measure"}))
 
    :model/MetabotConversation
    (fn [_] {:id      (str (random-uuid))
