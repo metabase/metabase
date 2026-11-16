@@ -24,6 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
@@ -195,7 +196,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <MockDashboardContext
       dashboardId={dashboard.id}
       dashboard={dashboard}
@@ -230,7 +231,7 @@ function setup({
     },
   );
 
-  return { onReplaceCard };
+  return { onReplaceCard, store };
 }
 
 describe("DashCard", () => {
@@ -479,7 +480,28 @@ describe("DashCard", () => {
   });
 
   it("should show a warning icon when the card query fails", async () => {
-    setup({ dashcardData: erroringDashcardData });
+    const xrayDashboard = createMockDashboard({
+      id: "/auto/dashboard/table/1",
+    });
+    const xrayDashcard = createMockDashboardCard({
+      dashboard_id: xrayDashboard.id,
+      card: createMockCard({ name: "My Card", dataset_query: ORDERS_QUERY }),
+    });
+    fetchMock.post("path:/api/dataset", {
+      status: 500,
+      body: { message: "Query failed" },
+    });
+    const { store } = setup({
+      dashboard: xrayDashboard,
+      dashcard: xrayDashcard,
+      dashcardData: {},
+    });
+
+    await act(() =>
+      store.dispatch(
+        fetchCardData(xrayDashcard.card, xrayDashcard, { reload: true }),
+      ),
+    );
 
     expect(await screen.findByText("My Card")).toBeVisible();
     const warningIcon = getIcon("warning");

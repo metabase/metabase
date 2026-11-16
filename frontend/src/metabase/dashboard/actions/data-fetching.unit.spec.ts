@@ -559,7 +559,10 @@ describe("fetchDashboardCardData", () => {
     expect(dashcardData[4][4]).not.toHaveProperty("error");
     expect(dashcardData[4][4]).toHaveProperty("data.rows", [[1]]);
     [1, 2, 3, 5, 6, 7, 8].forEach((id) => {
-      expect(dashcardData[id][id]).toHaveProperty("error");
+      expect(dashcardData[id][id]).toHaveProperty(
+        "error.data.message",
+        "Query failed",
+      );
     });
   });
 
