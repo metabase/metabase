@@ -627,10 +627,9 @@ describe("DashboardApp", () => {
       revisions,
     }: RevisionHistorySetupOpts) {
       let currentRevisions = revisions;
-      fetchMock.get(
-        `path:/api/revision?entity=dashboard&id=${DASHBOARD_ID}`,
-        () => currentRevisions,
-      );
+      fetchMock.get("path:/api/revision", () => currentRevisions, {
+        query: { entity: "dashboard", id: DASHBOARD_ID },
+      });
       fetchMock.put(`path:/api/dashboard/${DASHBOARD_ID}`, async (call) => {
         const body: unknown = JSON.parse(String(call.options.body));
         currentRevisions = [RENAME_REVISION, ...currentRevisions];
