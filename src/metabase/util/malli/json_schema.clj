@@ -27,9 +27,10 @@
   [:map {:closed true}
    [:definitions-path {:optional true} :string]])
 
-(def ^:private annotation-keys
+(def annotation-keys
   "The keys of a JSON Schema node that describe it without constraining what it accepts."
-  [:description :title :default :examples])
+  ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
+  #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
 
 (defn- empty-schema?
   "Whether the JSON Schema `node` accepts anything."

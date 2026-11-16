@@ -145,11 +145,6 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
-(def ^:private annotation-keys
-  "JSON Schema keywords that describe a value without constraining it."
-  ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
-  #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
-
 (def ^:private keyword-types
   "JSON Schema assertion keywords that apply only to values of one type, mapped to that type."
   (merge (zipmap [:additionalProperties :dependentRequired :dependentSchemas :maxProperties :minProperties
@@ -164,7 +159,7 @@
 
 (def ^:private null-neutral-keys
   "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
-  (into annotation-keys (keys keyword-types)))
+  (into mu.json-schema/annotation-keys (keys keyword-types)))
 
 (def ^:private type-array-keys
   "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
@@ -274,7 +269,7 @@
          ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
          ;; A sibling annotation wins over the replacement's, except that two descriptions are joined.
          (cond
-           (every? annotation-keys (keys siblings))
+           (every? mu.json-schema/annotation-keys (keys siblings))
            (cond-> (merge replacement siblings)
              ;; the `[:maybe]`'s description and its schema's both describe the property, outer first
              (and (string? (:description siblings))
