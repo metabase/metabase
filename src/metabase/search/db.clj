@@ -160,8 +160,9 @@
   as shaped by the active search engine specialization, then that specialization's post-creation statements (index
   creation and the like)."
   [table-name :- [:or :keyword :string]]
-  (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  (t2/query (cond-> (-> (sql.helpers/create-table table-name)
+                        (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema)))
+              (= :mysql (mdb/db-type)) (assoc :engine :innodb)))
   (let [table-name (name table-name)]
     (doseq [statement (specialization/post-create-statements table-name table-name)]
       (t2/query statement))))
@@ -170,6 +171,20 @@
   "Run `ANALYZE` on the search index table `table-name` (Postgres only)."
   [table-name :- [:or :keyword :string]]
   (t2/query (str "ANALYZE " (name table-name))))
+
+(mu/defn analyze-mysql-search-index-table!
+  "Refresh InnoDB statistics for the search index table."
+  [table-name :- [:or :keyword :string]]
+  (t2/query {:analyze-table (keyword (name table-name))}))
+
+(mu/defn mysql-table-statistics
+  "The storage engine and estimated row count for a table in the current MySQL database, or nil."
+  [table-name :- :string]
+  (t2/query-one {:select [:engine :table_rows]
+                 :from   [:information_schema.tables]
+                 :where  [:and
+                          [:= :table_schema :%database]
+                          [:= :table_name table-name]]}))
 
 (mu/defn postgres-batch-upsert!
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column

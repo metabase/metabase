@@ -244,3 +244,33 @@
     (is (== 1 (:score (t2/query-one
                        {:select [[(#'appdb.scoring/view-count-expr {:dashboard 10}) :score]]
                         :from   [[(search.index/active-table) :search_index]]}))))))
+
+(deftest explicit-innodb-engine-test
+  (t2/with-connection [_conn]
+    (let [original (:engine (t2/query-one ["SELECT @@default_storage_engine AS engine"]))
+          table    (keyword (str "fts_probe_" (str/replace (str (random-uuid)) "-" "")))]
+      (try
+        (t2/query ["SET SESSION default_storage_engine = MyISAM"])
+        (search.db/create-search-index-table! table)
+        (is (= "InnoDB" (:engine (search.db/mysql-table-statistics (name table)))))
+        (finally
+          (try
+            (search.db/drop-search-index-table-if-exists! table)
+            (finally
+              (t2/query ["SET SESSION default_storage_engine = ?" original]))))))))
+
+(deftest index-size-uses-statistics-test
+  (search.index/with-temp-index-table
+    (index-documents! (for [id (range 1 11)] {:model "card", :id id, :name "Orders"}))
+    (specialization/analyze-table! (search.index/active-table))
+    (mt/with-dynamic-fn-redefs [search.db/index-entry-count (fn [& _] (throw (ex-info "Unexpected count" {})))]
+      (is (= 10 (specialization/index-size-estimate (search.index/active-table)))))))
+
+(deftest analyze-preserves-caller-transaction-test
+  (t2/with-transaction [_conn]
+    (mt/with-dynamic-fn-redefs
+      [search.db/analyze-mysql-search-index-table! (fn [& _] (throw (ex-info "Unexpected implicit commit" {})))]
+      (is (nil? (specialization/analyze-table! :unused))))))
+
+(deftest missing-table-statistics-test
+  (is (nil? (specialization/index-size-estimate :search_index_missing_statistics_probe))))
