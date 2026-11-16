@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
@@ -36,6 +37,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.tracing.test-util :as tracing.tu]
+   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
@@ -928,6 +930,40 @@
       (is (= ["call-0"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result)))
       (testing "and the calls whose input comes after the error are dropped"
         (is (not-any? #(= "late" (:toolCallId %)) result))))))
+
+(deftest tool-executor-xf-never-starts-a-complete-call-after-an-error-test
+  (testing "a call whose input completed before an :error chunk never runs if the pool has not started it"
+    (let [release (promise)
+          busy    (java.util.concurrent.CountDownLatch. 20)
+          pool    @#'self.core/tool-executor
+          ran     (atom false)
+          tools   (update-in test-util/TOOLS ["get-time" :fn]
+                             (fn [get-time]
+                               (fn [args]
+                                 (reset! ran true)
+                                 (get-time args))))]
+      ;; Hold every thread of the pool, so that no call starts until the stream has ended
+      (dotimes [_ 20]
+        (.execute ^java.util.concurrent.Executor pool ^Runnable #(do (.countDown busy) @release)))
+      (try
+        (is (.await busy 5 java.util.concurrent.TimeUnit/SECONDS))
+        (let [chunks  (concat (test-util/parts->aisdk-chunks
+                               [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "UTC"}}])
+                              [{:type :error :errorText "Overloaded"}])
+              errored (promise)
+              result  (future (into [] (comp (self.core/tool-executor-xf tools)
+                                             (map (fn [chunk]
+                                                    (when (= :error (:type chunk))
+                                                      (deliver errored true))
+                                                    chunk)))
+                                    chunks))]
+          (is (deref errored 5000 false))
+          (deliver release true)
+          (is (= (vec chunks) (deref result 5000 nil))
+              "the stream passes through, with no result for call-1")
+          (is (not @ran)))
+        (finally
+          (deliver release true))))))
 
 (deftest tool-executor-xf-returns-results-in-call-order-test
   (testing "calls that run at the same time and finish in reverse order return their results in call order"
@@ -2178,6 +2214,115 @@
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
+(defn- tool-executor-wait
+  "The wait histogram of the tool executor in `system`: a map with `:count` and `:sum`."
+  [system]
+  (mt/metric-value system :metabase-metabot/tool-executor-wait-ms))
+
+(defn- tool-executor-gauges
+  "Runs the pull collector of the tool executor, as a scrape does, then returns its gauges in `system`."
+  [system]
+  ((:f (analytics.core/pull-collector ::self.core/tool-executor)))
+  {:pool-size (mt/metric-value system :metabase-metabot/tool-executor-pool-size)
+   :active    (mt/metric-value system :metabase-metabot/tool-executor-active)
+   :queued    (mt/metric-value system :metabase-metabot/tool-executor-queued)})
+
+(defn- hold-tool-executor-threads!
+  "Holds `n` threads of the tool executor until `release` is delivered. Returns true once all `n` are held. The held
+   threads go straight to the pool, so the wait histogram does not observe them."
+  [n release]
+  (let [held (java.util.concurrent.CountDownLatch. n)]
+    (dotimes [_ n]
+      (.execute ^java.util.concurrent.Executor @#'self.core/tool-executor
+                ^Runnable (fn []
+                            (.countDown held)
+                            @release)))
+    (.await held 5 java.util.concurrent.TimeUnit/SECONDS)))
+
+(deftest tool-executor-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "the wait of every call is observed, the one that waits on a runs-alone call included"
+      (let [tools  (assoc test-util/TOOLS
+                          "alone" {:tool-name   "alone"
+                                   :doc         "Runs alone."
+                                   :schema      [:=> [:cat [:map {:closed true}]] :any]
+                                   :runs-alone? true
+                                   :fn          (fn [_] "done")})
+            chunks (test-util/parts->aisdk-chunks
+                    [{:type :start :id "msg-1"}
+                     {:type :tool-input :id "call-1" :function "alone" :arguments {}}
+                     {:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+            result (into [] (self.core/tool-executor-xf tools) chunks)]
+        (is (= #{"call-1" "call-2"} (set (map :toolCallId (take-last 2 result)))))
+        (is (=? {:count 2.0} (tool-executor-wait system)))))))
+
+(deftest submit-virtual-observes-a-waiting-call-when-it-reaches-the-pool-test
+  (mt/with-prometheus-system! [_ system]
+    (let [started (promise)
+          release (promise)
+          earlier (#'self.core/submit-virtual [] (fn [] (deliver started true) @release))]
+      (try
+        (is (deref started 5000 false))
+        (let [waiting (#'self.core/submit-virtual [earlier] (constantly :waiting))
+              timer   (u/start-timer)]
+          (testing "while the earlier call runs, the waiting call does not start"
+            (is (= ::not-started (deref waiting 100 ::not-started)))
+            (testing "it takes no thread and is not in the queue"
+              (is (= {:pool-size 20.0 :active 1.0 :queued 0.0} (tool-executor-gauges system))))
+            (testing "only the wait of the earlier call is observed"
+              (is (=? {:count 1.0} (tool-executor-wait system)))))
+          (let [waited-on-earlier (u/since-ms timer)]
+            (deliver release true)
+            (is (= :waiting (deref waiting 5000 ::timeout)))
+            (testing "the wait of the waiting call is observed when the earlier call finishes"
+              (is (=? {:count 2.0} (tool-executor-wait system))))
+            (testing "the time it waited on the earlier call is not in its wait for a thread"
+              (is (< (:sum (tool-executor-wait system)) waited-on-earlier)))))
+        (finally
+          (deliver release true))))))
+
+(deftest submit-virtual-observes-a-full-pool-test
+  (mt/with-prometheus-system! [_ system]
+    (let [release-held    (promise)
+          started         (promise)
+          release-earlier (promise)]
+      (try
+        (is (hold-tool-executor-threads! 19 release-held))
+        (let [earlier (#'self.core/submit-virtual [] (fn [] (deliver started true) @release-earlier))]
+          (is (deref started 5000 false))
+          (let [waiting (#'self.core/submit-virtual [earlier] (constantly :waiting))
+                queued  (#'self.core/submit-virtual [] (constantly :queued))
+                timer   (u/start-timer)]
+            (testing "a call that finds every thread busy waits in the queue"
+              (is (= ::not-started (deref queued 100 ::not-started)))
+              (testing "the call that waits on the earlier call is not in the queue"
+                (is (= {:pool-size 20.0 :active 20.0 :queued 1.0} (tool-executor-gauges system))))
+              (testing "only the wait of the earlier call is observed"
+                (is (=? {:count 1.0} (tool-executor-wait system)))))
+            (let [queued-for (u/since-ms timer)]
+              (deliver release-earlier true)
+              (is (= [:queued :waiting] [(deref queued 5000 ::timeout) (deref waiting 5000 ::timeout)]))
+              (testing "the wait of the queued call and of the waiting call is observed when each starts"
+                (is (=? {:count 3.0} (tool-executor-wait system))))
+              (testing "the wait for a thread covers the time in the queue"
+                (is (<= queued-for (:sum (tool-executor-wait system))))))))
+        (finally
+          (run! #(deliver % true) [release-held release-earlier]))))))
+
+(deftest submit-virtual-runs-the-call-when-the-wait-observation-throws-test
+  (testing "a call runs and completes although the observation of its wait throws"
+    (let [original-observe! analytics/observe!]
+      ;; A global redef: the observation runs on a pool thread, which does not see the bindings of this thread.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [analytics/observe! (fn [metric & args]
+                                         (if (= :metabase-metabot/tool-executor-wait-ms metric)
+                                           (throw (ex-info "The metric failed" {:metric metric}))
+                                           (apply original-observe! metric args)))]
+        (let [earlier (#'self.core/submit-virtual [] (constantly :earlier))
+              waiting (#'self.core/submit-virtual [earlier] (constantly :waiting))]
+          (is (= :earlier (deref earlier 5000 ::timeout)))
+          (is (= :waiting (deref waiting 5000 ::timeout))))))))
+
 (deftest call-llm-prometheus-test
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
@@ -2390,10 +2535,21 @@
                                              :cacheReadTokens     800}
                         :model "test-model" :id "msg-1"}
                        {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
-                        :arguments {:tz "UTC"}}])]
+                        :arguments {:tz "UTC"}}])
+            done     {"call-1" (promise) "call-2" (promise)}
+            run-tool (mt/original-fn #'self.core/run-tool)]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                     (constantly (concat (drop-last 2 chunks)
-                                                        [{:type :error :errorText "Overloaded"}]))]
+                                                        ;; A call that has not started when the error comes never
+                                                        ;; runs, so the error comes once call-1 and call-2 are done
+                                                        (lazy-seq
+                                                         (run! #(deref % 5000 nil) (vals done))
+                                                         [{:type :error :errorText "Overloaded"}])))
+                                    self.core/run-tool
+                                    (fn [tool-call-id & args]
+                                      (let [result (apply run-tool tool-call-id args)]
+                                        (some-> (done tool-call-id) (deliver true))
+                                        result))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]

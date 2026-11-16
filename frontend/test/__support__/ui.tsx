@@ -601,6 +601,16 @@ export const waitForDashboardToLoad = async () => {
 };
 
 /**
+ * Waits for a `Sidesheet` to open.
+ * It slides in a few frames after mounting, so its content is not there right after rendering.
+ */
+export const waitForSidesheetToOpen = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("sidesheet")).toBeVisible();
+  });
+};
+
+/**
  * jsdom doesn't have offsetHeight and offsetWidth, so we need to mock it
  */
 export const mockOffsetHeightAndWidth = (value = 50) => {

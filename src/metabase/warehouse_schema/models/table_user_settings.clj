@@ -226,5 +226,6 @@
 
 (defmethod remote-sync/spec :model/TableUserSettings
   [_model]
-  {:label                (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+  {:name                 (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+   :synced-items         warehouse-schema.db/synced-table-user-settings-items
    :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})

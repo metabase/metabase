@@ -759,4 +759,5 @@
 
 (defmethod remote-sync/spec :model/Document
   [_model]
-  {:synced-filter-clause documents.db/synced-documents-clause})
+  {:synced-items         documents.db/synced-document-items
+   :synced-filter-clause documents.db/synced-documents-clause})

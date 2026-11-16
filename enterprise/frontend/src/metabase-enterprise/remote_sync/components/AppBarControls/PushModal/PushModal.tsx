@@ -50,27 +50,30 @@ type PushFormValues = {
   strategy: PushStrategy;
 };
 
-const getPushSchema = () =>
-  Yup.object({
+function getPushSchema() {
+  return Yup.object({
     message: Yup.string(),
     strategy: Yup.string().oneOf(["merge", "overwrite"]),
   });
+}
 
-export const PushModal = ({
+export function PushModal({
   opened,
   branch,
   onTaskStarted,
   onClose,
-}: PushModalProps) => (
-  <Modal opened={opened} title={t`Push changes`} size="lg" onClose={onClose}>
-    <FocusTrap.InitialFocus />
-    <PushModalBody
-      branch={branch}
-      onTaskStarted={onTaskStarted}
-      onClose={onClose}
-    />
-  </Modal>
-);
+}: PushModalProps) {
+  return (
+    <Modal opened={opened} title={t`Push changes`} size="lg" onClose={onClose}>
+      <FocusTrap.InitialFocus />
+      <PushModalBody
+        branch={branch}
+        onTaskStarted={onTaskStarted}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
 
 type PushModalBodyProps = {
   branch: string;
@@ -78,11 +81,7 @@ type PushModalBodyProps = {
   onClose: () => void;
 };
 
-const PushModalBody = ({
-  branch,
-  onTaskStarted,
-  onClose,
-}: PushModalBodyProps) => {
+function PushModalBody({ branch, onTaskStarted, onClose }: PushModalBodyProps) {
   const applicationName = useSelector(getApplicationName);
   const defaultMessage = getDefaultCommitMessage(applicationName);
   const {
@@ -154,13 +153,13 @@ const PushModalBody = ({
       </Form>
     </FormProvider>
   );
-};
+}
 
 type RemoteChangesProps = {
   preflight: ExportPreflightResponse;
 };
 
-const RemoteChanges = ({ preflight }: RemoteChangesProps) => {
+function RemoteChanges({ preflight }: RemoteChangesProps) {
   const casualties = [
     ...preflight.force_push_casualties.deleted,
     ...preflight.force_push_casualties.overwritten,
@@ -202,22 +201,24 @@ const RemoteChanges = ({ preflight }: RemoteChangesProps) => {
       </FormRadioGroup>
     </Stack>
   );
-};
+}
 
 type LabelListProps = {
   title: string;
   labels: string[];
 };
 
-const LabelList = ({ title, labels }: LabelListProps) => (
-  <Stack gap="xs">
-    <Text c="inherit" fz="inherit">
-      {title}
-    </Text>
-    <List size="sm">
-      {labels.map((label, index) => (
-        <List.Item key={`${label}-${index}`}>{label}</List.Item>
-      ))}
-    </List>
-  </Stack>
-);
+function LabelList({ title, labels }: LabelListProps) {
+  return (
+    <Stack gap="xs">
+      <Text c="inherit" fz="inherit">
+        {title}
+      </Text>
+      <List size="sm">
+        {labels.map((label, index) => (
+          <List.Item key={`${label}-${index}`}>{label}</List.Item>
+        ))}
+      </List>
+    </Stack>
+  );
+}

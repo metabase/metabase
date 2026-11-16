@@ -1,28 +1,24 @@
 (ns metabase.notification.seed-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.notification.models :as models.notification]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- nullify-timestamp
   [data]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       ;; do not nullify id because it's supposed to be the same as well
-       (-> x
-           (m/update-existing :created_at (constantly nil))
-           (m/update-existing :updated_at (constantly nil)))
-       x))
-   data))
+  (match/replace-all data
+    ;; do not nullify id because it's supposed to be the same as well
+    #'map? (-> &match
+               (m/update-existing :created_at (constantly nil))
+               (m/update-existing :updated_at (constantly nil)))))
 
 (deftest seed-notification!-is-idempotent
   (mt/with-empty-h2-app-db!

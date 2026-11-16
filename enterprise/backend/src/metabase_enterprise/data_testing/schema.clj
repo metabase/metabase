@@ -155,19 +155,22 @@
    ::test.definition])
 
 (defn- saved-test
-  "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the inputs that stand in for
-  the tables the subject reads, and the expectations checked against its output."
-  [subject-key subject-id-schema]
-  [:merge
-   ::test.definition
-   [:map {:closed true}
-    [:id          ms/PositiveInt]
-    [:entity_id   :string]
-    [subject-key  subject-id-schema]
-    [:creator_id  ::lib.schema.id/user]
-    [:description {:optional true} [:maybe :string]]
-    [:created_at  ms/TemporalInstant]
-    [:updated_at  ms/TemporalInstant]]])
+  "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
+  hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, and
+  the expectations checked against its output."
+  [subject-key subject-id-schema subject subject-schema]
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:entity_id    {:optional true} :string]
+   [:name         {:optional true} ::lib.schema.common/non-blank-string]
+   [:description  {:optional true} [:maybe :string]]
+   [:inputs       {:optional true} ::inputs]
+   [:expectations {:optional true} ::expectations]
+   [subject-key   {:optional true} subject-id-schema]
+   [subject       {:optional true} [:maybe subject-schema]]
+   [:creator_id   {:optional true} ::lib.schema.id/user]
+   [:created_at   {:optional true} ms/TemporalInstant]
+   [:updated_at   {:optional true} ms/TemporalInstant]])
 
 (defn- test-update
   "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
@@ -186,7 +189,7 @@
 
 (mr/def ::transform-test
   "A saved transform test."
-  (saved-test :transform_id ::lib.schema.id/transform))
+  (saved-test :transform_id ::lib.schema.id/transform :transform :metabase.transforms.schema/transform))
 
 (mr/def ::transform-test.update
   "What a client sends to update a transform test. Omitted fields are left unchanged."
@@ -198,7 +201,7 @@
 
 (mr/def ::card-test
   "A saved card test."
-  (saved-test :card_id ::lib.schema.id/card))
+  (saved-test :card_id ::lib.schema.id/card :card :metabase.queries.schema/card))
 
 (mr/def ::card-test.update
   "What a client sends to update a card test. Omitted fields are left unchanged."

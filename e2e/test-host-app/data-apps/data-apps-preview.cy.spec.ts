@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DATA_APP_DEV_DIAGNOSTICS_PATH,
@@ -8,6 +9,7 @@ import {
 } from "e2e/support/helpers/e2e-data-app-dev-helpers";
 import {
   DATA_APP_DEV_APP_SRC_PATH,
+  DATA_APP_DEV_ENV_PATH,
   DATA_APP_DEV_MANIFEST_PATH,
   setUpDataAppDevServer,
   tearDownDataAppDevServer,
@@ -62,6 +64,208 @@ describe("Embedding SDK: data-app dev preview", () => {
       1,
     );
     cy.get("@blockedRequest.all").should("have.length", 0);
+  });
+
+  describe("the dev server's relay to the instance", () => {
+    // The key the e2e setup wrote; asserted on as a boolean so it stays out of the log.
+    const readApiKey = () =>
+      cy.readFile<string>(DATA_APP_DEV_ENV_PATH).then((env) => {
+        const apiKey = env.match(/^DATA_APP_MB_API_KEY=(.+)$/m)?.[1];
+
+        if (!apiKey) {
+          throw new Error(`no DATA_APP_MB_API_KEY in ${DATA_APP_DEV_ENV_PATH}`);
+        }
+
+        return apiKey;
+      });
+
+    describe("against app code that escaped the sandbox", () => {
+      const INSTANCE_ORIGIN = new URL(String(Cypress.config("baseUrl"))).origin;
+
+      const FORGED_CREDENTIALS = {
+        "Content-Type": "application/json",
+        "X-Metabase-Client": "embedding-sdk-react",
+        "X-Metabase-Session": "forged",
+        "X-Api-Key": "mb_forged",
+        Authorization: "Bearer forged",
+      };
+
+      // The file itself, and with the query strings of past Vite CVEs that read files Vite refuses to serve.
+      const ENV_FILE_REQUESTS = [
+        "/.env.local",
+        "/.env.local?raw",
+        "/.env.local?raw??",
+        "/.env.local?import&raw??",
+        "/.env.local?inline&import",
+        "/.env.local?url",
+      ];
+
+      const MAX_MODULES = 200;
+
+      const escapedAdmin = (email: string) => ({
+        first_name: "Escaped",
+        last_name: "Admin",
+        email,
+        password: "Escaped-admin-1234!",
+        user_group_memberships: [
+          { id: USER_GROUPS.ALL_USERS_GROUP, is_group_manager: false },
+          { id: USER_GROUPS.ADMIN_GROUP, is_group_manager: false },
+        ],
+      });
+
+      // The preview page's own window is outside the sandbox's membrane, with the page's origin, cookies and CSP: what
+      // app code that escaped the membrane runs with. The guards the sandbox puts on that window still apply.
+      const inPreviewPage = <T>(
+        attack: (win: Cypress.AUTWindow) => Promise<T>,
+      ) => cy.window().then({ timeout: TIMEOUT_MS }, attack);
+
+      // The dev server's own modules import by absolute path; the chunks of the pre-bundled dependencies, relatively.
+      const importedPaths = (source: string, importer: string) =>
+        Array.from(
+          source.matchAll(
+            /(?:\bsrc=|\bfrom\s*|\bimport\s*\(?\s*)["']((?:\.{0,2}\/)[^"']+)["']/g,
+          ),
+          (match) => {
+            const url = new URL(match[1], new URL(importer, CLIENT_HOST));
+
+            return `${url.pathname}${url.search}`;
+          },
+        );
+
+      /** The page and every module it imports from the dev server, as the page can read them. */
+      const readServedModules = async (win: Cypress.AUTWindow) => {
+        const page = await (
+          await win.fetch("/", { headers: { Accept: "text/html" } })
+        ).text();
+        const sources = [page];
+        const queue = importedPaths(page, "/");
+        const seen = new Set<string>();
+
+        while (queue.length > 0 && seen.size < MAX_MODULES) {
+          const path = queue.shift();
+
+          if (path !== undefined && !seen.has(path)) {
+            seen.add(path);
+            const source = await (await win.fetch(path)).text();
+            sources.push(source);
+            queue.push(...importedPaths(source, path));
+          }
+        }
+
+        return sources;
+      };
+
+      it("finds no API key in the page, the modules the dev server serves it, or .env.local", () => {
+        visitDataAppDevApp(CLIENT_HOST);
+
+        readApiKey().then((apiKey) => {
+          inPreviewPage(async (win) => {
+            const modules = await readServedModules(win);
+            const envFiles = await Promise.all(
+              ENV_FILE_REQUESTS.map(async (path) => {
+                const response = await win.fetch(path);
+
+                return { status: response.status, text: await response.text() };
+              }),
+            );
+
+            return {
+              moduleCount: modules.length,
+              envFileStatuses: envFiles.map(({ status }) => status),
+              holdsKey: [...modules, ...envFiles.map(({ text }) => text)].some(
+                (text) => text.includes(apiKey),
+              ),
+            };
+          }).then(({ moduleCount, envFileStatuses, holdsKey }) => {
+            expect(moduleCount, "modules read").to.be.greaterThan(3);
+            // The file is there, in the dev server's root: a 403 is Vite refusing it, where a 404 would be a miss.
+            expect(envFileStatuses, ".env.local").to.deep.equal(
+              ENV_FILE_REQUESTS.map(() => 403),
+            );
+            expect(
+              holdsKey,
+              "something the page can read holds the key",
+            ).to.equal(false);
+          });
+        });
+      });
+
+      it("gets only the data-app endpoints through the dev server, whatever credentials it claims", () => {
+        visitDataAppDevApp(CLIENT_HOST);
+
+        inPreviewPage(async (win) => {
+          const send = (method: string, path: string, body?: object) =>
+            win.fetch(path, {
+              method,
+              headers: FORGED_CREDENTIALS,
+              body: body && JSON.stringify(body),
+            });
+
+          const currentUser: unknown = await (
+            await send("GET", "/api/user/current")
+          ).json();
+          const createAdmin = await send(
+            "POST",
+            "/api/user",
+            escapedAdmin(`escaped-relay-${Date.now()}@example.com`),
+          );
+          const createApiKey = await send("POST", "/api/api-key", {
+            name: "escaped",
+            group_id: USER_GROUPS.ADMIN_GROUP,
+          });
+
+          return {
+            currentUser,
+            createAdmin: createAdmin.status,
+            createApiKey: createApiKey.status,
+          };
+        }).then(({ currentUser, createAdmin, createApiKey }) => {
+          // The key's user, named after the key: neither the forged credentials nor a session counted.
+          expect(currentUser)
+            .to.have.property("first_name")
+            .that.matches(/^data-app-dev-e2e-/);
+          expect(createAdmin, "POST /api/user").to.equal(403);
+          expect(createApiKey, "POST /api/api-key").to.equal(403);
+        });
+      });
+
+      it("can't call the instance directly, which would send the developer's session", () => {
+        // Cypress strips `connect-src` from every page it tests, so the browser can't refuse such a call here: the
+        // policy it refuses it by is checked instead.
+        cy.request({ url: CLIENT_HOST, headers: { Accept: "text/html" } })
+          .its("headers.content-security-policy")
+          .then((header) => {
+            const csp = String(header);
+
+            expect(
+              csp.match(/connect-src([^;]*)/)?.[1],
+              "connect-src",
+            ).not.to.include(INSTANCE_ORIGIN);
+            expect(csp, "the page's CSP")
+              .to.include("form-action 'none'")
+              .and.include("frame-src 'none'");
+          });
+      });
+    });
+
+    it("refuses requests from other pages, which it would otherwise sign with the key", () => {
+      const requestCurrentUser = (headers: Record<string, string> = {}) =>
+        cy
+          .request({
+            url: `${CLIENT_HOST}/api/user/current`,
+            headers,
+            failOnStatusCode: false,
+          })
+          .its("status");
+
+      // A client outside a browser gets through, so the 404s below are the relay refusing, not a missing route.
+      requestCurrentUser().should("eq", 200);
+      requestCurrentUser({ Origin: "https://attacker.example" }).should(
+        "eq",
+        404,
+      );
+      requestCurrentUser({ "Sec-Fetch-Site": "cross-site" }).should("eq", 404);
+    });
   });
 
   describe("dev diagnostics", () => {

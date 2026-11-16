@@ -243,12 +243,17 @@
                             first)]
             (is (not (contains? handler :recipients)))))))))
 
+(defn- redact-dashcard!
+  "The dashcard as [[redaction/redact-dashboard]] returns it to a caller who can read every card except `hidden-ids`."
+  [dashcard hidden-ids]
+  (with-redefs [mi/can-read? (fn [card] (not (contains? hidden-ids (:id card))))]
+    (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))
+
 (deftest unreadable-dashcard-loses-its-card-describing-settings-test
-  (testing "reducing an unreadable dashcard's `:card` to nothing is not the whole redaction: the
-            `layout` include reads `:visualization_settings` and `:parameter_mappings` off the same
-            dashcard, and those are stored snapshots describing the card — its author-written title,
-            the warehouse columns it renders, and the field ids its filters are wired to. A caller
-            who was just denied the card must not receive them by another route."
+  ;; The `layout` include reads `:visualization_settings` and `:parameter_mappings` off the same dashcard. They are
+  ;; stored snapshots of the card: its title, the warehouse columns it renders, click targets naming other entities,
+  ;; its visualizer definition, and the field ids its filters are wired to.
+  (testing "an unreadable main card takes the settings and filter mappings that describe it"
     (let [dashcard {:id                     1
                     :card_id                12
                     :row                    0
@@ -260,40 +265,29 @@
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
                                              :click_behavior      {:targetId 999}
+                                             :visualization       {:columnValuesMapping
+                                                                   {:COLUMN_1 [{:sourceId "card:12"}]}}
                                              :dashcard.background true}
-                    :parameter_mappings     [{:card_id 12 :target [:dimension [:field 999 nil]]}]}
-          redact   (fn [readable?]
-                     (with-redefs [mi/can-read? (constantly readable?)]
-                       (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))]
-      (testing "unreadable: nothing naming the card survives"
-        (let [dc (redact false)]
-          (is (nil? (:card dc)))
-          (is (nil? (get-in dc [:visualization_settings :card.title]))
-              "the title is the card's name by another name")
-          (is (nil? (get-in dc [:visualization_settings :column_settings]))
-              "column settings name warehouse columns the caller may hold no permission on")
-          (is (nil? (get-in dc [:visualization_settings :click_behavior]))
-              "click targets name other entities")
-          (is (= [] (:parameter_mappings dc))
-              (str "parameter mappings carry the field ids the card's filters are wired to. Emptied "
-                   "rather than removed: the key is required on a DashboardCard, and the parameters "
-                   "summary runs `dashboard->resolved-params` over this same row"))
-          (testing "the grid slot itself is dashboard data, not card data, and survives"
-            (is (= 4 (:size_x dc)))
-            (is (true? (get-in dc [:visualization_settings :dashcard.background]))))))
+                    :parameter_mappings     [{:card_id 12, :target [:dimension [:field 999 nil]]}]}]
+      ;; Mappings are emptied rather than removed: the key is required on a DashboardCard, and the parameters summary
+      ;; runs `dashboard->resolved-params` over this same row. The grid slot is dashboard data and stays.
+      (is (=? {:card                   (symbol "nil #_\"key is not present.\"")
+               :size_x                 4
+               :visualization_settings #(= {:dashcard.background true} %)
+               :parameter_mappings     #(= [] %)}
+              (redact-dashcard! dashcard #{12})))
       (testing "readable: nothing is stripped"
-        (let [dc (redact true)]
-          (is (= "Executive Payroll by Employee" (get-in dc [:visualization_settings :card.title])))
-          (is (some? (:parameter_mappings dc)))))
+        (is (= dashcard (redact-dashcard! dashcard #{}))))
       (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
         (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
                    (first (:dashcards (redaction/redact-dashboard
                                        {:dashcards [(assoc dashcard
                                                            :card   {:id 12}
                                                            :series [{:id 99, :name "Hidden"}])]}))))]
-          (is (nil? (:card dc)))
-          (is (= [] (:parameter_mappings dc)))
-          (is (= [{:id 99}] (:series dc))))))))
+          (is (=? {:card               (symbol "nil #_\"key is not present.\"")
+                   :parameter_mappings #(= [] %)
+                   :series             #(= [{:id 99}] %)}
+                  dc)))))))
 
 (deftest virtual-dashcard-keeps-its-mappings-test
   (testing "a text card has no card to hide, so its filter wiring and settings stay"
@@ -303,3 +297,41 @@
                     :visualization_settings {:text "{{x}}", :click_behavior {:type "link"}}
                     :parameter_mappings     [{:parameter_id "p", :card_id nil, :target [:text-tag "x"]}]}]
       (is (= dashcard (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]}))))))))
+
+(deftest unreadable-series-card-loses-its-settings-and-mappings-test
+  ;; Mappings to a series card carry its field ids. Why each settings key goes is on `series-describing-viz-keys`.
+  (testing "BOT-2561: an unreadable series card takes the series settings and its filter mappings with it"
+    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name}))
+          dashcard {:id                     1
+                    :card_id                12
+                    :card                   (card 12 "Open")
+                    :series                 [(card 13 "Hidden Series") (card 14 "Open Series")]
+                    :visualization_settings {:series_settings       {:Open                            {:color "#111"}
+                                                                     (keyword "Hidden Series")        {:color "#222"}
+                                                                     (keyword "Hidden Series: Count") {:color "#333"}}
+                                             :graph.series_order    [{:key "Hidden Series: Secret", :enabled true}]
+                                             :graph.series_labels   ["Open" "Hidden Series" "Open Series"]
+                                             :graph.tooltip_columns ["[\"name\",\"salary\"]"]
+                                             :column_settings       {"[\"name\",\"salary\"]" {:column_title "Salary"}}
+                                             :click_behavior        {:parameterMapping {"p" {:source {:id "salary"}}}}
+                                             :visualization         {:columnValuesMapping
+                                                                     {:COLUMN_2 [{:sourceId     "card:13"
+                                                                                  :originalName "salary"
+                                                                                  :name         "COLUMN_2"}]}}
+                                             :dashcard.background   true}
+                    :parameter_mappings     [{:parameter_id "p", :card_id 12, :target [:dimension [:field 1 nil]]}
+                                             {:parameter_id "p", :card_id 13, :target [:dimension [:field 999 nil]]}
+                                             {:parameter_id "p", :card_id 14, :target [:dimension [:field 2 nil]]}]}]
+      (is (=? {:card                   {:id 12, :name "Open"}
+               :series                 [#(= {:id 13} %) {:id 14, :name "Open Series"}]
+               :visualization_settings #(= {:dashcard.background true} %)
+               :parameter_mappings     [{:card_id 12} {:card_id 14}]}
+              (redact-dashcard! dashcard #{13})))
+      (testing "settings left with nothing else in them become nil, as for an unreadable main card"
+        (is (nil? (:visualization_settings
+                   (redact-dashcard! (update dashcard :visualization_settings dissoc :dashcard.background) #{13})))))
+      (testing "a dashcard with none of the stripped settings gains no `:visualization_settings` key"
+        (is (not (contains? (redact-dashcard! (dissoc dashcard :visualization_settings) #{13})
+                            :visualization_settings))))
+      (testing "readable series: nothing is stripped"
+        (is (= dashcard (redact-dashcard! dashcard #{})))))))

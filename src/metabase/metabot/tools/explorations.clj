@@ -19,6 +19,7 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.timeline.core :as timeline]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -345,7 +346,7 @@
    deliberately absent, as the next turn's plan snapshot carries
    the `block_id`s needed to edit these groups."
   [{:keys [metrics dimension_groups groups]}]
-  (let [metric-name (into {} (map (juxt :id :name)) metrics)
+  (let [metric-name (u/index-by :id :name metrics)
         group-idx   (into {} (for [[i g] (map-indexed vector dimension_groups)
                                    d     (:dimensions g)]
                                [(:id d) i]))
