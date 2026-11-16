@@ -154,6 +154,10 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entryButton()
         .findByText(TABLE_BASED_TRANSFORM_NAME)
         .should("be.visible");
+      H.DependencyGraph.dependencyPanel()
+        .findByRole("button", { name: "Close" })
+        .click();
+      H.DependencyGraph.dependencyPanel().should("not.exist");
       H.DependencyGraph.graph()
         .findByLabelText(TABLE_BASED_TRANSFORM_NAME)
         .findByText("1 table")
