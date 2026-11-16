@@ -97,7 +97,7 @@ export function getWellFieldSections(
   const [valueSections, columnSections] = _.partition(sections, (section) =>
     VALUE_SECTION_KEYS.includes(section.key),
   );
-  if (wellId === "columns") {
+  if (wellId !== "values") {
     return columnSections;
   }
   const countSection: SummaryFieldSection = {
@@ -540,7 +540,7 @@ export function addField(
   wellId: SummaryWellId,
   field: SummaryField,
 ): Lib.Query {
-  if (wellId === "columns") {
+  if (wellId !== "values") {
     const column =
       field.kind === "column"
         ? findBreakoutableColumn(query, stageIndex, field.column)

@@ -520,6 +520,32 @@ describe("SummaryWells", () => {
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
   });
 
+  it("switches to the Values, Columns, and Rows wells from the pivot toggle, and back", async () => {
+    const { onChange } = setup();
+    const getWell = (wellId: string) =>
+      within(screen.getByTestId(`summary-well-${wellId}`));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pivot into rows and columns" }),
+    );
+
+    expect(getWell("values").getByText("Values")).toBeInTheDocument();
+    expect(getWell("columns").getByText("Columns")).toBeInTheDocument();
+    expect(getWell("rows").getByText("Rows")).toBeInTheDocument();
+    expect(
+      getWell("rows").getByLabelText("Add a row by name"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to breakouts" }),
+    );
+
+    expect(getWell("values").getByText("Summarize by")).toBeInTheDocument();
+    expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
+    expect(screen.queryByTestId("summary-well-rows")).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   describe("renaming", () => {
     const spec: TestQuerySpec = {
       stages: [

@@ -34,7 +34,7 @@ import {
 type SummaryWellInputProps = {
   wellId: SummaryWellId;
   sections: SummaryFieldSection[];
-  children: ReactNode;
+  children?: ReactNode;
   hasItems: boolean;
   autoFocus?: boolean;
   formulaInput?: SummaryFormulaInput;

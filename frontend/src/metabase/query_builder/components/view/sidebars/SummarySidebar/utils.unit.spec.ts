@@ -247,6 +247,14 @@ describe("getWellFieldSections", () => {
       "User",
     ]);
   });
+
+  it("offers the table columns to Rows", () => {
+    expect(getSectionNames(getWellFieldSections(sections, "rows"))).toEqual([
+      "Orders",
+      "Product",
+      "User",
+    ]);
+  });
 });
 
 describe("filterFieldSections", () => {
@@ -581,6 +589,17 @@ describe("addField", () => {
     expect(getDimensionLabels(addTimes(query, "Total", 1))).toEqual([
       "Total: Auto binned",
     ]);
+  });
+
+  it("groups by a column that is added to Rows", () => {
+    const nextQuery = addField(
+      query,
+      STAGE_INDEX,
+      "rows",
+      findField(sections, "Created At"),
+    );
+
+    expect(getDimensionLabels(nextQuery)).toEqual(["Created At: Month"]);
   });
 
   it("groups by a date again with the next unused unit: coarser, then finer, then the parts of a date", () => {

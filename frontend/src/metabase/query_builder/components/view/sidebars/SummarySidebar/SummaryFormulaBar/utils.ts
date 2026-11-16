@@ -188,9 +188,9 @@ function getEditedFormulaName(
   if (hasCustomName || isDefaultFormulaName(name, sourceName)) {
     return name;
   }
-  return formula.wellId === "columns"
-    ? getUniqueExpressionName(query, stageIndex, sourceName)
-    : sourceName;
+  return formula.wellId === "values"
+    ? sourceName
+    : getUniqueExpressionName(query, stageIndex, sourceName);
 }
 
 function rebucketFormulaBreakouts(

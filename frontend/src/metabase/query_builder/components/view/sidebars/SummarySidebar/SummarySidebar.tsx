@@ -107,7 +107,7 @@ export function SummarySidebar({
     isFormulaCreated = false,
   ) => {
     const isGroupingWithoutValues =
-      wellId === "columns" &&
+      wellId !== "values" &&
       Lib.aggregations(nextQuery, stageIndex).length === 0;
     const nextSummary = isGroupingWithoutValues
       ? Lib.aggregateByCount(nextQuery, stageIndex)
@@ -122,7 +122,7 @@ export function SummarySidebar({
       query,
       stageIndex,
       onAdd: (nextQuery, wellId) =>
-        handleWellAdd(nextQuery, wellId, wellId === "columns"),
+        handleWellAdd(nextQuery, wellId, wellId !== "values"),
       onEdit: (nextQuery, options) => {
         if (!areQueriesEqual(query, nextQuery)) {
           handleQueryChange(nextQuery, options);
