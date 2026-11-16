@@ -1,4 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
@@ -9,7 +8,6 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { createMockDashboardState, createMockState } from "__support__/state";
-import type { State } from "metabase/redux/store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
@@ -71,10 +69,7 @@ function setup(display: VisualizationDisplay) {
     dashcards: {},
   });
 
-  // Unjustified type cast. FIXME
-  return getMainStore(
-    createMockState({ dashboard: dashboardState }),
-  ) as Store<State>;
+  return getMainStore(createMockState({ dashboard: dashboardState }));
 }
 
 describe("adding a card to a dashboard", () => {
