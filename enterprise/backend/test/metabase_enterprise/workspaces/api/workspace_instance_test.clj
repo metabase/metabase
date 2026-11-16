@@ -4,9 +4,11 @@
    request/response shape through the HTTP layer."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -227,11 +229,59 @@
       (testing "401 from the auth wrapper"
         (is (= "2" (version (mt/client-full-response :get 401 "ee/workspace-instance/current"))))))))
 
-(deftest contract-version-header-absent-on-thrown-errors-test
-  (testing "characterization: errors an endpoint throws are built by the server's exception middleware and have no header"
+(deftest contract-version-header-on-thrown-errors-test
+  (testing "errors a workspace-instance endpoint throws carry X-Metabase-Workspaces-Version: 2, with the status and body they had without it"
     (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
       (testing "403"
-        (is (nil? (version (mt/user-http-request-full-response :rasta :get 403 "ee/workspace-instance/current")))))
+        (let [resp (mt/user-http-request-full-response :rasta :get 403 "ee/workspace-instance/current")]
+          (is (= "You don't have permissions to do that." (:body resp)))
+          (is (= "2" (version resp)))))
       (testing "400 from request validation"
-        (is (nil? (version (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-instance/current"
-                                                               {:name 1}))))))))
+        (let [resp (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-instance/current" {:name 1})]
+          (is (=? {:errors map?} (:body resp)))
+          (is (= "2" (version resp)))))
+      (testing "400 an endpoint throws"
+        (let [resp (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-instance/current"
+                                                       {:databases [{:database_id Integer/MAX_VALUE :schema "ws"}]})]
+          (is (= (str "Unknown database ids: [" Integer/MAX_VALUE "]") (:body resp)))
+          (is (= "2" (version resp)))))
+      (testing "500"
+        (mt/with-dynamic-fn-redefs [ws/instance-workspace (fn [] (throw (ex-info "boom" {})))]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 500 "ee/workspace-instance/current")]
+            (is (=? {:message "boom"} (:body resp)))
+            (is (= "2" (version resp)))))))))
+
+(deftest contract-version-header-absent-outside-the-routes-test
+  (testing "characterization: responses built outside the workspace-instance routes have no header"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
+      (testing "the premium-feature 402"
+        (mt/with-premium-features #{}
+          (is (nil? (version (mt/user-http-request-full-response :crowberto :get 402 "ee/workspace-instance/current"))))))
+      (testing "the 404 of a path no route matches"
+        (is (nil? (version (mt/user-http-request-full-response :crowberto :get 404
+                                                               "ee/workspace-instance/no-such-route"))))))))
+
+(deftest contract-version-header-wrapper-test
+  (testing "the wrapper answers an error with the standard error response plus the version header, however the error arrives"
+    (let [wrap     @#'ws.api/add-contract-version-header
+          request  {:request-method :get :uri "/x" :headers {"origin" "http://localhost:3000"}}
+          e        (ex-info "Nope" {:status-code 409 :workspace_id 1})
+          stable   (fn [response] (cond-> response (map? response) (update :headers dissoc "Last-Modified")))
+          call     (fn [handler]
+                     (let [result (promise)]
+                       ((wrap handler) request #(deliver result [:respond (stable %)]) #(deliver result [:raise %]))
+                       (deref result 5000 :timeout)))
+          expected [:respond (-> (mw.exceptions/api-exception-response e request)
+                                 (assoc-in [:headers "X-Metabase-Workspaces-Version"] "2")
+                                 stable)]]
+      (is (= 409 (:status (second expected))))
+      (testing "thrown"
+        (is (= expected (call (fn [_request _respond _raise] (throw e))))))
+      (testing "passed to raise"
+        (is (= expected (call (fn [_request _respond raise] (raise e))))))
+      (testing "passed to raise on another thread"
+        (is (= expected (call (fn [_request _respond raise] (future (raise e)))))))
+      (testing "passed to respond"
+        (is (= expected (call (fn [_request respond _raise] (respond e))))))
+      (testing "a nil response, which lets routing try the next handler, passes through"
+        (is (= [:respond nil] (call (fn [_request respond _raise] (respond nil)))))))))

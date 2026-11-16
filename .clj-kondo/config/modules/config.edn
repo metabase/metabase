@@ -2750,6 +2750,7 @@
   {:team "UX West"
    :api  #{metabase.server.core
            metabase.server.init
+           metabase.server.middleware.exceptions
            metabase.server.middleware.security
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
@@ -4885,6 +4886,7 @@
            premium-features
            query-processor
            sample-data
+           server
            settings
            sql-tools
            util
