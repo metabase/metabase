@@ -1,3 +1,4 @@
+import type { NumberFormat } from "metabase/utils/formatting/number-format";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -319,6 +320,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   negativeInParentheses?: boolean;
   noRange?: boolean;
   number_separators?: string;
+  number_format?: NumberFormat;
   number_style?: string;
   prefix?: string;
   remap?: any;

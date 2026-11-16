@@ -42,6 +42,60 @@ function seriesWithColumn(column?: Partial<DatasetColumn>): Series {
 }
 
 describe("column settings", () => {
+  describe("number format inheritance", () => {
+    afterEach(() => {
+      mockSettings();
+    });
+
+    it("uses thousands by default", () => {
+      mockSettings();
+      const series = seriesWithColumn({ semantic_type: null });
+      const column = series[0].data.cols[0];
+      const computed = getComputedSettings(columnSettings(), series, {});
+
+      expect(formatNumber(125000, computed.column?.(column))).toBe("125,000");
+    });
+
+    it("inherits the instance preset and supports field and question overrides", () => {
+      mockSettings({
+        "custom-formatting": {
+          "type/Number": { number_format: "lakh-crore" },
+        },
+      });
+      const series = seriesWithColumn({ semantic_type: null });
+      const column = series[0].data.cols[0];
+      const inherited = getComputedSettings(columnSettings(), series, {});
+      expect(formatNumber(125000, inherited.column?.(column))).toBe("1,25,000");
+
+      const fieldSeries = seriesWithColumn({
+        semantic_type: null,
+        settings: { number_format: "thousands" },
+      });
+      const fieldColumn = fieldSeries[0].data.cols[0];
+      const fieldComputed = getComputedSettings(
+        columnSettings(),
+        fieldSeries,
+        {},
+      );
+      expect(formatNumber(125000, fieldComputed.column?.(fieldColumn))).toBe(
+        "125,000",
+      );
+
+      const questionComputed = getComputedSettings(
+        columnSettings(),
+        fieldSeries,
+        {
+          column_settings: {
+            '["name","foo"]': { number_format: "lakh-crore" },
+          },
+        },
+      );
+      expect(formatNumber(125000, questionComputed.column?.(fieldColumn))).toBe(
+        "1,25,000",
+      );
+    });
+  });
+
   describe("currency position inheritance", () => {
     afterEach(() => {
       mockSettings();

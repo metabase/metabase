@@ -5,6 +5,139 @@ import {
 } from "./numbers";
 
 describe("formatNumber", () => {
+  describe("lakh-crore number format", () => {
+    it.each([
+      [125000, "1,25,000"],
+      [12345678.5, "1,23,45,678.5"],
+      [-125000, "-1,25,000"],
+      [12345678901234567890n, "1,23,45,67,89,01,23,45,67,890"],
+    ])(
+      "groups %s with primary size 3 and secondary size 2",
+      (value, expected) => {
+        expect(formatNumber(value, { number_format: "lakh-crore" })).toBe(
+          expected,
+        );
+      },
+    );
+
+    it.each([
+      [100000, "1.00L"],
+      [125000, "1.25L"],
+      [10000000, "1.00Cr"],
+      [123456789.12, "12.35Cr"],
+      [-125000, "-1.25L"],
+      [10000000n, "1.00Cr"],
+      [99999, "1.00L"],
+      [9999999, "1.00Cr"],
+    ])("formats compact %s in lakhs or crores", (value, expected) => {
+      expect(
+        formatNumber(value, {
+          number_format: "lakh-crore",
+          compact: true,
+          decimals: 2,
+        }),
+      ).toBe(expected);
+    });
+
+    it("preserves separator, decimal, currency, and negative-format options", () => {
+      expect(
+        formatNumber(125000.5, {
+          number_format: "lakh-crore",
+          number_separators: ",.",
+          decimals: 2,
+        }),
+      ).toBe("1.25.000,50");
+      expect(
+        formatNumber(-125000, {
+          number_format: "lakh-crore",
+          negativeInParentheses: true,
+        }),
+      ).toBe("(1,25,000)");
+      expect(
+        formatNumber(125000, {
+          number_format: "lakh-crore",
+          number_style: "currency",
+          currency: "INR",
+          decimals: 2,
+        }),
+      ).toBe("₹1,25,000.00");
+      expect(
+        formatNumber(-123456789.12, {
+          number_format: "lakh-crore",
+          number_style: "currency",
+          currency: "INR",
+          compact: true,
+          decimals: 2,
+        }),
+      ).toBe("-₹12.35Cr");
+    });
+
+    it("keeps thousands / millions as the default", () => {
+      expect(formatNumber(125000)).toBe("125,000");
+      expect(formatNumber(125000, { compact: true, decimals: 2 })).toBe(
+        "125.00k",
+      );
+    });
+
+    it("preserves currency label placement with the preset", () => {
+      expect(
+        formatNumber(125000, {
+          number_format: "lakh-crore",
+          number_style: "currency",
+          currency: "INR",
+          currency_position: "after",
+          decimals: 2,
+        }),
+      ).toBe("1,25,000.00\u00a0₹");
+      expect(
+        formatNumber(-125000, {
+          number_format: "lakh-crore",
+          number_style: "currency",
+          currency: "INR",
+          currency_position: "after",
+          compact: true,
+          decimals: 2,
+        }),
+      ).toBe("-1.25L\u00a0₹");
+    });
+  });
+
+  it.each([
+    ["thousands", "12,345,678", "12.35M"],
+    ["lakh-crore", "1,23,45,678", "1.23Cr"],
+  ] as const)(
+    "uses %s consistently for numbers and bigints",
+    (number_format, full, compact) => {
+      for (const value of [12345678, 12345678n]) {
+        expect(formatNumber(value, { number_format })).toBe(full);
+        expect(
+          formatNumber(value, { number_format, compact: true, decimals: 2 }),
+        ).toBe(compact);
+      }
+    },
+  );
+
+  it.each([
+    ["thousands", "125,000.00"],
+    ["lakh-crore", "1,25,000.00"],
+  ] as const)(
+    "keeps the %s format independent of currency",
+    (number_format, expected) => {
+      for (const currency of ["USD", "INR"]) {
+        expect(
+          formatNumber(125000, {
+            number_format,
+            number_style: "currency",
+            currency,
+            currency_in_header: true,
+            type: "cell",
+            decimals: 2,
+          }),
+        ).toBe(expected);
+      }
+    },
+  );
+
   it("should respect the decimals setting even when compact is true (metabase#54063)", () => {
     const result = formatNumber(4.271250189320243, {
       compact: true,
@@ -518,6 +651,19 @@ describe("formatPercent", () => {
 });
 
 describe("numberFormatterForOptions caching", () => {
+  it("keeps digit grouping correct when switching cached presets", () => {
+    const thousands = numberFormatterForOptions({ number_format: "thousands" });
+    const lakhCrore = numberFormatterForOptions({
+      number_format: "lakh-crore",
+    });
+
+    expect(thousands.format(125000)).toBe("125,000");
+    expect(lakhCrore.format(125000)).toBe("1,25,000");
+    expect(
+      numberFormatterForOptions({ number_format: "thousands" }).format(125000),
+    ).toBe("125,000");
+  });
+
   it("should reuse the formatter for equivalent options", () => {
     const options = { number_style: "currency" as const, currency: "EUR" };
 

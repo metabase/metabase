@@ -308,6 +308,7 @@ export type VisualizationSettingsDefinitions = {
   "map.heat.max-zoom"?: SeriesSettingDefinition<Value, Props>;
   markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
   number_separators?: DatasetColumnSettingDefinition<Value, Props>;
+  number_format?: DatasetColumnSettingDefinition<Value, Props>;
   number_style?: DatasetColumnSettingDefinition<Value, Props>;
   "pie._dimensions_widget"?: SeriesSettingDefinition<
     Value,
