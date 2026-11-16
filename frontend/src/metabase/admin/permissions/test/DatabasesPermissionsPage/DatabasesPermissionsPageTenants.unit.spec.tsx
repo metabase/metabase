@@ -61,6 +61,10 @@ const TEST_GROUPS = [
   TENANT_GROUP,
 ];
 
+// The All tenant users group holds the wider access here because an admin
+// granted it: since #86277 the backend gives that group least access on a new
+// database, so the e2e test this replaced had to grant it too.
+
 const MANAGE_TABLE_METADATA_INDEX = 3;
 const MANAGE_DATABASE_INDEX = 4;
 
