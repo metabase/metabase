@@ -7,10 +7,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import {
-  type OmniPickerItem,
-  type OmniPickerQuestionItem,
-  isInCollectionTree,
+import type {
+  OmniPickerItem,
+  OmniPickerQuestionItem,
 } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
@@ -19,6 +18,7 @@ import {
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
+import { isQuestionPickerItemDisabled } from "metabase/dashboard/utils/question-picker";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -390,19 +390,8 @@ class DashboardGridInner extends Component<
       handleClose();
     };
 
-    const shouldDisableItem = (item: OmniPickerItem) => {
-      // don't allow adding items that are already saved in a different dashboard
-      // proably only applicable to search and recents
-      if (isInCollectionTree(item) && item.dashboard_id) {
-        if (item.dashboard_id !== dashboard.id) {
-          return true;
-        }
-      }
-      if (item.model === "dashboard" && item.id !== dashboard.id) {
-        return true;
-      }
-      return false;
-    };
+    const shouldDisableItem = (item: OmniPickerItem) =>
+      isQuestionPickerItemDisabled(item, dashboard.id);
 
     const handleClose = () => {
       this.setState({ replaceCardModalDashCard: null });
