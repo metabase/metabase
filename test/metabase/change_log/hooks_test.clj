@@ -210,10 +210,9 @@
             (t2/with-transaction [_conn nil {:rollback-only true}]
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
-        (testing "`log-rows!` on a model that is not tracked throws in dev and test, also while the log is off"
-          (mt/with-premium-features #{}
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not derive :hook/change-log"
-                                  (change-log/log-rows! :model/Collection :update :id 1))))
+        (testing "`log-rows!` on a model that is not tracked throws in dev and test"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not derive :hook/change-log"
+                                (change-log/log-rows! :model/Collection :update :id 1)))
           (testing "and in production it warns instead of logging"
             (with-redefs [config/is-prod? true]
               (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
@@ -587,4 +586,6 @@
       (testing "while the change log is off, `log-rows!` runs no query"
         (t2/with-call-count [calls]
           (is (nil? (change-log/log-rows! :model/PermissionsGroup :update :id (:id group))))
-          (is (zero? (calls))))))))
+          (is (zero? (calls)))))
+      (testing "and does not load the model, so it works on an EE model without EE"
+        (is (nil? (change-log/log-rows! :model/Tenant :update)))))))

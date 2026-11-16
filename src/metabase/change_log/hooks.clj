@@ -61,17 +61,18 @@
       (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id)
       (t2/delete! :pulse_channel_recipient :pulse_channel_id channel-id))
 
-  While the log is off, it only checks `model`: one that is not tracked goes to [[throw-or-log]]. It does not log what a
-  delete cascades to: those rows need their own call."
+  While the log is off, it does nothing, so a write can call it on an EE model without EE. While the log is on, a
+  `model` that is not tracked goes to [[throw-or-log]]. It does not log what a delete cascades to: those rows need
+  their own call."
   [model  :- :keyword
    action :- [:enum :insert :update :delete]
    & conditions :- [:* [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
                         :any]]]
-  (if (isa? (t2/resolve-model model) :hook/change-log)
-    (when (premium-features/enable-change-log?)
-      (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]]))
-    (throw-or-log (format "Not logging %s on %s to the change log: the model does not derive :hook/change-log."
-                          (name action) model))))
+  (when (premium-features/enable-change-log?)
+    (if (isa? (t2/resolve-model model) :hook/change-log)
+      (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
+      (throw-or-log (format "Not logging %s on %s to the change log: the model does not derive :hook/change-log."
+                            (name action) model)))))
 
 (defn- pk-of [model]
   (let [pk (first (t2/primary-keys model))]
