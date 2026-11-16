@@ -42496,13 +42496,6 @@
                     "minLength" : 1,
                     "type" : "string"
                   },
-                  "provider_name" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "schedules" : {
                     "anyOf" : [ {
                       "$ref" : "#/components/schemas/metabase.sync.schedules.ExpandedSchedulesMap"
@@ -42794,13 +42787,6 @@
                     } ]
                   },
                   "points_of_interest" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "provider_name" : {
                     "anyOf" : [ {
                       "type" : "string"
                     }, {

@@ -7,7 +7,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -629,7 +628,7 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]
     :as   body}
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
@@ -641,7 +640,6 @@
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe :string]]
        [:is_stub           {:optional true}  [:maybe :boolean]]]]
   (api/check-superuser)
   (when (true? (:is_stub body))
@@ -664,7 +662,6 @@
                                  :is_full_sync is_full_sync
                                  :is_on_demand is_on_demand
                                  :cache_ttl    cache_ttl
-                                 :provider_name provider_name
                                  :creator_id   api/*current-user-id*}
                                 (when schedules
                                   (sync.schedules/schedule-map->cron-strings schedules))
@@ -786,8 +783,6 @@
         marker-name    (name marker-key)
         column-name    (connection-marker-key->details-column marker-key)
         article-noun   (str article " " noun)]
-    (api/check-400 (not (:router_database_id existing-database))
-                   (tru "Cannot configure {0} connection on a destination database" article-noun))
     (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
@@ -833,7 +828,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
-           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
+           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings]
     :as   body}
    :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
@@ -850,7 +845,6 @@
        [:points_of_interest {:optional true} [:maybe :string]]
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-       [:provider_name      {:optional true} [:maybe :string]]
        [:settings           {:optional true} [:maybe ms/DatabaseSettings]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
@@ -868,12 +862,7 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (warehouses-rest.db/database id))
-        ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
-        ;; table editing), so the guard is lifted when test endpoints are enabled
-        _                               (when (and (:is_sample existing-database)
-                                                   (not (config/config-bool :mb-enable-test-endpoints)))
-                                          (throw (ex-info (tru "The sample database cannot be edited.")
-                                                          {:status-code 400})))
+        _                               (api/update-check existing-database body)
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
         _                               (when admin_details
@@ -939,38 +928,21 @@
                                  :settings           (when (seq settings) pending-settings)}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings})
-                               (when (and (:is_stub existing-database)
-                                          (or details-changed? engine-changed?))
-                                 {:is_stub             false
-                                  :initial_sync_status "incomplete"
-                                  :initial_sync_error  nil})
                                ;; these fields can be nil
-                               (when (contains? body :provider_name)
-                                 {:provider_name provider_name})
                                (when (contains? body :write_data_details)
                                  {:write_data_details write-data-details-with-secrets})
                                (when (contains? body :admin_details)
                                  {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
-            pending-db        (merge existing-database updates)]
-        ;; pass in this predicate to break circular dependency
-        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
-          ;; ensure we're not trying to set anything we should not be able to.
-          ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
-          ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
-          (doseq [[setting-kw new-value] settings
-                  :when                  (and (some? new-value)
-                                              ;; Allow explicit default value as well (typically this is what FE will actually do)
-                                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
-                                              (not= new-value (try (setting/default-value setting-kw)
-                                                                   ;; fallback to a redundant nil check
-                                                                   (catch Exception _)))
-                                              (not= new-value (get existing-settings setting-kw)))]
-            (try
-              (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
-              (catch Exception e
-                (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
+            pending-db        (merge existing-database updates)
+            driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+        (doseq [setting-kw (database/changed-settings settings existing-settings)]
+          (try
+            (setting/validate-settable! setting-kw)
+            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
+            (catch Exception e
+              (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
         (warehouses-rest.db/update-database! id updates)
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.

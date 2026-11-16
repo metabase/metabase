@@ -1085,23 +1085,32 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
-(defn validate-settable-for-db!
-  "Check whether the given setting can be set for the given database."
+(defn validate-driver-feature-for-db!
+  "Throws a 400 unless `database`'s driver has the driver feature the setting needs, as `driver-supports?` answers it."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
         s-name (setting-name setting)]
-    (validate-settable! setting)
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
-                      {:setting s-name
+                      {:status-code      400
+                       :setting          s-name
                        :required-feature driver-feature
-                       :database-id (:id database)})))
+                       :database-id      (:id database)})))))
+
+(defn validate-settable-for-db!
+  "Throws a 400 unless the setting can be set on `database`: its driver has the setting's driver feature, and the
+  setting's `:enabled-for-db?` gives no reason against it other than warnings."
+  [setting-definition-or-name database driver-supports?]
+  (let [setting (resolve-setting setting-definition-or-name)
+        s-name  (setting-name setting)]
+    (validate-driver-feature-for-db! setting database driver-supports?)
     ;; Warnings are only for display and shouldn't block writing the setting.
     ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
     (when-let [reasons (disabled-for-db-reasons setting database)]
-      (when (not-every? warning? (disabled-for-db-reasons setting database))
+      (when (not-every? warning? reasons)
         (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
-                        {:setting     s-name
+                        {:status-code 400
+                         :setting     s-name
                          :database-id (:id database)
                          :reasons     reasons}))))))
 

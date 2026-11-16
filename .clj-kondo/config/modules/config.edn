@@ -3484,6 +3484,7 @@
            settings
            sync
            util
+           util.config
            warehouses.secrets}
    :model-exports #{:model/Database}
    :model-imports #{:model/Action
@@ -3515,7 +3516,6 @@
            sync
            upload
            util
-           util.config
            warehouses
            warehouses.schema
            warehouses.secrets}

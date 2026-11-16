@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
@@ -155,8 +156,11 @@
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
     (mt/with-temp [:model/Database {db-id :id}    {:name     "Birds"
                                                    :engine   ::feature-flag-test-driver
-                                                   :settings {:database-enable-actions true}}
+                                                   :settings {}}
                    :model/Table    {table-id :id} {:db_id db-id}]
+      (t2/query-one {:update :metabase_database
+                     :set    {:settings (json/encode {:database-enable-actions true})}
+                     :where  [:= :id db-id]})
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)

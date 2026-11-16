@@ -306,14 +306,22 @@
         (is (= false (driver.u/supports? :sqlite :actions database)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"The database does not support actions."
+             #"Setting database-enable-actions requires driver feature :actions"
              (t2/update! :model/Database :id (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
       (mt/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"The database does not support actions."
-             (t2/update! :model/Database :id (:id database) {:engine :sqlite})))))))
+             #"Setting database-enable-actions requires driver feature :actions"
+             (t2/update! :model/Database :id (:id database) {:engine :sqlite})))))
+    (testing "Inserting a database with database-enable-actions should fail if the engine doesn't support actions"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting database-enable-actions requires driver feature :actions"
+           (t2/insert! :model/Database {:name     "Test Database"
+                                        :engine   :sqlite
+                                        :details  {}
+                                        :settings {:database-enable-actions true}}))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
   (let [encode-decode (comp json/decode json/encode)
@@ -1256,3 +1264,101 @@
     (mt/with-temp [:model/Database {router-id :id} {}
                    :model/Database {dest-id :id} {:router_database_id router-id}]
       (is (t2/update! :model/Database :id dest-id {:name "renamed-destination"})))))
+
+(deftest database-settings-checked-for-driver-features-only-test
+  (testing "a writer may turn on a setting whose reasons against the database depend on other rows, such as its tables"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2, :initial_sync_status "complete"}]
+      (is (pos? (t2/update! :model/Database :id db-id {:settings {:database-enable-table-editing true}})))
+      (testing "and an unregistered setting is left alone"
+        (is (pos? (t2/update! :model/Database :id db-id {:settings {:database-enable-table-editing true
+                                                                    :unregistered-setting          true}})))))))
+
+(deftest database-overlays-refused-on-destinations-test
+  (testing "a destination database has no write or admin connection of its own"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot configure a write connection on a destination database"
+           (t2/update! :model/Database :id dest-id {:write_data_details {:user "writer"}})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot configure an admin connection on a destination database"
+           (t2/update! :model/Database :id dest-id {:admin_details {:user "admin"}})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot configure a write connection on a destination database"
+           (t2/insert! :model/Database {:name               "Other Destination"
+                                        :engine             :h2
+                                        :details            {}
+                                        :router_database_id router-id
+                                        :write_data_details {:user "writer"}})))
+      (testing "while a database that is no destination can have them"
+        (is (pos? (t2/update! :model/Database :id router-id {:write_data_details {:user "writer"}})))))))
+
+(deftest destination-router-is-no-destination-test
+  (testing "a destination cannot route on to another destination"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"A destination database cannot be the router of another destination database"
+           (t2/insert! :model/Database {:name               "Nested Destination"
+                                        :engine             :h2
+                                        :details            {}
+                                        :router_database_id dest-id}))))))
+
+(deftest provider-name-derived-from-engine-and-host-test
+  (testing "provider_name follows the engine and the host, whatever the writer sends"
+    (let [neon-host "ep-autumn-frost-alwlmval-pooler.ap-southeast-1.aws.neon.tech"
+          db-id     (t2/insert-returning-pk! :model/Database {:name          "Provider Database"
+                                                              :engine        :postgres
+                                                              :details       {:host neon-host}
+                                                              :provider_name "Something Else"})]
+      (try
+        (is (= "Neon" (t2/select-one-fn :provider_name :model/Database :id db-id)))
+        (testing "an update of the host recomputes it"
+          (t2/update! :model/Database :id db-id {:details {:host "db.apbkobhfnmcqqzqeeqss.supabase.co"}})
+          (is (= "Supabase" (t2/select-one-fn :provider_name :model/Database :id db-id))))
+        (testing "a change to it alone is refused"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"provider_name is derived from the engine and the host"
+               (t2/update! :model/Database :id db-id {:provider_name "Neon"}))))
+        (finally
+          (t2/delete! :model/Database :id db-id))))))
+
+(deftest stub-cleared-when-details-change-test
+  (testing "a stub that gets connection details is a database to sync"
+    (mt/with-temp [:model/Database {db-id :id} {:is_stub true, :initial_sync_status "complete"}]
+      (t2/update! :model/Database :id db-id {:details {:db "mem:stub-details"}})
+      (is (= {:is_stub false, :initial_sync_status "incomplete"}
+             (t2/select-one [:model/Database :is_stub :initial_sync_status] :id db-id)))))
+  (testing "a writer that sets is_stub itself keeps its own values"
+    (mt/with-temp [:model/Database {db-id :id} {:is_stub true, :initial_sync_status "complete"}]
+      (t2/update! :model/Database :id db-id {:details {:db "mem:stub-details"}, :is_stub false})
+      (is (= {:is_stub false, :initial_sync_status "complete"}
+             (t2/select-one [:model/Database :is_stub :initial_sync_status] :id db-id))))))
+
+(deftest sample-database-can-update-test
+  (testing "a user who can write the Sample Database still cannot edit it, unless the test endpoints are enabled"
+    (mt/with-temp [:model/Database database {:is_sample true}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [database (t2/hydrate database :can_write)]
+          (is (true? (mi/can-write? database)))
+          (is (false? (mi/can-update? database {:name "New Name"})))
+          (mt/with-temp-env-var-value! [mb-enable-test-endpoints "true"]
+            (is (true? (mi/can-update? database {:name "New Name"})))))))))
+
+(deftest can-write-hydration-fixed-queries-test
+  (testing "the :can_write hydration costs the same number of queries for one database as for several"
+    (mt/with-temp [:model/Database db-1 {}
+                   :model/Database db-2 {}
+                   :model/Database db-3 {:router_database_id (:id db-1)}]
+      (mt/with-test-user :rasta
+        (let [query-count (fn [databases]
+                            (t2/with-call-count [call-count]
+                              (doall (t2/hydrate databases :can_write))
+                              (call-count)))]
+          (is (= (query-count [db-1])
+                 (query-count [db-1 db-2 db-3]))))))))
