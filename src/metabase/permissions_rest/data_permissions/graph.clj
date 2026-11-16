@@ -385,52 +385,26 @@
 
 (defn- add-implications:db-level
   [desired group-id db-id perm-type db-value]
-  (cond-> desired
-    (and (= perm-type :perms/create-queries) (not= db-value :no))
-    (update [group-id db-id :perms/view-data]
-            #(merge % {nil {:perm_value :unrestricted :schema_name nil}}))
-
-    (and (= perm-type :perms/view-data) (= db-value :blocked))
-    (-> (update [group-id db-id :perms/create-queries]
-                #(merge % {nil {:perm_value :no :schema_name nil}}))
-        (update [group-id db-id :perms/download-results]
-                #(merge % {nil {:perm_value :no :schema_name nil}})))
-
-    (and (= perm-type :perms/view-data) (not= db-value :unrestricted))
-    (update [group-id db-id :perms/transforms]
-            #(merge % {nil {:perm_value :no :schema_name nil}}))
-
-    (and (= perm-type :perms/create-queries) (not= db-value :query-builder-and-native))
-    (update [group-id db-id :perms/transforms]
-            #(merge % {nil {:perm_value :no :schema_name nil}}))))
+  (reduce (fn [desired {:keys [applies? implied-type implied-value]}]
+            (cond-> desired
+              (applies? db-value)
+              (update [group-id db-id implied-type]
+                      #(merge % {nil {:perm_value implied-value :schema_name nil}}))))
+          desired
+          (perms/permission-implications perm-type false)))
 
 (defn- add-implications:table-level
   [desired group-id db-id perm-type table-entries]
-  (cond-> desired
-    (= perm-type :perms/create-queries)
-    (update [group-id db-id :perms/view-data]
-            #(merge %
-                    (into {}
-                          (keep (fn [[tid {:keys [perm_value schema_name]}]]
-                                  (when (not= perm_value :no)
-                                    [tid {:perm_value :unrestricted :schema_name schema_name}])))
-                          table-entries)))
-
-    (= perm-type :perms/view-data)
-    (-> (update [group-id db-id :perms/create-queries]
-                #(merge %
-                        (into {}
-                              (keep (fn [[tid {:keys [perm_value schema_name]}]]
-                                      (when (= perm_value :blocked)
-                                        [tid {:perm_value :no :schema_name schema_name}])))
-                              table-entries)))
-        (update [group-id db-id :perms/download-results]
-                #(merge %
-                        (into {}
-                              (keep (fn [[tid {:keys [perm_value schema_name]}]]
-                                      (when (= perm_value :blocked)
-                                        [tid {:perm_value :no :schema_name schema_name}])))
-                              table-entries))))))
+  (reduce (fn [desired {:keys [applies? implied-type implied-value]}]
+            (update desired [group-id db-id implied-type]
+                    #(merge %
+                            (into {}
+                                  (keep (fn [[tid {:keys [perm_value schema_name]}]]
+                                          (when (applies? perm_value)
+                                            [tid {:perm_value implied-value :schema_name schema_name}])))
+                                  table-entries))))
+          desired
+          (perms/permission-implications perm-type true)))
 
 (defn- add-implications
   "Given a desired-state map and entries just added for a perm-type, merges in implied permission changes.
@@ -467,7 +441,7 @@
   "Expands a db-level permission value to table-level entries for all tables in the db.
    :query-builder-and-native becomes :query-builder per table since it can only be db-level."
   [perm-value all-tables]
-  (let [table-value (if (= perm-value :query-builder-and-native) :query-builder perm-value)]
+  (let [table-value (perms/table-level-value perm-value)]
     (into {}
           (map (fn [{:keys [id schema]}]
                  [id {:perm_value table-value :schema_name schema}]))

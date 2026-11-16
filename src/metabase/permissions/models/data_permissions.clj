@@ -37,4 +37,4 @@
 
 (t2/define-before-update :model/DataPermissions
   [_permission]
-  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
+  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))

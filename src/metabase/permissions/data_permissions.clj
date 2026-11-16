@@ -641,6 +641,35 @@
   [& changes]
   (apply merge-with (fn [a b] (distinct (concat a b))) changes))
 
+(def ^:private implication-rules
+  "The rules both permission writers apply: a group whose `:perm-type` value satisfies `:applies?` on a Database or
+  Table also gets `:implied-value` of `:implied-type` there, on the Database only when `:database-only?`."
+  [{:perm-type :perms/create-queries :applies? #(not= % :no)
+    :implied-type :perms/view-data :implied-value :unrestricted}
+   {:perm-type :perms/view-data :applies? #(= % :blocked)
+    :implied-type :perms/create-queries :implied-value :no}
+   {:perm-type :perms/view-data :applies? #(= % :blocked)
+    :implied-type :perms/download-results :implied-value :no}
+   {:perm-type :perms/view-data :applies? #(not= % :unrestricted)
+    :implied-type :perms/transforms :implied-value :no :database-only? true}
+   {:perm-type :perms/create-queries :applies? #(not= % :query-builder-and-native)
+    :implied-type :perms/transforms :implied-value :no :database-only? true}])
+
+(defn permission-implications
+  "The [[implication-rules]] for a value of `perm-type` set on a whole Database, or on single Tables when `table-level?`."
+  [perm-type table-level?]
+  (filterv #(and (= perm-type (:perm-type %))
+                 (not (and table-level? (:database-only? %))))
+           implication-rules))
+
+(defn table-level-value
+  "The value each Table gets when the Database-level `value` is spread over its Tables, which is `:query-builder` for
+  native access since that exists only for a whole Database."
+  [value]
+  (case value
+    :query-builder-and-native :query-builder
+    value))
+
 (mu/defn- build-database-permission
   "Builds a sequence of DataPermissions models to delete and insert for setting a single permission to a specified
   value for a given group and database. If a permission value already exists for the specified group and object,
@@ -663,19 +692,9 @@
                   :group_id   group-id
                   :perm_value value
                   :db_id      db-id}
-        recursive-calls (cond-> []
-                          (and (= perm-type :perms/create-queries) (not= value :no))
-                          (conj (build-database-permission perms group-or-id db-or-id :perms/view-data :unrestricted))
-
-                          (= [:perms/view-data :blocked] [perm-type value])
-                          (into [(build-database-permission perms group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission perms group-or-id db-or-id :perms/download-results :no)])
-
-                          (and (= perm-type :perms/view-data) (not= value :unrestricted))
-                          (conj (build-database-permission perms group-or-id db-or-id :perms/transforms :no))
-
-                          (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
-                          (conj (build-database-permission perms group-or-id db-or-id :perms/transforms :no)))]
+        recursive-calls (for [{:keys [applies? implied-type implied-value]} (permission-implications perm-type false)
+                              :when (applies? value)]
+                          (build-database-permission perms group-or-id db-or-id implied-type implied-value))]
     (apply merge-perm-changes
            {:to-delete existing-perms
             :to-insert [new-perm]}
@@ -781,22 +800,11 @@
 (defn- build-recursive-table-calls
   "Builds recursive calls for related permissions based on permission type and table permissions."
   [group-or-id perm-type table-perms]
-  (cond-> []
-    (= perm-type :perms/create-queries)
-    (conj (build-table-permissions group-or-id :perms/view-data
-                                   (-> (filter (fn [[_ value]] (not= value :no)) table-perms)
-                                       keys
-                                       (zipmap (repeat :unrestricted)))))
-
-    (= :perms/view-data perm-type)
-    (into [(build-table-permissions group-or-id :perms/create-queries
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))
-           (build-table-permissions group-or-id :perms/download-results
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))])))
+  (for [{:keys [applies? implied-type implied-value]} (permission-implications perm-type true)]
+    (build-table-permissions group-or-id implied-type
+                             (into {}
+                                   (keep (fn [[table value]] (when (applies? value) [table implied-value])))
+                                   table-perms))))
 
 (defn- handle-existing-db-permission
   "Handles the case where there's an existing database-level permission."
@@ -816,11 +824,7 @@
                                          (when-not (contains? table-ids (:id table))
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  (case existing-db-perm-value
-                                                           ;; If the previous database-level permission can't be set at
-                                                           ;; the table-level, we need to provide a new default
-                                                           :query-builder-and-native :query-builder
-                                                           existing-db-perm-value)
+                                            :perm_value  (table-level-value existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)}))))]
@@ -1178,9 +1182,7 @@
       ;; delete the DB-level row, expand non-batch tables to the old value,
       ;; then write each batch table at its actual-value.
       go-granular?
-      (let [expansion-value (case (:perm_value db-perm)
-                              :query-builder-and-native :query-builder
-                              (:perm_value db-perm))]
+      (let [expansion-value (table-level-value (:perm_value db-perm))]
         {:deletes [(:id db-perm)]
          :rows    (concat
                    (for [t all-db-tables :when (not (contains? batch-table-ids (:id t)))]
