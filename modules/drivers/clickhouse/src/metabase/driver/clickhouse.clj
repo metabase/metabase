@@ -844,9 +844,12 @@
                (throw (driver.u/batch-exception t))))))))))
 
 (defn- destroy-workspace-sqls
-  "The teardown statements. Dropping the user first stops it from starting queries; a query already running survives
-  DROP USER and DROP DATABASE, so KILL QUERY ... SYNC ends those, and waits for them, before the database goes.
-  [[destroy-workspace!]] drops the database even when KILL QUERY fails."
+  "The teardown statements, in order. `HOST NONE` refuses every new login of the user, and every HTTP request, which
+  logs in each time. A native-protocol session that is already open can still start queries until DROP USER. A query
+  already running survives HOST NONE, so KILL QUERY ... SYNC ends those queries and waits for them.
+  DROP DATABASE then removes the user's tables and views, including a materialized view that ClickHouse runs inside
+  every INSERT into an input table. The user goes last: on 26.10 a view whose definer is the user makes DROP USER fail,
+  and on 24.3 dropping that definer makes every INSERT into the view's source table fail."
   [db-name user]
   [(format "ALTER USER IF EXISTS %s HOST NONE" (quote-field user))
    (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))
@@ -864,10 +867,12 @@
       e)))
 
 (defn- destroy-workspace!
-  "Runs [[destroy-workspace-sqls]] one at a time. A failed KILL QUERY (the admin may lack the KILL QUERY grant, which
-  ClickHouse checks only when another user's query matches) does not stop DROP DATABASE. When DROP DATABASE succeeds,
-  the KILL QUERY error is thrown after it; an access denied error becomes one that names the missing grant. When DROP
-  DATABASE fails too, its error is thrown, with the KILL QUERY error attached as suppressed."
+  "Runs [[destroy-workspace-sqls]] one at a time. A failed ALTER USER or KILL QUERY does not stop the statements after
+  it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer. When a
+  statement fails, one error is thrown and the others are attached to it as suppressed. The thrown error is the DROP
+  DATABASE or DROP USER error if there is one, because a workspace object then remains. Otherwise it is the ALTER USER
+  error, then the KILL QUERY error. When only KILL QUERY fails, with access denied (the admin may lack the KILL QUERY
+  grant, which ClickHouse checks only when another user's query matches), the thrown error names the missing grant."
   [^Statement stmt db-name user]
   (let [[lock kill drop-db drop-user] (destroy-workspace-sqls db-name user)
         lock-error                    (execute-for-error stmt lock)
