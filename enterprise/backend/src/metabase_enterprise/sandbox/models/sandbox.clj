@@ -27,11 +27,14 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Sandbox [_model] :sandboxes)
 
@@ -44,6 +47,8 @@
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -80,53 +85,6 @@
                            :actual        (:base_type col)
                            :response/keys #{:expected :actual}})))))))
 
-(defn- merge-sandbox-into-graph
-  "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
-  ensuring table-level permissions are set appropriately."
-  [graph group-id table-id db-id schema perm-location sandbox-value]
-  (let [db-path (concat [group-id db-id] perm-location)
-        db-perm (get-in graph db-path)
-        schema-perm (get db-perm schema)
-        default-table-perm (cond
-                             (keyword? db-perm)     db-perm
-                             (keyword? schema-perm) schema-perm)
-        ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
-        ;; in the database or schema, so they show correctly in the UI.
-        tables (when (or (keyword? db-perm) (keyword? schema-perm))
-                 (sandbox.db/tables-of-database db-id (keyword? schema-perm) schema))
-        ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
-        graph (cond
-                (and tables (keyword? db-perm))
-                (m/dissoc-in graph db-path)
-
-                (and tables (keyword? schema-perm))
-                (m/dissoc-in graph (concat db-path [(or schema "")]))
-
-                :else
-                graph)
-        ;; Apply granular permissions to each table
-        granular-graph (if tables
-                         (reduce (fn [g {:keys [id schema]}]
-                                   (assoc-in g (concat db-path [(or schema "") id]) default-table-perm))
-                                 graph
-                                 tables)
-                         graph)]
-    ;; Set `:segmented` (aka sandboxed) permissions for the target table
-    (assoc-in granular-graph
-              (concat db-path [(or schema "") table-id])
-              sandbox-value)))
-
-(defenterprise add-sandboxes-to-permissions-graph
-  "Augments a provided permissions graph with active sandboxing policies."
-  :feature :sandboxes
-  [graph & {:keys [group-ids group-id db-id audit?]}]
-  (let [sandboxes (sandbox.db/sandboxes-with-table-info group-id group-ids db-id (when-not audit? audit/audit-db-id))]
-    ;; Incorporate each sandbox policy into the permissions graph.
-    (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-              (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
-            graph
-            sandboxes)))
-
 (mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
@@ -145,6 +103,77 @@
              :let  [table-col (get table-cols (:name col))]
              :when table-col]
        (check-column-types-match col table-col)))))
+
+(defn- normalize-sandbox-attribute-remappings
+  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
+  column in whatever raw, not-yet-normalized shape the caller supplied it in."
+  [sandbox-like]
+  (cond-> sandbox-like
+    (contains? sandbox-like :attribute_remappings)
+    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
+
+(defn- check-attribute-remappings
+  "Throws a 400 unless the `:attribute_remappings` of `sandbox` map user attribute names to field names, field ids, or
+  parameter targets."
+  [sandbox]
+  (when-not (mr/validate ::sandbox.schema/attribute-remappings
+                         (:attribute_remappings (normalize-sandbox-attribute-remappings sandbox)))
+    (throw (ex-info (tru "Invalid attribute remappings: each user attribute name must map to a field name, a field id, or a parameter target.")
+                    {:status-code 400}))))
+
+(defn- card-id->result-metadata
+  "The saved result metadata of the Cards of `sandboxes`, by Card id, loaded together."
+  [sandboxes]
+  (if-let [card-ids (not-empty (into #{} (keep :card_id) sandboxes))]
+    (sandbox.db/card-id->result-metadata card-ids)
+    {}))
+
+(defn- check-card-columns
+  "Throws a 400 unless the saved result columns of the Card of `sandbox`, from `card-id->metadata`, match the columns
+  of its Table."
+  [{:keys [card_id table_id]} card-id->metadata]
+  (when-let [result-metadata (not-empty (get card-id->metadata card_id))]
+    (check-columns-match-table table_id result-metadata)))
+
+(defn- remove-native-access!
+  "Downgrades the native query access of the group of each of `sandboxes` to the query builder on the Database of its
+  Table, where the group has native access to that Table."
+  [sandboxes]
+  (let [table-id->db-id (sandbox.db/table-id->database-id (into #{} (map :table_id) sandboxes))]
+    (doseq [[group-id group-sandboxes] (group-by :group_id sandboxes)
+            :let  [tables (select-keys table-id->db-id (map :table_id group-sandboxes))]
+            db-id (distinct (for [[table-id value] (perms/table-permissions-for-groups #{group-id} :perms/create-queries tables)
+                                  :when (= value :query-builder-and-native)]
+                              (get tables table-id)))]
+      (perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))))
+
+(mi/define-before-insert :model/Sandbox
+  [sandboxes]
+  (let [card-id->metadata (card-id->result-metadata sandboxes)]
+    (doseq [sandbox sandboxes]
+      (check-attribute-remappings sandbox)
+      (check-card-columns sandbox card-id->metadata))
+    (remove-native-access! sandboxes)
+    sandboxes))
+
+(mi/define-before-update :model/Sandbox
+  [sandboxes]
+  (let [card-id->metadata (card-id->result-metadata (filter (comp seq t2/changes) sandboxes))]
+    (doseq [sandbox sandboxes
+            :let    [changes (t2/changes sandbox)]]
+      (when (contains? changes :table_id)
+        (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
+                        {:id (:id sandbox), :status-code 400})))
+      (when (contains? changes :group_id)
+        (throw (ex-info (tru "You cannot change the group ID of a sandbox once it has been created.")
+                        {:id (:id sandbox), :status-code 400})))
+      (when (contains? changes :attribute_remappings)
+        (check-attribute-remappings sandbox))
+      (when (seq changes)
+        (check-card-columns sandbox card-id->metadata)))
+    sandboxes))
+
+;;; --------------------------------------------- Sandbox dependency set ---------------------------------------------
 
 (defn- sandbox-dependency-set
   "The sandbox dependency set: every Card, snippet, Segment, and Measure some sandbox's policy reads at any depth, as a
@@ -256,6 +285,55 @@
   (not (and (some #(contains? changes %) [:definition :archived])
             (non-admin-affects-sandboxing? :measure measure-id))))
 
+;;; ----------------------------------------------- Permissions graph ------------------------------------------------
+
+(defn- merge-sandbox-into-graph
+  "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
+  ensuring table-level permissions are set appropriately."
+  [graph group-id table-id db-id schema perm-location sandbox-value]
+  (let [db-path (concat [group-id db-id] perm-location)
+        db-perm (get-in graph db-path)
+        schema-perm (get db-perm schema)
+        default-table-perm (cond
+                             (keyword? db-perm)     db-perm
+                             (keyword? schema-perm) schema-perm)
+        ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
+        ;; in the database or schema, so they show correctly in the UI.
+        tables (when (or (keyword? db-perm) (keyword? schema-perm))
+                 (sandbox.db/tables-of-database db-id (keyword? schema-perm) schema))
+        ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
+        graph (cond
+                (and tables (keyword? db-perm))
+                (m/dissoc-in graph db-path)
+
+                (and tables (keyword? schema-perm))
+                (m/dissoc-in graph (concat db-path [(or schema "")]))
+
+                :else
+                graph)
+        ;; Apply granular permissions to each table
+        granular-graph (if tables
+                         (reduce (fn [g {:keys [id schema]}]
+                                   (assoc-in g (concat db-path [(or schema "") id]) default-table-perm))
+                                 graph
+                                 tables)
+                         graph)]
+    ;; Set `:segmented` (aka sandboxed) permissions for the target table
+    (assoc-in granular-graph
+              (concat db-path [(or schema "") table-id])
+              sandbox-value)))
+
+(defenterprise add-sandboxes-to-permissions-graph
+  "Augments a provided permissions graph with active sandboxing policies."
+  :feature :sandboxes
+  [graph & {:keys [group-ids group-id db-id audit?]}]
+  (let [sandboxes (sandbox.db/sandboxes-with-table-info group-id group-ids db-id (when-not audit? audit/audit-db-id))]
+    ;; Incorporate each sandbox policy into the permissions graph.
+    (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
+              (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
+            graph
+            sandboxes)))
+
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
   created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
@@ -272,32 +350,3 @@
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (sandbox.db/sandbox id))
        (sandbox.db/insert-sandbox! sandbox)))))
-
-(defn- normalize-sandbox-attribute-remappings
-  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
-  column in whatever raw, not-yet-normalized shape the caller supplied it in."
-  [sandbox-like]
-  (cond-> sandbox-like
-    (contains? sandbox-like :attribute_remappings)
-    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
-
-(t2/define-before-insert :model/Sandbox
-  [{:keys [table_id group_id], :as gtap}]
-  (let [db-id (database/table-id->database-id table_id)]
-    ;; Remove native query access to the DB when saving a sandbox
-    (when (= (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id) :query-builder-and-native)
-      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
-  (u/prog1 gtap
-    (check-columns-match-table (normalize-sandbox-attribute-remappings gtap))))
-
-(t2/define-before-update :model/Sandbox
-  [{:keys [id], :as updates}]
-  (u/prog1 updates
-    (let [original (t2/original updates)
-          updated  (merge original updates)]
-      (when-not (= (:table_id original) (:table_id updated))
-        (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
-                        {:id          id
-                         :status-code 400})))
-      (when (:card_id updates)
-        (check-columns-match-table (normalize-sandbox-attribute-remappings updated))))))

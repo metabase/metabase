@@ -7,9 +7,16 @@
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
+
+(methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
 (doto :model/ConnectionImpersonation
   (derive :metabase/model)
@@ -17,7 +24,34 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-attribute
+  "Throws a 400 unless the `:attribute` of `impersonation` is a non-blank string."
+  [{:keys [attribute]}]
+  (when-not (mr/validate ms/NonBlankString attribute)
+    (throw (ex-info (tru "A connection impersonation needs a non-blank user attribute name.")
+                    {:status-code 400}))))
+
+(t2/define-before-insert :model/ConnectionImpersonation
+  [impersonation]
+  (check-attribute impersonation)
+  impersonation)
+
+(t2/define-before-update :model/ConnectionImpersonation
+  [impersonation]
+  (let [changes (t2/changes impersonation)]
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot change the group ID of a connection impersonation once it has been created.")
+                      {:status-code 400})))
+    (when (contains? changes :db_id)
+      (throw (ex-info (tru "You cannot change the database ID of a connection impersonation once it has been created.")
+                      {:status-code 400})))
+    (when (contains? changes :attribute)
+      (check-attribute impersonation))
+    impersonation))
+
+;;; ----------------------------------------------- Permissions graph ------------------------------------------------
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."

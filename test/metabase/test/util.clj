@@ -165,6 +165,10 @@
              :creator_id  (rasta-id)
              :content     {:type "text", :text (u.random/random-name)}}))
 
+   :model/ConnectionImpersonation
+   (fn [_] {:db_id     (data/id)
+            :attribute "impersonation_role"})
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)

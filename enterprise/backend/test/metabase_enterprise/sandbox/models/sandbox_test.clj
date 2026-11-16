@@ -27,6 +27,66 @@
            #"You cannot change the table ID of a sandbox once it has been created"
            (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
 
+(deftest group-id-is-frozen-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/PermissionsGroup {other-group-id :id} {}
+                 :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id}]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"You cannot change the group ID of a sandbox once it has been created"
+         (t2/update! :model/Sandbox :id sandbox-id {:group_id other-group-id})))
+    (is (= group-id (t2/select-one-fn :group_id :model/Sandbox :id sandbox-id)))
+    (testing "writing the same group id is no change"
+      (is (= 0 (t2/update! :model/Sandbox :id sandbox-id {:group_id group-id}))))))
+
+(deftest attribute-remappings-shape-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+    (testing "insert"
+      (is (=? {:status-code 400}
+              (try (t2/insert! :model/Sandbox {:table_id             (mt/id :venues)
+                                               :group_id             group-id
+                                               :attribute_remappings {"cat" true}})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid attribute remappings"
+           (t2/insert! :model/Sandbox {:table_id             (mt/id :venues)
+                                       :group_id             group-id
+                                       :attribute_remappings {"" "CATEGORY_ID"}})))
+      (is (not (t2/exists? :model/Sandbox :group_id group-id))))
+    (testing "update"
+      (mt/with-temp [:model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
+                                                      :group_id             group-id
+                                                      :attribute_remappings {"cat" "CATEGORY_ID"}}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid attribute remappings"
+             (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" true}})))
+        (is (= 1 (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {:cat (mt/id :venues :category_id)}})))
+        (is (= {"cat" (mt/id :venues :category_id)}
+               (t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id)))))))
+
+(deftest insert-removes-native-access-of-each-group-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (perms/set-database-permission! group-1 (mt/id) :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! group-2 (mt/id) :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! group-3 (mt/id) :perms/create-queries :no)
+    (try
+      (t2/insert! :model/Sandbox [{:table_id (mt/id :venues) :group_id group-1}
+                                  {:table_id (mt/id :checkins) :group_id group-2}
+                                  {:table_id (mt/id :venues) :group_id group-3}])
+      (is (= {(mt/id :venues) :query-builder}
+             (perms/table-permissions-for-groups #{group-1} :perms/create-queries {(mt/id :venues) (mt/id)})))
+      (is (= {(mt/id :checkins) :query-builder}
+             (perms/table-permissions-for-groups #{group-2} :perms/create-queries {(mt/id :checkins) (mt/id)})))
+      (testing "a group without native access keeps its access"
+        (is (= {(mt/id :venues) :no}
+               (perms/table-permissions-for-groups #{group-3} :perms/create-queries {(mt/id :venues) (mt/id)}))))
+      (finally
+        (t2/delete! :model/Sandbox :group_id [:in #{group-1 group-2 group-3}])))))
+
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
     (doseq [[msg f] {"Create a new GTAP"
