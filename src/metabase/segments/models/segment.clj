@@ -110,11 +110,15 @@
    :id
    {:default false}))
 
+(defn- definition-table-id
+  "The id of the Table `definition`, a full query, is built on."
+  [definition]
+  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+
 (defn- definition-writable?
   "Whether the current user can write Segments of the Table `definition` is built on."
   [definition]
-  (boolean (some-> definition not-empty lib-be/normalize-query lib/primary-source-table-id segments.db/table
-                   table-writable?)))
+  (boolean (some-> definition not-empty definition-table-id segments.db/table table-writable?)))
 
 (defmethod mi/can-create? :model/Segment
   [_model {:keys [definition]}]
@@ -143,36 +147,31 @@
 (defn- check-definition
   "Throws unless `definition` is a full query that fits a Segment."
   [definition]
-  (api/check-400 (and (seq definition)
-                      (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-                 (tru "Segment definition must be a full query with a source table."))
+  (when-not (and (seq definition)
+                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
+    (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
   (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
 
-(defn- derive-table-id
-  "`segment` with its `:definition` normalized and its `:table_id` taken from it."
-  [segment]
-  (let [definition (lib-be/normalize-query (:definition segment))]
-    (assoc segment
-           :definition definition
-           :table_id   (lib/primary-source-table-id definition))))
-
 (t2/define-before-insert :model/Segment
-  [segment]
-  (check-definition (:definition segment))
-  (derive-table-id segment))
+  [{:keys [definition] :as segment}]
+  (check-definition definition)
+  (assoc segment
+         :definition (lib-be/normalize-query definition)
+         :table_id   (definition-table-id definition)))
 
 (t2/define-before-update :model/Segment
   [{:keys [id definition] :as segment}]
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
-      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+      (throw (ex-info (tru "You cannot update the creator_id of a Segment.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Segment is derived from its definition.") {:status-code 400})))
     (when (contains? changes :definition)
       (check-definition definition)
       (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
     (cond-> segment
-      (contains? changes :definition) derive-table-id)))
+      (contains? changes :definition) (assoc :definition (lib-be/normalize-query definition)
+                                             :table_id   (definition-table-id definition)))))
 
 (defn- maybe-migrated-segment-definition
   [segment]
