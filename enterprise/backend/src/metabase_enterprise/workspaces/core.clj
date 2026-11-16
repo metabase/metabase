@@ -188,9 +188,11 @@
                     {:status-code 404 :workspace_id workspace-id}))))
 
 (def ^:private in-flight-stale-after
-  "How long after its last status change a `:provisioning` or `:deprovisioning`
-  row still counts as in flight. An older one is treated as left behind by a
-  crashed instance, so a delete tears it down instead of refusing."
+  "How long after the last write to any of a workspace's database rows a
+  `:provisioning` or `:deprovisioning` row of that workspace still counts as in
+  flight. After that, such a row is treated as left behind by a crashed instance,
+  so a delete tears it down instead of refusing. A create or deprovision that
+  spends longer than this on one database also looks crashed."
   (t/minutes 15))
 
 (defn- assert-workspace-not-busy
@@ -362,8 +364,8 @@
   App-DB `TableRemapping` rows are always cleared, so query routing is never
   left dangling. Refuses with a 409 (`workspace_busy`) while a create or
   deprovision is still running on any of its databases; a `:provisioning` or
-  `:deprovisioning` row left behind by a crashed instance is torn down once it
-  is older than [[in-flight-stale-after]]. Returns nil."
+  `:deprovisioning` row left behind by a crashed instance is torn down once
+  every row of the workspace is older than [[in-flight-stale-after]]. Returns nil."
   [id]
   (assert-workspace-exists id)
   (assert-workspace-not-busy id)
