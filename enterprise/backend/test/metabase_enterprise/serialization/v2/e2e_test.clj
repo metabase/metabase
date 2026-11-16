@@ -1512,7 +1512,7 @@
             (is (= test-eid (t2/select-one-fn :entity_id :model/CardTest :name "Revenue ignores refunds")))))))))
 
 (deftest saved-test-now-round-trip-test
-  (testing "A test's `now` is exported as an ISO-8601 instant and imported as the same moment"
+  (testing "A test's `now` is exported as an ISO-8601 date-time and imported as the same moment"
     (mt/with-premium-features #{:transforms-basic}
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-dbs [source-db dest-db]

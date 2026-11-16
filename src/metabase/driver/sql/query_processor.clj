@@ -349,8 +349,9 @@
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
   include the database type info on the form (ex: via [[h2x/with-type-info]]).
 
-  While [[qp.timezone/with-pinned-now]] pins the clock, the answer is instead a literal of the pinned moment, written by
-  the driver's [[inline-value]] and typed as the driver's own form is, so no driver method has to know about the pin."
+  While [[qp.timezone/with-pinned-now]] pins the clock, returns instead a literal of the pinned moment, typed like the
+  driver's own form: an instant when that type has a zone or offset, and otherwise (untyped, `timestamp` or `datetime`)
+  the wall-clock time in the results timezone."
   {:added "0.34.2" :arglists '([driver])}
   (fn [driver]
     (if (qp.timezone/pinned-now)
@@ -363,8 +364,8 @@
   :%now)
 
 (defn- zoned-type?
-  "Whether a current-time form of database type `database-type` holds an instant rather than a wall-clock time. An
-  untyped form holds a wall-clock time, as Redshift's `GETDATE()` does."
+  "Whether a current-time form of database type `database-type` holds an instant rather than a wall-clock time. Counts
+  an untyped form as a wall-clock time, which is right for Redshift's `GETDATE()`."
   [database-type]
   (boolean (and database-type
                 (not (contains? #{"timestamp" "datetime"} (u/lower-case-en database-type))))))

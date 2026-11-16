@@ -85,7 +85,7 @@
              ::errors/setup-failed
              ::errors/expectation-failed}
            (types-with-status 422))))
-  (testing "a form that is not built yet is 501"
+  (testing "what is not built yet is 501"
     (is (= #{::errors/unsupported-format ::errors/now-on-native-sql}
            (types-with-status 501))))
   (testing "nothing is declared 500"

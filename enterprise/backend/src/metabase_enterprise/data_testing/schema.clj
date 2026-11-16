@@ -141,8 +141,8 @@
         (or (empty? names) (apply distinct? names))))]])
 
 (defn- ->offset-date-time
-  "`x` as an OffsetDateTime when it is an ISO-8601 date-time with an offset or another moment, otherwise `x` unchanged
-  for the schema to refuse."
+  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant or a
+  ZonedDateTime; otherwise `x` unchanged, for the schema to refuse."
   [x]
   (cond
     (string? x)                         (try (t/offset-date-time x) (catch Exception _ x))

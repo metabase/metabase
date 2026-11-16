@@ -304,8 +304,8 @@
 
 (mu/defn- subject-plan :- ::data-testing.subject/subject-plan
   "The [[data-testing.subject/subject-plan]] of `subject`, compiled with `now` standing for the current time when it is
-  given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the subject's SQL holds SQL written by
-  hand, whose calls of the current time would still read the real clock."
+  given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the subject's SQL includes SQL written
+  by hand."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
    now          :- [:maybe ::data-testing.schema/now]]
@@ -316,7 +316,7 @@
       (when (:native? plan)
         (throw (data-testing.errors/ex
                 ::data-testing.errors/now-on-native-sql
-                (tru "A test of a query written in SQL, or built on one, cannot set `now`: the SQL''s own calls of the current time would still read the real clock.")
+                (tru "This test cannot set `now`: its query is written in SQL, or built on a question written in SQL, and `now` does not change the current time inside SQL. Remove `now`, or test a query built without SQL.")
                 {})))
       plan)))
 
