@@ -1,5 +1,5 @@
 # A failed create
-// "A failed create" and "A failed create, with #86601". Only the success body is checked here:
-// selvage reads 2xx JSON responses, so cleanup_required (on 409/412/500) is not a step field.
+// A create fails, and the caller deletes the workspace that the parent kept. Only the success body is checked here:
+// cleanup_required and workspace_id are on the 409, 412 and 500 bodies, which this flow does not read.
 mbcode -> parent: createWorkspace {id, databases.database_id, databases.status}
 mbcode -> parent: deleteWorkspace
