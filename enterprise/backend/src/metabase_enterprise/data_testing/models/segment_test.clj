@@ -44,8 +44,8 @@
 ;;; ---------------------------------------------------- Events ----------------------------------------------------
 
 (defenterprise delete-segment-tests!
-  "Enterprise implementation: delete the tests of the segment `segment-id`, each through its own hook. Runs whatever
-  the token says, since the rows outlive the feature."
+  "Enterprise implementation: delete the tests of the segment `segment-id`, each through its own hook. Runs whether
+  or not the premium token grants the feature, since the tests outlive the feature."
   :feature :none
   [segment-id]
   (data-testing.db/delete-segment-tests! segment-id))
@@ -92,8 +92,8 @@
   "Whether the current user may run the saved `segment-test`: they may read its segment and run the segment's
   definition, and write the native SQL of a test against its Database."
   [segment-test :- ::data-testing.schema/segment-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the segment is not
-  ;; enough.
+  ;; Input SQL can read any table of the Database, and the guards do not check what it reads, so reading the
+  ;; segment is not enough.
   (segment-allows? mi/can-read? (:segment_id segment-test)))
 
 (defmethod mi/can-read? :model/SegmentTest
@@ -146,7 +146,7 @@
                :creator_id serialization/user-transform}})
 
 (defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, which only its exported definition names.
+  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
   (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
         exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
         paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]

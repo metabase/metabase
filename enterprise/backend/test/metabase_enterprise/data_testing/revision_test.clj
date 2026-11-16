@@ -594,8 +594,7 @@
 
 (deftest segment-test-revision-history-after-the-old-segment-is-deleted-test
   (mt/with-premium-features #{:transforms-testing}
-    (testing "After a segment test moves to another segment and the old one is deleted, the history loads and hides the
-              revision about the deleted segment from a non-admin"
+    (testing "After a segment test moves to another segment and the old one is deleted, the history loads and hides the revision about the deleted segment from a non-admin"
       (mt/with-temp [:model/Segment {old-segment :id} {:table_id (mt/id :people)}
                      :model/Segment {new-segment :id} {:table_id (mt/id :people)}]
         (mt/with-current-user (mt/user->id :crowberto)

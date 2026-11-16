@@ -142,8 +142,7 @@
             (is (= #{{:schema "PUBLIC" :name "ORDERS"} {:schema "PUBLIC" :name "PRODUCTS"}}
                    (data-testing.compile/referenced-tables
                     :h2 (get-in (plan-of segment-id [orders-input products-input]) [:compiled :query])))))
-          (testing "the output has the columns the input for the segment's own table declares, whatever the order of
-                    the inputs"
+          (testing "the output has the columns the input for the segment's own table declares, whatever the order of the inputs"
             (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [orders-input products-input]))))
             (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [products-input orders-input]))))))))))
 

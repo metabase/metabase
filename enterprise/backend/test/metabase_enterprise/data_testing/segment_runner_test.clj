@@ -40,8 +40,8 @@
   [[1 "Google"] [2 "Twitter"] [3 "Google"]])
 
 (defn- run-segment-test!
-  "Save a Segment with `segment` columns and a SegmentTest of it with `inputs` and `expectations`, and run the test,
-  started by crowberto."
+  "Save a Segment with the attributes `segment` and a SegmentTest of it with `inputs` and `expectations`, and run the
+  test, started by crowberto."
   [segment inputs expectations]
   (mt/with-temp [:model/Segment     {segment-id :id} segment
                  :model/SegmentTest {test-id :id}    {:segment_id   segment-id
@@ -88,10 +88,9 @@
                  (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
                                                                      [input]
                                                                      [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))]
-      (testing "an input given as rows need declare only the columns the test reads"
+      (testing "an input given as rows needs to declare only the columns the query reads"
         (is (nil? (run! (people-rows three-people)))))
-      (testing "an input given as SQL declares no columns, so the output reads every column of the table, and its SQL
-                must give them all"
+      (testing "an input given as SQL declares no columns, so the output has every column of the table, and its SQL must give them all"
         (let [{:keys [error-type message]} (run! {:table  (table-ref :people)
                                                   :format :sql
                                                   :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
@@ -101,7 +100,7 @@
           (is (re-find #"(?i)column [\w.\"]*(name|email|address|city)" message) message))))))
 
 (defn- validated-outcome!
-  "What becomes of a test of a Segment with `segment` columns, `inputs` and `expectations`, started by crowberto:
+  "What becomes of a test of a Segment with the attributes `segment`, `inputs` and `expectations`, started by crowberto:
   `{:refused error-type}` when validation refuses it, else `{:status status}` of its run, or `{:run-refused error-type
   :message message}` when the run is refused."
   [segment inputs expectations]
@@ -127,8 +126,8 @@
       (contains? #{:passed :failed} status)))
 
 (defn- gizmo-orders
-  "Segment columns for the segment of the orders whose product is a Gizmo, a filter through the orders' product foreign
-  key."
+  "Segment attributes for the segment of the orders whose product is a Gizmo, a filter through the orders' product
+  foreign key."
   []
   (let [mp     (mt/metadata-provider)
         orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]

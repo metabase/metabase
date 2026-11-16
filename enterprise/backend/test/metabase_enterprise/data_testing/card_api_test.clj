@@ -283,7 +283,7 @@
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Card {card-id :id} (card)]
       (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden"}
-        (testing "an input lacking a column the card reads, of a table that Metabase hides, is saved"
+        (testing "an input for a table that Metabase hides, lacking a column the card reads, is saved"
           (t2/delete! :model/CardTest
                       :id (:id (mt/user-http-request :crowberto :post 200 "ee/card-test"
                                                      (assoc (body card-id)

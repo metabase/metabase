@@ -46,7 +46,7 @@
    :rows    []})
 
 (defn from-google-segment
-  "Segment columns for a segment on the people table: the people whose source is Google."
+  "Segment attributes for a segment on the people table: the people whose source is Google."
   []
   (let [mp (mt/metadata-provider)]
     {:name       "From Google"

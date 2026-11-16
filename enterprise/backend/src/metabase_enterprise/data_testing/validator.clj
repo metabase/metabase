@@ -192,7 +192,8 @@
                :response/keys #{:placeholders}})))))
 
 (mr/def ::column-read
-  "A column that SQL reads, with the schema and name of its table, all three spelled as Metabase's metadata spells them."
+  "A column that SQL reads, with the schema and name of its table, all three spelled as Metabase's metadata spells
+  them."
   [:map {:closed true}
    [:schema [:maybe :string]]
    [:name   :string]
@@ -245,7 +246,8 @@
   SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test.
 
   `columns-read`, when given, are the columns of tables that the query under test reads; a rows input is refused when
-  its table has a column among them that the input does not declare. `ignore-case?` says whether the database ignores case in column names."
+  its table has a column among them that the input does not declare. `ignore-case?` says whether the database ignores
+  case in column names."
   [driver :- :keyword
    {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema
            columns-read ignore-case?]}
