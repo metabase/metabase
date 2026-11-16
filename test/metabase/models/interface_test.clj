@@ -250,3 +250,67 @@
 (deftest ^:parallel ->integer-test
   (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
     (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))
+
+(derive ::batch-hooked-glossary :model/Glossary)
+
+(def ^:private batch-hook-calls
+  "The hook and row count of each call the hooks of `::batch-hooked-glossary` got."
+  (atom []))
+
+(mi/define-before-insert ::batch-hooked-glossary
+  [rows]
+  (swap! batch-hook-calls conj [:insert (count rows)])
+  (for [row rows]
+    (update row :definition str " " (count rows))))
+
+(mi/define-before-update ::batch-hooked-glossary
+  [rows]
+  (swap! batch-hook-calls conj [:update (count rows) (t2/changes (first rows))])
+  (for [row rows]
+    (update row :definition str " " (count rows) " was " (:definition (t2/original row)))))
+
+(mi/define-before-delete ::batch-hooked-glossary
+  [rows]
+  (swap! batch-hook-calls conj [:delete (count rows)]))
+
+(derive ::batch-hooked-glossary ::batch-hooked-trait)
+
+(mi/define-before-insert ::batch-hooked-trait
+  [rows]
+  (swap! batch-hook-calls conj [:trait-insert (count rows)])
+  (for [row rows]
+    (update row :definition str "!")))
+
+(mi/define-before-update ::batch-hooked-trait
+  [rows]
+  (swap! batch-hook-calls conj [:trait-update (count rows)])
+  (for [row rows]
+    (update row :definition str "!")))
+
+(mi/define-before-delete ::batch-hooked-trait
+  [rows]
+  (swap! batch-hook-calls conj [:trait-delete (count rows)]))
+
+(deftest batch-hooks-run-once-per-statement-test
+  (let [terms ["batch hook test 1" "batch hook test 2" "batch hook test 3"]]
+    (try
+      (reset! batch-hook-calls [])
+      (testing "insert of several rows runs hook of model and of trait once each, and their rows are what is inserted"
+        (t2/insert! ::batch-hooked-glossary (for [term terms] {:term term, :definition "inserted"}))
+        (is (= [[:insert 3] [:trait-insert 3]] @batch-hook-calls))
+        (is (= #{"inserted 3!"} (t2/select-fn-set :definition :model/Glossary :term [:in terms]))))
+      (reset! batch-hook-calls [])
+      (testing "update of several rows runs hook once, with changes on every row, and writes what it returns"
+        (t2/update! :model/Glossary :term (first terms) {:definition "first"})
+        (is (= 3 (t2/update! ::batch-hooked-glossary :term [:in terms] {:definition "updated"})))
+        (is (= [[:update 3 {:definition "updated"}] [:trait-update 3]] @batch-hook-calls))
+        (is (= {"batch hook test 1" "updated 3 was first!"
+                "batch hook test 2" "updated 3 was inserted 3!!"
+                "batch hook test 3" "updated 3 was inserted 3!!"}
+               (t2/select-fn->fn :term :definition :model/Glossary :term [:in terms]))))
+      (reset! batch-hook-calls [])
+      (testing "delete of several rows runs hook once before they go"
+        (is (= 3 (t2/delete! ::batch-hooked-glossary :term [:in terms])))
+        (is (= [[:delete 3] [:trait-delete 3]] @batch-hook-calls)))
+      (finally
+        (t2/delete! :model/Glossary :term [:in terms])))))

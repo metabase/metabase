@@ -746,6 +746,9 @@
    metabase.mq.core/with-queue                                                                                               hooks.common/let-second
    metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
    metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
+   metabase.models.interface/define-before-delete                                                                            hooks.toucan2.tools.before-insert/define-before-insert
+   metabase.models.interface/define-before-insert                                                                            hooks.toucan2.tools.before-insert/define-before-insert
+   metabase.models.interface/define-before-update                                                                            hooks.toucan2.tools.before-insert/define-before-insert
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*

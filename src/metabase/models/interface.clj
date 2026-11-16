@@ -41,6 +41,7 @@
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.realize :as t2.realize]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
@@ -583,6 +584,146 @@
 
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
   (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
+;;;; Hooks over all the rows of one statement
+
+(methodical/defmulti before-insert-rows
+  "The rows of `model` one INSERT is about to write, as its [[define-before-insert]] hooks leave them. Don't call or
+  implement this directly."
+  {:arglists '([model rows]), :defmethod-arities #{2}}
+  (fn [model _rows] model))
+
+(methodical/defmethod before-insert-rows :default
+  [_model rows]
+  rows)
+
+(methodical/defmulti before-update-rows
+  "The rows of `model` one UPDATE is about to write, as its [[define-before-update]] hooks leave them. Don't call or
+  implement this directly."
+  {:arglists '([model rows]), :defmethod-arities #{2}}
+  (fn [model _rows] model))
+
+(methodical/defmethod before-update-rows :default
+  [_model rows]
+  rows)
+
+(methodical/defmulti before-delete-rows
+  "Runs the [[define-before-delete]] hooks of `model` on the rows one DELETE is about to remove. Don't call or
+  implement this directly."
+  {:arglists '([model rows]), :defmethod-arities #{2}}
+  (fn [model _rows] model))
+
+(methodical/defmethod before-delete-rows :default
+  [_model rows]
+  rows)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/insert.* ::before-insert-rows :default]
+  "Run the [[define-before-insert]] hooks and the INSERT in one transaction."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(methodical/defmethod t2.pipeline/build :around [:toucan.query-type/insert.*
+                                                 ::before-insert-rows
+                                                 clojure.lang.IPersistentMap]
+  "Pass the rows of an INSERT through the [[define-before-insert]] hooks of the model, before its row-by-row hooks."
+  [query-type model parsed-args resolved-query]
+  (let [hooked #(vec (before-insert-rows model %))]
+    (next-method query-type
+                 model
+                 (cond-> parsed-args (:rows parsed-args) (update :rows hooked))
+                 (cond-> resolved-query (:rows resolved-query) (update :rows hooked)))))
+
+(defmacro define-before-insert
+  "Like [[toucan2.core/define-before-insert]], for all the rows one INSERT writes at once: `body` takes them, bound to
+  `rows-binding`, and returns the rows to insert, so what it reads from the app DB it reads once per statement. It runs
+  before the row-by-row before-insert hooks, in the transaction of the INSERT. `model` can be a trait models derive,
+  whose hook runs after the hooks of the models themselves."
+  [model [rows-binding] & body]
+  `(do
+     (derive ~model ::before-insert-rows)
+     (methodical/defmethod before-insert-rows :around ~model
+       [model# rows#]
+       (let [~rows-binding (~'next-method model# rows#)]
+         ~@body))))
+
+(defn- changes->primary-keys
+  "The primary keys of `rows`, instances of `model` an UPDATE is about to write, by the changes each one makes once its
+  row-by-row before-update hooks ran, which is how Toucan groups the rows of an UPDATE; rows that change nothing are
+  left out."
+  [model rows]
+  (reduce (fn [changes->pks row]
+            (let [changes (t2.protocols/changes (t2.before-update/before-update model row))]
+              (cond-> changes->pks
+                (seq changes) (update changes (fnil conj #{})
+                                      (t2.model/primary-key-values-map model (or (t2/original row) row))))))
+          {}
+          rows))
+
+(derive ::before-update-rows :toucan2.tools.before-update/before-update)
+
+(methodical/defmethod t2.before-update/before-update :default
+  "Leave `row` as it is: a model whose only before-update hooks are [[define-before-update]] ones has no row-by-row
+  hook, and Toucan needs one to end the chain."
+  [_model row]
+  row)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ::before-update-rows :default]
+  "Run the [[define-before-update]] hooks and the UPDATE in one transaction, which Toucan otherwise opens only after
+  the hooks."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan2.tools.before-update/select-for-before-update
+                                                           ::before-update-rows
+                                                           :default]
+  "Pass the rows Toucan selects for an UPDATE through the [[define-before-update]] hooks of the model, with the changes
+  of the UPDATE applied, and then through its row-by-row hooks."
+  [_rf query-type model parsed-args resolved-query]
+  (let [changes (:changes parsed-args)
+        rows    (next-method ((map #(merge (t2.realize/realize %) changes)) conj)
+                             query-type model parsed-args resolved-query)]
+    (changes->primary-keys model (before-update-rows model rows))))
+
+(defmacro define-before-update
+  "Like [[toucan2.core/define-before-update]], for all the rows one UPDATE writes at once: `body` takes them, bound to
+  `rows-binding`, each with the changes of the UPDATE applied and its own [[toucan2.core/changes]] and
+  [[toucan2.core/original]], and returns the rows to write, so what it reads from the app DB it reads once per
+  statement. It runs before the row-by-row before-update hooks, in the transaction of the UPDATE. `model` can be a
+  trait models derive, whose hook runs after the hooks of the models themselves."
+  [model [rows-binding] & body]
+  `(do
+     (derive ~model ::before-update-rows)
+     (methodical/defmethod before-update-rows :around ~model
+       [model# rows#]
+       (let [~rows-binding (~'next-method model# rows#)]
+         ~@body))))
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* ::before-delete-rows :default]
+  "Run the [[define-before-delete]] hooks of the model on the rows a DELETE matches, in the transaction of the DELETE."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (before-delete-rows model (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
+                                                           :toucan.query-type/select.instances
+                                                           model
+                                                           parsed-args
+                                                           resolved-query))
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(defmacro define-before-delete
+  "Like [[toucan2.core/define-before-delete]], for all the rows one DELETE removes at once: `body` takes them, bound to
+  `rows-binding`, so what it reads from or writes to the app DB it does once per statement. It runs before the
+  row-by-row before-delete hooks, in the transaction of the DELETE. `model` can be a trait models derive, whose hook
+  runs after the hooks of the models themselves."
+  [model [rows-binding] & body]
+  `(do
+     (derive ~model ::before-delete-rows)
+     (methodical/defmethod before-delete-rows :around ~model
+       [model# rows#]
+       (let [~rows-binding (~'next-method model# rows#)]
+         ~@body
+         ~rows-binding))))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

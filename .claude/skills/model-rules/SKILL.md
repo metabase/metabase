@@ -36,6 +36,15 @@ An endpoint parses the request, calls the permission check, and calls the write.
   row needs its id for the check (cycle detection).
 - Name helpers for what they return and `assoc` the result in the hook. Keep the `with-` prefix for macros.
 
+### Hooks that read other rows
+
+A hook that needs another row, such as a Field's Table, must not select it per row. Write it with
+`mi/define-before-insert`, `mi/define-before-update` or `mi/define-before-delete`: these take ALL the rows one
+statement writes and return the rows to write, so the hook loads what it needs in a fixed number of queries and then
+checks or derives per row. In the update hook every row has the statement's changes applied and answers
+`t2/changes` and `t2/original`. They run in the statement's transaction, before the row-by-row hooks. Use
+`t2/define-before-...` only for a hook that reads nothing but its own row.
+
 ### Derived columns
 
 A column computed from other columns of the row is never trusted from the caller.
