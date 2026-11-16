@@ -26,7 +26,8 @@
 (def ^:private config-resource "metabase/cmd/resources/driver-features.edn")
 
 (defn- config
-  "The curated half of the page: `{:drivers [...] :sections [...] :internal #{...}}`. See the resource's header."
+  "The curated half of the page: `{:drivers [...] :excluded-drivers #{...} :sections [...] :internal #{...}}`. See the
+  resource's header."
   []
   (edn/read-string (cmd.common/load-resource! config-resource)))
 

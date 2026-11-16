@@ -1,5 +1,7 @@
 (ns metabase.cmd.driver-feature-dox-test
   (:require
+   [clojure.edn :as edn]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.cmd.driver-feature-dox :as driver-feature-dox]
@@ -35,6 +37,27 @@
                " :internal set if the page shouldn't show it. Remove each feature that no longer exists.")))
     (testing "no feature is classified twice"
       (is (= [] (for [[k n] (frequencies classified) :when (> n 1)] k))))))
+
+(defn- driver-modules
+  "The driver of each module in `modules/drivers/deps.edn`, read as data so that the test doesn't need the driver
+  modules on the classpath. A module is named for its driver: `metabase/bigquery-cloud-sdk` is `:bigquery-cloud-sdk`."
+  []
+  (into #{}
+        (map (comp keyword name))
+        (keys (:deps (edn/read-string (slurp "modules/drivers/deps.edn"))))))
+
+(deftest ^:parallel every-driver-module-is-classified-test
+  (let [{:keys [drivers excluded-drivers]} (config)
+        modules (driver-modules)
+        columns (set (map :driver drivers))]
+    ;; a driver that ships can't silently go missing from the page
+    (testing "every driver module is a column, or is excluded"
+      (is (= #{} (set/difference modules columns excluded-drivers))
+          (str "Add each new driver module to :drivers in src/metabase/cmd/resources/driver-features.edn, or to its"
+               " :excluded-drivers set, with the reason, if the page shouldn't show it.")))
+    (testing "every excluded driver is a module that isn't a column"
+      (is (= #{} (set/difference excluded-drivers modules)))
+      (is (= #{} (set/intersection excluded-drivers columns))))))
 
 (deftest ^:parallel every-note-is-for-a-row-test
   (let [cfg (config)]

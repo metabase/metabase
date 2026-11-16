@@ -12,6 +12,9 @@
 ;;   - `:notes` explain a cell that is supported on the newest database but not on the oldest one, keyed by feature.
 ;;     A note is a sentence that names the database, since the notes print below the table.
 ;;
+;; Every module in `modules/drivers/deps.edn` goes in `:drivers` or `:excluded-drivers`, and the same test fails until
+;; a new module is in one of them.
+;;
 ;; `:sections` are the tables, in page order. A row's `:feature` is a keyword, or a vector of keywords when the page
 ;; treats several driver features as one; a database supports the row when it supports any of them. `:doc` paths are
 ;; relative to `docs/databases/`.
@@ -46,6 +49,13 @@
   {:driver :sqlite             :label "SQLite"}
   {:driver :starburst          :label "Starburst"}
   {:driver :vertica            :label "Vertica"}]
+
+ ;; Driver modules that aren't columns, each with its reason.
+ :excluded-drivers
+ #{;; abstract: the parent of `:databricks` and `:sparksql`, which are columns
+   :hive-like
+   ;; not yet in the list of officially supported databases in `docs/databases/connecting.md`
+   :motherduck}
 
  :sections
  [{:title    "Query builder"
