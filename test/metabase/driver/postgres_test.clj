@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
@@ -54,6 +55,7 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -2988,3 +2990,13 @@
                        :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
+
+(deftest pinned-current-datetime-is-an-instant-literal-test
+  (testing "while the clock is pinned, the current time is a literal of the pinned instant, with its offset"
+    (mt/with-results-timezone-id "Asia/Tokyo"
+      (driver/with-driver :postgres
+        (let [form (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+                     (sql.qp/current-datetime-honeysql-form :postgres))]
+          (is (= ["timestamp with time zone '2020-06-17 21:00:00.000 +09:00'"]
+                 (sql.qp/format-honeysql :postgres form)))
+          (is (= "timestamptz" (h2x/database-type form))))))))

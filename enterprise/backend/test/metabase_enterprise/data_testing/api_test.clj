@@ -73,6 +73,24 @@
           (finally
             (t2/delete! :model/TransformTest :id (:id created))))))))
 
+(deftest put-now-on-native-transform-test-is-refused-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {mbql-id :id}        (assoc-in (transform) [:source :query]
+                                                                       (lib/query (mt/metadata-provider)
+                                                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :people))))
+                   :model/Transform     {native-id :id}      (transform)
+                   :model/TransformTest {mbql-test-id :id}   {:transform_id mbql-id :inputs inputs :expectations expectations}
+                   :model/TransformTest {native-test-id :id} {:transform_id native-id :inputs inputs :expectations expectations}]
+      (testing "a PUT that sets only `now` on a test of a native transform is refused, and `now` is not saved"
+        (is (= "transform-test.now-on-native-sql"
+               (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/transform-test/" native-test-id)
+                                                  {:now "2026-10-13T00:00:00Z"}))))
+        (is (nil? (t2/select-one-fn :now :model/TransformTest :id native-test-id))))
+      (testing "control: the same PUT on a test of an MBQL transform saves `now`"
+        (is (= (t/instant "2026-10-13T00:00:00Z")
+               (t/instant (:now (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" mbql-test-id)
+                                                      {:now "2026-10-13T00:00:00Z"})))))))))
+
 (deftest crud-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)

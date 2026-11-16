@@ -81,6 +81,24 @@
                 (is (= "Renamed" (get-in update [:object :name])))
                 (is (true? (:is_creation creation)))))))))))
 
+(deftest transform-test-revision-revert-restores-now-test
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Transform     {transform-id :id}      {}
+                       :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                     :now          (t/offset-date-time "2026-10-13T00:00:00Z")}]
+          (t2/update! :model/TransformTest :id transform-test-id {:now nil})
+          (testing "an update of `now` is recorded"
+            (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity      "transform-test"
+                                 :id          transform-test-id
+                                 :revision_id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))})
+          (testing "a revert restores the moment"
+            (is (= (t/instant "2026-10-13T00:00:00Z")
+                   (some-> (t2/select-one-fn :now :model/TransformTest :id transform-test-id) t/instant)))))))))
+
 (deftest transform-test-runs-are-not-revisioned-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Transform     {transform-id :id} {}
