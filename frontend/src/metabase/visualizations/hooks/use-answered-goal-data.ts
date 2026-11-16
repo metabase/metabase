@@ -1,12 +1,9 @@
 import { useMemo } from "react";
 
-import type {
-  DatasetData,
-  DatasetQuery,
-  ReferencedEntity,
-} from "metabase-types/api";
+import type { GoalData } from "metabase/viz-core";
+import type { ReferencedEntity } from "metabase-types/api";
 
-import { useReferencedEntitiesQuery } from "./use-referenced-entities-query";
+import { useGoalValuesQuery } from "./use-goal-values-query";
 
 export type GoalResolution<T> =
   | { status: "resolving" }
@@ -15,65 +12,46 @@ export type GoalResolution<T> =
 
 export type GoalResolutionStatus = GoalResolution<unknown>["status"];
 
-export type GoalDataResolution = GoalResolution<{ data: DatasetData }>;
+export type GoalDataResolution = GoalResolution<{ data: GoalData }>;
 
 /**
- * Answers the given goal references the dataset can't by re-running the
- * question's query with them attached, then merges the fresh answers into
- * `data.referenced_entities`.
+ * Fetches the values of the goal sources `data` has no answer for, and merges
+ * them into `data.referenced_entities`.
  */
 export function useAnsweredGoalData(
-  datasetQuery: DatasetQuery | undefined,
-  data: DatasetData,
+  data: GoalData,
   unansweredEntities: ReferencedEntity[],
 ): GoalDataResolution {
-  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
-    datasetQuery,
-    unansweredEntities,
-  );
+  const { currentData: goalValues, isError } =
+    useGoalValuesQuery(unansweredEntities);
 
   const answeredData = useMemo(() => {
-    const freshData = freshDataset?.data;
-
-    if (freshData?.referenced_entities == null) {
+    if (goalValues == null) {
       return null;
     }
 
     return {
       ...data,
       referenced_entities: {
-        card: {
-          ...data.referenced_entities?.card,
-          ...freshData.referenced_entities.card,
-        },
+        card: { ...data.referenced_entities?.card, ...goalValues.card },
         measure: {
           ...data.referenced_entities?.measure,
-          ...freshData.referenced_entities.measure,
+          ...goalValues.measure,
         },
       },
     };
-  }, [data, freshDataset]);
+  }, [data, goalValues]);
 
   if (unansweredEntities.length === 0) {
     return { status: "resolved", data };
   }
 
-  // no query to re-run, so the references can never be answered
-  if (datasetQuery === undefined) {
+  if (isError) {
     return { status: "failed" };
   }
 
-  if (isError || freshDataset?.error !== undefined) {
-    return { status: "failed" };
-  }
-
-  if (freshDataset?.data === undefined) {
-    return { status: "resolving" };
-  }
-
-  // completed, but the response has no answer
   if (answeredData === null) {
-    return { status: "failed" };
+    return { status: "resolving" };
   }
 
   return { status: "resolved", data: answeredData };

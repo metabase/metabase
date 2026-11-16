@@ -1,9 +1,18 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadataFromState } from "__support__/metadata";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { dynamicGoalApi } from "metabase/api";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -12,7 +21,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
-  DatasetData,
+  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -51,24 +60,28 @@ const ANSWERED = createMockReferencedEntitiesResults({
   value: 250,
 });
 
+const FAILED = createMockFailedReferencedEntitiesResults();
+
 const GOAL_WARNING = "Couldn't get the goal value. Click to open settings.";
 const TRUNCATION_WARNING = "Data truncated to 2 rows.";
 const NEGATIVE_COLOR = "var(--mantine-color-feedback-negative-text)";
 
 type ResultOpts = {
-  referencedEntities?: DatasetData["referenced_entities"];
   rowsTruncated?: number;
 };
 
 type SetupOpts = ResultOpts & {
   canOpenChartSettings?: boolean;
+  goalValues: ReferencedEntitiesResults;
 };
 
 async function setup({
-  referencedEntities,
-  rowsTruncated,
   canOpenChartSettings = true,
-}: SetupOpts = {}) {
+  goalValues,
+  rowsTruncated,
+}: SetupOpts) {
+  setupGoalValuesEndpoint(goalValues);
+
   const onOpenChartSettings = jest.fn<void, Parameters<OnOpenChartSettings>>();
   const question = new Question(
     {
@@ -93,8 +106,8 @@ async function setup({
   }
 
   jest.useFakeTimers({ advanceTimers: true });
-  const { rerender } = renderWithProviders(
-    getVisualization(createResult({ referencedEntities, rowsTruncated })),
+  const { rerender, store } = renderWithProviders(
+    getVisualization(createResult({ rowsTruncated })),
   );
   await waitForChartSize();
 
@@ -103,7 +116,11 @@ async function setup({
     await waitForChartSize();
   }
 
-  return { onOpenChartSettings, rerenderWithResult };
+  function refetchGoalValues() {
+    store.dispatch(dynamicGoalApi.util.invalidateTags(["dynamic-goal-values"]));
+  }
+
+  return { onOpenChartSettings, refetchGoalValues, rerenderWithResult };
 }
 
 describe("QueryVisualization", () => {
@@ -142,11 +159,9 @@ describe("QueryVisualization", () => {
   });
 
   it("shows a red warning that opens the display settings when the goal value cannot be resolved", async () => {
-    const { onOpenChartSettings } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-    });
+    const { onOpenChartSettings } = await setup({ goalValues: FAILED });
 
-    const warning = getWarningsButton();
+    const warning = await findWarningsButton();
     expect(warning).toHaveAccessibleDescription(GOAL_WARNING);
     expect(getWarningIcon()).toHaveStyle({ color: NEGATIVE_COLOR });
 
@@ -159,15 +174,13 @@ describe("QueryVisualization", () => {
   });
 
   it("combines the goal warning with other warnings in one red icon", async () => {
-    await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-      rowsTruncated: 2,
-    });
+    await setup({ goalValues: FAILED, rowsTruncated: 2 });
 
+    const warning = await findWarningsButton();
     expect(screen.getAllByLabelText("warning icon")).toHaveLength(1);
     expect(getWarningIcon()).toHaveStyle({ color: NEGATIVE_COLOR });
 
-    await userEvent.hover(getWarningsButton());
+    await userEvent.hover(warning);
 
     const tooltip = await screen.findByRole("tooltip");
     expect(within(tooltip).getByText(GOAL_WARNING)).toBeInTheDocument();
@@ -175,11 +188,9 @@ describe("QueryVisualization", () => {
   });
 
   it("shows other warnings in a gray icon that opens nothing when the goal value resolves", async () => {
-    await setup({
-      referencedEntities: ANSWERED,
-      rowsTruncated: 2,
-    });
+    await setup({ goalValues: ANSWERED, rowsTruncated: 2 });
 
+    expect(await screen.findByText("Jan")).toBeInTheDocument();
     expect(queryWarningsButton()).not.toBeInTheDocument();
     expect(getWarningIcon()).not.toHaveStyle({ color: NEGATIVE_COLOR });
 
@@ -190,23 +201,20 @@ describe("QueryVisualization", () => {
     expect(within(tooltip).queryByText(GOAL_WARNING)).not.toBeInTheDocument();
   });
 
-  it("hides the goal warning once the goal value resolves", async () => {
-    const { rerenderWithResult } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-    });
-    expect(getWarningsButton()).toBeInTheDocument();
+  it("hides the goal warning once a refetch resolves the goal value", async () => {
+    const { refetchGoalValues } = await setup({ goalValues: FAILED });
+    expect(await findWarningsButton()).toBeInTheDocument();
 
-    await rerenderWithResult(createResult({ referencedEntities: ANSWERED }));
+    fetchMock.modifyRoute("dynamic-goal-values", { response: ANSWERED });
+    refetchGoalValues();
 
+    await waitFor(() => expect(queryWarningIcon()).not.toBeInTheDocument());
     expect(screen.getByText("Jan")).toBeInTheDocument();
-    expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 
   it("hides the goal warning when the query fails and the chart goes away", async () => {
-    const { rerenderWithResult } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-    });
-    expect(getWarningsButton()).toBeInTheDocument();
+    const { rerenderWithResult } = await setup({ goalValues: FAILED });
+    expect(await findWarningsButton()).toBeInTheDocument();
 
     await rerenderWithResult(createMockDataset({ error: "Query failed" }));
 
@@ -215,19 +223,16 @@ describe("QueryVisualization", () => {
   });
 
   it("shows no warning when the goal value resolves", async () => {
-    await setup({ referencedEntities: ANSWERED });
+    await setup({ goalValues: ANSWERED });
 
-    expect(screen.getByText("Jan")).toBeInTheDocument();
+    expect(await screen.findByText("Jan")).toBeInTheDocument();
     expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 
   it("shows no goal warning when the chart settings cannot be opened", async () => {
-    await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-      canOpenChartSettings: false,
-    });
+    await setup({ canOpenChartSettings: false, goalValues: FAILED });
 
-    expect(screen.getByText("Jan")).toBeInTheDocument();
+    expect(await screen.findByText("Jan")).toBeInTheDocument();
     expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 });
@@ -259,7 +264,7 @@ function setupWithoutResult({
   );
 }
 
-function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
+function createResult({ rowsTruncated }: ResultOpts = {}) {
   return createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -270,7 +275,6 @@ function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
         ["Jan", 1],
         ["Feb", 2],
       ],
-      referenced_entities: referencedEntities,
       rows_truncated: rowsTruncated,
     }),
   });
@@ -283,8 +287,8 @@ async function waitForChartSize() {
   });
 }
 
-function getWarningsButton() {
-  return screen.getByRole("button", { name: "Warnings" });
+function findWarningsButton() {
+  return screen.findByRole("button", { name: "Warnings" });
 }
 
 function queryWarningsButton() {

@@ -4,13 +4,17 @@ import type {
   CardType,
   DatasetData,
   MeasureId,
+  ReferencedEntitiesResults,
   ReferencedEntityType,
 } from "metabase-types/api";
 
-export type GoalData = Pick<
-  DatasetData,
-  "cols" | "rows" | "referenced_entities"
->;
+/**
+ * A chart's own result, for goals that name one of its columns, and the values
+ * of the goal sources fetched for it so far.
+ */
+export type GoalData = Pick<DatasetData, "cols" | "rows"> & {
+  referenced_entities?: ReferencedEntitiesResults;
+};
 
 // A bound left empty stays null; at most one bound is null.
 export type ResolvedOpenEndedGoalSegment = {

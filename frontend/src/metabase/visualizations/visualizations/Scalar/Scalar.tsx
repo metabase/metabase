@@ -68,7 +68,7 @@ function ScalarComponent(
     useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
 
   const {
-    series: [{ card, data }],
+    series: [{ data }],
     settings,
     visualizationIsClickable,
     onVisualizationClick,
@@ -84,7 +84,6 @@ function ScalarComponent(
     ? undefined
     : settings["scalar.segments"];
   const goalData = useResolvedGoalData(
-    card.dataset_query,
     data,
     getGoalSegmentBounds(scalarSegments),
   );

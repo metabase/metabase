@@ -1,30 +1,24 @@
-import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
-import { resolveGoalValue, toReferencedEntity } from "metabase/viz-core";
-import type {
-  DatasetData,
-  DatasetQuery,
-  GoalForeignEntityRef,
-} from "metabase-types/api";
+import { useGoalValuesQuery } from "metabase/visualizations/hooks/use-goal-values-query";
+import {
+  type GoalData,
+  resolveGoalValue,
+  toReferencedEntity,
+} from "metabase/viz-core";
+import type { GoalForeignEntityRef } from "metabase-types/api";
 
 type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
-  datasetQuery: DatasetQuery | undefined,
-  data: DatasetData,
+  data: GoalData,
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { currentData: freshDataset } = useReferencedEntitiesQuery(
-    datasetQuery,
+  const { currentData: goalValues } = useGoalValuesQuery(
     enabled && entity != null ? [toReferencedEntity(entity)] : [],
   );
 
-  const freshData = freshDataset?.data;
-  const sourceData =
-    entity != null &&
-    freshData?.referenced_entities?.[entity.type]?.[entity.id]?.data != null
-      ? freshData
-      : data;
+  const sourceData: GoalData =
+    goalValues != null ? { ...data, referenced_entities: goalValues } : data;
 
   return (column) => {
     if (entity == null) {

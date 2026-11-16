@@ -6,9 +6,10 @@ import {
   queryAllEChartsGoalLines,
   queryEChartsGoalLine,
 } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { api } from "metabase/api/client";
+import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
@@ -24,7 +25,6 @@ import type {
 import {
   createMockCard,
   createMockColumn,
-  createMockDataset,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
@@ -75,29 +75,24 @@ const ANSWERED = createMockReferencedEntitiesResults({
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
-  display: VisualizationDisplay;
-  referencedEntities?: ReferencedEntitiesResults | null;
   cols?: DatasetColumn[];
+  display: VisualizationDisplay;
+  goalValues: Parameters<typeof setupGoalValuesEndpoint>[0];
   rows?: RowValues[];
   settings?: VisualizationSettings;
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
 async function setup({
-  display,
-  referencedEntities,
   cols,
+  display,
+  goalValues,
   rows,
   settings,
   onUpdateGoalWarning,
 }: SetupOpts) {
-  const rawSeries = createSeries({
-    display,
-    referenced_entities: referencedEntities,
-    cols,
-    rows,
-    settings,
-  });
+  setupGoalValuesEndpoint(goalValues);
+  const rawSeries = createSeries({ cols, display, rows, settings });
 
   jest.useFakeTimers();
   renderWithProviders(
@@ -119,124 +114,117 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       jest.useRealTimers();
     });
 
-    it("draws the goal line at the value answered by the dataset", async () => {
-      await setup({ display, referencedEntities: ANSWERED });
+    it("draws the goal line at the fetched value", async () => {
+      await setup({ display, goalValues: ANSWERED });
 
-      expect(queryEChartsGoalLine()).toBeInTheDocument();
+      await waitForGoalLine();
       // the goal is far above every data point, so it stretches the y-axis up to it
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+      const calls = getGoalValuesCalls();
+      expect(calls).toHaveLength(1);
+      const body: unknown = await checkNotNull(calls[0].request).json();
+      expect(body).toEqual({ sources: [{ type: "card", id: 9 }] });
     });
 
-    it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
-      fetchMock.post(
-        "path:/api/dataset",
-        createMockDataset({
-          data: createMockDatasetData({ referenced_entities: ANSWERED }),
-        }),
-        {
-          delay: 100, // long enough to see the loader
-        },
-      );
-
-      await setup({ display });
+    it("shows a loader until the referenced value is fetched, then draws the goal", async () => {
+      const goalValues = defer<ReferencedEntitiesResults>();
+      await setup({ display, goalValues: () => goalValues.promise });
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
 
-      await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
+      goalValues.resolve(ANSWERED);
+
+      await waitForGoalLine();
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-
-      const [call] = fetchMock.callHistory.calls("path:/api/dataset");
-      expect(await call.request?.json()).toMatchObject({
-        referenced_entities: [{ type: "card", id: 9 }],
-      });
     });
 
     it("draws no goal line when fetching the reference fails", async () => {
-      setupCardDataset({ status: 500 });
-
-      await setup({ display });
+      await setup({
+        display,
+        goalValues: () => new Response(null, { status: 500 }),
+      });
 
       expect(await screen.findByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
       expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     });
 
-    it("draws no goal line when the dataset reports the reference as failed", async () => {
-      await setup({ display, referencedEntities: FAILED });
+    it("draws no goal line when the reference is reported as failed", async () => {
+      await setup({ display, goalValues: FAILED });
 
-      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(await screen.findByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
       expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(getGoalValuesCalls()).toHaveLength(1);
     });
 
     it("draws no goal line when the goal is withheld", async () => {
       await setup({
         display,
-        referencedEntities: createMockFailedReferencedEntitiesResults({
+        goalValues: createMockFailedReferencedEntitiesResults({
           error_type: "withheld",
         }),
       });
 
-      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(await screen.findByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
       expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(getGoalValuesCalls()).toHaveLength(1);
     });
 
     it("reports a goal warning when the reference cannot be resolved", async () => {
       const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-      await setup({ display, referencedEntities: FAILED, onUpdateGoalWarning });
+      await setup({ display, goalValues: FAILED, onUpdateGoalWarning });
 
-      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
+      await waitFor(() =>
+        expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
+      );
     });
 
     it("reports no goal warning when the reference resolves", async () => {
       const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-      await setup({
-        display,
-        referencedEntities: ANSWERED,
-        onUpdateGoalWarning,
-      });
+      await setup({ display, goalValues: ANSWERED, onUpdateGoalWarning });
 
+      await waitForGoalLine();
       expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
+      expect(onUpdateGoalWarning).not.toHaveBeenCalledWith(true);
     });
   },
 );
 
-describe("line chart with an answered goal that isn't positive", () => {
+describe("line chart with a fetched goal that isn't positive", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  it("draws the goal line at an answered goal of 0", async () => {
+  it("draws the goal line at a fetched goal of 0", async () => {
     await setup({
       display: "line",
-      referencedEntities: createMockReferencedEntitiesResults({
+      goalValues: createMockReferencedEntitiesResults({
         column: "goal",
         value: 0,
       }),
     });
 
-    expect(queryEChartsGoalLine()).toBeInTheDocument();
+    await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
   });
 
-  it("draws the goal line at a negative answered goal, stretching the y-axis down to it", async () => {
+  it("draws the goal line at a negative fetched goal, stretching the y-axis down to it", async () => {
     await setup({
       display: "line",
-      referencedEntities: createMockReferencedEntitiesResults({
+      goalValues: createMockReferencedEntitiesResults({
         column: "goal",
         value: -250,
       }),
     });
 
-    expect(queryEChartsGoalLine()).toBeInTheDocument();
+    await waitForGoalLine();
     expect(screen.getByText("-250")).toBeInTheDocument();
   });
 });
@@ -248,9 +236,9 @@ describe("line chart with multiple series and a dynamic goal", () => {
 
   it("draws the goal line in each split panel", async () => {
     await setup({
-      display: "line",
-      referencedEntities: ANSWERED,
       cols: MULTI_SERIES_COLS,
+      display: "line",
+      goalValues: ANSWERED,
       rows: MULTI_SERIES_ROWS,
       settings: {
         "graph.metrics": ["count", "sum"],
@@ -258,14 +246,16 @@ describe("line chart with multiple series and a dynamic goal", () => {
       },
     });
 
-    expect(queryAllEChartsGoalLines()).toHaveLength(2 * PATHS_PER_GOAL_LINE);
+    await waitFor(() =>
+      expect(queryAllEChartsGoalLines()).toHaveLength(2 * PATHS_PER_GOAL_LINE),
+    );
   });
 
   it("draws one goal line with multiple y-axes", async () => {
     await setup({
-      display: "line",
-      referencedEntities: ANSWERED,
       cols: MULTI_SERIES_COLS,
+      display: "line",
+      goalValues: ANSWERED,
       rows: MULTI_SERIES_ROWS,
       settings: {
         "graph.metrics": ["count", "sum"],
@@ -273,6 +263,7 @@ describe("line chart with multiple series and a dynamic goal", () => {
       },
     });
 
+    await waitForGoalLine();
     expect(queryAllEChartsGoalLines()).toHaveLength(PATHS_PER_GOAL_LINE);
     expect(screen.getByText("250")).toBeInTheDocument();
   });
@@ -283,11 +274,11 @@ describe("normalized stacked chart with a dynamic goal", () => {
     jest.useRealTimers();
   });
 
-  it("reads the answered goal as a percentage of a stacked bar", async () => {
+  it("reads the fetched goal as a percentage of a stacked bar", async () => {
     await setup({
       cols: MULTI_SERIES_COLS,
       display: "bar",
-      referencedEntities: createMockReferencedEntitiesResults({
+      goalValues: createMockReferencedEntitiesResults({
         column: "goal",
         value: 50,
       }),
@@ -295,14 +286,15 @@ describe("normalized stacked chart with a dynamic goal", () => {
       settings: NORMALIZED_STACK_SETTINGS,
     });
 
+    await waitForGoalLine();
     expectGoalLineHalfwayUpPercentAxis();
   });
 
-  it("reads the answered goal as a percentage of a stacked area", async () => {
+  it("reads the fetched goal as a percentage of a stacked area", async () => {
     await setup({
       cols: MULTI_SERIES_COLS,
       display: "area",
-      referencedEntities: createMockReferencedEntitiesResults({
+      goalValues: createMockReferencedEntitiesResults({
         column: "goal",
         value: 50,
       }),
@@ -310,31 +302,22 @@ describe("normalized stacked chart with a dynamic goal", () => {
       settings: NORMALIZED_STACK_SETTINGS,
     });
 
+    await waitForGoalLine();
     expectGoalLineHalfwayUpPercentAxis();
   });
 });
 
-// public and embedded cards carry a query but no session, so the re-run gets a 401
-describe("line chart without a session whose goal column no longer exists", () => {
-  const onUnauthorized = jest.fn<void, [string]>();
-
-  beforeEach(() => {
-    api.on(401, onUnauthorized);
-  });
-
+describe("line chart whose goal column no longer exists", () => {
   afterEach(() => {
-    api.off(401, onUnauthorized);
-    onUnauthorized.mockClear();
     jest.useRealTimers();
   });
 
-  it("renders the chart without the goal and keeps the 401 from the app's login redirect", async () => {
-    setupCardDataset({ status: 401 });
+  it("renders the chart without the goal and with a goal warning", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
     await setup({
       display: "line",
-      referencedEntities: createMockReferencedEntitiesResults({
+      goalValues: createMockReferencedEntitiesResults({
         column: "other",
         value: 250,
       }),
@@ -342,13 +325,20 @@ describe("line chart without a session whose goal column no longer exists", () =
     });
 
     expect(await screen.findByText("Jan")).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
-    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(getGoalValuesCalls()).toHaveLength(1);
   });
 });
+
+async function waitForGoalLine() {
+  await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
+}
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}
 
 function expectGoalLineHalfwayUpPercentAxis() {
   // the axis stays within 0-100%, instead of stretching to a 50x stack
@@ -381,15 +371,13 @@ function getGoalLineY() {
 }
 
 function createSeries({
-  display,
-  referenced_entities,
   cols = COLS,
+  display,
   rows = ROWS,
   settings,
 }: {
-  display: VisualizationDisplay;
-  referenced_entities?: ReferencedEntitiesResults | null;
   cols?: DatasetColumn[];
+  display: VisualizationDisplay;
   rows?: RowValues[];
   settings?: VisualizationSettings;
 }): RawSeries {
@@ -406,11 +394,7 @@ function createSeries({
           ...settings,
         },
       }),
-      data: createMockDatasetData({
-        cols,
-        rows,
-        referenced_entities,
-      }),
+      data: createMockDatasetData({ cols, rows }),
     },
   ];
 }

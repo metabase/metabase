@@ -1,17 +1,18 @@
 import fetchMock from "fetch-mock";
 
 import { queryEChartsGoalLine } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type { RawSeries, ReferencedEntitiesResults } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
-  createMockDataset,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
@@ -45,20 +46,17 @@ const ANSWERED = createMockReferencedEntitiesResults({
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
-  referencedEntities?: DatasetData["referenced_entities"];
+  goalValues: Parameters<typeof setupGoalValuesEndpoint>[0];
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
-async function setup({
-  referencedEntities,
-  onUpdateGoalWarning,
-}: SetupOpts = {}) {
-  const rawSeries = createSeries(referencedEntities);
+async function setup({ goalValues, onUpdateGoalWarning }: SetupOpts) {
+  setupGoalValuesEndpoint(goalValues);
 
   jest.useFakeTimers();
   renderWithProviders(
     <Visualization
-      rawSeries={rawSeries}
+      rawSeries={createSeries()}
       onUpdateGoalWarning={onUpdateGoalWarning}
     />,
   );
@@ -73,81 +71,81 @@ describe("box plot dynamic goal", () => {
     jest.useRealTimers();
   });
 
-  it("draws the goal line at the value answered by the dataset", async () => {
-    await setup({ referencedEntities: ANSWERED });
+  it("draws the goal line at the fetched value", async () => {
+    await setup({ goalValues: ANSWERED });
 
-    expect(queryEChartsGoalLine()).toBeInTheDocument();
+    await waitForGoalLine();
     // the goal is far above every data point, so it stretches the y-axis up to it
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+    const calls = getGoalValuesCalls();
+    expect(calls).toHaveLength(1);
+    const body: unknown = await checkNotNull(calls[0].request).json();
+    expect(body).toEqual({ sources: [{ type: "card", id: 9 }] });
   });
 
-  it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
-    fetchMock.post(
-      "path:/api/dataset",
-      createMockDataset({
-        data: createMockDatasetData({ referenced_entities: ANSWERED }),
-      }),
-      {
-        delay: 100, // long enough to see the loader
-      },
-    );
-
-    await setup();
+  it("shows a loader until the referenced value is fetched, then draws the goal", async () => {
+    const goalValues = defer<ReferencedEntitiesResults>();
+    await setup({ goalValues: () => goalValues.promise });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
 
-    await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
+    goalValues.resolve(ANSWERED);
+
+    await waitForGoalLine();
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
-    expect(await call.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
-    });
   });
 
   it("draws no goal line when fetching the reference fails", async () => {
-    setupCardDataset({ status: 500 });
-
-    await setup();
+    await setup({ goalValues: () => new Response(null, { status: 500 }) });
 
     expect(await screen.findByText("Gadget")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
   });
 
-  it("draws no goal line when the dataset reports the reference as failed", async () => {
-    await setup({ referencedEntities: FAILED });
+  it("draws no goal line when the reference is reported as failed", async () => {
+    await setup({ goalValues: FAILED });
 
-    expect(screen.getByText("Gadget")).toBeInTheDocument();
+    expect(await screen.findByText("Gadget")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(1);
   });
 
   it("reports a goal warning when the reference cannot be resolved", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-    await setup({ referencedEntities: FAILED, onUpdateGoalWarning });
+    await setup({ goalValues: FAILED, onUpdateGoalWarning });
 
-    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
+    await waitFor(() =>
+      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
+    );
   });
 
   it("reports no goal warning when the reference resolves", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-    await setup({ referencedEntities: ANSWERED, onUpdateGoalWarning });
+    await setup({ goalValues: ANSWERED, onUpdateGoalWarning });
 
+    await waitForGoalLine();
     expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
+    expect(onUpdateGoalWarning).not.toHaveBeenCalledWith(true);
   });
 });
 
-function createSeries(
-  referenced_entities?: DatasetData["referenced_entities"],
-): RawSeries {
+async function waitForGoalLine() {
+  await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
+}
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}
+
+function createSeries(): RawSeries {
   return [
     {
       card: createMockCard({
@@ -160,11 +158,7 @@ function createSeries(
           "graph.goal_value": { type: "card", id: 9, column: "goal" },
         },
       }),
-      data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
-        referenced_entities,
-      }),
+      data: createMockDatasetData({ cols: COLS, rows: ROWS }),
     },
   ];
 }

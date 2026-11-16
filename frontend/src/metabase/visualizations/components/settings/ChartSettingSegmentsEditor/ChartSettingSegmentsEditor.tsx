@@ -16,7 +16,6 @@ import { SegmentEditor } from "./SegmentEditor";
 
 export const ChartSettingSegmentsEditor = ({
   data,
-  datasetQuery,
   display,
   formatOptions,
   value: segments,
@@ -48,7 +47,6 @@ export const ChartSettingSegmentsEditor = ({
               canRemove={canRemove}
               colors={colors}
               data={data}
-              datasetQuery={datasetQuery}
               display={display}
               formatOptions={formatOptions}
               index={index}

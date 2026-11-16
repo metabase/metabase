@@ -7,8 +7,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -41,10 +39,8 @@ describe("GAUGE_CHART_DEFINITION", () => {
   });
 
   describe("checkRenderable", () => {
-    it("renders when a range's bound will never resolve", () => {
-      const series = createSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
-      });
+    it("renders when a range's bound references another entity", () => {
+      const series = createSeries();
 
       expect(() =>
         checkRenderable(series, {
@@ -78,19 +74,13 @@ describe("GAUGE_CHART_DEFINITION", () => {
   describe("gauge.range default", () => {
     it("spans the resolved bounds of every range", () => {
       const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: 250,
-        }),
+        cols: [...COLS, createMockColumn({ name: "goal" })],
+        rows: [[50, 250]],
       });
       const settings: VisualizationSettings = {
         "gauge.segments": [
           { min: 0, max: 100, color: "red" },
-          {
-            min: 100,
-            max: { type: "card", id: 9, column: "goal" },
-            color: "green",
-          },
+          { min: 100, max: "goal", color: "green" },
         ],
       };
 

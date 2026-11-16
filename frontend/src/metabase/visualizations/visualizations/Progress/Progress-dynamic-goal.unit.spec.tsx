@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -44,28 +46,26 @@ const SETTINGS: VisualizationSettings = {
 
 type SetupOpts = {
   cols?: DatasetColumn[];
+  goalValues?: Parameters<typeof setupGoalValuesEndpoint>[0];
+  isQueryBuilder?: boolean;
   rows?: RowValues[];
   settings?: VisualizationSettings;
-  referencedEntities?: ReferencedEntitiesResults;
-  isQueryBuilder?: boolean;
 };
 
 function setup({
   cols = COLS,
+  goalValues = createMockFailedReferencedEntitiesResults({ error: "boom" }),
+  isQueryBuilder = false,
   rows = ROWS,
   settings = SETTINGS,
-  referencedEntities,
-  isQueryBuilder = false,
 }: SetupOpts = {}) {
+  setupGoalValuesEndpoint(goalValues);
+
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "progress", visualization_settings: settings }),
       {
-        data: createMockDatasetData({
-          cols,
-          rows,
-          referenced_entities: referencedEntities,
-        }),
+        data: createMockDatasetData({ cols, rows }),
       },
     ),
   ];
@@ -80,7 +80,7 @@ function setup({
     />,
   );
 
-  return { series, onOpenChartSettings };
+  return { onOpenChartSettings };
 }
 
 describe("progress chart dynamic goal", () => {
@@ -90,13 +90,15 @@ describe("progress chart dynamic goal", () => {
     expect(await screen.findByText("Goal 250")).toBeInTheDocument();
   });
 
-  it("measures progress against the value answered by the dataset", async () => {
-    setup({
-      referencedEntities: createMockReferencedEntitiesResults({ value: 250 }),
-    });
+  it("measures progress against the value fetched for the referenced entity", async () => {
+    setup({ goalValues: createMockReferencedEntitiesResults({ value: 40 }) });
 
-    expect(await screen.findByText("Goal 250")).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(await screen.findByText("Goal 40")).toBeInTheDocument();
+    expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
+    const calls = getGoalValuesCalls();
+    expect(calls).toHaveLength(1);
+    const body: unknown = await checkNotNull(calls[0].request).json();
+    expect(body).toEqual({ sources: [{ type: "card", id: 9 }] });
   });
 
   it("formats the goal with this chart's column settings", async () => {
@@ -105,48 +107,30 @@ describe("progress chart dynamic goal", () => {
         ...SETTINGS,
         column_settings: { '["name","count"]': { prefix: "$" } },
       },
-      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
+      goalValues: createMockReferencedEntitiesResults({ value: 2500 }),
     });
 
     expect(await screen.findByText("Goal $2,500")).toBeInTheDocument();
   });
 
-  it("re-runs the query with the referenced entity when the dataset has no answer", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          cols: COLS,
-          rows: ROWS,
-          referenced_entities: createMockReferencedEntitiesResults({
-            value: 40,
-          }),
-        }),
-      },
-    });
-    const { series } = setup();
-
-    expect(await screen.findByText("Goal 40")).toBeInTheDocument();
-    expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
-    expect(await call.request?.json()).toEqual(
-      expect.objectContaining({
-        ...series[0].card.dataset_query,
-        referenced_entities: [{ type: "card", id: 9 }],
-      }),
-    );
-  });
-
   it("shows a loader while the referenced value is being fetched", async () => {
-    fetchMock.post("path:/api/dataset", new Promise(() => {}));
-    setup();
+    const goalValues = defer<ReferencedEntitiesResults>();
+    setup({ goalValues: () => goalValues.promise });
 
     expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
     expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
+
+    goalValues.resolve(createMockReferencedEntitiesResults({ value: 250 }));
+
+    expect(await screen.findByText("Goal 250")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
   it("measures against a goal of 0 with a warning in the query builder when fetching the reference fails (metabase#85219)", async () => {
-    setupCardDataset({ status: 500 });
-    setup({ isQueryBuilder: true });
+    setup({
+      goalValues: () => new Response(null, { status: 500 }),
+      isQueryBuilder: true,
+    });
 
     expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
     expect(screen.getByText("50")).toBeInTheDocument();
@@ -157,8 +141,8 @@ describe("progress chart dynamic goal", () => {
   // a failed goal also reads 0, so this tells the two apart
   it("measures against an answered goal of 0 without a warning in the query builder", async () => {
     setup({
+      goalValues: createMockReferencedEntitiesResults({ value: 0 }),
       isQueryBuilder: true,
-      referencedEntities: createMockReferencedEntitiesResults({ value: 0 }),
     });
 
     expect(await screen.findByText("Goal 0")).toBeInTheDocument();
@@ -168,9 +152,7 @@ describe("progress chart dynamic goal", () => {
 
   it("opens the goal settings from the warning", async () => {
     const { onOpenChartSettings } = setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults({
-        error: "boom",
-      }),
+      goalValues: createMockFailedReferencedEntitiesResults({ error: "boom" }),
       isQueryBuilder: true,
     });
 
@@ -178,7 +160,7 @@ describe("progress chart dynamic goal", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Couldn't get the goal value. Click to open settings.",
     );
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(1);
 
     await userEvent.click(screen.getByLabelText("Goal warning"));
     expect(onOpenChartSettings).toHaveBeenCalledWith({
@@ -235,9 +217,13 @@ describe("progress chart dynamic goal", () => {
   });
 
   it("measures against a goal of 0 without a warning outside the query builder (metabase#85219, metabase#85062)", async () => {
-    setup({ referencedEntities: createMockFailedReferencedEntitiesResults() });
+    setup({ goalValues: createMockFailedReferencedEntitiesResults() });
 
     expect(await screen.findByText("Goal 0")).toBeInTheDocument();
     expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
 });
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}

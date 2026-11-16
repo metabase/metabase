@@ -2,12 +2,13 @@ import { useMemo } from "react";
 
 import {
   type ComputedVisualizationSettings,
+  type GoalData,
   type GoalRefError,
   applyGraphGoalValue,
   getGoalErrors,
   needsGraphGoalResolution,
 } from "metabase/viz-core";
-import type { Card, DatasetData } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import {
   type ResolvedGoalData,
@@ -20,8 +21,8 @@ import {
  * Returns the given settings untouched when there is nothing to resolve.
  */
 export function useResolvedGoalSettings(
-  card: Pick<Card, "display" | "dataset_query">,
-  data: DatasetData,
+  card: Pick<Card, "display">,
+  data: GoalData,
   settings: ComputedVisualizationSettings,
 ): {
   status: ResolvedGoalData["status"];
@@ -31,7 +32,7 @@ export function useResolvedGoalSettings(
   const needsResolving = needsGraphGoalResolution(card.display, settings);
   const goal = needsResolving ? (settings["graph.goal_value"] ?? null) : null;
 
-  const goalData = useResolvedGoalData(card.dataset_query, data, [goal]);
+  const goalData = useResolvedGoalData(data, [goal]);
   const results = goalData.status === "resolved" ? goalData.results : [];
   const errors = getGoalErrors(results);
   const value = results[0]?.value ?? null;

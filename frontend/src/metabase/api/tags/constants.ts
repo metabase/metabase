@@ -19,6 +19,7 @@ export const TAG_TYPES = [
   "data-app",
   "database",
   "dataset",
+  "dynamic-goal-values",
   "document",
   "embed-theme",
   "erd",

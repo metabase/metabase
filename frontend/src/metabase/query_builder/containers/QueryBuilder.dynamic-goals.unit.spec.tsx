@@ -1,30 +1,34 @@
 import fetchMock from "fetch-mock";
 
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Database } from "metabase-types/api";
+import type { ReferencedEntitiesResults } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockReferencedEntitiesResults,
+  createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { onUpdateVisualizationSettings } from "../actions";
+import { onUpdateVisualizationSettings, runQuestionQuery } from "../actions";
 
 import { setup as setupQueryBuilder } from "./test-utils";
 
 registerVisualizations();
 
 beforeAll(() => loadVisualizationComponents(["progress"]));
+
+const GOAL_SOURCE_ID = 9;
+const NEW_GOAL_SOURCE_ID = 10;
 
 const CARD = createMockCard({
   display: "progress",
@@ -37,47 +41,23 @@ const CARD = createMockCard({
     ],
   }),
   visualization_settings: {
-    "progress.goal": { type: "card", id: 9, column: "goal" },
+    "progress.goal": { type: "card", id: GOAL_SOURCE_ID, column: "goal" },
   },
 });
-
-const COUNT_DATA = {
-  cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
-  rows: [[50]],
-};
 
 const CARD_DATASET = createMockDataset({
   data: {
-    ...COUNT_DATA,
-    referenced_entities: createMockReferencedEntitiesResults({
-      id: 9,
-      value: 250,
-    }),
+    cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+    rows: [[50]],
   },
 });
 
-const NEW_GOAL_SOURCE_DATASET = createMockDataset({
-  data: {
-    ...COUNT_DATA,
-    referenced_entities: createMockReferencedEntitiesResults({
-      id: 10,
-      value: 300,
-    }),
-  },
-});
-
-type SetupOpts = {
-  database: Database;
-};
-
-async function setup({ database }: SetupOpts) {
+async function setup() {
+  setupGoalValuesEndpoint(createGoalValues({ goal: 250, newGoal: 300 }));
   const { store } = await setupQueryBuilder({
     card: CARD,
-    database,
+    database: createSampleDatabase({ auto_run_queries: true }),
     dataset: CARD_DATASET,
-  });
-  fetchMock.modifyRoute("dataset-post", {
-    response: NEW_GOAL_SOURCE_DATASET,
   });
   await screen.findByText("Goal 250");
 
@@ -85,72 +65,80 @@ async function setup({ database }: SetupOpts) {
     await act(() =>
       store.dispatch(
         onUpdateVisualizationSettings({
-          "progress.goal": { type: "card", id: 10, column: "goal" },
+          "progress.goal": {
+            type: "card",
+            id: NEW_GOAL_SOURCE_ID,
+            column: "goal",
+          },
         }),
       ),
     );
   }
 
-  return { pickNewGoalSource };
+  async function runQuestionAgain() {
+    await act(() => store.dispatch(runQuestionQuery()));
+  }
+
+  return { pickNewGoalSource, runQuestionAgain };
 }
 
 describe("QueryBuilder > dynamic goals", () => {
-  describe("saved question when a new goal source is picked", () => {
-    it("runs the question as an ad-hoc query instead of the card query, next to the goal source query", async () => {
-      const { pickNewGoalSource } = await setup({
-        database: createSampleDatabase({ auto_run_queries: true }),
-      });
-      expect(getCardQueryCalls()).toHaveLength(1);
-      expect(getDatasetCalls()).toHaveLength(0);
+  it("fetches the value of a newly picked goal source without running the question again", async () => {
+    const { pickNewGoalSource } = await setup();
+    expect(getGoalValuesCalls()).toHaveLength(1);
 
-      await pickNewGoalSource();
+    await pickNewGoalSource();
 
-      expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      await waitFor(() => expect(getDatasetCalls()).toHaveLength(2));
-      expect(await getDatasetBodies()).toEqual(
-        expect.arrayContaining([
-          // the re-run of the question, which turned ad-hoc with the settings change
-          expect.objectContaining({
-            parameters: [],
-            referenced_entities: [{ type: "card", id: 10, columns: ["goal"] }],
-          }),
-          // the goal source query, for the result that is still on screen
-          expect.objectContaining({
-            referenced_entities: [{ type: "card", id: 10 }],
-          }),
-        ]),
-      );
-      expect(getCardQueryCalls()).toHaveLength(1);
+    expect(await screen.findByText("Goal 300")).toBeInTheDocument();
+    expect(await getGoalValuesBodies()).toEqual([
+      { sources: [{ type: "card", id: GOAL_SOURCE_ID }] },
+      { sources: [{ type: "card", id: NEW_GOAL_SOURCE_ID }] },
+    ]);
+    expect(getCardQueryCalls()).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("fetches the goal values again when the question runs again", async () => {
+    const { runQuestionAgain } = await setup();
+    fetchMock.modifyRoute("dynamic-goal-values", {
+      response: createGoalValues({ goal: 275, newGoal: 300 }),
     });
 
-    it("answers the new goal source with only the goal source query when the database does not auto-run queries", async () => {
-      const { pickNewGoalSource } = await setup({
-        database: createSampleDatabase({ auto_run_queries: false }),
-      });
+    await runQuestionAgain();
 
-      await pickNewGoalSource();
-
-      expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      expect(await getDatasetBodies()).toEqual([
-        expect.objectContaining({
-          referenced_entities: [{ type: "card", id: 10 }],
-        }),
-      ]);
-      expect(getCardQueryCalls()).toHaveLength(1);
-    });
+    expect(await screen.findByText("Goal 275")).toBeInTheDocument();
+    await waitFor(() => expect(getCardQueryCalls()).toHaveLength(2));
+    expect(getGoalValuesCalls()).toHaveLength(2);
   });
 });
+
+function createGoalValues({
+  goal,
+  newGoal,
+}: {
+  goal: number;
+  newGoal: number;
+}): ReferencedEntitiesResults {
+  return {
+    card: {
+      [GOAL_SOURCE_ID]: createMockReferencedEntityResult({ value: goal }),
+      [NEW_GOAL_SOURCE_ID]: createMockReferencedEntityResult({
+        value: newGoal,
+      }),
+    },
+  };
+}
 
 function getCardQueryCalls() {
   return fetchMock.callHistory.calls(`path:/api/card/${CARD.id}/query`);
 }
 
-function getDatasetCalls() {
-  return fetchMock.callHistory.calls("path:/api/dataset");
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
 }
 
-function getDatasetBodies(): Promise<unknown[]> {
+function getGoalValuesBodies(): Promise<unknown[]> {
   return Promise.all(
-    getDatasetCalls().map((call) => checkNotNull(call.request).json()),
+    getGoalValuesCalls().map((call) => checkNotNull(call.request).json()),
   );
 }

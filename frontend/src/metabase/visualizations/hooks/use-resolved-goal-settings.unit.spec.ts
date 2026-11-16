@@ -1,12 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { Card, DatasetData } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import {
-  createMockCard,
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
@@ -30,13 +29,14 @@ const HIDDEN_GOAL_SETTINGS: ComputedVisualizationSettings = {
   "graph.goal_value": null,
 };
 
-function setup(
-  card: Card,
-  settings: ComputedVisualizationSettings,
-  data: DatasetData = DATA,
-) {
+interface SetupOpts {
+  display: Card["display"];
+  settings: ComputedVisualizationSettings;
+}
+
+function setup({ display, settings }: SetupOpts) {
   return renderHookWithProviders(
-    () => useResolvedGoalSettings(card, data, settings),
+    () => useResolvedGoalSettings({ display }, DATA, settings),
     {},
   );
 }
@@ -46,7 +46,7 @@ describe("useResolvedGoalSettings", () => {
     const settings: ComputedVisualizationSettings = {
       "graph.goal_value": 10,
     };
-    const { result } = setup(createMockCard({ display: "line" }), settings);
+    const { result } = setup({ display: "line", settings });
 
     expect(result.current).toEqual({
       status: "resolved",
@@ -57,25 +57,23 @@ describe("useResolvedGoalSettings", () => {
   });
 
   it("leaves a reference alone for a display that does not resolve graph goals", () => {
-    const { result } = setup(
-      createMockCard({ display: "scalar" }),
-      REFERENCED_SETTINGS,
-    );
+    const { result } = setup({
+      display: "scalar",
+      settings: REFERENCED_SETTINGS,
+    });
 
     expect(result.current).toEqual({
       status: "resolved",
       settings: REFERENCED_SETTINGS,
       errors: [],
     });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(0);
   });
 
   describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
-    const card = createMockCard({ display });
-
     it("leaves a hidden goal line alone", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
-      const { result } = setup(card, settings);
+      const { result } = setup({ display, settings });
 
       expect(result.current).toEqual({
         status: "resolved",
@@ -83,40 +81,27 @@ describe("useResolvedGoalSettings", () => {
         errors: [],
       });
       expect(result.current.settings).toBe(settings);
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(getGoalValuesCalls()).toHaveLength(0);
     });
 
-    it("substitutes an answer the dataset already has", () => {
-      const data = createMockDatasetData({
-        ...DATA,
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: 250,
-        }),
-      });
-
-      const { result } = setup(card, REFERENCED_SETTINGS, data);
+    it("substitutes a self-column goal without fetching", () => {
+      const settings = { ...REFERENCED_SETTINGS, "graph.goal_value": "count" };
+      const { result } = setup({ display, settings });
 
       expect(result.current).toEqual({
         status: "resolved",
-        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 250 },
+        settings: { ...settings, "graph.goal_value": 50 },
         errors: [],
       });
+      expect(getGoalValuesCalls()).toHaveLength(0);
     });
 
-    it("resolves the reference by re-running the query", async () => {
-      setupCardDataset({
-        dataset: {
-          data: createMockDatasetData({
-            referenced_entities: createMockReferencedEntitiesResults({
-              column: "goal",
-              value: 250,
-            }),
-          }),
-        },
-      });
+    it("resolves the reference by fetching the value of its source", async () => {
+      setupGoalValuesEndpoint(
+        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+      );
 
-      const { result } = setup(card, REFERENCED_SETTINGS);
+      const { result } = setup({ display, settings: REFERENCED_SETTINGS });
       expect(result.current).toEqual({
         status: "resolving",
         settings: HIDDEN_GOAL_SETTINGS,
@@ -132,10 +117,10 @@ describe("useResolvedGoalSettings", () => {
       );
     });
 
-    it("hides the goal line and reports the error when the reference cannot be resolved", async () => {
-      setupCardDataset({ status: 500 });
+    it("hides the goal line and reports the error when fetching the value fails", async () => {
+      setupGoalValuesEndpoint(() => new Response(null, { status: 500 }));
 
-      const { result } = setup(card, REFERENCED_SETTINGS);
+      const { result } = setup({ display, settings: REFERENCED_SETTINGS });
 
       await waitFor(() =>
         expect(result.current).toMatchObject({
@@ -146,30 +131,32 @@ describe("useResolvedGoalSettings", () => {
       );
     });
 
-    it("hides the goal line and reports the error for a reference the dataset reports as failed", () => {
-      const data = createMockDatasetData({
-        ...DATA,
-        referenced_entities: createMockFailedReferencedEntitiesResults({
-          error: "boom",
+    it("hides the goal line and reports the error for a source reported as failed", async () => {
+      setupGoalValuesEndpoint(
+        createMockFailedReferencedEntitiesResults({ error: "boom" }),
+      );
+
+      const { result } = setup({ display, settings: REFERENCED_SETTINGS });
+
+      await waitFor(() =>
+        expect(result.current).toEqual({
+          status: "resolved",
+          settings: HIDDEN_GOAL_SETTINGS,
+          errors: [
+            {
+              type: "card",
+              id: 9,
+              column: "goal",
+              reason: "query-failed",
+              message: "boom",
+            },
+          ],
         }),
-      });
-
-      const { result } = setup(card, REFERENCED_SETTINGS, data);
-
-      expect(result.current).toEqual({
-        status: "resolved",
-        settings: HIDDEN_GOAL_SETTINGS,
-        errors: [
-          {
-            type: "card",
-            id: 9,
-            column: "goal",
-            reason: "query-failed",
-            message: "boom",
-          },
-        ],
-      });
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      );
     });
   });
 });
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}

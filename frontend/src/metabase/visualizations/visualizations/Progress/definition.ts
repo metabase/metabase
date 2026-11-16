@@ -91,7 +91,6 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
 
         return {
           data,
-          datasetQuery: card.dataset_query,
           display: card.display,
           excludedSelfColumn: settings["progress.value"],
           formatOptions: column && settings.column?.(column),

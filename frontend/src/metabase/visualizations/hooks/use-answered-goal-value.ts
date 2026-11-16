@@ -2,14 +2,13 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  type GoalData,
   type GoalValueResult,
   getUnansweredGoalEntities,
   needsAnswer,
   resolveGoalValue,
 } from "metabase/viz-core";
 import type {
-  DatasetData,
-  DatasetQuery,
   GoalForeignColumnRef,
   GoalValue,
   ReferencedEntity,
@@ -27,27 +26,26 @@ const RESOLVING: GoalValueResult = {
 };
 
 /**
- * Like `resolveGoalValue`, but a foreign reference the query can't answer is
- * answered by re-running the query with the referenced entities attached.
+ * Like `resolveGoalValue`, but a foreign reference `data` has no answer for is
+ * answered by fetching goal values: of `referencedEntities` when they include
+ * the referenced entity, so sibling goals share one request, and of the
+ * referenced entity alone otherwise.
  */
 export function useAnsweredGoalValue({
   data,
-  datasetQuery,
   referencedEntities,
   value,
 }: {
-  data: DatasetData;
-  datasetQuery: DatasetQuery | undefined;
+  data: GoalData;
   referencedEntities?: ReferencedEntity[];
   value: GoalValue | null | undefined;
 }): GoalValueResult {
   const unansweredRef = getUnansweredRef(data, value);
 
   const answered = useAnsweredGoalData(
-    datasetQuery,
     data,
     unansweredRef !== null
-      ? (referencedEntities ?? getUnansweredGoalEntities(data, [value]))
+      ? getEntitiesToAnswer(data, value, referencedEntities)
       : [],
   );
 
@@ -55,7 +53,7 @@ export function useAnsweredGoalValue({
 }
 
 export function getAnsweredGoalValue(
-  data: DatasetData,
+  data: GoalData,
   answered: GoalDataResolution,
   value: GoalValue | null | undefined,
 ): GoalValueResult {
@@ -83,8 +81,25 @@ export function getAnsweredGoalValue(
     .exhaustive();
 }
 
+function getEntitiesToAnswer(
+  data: GoalData,
+  value: GoalValue | null | undefined,
+  referencedEntities: ReferencedEntity[] | undefined,
+): ReferencedEntity[] {
+  const ownEntities = getUnansweredGoalEntities(data, [value]);
+  const includesOwnEntities = ownEntities.every((own) =>
+    referencedEntities?.some(
+      (entity) => entity.type === own.type && entity.id === own.id,
+    ),
+  );
+
+  return referencedEntities != null && includesOwnEntities
+    ? referencedEntities
+    : ownEntities;
+}
+
 function getUnansweredRef(
-  data: DatasetData,
+  data: GoalData,
   value: GoalValue | null | undefined,
 ): GoalForeignColumnRef | null {
   return isGoalForeignColumnRef(value) &&

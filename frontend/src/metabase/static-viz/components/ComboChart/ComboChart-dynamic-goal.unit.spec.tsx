@@ -10,8 +10,8 @@ import {
 } from "__support__/dynamic-goals";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
+  GoalValue,
   RawSeries,
-  ReferencedEntitiesResults,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -19,8 +19,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { StaticVisualization } from "../StaticVisualization";
@@ -41,33 +39,22 @@ const ROWS = [
 
 const GOAL_LABEL = "Target";
 
+// the backend substitutes a goal it resolves, so a reference here is one it couldn't resolve
+const UNRESOLVED_GOAL: GoalValue = { type: "card", id: 9, column: "goal" };
+
 describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   "static %s chart with a dynamic goal",
   (display) => {
-    it("draws the goal line at the value answered by the dataset", () => {
-      const svg = toSvg(
-        createSeries(
-          display,
-          createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
-        ),
-      );
+    it("draws the goal line at the value the backend resolved", () => {
+      const svg = toSvg(createSeries(display, 250));
 
       expect(svg).toContain(GOAL_LABEL);
       // the goal is far above every data point, so it stretches the y-axis up to it
       expect(svg).toContain(">250<");
     });
 
-    it("draws no goal line for a reference the dataset has not answered", () => {
-      const svg = toSvg(createSeries(display));
-
-      expect(svg).toContain("Jan");
-      expect(svg).not.toContain(GOAL_LABEL);
-    });
-
-    it("draws no goal line for a reference the dataset reports as failed", () => {
-      const svg = toSvg(
-        createSeries(display, createMockFailedReferencedEntitiesResults()),
-      );
+    it("draws no goal line for a reference the backend left unresolved", () => {
+      const svg = toSvg(createSeries(display, UNRESOLVED_GOAL));
 
       expect(svg).toContain("Jan");
       expect(svg).not.toContain(GOAL_LABEL);
@@ -78,16 +65,12 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
 describe.each(["bar", "area"] as const)(
   "static normalized stacked %s chart with a dynamic goal",
   (display) => {
-    it("reads the answered goal as a percentage of the stack", () => {
+    it("reads the resolved goal as a percentage of the stack", () => {
       const svg = toSvg(
-        createSeries(
-          display,
-          createMockReferencedEntitiesResults({ column: "goal", value: 50 }),
-          {
-            "graph.metrics": ["count", "sum"],
-            "stackable.stack_type": "normalized",
-          },
-        ),
+        createSeries(display, 50, {
+          "graph.metrics": ["count", "sum"],
+          "stackable.stack_type": "normalized",
+        }),
       );
 
       expect(svg).toContain(GOAL_LABEL);
@@ -103,11 +86,10 @@ describe.each(["bar", "area"] as const)(
 describe("static line chart with multiple series and a dynamic goal", () => {
   it("draws the goal line in each split panel", () => {
     const svg = toSvg(
-      createSeries(
-        "line",
-        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
-        { "graph.metrics": ["count", "sum"], "graph.split_panels": true },
-      ),
+      createSeries("line", 250, {
+        "graph.metrics": ["count", "sum"],
+        "graph.split_panels": true,
+      }),
     );
 
     expect(getGoalLines(svg)).toHaveLength(2 * PATHS_PER_GOAL_LINE);
@@ -115,14 +97,10 @@ describe("static line chart with multiple series and a dynamic goal", () => {
 
   it("draws one goal line with multiple y-axes", () => {
     const svg = toSvg(
-      createSeries(
-        "line",
-        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
-        {
-          "graph.metrics": ["count", "sum"],
-          series_settings: { sum: { axis: "right" } },
-        },
-      ),
+      createSeries("line", 250, {
+        "graph.metrics": ["count", "sum"],
+        series_settings: { sum: { axis: "right" } },
+      }),
     );
 
     expect(getGoalLines(svg)).toHaveLength(PATHS_PER_GOAL_LINE);
@@ -165,7 +143,7 @@ function getGoalLineY(svg: string) {
 
 function createSeries(
   display: VisualizationDisplay,
-  referenced_entities?: ReferencedEntitiesResults | null,
+  goalValue: GoalValue,
   settings?: VisualizationSettings,
 ): RawSeries {
   return [
@@ -177,15 +155,11 @@ function createSeries(
           "graph.metrics": ["count"],
           "graph.show_goal": true,
           "graph.goal_label": GOAL_LABEL,
-          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+          "graph.goal_value": goalValue,
           ...settings,
         },
       }),
-      data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
-        referenced_entities,
-      }),
+      data: createMockDatasetData({ cols: COLS, rows: ROWS }),
     },
   ];
 }

@@ -51,7 +51,7 @@ function GaugeComponent({
   isSettings,
   height: heightProp,
   isQueryBuilder,
-  series: [{ card, data }],
+  series: [{ data }],
   settings,
   visualizationIsClickable,
   width,
@@ -83,7 +83,6 @@ function GaugeComponent({
   const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
   const goalData = useResolvedGoalData(
-    card.dataset_query,
     data,
     getGoalSegmentBounds(settings["gauge.segments"]),
   );

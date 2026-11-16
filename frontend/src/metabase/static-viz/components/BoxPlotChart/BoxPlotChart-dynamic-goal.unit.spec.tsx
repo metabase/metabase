@@ -4,13 +4,11 @@
 import ReactDOMServer from "react-dom/server";
 
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type { GoalValue, RawSeries } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { StaticVisualization } from "../StaticVisualization";
@@ -31,39 +29,27 @@ const ROWS = [
 
 const GOAL_LABEL = "Target";
 
+// the backend substitutes a goal it resolves, so a reference here is one it couldn't resolve
+const UNRESOLVED_GOAL: GoalValue = { type: "card", id: 9, column: "goal" };
+
 describe("static box plot with a dynamic goal", () => {
-  it("draws the goal line at the value answered by the dataset", () => {
-    const svg = toSvg(
-      createSeries(
-        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
-      ),
-    );
+  it("draws the goal line at the value the backend resolved", () => {
+    const svg = toSvg(createSeries(250));
 
     expect(svg).toContain(GOAL_LABEL);
     // the goal is far above every data point, so it stretches the y-axis up to it
     expect(svg).toContain(">250<");
   });
 
-  it("draws no goal line for a reference the dataset has not answered", () => {
-    const svg = toSvg(createSeries());
-
-    expect(svg).toContain("Gadget");
-    expect(svg).not.toContain(GOAL_LABEL);
-  });
-
-  it("draws no goal line for a reference the dataset reports as failed", () => {
-    const svg = toSvg(
-      createSeries(createMockFailedReferencedEntitiesResults()),
-    );
+  it("draws no goal line for a reference the backend left unresolved", () => {
+    const svg = toSvg(createSeries(UNRESOLVED_GOAL));
 
     expect(svg).toContain("Gadget");
     expect(svg).not.toContain(GOAL_LABEL);
   });
 });
 
-function createSeries(
-  referenced_entities?: DatasetData["referenced_entities"],
-): RawSeries {
+function createSeries(goalValue: GoalValue): RawSeries {
   return [
     {
       card: createMockCard({
@@ -73,14 +59,10 @@ function createSeries(
           "graph.metrics": ["count"],
           "graph.show_goal": true,
           "graph.goal_label": GOAL_LABEL,
-          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+          "graph.goal_value": goalValue,
         },
       }),
-      data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
-        referenced_entities,
-      }),
+      data: createMockDatasetData({ cols: COLS, rows: ROWS }),
     },
   ];
 }

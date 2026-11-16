@@ -1,8 +1,9 @@
 import {
+  type GoalData,
   type GoalValueResult,
   getUnansweredGoalEntities,
 } from "metabase/viz-core";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import type { GoalValue } from "metabase-types/api";
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";
 import { getAnsweredGoalValue } from "./use-answered-goal-value";
@@ -11,21 +12,19 @@ export type ResolvedGoalData =
   | { status: "resolving" }
   | {
       status: "resolved";
-      data: DatasetData;
+      data: GoalData;
       results: GoalValueResult[];
     };
 
 /**
- * Answers the references in `goalValues` the dataset can't, then resolves
- * every goal value against the answered data.
+ * Fetches the values of the goal sources `goalValues` reference, then resolves
+ * every goal value against `data` and those values.
  */
 export function useResolvedGoalData(
-  datasetQuery: DatasetQuery | undefined,
-  data: DatasetData,
+  data: GoalData,
   goalValues: (GoalValue | null)[],
 ): ResolvedGoalData {
   const answered = useAnsweredGoalData(
-    datasetQuery,
     data,
     getUnansweredGoalEntities(data, goalValues),
   );

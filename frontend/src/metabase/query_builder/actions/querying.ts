@@ -2,6 +2,7 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { dynamicGoalApi } from "metabase/api";
 import { isAbortError } from "metabase/api/client";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
@@ -162,6 +163,8 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryController = new AbortController();
 
+    // the chart's goals are as fresh as its query
+    dispatch(dynamicGoalApi.util.invalidateTags(["dynamic-goal-values"]));
     apiRunQuestionQuery(question, {
       dispatch,
       signal: cancelQueryController.signal,

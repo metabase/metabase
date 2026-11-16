@@ -49,6 +49,7 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { GoalValuesScopeProvider } from "metabase/visualizations/components/GoalValuesScope";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -822,44 +823,48 @@ export const CardEmbedComponent = memo(
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
-                    <Visualization
-                      rawSeries={series}
-                      mode={visualizationMode}
-                      hasColumnReordering
-                      highlighted={highlighted}
-                      onChangeCardAndRun={
-                        isStatic
-                          ? // A defined mode needs a truthy handler so the click-actions popover mounts
-                            visualizationMode != null
-                            ? noop
-                            : undefined
-                          : isExternalDocument
+                    <GoalValuesScopeProvider
+                      scope={{ type: "document-card", cardId: id }}
+                    >
+                      <Visualization
+                        rawSeries={series}
+                        mode={visualizationMode}
+                        hasColumnReordering
+                        highlighted={highlighted}
+                        onChangeCardAndRun={
+                          isStatic
+                            ? // A defined mode needs a truthy handler so the click-actions popover mounts
+                              visualizationMode != null
+                              ? noop
+                              : undefined
+                            : isExternalDocument
+                              ? undefined
+                              : handleChangeCardAndRun
+                        }
+                        onUpdateQuestion={
+                          isStatic || isExternalDocument
                             ? undefined
-                            : handleChangeCardAndRun
-                      }
-                      onUpdateQuestion={
-                        isStatic || isExternalDocument
-                          ? undefined
-                          : handleUpdateQuestion
-                      }
-                      onUpdateVisualizationSettings={
-                        isExternalDocument
-                          ? undefined
-                          : handleUpdateVisualizationSettings
-                      }
-                      onOpenTimelines={handleOpenTimelines}
-                      onSelectTimelineEvents={handleSelectTimelineEvents}
-                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
-                      selectedTimelineEventIds={selectedTimelineEventIds}
-                      getExtraDataForClick={() => ({})}
-                      isEditing={false}
-                      isDashboard={false}
-                      isDocument={true}
-                      customVizLoadingView={<CardEmbedLoadingState />}
-                      showTitle={false}
-                      error={datasetError?.message}
-                      errorIcon={datasetError?.icon}
-                    />
+                            : handleUpdateQuestion
+                        }
+                        onUpdateVisualizationSettings={
+                          isExternalDocument
+                            ? undefined
+                            : handleUpdateVisualizationSettings
+                        }
+                        onOpenTimelines={handleOpenTimelines}
+                        onSelectTimelineEvents={handleSelectTimelineEvents}
+                        onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                        selectedTimelineEventIds={selectedTimelineEventIds}
+                        getExtraDataForClick={() => ({})}
+                        isEditing={false}
+                        isDashboard={false}
+                        isDocument={true}
+                        customVizLoadingView={<CardEmbedLoadingState />}
+                        showTitle={false}
+                        error={datasetError?.message}
+                        errorIcon={datasetError?.icon}
+                      />
+                    </GoalValuesScopeProvider>
                   </ExplicitSizeRefreshModeContext.Provider>
                 </Box>
               </>

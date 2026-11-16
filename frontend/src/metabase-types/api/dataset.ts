@@ -95,7 +95,6 @@ export interface ResultsMetadata {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  referenced_entities?: ReferencedEntitiesResults | null;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
@@ -292,7 +291,12 @@ export type ReferencedEntitiesResults = {
 export interface ReferencedEntityResult {
   status: "completed" | "failed";
   error?: string;
-  error_type?: "too-many-rows" | "not-found" | "has-parameters" | "withheld";
+  error_type?:
+    | "too-many-rows"
+    | "not-found"
+    | "has-parameters"
+    | "withheld"
+    | "too-many-sources";
   data?: {
     cols: DatasetColumn[];
     rows: RowValues[];

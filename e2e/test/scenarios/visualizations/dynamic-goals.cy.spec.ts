@@ -10,7 +10,6 @@ import type {
   DocumentContent,
   GoalForeignColumnRef,
   MeasureId,
-  ReferencedEntity,
   ReferencedEntityType,
   RowValue,
 } from "metabase-types/api";
@@ -109,11 +108,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    cy.intercept("POST", "/api/dynamic-goal/values").as("goalValues");
 
     H.createNativeQuestion(SINGLE_COLUMN_SOURCE, {
       idAlias: "singleColumnSourceId",
@@ -153,7 +148,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
       .should("contain.text", "400");
     assertGoalLineValue("400");
     cy.get<CardId>("@singleColumnSourceId").then((id) => {
-      assertAnswered("@dataset", { id, column: "TARGET", value: 400 });
+      assertAnswered("@goalValues", { id, column: "TARGET", value: 400 });
     });
 
     cy.log("The goal line follows the viz type");
@@ -198,7 +193,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
     assertGoalLineValue("600");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@cardQuery", { id, column: "HIGH", value: 600 });
+      assertAnswered("@goalValues", { id, column: "HIGH", value: 600 });
     });
 
     cy.log("A goal picked on a saved question resolves before it is saved");
@@ -252,7 +247,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
       Color(rangeColor).rgb().string(),
     );
     cy.get<CardId>("@metricSourceId").then((id) => {
-      assertAnswered("@dataset", { id, column: "count", value: 18760 });
+      assertAnswered("@goalValues", { id, column: "count", value: 18760 });
     });
 
     cy.log(
@@ -289,7 +284,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     pickGoalSource(MEASURE_SOURCE.name);
     H.queryBuilderMain().findByText("Goal 100").should("be.visible");
     cy.get<MeasureId>("@measureSourceId").then((id) => {
-      assertAnswered("@dataset", {
+      assertAnswered("@goalValues", {
         type: "measure",
         id,
         column: "max",
@@ -331,11 +326,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
         H.visitDashboard(dashboard.id);
       });
 
-      cy.log("A saved goal is resolved by the dashcard query");
+      cy.log("A saved goal is resolved for the dashcard");
       H.getDashboardCard(0).within(() => {
         H.goalLine().should("exist");
       });
-      assertAnswered("@dashcardQuery", {
+      assertAnswered("@goalValues", {
         id: sourceId,
         column: "TARGET",
         value: 400,
@@ -377,15 +372,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.saveDashboard();
 
     cy.log("Saved dashcard and visualizer goals are resolved after a reload");
-    H.getDashboardCard(0)
-      .findByTestId("dashcard")
-      .invoke("attr", "data-dashcard-key")
-      .then((dashcardId) => {
-        cy.intercept(
-          "POST",
-          `/api/dashboard/*/dashcard/${dashcardId}/card/*/query`,
-        ).as("visualizerDashcardQuery");
-      });
     cy.reload();
     H.getDashboardCard(0).within(() => {
       H.goalLineMarker().trigger("mousemove");
@@ -393,7 +379,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.tooltip().should("contain.text", "300");
     H.getDashboardCard(1).findByText("Goal 600").should("be.visible");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@visualizerDashcardQuery", {
+      assertAnswered("@goalValues", {
         id,
         column: "LOW",
         value: 300,
@@ -422,17 +408,21 @@ describe("scenarios > visualizations > dynamic goals", () => {
   });
 
   it("should resolve goals in public and static embeds and documents", () => {
-    cy.intercept("GET", "/api/public/card/*/query*").as("publicCardQuery");
-    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
-      "publicDashcardQuery",
+    cy.intercept("GET", "/api/public/card/*/goal-values").as(
+      "publicCardGoalValues",
     );
-    cy.intercept("GET", "/api/public/document/*/card/*").as(
-      "publicDocumentCardQuery",
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/goal-values").as(
+      "publicDashcardGoalValues",
+    );
+    cy.intercept("GET", "/api/public/document/*/card/*/goal-values").as(
+      "publicDocumentCardGoalValues",
     );
     cy.intercept("PUT", "/api/document/*").as("updateDocument");
-    cy.intercept("GET", "/api/embed/card/*/query*").as("embedCardQuery");
-    cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
-      "embedDashcardQuery",
+    cy.intercept("GET", "/api/embed/card/*/goal-values").as(
+      "embedCardGoalValues",
+    );
+    cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/goal-values").as(
+      "embedDashcardGoalValues",
     );
 
     H.updateSetting("enable-embedding-static", true);
@@ -471,7 +461,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           H.documentContent().within(() => {
             H.goalLine().should("exist");
           });
-          assertAnswered("@cardQuery", {
+          assertAnswered("@goalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -502,7 +492,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           H.visitPublicDocument("@documentId");
           H.goalLine().should("exist");
           cy.get<CardId>("@multiColumnSourceId").then((id) => {
-            assertAnswered("@publicDocumentCardQuery", {
+            assertAnswered("@publicDocumentCardGoalValues", {
               id,
               column: "HIGH",
               value: 600,
@@ -513,7 +503,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           cy.signInAsAdmin();
           H.visitPublicQuestion(questionId);
           H.goalLine().should("exist");
-          assertAnswered("@publicCardQuery", {
+          assertAnswered("@publicCardGoalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -523,7 +513,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           cy.signInAsAdmin();
           H.visitPublicDashboard(dashboardId);
           H.goalLine().should("exist");
-          assertAnswered("@publicDashcardQuery", {
+          assertAnswered("@publicDashcardGoalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -536,7 +526,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
             params: {},
           });
           H.goalLine().should("exist");
-          assertAnswered("@embedCardQuery", {
+          assertAnswered("@embedCardGoalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -549,7 +539,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
             params: {},
           });
           H.goalLine().should("exist");
-          assertAnswered("@embedDashcardQuery", {
+          assertAnswered("@embedDashcardGoalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -717,12 +707,9 @@ function assertAnswered(
   { type = "card", id, column, value }: AnsweredReference,
 ) {
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
-    const answers = interceptions
-      .filter(({ request }) => !requestsEveryColumn(request, { type, id }))
-      .flatMap(
-        ({ response }) =>
-          response?.body?.data?.referenced_entities?.[type]?.[id] ?? [],
-      );
+    const answers = interceptions.flatMap(
+      ({ response }) => response?.body?.[type]?.[id] ?? [],
+    );
     const isAnswered = answers.some(
       (answer) =>
         answer.status === "completed" &&
@@ -733,18 +720,6 @@ function assertAnswered(
       true,
     );
   });
-}
-
-// the goal picker and the fallback fetch ask for every column, unlike the chart's own query
-function requestsEveryColumn(
-  { body }: Interception["request"],
-  { type, id }: { type: ReferencedEntityType; id: CardId | MeasureId },
-) {
-  const entities: ReferencedEntity[] = body?.referenced_entities ?? [];
-  return entities.some(
-    (entity) =>
-      entity.type === type && entity.id === id && !entity.columns?.length,
-  );
 }
 
 function getAnsweredValue(

@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -44,9 +45,9 @@ const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
 type SetupOpts = {
   columnSettings?: VisualizationSettings["column_settings"];
+  goalValues?: ReferencedEntitiesResults;
   height?: number;
   isQueryBuilder?: boolean;
-  referencedEntities?: ReferencedEntitiesResults;
   rows?: RowValues[];
   segments: GoalSegment[];
   width?: number;
@@ -54,15 +55,15 @@ type SetupOpts = {
 
 function setup({
   columnSettings,
+  goalValues = createMockFailedReferencedEntitiesResults({ error: "boom" }),
   height,
   isQueryBuilder = false,
-  referencedEntities = createMockFailedReferencedEntitiesResults({
-    error: "boom",
-  }),
   rows = [[50]],
   segments,
   width,
 }: SetupOpts) {
+  setupGoalValuesEndpoint(goalValues);
+
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({
@@ -78,7 +79,6 @@ function setup({
             createMockColumn({ name: "count", base_type: "type/Integer" }),
           ],
           rows,
-          referenced_entities: referencedEntities,
         }),
       },
     ),
@@ -120,7 +120,7 @@ describe("gauge dynamic goal", () => {
     setup({
       columnSettings: CURRENCY_COLUMN_SETTINGS,
       height: LABELED_GAUGE_SIZE,
-      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
+      goalValues: createMockReferencedEntitiesResults({ value: 2500 }),
       segments: [{ min: 0, max: GOAL_REF, color: "red" }],
       width: LABELED_GAUGE_SIZE,
     });
@@ -131,7 +131,7 @@ describe("gauge dynamic goal", () => {
   it("draws a range bounded by an answered value of 0 and a negative decimal one", async () => {
     setup({
       height: LABELED_GAUGE_SIZE,
-      referencedEntities: {
+      goalValues: {
         card: {
           9: {
             status: "completed",
@@ -165,7 +165,7 @@ describe("gauge dynamic goal", () => {
     setup({
       columnSettings: CURRENCY_COLUMN_SETTINGS,
       height: UNLABELED_GAUGE_SIZE,
-      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
+      goalValues: createMockReferencedEntitiesResults({ value: 2500 }),
       segments: [{ min: 0, max: GOAL_REF, color: "red", label: "Target" }],
       width: UNLABELED_GAUGE_SIZE,
     });
@@ -176,19 +176,11 @@ describe("gauge dynamic goal", () => {
     expect(screen.getByText(/Target/)).toBeInTheDocument();
   });
 
-  it("shows a loader until an unanswered bound is fetched, then draws the ranges", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: createMockReferencedEntitiesResults({
-            column: "goal",
-            value: 75,
-          }),
-        }),
-      },
+  it("shows a loader until a foreign bound is fetched, then draws the ranges", async () => {
+    setup({
+      goalValues: createMockReferencedEntitiesResults({ value: 75 }),
+      segments: SEGMENTS,
     });
-
-    setup({ referencedEntities: {}, segments: SEGMENTS });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(screen.queryByTestId("gauge-arc-0")).not.toBeInTheDocument();
@@ -196,10 +188,10 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByTestId("gauge-arc-2")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
-    expect(await call.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
-    });
+    const calls = getGoalValuesCalls();
+    expect(calls).toHaveLength(1);
+    const body: unknown = await checkNotNull(calls[0].request).json();
+    expect(body).toEqual({ sources: [{ type: "card", id: 9 }] });
   });
 
   it("renders the ranges that resolve with one warning for consecutive failed bounds in the query builder", async () => {
@@ -272,7 +264,7 @@ describe("gauge dynamic goal", () => {
   it("drops the ranges bounded by a withheld goal", async () => {
     setup({
       height: LABELED_GAUGE_SIZE,
-      referencedEntities: createMockFailedReferencedEntitiesResults({
+      goalValues: createMockFailedReferencedEntitiesResults({
         error_type: "withheld",
       }),
       segments: SEGMENTS,
@@ -282,6 +274,10 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
     expect(screen.queryByTestId("gauge-arc-1")).not.toBeInTheDocument();
     expect(screen.queryByText("100")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(1);
   });
 });
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}

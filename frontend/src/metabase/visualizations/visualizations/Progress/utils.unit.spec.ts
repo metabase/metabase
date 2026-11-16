@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { GoalData } from "metabase/viz-core";
 import type {
   DatasetColumn,
   GoalForeignColumnRef,
@@ -126,10 +127,10 @@ describe("getGoalValue", () => {
   });
 
   it("should return the value another entity answers", () => {
-    const answeredData = createMockDatasetData({
+    const answeredData: GoalData = {
       ...data,
       referenced_entities: createMockReferencedEntitiesResults({ value: 250 }),
-    });
+    };
 
     expect(getGoalValue(GOAL_REF, answeredData)).toBe(250);
   });
