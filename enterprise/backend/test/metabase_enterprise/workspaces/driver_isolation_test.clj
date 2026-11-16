@@ -1062,11 +1062,16 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             ;; past Postgres's CREATEROLE precondition, so that CREATE USER itself runs and fails
+                             ;; past Postgres's CREATEROLE precondition and Redshift's superuser precondition, so
+                             ;; that CREATE USER itself runs and fails
                              (mt/with-dynamic-fn-redefs [postgres/check-admin-login-privileges! (constantly nil)]
-                               (init!
-                                driver low-priv-db
-                                (with-isolation-details driver low-priv-db ws-b)))
+                               (with-redefs-fn (if (= :redshift driver)
+                                                 {(requiring-resolve 'metabase.driver.redshift/check-superuser!)
+                                                  (constantly nil)}
+                                                 {})
+                                 #(init!
+                                   driver low-priv-db
+                                   (with-isolation-details driver low-priv-db ws-b))))
                              nil
                              (catch Throwable t t)))]
               (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
