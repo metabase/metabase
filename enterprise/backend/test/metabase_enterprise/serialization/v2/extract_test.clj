@@ -680,7 +680,6 @@
                                                                  :table_id  table-id
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
-                                                                 :table_id   table-id
                                                                  :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"

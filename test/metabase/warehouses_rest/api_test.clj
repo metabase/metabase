@@ -265,7 +265,9 @@
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-2
                                        :type        :metric}
-     :model/Segment  _                {:table_id table-id-2}
+     :model/Segment  _                {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                     (-> (lib/query mp (lib.metadata/table mp table-id-2))
+                                                         (lib/filter (lib/= 1 1))))}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
                                                  :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
@@ -3193,7 +3195,9 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {t :id}     {:db_id db-id}
                    :model/Card     {c :id}     {:database_id db-id :table_id t}
-                   :model/Segment  {s :id}     {:table_id t}]
+                   :model/Segment  {s :id}     {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                              (-> (lib/query mp (lib.metadata/table mp t))
+                                                                  (lib/filter (lib/= 1 1))))}]
       (mt/user-http-request :crowberto :delete 204 (format "database/%d" db-id))
       (is (not (t2/exists? :model/Database :id db-id)))
       (is (not (t2/exists? :model/Card :id c)))

@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -966,8 +967,10 @@
 
                        :model/Segment
                        {segment-id :id segment-eid :entity_id}
-                       {:name     "MeasureSearch Sample Big Orders"
-                        :table_id (mt/id :orders)}]
+                       {:name       "MeasureSearch Sample Big Orders"
+                        :definition (let [mp (mt/metadata-provider)]
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/filter (lib/= 1 1))))}]
           (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
                 by-key  (into {} (map (juxt (juxt :type :id) identity))
                               (search/search {:term-queries ["MeasureSearch Sample"]}))]

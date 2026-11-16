@@ -60,7 +60,7 @@
                      {:name "M" :table_id orders :creator_id (mt/user->id :crowberto)
                       :definition (measures.tu/measure-definition orders total)}
                      :model/Segment {segment-id :id segment-eid :entity_id}
-                     {:name "S" :table_id orders :definition (measures.tu/segment-definition orders total 100)}]
+                     {:name "S"}]
         (doseq [[entity-type id eid model] [["measure" measure-id measure-eid :model/Measure]
                                             ["segment" segment-id segment-eid :model/Segment]]]
           (testing entity-type

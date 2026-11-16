@@ -176,8 +176,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (replacement.source-swap/swap-source! [:segment segment-id]
                                                   [:table (mt/id :orders)]
@@ -194,8 +193,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (t2/query-one {:update :segment
                            :set    {:definition "{}"}
                            :where  [:= :id segment-id]})
@@ -427,8 +425,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/segment-create {:object (t2/select-one :model/Segment :id segment-id)

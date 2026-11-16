@@ -6,6 +6,8 @@
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.search.entity-retrieval.mirror :as mirror]
@@ -321,8 +323,9 @@
                                                           :table_id orders :creator_id (mt/user->id :crowberto)
                                                           :definition (measures.tu/measure-definition orders total)}
                          :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
-                                                          :table_id orders
-                                                          :definition (measures.tu/segment-definition orders total 100)}]
+                                                          :definition (let [mp (mt/metadata-provider)]
+                                                                        (-> (lib/query mp (lib.metadata/table mp orders))
+                                                                            (lib/filter (lib/= 1 1))))}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
             (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
               (reconcile/reconcile! ds (constantly model))

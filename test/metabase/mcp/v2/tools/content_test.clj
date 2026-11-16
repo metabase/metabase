@@ -118,7 +118,7 @@
             (is (nil? (:error row)))
             (is (= "M1" (:name row))))))
       (testing "segment"
-        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues)}]
+        (mt/with-temp [:model/Segment {id :id} {:name "S1"}]
           (let [row (content-one {:items [{:type "segment" :id id}]})]
             (is (nil? (:error row)))
             (is (= "S1" (:name row))))))

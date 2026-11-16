@@ -791,7 +791,6 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (mt/with-temp [:model/Measure {measure-id :id}
                      {:name       "query-test order count"
-                      :table_id   (mt/id :orders)
                       :creator_id (mt/user->id :crowberto)
                       :definition {:lib/type :mbql/query
                                    :database (mt/id)
@@ -811,7 +810,6 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (mt/with-temp [:model/Segment {segment-id :id}
                      {:name       "query-test first three orders"
-                      :table_id   (mt/id :orders)
                       :creator_id (mt/user->id :crowberto)
                       :definition {:lib/type :mbql/query
                                    :database (mt/id)

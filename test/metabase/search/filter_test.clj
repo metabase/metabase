@@ -4,6 +4,9 @@
    [clojure.test :refer :all]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -203,6 +206,13 @@
     (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
       (is (some #{"authoritative"} (tree-seq coll? seq where))))))
 
+(defn- table-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
 (deftest in-place-curated-measure-segment-search-test
   (testing "the in-place curated search keeps only measures and segments whose parent table is in the Library"
     (search.tu/with-legacy-search
@@ -212,8 +222,8 @@
                          :model/Table   plain-tbl {:name "plain_tbl"}
                          :model/Measure _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
                          :model/Measure _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
-                         :model/Segment _ {:name "inplace segment lib"   :table_id (:id lib-tbl)}
-                         :model/Segment _ {:name "inplace segment plain" :table_id (:id plain-tbl)}]
+                         :model/Segment _ {:name "inplace segment lib"   :definition (table-definition (:id lib-tbl))}
+                         :model/Segment _ {:name "inplace segment plain" :definition (table-definition (:id plain-tbl))}]
             (is (= #{"inplace measure lib" "inplace segment lib"}
                    (into #{} (map :name)
                          (search.tu/search-results "inplace" {:search-engine "in-place"

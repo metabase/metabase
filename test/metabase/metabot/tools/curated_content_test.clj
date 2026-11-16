@@ -748,7 +748,6 @@
                                                             :definition orders-count}
                        :model/Segment {raw-segment :id}
                        {:name       "rated"
-                        :table_id   (mt/id :reviews)
                         :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                 (lib/> (lib.metadata/field mp (mt/id :reviews :rating)) 3))}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}

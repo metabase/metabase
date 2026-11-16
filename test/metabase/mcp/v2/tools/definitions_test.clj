@@ -771,7 +771,9 @@
 (deftest existence-oracle-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                     (lib/filter (lib/= 1 1))))}
                  :model/Measure {measure-id :id} {:name       "definitions-test oracle measure"
                                                   :table_id   table-id
                                                   :creator_id (mt/user->id :crowberto)

@@ -191,10 +191,14 @@
                                              ;; 20 with just :field_id
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
-              :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
-                                                                                    :source-table 4}}}
-                                                        {:table_id   [:t 100]
-                                                         :creator_id [:u 10]})
+              :segment                 (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
+                                                                                    :database 1
+                                                                                    :stages   [{:lib/type     :mbql.stage/mbql
+                                                                                                :source-table 4
+                                                                                                :filters      [[:!= {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                                                                                [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 60]
+                                                                                                                50]]}]}}}
+                                                        {:creator_id [:u 10]})
               :measure                  (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
                                                                                      :database 1
                                                                                      :stages   [{:lib/type     :mbql.stage/mbql

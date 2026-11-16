@@ -1312,7 +1312,6 @@
                        :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query venues}
                        :model/Card       {metric-id :id}     {:type :metric :dataset_query (lib/aggregate venues (lib/count))}
                        :model/Segment    {segment-id :id}    {:name       "Bars"
-                                                              :table_id   (mt/id :venues)
                                                               :definition (lib/filter venues (lib/= category "Bar"))}
                        :model/Measure    {measure-id :id}    {:name       "Categories"
                                                               :table_id   (mt/id :venues)

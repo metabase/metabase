@@ -235,7 +235,6 @@
   (testing "get-table-details returns segments when with_segments is true"
     (let [segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
       (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
-                                                      :table_id   (mt/id :orders)
                                                       :definition segment-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "with_segments: false (default) does not include segments"
@@ -284,7 +283,6 @@
                                        :table_id (mt/id :orders)
                                        :definition measure-def}
                      :model/Segment _ {:name "Round-trip Segment"
-                                       :table_id (mt/id :orders)
                                        :definition segment-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (let [result   (entity-details/get-table-details
@@ -328,7 +326,6 @@
                       :definition measure-def}
                      :model/Segment {segment-id :id segment-pid :entity_id}
                      {:name "Opaque Segment"
-                      :table_id (mt/id :orders)
                       :definition segment-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (let [;; Mirrors what the agent does: paste `[measure, {}, "<pid>"]` and
@@ -389,7 +386,6 @@
                                                   :name          "Total Orders"
                                                   :type          :metric}
                      :model/Segment {segment-id :id} {:name       "Large Orders"
-                                                      :table_id   (mt/id :orders)
                                                       :definition segment-def}]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "with_segments: false (default) does not include segments"
@@ -670,7 +666,6 @@
                    :model/Card {metric-id :id}   {:name "Order count" :type :metric
                                                   :dataset_query (two-stage-metric-query model-id)}
                    :model/Segment {segment-id :id} {:name       "Large Orders"
-                                                    :table_id   (mt/id :orders)
                                                     :definition (segment-definition (mt/id :orders)
                                                                                     (mt/id :orders :total)
                                                                                     50)}]

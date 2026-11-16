@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -27,7 +26,16 @@
 (defn- venues-segment-definition
   "A full query on venues filtered by price greater than 25."
   []
-  (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 25))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 25)))))
+
+(defn- table-segment-definition
+  "A full query on `table-id` in `database-id` with an always-true filter."
+  [database-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider database-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
 
 (defn- get-revisions [entity object-id]
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
@@ -786,7 +794,7 @@
     (testing "test security. Requires read perms for the Table it references"
       (mt/with-temp [:model/Database db {}
                      :model/Table    table   {:db_id (u/the-id db)}
-                     :model/Segment  segment {:table_id (u/the-id table)}]
+                     :model/Segment  segment {:definition (table-segment-definition (u/the-id db) (u/the-id table))}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "revision/segment/%d" (u/the-id segment))))))))))
@@ -797,20 +805,19 @@
       (mt/with-temp
         [:model/Database {database-id :id} {}
          :model/Table    {table-id :id}    {:db_id database-id}
-         :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                            :definition (venues-segment-definition)}
+         :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)}
          :model/Revision _                 {:model       "Segment"
                                             :model_id    id
                                             :object      {:name       "b"
                                                           :table_id   table-id
-                                                          :definition {:filter [:> [:field 1 nil] 25]}}
+                                                          :definition (table-segment-definition database-id table-id)}
                                             :is_creation true}
          :model/Revision _                 {:model    "Segment"
                                             :model_id id
                                             :user_id  (mt/user->id :crowberto)
                                             :object   {:name       "c"
                                                        :table_id   table-id
-                                                       :definition {:filter [:> [:field 1 nil] 25]}}
+                                                       :definition (table-segment-definition database-id table-id)}
                                             :message  "updated"}]
         (mt/with-full-data-perms-for-all-users!
           (is (=? [{:is_reversion false
@@ -829,7 +836,7 @@
                                                         [{:lib/type "mbql.stage/mbql"
                                                           :source-table table-id
                                                           :filters
-                                                          [[">" {} ["field" {} 1] 25]]}]
+                                                          [["=" {} 1 1]]}]
                                                         :database database-id}}}
                     :description  "created this."}]
                   (mt/user-http-request :rasta :get 200 (format "revision/segment/%d" id)))))))))
@@ -857,8 +864,7 @@
                                             :description             "One segment to bring them all, and in the DataModel bind them"
                                             :show_in_getting_started false
                                             :caveats                 nil
-                                            :points_of_interest      nil
-                                            :definition              (venues-segment-definition)}
+                                            :points_of_interest      nil}
          :model/Revision {revision-id :id} {:model       "Segment"
                                             :model_id    id
                                             :object      {:creator_id              (mt/user->id :crowberto)

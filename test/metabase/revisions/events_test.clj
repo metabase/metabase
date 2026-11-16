@@ -3,7 +3,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
-   [metabase.measures.test-util :as measures.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -262,9 +263,16 @@
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
 (deftest segment-create-test
   (testing :event/segment-create
-    (mt/with-temp [:model/Segment  segment           {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 25)}]
+    (mt/with-temp [:model/Segment  segment           {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 25)}]
       (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
       (let [revision (-> (t2/select-one :model/Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
@@ -291,7 +299,7 @@
 
 (deftest segment-update-test
   (testing :event/segment-update
-    (mt/with-temp [:model/Segment  segment           {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 25)}]
+    (mt/with-temp [:model/Segment  segment           {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 25)}]
       (events/publish-event! :event/segment-update
                              (assoc {:object segment}
                                     :revision-message "updated"
@@ -321,7 +329,7 @@
 
 (deftest segment-delete-test
   (testing :event/segment-delete
-    (mt/with-temp [:model/Segment  segment           {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 25)
+    (mt/with-temp [:model/Segment  segment           {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 25)
                                                       :archived   true}]
       (events/publish-event! :event/segment-delete {:object segment :user-id (mt/user->id :rasta)})
       (is (=? {:model        "Segment"

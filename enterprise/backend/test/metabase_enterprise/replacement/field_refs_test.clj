@@ -326,8 +326,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                      :definition query}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
         (t2/query-one {:update :segment
                        :set    {:definition "{\"x\": \"y\"}"}
                        :where  [:= :id segment-id]})
@@ -339,8 +338,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-      (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
-                                                                              :definition query}]
+      (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:definition query}]
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Segment :id segment-id))))))))
 

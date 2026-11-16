@@ -191,8 +191,7 @@
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
-      (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+      (mt/with-temp [:model/Segment segment {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table :id (mt/id :venues)))))))))
@@ -855,8 +854,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
-                                     :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                     :as          segment} {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)

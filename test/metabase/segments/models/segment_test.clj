@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.measures.test-util :as measures.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
@@ -19,7 +18,9 @@
 (defn- price-definition
   "A full query on venues filtered by price greater than 2."
   []
-  (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 2))
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                (lib/> (lib.metadata/field mp (mt/id :venues :price)) 2))))
 
 (defn- segment-filter-definition
   "A full query on `table-id` filtered by the Segment with `segment-id`."
@@ -35,54 +36,27 @@
                  :set    {:definition (json/encode definition)}
                  :where  [:= :id id]}))
 
-(deftest normalize-metric-segment-definition-test
-  (testing "Legacy Segment definitions should get normalized to MBQL 5"
-    (testing "MBQL 4 fragment input"
-      (mt/with-temp [:model/Segment segment {:table_id (mt/id :venues)}]
-        (set-stored-definition! (:id segment) {:filter [:=
-                                                        [:field-id 1]
-                                                        [:datetime-field [:field-id 2] :month]]})
-        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
-              definition (:definition loaded-segment)]
-          (testing "should convert to full MBQL 5 query"
-            (is (=? {:lib/type :mbql/query
-                     :database (mt/id)
-                     :stages [{:lib/type :mbql.stage/mbql
-                               :source-table (mt/id :venues)
-                               :filters [[:= {} [:field {} 1] [:field {:temporal-unit :month} 2]]]}]}
-                    definition))))))
-    (testing "MBQL 4 fragment with aggregation should strip aggregation"
-      (mt/with-temp [:model/Segment segment {:table_id (mt/id :venues)}]
-        (set-stored-definition! (:id segment) {:filter [:= [:field-id 1] 2]
-                                               :aggregation [[:count]]})
-        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
-              definition (:definition loaded-segment)]
-          (testing "should convert to MBQL 5 without aggregation"
-            (is (=? {:lib/type :mbql/query
-                     :database (mt/id)
-                     :stages [{:lib/type :mbql.stage/mbql
-                               :source-table (mt/id :venues)
-                               :filters [[:= {} [:field {} 1] 2]]}]}
-                    definition)))
-          (testing "should not have aggregation in the stage"
-            (is (not (contains? (first (:stages definition)) :aggregation)))))))))
+(deftest stored-fragment-definition-reads-as-empty-map-test
+  (testing "A stored MBQL 4 fragment is not upgraded on read: it reads back as an empty map without throwing"
+    (mt/with-temp [:model/Segment {segment-id :id} {}]
+      (set-stored-definition! segment-id {:filter [:= [:field-id 1] 2]
+                                          :aggregation [[:count]]})
+      (is (= {} (:definition (t2/select-one :model/Segment :id segment-id)))))))
 
 (deftest dont-explode-on-way-out-from-db-test
   (testing "`segment-definition`s should avoid explosions coming out of the DB..."
-    (testing "invalid data should be set to nil"
-      (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-definition)}]
+    (testing "invalid data should be read as an empty map"
+      (mt/with-temp [:model/Segment {segment-id :id} {}]
         (set-stored-definition! segment-id {:filter "X"})
-        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id)))))))
+        (is (= {} (:definition (t2/select-one :model/Segment :id segment-id)))))))
   (testing "...but should still throw them on insert"
     (is (thrown? Exception
-                 (t2/insert! :model/Segment {:table_id (mt/id :venues)
-                                             :name "Bad Segment"
+                 (t2/insert! :model/Segment {:name "Bad Segment"
                                              :definition {:filter "X"}})))))
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :rasta)
-                                                :definition (price-definition)}]
+    (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Segment"
         (is (thrown-with-msg?
              Exception
@@ -99,8 +73,7 @@
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
-    (mt/with-temp [:model/Segment {id :id} {:name "Segment"
-                                            :table_id (mt/id :users)}]
+    (mt/with-temp [:model/Segment {id :id} {:name "Segment"}]
       (set-stored-definition! id {})
       (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)
@@ -129,19 +102,9 @@
           (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
                  (:definition_description (t2/hydrate segment-2 :definition_description)))))))))
 
-(deftest definition-description-missing-source-table-test
-  (testing "Should work if stored `:definition` does not include `:source-table`"
-    (mt/with-temp [:model/Segment segment {:name "Expensive BBQ Spots"
-                                           :definition (price-definition)}]
-      (set-stored-definition! (:id segment) (mt/$ids venues {:filter [:= $price 4]}))
-      (is (= "Filtered by Price is equal to 4"
-             (:definition_description (t2/hydrate (t2/select-one :model/Segment :id (:id segment))
-                                                  :definition_description)))))))
-
 (deftest ^:synchronized definition-description-invalid-query-test
   (testing "Should return `nil` if query is invalid"
-    (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"
-                                            :definition (price-definition)}]
+    (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"}]
       (set-stored-definition! id {:filter [:= [:wheat-field Integer/MAX_VALUE nil] 4]})
       (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)

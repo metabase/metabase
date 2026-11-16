@@ -13,6 +13,9 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
@@ -244,7 +247,7 @@
                      :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                               :type :metric)
-                     :model/Segment     segment        (assoc (data-map "segment %s segment") :table_id (mt/id :checkins))
+                     :model/Segment     segment        (data-map "segment %s segment")
                      :model/Measure     measure        (assoc (data-map "measure %s measure") :table_id (mt/id :checkins))]
         (f {:action     action
             :collection coll
@@ -785,8 +788,10 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id  db-id
                                                    :schema nil}
-                   :model/Segment  _ {:table_id table-id
-                                      :name     "test segment"}]
+                   :model/Segment  _ {:name       "test segment"
+                                      :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                    (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                        (lib/filter (lib/= 1 1))))}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (search-request-data :rasta :q "test")))))))
@@ -995,7 +1000,7 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      :model/Collection  _ (archived-collection {:name "collection test collection 2"})
                      :model/Card        _ (archived {:name "metric test metric 2" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment 2" :table_id (mt/id :checkins)})]
+                     :model/Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test")))))))
 
@@ -1016,7 +1021,7 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment" :table_id (mt/id :checkins)})
+                     :model/Segment     _ (archived {:name "segment test segment"})
                      :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
@@ -1034,7 +1039,7 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment" :table_id (mt/id :checkins)})
+                     :model/Segment     _ (archived {:name "segment test segment"})
                      :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))

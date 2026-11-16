@@ -5,7 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
-   [metabase.measures.test-util :as measures.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
@@ -161,10 +162,17 @@
                                                                               :condition    [:= $category_id &Cat.$categories.id]}]
                                                                     :limit  1})))))))))
 
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
 (deftest published-table-segment-and-metric-resolve-under-collection-only-perms-test
   (do-with-published-venues! {}
                              (fn [user-id _collection-id]
-                               (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 2)}
+                               (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 2)}
                                               :model/Card    {metric-id :id}  {:type          :metric
                                                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                                  (testing "a query referencing a :segment on the published table resolves"

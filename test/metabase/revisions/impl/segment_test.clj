@@ -1,12 +1,20 @@
 (ns metabase.revisions.impl.segment-test
   (:require
    [clojure.test :refer :all]
-   [metabase.measures.test-util :as measures.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]))
 
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
 (deftest ^:parallel serialize-segment-test
-  (mt/with-temp [:model/Segment segment {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
+  (mt/with-temp [:model/Segment segment {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
     (is (=? {:id                      true
              :table_id                true
              :creator_id              (mt/user->id :rasta)
@@ -30,7 +38,7 @@
                     (keys (revision/serialize-instance :model/Segment (:id segment) segment)))))))
 
 (deftest ^:parallel diff-segments-test
-  (mt/with-temp [:model/Segment segment {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
+  (mt/with-temp [:model/Segment segment {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
     (is (=? {:definition  {:before {:lib/type :mbql/query
                                     :stages [{:lib/type :mbql.stage/mbql
                                               :source-table (mt/id :venues)

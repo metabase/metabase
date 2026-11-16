@@ -284,7 +284,8 @@
 (defn- price-above
   "A Segment definition: VENUES.PRICE above `n`."
   [n]
-  (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) n))
+  (lib/filter (venues-query)
+              (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) n)))
 
 (defn- with-segment-policy
   "A policy filtering on Segment `outer`, whose definition filters on Segment `inner`."

@@ -20,7 +20,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.measures.test-util :as measures.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -31,6 +30,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
 
 (defn- backfill-all-existing-entities!
   []
@@ -939,7 +945,7 @@
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)
            category-field-id (mt/id :products :category)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition products-id price-field-id 50)}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a segment creates dependency to its table"
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
@@ -971,7 +977,7 @@
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition products-id price-field-id 50)}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a card using a segment creates dependencies to both segment and table"
            (deps.test/synchronously-run-dependency-job!)
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)

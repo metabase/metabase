@@ -2541,7 +2541,7 @@
                 table    (ts/create! :model/Table :name "customers" :db_id (:id db))
                 field    (ts/create! :model/Field :name "age" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                _segment (ts/create! :model/Segment :name "Minors"
                                      :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -3106,7 +3106,7 @@
                 table    (ts/create! :model/Table :name "customers" :db_id (:id db))
                 field    (ts/create! :model/Field :name "age" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                _segment (ts/create! :model/Segment :name "Minors"
                                      :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))
