@@ -4,7 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -192,11 +192,11 @@
             (testing "read-only remote sync blocks writes to the snippet folder"
               (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                                  remote-sync-type :read-only]
-                (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))
+                (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))
             (testing "read-write remote sync allows writes to the snippet folder"
               (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                                  remote-sync-type :read-write]
-                (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))))))))
+                (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))))))))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"

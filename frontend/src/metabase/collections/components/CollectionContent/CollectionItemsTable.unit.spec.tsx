@@ -479,8 +479,7 @@ describe("CollectionItemsTable", () => {
       expect(getItemsCalls()).toHaveLength(2);
     });
 
-    const tableWasMounted =
-      (await screen.findByTestId("collection-table")) != null;
+    await screen.findByTestId("collection-table");
     const emptyStateWasVisible =
       screen.queryByTestId("collection-empty-state") != null;
     await act(async () => {
@@ -491,7 +490,6 @@ describe("CollectionItemsTable", () => {
     expect(
       await screen.findByTestId("collection-empty-state"),
     ).toBeInTheDocument();
-    expect(tableWasMounted).toBe(true);
     expect(emptyStateWasVisible).toBe(false);
   });
 

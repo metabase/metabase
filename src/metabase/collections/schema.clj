@@ -135,7 +135,8 @@
    [:id                ::lib.schema.id/collection]
    [:name              :string]
    [:type              [:maybe :string]]
-   [:personal_owner_id [:maybe ms/PositiveInt]]])
+   [:personal_owner_id [:maybe ms/PositiveInt]]
+   [:can_write         {:optional true} :boolean]])
 
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."

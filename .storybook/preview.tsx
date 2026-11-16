@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import "metabase/css/core/base.css";
 import "metabase/css/core/fonts.css";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { PortalContainer, ThemeProvider } from "metabase/ui";
@@ -106,14 +106,31 @@ const argTypes = {
   },
 };
 
+declare global {
+  interface Window {
+    // Set by Loki before the page's scripts run.
+    loki?: { isRunning?: boolean };
+  }
+}
+
+// Loki widens the window to fit a story, so the page's own scrollbars would
+// only end up in the screenshot. Scrollbars inside the story stay visible.
+const lokiStyles = window.loki?.isRunning
+  ? css`
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none;
+      }
+    `
+  : undefined;
+
 const globalStyles = css`
   body {
     font-size: 0.875em;
-    ${rootStyle}
   }
 
   ${getSaveDomImageStyles(false)}
-  ${baseStyle}
+  ${lokiStyles}
 `;
 
 const getResolvedColorScheme = (

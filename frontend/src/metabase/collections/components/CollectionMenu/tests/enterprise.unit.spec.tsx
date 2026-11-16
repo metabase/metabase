@@ -31,6 +31,39 @@ describe("CollectionMenu", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("with the collections plugin but without the official_collections feature", () => {
+    it("should not offer to make a regular collection official", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        enterprisePlugins: ["collections"],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      expect(await screen.findByText("Move")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Make collection official"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer to remove the badge from an official collection", async () => {
+      setup({
+        collection: createMockCollection({
+          can_write: true,
+          authority_level: "official",
+        }),
+        isAdmin: true,
+        enterprisePlugins: ["collections"],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      expect(await screen.findByText("Move")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Remove Official badge"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should not be able to edit permissions for shared tenant collections", async () => {
     setupEnterprise({
       collection: createMockCollection({

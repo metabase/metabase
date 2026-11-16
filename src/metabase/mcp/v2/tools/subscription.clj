@@ -279,15 +279,16 @@
    card ref, and because `dashboard_card_id` is what the email channel matches per-card attachment
    flags against for visualizer dashcards."
   [dashboard]
-  (let [cards (for [{dashcard-id :id :keys [card]} (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0))
-                                                            (:dashcards dashboard))
-                    :when (int? (:id card))]
-                (-> (api/read-check card)
-                    (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id
-                           :dashboard_id      (:id dashboard)
-                           :include_csv       false
-                           :include_xls       false)))]
+  (let [dashcards (into []
+                        (filter #(int? (:id (:card %))))
+                        (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0)) (:dashcards dashboard)))
+        cards     (for [[{dashcard-id :id} card] (map vector dashcards (t2/hydrate (mapv :card dashcards) :can_read))]
+                    (-> (api/read-check card)
+                        (select-keys [:id :name :collection_id :description :display :parameter_mappings])
+                        (assoc :dashboard_card_id dashcard-id
+                               :dashboard_id      (:id dashboard)
+                               :include_csv       false
+                               :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
        (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
