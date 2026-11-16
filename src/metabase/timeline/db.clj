@@ -3,8 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
@@ -41,7 +43,7 @@
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         (collection/visible-collection-filter-clause)]
+                         (perms/visible-collections-filter-clause :timeline.collection_id (api/current-user-info) {:root-namespace nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline
@@ -134,3 +136,11 @@
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
+  "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

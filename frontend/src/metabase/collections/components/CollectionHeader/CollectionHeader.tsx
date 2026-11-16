@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
 import { useUpdateCollectionMutation } from "metabase/api";
+import type { CollectionTypeFilterModel } from "metabase/collections/components/CollectionContent/constants";
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
@@ -30,6 +31,7 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   onSaveFile: (file: File) => void;
+  onFilterByType?: (model: CollectionTypeFilterModel) => void;
 }
 
 export const CollectionHeader = ({
@@ -41,6 +43,7 @@ export const CollectionHeader = ({
   onSaveFile,
   canUpload,
   uploadsEnabled,
+  onFilterByType,
 }: CollectionHeaderProps): JSX.Element => {
   const [updateCollection] = useUpdateCollectionMutation();
 
@@ -111,6 +114,7 @@ export const CollectionHeader = ({
           <CollectionInfoSidebarToggle
             collection={collection}
             onUpdateCollection={handleUpdateCollection}
+            onFilterByType={onFilterByType}
           />
           {showCollectionMenu && (
             <CollectionMenu

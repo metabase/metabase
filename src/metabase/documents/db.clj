@@ -4,9 +4,11 @@
   (:require
    [java-time.api :as t]
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -39,7 +41,7 @@
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
-                                      (collection/visible-collection-filter-clause)
+                                      (perms/visible-collections-filter-clause :document.collection_id (api/current-user-info) {:root-namespace nil})
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
@@ -149,3 +151,11 @@
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))
+
+(mu/defn synced-document-items :- [:sequential ::documents.schema/document]
+  "The Documents with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

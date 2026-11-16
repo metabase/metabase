@@ -5,6 +5,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -18,14 +19,6 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-(mu/defn synced-field-user-settings-clause :- [:fn vector?]
-  "The clause over the FieldUserSettings table aliased `alias` selecting the settings of synced tables' fields."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
-                                                           :from   [[(t2/table-name :model/Field) :f]]
-                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings opts)}])
-
 (mu/defn synced-table-user-settings-clause :- [:fn vector?]
   "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
   [alias :- :keyword
@@ -33,6 +26,17 @@
   [:and
    [:= (u/qualified-key alias :is_published) true]
    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
+
+(mu/defn synced-field-clause :- [:fn vector?]
+  "The clause over the table aliased `alias`, with a `field_id` column, selecting the rows of synced tables' fields."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :where  [:in :f.table_id
+                                                                    ^:allow-subquery {:select [:settings.table_id]
+                                                                                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                                                                                      :where  (synced-table-user-settings-clause :settings opts)}]}])
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -415,6 +419,20 @@
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
+(mu/defn table-publication-columns :- [:map-of ::lib.schema.id/table :map]
+  "The `:is_published` and `:collection_id` of the Tables with `table-ids`, by id."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
+                      [:model/Table :id :is_published :collection_id]
+                      :id [:in table-ids])
+    {}))
+
+(mu/defn tables-by-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Table :id [:in table-ids]))
+
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
@@ -549,3 +567,32 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn synced-table-user-settings-items :- [:sequential ::warehouse-schema.schema/table-user-settings]
+  "The TableUserSettings with `ids`, with their Table, and their Collection and its ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/TableUserSettings :id :table_id :display_name :collection_id] :id [:in ids])
+        (t2/hydrate :table [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-field-user-settings-items :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "The FieldUserSettings with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote
+  sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/FieldUserSettings :id :field_id :display_name] :id [:in ids])
+        (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [settings]
+                     (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-dimension-items :- [:sequential ::warehouse-schema.schema/dimension]
+  "The Dimensions with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Dimension :id :field_id :name] :id [:in ids])
+        (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [dimension]
+                     (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))

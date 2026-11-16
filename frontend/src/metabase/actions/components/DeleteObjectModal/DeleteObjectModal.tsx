@@ -60,7 +60,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       title={t`Are you sure you want to delete this row?`}
       onClose={onClose}
     >
-      <Text>{t`This will permanently delete the row. There’s no undoing this, so please be sure.`}</Text>
+      <Text c="text-secondary">{t`This will permanently delete the row. There’s no undoing this, so please be sure.`}</Text>
       <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button

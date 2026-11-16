@@ -21,6 +21,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -414,6 +415,16 @@
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
 
+(deftest ^:synchronized editing-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses data-grid edits: they skip the workspace's table remapping, so they would write to production tables"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+            (is (= "Editing table data is not supported on a workspace instance."
+                   (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
+          (is (= [] (table-rows table-id))))))))
+
 (defn- check-coercion-fn-coverage
   ([test-cases]
    (check-coercion-fn-coverage #{} test-cases))
@@ -664,6 +675,23 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id})))))))))))
+
+(deftest execute-form-fk-field-test
+  (testing "execute-form sends the FK semantic type, so the form does not offer new values for FK fields"
+    (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+      (mt/with-premium-features #{actions-feature-flag}
+        (action-v2.tu/with-temp-test-db!
+          (let [params-by-id (fn [action]
+                               (->> (mt/user-http-request :crowberto :post 200 execute-form-url
+                                                          {:scope  {:table-id (mt/id :orders)}
+                                                           :action action})
+                                    :parameters
+                                    (into {} (map (juxt :id identity)))))]
+            (doseq [action ["data-grid.row/create" "data-grid.row/update"]]
+              (testing action
+                (is (=? {(mt/format-name :user_id)    {:input_type "dropdown" :semantic_type "type/FK"}
+                         (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
+                        (params-by-id action)))))))))))
 
 (deftest validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"
