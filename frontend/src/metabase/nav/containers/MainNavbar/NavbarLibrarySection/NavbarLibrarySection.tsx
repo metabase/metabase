@@ -41,8 +41,7 @@ function hasModel(
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
- *  If not, create a synthetic container for any promoted children.
- *  A section with a `contentModel` is left out when it holds no item of that model. */
+ *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
   libraryCollection: Collection,
   allCollections: Collection[],

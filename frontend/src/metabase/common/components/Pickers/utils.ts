@@ -59,7 +59,6 @@ export const getValidCollectionItemModels = (
 ): CollectionItemModel[] =>
   _.uniq(models.filter(isValidCollectionItemModel).concat(["collection"]));
 
-/** Whether a picker of `models` offers the Library: when it picks collections, or the Library is not empty. */
 export const isLibraryOffered = (
   libraryCollection: Pick<Collection, "below">,
   models: OmniPickerItem["model"][],

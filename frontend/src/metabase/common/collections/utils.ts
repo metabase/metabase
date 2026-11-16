@@ -147,7 +147,6 @@ export function isLibraryCollection(
   return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
-/** Whether the Library `collection` holds a table or a metric, which is what makes the app show it. */
 export function hasLibraryContent(
   collection: Pick<Collection, "below">,
 ): boolean {
