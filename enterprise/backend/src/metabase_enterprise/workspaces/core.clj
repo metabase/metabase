@@ -54,6 +54,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]))
 
@@ -406,13 +407,34 @@
     (when (seq failures)
       (throw (combined-exception failures {:status-code 500})))))
 
+(defn- create-running-exception
+  "The 409 with error code `workspace_busy` for a same-key retry of a create that is still running. `ws-id` is the
+  create's workspace, or nil when a failed create has already deleted it."
+  [ws-id]
+  (ex-info "A create with this idempotency key is still running. Retry once it finishes."
+           (cond-> {:status-code 409
+                    :error-code  "workspace_busy"}
+             ws-id (assoc :workspace_id ws-id))))
+
+(defn- idempotency-key-violation?
+  "Whether `t` is a duplicate-key error on the unique index `idx_workspace_idempotency_key_creator_id`. H2, PostgreSQL,
+  MySQL and MariaDB all name the violated index in the error message; H2 writes it in upper case."
+  [^Throwable t]
+  (and (= :duplicate-key (sql-errors/error-kind t))
+       (boolean (some #(some-> (ex-message %)
+                               u/lower-case-en
+                               (str/includes? "idx_workspace_idempotency_key_creator_id"))
+                      (take-while some? (iterate ex-cause t))))))
+
 (defn- insert-workspace-or-find-retried!
   "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
   `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
   The unique index on (idempotency_key, creator_id) decides which of two concurrent
-  requests inserts; the other inserts nothing. Rethrows the duplicate-key error when
-  it comes from another constraint, or when the workspace with this key was deleted,
-  by a failed create, between the insert and the lookup."
+  requests inserts; the other inserts nothing. When the workspace with this key was
+  deleted, by a failed create, between the insert and the lookup, refuses (409,
+  error code `workspace_busy`) as for a create that is still running: the database's
+  error names the index, the key and the creator. Rethrows a duplicate-key error
+  that comes from another constraint."
   [{:keys [creator_id idempotency_key] :as params}]
   (try
     {:created (workspace/create-workspace! params)}
@@ -421,7 +443,9 @@
                           (= :duplicate-key (sql-errors/error-kind t))
                           (ws.db/workspace-id-by-idempotency-key creator_id idempotency_key))]
         {:retried ws-id}
-        (throw t)))))
+        (throw (if (and idempotency_key (idempotency-key-violation? t))
+                 (create-running-exception nil)
+                 t))))))
 
 (defn- assert-create-not-running
   "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
@@ -431,14 +455,12 @@
   `:unprovisioned` before the create's cleanup tears it down, so a recent
   `:unprovisioned` row counts too. One query checks all three statuses: with one
   query per status, a row that changes status between the queries could be seen by
-  neither."
+  neither. A running delete sets its rows `:deprovisioning`, so a retry during a
+  delete is refused too."
   [ws-id]
   (when (ws.db/workspace-has-unfinished-databases-since? ws-id
                                                          (t/minus (t/offset-date-time) in-flight-stale-after))
-    (throw (ex-info "A create with this idempotency key is still running. Retry once it finishes."
-                    {:status-code  409
-                     :error-code   "workspace_busy"
-                     :workspace_id ws-id}))))
+    (throw (create-running-exception ws-id))))
 
 (defn- retried-workspace
   "Returns the hydrated workspace `ws-id`, which an earlier create with the same
