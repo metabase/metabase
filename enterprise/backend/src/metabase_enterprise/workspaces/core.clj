@@ -34,7 +34,11 @@
    Deleting a workspace tears down each of its databases, except while a create
    or deprovision is running (409). A teardown that fails leaves the row
    `teardown_failed`: warehouse objects may remain, the row keeps blocking
-   deletion of its Database, and a retried delete tears it down again."
+   deletion of its Database, and a retried delete tears it down again.
+
+   A failed create marks a row whose provisioning never started, and that it could
+   not delete, `never_started`. The warehouse has nothing of such a row, so a delete
+   removes it without a warehouse teardown."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -319,9 +323,10 @@
 (defn- clean-up-failed-create!
   "Clean up every WorkspaceDatabase of `workspace-id` after its create failed. Deletes the rows with ids in
   `never-started`, see [[delete-never-started-workspace-database!]], and tears down every other row. Continues past
-  failures, so each row gets its attempt. Sets a row whose cleanup fails to `:teardown_failed`: a failed destroy
-  already does, and a failure before the destroy, or on a never-started row, leaves the row's status as it was. A
-  row left `:provisioning` would refuse a delete as busy, and a row left `:provisioned` would make the failed
+  failures, so each row gets its attempt. Sets a never-started row that it cannot delete to `:never_started`, so a
+  later delete skips the warehouse teardown of that row. Sets any other row whose cleanup fails to
+  `:teardown_failed`: a failed destroy already does, and a failure before the destroy leaves the row's status as it
+  was. A row left `:provisioning` would refuse a delete as busy, and a row left `:provisioned` would make the failed
   create look like one that succeeded. Throws the combined failures (500) when any cleanup failed. An error from
   setting the status is attached to that row's failure as suppressed."
   [workspace-id never-started]
@@ -335,7 +340,9 @@
                                        nil
                                        (catch Throwable t
                                          (try
-                                           (provisioning/mark-workspace-database-teardown-failed! (:id wsd))
+                                           (if (never-started? (:id wsd))
+                                             (provisioning/mark-workspace-database-never-started! (:id wsd))
+                                             (provisioning/mark-workspace-database-teardown-failed! (:id wsd)))
                                            (catch Throwable mark-t
                                              (.addSuppressed t mark-t)))
                                          t))))
@@ -362,9 +369,12 @@
    database is torn down. When the cleanup removes everything, the Workspace
    row is deleted and the provisioning error is rethrown with its own
    `:status-code` (500 when it has none). When the cleanup itself fails, the
-   workspace is kept with the failed rows (`:teardown_failed`), so the leak stays
-   visible and the teardown can be retried via delete, and the error is a 500,
-   as it is when the cleanup succeeds but deleting the Workspace row fails.
+   workspace is kept with the failed rows, so the leak stays visible and the
+   teardown can be retried via delete, and the error is a 500, as it is when the
+   cleanup succeeds but deleting the Workspace row fails. A kept row is
+   `:teardown_failed`, or `:never_started` when its provisioning never started.
+   When the status write fails, or the read of the rows, a row keeps the status
+   it had.
    Either way the error's `:cleanup_required` says whether the workspace was kept
    and still needs that delete."
   [{:keys [name creator_id database_ids]}]

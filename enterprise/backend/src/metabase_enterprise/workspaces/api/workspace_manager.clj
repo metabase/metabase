@@ -18,7 +18,7 @@
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
@@ -125,7 +125,9 @@
   while a create or deprovision is running on any of its databases, meaning a row
   that is `:provisioning` or `:deprovisioning` and was last updated within the
   last 15 minutes. An older such row is treated as left by a crashed instance and
-  is torn down. A row whose teardown succeeds is deleted. A row whose teardown
+  is torn down. A `never_started` row is deleted without a warehouse teardown: a
+  create that failed before that database's provisioning started left it, so the
+  warehouse has nothing of its. A row whose teardown succeeds is deleted. A row whose teardown
   fails is kept as `teardown_failed`, the workspace is kept with it, and the
   combined failure is the error, so the delete can be retried. 204 on success, no
   response body.

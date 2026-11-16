@@ -260,6 +260,11 @@
   ([[metabase.driver/workspace-isolation-details]]) for a crashed `:provisioning`
   row that never recorded anything.
 
+  A `:never_started` row is the exception: it is deleted under the lock with no
+  warehouse call, neither `details` nor `destroy!`. Init never ran for it, so the
+  warehouse has nothing of its, and the names computed from its id may belong to
+  another Metabase instance.
+
   There is no partial outcome: the teardown either fully succeeds or the row
   stays. The row is the durable record that warehouse resources may exist — it
   must survive instance crashes and disappear only once the warehouse footprint
@@ -276,38 +281,41 @@
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (ws.db/workspace-database (:id wsd))]
-      (let [db         (ws.db/database (:database_id wsd))
-            driver     (driver.u/database->driver db)
-            iso-ws     (wsd-iso-workspace (:id wsd))
-            computed   (delay (details provisioner driver db iso-ws))
-            schema     (or (not-empty (:output_namespace wsd))
-                           (:schema @computed))
-            db-details (if (seq (:database_details wsd))
-                         (:database_details wsd)
-                         (:database_details @computed))
-            workspace  (assoc iso-ws :schema schema :database_details db-details)]
-        (try
-          (destroy! provisioner driver db workspace)
-          (catch Throwable t
-            ;; The rethrow rolls back the cluster lock's wrapping transaction on
-            ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
-            ;; autocommit connection to survive it.
-            ;; Store the identifiers this teardown used: a row reset by a failed provision,
-            ;; or never provisioned, still holds "" and {} here.
-            (binding [t2.connection/*current-connectable* nil]
-              (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
-                                                           :output_namespace schema
-                                                           :database_details db-details}))
-            (throw t))
-          (finally
-            ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
-            ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
-            ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
-            ;; (mirrors `deprovision-workspace-database!`).
-            (binding [t2.connection/*current-connectable* nil]
-              (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
-        (ws.db/delete-workspace-database! (:id wsd))
-        nil))))
+      (if (= :never_started (:status wsd))
+        (do (ws.db/delete-workspace-database! (:id wsd))
+            nil)
+        (let [db         (ws.db/database (:database_id wsd))
+              driver     (driver.u/database->driver db)
+              iso-ws     (wsd-iso-workspace (:id wsd))
+              computed   (delay (details provisioner driver db iso-ws))
+              schema     (or (not-empty (:output_namespace wsd))
+                             (:schema @computed))
+              db-details (if (seq (:database_details wsd))
+                           (:database_details wsd)
+                           (:database_details @computed))
+              workspace  (assoc iso-ws :schema schema :database_details db-details)]
+          (try
+            (destroy! provisioner driver db workspace)
+            (catch Throwable t
+              ;; The rethrow rolls back the cluster lock's wrapping transaction on
+              ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
+              ;; autocommit connection to survive it.
+              ;; Store the identifiers this teardown used: a row reset by a failed provision,
+              ;; or never provisioned, still holds "" and {} here.
+              (binding [t2.connection/*current-connectable* nil]
+                (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
+                                                             :output_namespace schema
+                                                             :database_details db-details}))
+              (throw t))
+            (finally
+              ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
+              ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
+              ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
+              ;; (mirrors `deprovision-workspace-database!`).
+              (binding [t2.connection/*current-connectable* nil]
+                (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
+          (ws.db/delete-workspace-database! (:id wsd))
+          nil)))))
 
 (defn mark-workspace-database-teardown-failed!
   "Set the WorkspaceDatabase with `workspace-database-id` to `:teardown_failed`, keeping its identifiers. Writes on a
@@ -315,6 +323,15 @@
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
     (ws.db/update-workspace-database! workspace-database-id {:status :teardown_failed})))
+
+(defn mark-workspace-database-never-started!
+  "Set the WorkspaceDatabase with `workspace-database-id` to `:never_started`, which makes its teardown skip the
+  warehouse: see [[teardown-workspace-database!]]. Call it only for a row whose provisioning never started. A row
+  whose init ran, even one that failed, may have warehouse objects that only a teardown removes. Writes on a fresh
+  autocommit connection, so the write survives the rollback of a surrounding transaction."
+  [workspace-database-id]
+  (binding [t2.connection/*current-connectable* nil]
+    (ws.db/update-workspace-database! workspace-database-id {:status :never_started})))
 
 (defn abandon-teardown-failed-workspace-database!
   "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is

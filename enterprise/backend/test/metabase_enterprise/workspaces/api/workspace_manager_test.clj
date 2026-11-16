@@ -214,6 +214,36 @@
               (finally
                 (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)))))))))
 
+(deftest never-started-database-test
+  (testing "a never_started database is shown, refuses the config download, and a plain DELETE removes it without a warehouse call"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws-id     (t2/insert-returning-pk! :model/Workspace {:name       "Never started"
+                                                                   :creator_id (mt/user->id :crowberto)})
+              _         (t2/insert! :model/WorkspaceDatabase {:workspace_id     ws-id
+                                                              :database_id      db-id
+                                                              :status           :never_started
+                                                              :output_namespace ""
+                                                              :database_details {}
+                                                              :input_schemas    ["public"]})
+              calls     (atom [])
+              recording (reify provisioning/Provisioner
+                          (details  [_ _ _ _]   (swap! calls conj :details)
+                            {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                          (init!    [_ _ _ _]   nil)
+                          (grant!   [_ _ _ _ _] nil)
+                          (destroy! [_ _ _ _]   (swap! calls conj :destroy)))]
+          (with-redefs [provisioning/dispatching-provisioner recording]
+            (is (=? {:databases [{:database_id db-id :status "never_started"}]}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+            (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config"))
+            (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
+            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+            (is (= [] @calls)
+                "no destroy and no details call: the computed names may belong to another Metabase instance")))))))
+
 (deftest delete-workspace-teardown-conflict-test
   (testing "DELETE passes a database's 409 from teardown through, so the caller can tell retry-later from broken"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres

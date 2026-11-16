@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::status
-  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
+  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (mr/def ::workspace-database.insert
   [:map {:closed true}

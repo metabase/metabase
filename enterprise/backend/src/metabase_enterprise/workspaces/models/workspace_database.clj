@@ -78,7 +78,8 @@
    non-`:unprovisioned` workspace_database row references `db-id` — anything in a
    `:provisioning`, `:provisioned`, `:deprovisioning`, or `:teardown_failed` state points
    at (or is in flight against) live warehouse schemas/users that must be torn down first, by
-   deleting their workspaces. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
+   deleting their workspaces. A `:never_started` row has no warehouse objects and refuses too:
+   deleting its workspace removes it. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
    FK RESTRICT doesn't trip on the subsequent Database delete. Deliberately NOT gated
    on a premium feature: a token expiry shouldn't leave workspace_database rows
    un-cleanable, and an active row must refuse the delete regardless of current
