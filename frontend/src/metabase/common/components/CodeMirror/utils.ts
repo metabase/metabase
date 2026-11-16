@@ -48,6 +48,8 @@ export type ExtensionOptions = {
   autoFocus?: boolean;
   autoCorrect?: string;
   tabIndex?: number;
+  /** The brackets whose match is outlined next to the cursor. */
+  matchBrackets?: string;
   extensions?: (Extension | null)[];
 };
 
@@ -83,6 +85,7 @@ function useBaseExtensions({
   autoFocus,
   autoCorrect,
   tabIndex,
+  matchBrackets = "()",
 }: Omit<ExtensionOptions, "extensions">) {
   return useMemo(
     () => [
@@ -93,7 +96,7 @@ function useBaseExtensions({
         drawRangeCursor: false,
       }),
       bracketMatching({
-        brackets: "()",
+        brackets: matchBrackets,
       }),
       search(),
       keyboardShortcuts({ onFormat }),
@@ -109,7 +112,7 @@ function useBaseExtensions({
         tabIndex,
       }),
     ],
-    [onFormat, tabIndex, autoFocus, autoCorrect],
+    [onFormat, tabIndex, autoFocus, autoCorrect, matchBrackets],
   );
 }
 

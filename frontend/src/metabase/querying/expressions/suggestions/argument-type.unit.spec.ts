@@ -9,7 +9,7 @@ import { columnsForExpressionMode } from "../mode";
 import { query, stageIndex } from "../test/shared";
 import { parser } from "../tokenizer/parser";
 
-import { getExpectedColumnType } from "./argument-type";
+import { getAllowedValues, getExpectedColumnType } from "./argument-type";
 
 // Every feature, so that no function fails for lack of one.
 const database = createSampleDatabase({
@@ -163,4 +163,44 @@ describe("getExpectedColumnType", () => {
       expect(mismatches).toEqual([]);
     },
   );
+
+  it("offers only text values that the library accepts", async () => {
+    const availableColumns = columnsForExpressionMode({
+      query,
+      stageIndex,
+      expressionMode: "expression",
+    });
+    const compiles = (source: string) =>
+      diagnoseAndCompile({
+        source,
+        expressionMode: "expression",
+        query,
+        stageIndex,
+        database,
+        availableColumns,
+      }).error == null;
+
+    const failures: string[] = [];
+    let checkedCount = 0;
+
+    for (const clause of clausesForMode("expression")) {
+      const baseSource = await getBaseSource(clause.name);
+      if (baseSource == null || !compiles(baseSource)) {
+        continue;
+      }
+      getArgRanges(baseSource).forEach((range, index) => {
+        const allowed = getAllowedValues(baseSource, range.from + 1);
+        for (const value of allowed?.values ?? []) {
+          checkedCount++;
+          const source = replaceArg(baseSource, index, `"${value}"`);
+          if (!compiles(source)) {
+            failures.push(source);
+          }
+        }
+      });
+    }
+
+    expect(checkedCount).toBeGreaterThanOrEqual(50);
+    expect(failures).toEqual([]);
+  });
 });

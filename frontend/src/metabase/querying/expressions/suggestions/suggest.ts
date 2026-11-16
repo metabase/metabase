@@ -29,12 +29,13 @@ import { getTemplateFieldKind } from "../templates";
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";
 import { suggestFunctions } from "./functions";
-import { suggestLiterals } from "./literals";
+import { suggestAllowedValues, suggestLiterals } from "./literals";
 import { suggestMeasures } from "./measures";
 import { suggestMetrics } from "./metrics";
 import {
   isOnPlaceholder,
   openOnPlaceholders,
+  placeholderNavigation,
   placeholders,
 } from "./placeholders";
 import { openWhenEmpty, suggestPopular } from "./popular";
@@ -64,6 +65,8 @@ export function suggestions(options: SuggestOptions) {
         ...[
           quietOnTemplateBlanks(popular),
           quietOnTemplateBlanks(suggestLiterals()),
+          // Offers the allowed values on a placeholder too.
+          suggestAllowedValues(),
           quietOnTemplateBlanks(suggestFunctions(options)),
           quietOnTemplateBlanks(suggestAggregations(options)),
           // Offers every column on a template's column blank.
@@ -82,6 +85,7 @@ export function suggestions(options: SuggestOptions) {
     completion,
     placeholders,
     openOnPlaceholders,
+    placeholderNavigation(),
     popular != null ? openWhenEmpty() : [],
   ];
 }

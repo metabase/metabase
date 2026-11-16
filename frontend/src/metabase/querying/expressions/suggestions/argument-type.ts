@@ -41,6 +41,91 @@ const TYPED_VALUES: Record<string, number[]> = {
   week: [1],
 };
 
+const UNITS = [
+  "year",
+  "quarter",
+  "month",
+  "week",
+  "day",
+  "hour",
+  "minute",
+  "second",
+] as const;
+
+const UNITS_WITH_MILLISECONDS = [...UNITS, "millisecond"] as const;
+
+const TIME_ZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Africa/Johannesburg",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+] as const;
+
+/**
+ * The text values that a typed value takes, by display name, then 0-based
+ * position. Only these work there, so they replace the columns.
+ */
+const ALLOWED_VALUES: Record<string, Record<number, readonly string[]>> = {
+  convertTimezone: { 1: TIME_ZONES, 2: TIME_ZONES },
+  datetimeAdd: { 2: UNITS_WITH_MILLISECONDS },
+  datetimeDiff: { 2: UNITS },
+  datetimeSubtract: { 2: UNITS_WITH_MILLISECONDS },
+  interval: { 2: UNITS },
+  intervalStartingFrom: { 2: UNITS, 4: UNITS },
+  relativeDateTime: { 1: UNITS },
+  timeSpan: { 1: UNITS },
+  week: { 1: ["iso", "us", "instance"] },
+};
+
+/**
+ * Functions whose values after the first two may be more texts to look for,
+ * or the option to ignore case: both columns and the option are offered.
+ */
+const CASE_OPTION_FUNCTIONS = new Set([
+  "contains",
+  "doesNotContain",
+  "startsWith",
+  "endsWith",
+]);
+
+export type AllowedValues = {
+  values: readonly string[];
+  /** Only these values work: no column fits there. */
+  isExclusive: boolean;
+};
+
+/** The text values that the value at `pos` takes, or null for any value. */
+export function getAllowedValues(
+  source: string,
+  pos: number,
+): AllowedValues | null {
+  const fn = enclosingFunction(source, pos);
+  const clause = fn?.arg != null ? getClauseDefinition(fn.name) : undefined;
+  if (fn?.arg == null || !clause) {
+    return null;
+  }
+  const values = ALLOWED_VALUES[clause.displayName]?.[fn.arg.index];
+  if (values) {
+    return { values, isExclusive: true };
+  }
+  if (CASE_OPTION_FUNCTIONS.has(clause.displayName) && fn.arg.index >= 2) {
+    return { values: ["case-insensitive"], isExclusive: false };
+  }
+  return null;
+}
+
 /**
  * The columns that the value at `pos` takes, from the innermost function
  * around it, or null when any column fits.

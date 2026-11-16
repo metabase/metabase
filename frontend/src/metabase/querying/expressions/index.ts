@@ -1,5 +1,7 @@
+export * from "./argument-names";
 export * from "./clause";
 export * from "./diagnostics";
+export * from "./editing";
 export * from "./errors";
 export * from "./formatter";
 export * from "./function-arguments";

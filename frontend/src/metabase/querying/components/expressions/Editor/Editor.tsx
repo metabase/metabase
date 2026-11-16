@@ -57,6 +57,7 @@ import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
 import { caseCounts, useCaseCounts } from "./case-counts";
+import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
@@ -238,6 +239,12 @@ export function Editor(props: EditorProps) {
     allowPopoverExit: inline || source === "" || !hasSourceChanged,
   });
 
+  const [columnHover, columnHoverCard] = useColumnHover({
+    query,
+    stageIndex,
+    availableColumns,
+  });
+
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
     render: (props) => (
@@ -269,7 +276,7 @@ export function Editor(props: EditorProps) {
     availableMetrics,
     database,
     textRequest: textRequestOption,
-    extensions: [customTooltip],
+    extensions: [customTooltip, columnHover],
   });
 
   const sourceRef = useRef(source);
@@ -736,6 +743,8 @@ export function Editor(props: EditorProps) {
       height={inline ? undefined : "100%"}
       width="100%"
       indentWithTab={false}
+      // Also the brackets around column names.
+      matchBrackets="()[]"
       autoFocus
       onCreateEditor={handleCreateEditor}
       onUpdate={handleUpdate}
@@ -864,6 +873,7 @@ export function Editor(props: EditorProps) {
 
         {/* The help popup would cover the diff controls and the prompt. */}
         {!isProposing && promptPos == null && portal}
+        {columnHoverCard}
       </LayoutMain>
 
       {openSidebar != null &&

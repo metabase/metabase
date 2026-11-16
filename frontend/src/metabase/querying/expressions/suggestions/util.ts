@@ -37,14 +37,19 @@ export function expressionClauseCompletion(
   };
 }
 
+/**
+ * A function with a placeholder for each value it needs, like
+ * `datetimeDiff(${datetime1}, ${datetime2}, ${unit})${}`. Optional values are
+ * left out; a comma after the last value adds them. The empty stop at the end
+ * is where Tab goes after the last value, after the parentheses.
+ */
 export function expressionClauseSnippet(clause: Lib.MBQLClauseFunctionConfig) {
-  const args =
-    clause.args
-      .filter((arg) => arg.name !== "…")
-      .map((arg) => "${" + (arg.template ?? arg.name) + "}")
-      .join(", ") ?? "";
+  const args = clause.args
+    .filter((arg) => arg.name !== "…" && !arg.optional)
+    .map((arg) => "${" + (arg.template ?? arg.name) + "}");
 
-  return `${clause.displayName}(${args})`;
+  const call = `${clause.displayName}(${args.join(", ")})`;
+  return args.length > 0 ? `${call}\${}` : call;
 }
 
 export function fuzzyMatcher(options: ExpressionSuggestion[]) {

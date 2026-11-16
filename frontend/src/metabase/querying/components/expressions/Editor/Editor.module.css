@@ -103,6 +103,18 @@
   }
 }
 
+/* The card shown when hovering a column in the code, like the info card of
+   the column list (220–300px wide) */
+.columnHover {
+  min-width: 220px;
+  max-width: 300px;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-sm_outline);
+  font-size: var(--mantine-font-size-md);
+  color: var(--mb-color-text-primary);
+}
+
 .shortcuts {
   position: absolute;
   bottom: var(--mantine-spacing-sm);

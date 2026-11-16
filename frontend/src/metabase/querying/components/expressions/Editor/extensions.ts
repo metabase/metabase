@@ -8,10 +8,13 @@ import {
 } from "metabase/prototype";
 import {
   type TextRequestOption,
+  expressionEditing,
   expressionTemplates,
   functionArgumentPlaceholders,
   suggestions,
+  tokenAtPos,
 } from "metabase/querying/expressions";
+import { STRING } from "metabase/querying/expressions/pratt";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -73,6 +76,7 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      expressionEditing(),
       functionArgumentPlaceholders(),
       expressionTemplates({ activeClassName: S.templateActive }),
       suggestions({
@@ -121,16 +125,24 @@ function expander() {
     const { state, view } = update;
     const pos = state.selection.main.head;
     const before = state.doc.sliceString(pos - 2, pos);
-
     if (before !== "->") {
       return;
     }
 
+    // Not in a text value, where "->" may be meant as it is.
+    const token = tokenAtPos(state.doc.toString(), pos - 1);
+    if (token?.type === STRING) {
+      return;
+    }
+
+    // With a space before it, like the separator in column names
+    // ("Product → Title"). The space after it is usually typed next.
+    const hasSpaceBefore = /\s/.test(state.doc.sliceString(pos - 3, pos - 2));
     view.dispatch({
       changes: {
         from: pos - 2,
         to: pos,
-        insert: "→",
+        insert: hasSpaceBefore || pos < 3 ? "→" : " →",
       },
     });
   });

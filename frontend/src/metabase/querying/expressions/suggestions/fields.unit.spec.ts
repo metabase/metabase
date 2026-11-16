@@ -630,7 +630,7 @@ describe("suggestFields inside a function", () => {
   });
 
   it("says that a value that must be typed can't be a column", () => {
-    const { names } = setup()("datetimeAdd([Created At], 1, [|])");
+    const { names } = setup()('datetimeAdd([Created At], [|], "day")');
     expect(names).toEqual(["This value can't be a column. Type it instead."]);
   });
 });

@@ -1,17 +1,13 @@
 import {
-  acceptCompletion,
   completionStatus,
   hasNextSnippetField,
   hasPrevSnippetField,
-  nextSnippetField,
-  pickedCompletion,
   snippet,
   startCompletion,
 } from "@codemirror/autocomplete";
 import {
   type EditorState,
   type Extension,
-  Prec,
   StateEffect,
   StateField,
 } from "@codemirror/state";
@@ -139,10 +135,6 @@ export function insertExpressionTemplate(view: EditorView, code: string) {
   }
 }
 
-function confirmAndMoveOn(view: EditorView) {
-  return acceptCompletion(view) || nextSnippetField(view);
-}
-
 export function expressionTemplates({
   activeClassName,
 }: {
@@ -155,44 +147,11 @@ export function expressionTemplates({
       class: state.field(templateActive) ? activeClassName : "",
     })),
 
-    // Runs before every keymap, so that Tab confirms the highlighted column
-    // instead of skipping past it.
-    Prec.highest(
-      EditorView.domEventHandlers({
-        keydown(event, view) {
-          const isConfirmKey = event.key === "Enter" || event.key === "Tab";
-          const hasModifier =
-            event.shiftKey || event.metaKey || event.ctrlKey || event.altKey;
-
-          if (
-            !isConfirmKey ||
-            hasModifier ||
-            !view.state.field(templateActive)
-          ) {
-            return false;
-          }
-
-          event.preventDefault();
-          return confirmAndMoveOn(view);
-        },
-      }),
-    ),
-
+    // Picking a column and Tab or Enter move to the next blank, as in a
+    // function's placeholders (see placeholderNavigation). On a blank that
+    // takes a column, the column list opens.
     EditorView.updateListener.of((update) => {
-      if (!update.state.field(templateActive)) {
-        return;
-      }
-
-      // Covers every way of choosing a column, including clicking it. Choosing
-      // a function starts its own snippet, so leave the cursor there.
-      const pickedColumn = update.transactions.some((transaction) => {
-        const completion = transaction.annotation(pickedCompletion);
-        return completion != null && typeof completion.apply !== "function";
-      });
-
-      if (pickedColumn) {
-        nextSnippetField(update.view);
-      } else if (update.selectionSet) {
+      if (update.state.field(templateActive) && update.selectionSet) {
         openColumnList(update.view);
       }
     }),

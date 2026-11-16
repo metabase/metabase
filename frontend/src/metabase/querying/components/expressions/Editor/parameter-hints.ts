@@ -13,10 +13,7 @@ import {
   EXPRESSION_PARAMETER_HINTS_SETTING,
   usePrototypeSetting,
 } from "metabase/prototype";
-import {
-  getClauseDefinition,
-  getMBQLName,
-} from "metabase/querying/expressions";
+import { getArgumentNames } from "metabase/querying/expressions";
 import {
   BOOLEAN,
   CALL,
@@ -36,40 +33,6 @@ export type ParameterHintsMode = "literals" | "all";
 type Argument = { pos: number; text: string; isLiteral: boolean };
 type Call = { name: string | null; args: Argument[]; isAtArgStart: boolean };
 type Hint = { pos: number; name: string };
-
-/** The names of the arguments of a call, by their index. */
-function getArgumentNames(name: string, count: number): (string | null)[] {
-  const clause = getClauseDefinition(getMBQLName(name) ?? "");
-  if (clause == null) {
-    return [];
-  }
-  // `case` and `if` take pairs of a condition and its output, and an optional
-  // default output at the end.
-  if (clause.name === "case" || clause.name === "if") {
-    return Array.from({ length: count }, (_, index) => {
-      if (index === count - 1 && count % 2 === 1) {
-        return "default";
-      }
-      return index % 2 === 0 ? "condition" : "output";
-    });
-  }
-  const names = clause.args
-    .map((arg) => arg.name)
-    .filter((name) => name !== "…");
-  // A name for one parameter says nothing new.
-  if (names.length <= 1 && !clause.multiple) {
-    return [];
-  }
-  return Array.from({ length: count }, (_, index) => {
-    if (index < names.length) {
-      return names[index];
-    }
-    // More arguments of the same kind: value3 after value1, value2.
-    const last = names[names.length - 1];
-    const match = clause.multiple ? /^(.*?)(\d+)$/.exec(last ?? "") : null;
-    return match ? `${match[1]}${index + 1}` : null;
-  });
-}
 
 const LITERALS = new Set([STRING, NUMBER, BOOLEAN]);
 

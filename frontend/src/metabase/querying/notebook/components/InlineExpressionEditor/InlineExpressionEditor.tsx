@@ -201,6 +201,10 @@ export function InlineExpressionEditor({
     if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) {
       return;
     }
+    // Text fields in the editor, like the "@" prompt, handle Enter themselves.
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     if (canGenerate) {

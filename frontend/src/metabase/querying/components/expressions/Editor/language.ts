@@ -21,7 +21,10 @@ import { hasActiveSnippet } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
   parser,
-  languageData: {},
+  languageData: {
+    // Expressions have no braces, so `{` isn't closed for you.
+    closeBrackets: { brackets: ["(", "[", '"', "'"] },
+  },
 });
 
 type LintOptions = {

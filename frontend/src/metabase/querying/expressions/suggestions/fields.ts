@@ -9,6 +9,7 @@ import { getTemplateFieldKind } from "../templates";
 
 import {
   type ExpectedColumnType,
+  getAllowedValues,
   getExpectedColumnType,
 } from "./argument-type";
 import { isOnPlaceholder } from "./placeholders";
@@ -46,6 +47,11 @@ export function suggestFields({
 
   return function (context: CompletionContext): CompletionResult | null {
     const source = context.state.doc.toString();
+
+    // Where only some text values work, they're offered instead of columns.
+    if (getAllowedValues(source, context.pos)?.isExclusive) {
+      return null;
+    }
 
     // Inside a function, only the columns of the type its value takes.
     const expectedType = getExpectedColumnType(source, context.pos);
