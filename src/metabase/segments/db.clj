@@ -57,11 +57,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
-
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]

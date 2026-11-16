@@ -5120,3 +5120,51 @@
         (migrate! :down 64)
         (is (not (contains? (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 1) :id)))
         (is (thrown? Exception (t2/insert! :osi_ai_context (dissoc (row "table" 1) :entity_id))))))))
+
+(deftest upgrade-segment-definition-fragments-test
+  (impl/test-migrations ["m8mp4e"] [migrate!]
+    (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                           :last_name   "User"
+                                                           :email       "user@example.com"
+                                                           :password    "superstrong"
+                                                           :date_joined :%now})
+          db-id       (t2/insert-returning-pk! :metabase_database {:name       "Segment Definitions DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+          table-id    (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                :db_id        db-id
+                                                                :name         "orders"
+                                                                :display_name "Orders"
+                                                                :created_at   :%now
+                                                                :updated_at   :%now})
+          segment!    (fn [definition]
+                        (t2/insert-returning-pk! :segment {:name       "Segment"
+                                                           :table_id   table-id
+                                                           :creator_id user-id
+                                                           :definition (json/encode definition)
+                                                           :created_at :%now
+                                                           :updated_at :%now}))
+          definition  (fn [segment-id]
+                        (json/decode (t2/select-one-fn :definition :segment :id segment-id)))
+          filter-form ["=" ["field" 1 nil] 2]
+          full-query  {"database" db-id, "type" "query", "query" {"source-table" table-id, "filter" filter-form}}
+          mbql5-query {"lib/type" "mbql/query", "database" db-id, "stages" [{"lib/type" "mbql.stage/mbql"}]}
+          fragment    (segment! {"filter" filter-form})
+          aggregated  (segment! {"filter" filter-form, "aggregation" [["count"]]})
+          other-table (segment! {"source-table" 99, "filter" filter-form})
+          full        (segment! full-query)
+          mbql5       (segment! mbql5-query)
+          empty-one   (segment! {})]
+      (migrate!)
+      (testing "fragment becomes full query on its table"
+        (is (= full-query (definition fragment))))
+      (testing "aggregation of fragment is dropped"
+        (is (= full-query (definition aggregated))))
+      (testing "source table named by fragment is kept"
+        (is (= (assoc-in full-query ["query" "source-table"] 99) (definition other-table))))
+      (testing "full queries and empty definitions stay as they are"
+        (is (= full-query (definition full)))
+        (is (= mbql5-query (definition mbql5)))
+        (is (= {} (definition empty-one)))))))

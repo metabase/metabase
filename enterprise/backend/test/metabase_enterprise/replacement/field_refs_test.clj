@@ -332,8 +332,7 @@
                        :set    {:definition "{\"x\": \"y\"}"}
                        :where  [:= :id segment-id]})
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
-        ;; segments return nil when the query is not valid
-        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id))))))))
+        (is (= {} (:definition (t2/select-one :model/Segment :id segment-id))))))))
 
 (deftest segment-upgrade-field-refs!-no-changes-test
   (testing "should not update a segment when there are no changes"

@@ -789,9 +789,10 @@
             (reset! table1s (ts/create! :model/Table :name "customers" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "age"    :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Minors"
-                                        :definition {:source-table (:id @table1s)
-                                                     :filter       [:< [:field (:id @field1s) nil] 18]}
+            (reset! seg1s   (ts/create! :model/Segment :name "Minors"
+                                        :definition (let [mp (lib-be/application-database-metadata-provider (:id @db1s))]
+                                                      (-> (lib/query mp (lib.metadata/table mp (:id @table1s)))
+                                                          (lib/filter (lib/< (lib.metadata/field mp (:id @field1s)) 18))))
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "exported form is properly converted"
@@ -1000,9 +1001,10 @@
             (reset! field1s (ts/create! :model/Field :name "price" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             ;; Create segment: price > 100
-            (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Expensive"
-                                        :definition {:source-table (:id @table1s)
-                                                     :filter [:> [:field (:id @field1s) nil] 100]}
+            (reset! seg1s   (ts/create! :model/Segment :name "Expensive"
+                                        :definition (let [mp (lib-be/application-database-metadata-provider (:id @db1s))]
+                                                      (-> (lib/query mp (lib.metadata/table mp (:id @table1s)))
+                                                          (lib/filter (lib/> (lib.metadata/field mp (:id @field1s)) 100))))
                                         :creator_id (:id @user1s)))
             ;; Create measure: count-where(segment)
             (let [mp (lib-be/application-database-metadata-provider (:id @db1s))
