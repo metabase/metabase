@@ -1482,7 +1482,7 @@
   "The privileges that `grants`, the lines of `SHOW GRANTS`, grant on `*.*`."
   [grants]
   (into #{}
-        (comp (keep #(second (re-find #"^GRANT (.+?) ON \*\.\* TO " %)))
+        (comp (keep #(second (re-find #"^GRANT ([^`]+?) ON \*\.\* TO " %)))
               (mapcat #(str/split % #","))
               (map str/trim))
         grants))

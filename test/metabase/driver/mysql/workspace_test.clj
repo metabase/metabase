@@ -90,7 +90,12 @@
              "GRANT CONNECTION ADMIN ON *.* TO `r`"
              "GRANT PROXY ON ''@'%' TO 'a'@'%'"
              "GRANT SELECT, INSERT ON `db`.* TO `a`@`%`"
-             "REVOKE INSERT ON `mysql`.* FROM `a`@`%`"])))))
+             "REVOKE INSERT ON `mysql`.* FROM `a`@`%`"]))))
+  (testing "a column grant whose quoted name contains \" ON *.* TO \" grants nothing on *.*"
+    (is (= #{}
+           (#'mysql/global-privileges
+            ["GRANT SELECT (`c, PROCESS, CONNECTION_ADMIN ON *.* TO x`) ON `db`.`t` TO `a`@`%`"
+             "GRANT SELECT ON `db`.`t, PROCESS, CONNECTION_ADMIN ON *.* TO x` TO `a`@`%`"])))))
 
 (deftest missing-session-privileges-test
   (let [kill ["CONNECTION_ADMIN" "SUPER"]]
