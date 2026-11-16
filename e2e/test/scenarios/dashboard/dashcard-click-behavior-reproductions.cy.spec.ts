@@ -96,9 +96,6 @@ describe("issue 64368", () => {
         },
       });
       H.visitDashboard(dashcard.dashboard_id);
-      cy.location().then(({ pathname }) => {
-        cy.wrap(pathname).as("originalPathname");
-      });
     });
 
     cy.log("Verify initial state with default filter value");
