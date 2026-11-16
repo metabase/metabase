@@ -6,7 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.users.schema :as users.schema]
@@ -135,6 +135,7 @@
                                 :select [[:id ::id]
                                          [:creator {:optional true} [:maybe ::users.schema/user]]
                                          [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+                                         [:model {:optional true} [:maybe :metabase.queries.schema/card]]
                                          [:can_write {:optional true} :boolean]]
                                 :update [[:id {:optional true} ::id]]
                                 :insert nil)
@@ -147,7 +148,7 @@
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe ::lib.schema.visualization-settings/visualization-settings]]]
+                               [:visualization_settings {:optional true}    [:maybe ::lib.schema.visualization/visualization-settings]]]
                               (when-not request?
                                 [[:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
                                  [:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]

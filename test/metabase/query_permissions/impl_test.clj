@@ -2,18 +2,19 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-permissions.impl-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -23,50 +24,40 @@
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
 
-(deftest ^:parallel card-in-collection-test
-  (mt/with-temp [:model/Collection collection]
-    (testing "Shouldn't be able to read a Card not in Collection without permissions"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{})]
-          (is (not (mi/can-read? card)))))
-      (testing "...or one in a Collection either!"
-        (mt/with-temp [:model/Card card (card-in-collection collection)]
-          (binding [*current-user-permissions-set* (delay #{})]
-            (is (not (mi/can-read? card)))))))
-    (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you have perms for some other Collection"
-          (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you only have Root Collection perms"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-          (is (mi/can-write? card)))
-        (testing "...root Collection Read Perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for another collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
-              (is (not (mi/can-write? card))))))))
-    (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
-          (is (mi/can-write? card)))
-        (testing "...Collection read perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for the Root Collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-              (is (not (mi/can-write? card))))))))))
+(deftest card-in-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Collection other      {}
+                   :model/Card       root-card  (card)
+                   :model/Card       card       (card-in-collection collection)]
+      (letfn [(can-read? [card]  (mi/can-read? (t2/hydrate card :can_read)))
+              (can-write? [card] (mi/can-write? (t2/hydrate card :can_write)))]
+        (mt/with-test-user :rasta
+          (testing "without permissions, neither Card is readable"
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card))))
+          (testing "permissions for other Collection give nothing"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) other)
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "root Collection read permissions make root Card readable, not writable, and not Card in Collection"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-read? root-card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-read? card))))
+          (testing "root Collection write permissions make root Card writable, and not Card in Collection"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "Collection read permissions make its Card readable, not writable"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (is (true? (can-read? card)))
+            (is (false? (can-write? card))))
+          (testing "Collection write permissions make its Card writable"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+            (is (true? (can-write? card)))))))))
 
 (defn- native [query]
   {:database 1
@@ -97,8 +88,7 @@
                    :model/Table    table {:db_id (u/the-id db) :schema nil}
                    :model/Field    _     {:table_id (u/the-id table)}]
       (mt/with-no-data-perms-for-all-users!
-        (binding [*current-user-permissions-set* (atom nil)
-                  *current-user-id*              (mt/user->id :rasta)]
+        (mt/with-current-user (mt/user->id :rasta)
           (is (= {:perms/view-data      {(u/the-id table) :unrestricted}
                   :perms/create-queries {(u/the-id table) :query-builder}}
                  (query-perms/required-perms-for-query
@@ -134,7 +124,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -145,7 +135,7 @@
                                      :dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{(permissions.path/collection-read-path collection)}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -157,7 +147,7 @@
                                       :type     :query
                                       :query    {:source-table (mt/id :checkins)
                                                  :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -167,7 +157,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :native
                                                      :native   {:query "SELECT * FROM CHECKINS"}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -329,8 +319,7 @@
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted
                 :card-ids             #{card-1-id card-2-id}
-                :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                        (format "/collection/%d/read/" collection-2-id)}}
+                :source-card-ids      #{card-1-id card-2-id}}
                (query-perms/required-perms-for-query
                 {:database                              (mt/id)
                  :type                                  :native
@@ -348,15 +337,13 @@
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
                   :card-ids             #{card-1-id card-2-id}
-                  :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                          (format "/collection/%d/read/" collection-2-id)}}
+                  :source-card-ids      #{card-1-id card-2-id}}
                  (query-perms/required-perms-for-query native-query :already-preprocessed? true)))
           (testing "MBQL 5 query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
                     :card-ids             #{card-1-id card-2-id}
-                    :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                            (format "/collection/%d/read/" collection-2-id)}}
+                    :source-card-ids      #{card-1-id card-2-id}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
                                (lib/->mbql5 native-query))

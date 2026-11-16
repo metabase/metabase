@@ -27,16 +27,12 @@
         groups-to-exclude (set/union sandboxed-groups impersonated-groups)
         groups-to-check (set/difference user-group-ids groups-to-exclude)]
     (if (seq groups-to-check)
-      (not (perms/groups-have-permission-for-table? groups-to-check
-                                                    :perms/view-data
-                                                    :unrestricted
-                                                    db_id
-                                                    table_id))
+      (not (perms/at-least-as-permissive? :perms/view-data (get (perms/table-permissions-for-groups groups-to-check :perms/view-data {table_id db_id}) table_id) :unrestricted))
       true)))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is cached
-  for the duration of a request in [[metabase.permissions.models.data-permissions/*sandboxes-for-user*]].
+  for the duration of a request in [[metabase.permissions.data-permissions/*sandboxes-for-user*]].
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."

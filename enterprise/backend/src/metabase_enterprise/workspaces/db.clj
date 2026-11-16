@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -19,13 +20,15 @@
    [:input_schemas    [:sequential :string]]
    [:database_details ms/DatabaseDetails]
    [:output_namespace :string]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
    [:database_details {:optional true} ms/DatabaseDetails]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::table-spec
   [:map {:closed true}
@@ -156,20 +159,22 @@
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id} changes))
 
 (mu/defn transition-workspace-database!
-  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`.
-  Returns the number of rows updated."
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
+  `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::status
    to-status             :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
-  `to-status`. Returns the number of rows updated."
+  `to-status`, and its `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-id :- ms/PositiveInt
    from-status  :- ::status
    to-status    :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn delete-workspace-database!
   "Delete the WorkspaceDatabase with `workspace-database-id`."
@@ -185,6 +190,20 @@
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/WorkspaceDatabase :workspace_id workspace-id :status [:not= :unprovisioned]))
+
+(mu/defn workspace-has-in-flight-databases?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:provisioning` or `:deprovisioning`, and
+  any of its WorkspaceDatabases, whatever its status, was last updated after `since`."
+  [workspace-id :- ms/PositiveInt
+   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/exists? :model/WorkspaceDatabase
+              :workspace_id workspace-id
+              :status       [:in [:provisioning :deprovisioning]]
+              {:where [:exists ^:allow-subquery {:select [1]
+                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :where  [:and
+                                                          [:= :any_wsd.workspace_id workspace-id]
+                                                          [:> :any_wsd.updated_at since]]}]}))
 
 (mu/defn database-has-workspace-databases?
   "Whether any WorkspaceDatabase references the Database with `database-id`, whatever its status."
@@ -207,6 +226,12 @@
   "Every TableRemapping, ordered by id."
   []
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+
+(mu/defn table-remapping-database-ids :- [:set ::lib.schema.id/database]
+  "The ids of the Databases that have a TableRemapping."
+  []
+  ;; `select-fn-set` returns nil, not #{}, when there are no rows
+  (set (t2/select-fn-set :database_id :model/TableRemapping)))
 
 (mu/defn table-remappings-exist?
   "Whether the Database with `database-id` has a TableRemapping."

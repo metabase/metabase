@@ -1,0 +1,159 @@
+## metabase_table_user_settings and metabase_field_user_settings get an id primary key of their own. table_id and
+## field_id, their primary keys until now, stay unique foreign keys that delete the settings with their Table or Field.
+
+databaseChangeLog:
+  - changeSet:
+      id: zr3x3c
+      author: ranquild
+      comment: Drop the foreign key on metabase_table_user_settings.table_id to change the primary key
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            constraintName: fk_table_user_settings_table_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: gjs1ql
+      author: ranquild
+      comment: Drop the primary key on metabase_table_user_settings.table_id
+      changes:
+        - dropPrimaryKey:
+            tableName: metabase_table_user_settings
+      rollback:
+        - addPrimaryKey:
+            tableName: metabase_table_user_settings
+            columnNames: table_id
+            constraintName: pk_metabase_table_user_settings
+
+  - changeSet:
+      id: yujcbk
+      author: ranquild
+      comment: Add an id primary key to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The primary key of the settings
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabase_table_user_settings
+            columnName: id
+
+  - changeSet:
+      id: ll09w7
+      author: ranquild
+      comment: Keep one settings row per Table in metabase_table_user_settings
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table_user_settings
+            columnNames: table_id
+            constraintName: idx_uniq_metabase_table_user_settings_table_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_table_user_settings
+            constraintName: idx_uniq_metabase_table_user_settings_table_id
+
+  - changeSet:
+      id: dgca56
+      author: ranquild
+      comment: Delete the settings in metabase_table_user_settings with their Table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: imml4x
+      author: ranquild
+      comment: Drop the foreign key on metabase_field_user_settings.field_id to change the primary key
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            constraintName: fk_field_user_setting_field_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_setting_field_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: fvyvrm
+      author: ranquild
+      comment: Drop the primary key on metabase_field_user_settings.field_id
+      changes:
+        - dropPrimaryKey:
+            tableName: metabase_field_user_settings
+      rollback:
+        - addPrimaryKey:
+            tableName: metabase_field_user_settings
+            columnNames: field_id
+            constraintName: pk_metabase_field_user_settings
+
+  - changeSet:
+      id: fyt9vd
+      author: ranquild
+      comment: Add an id primary key to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The primary key of the settings
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabase_field_user_settings
+            columnName: id
+
+  - changeSet:
+      id: qbgtgr
+      author: ranquild
+      comment: Keep one settings row per Field in metabase_field_user_settings
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_field_user_settings
+            columnNames: field_id
+            constraintName: idx_uniq_metabase_field_user_settings_field_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_field_user_settings
+            constraintName: idx_uniq_metabase_field_user_settings_field_id
+
+  - changeSet:
+      id: mjumxg
+      author: ranquild
+      comment: Delete the settings in metabase_field_user_settings with their Field
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_setting_field_id
+            onDelete: CASCADE

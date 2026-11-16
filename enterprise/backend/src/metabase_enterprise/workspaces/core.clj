@@ -32,12 +32,14 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -185,6 +187,29 @@
     (throw (ex-info "Workspace not found"
                     {:status-code 404 :workspace_id workspace-id}))))
 
+(def ^:private in-flight-stale-after
+  "How long after the last write to any of a workspace's database rows a
+  `:provisioning` or `:deprovisioning` row of that workspace still counts as in
+  flight. After that, such a row is treated as left behind by a crashed instance,
+  so a delete tears it down instead of refusing. A create or deprovision that
+  spends longer than this on one database also looks crashed. Each status write
+  sets the row's `updated_at` from this instance's clock when the write runs, and
+  the cutoff uses the same clock."
+  (t/minutes 15))
+
+(defn- assert-workspace-not-busy
+  "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
+  running on any of the workspace's databases. Without this, a delete waits on
+  the row lock that the running provisioning holds, then fails, or wins the lock
+  and makes the create fail."
+  [workspace-id]
+  (when (ws.db/workspace-has-in-flight-databases? workspace-id
+                                                  (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
+                    {:status-code  409
+                     :error-code   "workspace_busy"
+                     :workspace_id workspace-id}))))
+
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
       (throw (ex-info "Database not found"
@@ -194,6 +219,22 @@
   (when-not (workspace-database/database-eligible-for-workspaces? database)
     (throw (ex-info "Workspaces are not enabled for this database"
                     {:status-code 400 :database_id (:id database)}))))
+
+(defn- assert-input-schemas
+  "Return `input-schemas`, refusing (400) an empty list for a driver that has schemas.
+   On such a driver an empty list leaves the workspace nothing to read. On the
+   `schema-filters` drivers (Postgres, Redshift, SQL Server) it is also unsafe: the
+   workspace config's inclusion filter is then blank, and a blank filter syncs every
+   schema, the workspace's own output schema included. Empty is legitimate only for
+   schemaless drivers (MySQL), where the connection's bound database scopes sync instead.
+   The `:schemas` check matches the drivers [[metabase-enterprise.workspaces.config]]
+   builds a schema filter for; keep the two in step."
+  [database input-schemas]
+  (when (and (empty? input-schemas)
+             (driver.u/supports? (:engine database) :schemas database))
+    (throw (ex-info "Database has no synced schemas to use as workspace inputs; sync it first"
+                    {:status-code 400 :database_id (:id database)})))
+  input-schemas)
 
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
@@ -229,11 +270,11 @@
     ex))
 
 (defn- provision-workspace-databases!
-  "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
-  (blocking), failing fast on the first error."
+  "Provision every `:provisioning` WorkspaceDatabase of the hydrated workspace `ws`
+  synchronously (blocking), failing fast on the first error."
   [ws]
   (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-single! wsd-id)))
+    (provisioning/provision-workspace-database! wsd-id provisioning/dispatching-provisioner)))
 
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
@@ -262,12 +303,15 @@
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
    [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
-   known schemas as `input_schemas`, and provision each database (blocking).
+   known schemas as `input_schemas` (400 when a driver with schemas has none, see
+   [[assert-input-schemas]]), and provision each database (blocking).
    Returns the created workspace, hydrated.
 
    The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
-   starts — deliberately NOT one big transaction. The rows are the durable record
-   of warehouse resources that may (partially) exist, so they must survive an
+   starts — deliberately NOT one big transaction. Every row is inserted
+   `:provisioning`, so a delete gets the 409 `workspace_busy` until the create
+   ends, also before a row's turn comes. The rows are the durable record of
+   warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
    every database is torn down; when the cleanup removes everything, the Workspace
@@ -279,8 +323,13 @@
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
+                            ;; `:provisioning` from the insert, so the busy check refuses a delete
+                            ;; before this database's turn comes
                             {:database_id   db-id
-                             :input_schemas (workspace-database/database-input-schemas database)}))
+                             :input_schemas (assert-input-schemas
+                                             database
+                                             (workspace-database/database-input-schemas database))
+                             :status        :provisioning}))
                         database_ids)
         ws        (workspace/create-workspace! {:name       name
                                                 :creator_id creator_id
@@ -307,7 +356,7 @@
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
-  "Tear down every database's warehouse isolation (any state, blocking), then
+  "Tear down every database's warehouse isolation (blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
   either fully torn down (warehouse footprint confirmed gone, row deleted) or
   kept. Every database gets its teardown attempt even when earlier ones fail; if
@@ -315,9 +364,13 @@
   exception combining all the failures is thrown, so the delete can be retried.
   Progress is persisted per row, so an instance crash midway loses nothing.
   App-DB `TableRemapping` rows are always cleared, so query routing is never
-  left dangling. Returns nil."
+  left dangling. Refuses with a 409 (`workspace_busy`) while a create or
+  deprovision is still running on any of its databases; a `:provisioning` or
+  `:deprovisioning` row left behind by a crashed instance is torn down once
+  every row of the workspace is older than [[in-flight-stale-after]]. Returns nil."
   [id]
   (assert-workspace-exists id)
+  (assert-workspace-not-busy id)
   (teardown-workspace-databases! id)
   (workspace/delete-workspace! id)
   nil)

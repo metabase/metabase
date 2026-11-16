@@ -4,7 +4,9 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -49,3 +51,8 @@
             (update field-path (dec (count field-path))
                     (fn [segment] (assoc segment :suffix dimension-slug)))))
         entities))
+
+(defmethod remote-sync/spec :model/Dimension
+  [_model]
+  {:synced-items         warehouse-schema.db/synced-dimension-items
+   :synced-filter-clause warehouse-schema.db/synced-field-clause})

@@ -41,8 +41,6 @@
              settings
              user-settings/field-set-flags))
 
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
-
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
@@ -121,7 +119,6 @@
 (defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-field-user-settings
    :identity  [:field_id]
-   :primary-key :field_id
    :copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
@@ -154,6 +151,5 @@
 
 (defmethod remote-sync/spec :model/FieldUserSettings
   [_model]
-  {:parent               (fn [{:keys [field_id]}]
-                           (some->> (warehouse-schema.db/field field_id) :table_id (vector :model/TableUserSettings)))
-   :synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})
+  {:synced-items         warehouse-schema.db/synced-field-user-settings-items
+   :synced-filter-clause warehouse-schema.db/synced-field-clause})

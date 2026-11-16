@@ -5,6 +5,15 @@ export const DATA_APP_DIAGNOSTICS_CHANGED_EVENT =
 
 export const DATA_APP_DIAGNOSTICS_URL = "/__data-app/diagnostics";
 
+// The dev server relays the instance's API on the preview's own origin, at the same path.
+export const DATA_APP_DEV_INSTANCE_API_PATH = "/api/";
+// The dev server relays this path to the instance's root, so the preview can
+// tell whether the instance answers without depending on any of its API routes.
+export const DATA_APP_DEV_INSTANCE_PING_URL = "/__data-app/instance";
+
+// Set on the dev server's own answer when it couldn't reach the instance.
+export const DATA_APP_DEV_RELAY_ERROR_HEADER = "x-data-app-dev-relay-error";
+
 export const START_EVENT_ID_PARAM = "startEventId";
 
 export const INCLUDE_STALE_PARAM = "includeStale";

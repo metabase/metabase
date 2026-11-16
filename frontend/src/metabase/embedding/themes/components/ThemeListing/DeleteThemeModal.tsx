@@ -15,7 +15,7 @@ export function DeleteThemeModal({
 }: DeleteThemeModalProps) {
   return (
     <Modal opened={isOpen} onClose={onCancel} title={t`Delete theme`}>
-      <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
+      <Text c="text-secondary">{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
       <Modal.Footer>
         <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}

@@ -17,8 +17,8 @@
                                              :dimension_id "d1"
                                              :query_type "default"}]
       (mt/with-current-user (:id owner)
-        (is (true? (mi/can-read?  :model/ExplorationPage (:id p))))
-        (is (true? (mi/can-write? :model/ExplorationPage (:id p)))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationPage :id (:id p)) :can_read))))
+        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationPage :id (:id p)) :can_write)))))
       (testing "entity_id + timestamps populated"
         (let [reloaded (t2/select-one :model/ExplorationPage :id (:id p))]
           (is (some? (:entity_id reloaded)))

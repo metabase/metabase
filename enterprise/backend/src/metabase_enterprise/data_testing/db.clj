@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -172,6 +173,13 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
 (mu/defn card-test :- [:maybe ::data-testing.schema/card-test]
   "The CardTest with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -229,3 +237,19 @@
   "The TransformTest with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/TransformTest :entity_id entity-id))
+
+(mu/defn synced-transform-test-items :- [:sequential ::data-testing.schema/transform-test]
+  "The TransformTests with `ids`, with their Transform and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/TransformTest :id :name :transform_id] :id [:in ids])
+        (t2/hydrate [:transform [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :transform #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-card-test-items :- [:sequential ::data-testing.schema/card-test]
+  "The CardTests with `ids`, with their Card and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/CardTest :id :name :card_id] :id [:in ids])
+        (t2/hydrate [:card [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :card #(some-> % (collection.root/hydrate-root-collection root)))))))))

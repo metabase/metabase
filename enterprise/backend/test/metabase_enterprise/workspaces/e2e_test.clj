@@ -33,15 +33,18 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -105,7 +108,11 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-single! wsd-id))))
+      ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default in a cluster
+      ;; created before Postgres 15 or upgraded from one, and the shared test cluster is not this test's to change:
+      ;; metabase.driver.postgres.workspace-test covers that check against a database of its own
+      (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+        (provisioning/provision-single! wsd-id)))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -825,6 +832,131 @@
               (try (jdbc/execute! admin-spec
                                   [(format "DROP TABLE IF EXISTS %s"
                                            (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
+                   (catch Throwable _ nil)))))))))
+
+(deftest ^:synchronized failed-transform-run-leaves-remapping-state-unchanged-test
+  (mt/test-drivers #{:postgres :mysql}
+    (mt/with-premium-features #{:workspaces :config-text-file}
+      (testing "a transform run that fails at the warehouse leaves the TableRemapping rows as they were"
+        (let [admin-driver  driver/*driver*
+              admin-db      (mt/db)
+              admin-details (:details admin-db)
+              admin-spec    (admin-warehouse admin-driver admin-details)
+              run-id        (random-suffix)
+              main-schema   (canonical-schema-name admin-driver run-id admin-details)
+              tbl-schema    (table-row-schema-value admin-driver main-schema)
+              src-name      (str "x_input_" run-id)
+              tgt-name      (str "t_ok_" run-id)
+              new-tgt-name  (str "t_new_" run-id)]
+          (try
+            (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+            (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
+            (mt/with-temp [:model/Database ws-db {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "ws-failed-run-" run-id)}]
+              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-failed-run-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)})]
+                (try
+                  (add-database! ws-id (:id ws-db)
+                                 [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (advanced-config.file/initialize!
+                   (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id))))
+                  (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
+                    (mt/with-db ws-db
+                      (sync/sync-database! (:id ws-db) {:scan :schema})
+                      (let [src-table   (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name src-name)
+                            mp          (mt/metadata-provider)
+                            failing-q   (lib/native-query mp (format "SELECT * FROM %s"
+                                                                     (qualified-table-sql admin-driver admin-details
+                                                                                          main-schema (str "missing_" run-id))))
+                            remap-rows  #(t2/select :model/TableRemapping :database_id (:id ws-db))
+                            run-failed? (fn [transform]
+                                          (try (transforms.execute/execute! transform {:run-method :manual})
+                                               false
+                                               (catch Throwable _ true)))]
+                        (is (some? src-table) "input source table is synced")
+                        (mt/with-temp [:model/Transform ok-transform
+                                       {:name   (str "transform-ok-" run-id)
+                                        :source {:type :query :query (lib/query mp (lib.metadata/table mp (:id src-table)))}
+                                        :target {:type :table :schema main-schema :name tgt-name}}
+                                       :model/Transform new-target-transform
+                                       {:name   (str "transform-new-" run-id)
+                                        :source {:type :query :query failing-q}
+                                        :target {:type :table :schema main-schema :name new-tgt-name}}]
+                          (transforms.execute/execute! ok-transform {:run-method :manual})
+                          (let [after-success (remap-rows)]
+                            (is (= 1 (count after-success)) "the successful run recorded its remapping")
+                            (testing "a failed run on a target with no remapping records none"
+                              (is (run-failed? new-target-transform))
+                              (is (= :failed (t2/select-one-fn :status :model/TransformRun
+                                                               :transform_id (:id new-target-transform)))
+                                  "the run was booked and then failed at the warehouse")
+                              (is (= after-success (remap-rows))))
+                            (testing "a failed run on a target an earlier run remapped keeps that row as it was"
+                              (t2/update! :model/Transform :id (:id ok-transform) {:source {:type :query :query failing-q}})
+                              (is (run-failed? (t2/select-one :model/Transform :id (:id ok-transform))))
+                              (is (= after-success (remap-rows))))
+                            (testing "the main table still reads the earlier run's output"
+                              (let [tgt-table (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name tgt-name)]
+                                (is (= 3 (count (mt/rows (qp/process-query
+                                                          (lib/query mp (lib.metadata/table mp (:id tgt-table)))))))))))))))
+                  (finally
+                    (ws/clear-instance-workspace!)
+                    (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
+                    ;; On MySQL/MariaDB the teardown's app-DB delete of the TableRemapping rows waits on the locks
+                    ;; this test's rollback-only `with-temp` transaction holds, and times out. Force-clear the rows
+                    ;; on this connection, as [[workspace-full-e2e-test]] does, so the `with-temp` Database cleanup
+                    ;; is not refused for active workspace_database rows.
+                    (let [deleted? (try (ws/delete-workspace! ws-id)
+                                        true
+                                        (catch Throwable t
+                                          (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
+                                                     ws-id)
+                                          false))]
+                      (when-not deleted?
+                        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+                        (t2/delete! :model/Workspace :id ws-id)))))))
+            (finally
+              (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-name)
+                   (catch Throwable _ nil)))))))))
+
+(comment
+  (workspace-full-e2e-test))
+
+(deftest input-schemas-sync-literally-test
+  (mt/test-driver :postgres
+    (testing "the child syncs an input schema whose name contains pattern syntax, and no schema it only resembles"
+      (let [admin-details (:details (mt/db))
+            admin-spec    (admin-warehouse :postgres admin-details)
+            run-id        (random-suffix)
+            plus-schema   (str "a+b_" run-id)
+            dot-schema    (str "sales.v2_" run-id)
+            ;; what `a+b_…` and `sales.v2_…` match when read as regex source
+            near-misses   [(str "ab_" run-id) (str "salesXv2_" run-id)]
+            all-schemas   (into [plus-schema dot-schema] near-misses)]
+        (try
+          (doseq [schema all-schemas]
+            (create-canonical-schema! :postgres admin-spec admin-details schema)
+            (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id INT)" (sql.u/quote-name :postgres :table schema "t"))]))
+          (mt/with-temp [:model/Workspace {ws-id :id} {:name       (str "ws-literal-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                     :database_id      (mt/id)
+                                                     :database_details {}
+                                                     :output_namespace (str "mb__isolation_" run-id)
+                                                     :input_schemas    [plus-schema dot-schema]
+                                                     :status           :provisioned}]
+            (let [child-details (->> (ws.config/build-workspace-config ws-id) :config :databases
+                                     (u/seek #(= (:name (mt/db)) (:name %)))
+                                     :details)]
+              (mt/with-temp [:model/Database child-db {:engine :postgres :details child-details}]
+                (sync/sync-database! (:id child-db) {:scan :schema})
+                (is (= #{plus-schema dot-schema}
+                       (t2/select-fn-set :schema :model/Table :db_id (:id child-db) :active true))))))
+          (finally
+            (doseq [schema all-schemas]
+              (try (jdbc/execute! admin-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                                                      (sql.u/quote-name :postgres :schema schema))])
                    (catch Throwable _ nil)))))))))
 
 (comment

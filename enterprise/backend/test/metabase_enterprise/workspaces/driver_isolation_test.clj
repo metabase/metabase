@@ -25,6 +25,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -34,6 +35,15 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(defn- init!
+  "[[driver/init-workspace-isolation!]]. Postgres init refuses a cluster where PUBLIC can create objects in any
+  database, the default in a cluster created before Postgres 15 or upgraded from one, and the shared test cluster is
+  not these tests' to change: metabase.driver.postgres.workspace-test covers that check against a database of its
+  own."
+  [driver database workspace]
+  (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+    (driver/init-workspace-isolation! driver database workspace)))
 
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
@@ -357,7 +367,7 @@
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out-schema      (:schema workspace)
                 out             (qualify driver out-schema out-name)]
@@ -528,8 +538,8 @@
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-b src-b-name)
                                           " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database ws-a)
-          (driver/init-workspace-isolation! driver database ws-b)
+          (init! driver database ws-a)
+          (init! driver database ws-b)
           (let [user-a-spec  (workspace-user-spec driver details ws-a)
                 user-b-spec  (workspace-user-spec driver details ws-b)
                 out-a-schema (:schema ws-a)
@@ -611,11 +621,12 @@
   ;; The output-namespace name init creates is *deterministic* from `workspace.id`
   ;; (see `driver.u/workspace-isolation-namespace-name`), not random — so init can
   ;; land on an already-existing namespace (e.g., from a partial prior init that
-  ;; was never cleaned up, or from another process). All current driver impls use
-  ;; `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
+  ;; was never cleaned up, or from another process). The drivers this test runs on
+  ;; use `CREATE SCHEMA IF NOT EXISTS` (or equivalent), so init silently succeeds when
   ;; the namespace exists. This test pins that behavior: init must not crash on
   ;; collision and the standard read-only-input + full-output contract must still
-  ;; hold afterward.
+  ;; hold afterward. Postgres refuses an existing output schema with a 409, which
+  ;; `metabase.driver.postgres.workspace-test` pins, so this test leaves it out.
   ;;
   ;; KNOWN LIMITATION: pre-existing data in the colliding namespace is *not*
   ;; cleared by init. If an attacker who can predict the namespace name (the
@@ -623,9 +634,10 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  ;; SQL Server refuses an existing schema with a 409 instead
+  ;; SQL Server also refuses an existing schema with a 409
   ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
-  (mt/test-drivers (remove #{:sqlserver} (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace)))
+  (mt/test-drivers (filter #(and (isa? driver/hierarchy % :sql-jdbc) (not (#{:postgres :sqlserver} %)))
+                           (mt/normal-drivers-with-feature :workspace))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -647,7 +659,7 @@
           ;; Pre-create the output namespace at exactly the name init will target,
           ;; before init runs.
           (maybe-create-input-namespace! admin-spec driver database out-schema)
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database workspace
@@ -711,7 +723,7 @@
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! driver database workspace
@@ -823,7 +835,7 @@
           (reset! second-db-created? true)
           (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
             (jdbc/execute! admin-spec [sql]))
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
@@ -914,7 +926,7 @@
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (driver/grant-workspace-read-access! driver database workspace
                                                [in-schema])
           (testing "no leakage to default principal after init+grant"
@@ -1010,7 +1022,7 @@
             ;; with even if init never ran or only partially succeeded.
             ws-a       (with-isolation-details driver database ws-a)]
         (try
-          (driver/init-workspace-isolation! driver database ws-a)
+          (init! driver database ws-a)
           ;; MySQL: the workspace user's JDBC handshake needs access to the
           ;; bound DB (see [[reuse-bound-db-as-input?]]), which comes from a
           ;; read grant.
@@ -1021,6 +1033,8 @@
           ;; CANNOT create users: postgres/redshift check CREATE at the database
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
+          ;; Postgres refuses an output schema that already exists, so the test
+          ;; does not pre-create one there.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. SQL Server
           ;; runs no such statement: init first looks for an existing login, user
@@ -1034,7 +1048,8 @@
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))
                                                (driver.u/workspace-isolation-user-name ws-a))]))
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)])
+          (when-not (= :postgres driver)
+            (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)]))
           (mt/with-temp [:model/Database low-priv-db {:engine  driver
                                                       :details (merge details (:database_details ws-a))}]
             ;; The password is generated by `workspace-isolation-details`, so
@@ -1045,9 +1060,11 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             (driver/init-workspace-isolation!
-                              driver low-priv-db
-                              (with-isolation-details driver low-priv-db ws-b))
+                             ;; past Postgres's CREATEROLE precondition, so that CREATE USER itself runs and fails
+                             (mt/with-dynamic-fn-redefs [postgres/check-admin-login-privileges! (constantly nil)]
+                               (init!
+                                driver low-priv-db
+                                (with-isolation-details driver low-priv-db ws-b)))
                              nil
                              (catch Throwable t t)))]
               (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
@@ -1117,8 +1134,8 @@
             first-ws  (with-isolation-details driver database workspace)
             second-ws (with-isolation-details driver database workspace)]
         (try
-          (driver/init-workspace-isolation! driver database first-ws)
-          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! driver database second-ws)))]
+          (init! driver database first-ws)
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (init! driver database second-ws)))]
             (is (= {:status-code 409, :workspace/cleanup? false}
                    (select-keys (ex-data e) [:status-code :workspace/cleanup?]))))
           (testing "the credentials persisted by the first init still authenticate"
