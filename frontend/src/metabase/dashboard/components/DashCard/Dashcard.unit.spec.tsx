@@ -476,7 +476,11 @@ describe("DashCard", () => {
     setup({ dashcardData: erroringDashcardData });
 
     expect(await screen.findByText("My Card")).toBeVisible();
-    expect(getIcon("warning")).toBeInTheDocument();
+    const warningIcon = getIcon("warning");
+    expect(warningIcon).toBeVisible();
+    // jsdom has no layout, so check the rendered SVG size to catch a zero-sized icon
+    expect(Number(warningIcon.getAttribute("width"))).toBeGreaterThan(0);
+    expect(Number(warningIcon.getAttribute("height"))).toBeGreaterThan(0);
   });
 
   it("should show a text card", () => {

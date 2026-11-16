@@ -1,15 +1,27 @@
 import type { Store } from "@reduxjs/toolkit";
+import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
+import {
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupDashboardQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import { createMockDashboardState, createMockState } from "__support__/state";
 import type { State } from "metabase/redux/store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationDisplay } from "metabase-types/api";
-import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDashboard,
+  createMockDashboardQueryMetadata,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 
-import { getDashCardById } from "../selectors";
-
-import { addDashCardToDashboard } from "./cards-typed";
+import { addCardToDashboard } from "./cards-typed";
+import { updateDashboardAndCards } from "./save";
 
 registerVisualizations();
 
@@ -40,7 +52,18 @@ const DEFAULT_SIZES: Array<[VisualizationDisplay, number, number]> = [
   ["map", 12, 6],
 ];
 
-function setup() {
+function setup(display: VisualizationDisplay) {
+  const card = createMockCard({ id: 1, display });
+  setupCardEndpoints(card);
+  setupCardQueryEndpoints(card, createMockDataset());
+  fetchMock.post("path:/api/card/pivot/1/query", createMockDataset());
+  setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
+  fetchMock.put("path:/api/dashboard/1", DASHBOARD);
+  setupDashboardQueryMetadataEndpoint(
+    DASHBOARD,
+    createMockDashboardQueryMetadata(),
+  );
+
   const dashboardState = createMockDashboardState({
     dashboardId: DASHBOARD.id,
     dashboards: { [DASHBOARD.id]: { ...DASHBOARD, dashcards: [] } },
@@ -54,21 +77,26 @@ function setup() {
   ) as Store<State>;
 }
 
-describe("addDashCardToDashboard", () => {
+describe("adding a card to a dashboard", () => {
   it.each(DEFAULT_SIZES)(
-    "should give a new %s card its default size (%ix%i)",
-    (display, width, height) => {
-      const store = setup();
-      const card = createMockCard({ id: 1, display });
+    "should save a new %s card with its default size (%ix%i)",
+    async (display, width, height) => {
+      const store = setup(display);
 
-      addDashCardToDashboard({
+      await addCardToDashboard({
         dashId: DASHBOARD.id,
         tabId: null,
-        dashcardOverrides: { id: -1, card, card_id: card.id },
-      })(store.dispatch, store.getState);
+        cardId: 1,
+      })(store.dispatch);
+      await store.dispatch(updateDashboardAndCards());
 
-      const dashcard = getDashCardById(store.getState(), -1);
-      expect(dashcard).toMatchObject({ size_x: width, size_y: height });
+      const call = fetchMock.callHistory.lastCall("path:/api/dashboard/1", {
+        method: "PUT",
+      });
+      const body: unknown = JSON.parse(String(call?.options.body));
+      expect(body).toMatchObject({
+        dashcards: [{ card_id: 1, size_x: width, size_y: height }],
+      });
     },
   );
 });
