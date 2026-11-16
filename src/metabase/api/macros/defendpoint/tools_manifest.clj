@@ -177,11 +177,13 @@
 
 (defn- one-of-replacement
   "What replaces the `oneOf` `branches`: [[nullable]] X for `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`,
-  and otherwise an `anyOf` of the same branches."
+  `{:not {}}`, which accepts nothing, for no branches, and otherwise an `anyOf` of the same branches."
   [[x y :as branches]]
-  (if (and (= 2 (count branches)) (= {:type "null"} y))
-    (nullable x)
-    {:anyOf branches}))
+  (cond
+    (and (= 2 (count branches)) (= {:type "null"} y)) (nullable x)
+    ;; JSON Schema requires at least one branch in a `oneOf` or an `anyOf`
+    (empty? branches)                                 {:not {}}
+    :else                                             {:anyOf branches}))
 
 (defn- without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
@@ -196,8 +198,7 @@
   ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
   (mu.json-schema/postwalk-schemas
    (fn [{branches :oneOf :as node}]
-     ;; an empty `oneOf` accepts nothing, and an empty `anyOf` is invalid, so it stays
-     (if (empty? branches)
+     (if (nil? branches)
        node
        (let [siblings    (dissoc node :oneOf)
              replacement (one-of-replacement branches)]
