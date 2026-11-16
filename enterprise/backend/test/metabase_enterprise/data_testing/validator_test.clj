@@ -156,14 +156,12 @@
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 
 (def ^:private people-test
-  "A test of a query that reads `ID` and `SOURCE` of `PUBLIC.PEOPLE`, which has the columns `ID`, `NAME` and
-  `SOURCE`, with one expectation."
+  "A test of a query that reads `ID` and `SOURCE` of `PUBLIC.PEOPLE`, with one expectation."
   (assoc complete-test
-         :expectations    [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
-         :columns-read    #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
-                            {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
-         :metadata-tables [{:schema "PUBLIC" :name "PEOPLE" :columns #{"ID" "NAME" "SOURCE"}}]
-         :ignore-case?    false))
+         :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
+         :columns-read #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
+                         {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
+         :ignore-case? false))
 
 (defn- validation-refusal
   "The refusal of `validator/validate` on H2 with `args`, with its `:columns`, or nil."
@@ -189,10 +187,6 @@
             (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "SOURCE")])))))
   (testing "on a database that ignores case, a name that differs only in case is the column"
     (is (nil? (validation-refusal (assoc people-test :inputs [(people-rows-input "id" "source")] :ignore-case? true)))))
-  (testing "a column the table does not have in Metabase's metadata is not required"
-    (is (nil? (validation-refusal (-> people-test
-                                      (assoc :inputs [(people-rows-input "ID" "SOURCE")])
-                                      (update :columns-read conj {:schema "PUBLIC" :name "PEOPLE" :column "T"}))))))
   (testing "an input given as SQL declares no columns, so nothing is checked"
     (is (nil? (validation-refusal (assoc people-test :inputs [(sql-input "PUBLIC" "PEOPLE")])))))
   (testing "with no columns read, as when the parser reports an error, nothing is checked"
@@ -200,14 +194,13 @@
 
 (def ^:private mixed-case-test
   "A test on a database that keeps case, such as Postgres, of a query that reads `id` and `CreatedAt` of
-  `public.events`, which the parser reports lower-cased, as it does on every driver but H2."
+  `public.events`."
   (assoc complete-test
          :inputs            []
          :referenced-tables #{{:schema "public" :name "events"}}
          :expectations      [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}]
          :columns-read      #{{:schema "public" :name "events" :column "id"}
-                              {:schema "public" :name "events" :column "createdat"}}
-         :metadata-tables   [{:schema "public" :name "events" :columns #{"id" "CreatedAt"}}]
+                              {:schema "public" :name "events" :column "CreatedAt"}}
          :default-schema    "public"
          :ignore-case?      false))
 
@@ -215,30 +208,20 @@
   [& column-names]
   (assoc (apply people-rows-input column-names) :table {:schema "public" :name "events"}))
 
-(deftest missing-input-columns-with-mixed-case-metadata-test
+(deftest missing-input-columns-with-mixed-case-names-test
   (testing "a column whose name has an upper-case letter is required, by the table's spelling"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"public.events" ["CreatedAt"]}}
             (validation-refusal (assoc mixed-case-test :inputs [(events-input "id")])))))
   (testing "control: an input that spells it as the table does is accepted"
     (is (nil? (validation-refusal (assoc mixed-case-test :inputs [(events-input "id" "CreatedAt")])))))
-  (testing "a table with two columns that differ only in case: a column read that could be either is not required"
-    (is (nil? (validation-refusal (assoc mixed-case-test
-                                         :inputs          [(events-input "id" "Name")]
-                                         :columns-read    #{{:schema "public" :name "events" :column "id"}
-                                                            {:schema "public" :name "events" :column "name"}}
-                                         :metadata-tables [{:schema "public" :name "events"
-                                                            :columns #{"id" "Name" "name"}}])))))
-  (testing "with the parser's own output for Postgres, a quoted mixed-case column is required by the table's spelling"
-    (is (=? {:error-type ::errors/missing-input-columns
-             :columns    {"public.events" ["CreatedAt"]}}
-            (validation-refusal (assoc mixed-case-test
-                                       :inputs       [(events-input "id")]
-                                       :columns-read (data-testing.compile/columns-read
-                                                      :postgres
-                                                      "SELECT \"t\".\"id\", \"t\".\"CreatedAt\" FROM \"public\".\"events\" \"t\""))))))
   (testing "an input that spells its table in another case is checked against that table"
     (is (=? {:error-type ::errors/missing-input-columns
              :columns    {"PUBLIC.Events" ["CreatedAt"]}}
             (validation-refusal (assoc mixed-case-test
-                                       :inputs [(assoc (events-input "id") :table {:schema "PUBLIC" :name "Events"})]))))))
+                                       :inputs [(assoc (events-input "id") :table {:schema "PUBLIC" :name "Events"})])))))
+  (testing "of two tables read whose names differ only in case, an input is checked against the one it spells exactly"
+    (is (nil? (validation-refusal (assoc mixed-case-test
+                                         :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
+                                         :columns-read #{{:schema "public" :name "Events" :column "id"}
+                                                         {:schema "public" :name "events" :column "CreatedAt"}}))))))

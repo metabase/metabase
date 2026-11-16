@@ -148,6 +148,25 @@
      {:col (assoc found :lib/desired-column-alias (or alias name))}
      {:error (lib/missing-column-error (:column col-spec))})])
 
+(defn field-candidates
+  "The columns that `col-spec`, a `:single-column` field spec of `field-references`, could read: those whose name,
+  normalized for `driver`, equals the spec's column name, from the innermost scope that has any; empty when no scope
+  has such a column. [[resolve-field]] picks the first of them. A column without `:table-id` is not a column of a
+  table: a computed value, or a stand-in for a source whose columns are unknown."
+  [driver metadata-provider {:keys [column source-columns]}]
+  (let [column-name (normalize-name driver column)]
+    (or (some (fn [scope]
+                (not-empty
+                 (into []
+                       (comp (mapcat (fn [source]
+                                       (if (= :unknown-columns (:type source))
+                                         [{:name column}]
+                                         (keep :col (resolve-field driver metadata-provider source)))))
+                             (filter #(= column-name (normalize-name driver (:name %)))))
+                       scope)))
+              source-columns)
+        [])))
+
 (defn- get-name [m]
   (or (:alias m) (str (gensym "new-col"))))
 

@@ -23,7 +23,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
-   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.expectations.empty]
@@ -39,9 +38,12 @@
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -183,6 +185,24 @@
         (doseq [table (vals @temp-tables)]
           (data-testing.executor/drop-temp-table! driver conn table))))))
 
+(mu/defn- columns-read :- [:maybe [:set ::data-testing.validator/column-read]]
+  "The columns of tables that `sql` reads, as `metadata-provider` spells them, or nil when the parser reports an error
+  in `sql`. A column is left out when its reference could also read something else: a column of another table, a
+  column whose name differs only in case, or a computed value. A wildcard reads no column."
+  [driver            :- :keyword
+   metadata-provider :- ::lib.schema.metadata/metadata-provider
+   sql               :- :string]
+  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
+    (when (empty? errors)
+      (into #{}
+            (comp (filter #(= :single-column (:type %)))
+                  (keep (fn [field]
+                          (let [[column & more] (sql-tools/field-candidates driver metadata-provider field)]
+                            (when (and (:table-id column) (not more))
+                              (let [{:keys [schema name]} (lib.metadata/table metadata-provider (:table-id column))]
+                                {:schema schema :name name :column (:name column)}))))))
+            (concat used-fields returned-fields)))))
+
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
   "The tables the subject's `sql` reads, or a refusal naming what would not parse."
   [driver :- :keyword
@@ -288,10 +308,7 @@
         output-table   (driver/temp-table-name driver)
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
-        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)
-        metadata-tables (data-testing.db/tables-with-columns
-                         (:id database)
-                         (into #{} (comp (filter #(= :rows (:format %))) (map (comp :name :table))) inputs))]
+        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)]
     (data-testing.validator/validate
      driver
      {:inputs              inputs
@@ -301,8 +318,8 @@
       :replacements        replacements
       :output-token        output-token
       :default-schema      default-schema
-      :columns-read        (data-testing.compile/columns-read driver (:query compiled))
-      :metadata-tables     metadata-tables
+      :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
+                                         (:query compiled))
       :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
     {:driver       driver
      :database     database

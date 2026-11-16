@@ -4099,9 +4099,7 @@
                     :model/Dashboard
                     :model/Database
                     :model/Document
-                    :model/Field
                     :model/Segment
-                    :model/Table
                     :model/Transform
                     :model/User}}
 

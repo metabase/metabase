@@ -73,44 +73,6 @@
               (map :name))
         (:errors (sql-tools/field-references driver sql))))
 
-(mr/def ::column-read
-  "A column of a table that SQL reads, by the table's schema and name."
-  [:map {:closed true}
-   [:schema [:maybe :string]]
-   [:name   :string]
-   [:column :string]])
-
-(defn- field-columns
-  "The columns that `field`, a `:single-column` field spec of `sql-tools/field-references`, could read: a set with one
-  `::column-read` per way the parser could resolve it, and `::unresolved` for a resolution that is not a column of a
-  table. The parser lists the columns inside a computed value, a subquery or a CTE as fields of their own, so a
-  resolution to another query's column needs no descent."
-  [{:keys [column source-columns]}]
-  (into #{}
-        (for [group  source-columns
-              source group]
-          (if (= :all-columns (:type source))
-            {:schema (get-in source [:table :schema])
-             :name   (get-in source [:table :table])
-             :column column}
-            ::unresolved))))
-
-(mu/defn columns-read :- [:maybe [:set ::column-read]]
-  "The columns of real tables that `sql` reads, or nil when the parser reports an error in `sql`. A column is included
-  only when the parser resolves it to exactly one column of one table, so a name it cannot place, or that could be a
-  select-list alias of a computed value, is left out; a wildcard names no column."
-  [driver :- :keyword
-   sql    :- :string]
-  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
-    (when (empty? errors)
-      (into #{}
-            (comp (filter #(= :single-column (:type %)))
-                  (map field-columns)
-                  (keep (fn [pairs]
-                          (when (and (= 1 (count pairs)) (not (contains? pairs ::unresolved)))
-                            (first pairs)))))
-            (concat used-fields returned-fields)))))
-
 ;;; ------------------------------------------------- Rewrite -------------------------------------------------
 
 (mu/defn table-keys :- [:sequential ::table-key]

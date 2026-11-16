@@ -193,55 +193,52 @@
               {:placeholders  (vec unknown)
                :response/keys #{:placeholders}})))))
 
-(mr/def ::metadata-table
-  "A table of the database under test, with the names of its columns, as Metabase's metadata lists them."
+(mr/def ::column-read
+  "A column of a table that SQL reads, with the table's schema and name, each spelled as Metabase's metadata spells it."
   [:map {:closed true}
-   [:schema  [:maybe :string]]
-   [:name    :string]
-   [:columns [:set :string]]])
+   [:schema [:maybe :string]]
+   [:name   :string]
+   [:column :string]])
 
-(mu/defn- metadata-table :- [:maybe ::metadata-table]
-  "The table of `metadata-tables` that the declared `table` names: same name and schema, case aside, a declared table
-  without a schema standing for one in `default-schema`. When several match, the one spelled exactly as `table`; nil
-  when none, or several, match."
-  [metadata-tables :- [:sequential ::metadata-table]
-   table           :- ::data-testing.schema/table
-   default-schema  :- [:maybe :string]]
+(mu/defn- tables-of-input :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
+  "The tables of `columns-read` that the declared `table` names, as `{:schema :name}` maps. A table matches when its
+  name and schema equal the declared ones, case aside; a declared table without a schema stands for one in
+  `default-schema`. When one match is spelled exactly as declared, only that one."
+  [table          :- ::data-testing.schema/table
+   columns-read   :- [:set ::column-read]
+   default-schema :- [:maybe :string]]
   (let [schema   (or (:schema table) default-schema)
-        matching (filter #(and (= (data-testing.u/fold-identifier (:name %)) (data-testing.u/fold-identifier (:name table)))
-                               (= (data-testing.u/fold-identifier (:schema %)) (data-testing.u/fold-identifier schema)))
-                         metadata-tables)]
-    (if (next matching)
-      (let [exact (filter #(= [(:schema %) (:name %)] [schema (:name table)]) matching)]
-        (when-not (next exact) (first exact)))
-      (first matching))))
+        same     (fn [a b] (= (data-testing.u/fold-identifier a) (data-testing.u/fold-identifier b)))
+        matching (into #{}
+                       (comp (map #(select-keys % [:schema :name]))
+                             (filter #(and (same (:name %) (:name table))
+                                           (same (or (:schema %) default-schema) schema))))
+                       columns-read)
+        exact    (into #{} (filter #(= [(or (:schema %) default-schema) (:name %)] [schema (:name table)])) matching)]
+    (if (seq exact) exact matching)))
 
 (mu/defn- missing-input-columns :- [:sequential [:map
                                                  [:table    ::data-testing.schema/table]
                                                  [:columns  [:sequential :string]]
                                                  [:declared [:map-of :string :string]]]]
-  "For each rows input, the columns of its table in `metadata-tables` that `columns-read` says the query under test
-  reads and that the input does not declare, by the table's spelling; inputs with none are left out. A column read is
-  the table's column of the same name, case aside, and is left out when the table has two such columns. Declared names
-  compare with the table's under [[data-testing.u/column-key]]. `:declared` maps a missing column to the input's
-  spelling of it when the two differ only in case."
-  [inputs          :- ::data-testing.schema/inputs
-   columns-read    :- [:set ::data-testing.compile/column-read]
-   metadata-tables :- [:sequential ::metadata-table]
-   default-schema  :- [:maybe :string]
-   ignore-case?    :- :boolean]
+  "For each rows input, the columns of its table in `columns-read` that the input does not declare, spelled as the
+  table spells them; inputs with none are left out. Declared names compare with the table's under
+  [[data-testing.u/column-key]]. `:declared` maps a missing column to the input's spelling of it when the two differ
+  only in case."
+  [inputs         :- ::data-testing.schema/inputs
+   columns-read   :- [:set ::column-read]
+   default-schema :- [:maybe :string]
+   ignore-case?   :- :boolean]
   (into []
         (keep (fn [{:keys [table columns format]}]
-                (when-let [{known :columns} (when (= :rows format)
-                                              (metadata-table metadata-tables table default-schema))]
-                  (let [by-folded (group-by data-testing.u/fold-identifier known)
-                        declared  (into #{} (map #(data-testing.u/column-key ignore-case? (:name %))) columns)
-                        missing   (into (sorted-set)
-                                        (comp (filter #(table-match? (select-keys % [:schema :name]) table default-schema))
-                                              (keep #(let [[column & more] (by-folded (data-testing.u/fold-identifier (:column %)))]
-                                                       (when-not more column)))
-                                              (remove #(contains? declared (data-testing.u/column-key ignore-case? %))))
-                                        columns-read)]
+                (when (= :rows format)
+                  (let [tables   (tables-of-input table columns-read default-schema)
+                        declared (into #{} (map #(data-testing.u/column-key ignore-case? (:name %))) columns)
+                        missing  (into (sorted-set)
+                                       (comp (filter #(contains? tables (select-keys % [:schema :name])))
+                                             (map :column)
+                                             (remove #(contains? declared (data-testing.u/column-key ignore-case? %))))
+                                       columns-read)]
                     (when (seq missing)
                       {:table    table
                        :columns  (vec missing)
@@ -264,12 +261,11 @@
   the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
   SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test.
 
-  `columns-read`, when given, are the columns of real tables the query under test reads, and `metadata-tables` the
-  tables of the database that the inputs may name, with their columns; a rows input lacking a column that is in both is
-  refused. `ignore-case?` says whether the database ignores case in column names."
+  `columns-read`, when given, are the columns of tables that the query under test reads; a rows input is refused when
+  its table has a column among them that the input does not declare. `ignore-case?` says whether the database ignores case in column names."
   [driver :- :keyword
    {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema
-           columns-read metadata-tables ignore-case?]}
+           columns-read ignore-case?]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
@@ -278,8 +274,7 @@
        [:replacements        ::data-testing.compile/table-replacements]
        [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
        [:default-schema      [:maybe :string]]
-       [:columns-read        {:optional true} [:maybe [:set ::data-testing.compile/column-read]]]
-       [:metadata-tables     {:optional true} [:sequential ::metadata-table]]
+       [:columns-read        {:optional true} [:maybe [:set ::column-read]]]
        [:ignore-case?        {:optional true} :boolean]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
@@ -302,7 +297,7 @@
                  (str/join ", " colliding))
             {:tables (vec colliding)
              :response/keys #{:tables}})))
-  (when-let [missing (seq (missing-input-columns inputs (or columns-read #{}) (or metadata-tables []) default-schema
+  (when-let [missing (seq (missing-input-columns inputs (or columns-read #{}) default-schema
                                                  (boolean ignore-case?)))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/missing-input-columns

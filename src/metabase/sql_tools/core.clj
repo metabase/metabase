@@ -235,6 +235,12 @@
   [driver mp col-spec]
   (common/resolve-field driver mp col-spec))
 
+(defn field-candidates
+  "Every column that a field reference could read; [[resolve-field]] picks one of them.
+  See [[metabase.sql-tools.common/field-candidates]] for details."
+  [driver mp col-spec]
+  (common/field-candidates driver mp col-spec))
+
 (def ^:private TranspilationResult
   [:map
    [:status [:enum :success :error :skipped]]
