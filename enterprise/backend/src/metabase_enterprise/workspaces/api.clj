@@ -15,9 +15,9 @@
   carries it: a 2xx, the 401, and every error an endpoint throws (400, 403, 404, 409, 422, 500). Read the version
   from any of those: one without the header comes from a server that predates it, so read that as version 1.
 
-  Two responses under these paths are built outside these routes and do not carry the header: the 402 for a missing
-  `:workspaces` premium feature, and the 404 for a path that no route matches. Neither says anything about the
-  version."
+  Responses the server builds before a request reaches these routes carry no header and say nothing about the
+  version: the 402 for a missing `:workspaces` premium feature, the 404 of a path or method no route matches, and
+  the 400 for a body that is not valid JSON."
   "2")
 
 (defn- add-contract-version-header
