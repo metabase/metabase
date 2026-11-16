@@ -33,19 +33,15 @@
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
-                                                              [:name          ms/NonBlankString]
-                                                              [:default       {:optional true} [:maybe :boolean]]
-                                                              [:description   {:optional true} [:maybe :string]]
-                                                              [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                                              [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                              [:archived      {:optional true} [:maybe :boolean]]]]
+   {collection-id :collection_id, :as body} :- [:map {:closed true}
+                                                [:name          ms/NonBlankString]
+                                                [:default       {:optional true} [:maybe :boolean]]
+                                                [:description   {:optional true} [:maybe :string]]
+                                                [:icon          {:optional true} [:maybe timeline-event/Icon]]
+                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (api/create-check :model/Timeline {:collection_id collection-id})
-  (let [tl (merge
-            body
-            {:creator_id api/*current-user-id*}
-            (when-not icon
-              {:icon timeline-event/default-icon}))]
+  (let [tl (assoc body :creator_id api/*current-user-id*)]
     (u/prog1 (timeline.db/insert-timeline! tl)
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
@@ -113,14 +109,14 @@
                                                [:icon          {:optional true} [:maybe timeline-event/Icon]]
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (timeline.db/timeline id))]
+  (let [existing (api/check-404 (timeline.db/timeline id))
+        changes  (u/select-keys-when timeline-updates
+                                     :present #{:description :icon :collection_id :default :archived}
+                                     :non-nil #{:name})]
+    (api/update-check existing changes)
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (timeline.db/update-timeline! id
-                                  (u/select-keys-when timeline-updates
-                                                      :present #{:description :icon :collection_id :default :archived}
-                                                      :non-nil #{:name}))
-    (when (and (some? archived) (not= current-archived archived))
+    (timeline.db/update-timeline! id changes)
+    (when (and (some? archived) (not= (:archived existing) archived))
       (timeline.db/set-timeline-events-archived! id archived))
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))

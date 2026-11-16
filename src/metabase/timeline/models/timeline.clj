@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -9,8 +10,12 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
@@ -19,7 +24,46 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;;;; permissions
+(t2/define-after-select :model/Timeline
+  [timeline]
+  ;; We used to have a "balloons" icon but we removed it.
+  ;; Use the default icon instead. (metabase#34586, metabase#35129)
+  (update timeline :icon (fn [icon]
+                           (if (= icon "balloons") timeline-event/default-icon icon))))
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-collections
+  "Throws unless the Collections with `collection-ids`, nil ids ignored, can hold a Timeline."
+  [collection-ids]
+  (doseq [collection-id (distinct (remove nil? collection-ids))]
+    (collection/check-allowed-content :model/Timeline collection-id)
+    (collection/check-collection-namespace :model/Timeline collection-id)))
+
+(defn- check-columns
+  "Throws unless the `:name` and `:icon` among `columns`, the columns a Timeline is written with, are valid."
+  [columns]
+  (when (and (contains? columns :name) (str/blank? (:name columns)))
+    (throw (ex-info (tru "A Timeline must have a name.") {:status-code 400})))
+  (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
+    (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
+
+(mi/define-before-insert :model/Timeline
+  [rows]
+  (check-collections (map :collection_id rows))
+  (mapv (fn [row]
+          (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
+            (check-columns (assoc row :name (:name row)))
+            row))
+        rows))
+
+(mi/define-before-update :model/Timeline
+  [rows]
+  (check-collections (map (comp :collection_id t2/changes) rows))
+  (run! (comp check-columns t2/changes) rows)
+  rows)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn- check-can-read-keys
   "Throws unless `timeline` has the columns its `:can_read` and `:can_write` hydrations read."
@@ -46,28 +90,23 @@
       (when timeline
         (assoc timeline :can_write (contains? writable (:collection_id timeline)))))))
 
-(defmethod mi/can-create? :model/Timeline
-  [_model {collection-id :collection_id}]
+(defn- collection-writable?
+  "Whether the current user can write the Collection with `collection-id`, nil for the root Collection."
+  [collection-id]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
-;;;; transforms
+(defmethod mi/can-create? :model/Timeline
+  [_model {collection-id :collection_id}]
+  (collection-writable? collection-id))
 
-(t2/define-after-select :model/Timeline
-  [timeline]
-  ;; We used to have a "balloons" icon but we removed it.
-  ;; Use the default icon instead. (metabase#34586, metabase#35129)
-  (update timeline :icon (fn [icon]
-                           (if (= icon "balloons") timeline-event/default-icon icon))))
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (and (mi/can-write? timeline)
+       (or (not (api/column-will-change? (:collection_id timeline) (get changes :collection_id ::api/not-provided)))
+           (and (collection-writable? (:collection_id timeline))
+                (collection-writable? (:collection_id changes))))))
 
-(t2/define-before-insert :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
-
-(t2/define-before-update :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  model)
-
-;;;; functions
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
@@ -77,7 +116,7 @@
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-;;;; serialization
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/Timeline [_]
   {:schema    ::timeline.schema/external-timeline
@@ -98,6 +137,8 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         timelines))
+
+;;; ------------------------------------------------- Remote sync ----------------------------------------------------
 
 (defmethod remote-sync/spec :model/Timeline
   [_model]

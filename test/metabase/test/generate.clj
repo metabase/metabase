@@ -169,7 +169,7 @@
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
 
-(s/def ::icon           (s/and ::name #(< (count %) 100)))
+(s/def ::icon           #{"star" "cake" "mail" "warning" "bell" "cloud"})
 (s/def ::time_matters   boolean?)
 (s/def ::timezone       (set (java.time.ZoneId/getAvailableZoneIds)))
 (s/def ::timeline       (s/keys :req-un [::id ::name ::description ::icon]))
