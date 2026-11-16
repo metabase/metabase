@@ -762,10 +762,13 @@
           (testing "a user with view-data on the mapped table gets the query"
             (mt/with-test-user :rasta
               (check-cleared (card-source-query model-id) ["NAME"])))
-          ;; One blocked table makes the database-level value :blocked, so the QP refuses a native model through
-          ;; the EE block rule. :legacy-no-self-service reaches the QP's own result_metadata rule.
-          (doseq [[view-data refusal] {:blocked                #"You do not have permissions to run this query\."
-                                       :legacy-no-self-service #"in result_metadata"}]
+          ;; One blocked table makes the database-level value :blocked. With EE code, the EE block rule refuses a
+          ;; native model first; without it, the QP's own result_metadata rule refuses it.
+          ;; :legacy-no-self-service always reaches the result_metadata rule.
+          (doseq [[view-data refusal] {:blocked
+                                       #"You do not have permissions to run this query\.|in result_metadata"
+                                       :legacy-no-self-service
+                                       #"in result_metadata"}]
             (testing (str "view-data " view-data " on the mapped table")
               (perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data view-data)
               (mt/with-test-user :rasta
